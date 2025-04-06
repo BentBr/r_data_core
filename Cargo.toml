@@ -1,0 +1,74 @@
+[package]
+name = "r_data_core"
+version = "0.1.0"
+edition = "2021"
+description = "A Digital Asset Management backend providing efficient data handling and distribution"
+authors = ["Bent Brüggemann <mail@bent-brueggemann.de>"]
+license = "MIT"
+
+[dependencies]
+# Web framework
+actix-web = "4.5"
+actix-cors = "0.7"
+actix-rt = "2.9"
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json", "time"] }
+tokio = { version = "1.35", features = ["full"] }
+
+# Authentication
+jsonwebtoken = "9.2"
+argon2 = "0.5"
+
+# Serialization/Deserialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Async
+futures = "0.3"
+async-trait = "0.1"
+
+# Check for futures-util and add it if missing
+futures-util = "0.3"
+
+# Unique IDs
+uuid = { version = "1.6", features = ["v4", "serde"] }
+rand = "0.8"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+time = "0.3"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Configuration
+dotenv = "0.15"
+
+# API documentation
+utoipa = { version = "4.1", features = ["actix_extras"] }
+utoipa-swagger-ui = { version = "4.0", features = ["actix-web"] }
+
+# Caching
+lru = "0.12"
+redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
+
+# Text processing
+regex = "1.10"
+
+[lib]
+name = "r_data_core"
+path = "src/lib.rs"
+
+[[bin]]
+name = "r_data_core"
+path = "src/main.rs"
+
+[[bin]]
+name = "run_migrations"
+path = "src/bin/run_migrations.rs"
