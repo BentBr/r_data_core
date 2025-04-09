@@ -1,8 +1,8 @@
 // Basic notification module - to be expanded in future
-use uuid::Uuid;
-use serde::{Serialize, Deserialize};
-use chrono::{DateTime, Utc};
 use crate::error::Result;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 /// Notification priority
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -92,16 +92,24 @@ pub struct Notification {
 pub trait NotificationManager {
     /// Send a notification
     fn send_notification(&self, notification: &Notification) -> Result<Notification>;
-    
+
     /// Schedule a notification
-    fn schedule_notification(&self, notification: &Notification, scheduled_for: DateTime<Utc>) -> Result<Notification>;
-    
+    fn schedule_notification(
+        &self,
+        notification: &Notification,
+        scheduled_for: DateTime<Utc>,
+    ) -> Result<Notification>;
+
     /// Cancel a notification
     fn cancel_notification(&self, notification_id: Uuid) -> Result<Notification>;
-    
+
     /// Mark a notification as read
     fn mark_as_read(&self, notification_id: Uuid) -> Result<Notification>;
-    
+
     /// Get notifications for a user
-    fn get_user_notifications(&self, user_id: Uuid, include_read: bool) -> Result<Vec<Notification>>;
-} 
+    fn get_user_notifications(
+        &self,
+        user_id: Uuid,
+        include_read: bool,
+    ) -> Result<Vec<Notification>>;
+}

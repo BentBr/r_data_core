@@ -1,12 +1,12 @@
 pub mod api;
+pub mod cache;
+pub mod config;
 pub mod db;
 pub mod entity;
 pub mod error;
-pub mod config;
-pub mod cache;
-pub mod workflow;
-pub mod versioning;
 pub mod notification;
+pub mod versioning;
+pub mod workflow;
 
 /// The version of the library
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -29,4 +29,4 @@ use log::info;
 pub fn init() -> Result<()> {
     info!("Initializing r_data_core...");
     Ok(())
-} 
+}

@@ -1,13 +1,12 @@
+use async_trait::async_trait;
+use lru::LruCache;
+use serde::{de::DeserializeOwned, Serialize};
+use std::num::NonZeroUsize;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use async_trait::async_trait;
-use serde::{Serialize, de::DeserializeOwned};
-use lru::LruCache;
-use std::sync::Arc;
-use std::num::NonZeroUsize;
 
-use crate::error::{Error, Result};
 use super::CacheBackend;
+use crate::error::{Error, Result};
 
 /// Cache entry with value and expiration time
 struct CacheEntry {
@@ -34,7 +33,7 @@ impl InMemoryCache {
             default_ttl,
         }
     }
-    
+
     /// Check if an entry is expired
     fn is_expired(entry: &CacheEntry) -> bool {
         if let Some(expires_at) = entry.expires_at {
@@ -49,14 +48,14 @@ impl InMemoryCache {
 impl CacheBackend for InMemoryCache {
     async fn get<T: DeserializeOwned + Send + Sync>(&self, key: &str) -> Result<Option<T>> {
         let mut cache = self.data.write().await;
-        
+
         if let Some(entry) = cache.get(key) {
             if Self::is_expired(entry) {
                 // Remove expired entry
                 cache.pop(key);
                 return Ok(None);
             }
-            
+
             // Deserialize the value
             match serde_json::from_slice::<T>(&entry.value) {
                 Ok(value) => Ok(Some(value)),
@@ -66,12 +65,16 @@ impl CacheBackend for InMemoryCache {
             Ok(None)
         }
     }
-    
-    async fn set<T: Serialize + Send + Sync>(&self, key: &str, value: &T, ttl: Option<u64>) -> Result<()> {
+
+    async fn set<T: Serialize + Send + Sync>(
+        &self,
+        key: &str,
+        value: &T,
+        ttl: Option<u64>,
+    ) -> Result<()> {
         // Serialize the value
-        let serialized = serde_json::to_string(value)
-            .map_err(Error::Serialization)?;
-        
+        let serialized = serde_json::to_string(value).map_err(Error::Serialization)?;
+
         // Calculate expiration time
         let ttl = ttl.unwrap_or(self.default_ttl);
         let expires_at = if ttl > 0 {
@@ -79,29 +82,29 @@ impl CacheBackend for InMemoryCache {
         } else {
             None
         };
-        
+
         // Create cache entry
         let entry = CacheEntry {
             value: serialized.into_bytes(),
             expires_at,
         };
-        
+
         // Store in cache
         let mut cache = self.data.write().await;
         cache.put(key.to_string(), entry);
-        
+
         Ok(())
     }
-    
+
     async fn delete(&self, key: &str) -> Result<()> {
         let mut cache = self.data.write().await;
         cache.pop(key);
         Ok(())
     }
-    
+
     async fn clear(&self) -> Result<()> {
         let mut cache = self.data.write().await;
         cache.clear();
         Ok(())
     }
-} 
+}

@@ -1,7 +1,7 @@
 // Basic workflow module - to be expanded in future
-use uuid::Uuid;
-use serde::{Serialize, Deserialize};
 use crate::error::Result;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 /// Basic workflow state
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,7 +39,7 @@ pub struct WorkflowDefinition {
     pub definition: serde_json::Value,
 }
 
-/// Workflow instance 
+/// Workflow instance
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowInstance {
     /// ID of the workflow instance
@@ -99,17 +99,34 @@ pub struct WorkflowHistory {
 /// Workflow manager trait
 pub trait WorkflowManager {
     /// Start a new workflow
-    fn start_workflow(&self, definition_id: Uuid, entity_id: &str, entity_type: &str, user_id: Option<Uuid>) -> Result<WorkflowInstance>;
-    
+    fn start_workflow(
+        &self,
+        definition_id: Uuid,
+        entity_id: &str,
+        entity_type: &str,
+        user_id: Option<Uuid>,
+    ) -> Result<WorkflowInstance>;
+
     /// Progress a workflow
-    fn progress_workflow(&self, instance_id: Uuid, action: &str, data: &serde_json::Value, user_id: Option<Uuid>) -> Result<WorkflowInstance>;
-    
+    fn progress_workflow(
+        &self,
+        instance_id: Uuid,
+        action: &str,
+        data: &serde_json::Value,
+        user_id: Option<Uuid>,
+    ) -> Result<WorkflowInstance>;
+
     /// Complete a task
-    fn complete_task(&self, task_id: Uuid, result: &serde_json::Value, user_id: Option<Uuid>) -> Result<WorkflowTask>;
-    
+    fn complete_task(
+        &self,
+        task_id: Uuid,
+        result: &serde_json::Value,
+        user_id: Option<Uuid>,
+    ) -> Result<WorkflowTask>;
+
     /// Get workflow tasks
     fn get_tasks(&self, instance_id: Uuid) -> Result<Vec<WorkflowTask>>;
-    
+
     /// Get workflow history
     fn get_history(&self, instance_id: Uuid) -> Result<Vec<WorkflowHistory>>;
-} 
+}

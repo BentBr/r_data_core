@@ -1,12 +1,12 @@
-use sqlx::{PgPool, query, query_as, types::Json, Row};
-use uuid::Uuid;
+use serde_json::Value;
+use sqlx::{query, types::Json, PgPool, Row};
 use std::collections::HashMap;
 use std::sync::Arc;
-use serde_json::Value;
+use uuid::Uuid;
 
-use crate::error::{Error, Result};
-use crate::entity::class::ClassDefinition;
 use super::entity::DynamicEntity;
+use crate::entity::class::ClassDefinition;
+use crate::error::{Error, Result};
 
 /// Repository for CRUD operations on dynamic entities
 pub struct DynamicEntityRepository {
@@ -22,7 +22,11 @@ pub struct DynamicEntityRepository {
 
 impl DynamicEntityRepository {
     /// Create a new repository for a dynamic entity type
-    pub fn new(pool: PgPool, entity_type: String, definition: Option<Arc<ClassDefinition>>) -> Self {
+    pub fn new(
+        pool: PgPool,
+        entity_type: String,
+        definition: Option<Arc<ClassDefinition>>,
+    ) -> Self {
         let table_name = format!("entity_{}", entity_type.to_lowercase());
         Self {
             pool,
@@ -31,29 +35,27 @@ impl DynamicEntityRepository {
             definition,
         }
     }
-    
+
     /// Create a new entity
     pub async fn create(&self, entity: &DynamicEntity) -> Result<Uuid> {
-        // Validate the entity against its definition
-        entity.validate()?;
-        
-        // Extract UUID from entity data
-        let uuid = entity.get::<Uuid>("uuid")?;
-        
-        // Insert into database
+        if let Some(def) = &self.definition {
+            entity.validate(def)?;
+        }
+
+        let id = entity.get::<Uuid>("id")?;
         query(&format!(
             "INSERT INTO {} (id, data) VALUES ($1, $2)",
             self.table_name
         ))
-        .bind(uuid)
+        .bind(id)
         .bind(Json(&entity.data))
         .execute(&self.pool)
         .await
         .map_err(|e| Error::Database(e))?;
-        
-        Ok(uuid)
+
+        Ok(id)
     }
-    
+
     /// Get an entity by ID
     pub async fn get(&self, uuid: Uuid) -> Result<DynamicEntity> {
         let row = query(&format!(
@@ -64,116 +66,120 @@ impl DynamicEntityRepository {
         .fetch_one(&self.pool)
         .await
         .map_err(|e| match e {
-            sqlx::Error::RowNotFound => Error::NotFound(format!("Entity with UUID {} not found", uuid)),
+            sqlx::Error::RowNotFound => {
+                Error::NotFound(format!("Entity with UUID {} not found", uuid))
+            }
             _ => Error::Database(e),
         })?;
-        
-        let data: Json<HashMap<String, Value>> = row.try_get("data")
-            .map_err(|e| Error::Database(e))?;
-        
+
+        let data: Json<HashMap<String, Value>> =
+            row.try_get("data").map_err(|e| Error::Database(e))?;
+
         Ok(DynamicEntity::from_data(
             self.entity_type.clone(),
             data.0,
-            self.definition.clone()
+            self.definition.clone(),
         ))
     }
-    
+
     /// Update an entity
     pub async fn update(&self, entity: &DynamicEntity) -> Result<()> {
-        // Validate the entity against its definition
-        entity.validate()?;
-        
-        // Extract UUID from entity data
-        let uuid = entity.get::<Uuid>("uuid")?;
-        
-        // Update in database
+        if let Some(def) = &self.definition {
+            entity.validate(def)?;
+        }
+
+        let id = entity.get::<Uuid>("id")?;
         let result = query(&format!(
-            "UPDATE {} SET data = $1 WHERE uuid = $2",
+            "UPDATE {} SET data = $1 WHERE id = $2",
             self.table_name
         ))
         .bind(Json(&entity.data))
-        .bind(uuid)
+        .bind(id)
         .execute(&self.pool)
         .await
         .map_err(|e| Error::Database(e))?;
-        
+
         if result.rows_affected() == 0 {
-            return Err(Error::NotFound(format!("Entity with UUID {} not found", uuid)));
+            return Err(Error::NotFound(format!("Entity with ID {} not found", id)));
         }
-        
+
         Ok(())
     }
-    
+
     /// Delete an entity
     pub async fn delete(&self, uuid: Uuid) -> Result<()> {
-        let result = query(&format!(
-            "DELETE FROM {} WHERE uuid = $1",
-            self.table_name
-        ))
-        .bind(uuid)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| Error::Database(e))?;
-        
+        let result = query(&format!("DELETE FROM {} WHERE uuid = $1", self.table_name))
+            .bind(uuid)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| Error::Database(e))?;
+
         if result.rows_affected() == 0 {
-            return Err(Error::NotFound(format!("Entity with UUID {} not found", uuid)));
+            return Err(Error::NotFound(format!(
+                "Entity with UUID {} not found",
+                uuid
+            )));
         }
-        
+
         Ok(())
     }
-    
+
     /// List entities with optional filters, limit and offset
     pub async fn list(
-        &self, 
+        &self,
         filters: Option<HashMap<String, Value>>,
         limit: Option<i64>,
-        offset: Option<i64>
+        offset: Option<i64>,
     ) -> Result<Vec<DynamicEntity>> {
         // Build the query
         let mut query_str = format!("SELECT data FROM {}", self.table_name);
-        
+
         // Add WHERE clause for filters
         if let Some(filters) = &filters {
             if !filters.is_empty() {
                 query_str.push_str(" WHERE ");
-                
+
                 let mut conditions = Vec::new();
                 for (key, value) in filters {
-                    conditions.push(format!("data->>'{}' = '{}'", key, value.to_string().replace("'", "''")));
+                    conditions.push(format!(
+                        "data->>'{}' = '{}'",
+                        key,
+                        value.to_string().replace("'", "''")
+                    ));
                 }
-                
+
                 query_str.push_str(&conditions.join(" AND "));
             }
         }
-        
+
         // Add limit and offset
         if let Some(limit) = limit {
             query_str.push_str(&format!(" LIMIT {}", limit));
         }
-        
+
         if let Some(offset) = offset {
             query_str.push_str(&format!(" OFFSET {}", offset));
         }
-        
+
         // Execute the query
         let rows = sqlx::query(&query_str)
             .fetch_all(&self.pool)
             .await
             .map_err(|e| Error::Database(e))?;
-        
+
         // Convert rows to entities
         let mut entities = Vec::with_capacity(rows.len());
         for row in rows {
-            let data: Json<HashMap<String, Value>> = row.try_get("data")
-                .map_err(|e| Error::Database(e))?;
-            
+            let data: Json<HashMap<String, Value>> =
+                row.try_get("data").map_err(|e| Error::Database(e))?;
+
             entities.push(DynamicEntity::from_data(
                 self.entity_type.clone(),
                 data.0,
-                self.definition.clone()
+                self.definition.clone(),
             ));
         }
-        
+
         Ok(entities)
     }
-} 
+}

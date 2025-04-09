@@ -1,43 +1,45 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use chrono::Utc;
-use sqlx::{decode::Decode, postgres::{PgTypeInfo, PgValueRef}, Type, Row};
-use utoipa::ToSchema;
+use sqlx::{
+    decode::Decode,
+    postgres::{PgTypeInfo, PgValueRef},
+    Type,
+};
+use std::collections::HashMap;
+use uuid::{Timestamp, Uuid};
 
-use crate::error::Result;
+use super::class::ClassDefinition;
 use super::DynamicFields;
 use super::VersionedData;
+use crate::error::{Error, Result};
 
 /// The base entity from which all RDataEntities derive
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AbstractRDataEntity {
-    /// Internal database ID
-    pub id: Option<i64>,
-    
     /// Public UUID for API consumption
     pub uuid: Uuid,
-    
+
     /// Path for object tree organization
     pub path: String,
-    
+
     /// When the entity was created
     pub created_at: DateTime<Utc>,
-    
+
     /// When the entity was last modified
     pub updated_at: DateTime<Utc>,
-    
+
     /// Who created the entity
-    pub created_by: Option<i64>,
-    
+    pub created_by: Option<Uuid>,
+
     /// Who last modified the entity
-    pub updated_by: Option<i64>,
-    
+    pub updated_by: Option<Uuid>,
+
     /// Entity published status
     pub published: bool,
-    
+
     /// Current version number
     pub version: i32,
-    
+
     /// Custom fields storage
     #[serde(default)]
     pub custom_fields: HashMap<String, serde_json::Value>,
@@ -53,7 +55,7 @@ impl<'r> Decode<'r, sqlx::Postgres> for AbstractRDataEntity {
     fn decode(value: PgValueRef<'r>) -> std::result::Result<Self, sqlx::error::BoxDynError> {
         // For JSON representation, decode as a JSON value first
         let json_value = <serde_json::Value as Decode<'r, sqlx::Postgres>>::decode(value)?;
-        
+
         // Then deserialize from the JSON value
         let entity = serde_json::from_value(json_value)?;
         Ok(entity)
@@ -63,12 +65,13 @@ impl<'r> Decode<'r, sqlx::Postgres> for AbstractRDataEntity {
 impl AbstractRDataEntity {
     /// Create a new entity with default values
     pub fn new(path: String) -> Self {
+        let now = Utc::now();
+        let ts = Timestamp::from_unix(now.timestamp(), now.timestamp_subsec_nanos() as u64, 0);
         Self {
-            id: None,
-            uuid: Uuid::new_v4(),
+            uuid: Uuid::new_v7(ts),
             path,
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
+            created_at: now,
+            updated_at: now,
             created_by: None,
             updated_by: None,
             published: false,
@@ -76,7 +79,7 @@ impl AbstractRDataEntity {
             custom_fields: HashMap::new(),
         }
     }
-    
+
     /// Get the full path including entity name
     pub fn full_path(&self) -> String {
         if self.path.ends_with('/') {
@@ -85,13 +88,13 @@ impl AbstractRDataEntity {
             format!("{}/{}", self.path, self.uuid)
         }
     }
-    
+
     /// Increment version when entity is updated
     pub fn increment_version(&mut self) {
         self.version += 1;
         self.updated_at = Utc::now();
     }
-    
+
     /// Create a versioned snapshot of the current entity state
     pub fn create_version_snapshot(&self) -> VersionedData {
         VersionedData {
@@ -107,13 +110,28 @@ impl DynamicFields for AbstractRDataEntity {
     fn get_field(&self, name: &str) -> Option<serde_json::Value> {
         self.custom_fields.get(name).cloned()
     }
-    
+
     fn set_field(&mut self, name: &str, value: serde_json::Value) -> Result<()> {
         self.custom_fields.insert(name.to_string(), value);
         Ok(())
     }
-    
+
     fn get_all_fields(&self) -> HashMap<String, serde_json::Value> {
         self.custom_fields.clone()
     }
-} 
+
+    fn validate(&self, class_def: &ClassDefinition) -> Result<()> {
+        // Basic validation - ensure all required fields are present
+        for field in &class_def.schema.get_fields() {
+            if field.required {
+                if !self.custom_fields.contains_key(&field.name) {
+                    return Err(Error::Validation(format!(
+                        "Required field '{}' is missing",
+                        field.name
+                    )));
+                }
+            }
+        }
+        Ok(())
+    }
+}

@@ -56,141 +56,114 @@ pub enum FieldType {
 /// Definition of a field in a class
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FieldDefinition {
-    /// Field name (must be unique within class)
+    /// Field name (used in code/API)
     pub name: String,
     
-    /// User-friendly display name
+    /// Display name for admin UI
     pub display_name: String,
     
-    /// Field data type
-    pub field_type: FieldType,
-    
-    /// Field description for admin UI
+    /// Field description
     pub description: Option<String>,
+    
+    /// Field type
+    pub field_type: FieldType,
     
     /// Whether the field is required
     pub required: bool,
     
-    /// Whether the field is indexed for faster searches
+    /// Whether the field should be indexed
     pub indexed: bool,
     
-    /// Whether the field can be used in API filtering
-    pub filterable: bool,
-    
-    /// Default value for the field as JSON
-    pub default_value: Option<serde_json::Value>,
-    
-    /// Field validation/constraints
-    #[serde(default)]
+    /// Field validation rules
     pub validation: FieldValidation,
     
     /// UI settings for the field
-    #[serde(default)]
     pub ui_settings: UiSettings,
-    
-    /// Extra field constraints or validation rules
-    pub constraints: HashMap<String, serde_json::Value>,
 }
 
-/// Validation rules for fields
+/// Validation rules for a field
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct FieldValidation {
-    /// Minimum string length
-    pub min_length: Option<usize>,
+    /// Minimum value for numeric fields
+    pub min_value: Option<Value>,
     
-    /// Maximum string length 
-    pub max_length: Option<usize>,
+    /// Maximum value for numeric fields
+    pub max_value: Option<Value>,
     
-    /// Regex pattern for string validation
-    pub pattern: Option<String>,
-    
-    /// Minimum numeric value
-    pub min_value: Option<serde_json::Value>,
-    
-    /// Maximum numeric value
-    pub max_value: Option<serde_json::Value>,
-    
-    /// Allow only positive values for numeric fields
+    /// Whether numeric fields must be positive
     pub positive_only: Option<bool>,
     
-    /// Minimum date (ISO string or "now")
-    pub min_date: Option<String>,
+    /// Maximum length for string fields
+    pub max_length: Option<usize>,
     
-    /// Maximum date (ISO string or "now")
-    pub max_date: Option<String>,
+    /// Regular expression pattern for string fields
+    pub pattern: Option<String>,
     
-    /// For relation fields: target entity class
+    /// Target class for relation fields
     pub target_class: Option<String>,
     
-    /// For select fields: options source
+    /// Source of options for select fields
     pub options_source: Option<OptionsSource>,
 }
 
+/// UI settings for a field
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct UiSettings {
+    /// Whether the field is visible in the UI
+    pub visible: bool,
+    
+    /// Whether the field is editable in the UI
+    pub editable: bool,
+    
+    /// Whether the field is required in the UI
+    pub required: bool,
+    
+    /// Placeholder text for the field
+    pub placeholder: Option<String>,
+    
+    /// Help text for the field
+    pub help_text: Option<String>,
+    
+    /// Default value for the field
+    pub default_value: Option<Value>,
+}
+
 /// Source of options for select fields
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "type")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OptionsSource {
-    /// Fixed list of options
-    #[serde(rename = "fixed")]
-    Fixed {
-        options: Vec<SelectOption>
-    },
-    
-    /// Options from an enum stored in database
-    #[serde(rename = "enum")]
+    /// Options from an enum type
     Enum {
-        enum_name: String
+        /// Name of the enum type
+        enum_name: String,
     },
     
-    /// Options from a database query
-    #[serde(rename = "query")]
+    /// Options from a query
     Query {
-        entity_type: String,
-        value_field: String,
-        label_field: String,
-        filter: Option<serde_json::Value>
-    }
+        /// SQL query to get options
+        query: String,
+    },
+    
+    /// Options from a static list
+    Static {
+        /// List of options
+        options: Vec<SelectOption>,
+    },
 }
 
 /// Option for select fields
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SelectOption {
+    /// Option value
     pub value: String,
+    
+    /// Option label
     pub label: String,
+    
+    /// Option description
+    pub description: Option<String>,
 }
 
-/// UI settings for fields
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct UiSettings {
-    /// Placeholder text for input fields
-    pub placeholder: Option<String>,
-    
-    /// Help text to display in UI
-    pub help_text: Option<String>,
-    
-    /// Whether to hide this field in list views
-    pub hide_in_lists: Option<bool>,
-    
-    /// Layout width (1-12 for 12-column grid)
-    pub width: Option<u8>,
-    
-    /// Order in form (lower numbers appear first)
-    pub order: Option<i32>,
-    
-    /// Group name for visually grouping fields
-    pub group: Option<String>,
-    
-    /// CSS class names to apply to field
-    pub css_class: Option<String>,
-    
-    /// For WYSIWYG: toolbar configuration
-    pub wysiwyg_toolbar: Option<String>,
-    
-    /// For input fields: input type (e.g., "password", "email")
-    pub input_type: Option<String>,
-}
-
-/// Class definition for a custom RDataEntity
+/// Class definition for a custom entity type
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClassDefinition {
     /// Base entity properties
@@ -259,13 +232,13 @@ impl ClassDefinition {
     pub fn generate_sql_schema(&self) -> String {
         let table_name = self.get_table_name();
         let mut sql = format!("CREATE TABLE IF NOT EXISTS {} (\n", table_name);
-        sql.push_str("  id BIGSERIAL PRIMARY KEY,\n");
+        sql.push_str("  id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),\n");
         sql.push_str("  uuid UUID NOT NULL,\n");
         sql.push_str("  path TEXT NOT NULL,\n");
         sql.push_str("  created_at TIMESTAMP WITH TIME ZONE NOT NULL,\n");
         sql.push_str("  updated_at TIMESTAMP WITH TIME ZONE NOT NULL,\n");
-        sql.push_str("  created_by BIGINT,\n");
-        sql.push_str("  updated_by BIGINT,\n");
+        sql.push_str("  created_by UUID,\n");
+        sql.push_str("  updated_by UUID,\n");
         sql.push_str("  published BOOLEAN NOT NULL DEFAULT FALSE,\n");
         sql.push_str("  version INTEGER NOT NULL DEFAULT 1,\n");
         
@@ -276,7 +249,7 @@ impl ClassDefinition {
                 // For ManyToOne, we do need a reference column in this table
                 if matches!(field.field_type, FieldType::ManyToOne) {
                     if let Some(target_class) = &field.validation.target_class {
-                        sql.push_str(&format!("  {}_id BIGINT,\n", field.name));
+                        sql.push_str(&format!("  {}_id UUID,\n", field.name));
                     }
                 }
                 continue;
@@ -311,7 +284,7 @@ impl ClassDefinition {
                 },
                 FieldType::MultiSelect => "TEXT[]",
                 FieldType::Image => "TEXT", // Store path or ID
-                FieldType::File => "TEXT",  // Store path or ID
+                FieldType::File => "TEXT",
                 FieldType::Object | FieldType::Array => "JSONB", // Complex types as JSON
                 _ => continue, // Skip other types
             };
@@ -395,14 +368,14 @@ impl ClassDefinition {
                             target_class.to_lowercase());
                             
                         sql.push_str(&format!("CREATE TABLE IF NOT EXISTS {} (\n", relation_table));
-                        sql.push_str("  id BIGSERIAL PRIMARY KEY,\n");
+                        sql.push_str("  id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),\n");
                         
                         // Reference to this entity
-                        sql.push_str(&format!("  {}_id BIGINT NOT NULL REFERENCES {} (id) ON DELETE CASCADE,\n", 
+                        sql.push_str(&format!("  {}_id UUID NOT NULL REFERENCES {} (id) ON DELETE CASCADE,\n", 
                             self.class_name.to_lowercase(), table_name));
                             
                         // Reference to target entity
-                        sql.push_str(&format!("  {}_id BIGINT NOT NULL REFERENCES {} (id) ON DELETE CASCADE,\n", 
+                        sql.push_str(&format!("  {}_id UUID NOT NULL REFERENCES {} (id) ON DELETE CASCADE,\n", 
                             target_class.to_lowercase(), target_table));
                             
                         // Add position field for ordered relations and metadata
@@ -442,59 +415,19 @@ impl ClassDefinition {
         
         // Create enum types for select fields if needed
         for field in &self.fields {
-            if matches!(field.field_type, FieldType::Select | FieldType::MultiSelect) {
-                if let Some(options_source) = &field.validation.options_source {
-                    match options_source {
-                        OptionsSource::Enum { enum_name } => {
-                            // For enum type, we need to extract values from somewhere
-                            // If no fixed options provided, we create an empty enum that can be populated later
-                            let values = Vec::new();
-                            crate::db::migrations::create_or_update_enum(db, enum_name, &values).await?;
-                        },
-                        OptionsSource::Fixed { options } => {
-                            // For fixed options, create an enum with the option values
-                            // Only if the field needs an enum - not all select fields do
-                            if field.constraints.get("use_enum").map_or(false, |v| v.as_bool().unwrap_or(false)) {
-                                let enum_name = format!("{}_{}", self.class_name.to_lowercase(), field.name.to_lowercase());
-                                let values: Vec<String> = options.iter().map(|opt| opt.value.clone()).collect();
-                                crate::db::migrations::create_or_update_enum(db, &enum_name, &values).await?;
-                            }
-                        },
-                        // Query options don't need enum types
-                        OptionsSource::Query { .. } => {}
-                    }
+            if matches!(field.field_type, FieldType::Select) {
+                if let Some(OptionsSource::Enum { enum_name }) = &field.validation.options_source {
+                    // Create enum type if it doesn't exist
+                    let enum_sql = format!(
+                        "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '{}') THEN CREATE TYPE {} AS ENUM (); END IF; END $$;",
+                        enum_name, enum_name
+                    );
+                    sqlx::query(&enum_sql)
+                        .execute(db)
+                        .await
+                        .map_err(Error::Database)?;
                 }
             }
-        }
-        
-        // Register in entities registry if not exists
-        let entity_exists: (bool,) = sqlx::query_as(
-            "SELECT EXISTS(SELECT 1 FROM entity_registry WHERE class_name = $1)",
-        )
-        .bind(&self.class_name)
-        .fetch_one(db)
-        .await
-        .map_err(Error::Database)?;
-        
-        // Insert or update the entity in the registry
-        if entity_exists.0 {
-            sqlx::query(
-                "UPDATE entity_registry SET display_name = $2 WHERE class_name = $1",
-            )
-            .bind(&self.class_name)
-            .bind(&self.display_name)
-            .execute(db)
-            .await
-            .map_err(Error::Database)?;
-        } else {
-            sqlx::query(
-                "INSERT INTO entity_registry (class_name, display_name) VALUES ($1, $2)",
-            )
-            .bind(&self.class_name)
-            .bind(&self.display_name)
-            .execute(db)
-            .await
-            .map_err(Error::Database)?;
         }
         
         Ok(())

@@ -1,3 +1,4 @@
+use actix_web::ResponseError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -34,13 +35,16 @@ pub enum Error {
 
     #[error("Validation error: {0}")]
     Validation(String),
-    
+
     #[error("Field not found: {0}")]
     FieldNotFound(String),
-    
+
     #[error("Field conversion error for {0}: {1}")]
     FieldConversion(String, String),
-    
+
+    #[error("Conversion error: {0}")]
+    Conversion(String),
+
     #[error("Read-only field: {0}")]
     ReadOnlyField(String),
 
@@ -49,6 +53,9 @@ pub enum Error {
 
     #[error("Unknown error: {0}")]
     Unknown(String),
+
+    #[error("Invalid schema: {0}")]
+    InvalidSchema(String),
 }
 
 impl From<redis::RedisError> for Error {
@@ -69,4 +76,10 @@ impl From<&str> for Error {
     }
 }
 
-pub type Result<T> = std::result::Result<T, Error>; 
+impl ResponseError for Error {
+    fn status_code(&self) -> actix_web::http::StatusCode {
+        actix_web::http::StatusCode::INTERNAL_SERVER_ERROR
+    }
+}
+
+pub type Result<T> = std::result::Result<T, Error>;

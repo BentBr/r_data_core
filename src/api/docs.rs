@@ -1,6 +1,6 @@
-use actix_web::{HttpResponse, Responder, get};
-use utoipa_swagger_ui::SwaggerUi;
+use actix_web::{get, HttpResponse, Responder};
 use serde::Serialize;
+use utoipa_swagger_ui::SwaggerUi;
 
 /// API docs for admin API routes
 // FIXME: Uncomment when all path handlers are properly annotated
@@ -31,22 +31,22 @@ pub struct PublicApiDoc {
 
 #[derive(Serialize)]
 pub struct ApiDoc {
-    info: String
+    info: String,
 }
 
 /// Swagger UI for API documentation
 #[get("/api/docs/admin/openapi.json")]
 pub async fn admin_api_docs() -> impl Responder {
-    HttpResponse::Ok().json(ApiDoc { 
-        info: "API documentation coming soon".to_string() 
+    HttpResponse::Ok().json(ApiDoc {
+        info: "API documentation coming soon".to_string(),
     })
 }
 
 /// Swagger UI for Entities API
 #[get("/api/docs/entities/openapi.json")]
 pub async fn entities_api_docs() -> impl Responder {
-    HttpResponse::Ok().json(ApiDoc { 
-        info: "API documentation coming soon".to_string() 
+    HttpResponse::Ok().json(ApiDoc {
+        info: "API documentation coming soon".to_string(),
     })
 }
 
@@ -56,4 +56,4 @@ pub fn register_routes() -> SwaggerUi {
     let ui = SwaggerUi::new("/api/docs/{_:.*}");
     // We're not using the .url() method since it requires OpenApi
     ui
-} 
+}

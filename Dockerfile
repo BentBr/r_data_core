@@ -1,22 +1,9 @@
-FROM rust:1.76-slim as builder
+FROM rust:1.77-slim as builder
 
 WORKDIR /usr/src/r_data_core
 
-# Create a blank project
-RUN cargo new --bin r_data_core
-
-# Copy over manifests
-COPY ./Cargo.toml ./Cargo.toml
-COPY ./Cargo.lock ./Cargo.lock
-
-# Cache dependencies
-WORKDIR /usr/src/r_data_core/r_data_core
-RUN cargo build --release
-RUN rm src/*.rs
-
-# Copy source code
-WORKDIR /usr/src/r_data_core
-COPY ./src ./src
+# Copy source code and manifests
+COPY . .
 
 # Build for release
 RUN cargo build --release
@@ -41,7 +28,7 @@ USER rdata
 ENV RUST_LOG=info
 
 # Expose the port
-EXPOSE 8080
+EXPOSE 80
 
 # Run the binary
 CMD ["r_data_core"] 
