@@ -4,6 +4,7 @@ use sqlx::{query_as, PgPool};
 use uuid::Uuid;
 
 use crate::entity::ClassDefinition;
+use crate::entity::class::Schema;
 use crate::entity::FieldType;
 use crate::error::{Error, Result};
 
@@ -41,34 +42,35 @@ pub async fn refresh_classes_schema(pool: &PgPool) -> Result<()> {
         let fields: Vec<crate::entity::field::FieldDefinition> =
             serde_json::from_value(class_def_row.0).map_err(|e| Error::Serialization(e))?;
 
-        // Create or update class definition
-        let mut class_def = ClassDefinition::new(
-            class_name.clone(),
-            serde_json::json!({
-                "type": "object",
-                "properties": fields.iter().map(|f| {
-                    (f.name.clone(), serde_json::json!({
-                        "type": match f.field_type {
-                            FieldType::String | FieldType::Text | FieldType::Wysiwyg => "string",
-                            FieldType::Integer => "number",
-                            FieldType::Float => "number",
-                            FieldType::Boolean => "boolean",
-                            FieldType::Select => "string",
-                            FieldType::MultiSelect => "array",
-                            FieldType::DateTime | FieldType::Date => "string",
-                            FieldType::Object => "object",
-                            FieldType::Array => "array",
-                            FieldType::UUID => "string",
-                            FieldType::ManyToOne | FieldType::ManyToMany => "string",
-                            FieldType::Image | FieldType::File => "string",
-                        },
-                        "title": f.name.clone(),
-                        "description": f.description.clone(),
-                    }))
-                }).collect::<serde_json::Map<String, serde_json::Value>>(),
-                "required": fields.iter().filter(|f| f.required).map(|f| f.name.clone()).collect::<Vec<String>>(),
-            }),
-        );
+        // Create schema from fields
+        let schema_properties = serde_json::json!({
+            "type": "object",
+            "properties": fields.iter().map(|f| {
+                (f.name.clone(), serde_json::json!({
+                    "type": match f.field_type {
+                        FieldType::String | FieldType::Text | FieldType::Wysiwyg => "string",
+                        FieldType::Integer => "number",
+                        FieldType::Float => "number",
+                        FieldType::Boolean => "boolean",
+                        FieldType::Select => "string",
+                        FieldType::MultiSelect => "array",
+                        FieldType::DateTime | FieldType::Date => "string",
+                        FieldType::Object => "object",
+                        FieldType::Array => "array",
+                        FieldType::Uuid => "string",
+                        FieldType::ManyToOne | FieldType::ManyToMany => "string",
+                        FieldType::Image | FieldType::File => "string",
+                    },
+                    "title": f.name.clone(),
+                    "description": f.description.clone(),
+                }))
+            }).collect::<serde_json::Map<String, serde_json::Value>>(),
+            "required": fields.iter().filter(|f| f.required).map(|f| f.name.clone()).collect::<Vec<String>>(),
+        });
+        
+        // Create schema and class definition
+        let schema = Schema::from(schema_properties);
+        let mut class_def = ClassDefinition::new(class_name.clone(), schema);
 
         // Apply the schema to the database
         class_def.apply_to_database(pool).await?;

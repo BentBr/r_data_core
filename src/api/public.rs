@@ -108,8 +108,8 @@ async fn get_entity(data: web::Data<ApiState>, path: web::Path<(String, Uuid)>) 
     .await
     .map_err(Error::Database);
 
-    let class_def = match class_def_result {
-        Ok(Some(def)) => Some(Arc::<ClassDefinition>::new(def)),
+    let class_def = match &class_def_result {
+        Ok(Some(def)) => Some(Arc::new(def.clone())),
         Ok(None) => {
             // Check if it's a system entity
             let system_entity_result = sqlx::query!(
@@ -231,8 +231,8 @@ async fn list_entities(
     .map_err(Error::Database);
 
     // Build table name
-    let table_name = match class_def_result {
-        Ok(Some(ref def)) => {
+    let table_name = match &class_def_result {
+        Ok(Some(def)) => {
             let def_ref: &ClassDefinition = def;
             def_ref.get_table_name()
         }
@@ -388,7 +388,7 @@ async fn list_entities(
 
     match rows_result {
         Ok(rows) => {
-            let class_def = match class_def_result {
+            let class_def = match &class_def_result {
                 Ok(Some(def)) => Some(Arc::new(def.clone())),
                 _ => None,
             };
@@ -474,8 +474,8 @@ async fn create_entity(
     .await
     .map_err(Error::Database);
 
-    let class_def = match class_def_result {
-        Ok(Some(def)) => Some(Arc::<ClassDefinition>::new(def)),
+    let class_def = match &class_def_result {
+        Ok(Some(def)) => Some(Arc::new(def.clone())),
         Ok(None) => {
             // Check if it's a system entity
             let system_entity_result = sqlx::query!(
@@ -542,22 +542,28 @@ async fn create_entity(
         }
 
         // Only include fields that are defined in class definition
-        if def
-            .schema
-            .properties
-            .get("properties")
-            .and_then(|p| p.as_object())
-            .is_some()
-            || [
-                "uuid",
-                "path",
-                "created_at",
-                "updated_at",
-                "published",
-                "version",
-            ]
-            .contains(&key.as_str())
-        {
+        if let Some(schema_def) = &class_def {
+            if schema_def
+                .schema
+                .properties
+                .get("properties")
+                .and_then(|p| p.as_object())
+                .is_some()
+                || [
+                    "uuid",
+                    "path",
+                    "created_at",
+                    "updated_at",
+                    "published",
+                    "version",
+                ]
+                .contains(&key.as_str())
+            {
+                columns.push(key.clone());
+                placeholders.push(format!("${}", i + 1));
+                values.push(value.clone());
+            }
+        } else {
             columns.push(key.clone());
             placeholders.push(format!("${}", i + 1));
             values.push(value.clone());
@@ -681,8 +687,8 @@ async fn update_entity(
     .await
     .map_err(Error::Database);
 
-    let class_def = match class_def_result {
-        Ok(Some(def)) => Some(Arc::<ClassDefinition>::new(def)),
+    let class_def = match &class_def_result {
+        Ok(Some(def)) => Some(Arc::new(def.clone())),
         Ok(None) => {
             // Check if it's a system entity
             let system_entity_result = sqlx::query!(
@@ -827,21 +833,26 @@ async fn update_entity(
         }
 
         // Only include fields that are defined in class definition
-        if def
-            .schema
-            .properties
-            .get("properties")
-            .and_then(|p| p.as_object())
-            .is_some()
-            || [
-                "path",
-                "updated_at",
-                "published",
-                "version",
-                "custom_fields",
-            ]
-            .contains(&key.as_str())
-        {
+        if let Some(schema_def) = &class_def {
+            if schema_def
+                .schema
+                .properties
+                .get("properties")
+                .and_then(|p| p.as_object())
+                .is_some()
+                || [
+                    "path",
+                    "updated_at",
+                    "published",
+                    "version",
+                    "custom_fields",
+                ]
+                .contains(&key.as_str())
+            {
+                set_clauses.push(format!("{} = ${}", key, i + 1));
+                values.push(value.clone());
+            }
+        } else {
             set_clauses.push(format!("{} = ${}", key, i + 1));
             values.push(value.clone());
         }
@@ -955,7 +966,7 @@ async fn delete_entity(
     .map_err(Error::Database);
 
     // Build table name
-    let table_name = match class_def_result {
+    let table_name = match &class_def_result {
         Ok(Some(def)) => {
             let def_ref: &ClassDefinition = def;
             def_ref.get_table_name()
@@ -1032,9 +1043,9 @@ async fn query_entities(
     .map_err(Error::Database);
 
     // Build table name
-    let table_name = match class_def_result {
+    let table_name = match &class_def_result {
         Ok(Some(def)) => {
-            let def_ref: &ClassDefinition = def;
+            let def_ref: &ClassDefinition = &def;
             def_ref.get_table_name()
         }
         Ok(None) => {
@@ -1189,7 +1200,7 @@ async fn query_entities(
 
     match rows_result {
         Ok(rows) => {
-            let class_def = match class_def_result {
+            let class_def = match &class_def_result {
                 Ok(Some(def)) => Some(Arc::new(def.clone())),
                 _ => None,
             };

@@ -120,9 +120,8 @@ pub struct AdminUser {
     pub updated_at: DateTime<Utc>,
 }
 
-#[async_trait::async_trait]
 impl<'r> FromRow<'r, PgRow> for AdminUser {
-    async fn from_row(row: PgRow) -> std::result::Result<Self, sqlx::Error> {
+    fn from_row(row: &'r PgRow) -> std::result::Result<Self, sqlx::Error> {
         Ok(AdminUser {
             uuid: row.try_get("uuid")?,
             username: row.try_get("username")?,

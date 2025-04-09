@@ -12,6 +12,11 @@ use serde_json::json;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+// Import constants from the lib.rs
+use crate::NAME;
+use crate::VERSION;
+use crate::DESCRIPTION;
+
 /// Register admin API routes
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
@@ -130,7 +135,16 @@ async fn create_class_definition(
             );
 
             // Use the specific apply_to_database method
-            let apply_result = sqlx::query(&created_def.schema.generate_sql_schema())
+            let schema_sql = match created_def.schema.generate_sql_schema() {
+                Ok(sql) => sql,
+                Err(e) => {
+                    return HttpResponse::InternalServerError().json(serde_json::json!({
+                        "error": format!("Failed to generate SQL schema: {}", e)
+                    }));
+                }
+            };
+            
+            let apply_result = sqlx::query(&schema_sql)
                 .execute(db_pool)
                 .await;
 
@@ -181,7 +195,16 @@ async fn update_class_definition(
             );
 
             // Use the specific apply_to_database method
-            let apply_result = sqlx::query(&updated_def.schema.generate_sql_schema())
+            let schema_sql = match updated_def.schema.generate_sql_schema() {
+                Ok(sql) => sql,
+                Err(e) => {
+                    return HttpResponse::InternalServerError().json(serde_json::json!({
+                        "error": format!("Failed to generate SQL schema: {}", e)
+                    }));
+                }
+            };
+            
+            let apply_result = sqlx::query(&schema_sql)
                 .execute(db_pool)
                 .await;
 
@@ -564,9 +587,9 @@ async fn get_system_info(data: web::Data<ApiState>) -> impl Responder {
 
     // Build system information response
     let system_info = serde_json::json!({
-        "name": crate::NAME.to_string(),
-        "version": crate::VERSION.to_string(),
-        "description": crate::DESCRIPTION.to_string(),
+        "name": NAME.to_string(),
+        "version": VERSION.to_string(),
+        "description": DESCRIPTION.to_string(),
         "uptime": std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()

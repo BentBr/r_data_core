@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::api::ApiState;
 use crate::db::PgPoolExtension;
-use crate::entity::admin_user::UserRole;
+use crate::entity::admin_user::{UserRole, UserStatus};
 use crate::entity::AdminUser;
 use crate::error::{Error, Result};
 use utoipa::ToSchema;
@@ -217,8 +217,6 @@ pub async fn register(
 
     match result {
         Ok(uuid) => {
-            user.base.uuid = Some(uuid);
-
             // Return success response
             HttpResponse::Created().json(serde_json::json!({
                 "uuid": user.uuid.to_string(),
@@ -239,10 +237,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
 
 /// Generate a JWT token for a user
 pub fn generate_jwt(user: &AdminUser, secret: &str, expiration_seconds: u64) -> Result<String> {
-    let user_uuid = user
-        .base
-        .uuid
-        .ok_or_else(|| Error::Auth("User has no UUID".to_string()))?;
+    let user_uuid = user.uuid;
 
     // Create expiration time
     let expiration = Utc::now()
@@ -251,7 +246,7 @@ pub fn generate_jwt(user: &AdminUser, secret: &str, expiration_seconds: u64) -> 
 
     // Create claims
     let claims = AuthUserClaims {
-        sub: user_uuid,
+        sub: user_uuid.as_u128() as i64,
         name: user.username.clone(),
         email: user.email.clone(),
         is_admin: user.role == UserRole::Admin,

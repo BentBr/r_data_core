@@ -4,6 +4,9 @@ use log::{error, info};
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 
+// Import library constants
+use r_data_core::{NAME, VERSION, DESCRIPTION};
+
 mod api;
 mod cache;
 mod config;
@@ -14,7 +17,7 @@ mod notification;
 mod versioning;
 mod workflow;
 
-// These modules will be implemented later
+// Todo: These modules will be implemented later
 // mod workflow;
 // mod versioning;
 // mod notification;
@@ -27,12 +30,22 @@ use crate::db::migrations;
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Load environment variables and configure the application
-    let config = AppConfig::from_env();
+    let config = match AppConfig::from_env() {
+        Ok(cfg) => {
+            info!("Configuration loaded successfully");
+            cfg
+        },
+        Err(e) => {
+            error!("Failed to load configuration: {}", e);
+            panic!("Failed to load configuration: {}", e);
+        }
+    };
 
     // Initialize logger
-    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or(&config.log.level));
 
     info!("Starting R Data Core server...");
+    info!("Environment: {}", config.environment);
 
     // Create database connection pool
     let pool = PgPoolOptions::new()

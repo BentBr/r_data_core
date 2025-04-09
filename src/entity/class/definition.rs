@@ -137,13 +137,6 @@ impl ClassDefinition {
         format!("{}_entities", self.entity_type.to_lowercase())
     }
 
-    /// Apply the class definition to the database
-    pub async fn apply_to_database(&self, db: &PgPool) -> Result<()> {
-        let sql = self.schema.generate_sql_schema();
-        sqlx::query(&sql).execute(db).await?;
-        Ok(())
-    }
-
     /// Add a new enum with values
     pub async fn add_enum_with_values(
         &self,

@@ -51,9 +51,11 @@ pub async fn entities_api_docs() -> impl Responder {
 }
 
 /// Register Swagger UI routes
-pub fn register_routes() -> SwaggerUi {
+pub fn register_routes(cfg: &mut actix_web::web::ServiceConfig) {
     // FIXME: Once OpenAPI is fully implemented, replace this with proper configuration
     let ui = SwaggerUi::new("/api/docs/{_:.*}");
     // We're not using the .url() method since it requires OpenApi
-    ui
+    cfg.service(ui);
+    cfg.service(admin_api_docs);
+    cfg.service(entities_api_docs);
 }
