@@ -61,7 +61,7 @@ async fn list_available_entities(data: web::Data<ApiState>) -> impl Responder {
     // Query entities from the entities registry table
     let result = sqlx::query(
         r#"
-        SELECT e.name, e.display_name, e.description, e.is_system, cd.id as class_definition_id
+        SELECT e.name, e.display_name, e.description, e.is_system, cd.uuid as class_definition_uuid
         FROM entities e
         LEFT JOIN class_definitions cd ON e.name = cd.entity_type
         WHERE e.is_system = true OR cd.published = true
@@ -142,7 +142,10 @@ async fn get_entity(data: web::Data<ApiState>, path: web::Path<(String, Uuid)>) 
 
     // Build table name (same logic as in ClassDefinition::get_table_name)
     let table_name = match &class_def {
-        Some(def) => def.get_table_name(),
+        Some(def) => {
+            let def_ref: &ClassDefinition = def;
+            def_ref.get_table_name()
+        }
         None => format!("{}_entities", entity_type.to_lowercase()),
     };
 
@@ -229,7 +232,10 @@ async fn list_entities(
 
     // Build table name
     let table_name = match class_def_result {
-        Ok(Some(ref def)) => def.get_table_name(),
+        Ok(Some(ref def)) => {
+            let def_ref: &ClassDefinition = def;
+            def_ref.get_table_name()
+        }
         Ok(None) => {
             // Check if it's a system entity
             let system_entity_result = sqlx::query!(
@@ -301,7 +307,7 @@ async fn list_entities(
             format!("ORDER BY {} {}", sort_by, direction)
         }
         (Some(sort_by), None) => format!("ORDER BY {} ASC", sort_by),
-        _ => "ORDER BY id ASC".to_string(),
+        _ => "ORDER BY uuid ASC".to_string(),
     };
 
     let limit_offset = format!(
@@ -383,7 +389,7 @@ async fn list_entities(
     match rows_result {
         Ok(rows) => {
             let class_def = match class_def_result {
-                Ok(Some(ref def)) => Some(Arc::new(def.clone())),
+                Ok(Some(def)) => Some(Arc::new(def.clone())),
                 _ => None,
             };
 
@@ -514,7 +520,10 @@ async fn create_entity(
 
     // Build table name
     let table_name = match &class_def {
-        Some(def) => def.get_table_name(),
+        Some(def) => {
+            let def_ref: &ClassDefinition = def;
+            def_ref.get_table_name()
+        }
         None => format!("{}_entities", entity_type.to_lowercase()),
     };
 
@@ -533,28 +542,22 @@ async fn create_entity(
         }
 
         // Only include fields that are defined in class definition
-        if let Some(def) = &class_def {
-            if def
-                .schema
-                .get("properties")
-                .and_then(|p| p.get(key))
-                .is_some()
-                || [
-                    "uuid",
-                    "path",
-                    "created_at",
-                    "updated_at",
-                    "published",
-                    "version",
-                ]
-                .contains(&key.as_str())
-            {
-                columns.push(key.clone());
-                placeholders.push(format!("${}", i + 1));
-                values.push(value.clone());
-            }
-        } else {
-            // For system entities without class definition, include all fields
+        if def
+            .schema
+            .properties
+            .get("properties")
+            .and_then(|p| p.as_object())
+            .is_some()
+            || [
+                "uuid",
+                "path",
+                "created_at",
+                "updated_at",
+                "published",
+                "version",
+            ]
+            .contains(&key.as_str())
+        {
             columns.push(key.clone());
             placeholders.push(format!("${}", i + 1));
             values.push(value.clone());
@@ -712,7 +715,10 @@ async fn update_entity(
 
     // Build table name
     let table_name = match &class_def {
-        Some(ref def) => def.get_table_name(),
+        Some(ref def) => {
+            let def_ref: &ClassDefinition = def;
+            def_ref.get_table_name()
+        }
         None => format!("{}_entities", entity_type.to_lowercase()),
     };
 
@@ -803,7 +809,10 @@ async fn update_entity(
 
     // Build table name
     let table_name = match &class_def {
-        Some(def) => def.get_table_name(),
+        Some(def) => {
+            let def_ref: &ClassDefinition = def;
+            def_ref.get_table_name()
+        }
         None => format!("{}_entities", entity_type.to_lowercase()),
     };
 
@@ -818,26 +827,21 @@ async fn update_entity(
         }
 
         // Only include fields that are defined in class definition
-        if let Some(def) = &class_def {
-            if def
-                .schema
-                .get("properties")
-                .and_then(|p| p.get(key))
-                .is_some()
-                || [
-                    "path",
-                    "updated_at",
-                    "published",
-                    "version",
-                    "custom_fields",
-                ]
-                .contains(&key.as_str())
-            {
-                set_clauses.push(format!("{} = ${}", key, i + 1));
-                values.push(value.clone());
-            }
-        } else {
-            // For system entities without class definition, include all fields
+        if def
+            .schema
+            .properties
+            .get("properties")
+            .and_then(|p| p.as_object())
+            .is_some()
+            || [
+                "path",
+                "updated_at",
+                "published",
+                "version",
+                "custom_fields",
+            ]
+            .contains(&key.as_str())
+        {
             set_clauses.push(format!("{} = ${}", key, i + 1));
             values.push(value.clone());
         }
@@ -952,7 +956,10 @@ async fn delete_entity(
 
     // Build table name
     let table_name = match class_def_result {
-        Ok(Some(def)) => def.get_table_name(),
+        Ok(Some(def)) => {
+            let def_ref: &ClassDefinition = def;
+            def_ref.get_table_name()
+        }
         Ok(None) => {
             // Check if it's a system entity
             let system_entity_result = sqlx::query!(
@@ -984,7 +991,7 @@ async fn delete_entity(
     };
 
     // Execute the delete query
-    let query = format!("DELETE FROM {} WHERE uuid = $1 RETURNING id", table_name);
+    let query = format!("DELETE FROM {} WHERE uuid = $1 RETURNING uuid", table_name);
 
     let result = sqlx::query(&query)
         .bind(uuid.to_string())
@@ -1026,7 +1033,10 @@ async fn query_entities(
 
     // Build table name
     let table_name = match class_def_result {
-        Ok(Some(def)) => def.get_table_name(),
+        Ok(Some(def)) => {
+            let def_ref: &ClassDefinition = def;
+            def_ref.get_table_name()
+        }
         Ok(None) => {
             // Check if it's a system entity
             let system_entity_result = sqlx::query!(
@@ -1098,7 +1108,7 @@ async fn query_entities(
             format!("ORDER BY {} {}", sort_by, direction)
         }
         (Some(sort_by), None) => format!("ORDER BY {} ASC", sort_by),
-        _ => "ORDER BY id ASC".to_string(),
+        _ => "ORDER BY uuid ASC".to_string(),
     };
 
     let limit_offset = format!(

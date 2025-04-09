@@ -76,8 +76,8 @@ pub enum ActionType {
 /// A workflow step configuration
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct WorkflowStep {
-    /// Step ID
-    pub id: Uuid,
+    /// Step UUID
+    pub uuid: Uuid,
 
     /// Step name
     pub name: String,
@@ -91,7 +91,7 @@ pub struct WorkflowStep {
     /// Step configuration as JSON
     pub config: serde_json::Value,
 
-    /// Next step IDs (empty for terminal steps)
+    /// Next step UUIDs (empty for terminal steps)
     pub next_steps: Vec<Uuid>,
 
     /// Condition for branching (optional)
@@ -195,18 +195,18 @@ impl WorkflowEntity {
     /// Add a step to the workflow
     pub fn add_step(&mut self, step: WorkflowStep) -> Result<()> {
         // Check if the step ID already exists
-        if self.steps.0.iter().any(|s| s.id == step.id) {
+        if self.steps.0.iter().any(|s| s.uuid == step.uuid) {
             return Err(Error::Workflow(format!(
-                "Step with ID {} already exists",
-                step.id
+                "Step with UUID {} already exists",
+                step.uuid
             )));
         }
 
         // Validate transitions against existing steps
         for transition in &step.next_steps {
-            if !self.steps.0.iter().any(|s| s.id == *transition) && *transition != step.id {
+            if !self.steps.0.iter().any(|s| s.uuid == *transition) && *transition != step.uuid {
                 return Err(Error::Workflow(format!(
-                    "Transition target step ID {} does not exist",
+                    "Transition target step UUID {} does not exist",
                     *transition
                 )));
             }
@@ -216,23 +216,23 @@ impl WorkflowEntity {
         Ok(())
     }
 
-    /// Get a step by ID
-    pub fn get_step(&self, id: Uuid) -> Option<&WorkflowStep> {
-        self.steps.0.iter().find(|s| s.id == id)
+    /// Get a step by UUID
+    pub fn get_step(&self, uuid: Uuid) -> Option<&WorkflowStep> {
+        self.steps.0.iter().find(|s| s.uuid == uuid)
     }
 
     /// Remove a step from the workflow
-    pub fn remove_step(&mut self, id: Uuid) -> Result<()> {
+    pub fn remove_step(&mut self, uuid: Uuid) -> Result<()> {
         // Check if any other steps have transitions to this step
-        let step_idx = self.steps.0.iter().position(|s| s.id == id);
+        let step_idx = self.steps.0.iter().position(|s| s.uuid == uuid);
 
         if let Some(idx) = step_idx {
             // Check if any other steps reference this step in transitions
             for step in &self.steps.0 {
-                if step.id != id && step.next_steps.iter().any(|t| t == &id) {
+                if step.uuid != uuid && step.next_steps.iter().any(|t| t == &uuid) {
                     return Err(Error::Workflow(format!(
                         "Cannot remove step {} because step {} has a transition to it",
-                        id, step.id
+                        uuid, step.uuid
                     )));
                 }
             }
@@ -240,7 +240,7 @@ impl WorkflowEntity {
             self.steps.0.remove(idx);
             Ok(())
         } else {
-            Err(Error::Workflow(format!("Step with ID {} not found", id)))
+            Err(Error::Workflow(format!("Step with UUID {} not found", uuid)))
         }
     }
 
@@ -254,22 +254,22 @@ impl WorkflowEntity {
         }
 
         // Ensure we have a valid initial step
-        if let Some(first_id) = self.first_step {
-            if !self.steps.0.iter().any(|s| s.id == first_id) {
+        if let Some(first_uuid) = self.first_step {
+            if !self.steps.0.iter().any(|s| s.uuid == first_uuid) {
                 return Err(Error::Workflow(format!(
-                    "Initial step ID {} does not exist in steps",
-                    first_id
+                    "Initial step UUID {} does not exist in steps",
+                    first_uuid
                 )));
             }
         }
 
-        // Validate all transitions point to valid step IDs
+        // Validate all transitions point to valid step UUIDs
         for step in &self.steps.0 {
-            for &next_id in &step.next_steps {
-                if !self.steps.0.iter().any(|s| s.id == next_id) {
+            for &next_uuid in &step.next_steps {
+                if !self.steps.0.iter().any(|s| s.uuid == next_uuid) {
                     return Err(Error::Workflow(format!(
                         "Transition in step {} points to non-existent step {}",
-                        step.id, next_id
+                        step.uuid, next_uuid
                     )));
                 }
             }

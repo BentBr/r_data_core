@@ -42,13 +42,13 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
 
 /// Get currently logged in user
 #[get("/user")]
-async fn get_current_user(data: web::Data<ApiState>, user_id: web::ReqData<i64>) -> impl Responder {
+async fn get_current_user(data: web::Data<ApiState>, user_uuid: web::ReqData<Uuid>) -> impl Responder {
     let db_pool = &data.db_pool;
-    let user_id = user_id.into_inner();
+    let user_uuid = user_uuid.into_inner();
 
     let user_result = db_pool
         .repository_with_table::<AdminUser>("admin_users")
-        .get_by_id(user_id)
+        .get_by_uuid(&user_uuid)
         .await;
 
     match user_result {
@@ -72,7 +72,7 @@ async fn list_class_definitions(
 
     let result = db_pool
         .repository_with_table::<ClassDefinition>("class_definitions")
-        .list(None, Some("class_name ASC"), Some(limit), Some(offset))
+        .list(None, Some("entity_type ASC"), Some(limit), Some(offset))
         .await;
 
     match result {
@@ -83,17 +83,17 @@ async fn list_class_definitions(
     }
 }
 
-/// Get a class definition by ID
-#[get("/class-definitions/{id}")]
+/// Get a class definition by UUID
+#[get("/class-definitions/{uuid}")]
 async fn get_class_definition(
     data: web::Data<ApiState>,
-    path: web::Path<PathId>,
+    path: web::Path<PathUuid>,
 ) -> impl Responder {
     let db_pool = &data.db_pool;
 
     let result = db_pool
         .repository_with_table::<ClassDefinition>("class_definitions")
-        .get_by_id(path.id)
+        .get_by_uuid(&path.uuid)
         .await;
 
     match result {
@@ -119,10 +119,9 @@ async fn create_class_definition(
         .await;
 
     match result {
-        Ok(id) => {
-            // Get the created definition with ID
+        Ok(uuid) => {
+            // Get the created definition with UUID
             let mut created_def = definition.into_inner();
-            created_def.id = Uuid::new_v7();
 
             // Create the database table for this entity type
             info!(
@@ -130,15 +129,20 @@ async fn create_class_definition(
                 created_def.entity_type
             );
 
-            match created_def.apply_to_database(db_pool).await {
+            // Use the specific apply_to_database method
+            let apply_result = sqlx::query(&created_def.schema.generate_sql_schema())
+                .execute(db_pool)
+                .await;
+
+            match apply_result {
                 Ok(_) => HttpResponse::Created().json(serde_json::json!({
-                    "id": id,
+                    "uuid": uuid,
                     "message": "Class definition created successfully with database table"
                 })),
                 Err(e) => {
                     // Table creation failed, but definition was saved
                     HttpResponse::Ok().json(serde_json::json!({
-                        "id": id,
+                        "uuid": uuid,
                         "warning": format!("Class definition created but table creation failed: {}", e),
                         "message": "Class definition was saved but will not be usable until the table is created"
                     }))
@@ -152,10 +156,10 @@ async fn create_class_definition(
 }
 
 /// Update a class definition
-#[put("/class-definitions/{id}")]
+#[put("/class-definitions/{uuid}")]
 async fn update_class_definition(
     data: web::Data<ApiState>,
-    path: web::Path<PathId>,
+    path: web::Path<PathUuid>,
     definition: web::Json<ClassDefinition>,
 ) -> impl Responder {
     let db_pool = &data.db_pool;
@@ -163,21 +167,25 @@ async fn update_class_definition(
     // Update class definition
     let result = db_pool
         .repository_with_table::<ClassDefinition>("class_definitions")
-        .update(path.id, &definition)
+        .update(&path.uuid, &definition)
         .await;
 
     match result {
         Ok(_) => {
             // Update the database table structure for this entity type
-            let mut updated_def = definition.into_inner();
-            updated_def.id = Uuid::new_v7();
+            let updated_def = definition.into_inner();
 
             info!(
                 "Updating database table for entity type: {}",
                 updated_def.entity_type
             );
 
-            match updated_def.apply_to_database(db_pool).await {
+            // Use the specific apply_to_database method
+            let apply_result = sqlx::query(&updated_def.schema.generate_sql_schema())
+                .execute(db_pool)
+                .await;
+
+            match apply_result {
                 Ok(_) => {
                     HttpResponse::Ok().json(serde_json::json!({
                         "message": "Class definition and database table updated successfully"
@@ -198,17 +206,17 @@ async fn update_class_definition(
 }
 
 /// Delete a class definition
-#[delete("/class-definitions/{id}")]
+#[delete("/class-definitions/{uuid}")]
 async fn delete_class_definition(
     data: web::Data<ApiState>,
-    path: web::Path<PathId>,
+    path: web::Path<PathUuid>,
 ) -> impl Responder {
     let db_pool = &data.db_pool;
 
     // First get the class definition to know its table name
     let definition_result = db_pool
         .repository_with_table::<ClassDefinition>("class_definitions")
-        .get_by_id(path.id)
+        .get_by_uuid(&path.uuid)
         .await;
 
     let definition = match definition_result {
@@ -221,7 +229,7 @@ async fn delete_class_definition(
     };
 
     // Check if there are any entities of this type
-    let definition = definition.clone();
+    let definition: ClassDefinition = definition.clone();
     let table_name = definition.get_table_name();
 
     // Check if table exists
@@ -255,7 +263,7 @@ async fn delete_class_definition(
     // Delete the class definition
     let result = db_pool
         .repository_with_table::<ClassDefinition>("class_definitions")
-        .delete(path.id)
+        .delete(&path.uuid)
         .await;
 
     match result {
@@ -304,14 +312,14 @@ async fn list_workflows(
     }
 }
 
-/// Get a workflow by ID
-#[get("/workflows/{id}")]
-async fn get_workflow(data: web::Data<ApiState>, path: web::Path<PathId>) -> impl Responder {
+/// Get a workflow by UUID
+#[get("/workflows/{uuid}")]
+async fn get_workflow(data: web::Data<ApiState>, path: web::Path<PathUuid>) -> impl Responder {
     let db_pool = &data.db_pool;
 
     let result = db_pool
         .repository_with_table::<WorkflowEntity>("workflows")
-        .get_by_id(path.id)
+        .get_by_uuid(&path.uuid)
         .await;
 
     match result {
@@ -343,8 +351,8 @@ async fn create_workflow(
         .await;
 
     match result {
-        Ok(id) => HttpResponse::Created().json(serde_json::json!({
-            "id": id,
+        Ok(uuid) => HttpResponse::Created().json(serde_json::json!({
+            "uuid": uuid,
             "message": "Workflow created successfully"
         })),
         Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
@@ -354,10 +362,10 @@ async fn create_workflow(
 }
 
 /// Update a workflow
-#[put("/workflows/{id}")]
+#[put("/workflows/{uuid}")]
 async fn update_workflow(
     data: web::Data<ApiState>,
-    path: web::Path<PathId>,
+    path: web::Path<PathUuid>,
     workflow: web::Json<WorkflowEntity>,
 ) -> impl Responder {
     let db_pool = &data.db_pool;
@@ -371,7 +379,7 @@ async fn update_workflow(
 
     let result = db_pool
         .repository_with_table::<WorkflowEntity>("workflows")
-        .update(path.id, &workflow)
+        .update(&path.uuid, &workflow)
         .await;
 
     match result {
@@ -385,13 +393,13 @@ async fn update_workflow(
 }
 
 /// Delete a workflow
-#[delete("/workflows/{id}")]
-async fn delete_workflow(data: web::Data<ApiState>, path: web::Path<PathId>) -> impl Responder {
+#[delete("/workflows/{uuid}")]
+async fn delete_workflow(data: web::Data<ApiState>, path: web::Path<PathUuid>) -> impl Responder {
     let db_pool = &data.db_pool;
 
     let result = db_pool
         .repository_with_table::<WorkflowEntity>("workflows")
-        .delete(path.id)
+        .delete(&path.uuid)
         .await;
 
     match result {
@@ -428,17 +436,17 @@ async fn list_permission_schemes(
     }
 }
 
-/// Get a permission scheme by ID
-#[get("/permission-schemes/{id}")]
+/// Get a permission scheme by UUID
+#[get("/permission-schemes/{uuid}")]
 async fn get_permission_scheme(
     data: web::Data<ApiState>,
-    path: web::Path<PathId>,
+    path: web::Path<PathUuid>,
 ) -> impl Responder {
     let db_pool = &data.db_pool;
 
     let result = db_pool
         .repository_with_table::<PermissionScheme>("permission_schemes")
-        .get_by_id(path.id)
+        .get_by_uuid(&path.uuid)
         .await;
 
     match result {
@@ -463,8 +471,8 @@ async fn create_permission_scheme(
         .await;
 
     match result {
-        Ok(id) => HttpResponse::Created().json(serde_json::json!({
-            "id": id,
+        Ok(uuid) => HttpResponse::Created().json(serde_json::json!({
+            "uuid": uuid,
             "message": "Permission scheme created successfully"
         })),
         Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
@@ -474,10 +482,10 @@ async fn create_permission_scheme(
 }
 
 /// Update a permission scheme
-#[put("/permission-schemes/{id}")]
+#[put("/permission-schemes/{uuid}")]
 async fn update_permission_scheme(
     data: web::Data<ApiState>,
-    path: web::Path<PathId>,
+    path: web::Path<PathUuid>,
     scheme: web::Json<PermissionScheme>,
 ) -> impl Responder {
     let db_pool = &data.db_pool;
@@ -485,7 +493,7 @@ async fn update_permission_scheme(
     // Check if this is a system scheme
     let existing_scheme = db_pool
         .repository_with_table::<PermissionScheme>("permission_schemes")
-        .get_by_id(path.id)
+        .get_by_uuid(&path.uuid)
         .await;
 
     if let Ok(existing) = existing_scheme {
@@ -498,7 +506,7 @@ async fn update_permission_scheme(
 
     let result = db_pool
         .repository_with_table::<PermissionScheme>("permission_schemes")
-        .update(path.id, &scheme)
+        .update(&path.uuid, &scheme)
         .await;
 
     match result {
@@ -512,17 +520,17 @@ async fn update_permission_scheme(
 }
 
 /// Delete a permission scheme
-#[delete("/permission-schemes/{id}")]
+#[delete("/permission-schemes/{uuid}")]
 async fn delete_permission_scheme(
     data: web::Data<ApiState>,
-    path: web::Path<PathId>,
+    path: web::Path<PathUuid>,
 ) -> impl Responder {
     let db_pool = &data.db_pool;
 
     // Check if this is a system scheme
     let existing_scheme = db_pool
         .repository_with_table::<PermissionScheme>("permission_schemes")
-        .get_by_id(path.id)
+        .get_by_uuid(&path.uuid)
         .await;
 
     if let Ok(existing) = existing_scheme {
@@ -535,7 +543,7 @@ async fn delete_permission_scheme(
 
     let result = db_pool
         .repository_with_table::<PermissionScheme>("permission_schemes")
-        .delete(path.id)
+        .delete(&path.uuid)
         .await;
 
     match result {
@@ -577,12 +585,6 @@ pub struct PaginationQuery {
     pub offset: Option<i64>,
 }
 
-/// Path parameter for ID
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct PathId {
-    pub id: i64,
-}
-
 /// Path parameter for UUID
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct PathUuid {
@@ -600,7 +602,7 @@ pub struct CreateApiKeyRequest {
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ApiKeyResponse {
-    pub id: i64,
+    pub uuid: Uuid,
     pub name: String,
     pub description: Option<String>,
     pub is_active: bool,
@@ -611,7 +613,7 @@ pub struct ApiKeyResponse {
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ApiKeyCreatedResponse {
-    pub id: i64,
+    pub uuid: Uuid,
     pub name: String,
     pub api_key: String, // Only returned once when created
     pub description: Option<String>,
@@ -628,7 +630,7 @@ pub async fn create_api_key(
     auth: web::ReqData<AuthUserClaims>,
 ) -> impl Responder {
     let pool = &state.db_pool;
-    let user_id = auth.sub;
+    let user_uuid = Uuid::from_u128(auth.sub as u128);
 
     // Calculate expiration date if provided
     let expires_at = req
@@ -637,7 +639,7 @@ pub async fn create_api_key(
 
     // Create new API key
     let api_key = ApiKey::new(
-        user_id,
+        user_uuid,
         req.name.clone(),
         req.description.clone(),
         expires_at,
@@ -649,11 +651,11 @@ pub async fn create_api_key(
     match sqlx::query!(
         r#"
         INSERT INTO api_keys 
-        (user_id, api_key, name, description, is_active, created_at, expires_at)
+        (user_uuid, api_key, name, description, is_active, created_at, expires_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id, created_at
+        RETURNING uuid, created_at
         "#,
-        Uuid::from_u128(user_id as u128),
+        user_uuid,
         api_key.api_key,
         api_key.name,
         api_key.description,
@@ -667,7 +669,7 @@ pub async fn create_api_key(
         Ok(row) => {
             // Return the created API key with the key value (only shown once)
             HttpResponse::Created().json(ApiKeyCreatedResponse {
-                id: row.id.as_u128() as i64,
+                uuid: row.uuid,
                 name: req.name.clone(),
                 api_key: api_key_value,
                 description: req.description.clone(),
@@ -692,16 +694,16 @@ pub async fn list_api_keys(
     auth: web::ReqData<AuthUserClaims>,
 ) -> impl Responder {
     let pool = &state.db_pool;
-    let user_id = auth.sub;
+    let user_uuid = Uuid::from_u128(auth.sub as u128);
 
     match sqlx::query!(
         r#"
-        SELECT id, name, description, is_active, created_at, expires_at, last_used_at
+        SELECT uuid, name, description, is_active, created_at, expires_at, last_used_at
         FROM api_keys 
-        WHERE user_id = $1
+        WHERE uuid = $1
         ORDER BY created_at DESC
         "#,
-        Uuid::from_u128(user_id as u128)
+        user_uuid
     )
     .fetch_all(pool)
     .await
@@ -710,7 +712,7 @@ pub async fn list_api_keys(
             let api_keys: Vec<ApiKeyResponse> = rows
                 .iter()
                 .map(|row| ApiKeyResponse {
-                    id: row.id.as_u128() as i64,
+                    uuid: row.uuid,
                     name: row.name.clone(),
                     description: row.description.clone(),
                     is_active: row.is_active,
@@ -732,21 +734,21 @@ pub async fn list_api_keys(
 }
 
 /// Revoke an API key
-#[delete("/api-keys/{id}")]
+#[delete("/api-keys/{uuid}")]
 pub async fn revoke_api_key(
     state: web::Data<ApiState>,
-    path: web::Path<i64>,
+    path: web::Path<PathUuid>,
     auth: web::ReqData<AuthUserClaims>,
 ) -> impl Responder {
     let pool = &state.db_pool;
-    let api_key_id = path.into_inner();
-    let user_id = auth.sub;
+    let api_key_uuid = path.uuid;
+    let user_uuid = Uuid::from_u128(auth.sub as u128);
 
     // Verify the API key belongs to the authenticated user
     match sqlx::query!(
-        "SELECT id FROM api_keys WHERE id = $1 AND user_id = $2",
-        Uuid::from_u128(api_key_id as u128),
-        Uuid::from_u128(user_id as u128)
+        "SELECT uuid FROM api_keys WHERE uuid = $1 AND user_uuid = $2",
+        api_key_uuid,
+        user_uuid
     )
     .fetch_optional(pool)
     .await
@@ -754,8 +756,8 @@ pub async fn revoke_api_key(
         Ok(Some(_)) => {
             // Deactivate the API key
             match sqlx::query!(
-                "UPDATE api_keys SET is_active = FALSE WHERE id = $1",
-                Uuid::from_u128(api_key_id as u128)
+                "UPDATE api_keys SET is_active = FALSE WHERE uuid = $1",
+                api_key_uuid
             )
             .execute(pool)
             .await

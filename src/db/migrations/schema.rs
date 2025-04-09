@@ -3,8 +3,8 @@ use serde_json;
 use sqlx::{query_as, PgPool};
 use uuid::Uuid;
 
-use crate::entity::field::{FieldDefinition, FieldType};
 use crate::entity::ClassDefinition;
+use crate::entity::FieldType;
 use crate::error::{Error, Result};
 
 /// Refresh all class schemas in the database
@@ -12,7 +12,7 @@ pub async fn refresh_classes_schema(pool: &PgPool) -> Result<()> {
     info!("Refreshing class schemas...");
 
     // Get all class definitions from the database
-    let rows = query_as::<_, (Uuid, String)>("SELECT id, class_name FROM class_definitions")
+    let rows = query_as::<_, (Uuid, String)>("SELECT uuid, class_name FROM class_definitions")
         .fetch_all(pool)
         .await
         .map_err(|e| Error::Database(e))?;
@@ -25,14 +25,14 @@ pub async fn refresh_classes_schema(pool: &PgPool) -> Result<()> {
     info!("Found {} class definitions to refresh", rows.len());
 
     // Load and apply each class definition
-    for (id, class_name) in rows {
+    for (uuid, class_name) in rows {
         debug!("Refreshing schema for class {}", class_name);
 
         // Load the class definition
         let class_def_row = query_as::<_, (serde_json::Value,)>(
-            "SELECT fields FROM class_definitions WHERE id = $1",
+            "SELECT fields FROM class_definitions WHERE uuid = $1",
         )
-        .bind(id)
+        .bind(uuid)
         .fetch_one(pool)
         .await
         .map_err(|e| Error::Database(e))?;

@@ -232,8 +232,7 @@ impl ClassDefinition {
     pub fn generate_sql_schema(&self) -> String {
         let table_name = self.get_table_name();
         let mut sql = format!("CREATE TABLE IF NOT EXISTS {} (\n", table_name);
-        sql.push_str("  id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),\n");
-        sql.push_str("  uuid UUID NOT NULL,\n");
+        sql.push_str("  uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),\n");
         sql.push_str("  path TEXT NOT NULL,\n");
         sql.push_str("  created_at TIMESTAMP WITH TIME ZONE NOT NULL,\n");
         sql.push_str("  updated_at TIMESTAMP WITH TIME ZONE NOT NULL,\n");
@@ -249,7 +248,7 @@ impl ClassDefinition {
                 // For ManyToOne, we do need a reference column in this table
                 if matches!(field.field_type, FieldType::ManyToOne) {
                     if let Some(target_class) = &field.validation.target_class {
-                        sql.push_str(&format!("  {}_id UUID,\n", field.name));
+                        sql.push_str(&format!("  {}_uuid UUID,\n", field.name));
                     }
                 }
                 continue;
@@ -336,7 +335,7 @@ impl ClassDefinition {
                 // For ManyToOne fields, index the foreign key
                 if matches!(field.field_type, FieldType::ManyToOne) {
                     if field.validation.target_class.is_some() {
-                        sql.push_str(&format!("CREATE INDEX IF NOT EXISTS idx_{}_{}_id ON {} ({}_id);\n", 
+                        sql.push_str(&format!("CREATE INDEX IF NOT EXISTS idx_{}_{}_uuid ON {} ({}_uuid);\n",
                             table_name, field.name, table_name, field.name));
                     }
                 } else if !matches!(field.field_type, FieldType::Object | FieldType::Array) {
@@ -355,7 +354,7 @@ impl ClassDefinition {
                     // For ManyToOne, add foreign key constraint
                     if matches!(field.field_type, FieldType::ManyToOne) {
                         sql.push_str(&format!(
-                            "ALTER TABLE {} ADD CONSTRAINT fk_{}_{} FOREIGN KEY ({}_id) REFERENCES {} (id) ON DELETE SET NULL;\n",
+                            "ALTER TABLE {} ADD CONSTRAINT fk_{}_{} FOREIGN KEY ({}_uuid) REFERENCES {} (uuid) ON DELETE SET NULL;\n",
                             table_name, table_name, field.name, field.name, target_table
                         ));
                     }
@@ -368,14 +367,14 @@ impl ClassDefinition {
                             target_class.to_lowercase());
                             
                         sql.push_str(&format!("CREATE TABLE IF NOT EXISTS {} (\n", relation_table));
-                        sql.push_str("  id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),\n");
+                        sql.push_str("  uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),\n");
                         
                         // Reference to this entity
-                        sql.push_str(&format!("  {}_id UUID NOT NULL REFERENCES {} (id) ON DELETE CASCADE,\n", 
+                        sql.push_str(&format!("  {}_uuid UUID NOT NULL REFERENCES {} (uuid) ON DELETE CASCADE,\n",
                             self.class_name.to_lowercase(), table_name));
                             
                         // Reference to target entity
-                        sql.push_str(&format!("  {}_id UUID NOT NULL REFERENCES {} (id) ON DELETE CASCADE,\n", 
+                        sql.push_str(&format!("  {}_uuid UUID NOT NULL REFERENCES {} (uuid) ON DELETE CASCADE,\n",
                             target_class.to_lowercase(), target_table));
                             
                         // Add position field for ordered relations and metadata
@@ -383,15 +382,15 @@ impl ClassDefinition {
                         sql.push_str("  metadata JSONB,\n");
                         
                         // Add unique constraint to prevent duplicates
-                        sql.push_str(&format!("  UNIQUE({}_id, {}_id)\n", 
+                        sql.push_str(&format!("  UNIQUE({}_uuid, {}_uuid)\n",
                             self.class_name.to_lowercase(), target_class.to_lowercase()));
                         sql.push_str(");\n");
                         
                         // Add indices for faster lookups
-                        sql.push_str(&format!("CREATE INDEX IF NOT EXISTS idx_{}_source ON {} ({}_id);\n", 
+                        sql.push_str(&format!("CREATE INDEX IF NOT EXISTS idx_{}_source ON {} ({}_uuid);\n",
                             relation_table, relation_table, self.class_name.to_lowercase()));
                             
-                        sql.push_str(&format!("CREATE INDEX IF NOT EXISTS idx_{}_target ON {} ({}_id);\n", 
+                        sql.push_str(&format!("CREATE INDEX IF NOT EXISTS idx_{}_target ON {} ({}_uuid);\n",
                             relation_table, relation_table, target_class.to_lowercase()));
                     }
                 }
@@ -753,7 +752,7 @@ impl FieldDefinition {
             FieldType::ManyToOne => {
                 // ManyToOne relation validation
                 if !value.is_number() && !value.is_string() {
-                    return Err(format!("Field '{}' must be an entity ID or UUID", self.name));
+                    return Err(format!("Field '{}' must be an entity UUID", self.name));
                 }
                 
                 // Additional validation could check that the related entity exists
@@ -765,13 +764,13 @@ impl FieldDefinition {
             FieldType::ManyToMany => {
                 // ManyToMany relation validation
                 if !value.is_array() {
-                    return Err(format!("Field '{}' must be an array of entity IDs or UUIDs", self.name));
+                    return Err(format!("Field '{}' must be an array of entity UUIDs", self.name));
                 }
                 
                 // Check that all array elements are numbers or strings (IDs or UUIDs)
                 let array = value.as_array().unwrap();
                 if !array.iter().all(|v| v.is_number() || v.is_string()) {
-                    return Err(format!("Field '{}' must contain only entity IDs or UUIDs", self.name));
+                    return Err(format!("Field '{}' must contain only entity UUIDs", self.name));
                 }
                 
                 if self.validation.target_class.is_none() {

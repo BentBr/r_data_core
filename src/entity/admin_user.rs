@@ -14,7 +14,8 @@ use sqlx::{
     FromRow, Row, Type,
 };
 use utoipa::ToSchema;
-use uuid::{Timestamp, Uuid};
+use uuid::timestamp;
+use uuid::{ContextV7, Uuid};
 
 /// Admin user roles
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -108,9 +109,8 @@ pub struct AdminUser {
     pub failed_login_attempts: i32,
 
     /// Permission scheme ID
-    pub permission_scheme_id: Option<Uuid>,
+    pub permission_scheme_uuid: Option<Uuid>,
 
-    pub id: Option<Uuid>,
     pub uuid: Uuid,
     pub first_name: Option<String>,
     pub last_name: Option<String>,
@@ -121,10 +121,9 @@ pub struct AdminUser {
 }
 
 #[async_trait::async_trait]
-impl<'r> FromRow<'r> for AdminUser {
-    async fn from_row(row: &'r PgRow) -> Result<Self> {
+impl<'r> FromRow<'r, PgRow> for AdminUser {
+    async fn from_row(row: PgRow) -> std::result::Result<Self, sqlx::Error> {
         Ok(AdminUser {
-            id: row.try_get("id")?,
             uuid: row.try_get("uuid")?,
             username: row.try_get("username")?,
             email: row.try_get("email")?,
@@ -134,7 +133,7 @@ impl<'r> FromRow<'r> for AdminUser {
             status: row.try_get("status")?,
             last_login: row.try_get("last_login")?,
             failed_login_attempts: row.try_get("failed_login_attempts")?,
-            permission_scheme_id: row.try_get("permission_scheme_id")?,
+            permission_scheme_uuid: row.try_get("permission_scheme_uuid")?,
             first_name: row.try_get("first_name")?,
             last_name: row.try_get("last_name")?,
             is_active: row.try_get("is_active")?,
@@ -148,8 +147,8 @@ impl<'r> FromRow<'r> for AdminUser {
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct ApiKey {
-    pub id: Option<Uuid>,
-    pub user_id: Uuid,
+    pub uuid: Option<Uuid>,
+    pub user_uuid: Uuid,
     pub api_key: String,
     pub name: String,
     pub description: Option<String>,
@@ -168,15 +167,15 @@ impl AdminUser {
         full_name: String,
         role: UserRole,
         status: UserStatus,
-        permission_scheme_id: Option<Uuid>,
+        permission_scheme_uuid: Option<Uuid>,
         first_name: String,
         last_name: String,
         is_active: bool,
         is_admin: bool,
     ) -> Self {
         let now = Utc::now();
-        let ts = Timestamp::from_unix(now.timestamp() as u64, now.timestamp_subsec_nanos(), 0);
-        let uuid = Uuid::new_v7(ts);
+        let context = ContextV7::new();
+        let ts = timestamp::Timestamp::now(&context);
         Self {
             base: AbstractRDataEntity::new("/admin/users".to_string()),
             username,
@@ -187,9 +186,8 @@ impl AdminUser {
             status,
             last_login: None,
             failed_login_attempts: 0,
-            permission_scheme_id,
-            id: None,
-            uuid,
+            permission_scheme_uuid,
+            uuid: Uuid::new_v7(ts),
             first_name: Some(first_name),
             last_name: Some(last_name),
             is_active,
@@ -276,16 +274,15 @@ impl AdminUser {
 
 impl ApiKey {
     pub fn new(
-        user_id: Uuid,
+        user_uuid: Uuid,
         name: String,
         description: Option<String>,
         expires_at: Option<DateTime<Utc>>,
     ) -> Self {
         let now = Utc::now();
-        let ts = Timestamp::from_unix(now.timestamp() as u64, now.timestamp_subsec_nanos(), 0);
         Self {
-            id: None,
-            user_id,
+            uuid: None,
+            user_uuid,
             api_key: Self::generate_key(),
             name,
             description,
@@ -326,9 +323,9 @@ impl ApiKey {
         let now = Utc::now();
         self.last_used_at = Some(now);
 
-        sqlx::query("UPDATE api_keys SET last_used_at = $1 WHERE id = $2")
+        sqlx::query("UPDATE api_keys SET last_used_at = $1 WHERE uuid = $2")
             .bind(now)
-            .bind(self.id)
+            .bind(self.uuid)
             .execute(pool)
             .await
             .map_err(|e| Error::Database(e))?;

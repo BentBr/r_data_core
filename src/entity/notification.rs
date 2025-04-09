@@ -81,8 +81,8 @@ pub struct Notification {
     /// Notification body content
     pub body: String,
 
-    /// Recipient user ID (None for broadcast)
-    pub recipient_id: Option<Uuid>,
+    /// Recipient user UUID (None for broadcast)
+    pub recipient_uuid: Option<Uuid>,
 
     /// Recipient email (for email notifications)
     pub recipient_email: Option<String>,
@@ -90,8 +90,8 @@ pub struct Notification {
     /// Recipient phone (for SMS notifications)
     pub recipient_phone: Option<String>,
 
-    /// ID of entity this notification relates to
-    pub related_entity_id: Option<String>,
+    /// UUID of entity this notification relates to
+    pub related_entity_uuid: Option<String>,
 
     /// URL to link to from notification
     pub action_url: Option<String>,
@@ -127,10 +127,10 @@ impl Notification {
             status: NotificationStatus::Pending,
             subject,
             body,
-            recipient_id: None,
+            recipient_uuid: None,
             recipient_email: None,
             recipient_phone: None,
-            related_entity_id: None,
+            related_entity_uuid: None,
             action_url: None,
             priority: NotificationPriority::Normal,
             scheduled_for: None,
@@ -142,9 +142,9 @@ impl Notification {
         }
     }
 
-    /// Set the recipient user ID
-    pub fn with_recipient_id(mut self, recipient_id: Uuid) -> Self {
-        self.recipient_id = Some(recipient_id);
+    /// Set the recipient user UUID
+    pub fn with_recipient_uuid(mut self, recipient_uuid: Uuid) -> Self {
+        self.recipient_uuid = Some(recipient_uuid);
         self
     }
 
@@ -202,25 +202,25 @@ impl Notification {
     pub fn validate(&self) -> Result<()> {
         match self.notification_type {
             NotificationType::Email => {
-                if self.recipient_email.is_none() && self.recipient_id.is_none() {
+                if self.recipient_email.is_none() && self.recipient_uuid.is_none() {
                     return Err(Error::Validation(
-                        "Email notification requires either recipient_email or recipient_id"
+                        "Email notification requires either recipient_email or recipient_uuid"
                             .to_string(),
                     ));
                 }
             }
             NotificationType::SMS => {
-                if self.recipient_phone.is_none() && self.recipient_id.is_none() {
+                if self.recipient_phone.is_none() && self.recipient_uuid.is_none() {
                     return Err(Error::Validation(
-                        "SMS notification requires either recipient_phone or recipient_id"
+                        "SMS notification requires either recipient_phone or recipient_uuid"
                             .to_string(),
                     ));
                 }
             }
             NotificationType::System => {
-                if self.recipient_id.is_none() {
+                if self.recipient_uuid.is_none() {
                     return Err(Error::Validation(
-                        "System notification requires recipient_id".to_string(),
+                        "System notification requires recipient_uuid".to_string(),
                     ));
                 }
             }

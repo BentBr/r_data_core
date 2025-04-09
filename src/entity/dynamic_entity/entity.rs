@@ -5,10 +5,11 @@ use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use std::sync::Arc;
 use utoipa::ToSchema;
-use uuid::{Timestamp, Uuid};
+use uuid::timestamp;
+use uuid::{ContextV7, Uuid};
 
 use crate::entity::class::ClassDefinition;
-use crate::entity::{DynamicFields, FieldDefinition};
+use crate::entity::DynamicFields;
 use crate::error::{Error, Result};
 
 // Define traits locally since value module is missing
@@ -129,8 +130,8 @@ impl DynamicEntity {
     /// Create a new dynamic entity
     pub fn new(entity_type: String, definition: Option<Arc<ClassDefinition>>) -> Self {
         let mut data = HashMap::new();
-        let now = Utc::now();
-        let ts = Timestamp::from_unix(now.timestamp(), now.timestamp_subsec_nanos() as u64, 0);
+        let context = ContextV7::new();
+        let ts = timestamp::Timestamp::now(&context);
 
         // Initialize system fields
         data.insert(
@@ -210,10 +211,17 @@ impl DynamicEntity {
 
                 if let Some(validation) = field_obj.get("validation") {
                     if let Some(pattern) = validation.get("pattern").and_then(|v| v.as_str()) {
-                        super::validator::DynamicEntityValidator::validate_field(
-                            field_def,
-                            &entity_value,
-                        )?;
+                        // Validate pattern
+                        if let JsonValue::String(s) = &entity_value {
+                            if let Ok(re) = regex::Regex::new(pattern) {
+                                if !re.is_match(s) {
+                                    return Err(Error::Validation(format!(
+                                        "Field '{}' value doesn't match pattern: {}",
+                                        field, pattern
+                                    )));
+                                }
+                            }
+                        }
                     }
                 }
             } else if ![
@@ -277,7 +285,7 @@ impl DynamicEntity {
 
     /// Validate the entity against its class definition
     pub fn validate(&self, class_def: &ClassDefinition) -> Result<()> {
-        if let Some(properties) = class_def.schema.get("properties") {
+        if let Some(properties) = class_def.schema.properties.get("properties") {
             if let Some(props) = properties.as_object() {
                 for (field_name, field_def) in props {
                     // Check required fields
@@ -384,7 +392,12 @@ impl DynamicEntity {
 
     pub fn get_field(&self, field: &str) -> Option<serde_json::Value> {
         if let Some(def) = &self.definition {
-            if let Some(properties) = def.schema.get("properties").and_then(|p| p.as_object()) {
+            if let Some(properties) = def
+                .schema
+                .properties
+                .get("properties")
+                .and_then(|p| p.as_object())
+            {
                 if let Some(field_def) = properties.get(field) {
                     return Some(field_def.clone());
                 }
@@ -404,7 +417,12 @@ impl DynamicEntity {
         ];
 
         if let Some(def) = &self.definition {
-            if let Some(properties) = def.schema.get("properties").and_then(|p| p.as_object()) {
+            if let Some(properties) = def
+                .schema
+                .properties
+                .get("properties")
+                .and_then(|p| p.as_object())
+            {
                 for field_name in properties.keys() {
                     fields.push(field_name.clone());
                 }

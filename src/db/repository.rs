@@ -86,17 +86,6 @@ where
         }
     }
 
-    /// Get an entity by ID
-    pub async fn get_by_id(&self, id: i64) -> Result<T> {
-        let query = format!("SELECT * FROM {} WHERE id = $1", self.table_name);
-
-        sqlx::query_as::<_, T>(&query)
-            .bind(id)
-            .fetch_one(&self.pool)
-            .await
-            .map_err(Error::Database)
-    }
-
     /// Get an entity by UUID
     pub async fn get_by_uuid(&self, uuid: &Uuid) -> Result<T> {
         let query = format!("SELECT * FROM {} WHERE uuid = $1", self.table_name);
@@ -183,7 +172,7 @@ where
         // Basic insert query with common fields
         let query = format!(
             "INSERT INTO {} (uuid, path, created_at, updated_at, created_by, updated_by, published, version, custom_fields) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING uuid",
             self.table_name
         );
 
@@ -218,7 +207,7 @@ where
             .unwrap_or(serde_json::json!({}));
 
         // Execute query
-        let id: (Uuid,) = sqlx::query_as(&query)
+        let uuid: (Uuid,) = sqlx::query_as(&query)
             .bind(uuid)
             .bind(path)
             .bind(created_at)
@@ -232,13 +221,13 @@ where
             .await
             .map_err(Error::Database)?;
 
-        Ok(id.0)
+        Ok(uuid.0)
     }
 
     /// Update an existing entity
-    pub async fn update(&self, id: Uuid, entity: &T) -> Result<()> {
+    pub async fn update(&self, uuid: &Uuid, entity: &T) -> Result<()> {
         // Create a version snapshot first
-        self.create_version_snapshot(id, entity).await?;
+        self.create_version_snapshot(uuid, entity).await?;
 
         // Serialize entity to JSON for update
         let json = serde_json::to_value(entity).map_err(Error::Serialization)?;
@@ -270,7 +259,7 @@ where
 
         // Basic update query with common fields
         let query = format!(
-            "UPDATE {} SET path = $1, updated_at = $2, updated_by = $3, published = $4, version = $5, custom_fields = $6 WHERE id = $7",
+            "UPDATE {} SET path = $1, updated_at = $2, updated_by = $3, published = $4, version = $5, custom_fields = $6 WHERE uuid = $7",
             self.table_name
         );
 
@@ -282,7 +271,7 @@ where
             .bind(published)
             .bind(version)
             .bind(custom_fields)
-            .bind(id)
+            .bind(uuid)
             .execute(&self.pool)
             .await
             .map_err(Error::Database)?;
@@ -291,11 +280,11 @@ where
     }
 
     /// Delete an entity
-    pub async fn delete(&self, id: i64) -> Result<()> {
-        let query = format!("DELETE FROM {} WHERE id = $1", self.table_name);
+    pub async fn delete(&self, uuid: &Uuid) -> Result<()> {
+        let query = format!("DELETE FROM {} WHERE uuid = $1", self.table_name);
 
         sqlx::query(&query)
-            .bind(id)
+            .bind(uuid)
             .execute(&self.pool)
             .await
             .map_err(Error::Database)?;
@@ -304,7 +293,7 @@ where
     }
 
     /// Create a version snapshot of the entity before updating
-    async fn create_version_snapshot(&self, _id: Uuid, _entity: &T) -> Result<()> {
+    async fn create_version_snapshot(&self, uuid: &Uuid, _entity: &T) -> Result<()> {
         // TODO: Implement version snapshot creation
         Ok(())
     }

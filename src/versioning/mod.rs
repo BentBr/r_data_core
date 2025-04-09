@@ -10,7 +10,7 @@ pub struct Version {
     /// Version number
     pub version: i32,
     /// Entity UUID
-    pub entity_id: Uuid,
+    pub entity_uuid: Uuid,
     /// Entity type
     pub entity_type: String,
     /// Data at this version
@@ -28,27 +28,27 @@ pub trait VersionManager {
     /// Create a new version
     fn create_version(
         &self,
-        entity_id: Uuid,
+        entity_uuid: Uuid,
         entity_type: &str,
         data: &serde_json::Value,
-        user_id: Option<Uuid>,
+        user_uuid: Option<Uuid>,
         comment: Option<&str>,
     ) -> Result<Version>;
 
     /// Get a specific version
-    fn get_version(&self, entity_id: Uuid, version: i32) -> Result<Version>;
+    fn get_version(&self, entity_uuid: Uuid, version: i32) -> Result<Version>;
 
     /// Get all versions for an entity
-    fn get_versions(&self, entity_id: Uuid) -> Result<Vec<Version>>;
+    fn get_versions(&self, entity_uuid: Uuid) -> Result<Vec<Version>>;
 
     /// Get the latest version for an entity
-    fn get_latest_version(&self, entity_id: Uuid) -> Result<Version>;
+    fn get_latest_version(&self, entity_uuid: Uuid) -> Result<Version>;
 
     /// Revert to a specific version
     fn revert_to_version(
         &self,
-        entity_id: Uuid,
+        entity_uuid: Uuid,
         version: i32,
-        user_id: Option<Uuid>,
+        user_uuid: Option<Uuid>,
     ) -> Result<Version>;
 }

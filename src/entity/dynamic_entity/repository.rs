@@ -42,21 +42,21 @@ impl DynamicEntityRepository {
             entity.validate(def)?;
         }
 
-        let id = entity.get::<Uuid>("id")?;
+        let uuid = entity.get::<Uuid>("uuid")?;
         query(&format!(
-            "INSERT INTO {} (id, data) VALUES ($1, $2)",
+            "INSERT INTO {} (uuid, data) VALUES ($1, $2)",
             self.table_name
         ))
-        .bind(id)
+        .bind(uuid)
         .bind(Json(&entity.data))
         .execute(&self.pool)
         .await
         .map_err(|e| Error::Database(e))?;
 
-        Ok(id)
+        Ok(uuid)
     }
 
-    /// Get an entity by ID
+    /// Get an entity by UUID
     pub async fn get(&self, uuid: Uuid) -> Result<DynamicEntity> {
         let row = query(&format!(
             "SELECT data FROM {} WHERE uuid = $1",
@@ -88,19 +88,19 @@ impl DynamicEntityRepository {
             entity.validate(def)?;
         }
 
-        let id = entity.get::<Uuid>("id")?;
+        let uuid = entity.get::<Uuid>("uuid")?;
         let result = query(&format!(
-            "UPDATE {} SET data = $1 WHERE id = $2",
+            "UPDATE {} SET data = $1 WHERE uuid = $2",
             self.table_name
         ))
         .bind(Json(&entity.data))
-        .bind(id)
+        .bind(uuid)
         .execute(&self.pool)
         .await
         .map_err(|e| Error::Database(e))?;
 
         if result.rows_affected() == 0 {
-            return Err(Error::NotFound(format!("Entity with ID {} not found", id)));
+            return Err(Error::NotFound(format!("Entity with UUID {} not found", uuid)));
         }
 
         Ok(())

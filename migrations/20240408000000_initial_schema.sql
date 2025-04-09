@@ -1,7 +1,7 @@
 -- Create api_keys table
 CREATE TABLE IF NOT EXISTS api_keys (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL,
+    uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_uuid UUID NOT NULL,
     api_key TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
     description TEXT,
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
 
 -- Create class_definitions table
 CREATE TABLE IF NOT EXISTS class_definitions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     entity_type TEXT NOT NULL UNIQUE,
     schema JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS class_definitions (
 
 -- Create entities table
 CREATE TABLE IF NOT EXISTS entities (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     is_system BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS entities (
 
 -- Create admin_users table
 CREATE TABLE IF NOT EXISTS admin_users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,

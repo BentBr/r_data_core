@@ -50,8 +50,8 @@ pub enum NotificationStatus {
 /// Notification model
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Notification {
-    /// ID of the notification
-    pub id: Uuid,
+    /// UUID of the notification
+    pub uuid: Uuid,
     /// Type of notification
     pub notification_type: NotificationType,
     /// Status of the notification
@@ -60,14 +60,14 @@ pub struct Notification {
     pub subject: String,
     /// Body of the notification
     pub body: String,
-    /// ID of the recipient user
-    pub recipient_id: Option<Uuid>,
+    /// UUID of the recipient user
+    pub recipient_uuid: Option<Uuid>,
     /// Email of the recipient
     pub recipient_email: Option<String>,
     /// Phone number of the recipient
     pub recipient_phone: Option<String>,
     /// Related entity ID
-    pub related_entity_id: Option<String>,
+    pub related_entity_uuid: Option<String>,
     /// URL to action
     pub action_url: Option<String>,
     /// Priority of the notification
@@ -101,15 +101,15 @@ pub trait NotificationManager {
     ) -> Result<Notification>;
 
     /// Cancel a notification
-    fn cancel_notification(&self, notification_id: Uuid) -> Result<Notification>;
+    fn cancel_notification(&self, notification_uuid: Uuid) -> Result<Notification>;
 
     /// Mark a notification as read
-    fn mark_as_read(&self, notification_id: Uuid) -> Result<Notification>;
+    fn mark_as_read(&self, notification_uuid: Uuid) -> Result<Notification>;
 
     /// Get notifications for a user
     fn get_user_notifications(
         &self,
-        user_id: Uuid,
+        user_uuid: Uuid,
         include_read: bool,
     ) -> Result<Vec<Notification>>;
 }

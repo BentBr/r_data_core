@@ -11,7 +11,7 @@ pub async fn create_entities_registry_table(pool: &PgPool) -> Result<()> {
     query(
         r#"
         CREATE TABLE IF NOT EXISTS entity_registry (
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+            uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
             class_name VARCHAR(100) NOT NULL UNIQUE,
             display_name VARCHAR(255) NOT NULL,
             table_name VARCHAR(100) NOT NULL,
@@ -35,15 +35,15 @@ pub async fn create_entity_versions_table(pool: &PgPool) -> Result<()> {
     query(
         r#"
         CREATE TABLE IF NOT EXISTS entity_versions (
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
-            entity_id UUID NOT NULL,
+            uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+            entity_uuid UUID NOT NULL,
             entity_type VARCHAR(100) NOT NULL,
             version INT NOT NULL,
             data JSONB NOT NULL,
             created_by UUID,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             comment TEXT,
-            UNIQUE(entity_id, version)
+            UNIQUE(entity_uuid, version)
         )
         "#,
     )
@@ -52,7 +52,7 @@ pub async fn create_entity_versions_table(pool: &PgPool) -> Result<()> {
     .map_err(|e| Error::Database(e))?;
 
     // Create indices for faster lookups
-    query("CREATE INDEX IF NOT EXISTS idx_entity_versions_entity_id ON entity_versions(entity_id)")
+    query("CREATE INDEX IF NOT EXISTS idx_entity_versions_entity_uuid ON entity_versions(entity_uuid)")
         .execute(pool)
         .await
         .map_err(|e| Error::Database(e))?;
@@ -75,8 +75,7 @@ pub async fn create_class_definitions_table(pool: &PgPool) -> Result<()> {
     query(
         r#"
         CREATE TABLE IF NOT EXISTS class_definitions (
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
-            uuid UUID NOT NULL UNIQUE,
+            uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
             path TEXT NOT NULL,
             class_name VARCHAR(100) NOT NULL UNIQUE,
             display_name VARCHAR(255) NOT NULL,
@@ -121,8 +120,7 @@ pub async fn create_entities_data_table(pool: &PgPool) -> Result<()> {
     query(
         r#"
         CREATE TABLE IF NOT EXISTS entities_registry (
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
-            uuid UUID NOT NULL UNIQUE,
+            uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
             path VARCHAR(255) NOT NULL,
             entity_type VARCHAR(50) NOT NULL,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

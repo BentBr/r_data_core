@@ -9,11 +9,6 @@ use crate::entity::value::FromValue;
 use super::entity::DynamicEntity;
 
 impl DynamicEntity {
-    /// Get entity ID
-    pub fn id(&self) -> Option<i64> {
-        self.get::<i64>("id").ok()
-    }
-    
     /// Get entity UUID
     pub fn uuid(&self) -> Option<Uuid> {
         self.get::<Uuid>("uuid").ok()

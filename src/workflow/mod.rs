@@ -23,8 +23,8 @@ pub enum WorkflowState {
 /// Workflow definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowDefinition {
-    /// ID of the workflow definition
-    pub id: Uuid,
+    /// UUID of the workflow definition
+    pub uuid: Uuid,
     /// Name of the workflow
     pub name: String,
     /// Description of the workflow
@@ -42,29 +42,29 @@ pub struct WorkflowDefinition {
 /// Workflow instance
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowInstance {
-    /// ID of the workflow instance
-    pub id: Uuid,
-    /// ID of the workflow definition
-    pub workflow_definition_id: Uuid,
-    /// ID of the entity this workflow is for
-    pub entity_id: String,
+    /// UUID of the workflow instance
+    pub uuid: Uuid,
+    /// UUID of the workflow definition
+    pub workflow_definition_uuid: Uuid,
+    /// UUID of the entity this workflow is for
+    pub entity_uuid: String,
     /// Type of the entity
     pub entity_type: String,
     /// Current state of the workflow
     pub state: serde_json::Value,
     /// Status of the workflow
     pub status: String,
-    /// ID of the user who created this workflow
+    /// UUID of the user who created this workflow
     pub created_by: Option<Uuid>,
 }
 
 /// Workflow task
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowTask {
-    /// ID of the task
-    pub id: Uuid,
-    /// ID of the workflow instance
-    pub workflow_instance_id: Uuid,
+    /// UUID of the task
+    pub uuid: Uuid,
+    /// UUID of the workflow instance
+    pub workflow_instance_uuid: Uuid,
     /// Name of the task
     pub task_name: String,
     /// Task definition
@@ -82,10 +82,10 @@ pub struct WorkflowTask {
 /// Workflow history entry
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowHistory {
-    /// ID of the history entry
-    pub id: Uuid,
-    /// ID of the workflow instance
-    pub workflow_instance_id: Uuid,
+    /// UUID of the history entry
+    pub uuid: Uuid,
+    /// UUID of the workflow instance
+    pub workflow_instance_uuid: Uuid,
     /// Type of event
     pub event_type: String,
     /// Event data
@@ -101,32 +101,32 @@ pub trait WorkflowManager {
     /// Start a new workflow
     fn start_workflow(
         &self,
-        definition_id: Uuid,
-        entity_id: &str,
+        definition_uuid: Uuid,
+        entity_uuid: &str,
         entity_type: &str,
-        user_id: Option<Uuid>,
+        user_uuid: Option<Uuid>,
     ) -> Result<WorkflowInstance>;
 
     /// Progress a workflow
     fn progress_workflow(
         &self,
-        instance_id: Uuid,
+        instance_uuid: Uuid,
         action: &str,
         data: &serde_json::Value,
-        user_id: Option<Uuid>,
+        user_uuid: Option<Uuid>,
     ) -> Result<WorkflowInstance>;
 
     /// Complete a task
     fn complete_task(
         &self,
-        task_id: Uuid,
+        task_uuid: Uuid,
         result: &serde_json::Value,
-        user_id: Option<Uuid>,
+        user_uuid: Option<Uuid>,
     ) -> Result<WorkflowTask>;
 
     /// Get workflow tasks
-    fn get_tasks(&self, instance_id: Uuid) -> Result<Vec<WorkflowTask>>;
+    fn get_tasks(&self, instance_uuid: Uuid) -> Result<Vec<WorkflowTask>>;
 
     /// Get workflow history
-    fn get_history(&self, instance_id: Uuid) -> Result<Vec<WorkflowHistory>>;
+    fn get_history(&self, instance_uuid: Uuid) -> Result<Vec<WorkflowHistory>>;
 }

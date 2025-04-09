@@ -2,7 +2,6 @@ use actix_web::{post, web, HttpResponse, Responder};
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 use crate::api::ApiState;
 use crate::db::PgPoolExtension;
@@ -46,11 +45,8 @@ pub struct LoginResponse {
     /// JWT token
     pub token: String,
 
-    /// User ID
-    pub user_id: i64,
-
     /// User UUID
-    pub uuid: String,
+    pub user_uuid: String,
 
     /// Username
     pub username: String,
@@ -140,8 +136,7 @@ pub async fn login(
     // Build response
     let response = LoginResponse {
         token,
-        user_id: user.base.id.unwrap(),
-        uuid: user.base.uuid.to_string(),
+        user_uuid: user.base.uuid.to_string(),
         username: user.username,
         role: format!("{:?}", user.role),
         expires_at,
@@ -196,7 +191,15 @@ pub async fn register(
     let mut user = AdminUser::new(
         register_req.username.clone(),
         register_req.email.clone(),
+        "".to_string(), // Password hash will be set separately
         register_req.full_name.clone(),
+        UserRole::Viewer, // Default role
+        UserStatus::Active, // Default status
+        None, // No permission scheme initially
+        register_req.full_name.clone(), // Use full name as first name initially
+        "".to_string(), // Empty last name initially
+        true, // Active by default
+        false, // Not admin by default
     );
 
     // Set password
@@ -213,13 +216,12 @@ pub async fn register(
         .await;
 
     match result {
-        Ok(id) => {
-            user.base.id = Some(id);
+        Ok(uuid) => {
+            user.base.uuid = Some(uuid);
 
             // Return success response
             HttpResponse::Created().json(serde_json::json!({
-                "id": id,
-                "uuid": user.base.uuid.to_string(),
+                "uuid": user.uuid.to_string(),
                 "username": user.username,
                 "message": "User registered successfully"
             }))
@@ -237,10 +239,10 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
 
 /// Generate a JWT token for a user
 pub fn generate_jwt(user: &AdminUser, secret: &str, expiration_seconds: u64) -> Result<String> {
-    let user_id = user
+    let user_uuid = user
         .base
-        .id
-        .ok_or_else(|| Error::Auth("User has no ID".to_string()))?;
+        .uuid
+        .ok_or_else(|| Error::Auth("User has no UUID".to_string()))?;
 
     // Create expiration time
     let expiration = Utc::now()
@@ -249,7 +251,7 @@ pub fn generate_jwt(user: &AdminUser, secret: &str, expiration_seconds: u64) -> 
 
     // Create claims
     let claims = AuthUserClaims {
-        sub: user_id,
+        sub: user_uuid,
         name: user.username.clone(),
         email: user.email.clone(),
         is_admin: user.role == UserRole::Admin,

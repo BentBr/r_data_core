@@ -12,8 +12,8 @@ use crate::api::ApiState;
 
 #[derive(Debug, Deserialize)]
 pub struct ApiKeyClaims {
-    pub user_id: i64,
-    pub api_key_id: i64,
+    pub user_uuid: i64,
+    pub api_key_uuid: i64,
 }
 
 pub struct ApiAuth;

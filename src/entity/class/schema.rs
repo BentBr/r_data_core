@@ -77,7 +77,7 @@ impl Schema {
         let columns = self.get_column_definitions().unwrap_or_default();
 
         let mut sql = format!("CREATE TABLE IF NOT EXISTS {} (\n", table_name);
-        sql.push_str("    id UUID PRIMARY KEY,\n");
+        sql.push_str("    uuid UUID PRIMARY KEY,\n");
 
         for (i, column) in columns.iter().enumerate() {
             sql.push_str("    ");
@@ -144,15 +144,15 @@ impl ClassDefinition {
         columns.push("custom_fields JSONB NOT NULL DEFAULT '{}'");
 
         // Create table SQL
-        let mut sql = format!("CREATE TABLE IF NOT EXISTS {} (\n", self.get_table_name());
+        let mut sql = format!("CREATE TABLE IF NOT EXISTS {} (\n", self.get_schema_table_name());
         sql.push_str(&columns.join(",\n"));
         sql.push_str("\n);\n");
 
         // Add indexes for searchable fields
         sql.push_str(&format!(
             "CREATE INDEX IF NOT EXISTS idx_{}_uuid ON {} (uuid);\n",
-            self.get_table_name(),
-            self.get_table_name()
+            self.get_schema_table_name(),
+            self.get_schema_table_name()
         ));
 
         // Generate relation tables
@@ -167,9 +167,9 @@ impl ClassDefinition {
                 // For ManyToOne, add foreign key constraint
                 if matches!(field.field_type, FieldType::ManyToOne) {
                     sql.push_str(&format!(
-                        "ALTER TABLE {} ADD CONSTRAINT fk_{}_{} FOREIGN KEY ({}_id) REFERENCES {} (id) ON DELETE SET NULL;\n",
-                        self.get_table_name(),
-                        self.get_table_name(),
+                        "ALTER TABLE {} ADD CONSTRAINT fk_{}_{} FOREIGN KEY ({}_uuid) REFERENCES {} (uuid) ON DELETE SET NULL;\n",
+                        self.get_schema_table_name(),
+                        self.get_schema_table_name(),
                         field.name,
                         field.name,
                         target_table
@@ -189,18 +189,18 @@ impl ClassDefinition {
                         "CREATE TABLE IF NOT EXISTS {} (\n",
                         relation_table
                     ));
-                    sql.push_str("  id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),\n");
+                    sql.push_str("  uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),\n");
 
                     // Reference to this entity
                     sql.push_str(&format!(
-                        "  {}_id UUID NOT NULL REFERENCES {} (id) ON DELETE CASCADE,\n",
+                        "  {}_uuid UUID NOT NULL REFERENCES {} (uuid) ON DELETE CASCADE,\n",
                         self.entity_type.to_lowercase(),
-                        self.get_table_name()
+                        self.get_schema_table_name()
                     ));
 
                     // Reference to target entity
                     sql.push_str(&format!(
-                        "  {}_id UUID NOT NULL REFERENCES {} (id) ON DELETE CASCADE,\n",
+                        "  {}_uuid UUID NOT NULL REFERENCES {} (uuid) ON DELETE CASCADE,\n",
                         target_class.to_lowercase(),
                         target_table
                     ));
@@ -211,7 +211,7 @@ impl ClassDefinition {
 
                     // Add unique constraint to prevent duplicates
                     sql.push_str(&format!(
-                        "  UNIQUE({}_id, {}_id)\n",
+                        "  UNIQUE({}_uuid, {}_uuid)\n",
                         self.entity_type.to_lowercase(),
                         target_class.to_lowercase()
                     ));
@@ -219,14 +219,14 @@ impl ClassDefinition {
 
                     // Add indices for faster lookups
                     sql.push_str(&format!(
-                        "CREATE INDEX IF NOT EXISTS idx_{}_source ON {} ({}_id);\n",
+                        "CREATE INDEX IF NOT EXISTS idx_{}_source ON {} ({}_uuid);\n",
                         relation_table,
                         relation_table,
                         self.entity_type.to_lowercase()
                     ));
 
                     sql.push_str(&format!(
-                        "CREATE INDEX IF NOT EXISTS idx_{}_target ON {} ({}_id);\n",
+                        "CREATE INDEX IF NOT EXISTS idx_{}_target ON {} ({}_uuid);\n",
                         relation_table,
                         relation_table,
                         target_class.to_lowercase()
@@ -241,7 +241,7 @@ impl ClassDefinition {
     /// Generate relation tables for this class
     fn generate_relation_tables(&self) -> String {
         let mut sql = String::new();
-        let table_name = self.get_table_name();
+        let table_name = self.get_schema_table_name();
 
         for field in &self.schema.get_fields() {
             if matches!(
@@ -254,7 +254,7 @@ impl ClassDefinition {
                     // For ManyToOne, add foreign key constraint
                     if matches!(field.field_type, FieldType::ManyToOne) {
                         sql.push_str(&format!(
-                            "ALTER TABLE {} ADD CONSTRAINT fk_{}_{} FOREIGN KEY ({}_id) REFERENCES {} (id) ON DELETE SET NULL;\n",
+                            "ALTER TABLE {} ADD CONSTRAINT fk_{}_{} FOREIGN KEY ({}_uuid) REFERENCES {} (uuid) ON DELETE SET NULL;\n",
                             table_name, table_name, field.name, field.name, target_table
                         ));
                     }
@@ -272,18 +272,18 @@ impl ClassDefinition {
                             "CREATE TABLE IF NOT EXISTS {} (\n",
                             relation_table
                         ));
-                        sql.push_str("  id BIGSERIAL PRIMARY KEY,\n");
+                        sql.push_str("  uuid BIGSERIAL PRIMARY KEY,\n");
 
                         // Reference to this entity
                         sql.push_str(&format!(
-                            "  {}_id BIGINT NOT NULL REFERENCES {} (id) ON DELETE CASCADE,\n",
+                            "  {}_uuid BIGINT NOT NULL REFERENCES {} (uuid) ON DELETE CASCADE,\n",
                             self.entity_type.to_lowercase(),
                             table_name
                         ));
 
                         // Reference to target entity
                         sql.push_str(&format!(
-                            "  {}_id BIGINT NOT NULL REFERENCES {} (id) ON DELETE CASCADE,\n",
+                            "  {}_uuid BIGINT NOT NULL REFERENCES {} (uuid) ON DELETE CASCADE,\n",
                             target_class.to_lowercase(),
                             target_table
                         ));
@@ -294,7 +294,7 @@ impl ClassDefinition {
 
                         // Add unique constraint to prevent duplicates
                         sql.push_str(&format!(
-                            "  UNIQUE({}_id, {}_id)\n",
+                            "  UNIQUE({}_uuid, {}_uuid)\n",
                             self.entity_type.to_lowercase(),
                             target_class.to_lowercase()
                         ));
@@ -302,15 +302,14 @@ impl ClassDefinition {
 
                         // Add indices for faster lookups
                         sql.push_str(&format!(
-                            "CREATE INDEX IF NOT EXISTS idx_{}_source ON {} ({}_id);\n",
+                            "CREATE INDEX IF NOT EXISTS idx_{}_source ON {} ({}_uuid);\n",
                             relation_table,
                             relation_table,
                             self.entity_type.to_lowercase()
-                            self.class_name.to_lowercase()
                         ));
 
                         sql.push_str(&format!(
-                            "CREATE INDEX IF NOT EXISTS idx_{}_target ON {} ({}_id);\n",
+                            "CREATE INDEX IF NOT EXISTS idx_{}_target ON {} ({}_uuid);\n",
                             relation_table,
                             relation_table,
                             target_class.to_lowercase()
@@ -330,11 +329,11 @@ impl ClassDefinition {
     }
 
     pub fn get_drop_table_sql(&self) -> String {
-        format!("DROP TABLE IF EXISTS {}", self.get_table_name())
+        format!("DROP TABLE IF EXISTS {}", self.get_schema_table_name())
     }
 
     pub fn get_create_table_sql(&self) -> Result<String, Error> {
-        let table_name = self.get_table_name();
+        let table_name = self.get_schema_table_name();
         let columns = self.get_column_definitions()?;
         Ok(format!(
             "CREATE TABLE IF NOT EXISTS {} ({})",
@@ -343,7 +342,7 @@ impl ClassDefinition {
         ))
     }
 
-    pub fn get_table_name(&self) -> String {
+    pub fn get_schema_table_name(&self) -> String {
         format!("entity_{}", self.entity_type.to_lowercase())
     }
 }

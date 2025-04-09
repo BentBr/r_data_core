@@ -4,7 +4,7 @@ use sqlx::{postgres::PgRow, FromRow, Row};
 use std::collections::HashMap;
 use std::fmt::Display;
 use utoipa::ToSchema;
-use uuid;
+use uuid::Uuid;
 
 use super::AbstractRDataEntity;
 use crate::error::{Error, Result};
@@ -65,8 +65,8 @@ pub struct Permission {
     /// Access level granted
     pub access_level: AccessLevel,
 
-    /// Resource IDs this permission applies to (if empty, applies to all resources of type)
-    pub resource_ids: Vec<String>,
+    /// Resource UUIDs this permission applies to (if empty, applies to all resources of type)
+    pub resource_uuids: Vec<Uuid>,
 
     /// Additional constraints on this permission
     pub constraints: Option<serde_json::Value>,
@@ -198,7 +198,7 @@ impl PermissionScheme {
             resource_type: "*".to_string(),
             permission_type: PermissionType::Admin,
             access_level: AccessLevel::All,
-            resource_ids: vec![],
+            resource_uuids: vec![],
             constraints: None,
         }];
 
@@ -212,28 +212,28 @@ impl PermissionScheme {
                 resource_type: "*".to_string(),
                 permission_type: PermissionType::Read,
                 access_level: AccessLevel::All,
-                resource_ids: vec![],
+                resource_uuids: vec![],
                 constraints: None,
             },
             Permission {
                 resource_type: "*".to_string(),
                 permission_type: PermissionType::Create,
                 access_level: AccessLevel::All,
-                resource_ids: vec![],
+                resource_uuids: vec![],
                 constraints: None,
             },
             Permission {
                 resource_type: "*".to_string(),
                 permission_type: PermissionType::Update,
                 access_level: AccessLevel::All,
-                resource_ids: vec![],
+                resource_uuids: vec![],
                 constraints: None,
             },
             Permission {
                 resource_type: "*".to_string(),
                 permission_type: PermissionType::Delete,
                 access_level: AccessLevel::All,
-                resource_ids: vec![],
+                resource_uuids: vec![],
                 constraints: None,
             },
         ];
@@ -247,7 +247,7 @@ impl PermissionScheme {
             resource_type: "*".to_string(),
             permission_type: PermissionType::Read,
             access_level: AccessLevel::All,
-            resource_ids: vec![],
+            resource_uuids: vec![],
             constraints: None,
         }];
 

@@ -154,7 +154,7 @@ async fn main() -> Result<()> {
     info!("Found {} entities with filter", filtered_entities.len());
 
     // Delete the entity
-    repository.delete(uuid).await?;
+    repository.delete(&uuid).await?;
     info!("Deleted entity");
 
     info!("Dynamic entity test completed successfully");

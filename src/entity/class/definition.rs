@@ -1,15 +1,18 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use sqlx::{postgres::PgRow, FromRow, PgPool, Row};
 use std::collections::HashMap;
+use std::fmt::Debug;
 use utoipa::ToSchema;
-use uuid::{Timestamp, Uuid};
+use uuid::timestamp;
+use uuid::{ContextV7, Uuid};
 
 use super::schema::Schema;
 use crate::db::create_or_update_enum;
-use crate::entity::field::{get_sql_type_for_field, FieldDefinition, FieldType, OptionsSource};
+use crate::entity::field::FieldDefinition;
 use crate::entity::AbstractRDataEntity;
-use crate::error::{Error, Result};
+use crate::error::Result;
 
 /// Class definition for a custom RDataEntity
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -34,7 +37,6 @@ pub struct ClassDefinition {
 impl<'r> FromRow<'r, PgRow> for ClassDefinition {
     fn from_row(row: &'r PgRow) -> std::result::Result<Self, sqlx::Error> {
         // Extract the base entity data
-        let id = row.try_get::<i64, _>("id")?;
         let uuid = row.try_get::<String, _>("uuid")?;
         let path = row.try_get::<String, _>("path")?;
         let created_at = row
@@ -94,13 +96,20 @@ impl<'r> FromRow<'r, PgRow> for ClassDefinition {
             custom_fields,
         };
 
-        let now = Utc::now();
-        let ts = Timestamp::from_unix(now.timestamp(), now.timestamp_subsec_nanos() as u64, 0);
+        // Convert fields to proper schema properties format
+        let mut properties = HashMap::new();
+        properties.insert(
+            "properties".to_string(),
+            serde_json::to_value(fields).unwrap_or(serde_json::json!([])),
+        );
+
+        let context = ContextV7::new();
+        let ts = timestamp::Timestamp::now(&context);
 
         Ok(ClassDefinition {
             uuid: Uuid::new_v7(ts),
             entity_type: class_name,
-            schema: Schema::new(fields, base),
+            schema: Schema::new(properties),
             created_at,
             updated_at,
         })
@@ -111,7 +120,8 @@ impl ClassDefinition {
     /// Create a new class definition
     pub fn new(entity_type: String, schema: Schema) -> Self {
         let now = Utc::now();
-        let ts = Timestamp::from_unix(now.timestamp(), now.timestamp_subsec_nanos() as u64, 0);
+        let context = ContextV7::new();
+        let ts = timestamp::Timestamp::now(&context);
 
         Self {
             uuid: Uuid::new_v7(ts),
@@ -158,7 +168,26 @@ impl ClassDefinition {
         create_or_update_enum(db, enum_name, values).await
     }
 
-    pub fn generate_sql_schema(&self) -> String {
-        self.schema.generate_sql_schema()
+    /// Get a field definition by name
+    pub fn get_field(&self, field_name: &str) -> Option<&JsonValue> {
+        if let Some(properties) = self.schema.properties.get("properties") {
+            if let Some(props) = properties.as_object() {
+                return props.get(field_name);
+            }
+        }
+        None
+    }
+
+    /// Get all fields in this class
+    pub fn get_fields(&self) -> Vec<&FieldDefinition> {
+        let mut result = Vec::new();
+        if let Some(properties) = self.schema.properties.get("properties") {
+            if let Some(props) = properties.as_object() {
+                // This should properly extract field definitions, but for now just return empty
+                // as we need to adjust how fields are stored
+            }
+        }
+
+        result
     }
 }

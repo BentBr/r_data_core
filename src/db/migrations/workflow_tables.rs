@@ -65,15 +65,15 @@ pub async fn create_notifications_table(pool: &PgPool) -> Result<()> {
     query(
         r#"
         CREATE TABLE IF NOT EXISTS notifications (
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+            uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
             notification_type notification_type NOT NULL,
             status notification_status NOT NULL DEFAULT 'pending',
             subject VARCHAR(255) NOT NULL,
             body TEXT NOT NULL,
-            recipient_id UUID,
+            recipient_uuid UUID,
             recipient_email VARCHAR(255),
             recipient_phone VARCHAR(50),
-            related_entity_id VARCHAR(100),
+            related_entity_uuid VARCHAR(100),
             action_url TEXT,
             priority notification_priority NOT NULL DEFAULT 'normal',
             scheduled_for TIMESTAMPTZ,
@@ -92,7 +92,7 @@ pub async fn create_notifications_table(pool: &PgPool) -> Result<()> {
 
     // Create indices
     query(
-        "CREATE INDEX IF NOT EXISTS idx_notifications_recipient_id ON notifications(recipient_id)",
+        "CREATE INDEX IF NOT EXISTS idx_notifications_recipient_uuid ON notifications(recipient_uuid)",
     )
     .execute(pool)
     .await
@@ -114,7 +114,7 @@ pub async fn create_workflow_definitions_table(pool: &PgPool) -> Result<()> {
     query(
         r#"
         CREATE TABLE IF NOT EXISTS workflow_definitions (
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+            uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
             name VARCHAR(255) NOT NULL,
             description TEXT,
             entity_type VARCHAR(100) NOT NULL,
@@ -178,9 +178,9 @@ pub async fn create_workflows_table(pool: &PgPool) -> Result<()> {
     query(
         r#"
         CREATE TABLE IF NOT EXISTS workflow_instances (
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
-            workflow_definition_id UUID NOT NULL REFERENCES workflow_definitions(id),
-            entity_id VARCHAR(100) NOT NULL,
+            uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+            workflow_definition_uuid UUID NOT NULL REFERENCES workflow_definitions(uuid),
+            entity_uuid VARCHAR(100) NOT NULL,
             entity_type VARCHAR(100) NOT NULL,
             state JSONB NOT NULL,
             status workflow_status NOT NULL,
@@ -198,8 +198,8 @@ pub async fn create_workflows_table(pool: &PgPool) -> Result<()> {
     query(
         r#"
         CREATE TABLE IF NOT EXISTS workflow_tasks (
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
-            workflow_instance_id UUID NOT NULL REFERENCES workflow_instances(id) ON DELETE CASCADE,
+            uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+            workflow_instance_uuid UUID NOT NULL REFERENCES workflow_instances(uuid) ON DELETE CASCADE,
             task_name VARCHAR(255) NOT NULL,
             task_definition JSONB NOT NULL,
             status task_status NOT NULL,
@@ -219,8 +219,8 @@ pub async fn create_workflows_table(pool: &PgPool) -> Result<()> {
     query(
         r#"
         CREATE TABLE IF NOT EXISTS workflow_history (
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
-            workflow_instance_id UUID NOT NULL REFERENCES workflow_instances(id) ON DELETE CASCADE,
+            uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+            workflow_instance_uuid UUID NOT NULL REFERENCES workflow_instances(uuid) ON DELETE CASCADE,
             event_type VARCHAR(100) NOT NULL,
             event_data JSONB NOT NULL,
             performed_by UUID,

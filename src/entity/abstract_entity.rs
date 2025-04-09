@@ -6,7 +6,8 @@ use sqlx::{
     Type,
 };
 use std::collections::HashMap;
-use uuid::{Timestamp, Uuid};
+use uuid::timestamp;
+use uuid::{ContextV7, Uuid};
 
 use super::class::ClassDefinition;
 use super::DynamicFields;
@@ -66,7 +67,8 @@ impl AbstractRDataEntity {
     /// Create a new entity with default values
     pub fn new(path: String) -> Self {
         let now = Utc::now();
-        let ts = Timestamp::from_unix(now.timestamp(), now.timestamp_subsec_nanos() as u64, 0);
+        let context = ContextV7::new();
+        let ts = timestamp::Timestamp::now(&context);
         Self {
             uuid: Uuid::new_v7(ts),
             path,
@@ -122,13 +124,19 @@ impl DynamicFields for AbstractRDataEntity {
 
     fn validate(&self, class_def: &ClassDefinition) -> Result<()> {
         // Basic validation - ensure all required fields are present
-        for field in &class_def.schema.get_fields() {
-            if field.required {
-                if !self.custom_fields.contains_key(&field.name) {
-                    return Err(Error::Validation(format!(
-                        "Required field '{}' is missing",
-                        field.name
-                    )));
+        if let Some(properties) = class_def.schema.properties.get("properties") {
+            if let Some(props) = properties.as_object() {
+                for (field_name, field_def) in props {
+                    if let Some(required) = field_def.get("required") {
+                        if required.as_bool() == Some(true) {
+                            if !self.custom_fields.contains_key(field_name) {
+                                return Err(Error::Validation(format!(
+                                    "Required field '{}' is missing",
+                                    field_name
+                                )));
+                            }
+                        }
+                    }
                 }
             }
         }

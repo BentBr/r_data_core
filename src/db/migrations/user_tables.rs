@@ -11,7 +11,7 @@ pub async fn create_admin_users_table(pool: &PgPool) -> Result<()> {
     query(
         r#"
         CREATE TABLE IF NOT EXISTS admin_users (
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+            uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
             email VARCHAR(255) NOT NULL UNIQUE,
             password_hash VARCHAR(255) NOT NULL,
             first_name VARCHAR(100),
@@ -37,7 +37,7 @@ pub async fn create_permission_schemes_table(pool: &PgPool) -> Result<()> {
     query(
         r#"
         CREATE TABLE IF NOT EXISTS roles (
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+            uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
             name VARCHAR(100) NOT NULL UNIQUE,
             description TEXT,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -53,7 +53,7 @@ pub async fn create_permission_schemes_table(pool: &PgPool) -> Result<()> {
     query(
         r#"
         CREATE TABLE IF NOT EXISTS permissions (
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+            uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
             name VARCHAR(100) NOT NULL UNIQUE,
             description TEXT,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -69,10 +69,10 @@ pub async fn create_permission_schemes_table(pool: &PgPool) -> Result<()> {
     query(
         r#"
         CREATE TABLE IF NOT EXISTS user_roles (
-            user_id UUID NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
-            role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+            user_uuid UUID NOT NULL REFERENCES admin_users(uuid) ON DELETE CASCADE,
+            role_uuid UUID NOT NULL REFERENCES roles(uuid) ON DELETE CASCADE,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            PRIMARY KEY (user_id, role_id)
+            PRIMARY KEY (user_uuid, role_uuid)
         )
         "#,
     )
@@ -84,10 +84,10 @@ pub async fn create_permission_schemes_table(pool: &PgPool) -> Result<()> {
     query(
         r#"
         CREATE TABLE IF NOT EXISTS role_permissions (
-            role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-            permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+            role_uuid UUID NOT NULL REFERENCES roles(uuid) ON DELETE CASCADE,
+            permission_uuid UUID NOT NULL REFERENCES permissions(uuid) ON DELETE CASCADE,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            PRIMARY KEY (role_id, permission_id)
+            PRIMARY KEY (role_uuid, permission_uuid)
         )
         "#,
     )
@@ -106,8 +106,8 @@ pub async fn create_api_keys_table(pool: &PgPool) -> Result<()> {
     query(
         r#"
         CREATE TABLE IF NOT EXISTS api_keys (
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
-            user_id UUID NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+            uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+            user_uuid UUID NOT NULL REFERENCES admin_users(uuid) ON DELETE CASCADE,
             name VARCHAR(255) NOT NULL,
             prefix VARCHAR(16) NOT NULL,
             key_hash VARCHAR(255) NOT NULL,
@@ -134,8 +134,8 @@ pub async fn create_api_keys_table(pool: &PgPool) -> Result<()> {
         .await
         .map_err(|e| Error::Database(e))?;
 
-    // Create index on user_id to efficiently list keys by user
-    query("CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON api_keys(user_id)")
+    // Create index on user_uuid to efficiently list keys by user
+    query("CREATE INDEX IF NOT EXISTS idx_api_keys_user_uuid ON api_keys(user_uuid)")
         .execute(pool)
         .await
         .map_err(|e| Error::Database(e))?;
