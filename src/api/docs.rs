@@ -1,4 +1,4 @@
-use actix_web::{get, HttpResponse, Responder};
+use actix_web::{get, web, HttpResponse, Responder};
 use serde::Serialize;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -51,11 +51,13 @@ pub async fn entities_api_docs() -> impl Responder {
 }
 
 /// Register Swagger UI routes
-pub fn register_routes(cfg: &mut actix_web::web::ServiceConfig) {
-    // FIXME: Once OpenAPI is fully implemented, replace this with proper configuration
-    let ui = SwaggerUi::new("/api/docs/{_:.*}");
-    // We're not using the .url() method since it requires OpenApi
-    cfg.service(ui);
+/// This function can be conditionally called from main.rs based on configuration
+pub fn register_routes(cfg: &mut web::ServiceConfig) {
+    // Register API documentation endpoints
     cfg.service(admin_api_docs);
     cfg.service(entities_api_docs);
+    
+    // Register Swagger UI
+    let ui = SwaggerUi::new("/api/docs/{_:.*}");
+    cfg.service(ui);
 }

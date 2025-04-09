@@ -102,15 +102,21 @@ async fn main() -> std::io::Result<()> {
 
     // Start HTTP server
     HttpServer::new(move || {
-        App::new()
+        let mut app = App::new()
             .app_data(app_state.clone())
             // Enable CORS
             .wrap(actix_cors::Cors::permissive())
             // Configure API routes
             .configure(auth::register_routes)
             .configure(admin::register_routes)
-            .configure(public::register_routes)
-            .configure(docs::register_routes)
+            .configure(public::register_routes);
+            
+        // Only include Swagger UI if enabled in config
+        if config.api.enable_docs {
+            app = app.configure(docs::register_routes);
+        }
+        
+        app
     })
     .bind(bind_address)?
     .run()
