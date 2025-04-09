@@ -22,7 +22,7 @@ pub async fn create_entities_registry_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     Ok(())
 }
@@ -49,20 +49,20 @@ pub async fn create_entity_versions_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     // Create indices for faster lookups
     query("CREATE INDEX IF NOT EXISTS idx_entity_versions_entity_uuid ON entity_versions(entity_uuid)")
         .execute(pool)
         .await
-        .map_err(|e| Error::Database(e))?;
+        .map_err(Error::Database)?;
 
     query(
         "CREATE INDEX IF NOT EXISTS idx_entity_versions_entity_type ON entity_versions(entity_type)"
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     Ok(())
 }
@@ -96,18 +96,18 @@ pub async fn create_class_definitions_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     // Create indices for faster lookups
     query("CREATE INDEX IF NOT EXISTS idx_class_definitions_uuid ON class_definitions(uuid)")
         .execute(pool)
         .await
-        .map_err(|e| Error::Database(e))?;
+        .map_err(Error::Database)?;
 
     query("CREATE INDEX IF NOT EXISTS idx_class_definitions_path ON class_definitions(path)")
         .execute(pool)
         .await
-        .map_err(|e| Error::Database(e))?;
+        .map_err(Error::Database)?;
 
     Ok(())
 }
@@ -135,7 +135,7 @@ pub async fn create_entities_data_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     Ok(())
 }

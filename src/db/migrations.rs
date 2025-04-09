@@ -10,12 +10,10 @@ mod user_tables;
 mod workflow_tables;
 
 pub use core_tables::*;
-pub use enum_types::create_or_update_enum;
 pub use user_tables::*;
 pub use workflow_tables::*;
 
 // Export key functions for use in other modules
-pub use schema::refresh_classes_schema;
 
 /// Runs all database migrations in the correct order
 pub async fn run_migrations(pool: &PgPool) -> Result<()> {
@@ -33,7 +31,7 @@ pub async fn run_migrations(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     // List of migrations to apply in order
     type MigrationFn = for<'a> fn(
@@ -58,7 +56,7 @@ pub async fn run_migrations(pool: &PgPool) -> Result<()> {
         query_as::<_, AppliedMigration>("SELECT name FROM migrations")
             .fetch_all(pool)
             .await
-            .map_err(|e| Error::Database(e))?
+            .map_err(Error::Database)?
             .into_iter()
             .map(|m| m.name)
             .collect();
@@ -76,7 +74,7 @@ pub async fn run_migrations(pool: &PgPool) -> Result<()> {
                 .bind(name)
                 .execute(pool)
                 .await
-                .map_err(|e| Error::Database(e))?;
+                .map_err(Error::Database)?;
 
             info!("Migration {} applied successfully", name);
         } else {

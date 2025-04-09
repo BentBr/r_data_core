@@ -173,7 +173,7 @@ impl ClassDefinition {
 
     /// Get all fields in this class
     pub fn get_fields(&self) -> Vec<&FieldDefinition> {
-        let mut result = Vec::new();
+        let result = Vec::new();
         if let Some(properties) = self.schema.properties.get("properties") {
             if let Some(props) = properties.as_object() {
                 // This should properly extract field definitions, but for now just return empty

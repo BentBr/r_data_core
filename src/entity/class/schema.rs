@@ -83,7 +83,7 @@ impl Schema {
             if i < columns.len() - 1 || columns.is_empty() {
                 sql.push_str(",\n");
             } else {
-                sql.push_str("\n");
+                sql.push('\n');
             }
         }
 
@@ -96,7 +96,7 @@ impl Schema {
         sqlx::query(&sql)
             .execute(pool)
             .await
-            .map_err(|e| Error::Database(e))?;
+            .map_err(Error::Database)?;
         Ok(())
     }
 }
@@ -135,7 +135,7 @@ impl ClassDefinition {
         sqlx::query(&sql)
             .execute(pool)
             .await
-            .map_err(|e| Error::Database(e))?;
+            .map_err(Error::Database)?;
         Ok(())
     }
 }

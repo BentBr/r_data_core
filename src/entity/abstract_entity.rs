@@ -128,13 +128,11 @@ impl DynamicFields for AbstractRDataEntity {
             if let Some(props) = properties.as_object() {
                 for (field_name, field_def) in props {
                     if let Some(required) = field_def.get("required") {
-                        if required.as_bool() == Some(true) {
-                            if !self.custom_fields.contains_key(field_name) {
-                                return Err(Error::Validation(format!(
-                                    "Required field '{}' is missing",
-                                    field_name
-                                )));
-                            }
+                        if required.as_bool() == Some(true) && !self.custom_fields.contains_key(field_name) {
+                            return Err(Error::Validation(format!(
+                                "Required field '{}' is missing",
+                                field_name
+                            )));
                         }
                     }
                 }

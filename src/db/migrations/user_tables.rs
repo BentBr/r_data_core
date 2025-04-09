@@ -24,7 +24,7 @@ pub async fn create_admin_users_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     Ok(())
 }
@@ -47,7 +47,7 @@ pub async fn create_permission_schemes_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     // Create permissions table
     query(
@@ -63,7 +63,7 @@ pub async fn create_permission_schemes_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     // Create user_roles junction table
     query(
@@ -78,7 +78,7 @@ pub async fn create_permission_schemes_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     // Create role_permissions junction table
     query(
@@ -93,7 +93,7 @@ pub async fn create_permission_schemes_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     Ok(())
 }
@@ -120,25 +120,25 @@ pub async fn create_api_keys_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     // Create index on key_hash for fast lookup
     query("CREATE INDEX IF NOT EXISTS idx_api_keys_key_hash ON api_keys(key_hash)")
         .execute(pool)
         .await
-        .map_err(|e| Error::Database(e))?;
+        .map_err(Error::Database)?;
 
     // Create index on prefix for quick lookups during authentication
     query("CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(prefix)")
         .execute(pool)
         .await
-        .map_err(|e| Error::Database(e))?;
+        .map_err(Error::Database)?;
 
     // Create index on user_uuid to efficiently list keys by user
     query("CREATE INDEX IF NOT EXISTS idx_api_keys_user_uuid ON api_keys(user_uuid)")
         .execute(pool)
         .await
-        .map_err(|e| Error::Database(e))?;
+        .map_err(Error::Database)?;
 
     Ok(())
 }

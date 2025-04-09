@@ -1,5 +1,4 @@
 use actix_web::{web, App, HttpServer};
-use dotenv::dotenv;
 use log::{error, info};
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
@@ -22,7 +21,7 @@ mod workflow;
 // mod versioning;
 // mod notification;
 
-use crate::api::{admin, auth, docs, middleware, public, ApiState};
+use crate::api::{admin, auth, docs, public, ApiState};
 use crate::cache::CacheManager;
 use crate::config::AppConfig;
 use crate::db::migrations;

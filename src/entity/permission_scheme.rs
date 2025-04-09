@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use serde_json;
 use sqlx::{postgres::PgRow, FromRow, Row};
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -115,7 +114,7 @@ impl PermissionScheme {
         let permissions = self
             .role_permissions
             .entry(role.to_string())
-            .or_insert_with(Vec::new);
+            .or_default();
 
         // Check if permission already exists
         if permissions.contains(&permission) {
@@ -145,7 +144,7 @@ impl PermissionScheme {
 
         let role_idx = self.role_permissions.iter().position(|(r, _)| r == role);
 
-        if let Some(_) = role_idx {
+        if role_idx.is_some() {
             let perm_idx = self.role_permissions[role].iter().position(|p| {
                 p.resource_type == resource_type && &p.permission_type == permission_type
             });

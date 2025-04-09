@@ -18,6 +18,12 @@ pub struct ApiKeyClaims {
 
 pub struct ApiAuth;
 
+impl Default for ApiAuth {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ApiAuth {
     pub fn new() -> Self {
         ApiAuth
@@ -74,7 +80,7 @@ where
                             .cache_manager
                             .get(&format!("api_key:{}", token))
                             .await
-                            .map_err(|e| actix_web::Error::from(e))?;
+                            .map_err(actix_web::Error::from)?;
 
                         if let Some(api_key) = api_key {
                             req.extensions_mut().insert(api_key);

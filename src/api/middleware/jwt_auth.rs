@@ -14,6 +14,12 @@ use crate::api::ApiState;
 /// JWT authentication middleware
 pub struct JwtAuth;
 
+impl Default for JwtAuth {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl JwtAuth {
     /// Create a new instance of JwtAuth middleware
     pub fn new() -> Self {

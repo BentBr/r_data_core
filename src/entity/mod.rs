@@ -13,7 +13,6 @@ pub mod field;
 
 pub use abstract_entity::AbstractRDataEntity;
 pub use admin_user::AdminUser;
-pub use notification::Notification;
 pub use permission_scheme::PermissionScheme;
 pub use version::VersionedData;
 pub use workflow::WorkflowEntity;
@@ -22,17 +21,15 @@ pub use workflow::WorkflowEntity;
 pub use dynamic_entity::DynamicEntity;
 //pub use value;
 pub use class::ClassDefinition;
-pub use field::{
-    FieldDefinition, FieldType, FieldValidation, OptionsSource, SelectOption, UiSettings,
-};
+pub use field::FieldType;
 
-use crate::error::Error;
+use crate::error::Result;
 use std::collections::HashMap;
 
 /// Trait for any entity that can be serialized to/from JSON for custom fields
 pub trait DynamicFields {
     fn get_field(&self, name: &str) -> Option<serde_json::Value>;
-    fn set_field(&mut self, name: &str, value: serde_json::Value) -> Result<(), Error>;
+    fn set_field(&mut self, name: &str, value: serde_json::Value) -> Result<()>;
     fn get_all_fields(&self) -> HashMap<String, serde_json::Value>;
-    fn validate(&self, class_def: &ClassDefinition) -> Result<(), Error>;
+    fn validate(&self, class_def: &ClassDefinition) -> Result<()>;
 }

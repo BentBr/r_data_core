@@ -126,7 +126,7 @@ async fn create_class_definition(
     match result {
         Ok(uuid) => {
             // Get the created definition with UUID
-            let mut created_def = definition.into_inner();
+            let created_def = definition.into_inner();
 
             // Create the database table for this entity type
             info!(
@@ -263,7 +263,7 @@ async fn delete_class_definition(
             AND table_name = $1
         )",
     )
-    .bind(&table_name.to_lowercase())
+    .bind(table_name.to_lowercase())
     .fetch_one(db_pool)
     .await
     .unwrap_or((false,));

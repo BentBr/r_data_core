@@ -23,7 +23,7 @@ pub async fn create_notifications_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     // Then create notification type enum
     query(
@@ -41,7 +41,7 @@ pub async fn create_notifications_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     // Create priority enum
     query(
@@ -59,7 +59,7 @@ pub async fn create_notifications_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     // Now create the notifications table
     query(
@@ -88,7 +88,7 @@ pub async fn create_notifications_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     // Create indices
     query(
@@ -96,12 +96,12 @@ pub async fn create_notifications_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     query("CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications(status)")
         .execute(pool)
         .await
-        .map_err(|e| Error::Database(e))?;
+        .map_err(Error::Database)?;
 
     Ok(())
 }
@@ -129,7 +129,7 @@ pub async fn create_workflow_definitions_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     Ok(())
 }
@@ -154,7 +154,7 @@ pub async fn create_workflows_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     // Create task status enum
     query(
@@ -172,7 +172,7 @@ pub async fn create_workflows_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     // Create workflow_instances table
     query(
@@ -192,7 +192,7 @@ pub async fn create_workflows_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     // Create workflow_tasks table
     query(
@@ -213,7 +213,7 @@ pub async fn create_workflows_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     // Create workflow_history table
     query(
@@ -230,7 +230,7 @@ pub async fn create_workflows_table(pool: &PgPool) -> Result<()> {
     )
     .execute(pool)
     .await
-    .map_err(|e| Error::Database(e))?;
+    .map_err(Error::Database)?;
 
     Ok(())
 }

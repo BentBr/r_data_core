@@ -109,7 +109,7 @@ async fn main() -> Result<()> {
     let mut entity = DynamicEntity::new("Product".to_string(), Some(Arc::new(class_def.clone())));
 
     // Set field values
-    entity.set("name", "Test Product")?;
+    entity.set("name", "Test Product".to_string())?;
     entity.set("price", 99.99)?;
     entity.set("in_stock", true)?;
 

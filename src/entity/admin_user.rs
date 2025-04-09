@@ -327,7 +327,7 @@ impl ApiKey {
             .bind(self.uuid)
             .execute(pool)
             .await
-            .map_err(|e| Error::Database(e))?;
+            .map_err(Error::Database)?;
 
         Ok(())
     }

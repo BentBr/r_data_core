@@ -1045,7 +1045,7 @@ async fn query_entities(
     // Build table name
     let table_name = match &class_def_result {
         Ok(Some(def)) => {
-            let def_ref: &ClassDefinition = &def;
+            let def_ref: &ClassDefinition = def;
             def_ref.get_table_name()
         }
         Ok(None) => {

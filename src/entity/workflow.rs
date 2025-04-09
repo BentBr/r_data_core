@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use serde_json;
 use sqlx::postgres::{PgTypeInfo, PgValueRef};
 use sqlx::{postgres::PgRow, Decode, FromRow, Row, Type};
 use sqlx::encode::{Encode, IsNull};

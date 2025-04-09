@@ -7,7 +7,6 @@ use std::time::Duration;
 use crate::config::DatabaseConfig;
 use crate::error::{Error, Result};
 pub use migrations::enum_types::create_or_update_enum;
-pub use migrations::run_migrations;
 pub use repository::*;
 
 /// Database connection manager

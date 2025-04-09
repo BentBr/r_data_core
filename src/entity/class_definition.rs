@@ -16,43 +16,6 @@ use crate::error::{Error, Result};
 // Re-export field types for convenience
 pub use super::field::{FieldType, FieldDefinition, FieldValidation, UiSettings, OptionsSource, SelectOption};
 
-/// Field types supported in class definitions
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum FieldType {
-    // String types with UI variants
-    String,
-    Text,
-    Wysiwyg,
-    
-    // Numeric types
-    Integer,
-    Float,
-    
-    // Boolean type
-    Boolean,
-    
-    // Date types
-    DateTime,
-    Date,
-    
-    // Complex data types
-    Object,
-    Array,
-    UUID,
-    
-    // Relations
-    ManyToOne,
-    ManyToMany,
-    
-    // Select types
-    Select,
-    MultiSelect,
-    
-    // Asset types
-    Image,
-    File,
-}
-
 /// Definition of a field in a class
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FieldDefinition {

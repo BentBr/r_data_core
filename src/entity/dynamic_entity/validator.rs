@@ -414,20 +414,17 @@ impl DynamicEntityValidator {
 
         // Validate against options if present
         if let Some(options_source) = &field_def.validation.options_source {
-            match options_source {
-                crate::entity::field::OptionsSource::Fixed { options } => {
-                    let valid_options: Vec<String> =
-                        options.iter().map(|opt| opt.value.clone()).collect();
+            if let crate::entity::field::OptionsSource::Fixed { options } = options_source {
+                let valid_options: Vec<String> =
+                    options.iter().map(|opt| opt.value.clone()).collect();
 
-                    if !valid_options.contains(&option_value.to_string()) {
-                        return Err(Error::Validation(format!(
-                            "Field '{}' must be one of: {}",
-                            field_def.name,
-                            valid_options.join(", ")
-                        )));
-                    }
+                if !valid_options.contains(&option_value.to_string()) {
+                    return Err(Error::Validation(format!(
+                        "Field '{}' must be one of: {}",
+                        field_def.name,
+                        valid_options.join(", ")
+                    )));
                 }
-                _ => {} // Can't validate Enum or Query sources here
             }
         }
 
@@ -458,23 +455,20 @@ impl DynamicEntityValidator {
 
         // Validate against options if present
         if let Some(options_source) = &field_def.validation.options_source {
-            match options_source {
-                crate::entity::field::OptionsSource::Fixed { options } => {
-                    let valid_options: Vec<String> =
-                        options.iter().map(|opt| opt.value.clone()).collect();
+            if let crate::entity::field::OptionsSource::Fixed { options } = options_source {
+                let valid_options: Vec<String> =
+                    options.iter().map(|opt| opt.value.clone()).collect();
 
-                    for value in &selected_values {
-                        if !valid_options.contains(value) {
-                            return Err(Error::Validation(format!(
-                                "Field '{}' contains invalid option '{}'. Valid options are: {}",
-                                field_def.name,
-                                value,
-                                valid_options.join(", ")
-                            )));
-                        }
+                for value in &selected_values {
+                    if !valid_options.contains(value) {
+                        return Err(Error::Validation(format!(
+                            "Field '{}' contains invalid option '{}'. Valid options are: {}",
+                            field_def.name,
+                            value,
+                            valid_options.join(", ")
+                        )));
                     }
                 }
-                _ => {} // Can't validate Enum or Query sources here
             }
         }
 
@@ -548,13 +542,11 @@ pub fn validate_entity(entity: &Value, class_def: &ClassDefinition) -> Result<()
 
     for (field_name, field_def) in properties {
         if let Some(required) = field_def.get("required").and_then(Value::as_bool) {
-            if required {
-                if !entity.get(field_name).is_some() {
-                    return Err(Error::Validation(format!(
-                        "Required field {} is missing",
-                        field_name
-                    )));
-                }
+            if required && entity.get(field_name).is_none() {
+                return Err(Error::Validation(format!(
+                    "Required field {} is missing",
+                    field_name
+                )));
             }
         }
 

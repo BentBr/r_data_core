@@ -51,7 +51,7 @@ impl DynamicEntityRepository {
         .bind(Json(&entity.data))
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e))?;
+        .map_err(Error::Database)?;
 
         Ok(uuid)
     }
@@ -73,7 +73,7 @@ impl DynamicEntityRepository {
         })?;
 
         let data: Json<HashMap<String, Value>> =
-            row.try_get("data").map_err(|e| Error::Database(e))?;
+            row.try_get("data").map_err(Error::Database)?;
 
         Ok(DynamicEntity::from_data(
             self.entity_type.clone(),
@@ -97,7 +97,7 @@ impl DynamicEntityRepository {
         .bind(uuid)
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e))?;
+        .map_err(Error::Database)?;
 
         if result.rows_affected() == 0 {
             return Err(Error::NotFound(format!("Entity with UUID {} not found", uuid)));
@@ -112,7 +112,7 @@ impl DynamicEntityRepository {
             .bind(uuid)
             .execute(&self.pool)
             .await
-            .map_err(|e| Error::Database(e))?;
+            .map_err(Error::Database)?;
 
         if result.rows_affected() == 0 {
             return Err(Error::NotFound(format!(
@@ -165,13 +165,13 @@ impl DynamicEntityRepository {
         let rows = sqlx::query(&query_str)
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| Error::Database(e))?;
+            .map_err(Error::Database)?;
 
         // Convert rows to entities
         let mut entities = Vec::with_capacity(rows.len());
         for row in rows {
             let data: Json<HashMap<String, Value>> =
-                row.try_get("data").map_err(|e| Error::Database(e))?;
+                row.try_get("data").map_err(Error::Database)?;
 
             entities.push(DynamicEntity::from_data(
                 self.entity_type.clone(),

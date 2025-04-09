@@ -149,7 +149,7 @@ where
 
         let count: i64 = row
             .try_get("count")
-            .map_err(|e| Error::Database(e.into()))?;
+            .map_err(Error::Database)?;
 
         Ok(count)
     }

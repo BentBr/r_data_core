@@ -16,7 +16,7 @@ pub async fn refresh_classes_schema(pool: &PgPool) -> Result<()> {
     let rows = query_as::<_, (Uuid, String)>("SELECT uuid, class_name FROM class_definitions")
         .fetch_all(pool)
         .await
-        .map_err(|e| Error::Database(e))?;
+        .map_err(Error::Database)?;
 
     if rows.is_empty() {
         info!("No class definitions found, schema refresh skipped");
@@ -36,11 +36,11 @@ pub async fn refresh_classes_schema(pool: &PgPool) -> Result<()> {
         .bind(uuid)
         .fetch_one(pool)
         .await
-        .map_err(|e| Error::Database(e))?;
+        .map_err(Error::Database)?;
 
         // Try to deserialize the class definition
         let fields: Vec<crate::entity::field::FieldDefinition> =
-            serde_json::from_value(class_def_row.0).map_err(|e| Error::Serialization(e))?;
+            serde_json::from_value(class_def_row.0).map_err(Error::Serialization)?;
 
         // Create schema from fields
         let schema_properties = serde_json::json!({
@@ -70,7 +70,7 @@ pub async fn refresh_classes_schema(pool: &PgPool) -> Result<()> {
         
         // Create schema and class definition
         let schema = Schema::from(schema_properties);
-        let mut class_def = ClassDefinition::new(class_name.clone(), schema);
+        let class_def = ClassDefinition::new(class_name.clone(), schema);
 
         // Apply the schema to the database
         class_def.apply_to_database(pool).await?;
