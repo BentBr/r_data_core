@@ -47,7 +47,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: ./docker/app/Dockerfile
     container_name: rdata_app
     depends_on:
       postgres:
