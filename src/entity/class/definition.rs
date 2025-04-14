@@ -1,134 +1,124 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use sqlx::{postgres::PgRow, FromRow, PgPool, Row};
+use sqlx::{postgres::PgRow, FromRow, Row};
 use std::collections::HashMap;
 use std::fmt::Debug;
-use utoipa::ToSchema;
-use uuid::timestamp;
-use uuid::{ContextV7, Uuid};
+use uuid::{timestamp::Timestamp, NoContext, Uuid};
 
 use super::schema::Schema;
-use crate::db::create_or_update_enum;
+// Temporarily comment out missing function
+// use crate::db::create_or_update_enum;
 use crate::entity::field::FieldDefinition;
-use crate::entity::AbstractRDataEntity;
-use crate::error::Result;
+use crate::error::{Error, Result};
 
-/// Class definition for a custom RDataEntity
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+/// A class definition that describes the structure of an entity type
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ClassDefinition {
-    /// Primary key
+    /// Unique identifier for this entity type definition
     pub uuid: Uuid,
-
-    /// Entity type (unique identifier)
+    /// Entity type name, must be unique in the database
     pub entity_type: String,
-
-    /// JSON schema for the class
+    /// Display name for this entity type
+    pub display_name: String,
+    /// Description of this entity type
+    pub description: Option<String>,
+    /// Group name for organizing entity types
+    pub group_name: Option<String>,
+    /// Whether this entity type can have children
+    pub allow_children: bool,
+    /// Icon for this entity type
+    pub icon: Option<String>,
+    /// Field definitions for this entity type
+    #[serde(default)]
+    pub fields: Vec<FieldDefinition>,
+    /// Schema for this entity type
+    #[serde(default)]
     pub schema: Schema,
-
-    /// When the class was created
+    /// Created at timestamp
     pub created_at: DateTime<Utc>,
-
-    /// When the class was last updated
+    /// Updated at timestamp
     pub updated_at: DateTime<Utc>,
+    /// Created by user uuid
+    pub created_by: Option<Uuid>,
+    /// Updated by user uuid
+    pub updated_by: Option<Uuid>,
+    /// Whether this entity type is published
+    pub published: bool,
+    /// Version of this entity type
+    pub version: i32,
 }
 
 // Implement FromRow for ClassDefinition
 impl<'r> FromRow<'r, PgRow> for ClassDefinition {
     fn from_row(row: &'r PgRow) -> std::result::Result<Self, sqlx::Error> {
-        // Extract the base entity data
-        let uuid = row.try_get::<String, _>("uuid")?;
-        let path = row.try_get::<String, _>("path")?;
-        let created_at = row
-            .try_get::<sqlx::types::chrono::DateTime<sqlx::types::chrono::Utc>, _>("created_at")?;
-        let updated_at = row
-            .try_get::<sqlx::types::chrono::DateTime<sqlx::types::chrono::Utc>, _>("updated_at")?;
-        let created_by = row.try_get::<Option<Uuid>, _>("created_by").unwrap_or(None);
-        let updated_by = row.try_get::<Option<Uuid>, _>("updated_by").unwrap_or(None);
-        let published = row.try_get::<bool, _>("published").unwrap_or(false);
-        let version = row.try_get::<i32, _>("version").unwrap_or(1);
+        let fields: Vec<FieldDefinition> = serde_json::from_value(row.try_get("fields")?)
+            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
 
-        // Extract class definition specific fields
-        let class_name = row.try_get::<String, _>("class_name")?;
-        let display_name = row.try_get::<String, _>("display_name")?;
-        let description = row
-            .try_get::<Option<String>, _>("description")
-            .unwrap_or(None);
-        let group = row
-            .try_get::<Option<String>, _>("group_name")
-            .unwrap_or(None);
-        let allow_children = row.try_get::<bool, _>("allow_children").unwrap_or(false);
-        let icon = row.try_get::<Option<String>, _>("icon").unwrap_or(None);
-
-        // Fields are stored as JSON
-        let fields_json = row
-            .try_get::<serde_json::Value, _>("fields")
-            .unwrap_or(serde_json::json!([]));
-
-        let fields: Vec<FieldDefinition> =
-            serde_json::from_value(fields_json).map_err(|e| sqlx::Error::ColumnDecode {
-                index: "fields".to_string(),
-                source: Box::new(e),
-            })?;
-
-        // Get custom fields as JSON Value first
-        let custom_fields_json = row
-            .try_get::<serde_json::Value, _>("custom_fields")
-            .unwrap_or(serde_json::json!({}));
-
-        // Convert to HashMap
-        let custom_fields =
-            serde_json::from_value(custom_fields_json).unwrap_or_else(|_| HashMap::new());
-
-        // Build and return the entity
-        let base = AbstractRDataEntity {
-            uuid: Uuid::parse_str(&uuid).map_err(|e| sqlx::Error::ColumnDecode {
-                index: "uuid".to_string(),
-                source: Box::new(e),
-            })?,
-            path,
-            created_at,
-            updated_at,
-            created_by,
-            updated_by,
-            published,
-            version,
-            custom_fields,
-        };
-
-        // Convert fields to proper schema properties format
+        // Create schema
         let mut properties = HashMap::new();
         properties.insert(
-            "properties".to_string(),
-            serde_json::to_value(fields).unwrap_or(serde_json::json!([])),
+            "entity_type".to_string(),
+            JsonValue::String(row.try_get::<String, _>("entity_type")?),
         );
-
-        let context = ContextV7::new();
-        let ts = timestamp::Timestamp::now(&context);
+        let schema = Schema::new(properties);
 
         Ok(ClassDefinition {
-            uuid: Uuid::new_v7(ts),
-            entity_type: class_name,
-            schema: Schema::new(properties),
-            created_at,
-            updated_at,
+            uuid: row.try_get("uuid")?,
+            entity_type: row.try_get("entity_type")?,
+            display_name: row.try_get("display_name")?,
+            description: row.try_get("description")?,
+            group_name: row.try_get("group_name")?,
+            allow_children: row.try_get("allow_children")?,
+            icon: row.try_get("icon")?,
+            fields,
+            schema,
+            created_at: row.try_get("created_at")?,
+            updated_at: row.try_get("updated_at")?,
+            created_by: row.try_get("created_by")?,
+            updated_by: row.try_get("updated_by")?,
+            published: row.try_get("published")?,
+            version: row.try_get("version")?,
         })
     }
 }
 
 impl ClassDefinition {
-    /// Create a new class definition
-    pub fn new(entity_type: String, schema: Schema) -> Self {
+    /// Create a new entity type definition
+    pub fn new(
+        entity_type: String,
+        display_name: String,
+        description: Option<String>,
+        group_name: Option<String>,
+        allow_children: bool,
+        icon: Option<String>,
+        fields: Vec<FieldDefinition>,
+    ) -> Self {
         let now = Utc::now();
-        let context = ContextV7::new();
-        let ts = timestamp::Timestamp::now(&context);
 
-        Self {
-            uuid: Uuid::new_v7(ts),
+        // Create a properties map for the schema
+        let mut properties = HashMap::new();
+        properties.insert(
+            "entity_type".to_string(),
+            JsonValue::String(entity_type.clone()),
+        );
+
+        ClassDefinition {
+            uuid: Uuid::new_v7(Timestamp::now(&NoContext)),
             entity_type,
-            schema,
+            display_name,
+            description,
+            group_name,
+            allow_children,
+            icon,
+            fields,
+            schema: Schema::new(properties),
             created_at: now,
             updated_at: now,
+            created_by: None,
+            updated_by: None,
+            published: false,
+            version: 1,
         }
     }
 
@@ -137,50 +127,83 @@ impl ClassDefinition {
         format!("{}_entities", self.entity_type.to_lowercase())
     }
 
-    /// Add a new enum with values
-    pub async fn add_enum_with_values(
-        &self,
-        db: &PgPool,
-        enum_name: &str,
-        values: &[String],
-    ) -> Result<()> {
-        // Create or update the enum type
-        crate::db::create_or_update_enum(db, enum_name, values).await?;
+    /// Get field definition by name
+    pub fn get_field(&self, name: &str) -> Option<&FieldDefinition> {
+        self.fields.iter().find(|f| f.name == name)
+    }
+
+    /// Get all field definitions
+    pub fn get_fields(&self) -> &Vec<FieldDefinition> {
+        &self.fields
+    }
+
+    /// Add field definition
+    pub fn add_field(&mut self, field_definition: FieldDefinition) -> Result<()> {
+        if self.get_field(&field_definition.name).is_some() {
+            return Err(Error::FieldAlreadyExists(field_definition.name));
+        }
+        self.fields.push(field_definition);
         Ok(())
     }
 
-    /// Add an enum field to the database with its values
-    pub async fn add_enum_field(
-        &self,
-        db: &PgPool,
-        _field_name: &str,
-        enum_name: &str,
-        values: &[String],
-    ) -> Result<()> {
-        // Add enum type first
-        create_or_update_enum(db, enum_name, values).await
+    /// Update field definition
+    pub fn update_field(&mut self, field_definition: FieldDefinition) -> Result<()> {
+        let field_idx = self
+            .fields
+            .iter()
+            .position(|f| f.name == field_definition.name);
+
+        match field_idx {
+            Some(idx) => {
+                self.fields[idx] = field_definition;
+                Ok(())
+            }
+            None => Err(Error::FieldNotFound(field_definition.name)),
+        }
     }
 
-    /// Get a field definition by name
-    pub fn get_field(&self, field_name: &str) -> Option<&JsonValue> {
-        if let Some(properties) = self.schema.properties.get("properties") {
-            if let Some(props) = properties.as_object() {
-                return props.get(field_name);
+    /// Remove field definition
+    pub fn remove_field(&mut self, name: &str) -> Result<()> {
+        let field_idx = self.fields.iter().position(|f| f.name == name);
+
+        match field_idx {
+            Some(idx) => {
+                self.fields.remove(idx);
+                Ok(())
             }
+            None => Err(Error::FieldNotFound(name.to_string())),
         }
-        None
     }
 
-    /// Get all fields in this class
-    pub fn get_fields(&self) -> Vec<&FieldDefinition> {
-        let result = Vec::new();
-        if let Some(properties) = self.schema.properties.get("properties") {
-            if let Some(props) = properties.as_object() {
-                // This should properly extract field definitions, but for now just return empty
-                // as we need to adjust how fields are stored
-            }
+    /// Validate the entity type definition
+    pub fn validate(&self) -> Result<()> {
+        // Check for required fields
+        if self.entity_type.is_empty() {
+            return Err(Error::ValidationFailed(
+                "Entity type cannot be empty".to_string(),
+            ));
         }
 
-        result
+        if self.display_name.is_empty() {
+            return Err(Error::ValidationFailed(
+                "Display name cannot be empty".to_string(),
+            ));
+        }
+
+        // Check for duplicate field names
+        let mut field_names = std::collections::HashSet::new();
+        for field in &self.fields {
+            if !field_names.insert(&field.name) {
+                return Err(Error::ValidationFailed(format!(
+                    "Duplicate field name: {}",
+                    field.name
+                )));
+            }
+
+            // Validate each field
+            field.validate()?;
+        }
+
+        Ok(())
     }
 }

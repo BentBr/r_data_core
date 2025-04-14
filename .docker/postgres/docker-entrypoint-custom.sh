@@ -1,8 +1,24 @@
--- First, enable the standard UUID extension
+#!/bin/bash
+set -e
+
+# First, run the original entrypoint script with all arguments
+/usr/local/bin/docker-entrypoint.sh "$@" &
+
+# Wait for the database to start
+sleep 5
+
+# Wait more specifically for PostgreSQL to be ready
+until pg_isready -h localhost -U postgres; do
+  echo "Waiting for PostgreSQL to be ready..."
+  sleep 1
+done
+
+# Create SQL function definition
+cat > /tmp/uuid_v7.sql << 'EOF'
+-- Enable the standard UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Function to generate a UUID v7
--- This is a pure SQL implementation that doesn't require compilation
 CREATE OR REPLACE FUNCTION uuid_generate_v7()
 RETURNS uuid AS $$
 DECLARE
@@ -38,14 +54,21 @@ BEGIN
     RETURN v_result;
 END;
 $$ LANGUAGE plpgsql;
+EOF
 
--- Create a test to verify it's working
-DO $$
-BEGIN
-    -- Test UUID v7 generation
-    PERFORM uuid_generate_v7();
-    RAISE NOTICE 'UUID v7 function is working correctly';
-EXCEPTION 
-    WHEN OTHERS THEN
-        RAISE EXCEPTION 'Error testing UUID v7 function: %', SQLERRM;
-END $$; 
+# Install in postgres database
+echo "Installing UUID v7 function in postgres database..."
+psql -U postgres -f /tmp/uuid_v7.sql
+echo "UUID v7 function installed in postgres database."
+
+# Create rdata database if it doesn't exist
+echo "Creating rdata database if it doesn't exist..."
+psql -U postgres -c "CREATE DATABASE rdata WITH OWNER postgres;" || echo "Database rdata already exists."
+
+# Install in rdata database
+echo "Installing UUID v7 function in rdata database..."
+psql -U postgres -d rdata -f /tmp/uuid_v7.sql
+echo "UUID v7 function installed in rdata database."
+
+# Keep the script running to avoid container exit
+wait 

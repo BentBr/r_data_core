@@ -13,9 +13,9 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 // Import constants from the lib.rs
+use crate::DESCRIPTION;
 use crate::NAME;
 use crate::VERSION;
-use crate::DESCRIPTION;
 
 /// Register admin API routes
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
@@ -47,7 +47,10 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
 
 /// Get currently logged in user
 #[get("/user")]
-async fn get_current_user(data: web::Data<ApiState>, user_uuid: web::ReqData<Uuid>) -> impl Responder {
+async fn get_current_user(
+    data: web::Data<ApiState>,
+    user_uuid: web::ReqData<Uuid>,
+) -> impl Responder {
     let db_pool = &data.db_pool;
     let user_uuid = user_uuid.into_inner();
 
@@ -143,10 +146,8 @@ async fn create_class_definition(
                     }));
                 }
             };
-            
-            let apply_result = sqlx::query(&schema_sql)
-                .execute(db_pool)
-                .await;
+
+            let apply_result = sqlx::query(&schema_sql).execute(db_pool).await;
 
             match apply_result {
                 Ok(_) => HttpResponse::Created().json(serde_json::json!({
@@ -203,10 +204,8 @@ async fn update_class_definition(
                     }));
                 }
             };
-            
-            let apply_result = sqlx::query(&schema_sql)
-                .execute(db_pool)
-                .await;
+
+            let apply_result = sqlx::query(&schema_sql).execute(db_pool).await;
 
             match apply_result {
                 Ok(_) => {
@@ -674,7 +673,7 @@ pub async fn create_api_key(
     match sqlx::query!(
         r#"
         INSERT INTO api_keys 
-        (user_uuid, api_key, name, description, is_active, created_at, expires_at)
+        (user_uuid, key_hash, name, description, is_active, created_at, expires_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING uuid, created_at
         "#,

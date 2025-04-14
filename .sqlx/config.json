@@ -1,0 +1,8 @@
+{
+  "development": {
+    "database_url": "postgres://postgres:postgres@pg.rdatacore.docker:5432/rdata"
+  },
+  "test": {
+    "database_url": "postgres://postgres:postgres@pg.rdatacore.docker:5432/rdata"
+  }
+}

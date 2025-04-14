@@ -190,4 +190,55 @@ impl FieldDefinition {
             None, // TODO: Add enum name support
         )
     }
+
+    /// Validate the field definition itself
+    pub fn validate(&self) -> Result<()> {
+        // Name validation
+        if self.name.is_empty() {
+            return Err(Error::Validation("Field name cannot be empty".into()));
+        }
+
+        // Display name validation
+        if self.display_name.is_empty() {
+            return Err(Error::Validation(
+                "Field display name cannot be empty".into(),
+            ));
+        }
+
+        // Validate constraints based on field type
+        match self.field_type {
+            FieldType::String | FieldType::Text | FieldType::Wysiwyg => {
+                // String type validations
+                if let Some(min_length) = self.validation.min_length {
+                    if min_length < 0 {
+                        return Err(Error::Validation(format!(
+                            "Field '{}' min_length must be non-negative",
+                            self.name
+                        )));
+                    }
+                }
+                if let Some(max_length) = self.validation.max_length {
+                    if max_length < 0 {
+                        return Err(Error::Validation(format!(
+                            "Field '{}' max_length must be non-negative",
+                            self.name
+                        )));
+                    }
+                }
+                if let (Some(min), Some(max)) =
+                    (self.validation.min_length, self.validation.max_length)
+                {
+                    if min > max {
+                        return Err(Error::Validation(format!(
+                            "Field '{}' min_length cannot be greater than max_length",
+                            self.name
+                        )));
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        Ok(())
+    }
 }

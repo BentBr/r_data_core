@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::{PgTypeInfo, PgValueRef};
-use sqlx::{postgres::PgRow, Decode, FromRow, Row, Type};
 use sqlx::encode::{Encode, IsNull};
 use sqlx::postgres::PgArgumentBuffer;
+use sqlx::postgres::{PgTypeInfo, PgValueRef};
+use sqlx::{postgres::PgRow, Decode, FromRow, Row, Type};
 use std::collections::HashMap;
 use std::default::Default;
 use utoipa::ToSchema;
@@ -118,9 +118,9 @@ impl Encode<'_, sqlx::Postgres> for WorkflowStep {
         let json = serde_json::to_value(self).expect("Failed to serialize WorkflowStep to JSON");
         <serde_json::Value as Encode<sqlx::Postgres>>::encode(json, buf)
     }
-    
+
     fn size_hint(&self) -> usize {
-        4096  // Conservative size estimate
+        4096 // Conservative size estimate
     }
 }
 
@@ -260,7 +260,10 @@ impl WorkflowEntity {
             self.steps.0.remove(idx);
             Ok(())
         } else {
-            Err(Error::Workflow(format!("Step with UUID {} not found", uuid)))
+            Err(Error::Workflow(format!(
+                "Step with UUID {} not found",
+                uuid
+            )))
         }
     }
 
@@ -321,15 +324,15 @@ impl FromRow<'_, PgRow> for WorkflowEntity {
         let description = row.try_get("description")?;
         let trigger = row.try_get("trigger")?;
         let first_step = row.try_get("first_step")?;
-        
+
         // Get steps as JSON value and convert it
         let steps_json: serde_json::Value = row.try_get("steps")?;
-        let steps_vec: Vec<WorkflowStep> = serde_json::from_value(steps_json)
-            .map_err(|e| sqlx::Error::ColumnDecode {
+        let steps_vec: Vec<WorkflowStep> =
+            serde_json::from_value(steps_json).map_err(|e| sqlx::Error::ColumnDecode {
                 index: "steps".to_string(),
                 source: Box::new(e),
             })?;
-        
+
         let enabled = row.try_get("enabled")?;
         let timeout_seconds = row.try_get("timeout_seconds")?;
         let max_retries = row.try_get("max_retries")?;

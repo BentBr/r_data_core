@@ -5,12 +5,25 @@ A robust backend for flexible data management with dynamic entity system, workfl
 ## Features
 
 - Dynamic entity system for flexible data modeling
-- Workflow management
+- Class definitions with customizable fields
+- Entity registry with field validation
 - API authentication (JWT and API key)
 - Redis caching
 - PostgreSQL database support
 - Migration system
 - API documentation at `/api/docs`
+
+## Database Schema
+
+The project uses a dynamic entity model with the following key tables:
+
+- `class_definitions`: Defines entity types with their field definitions
+- `entities_registry`: Stores all entities with their field data in a JSONB column
+- `entity_versions`: Tracks changes to entities for versioning
+- `entity_registry`: Registry of entity types (metadata)
+- `admin_users`: Admin user accounts
+- `api_keys`: API keys for authentication
+- `permission_schemes`: Permission definitions
 
 ## Requirements
 

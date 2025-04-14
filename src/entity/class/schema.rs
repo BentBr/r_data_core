@@ -10,6 +10,14 @@ pub struct Schema {
     pub properties: HashMap<String, JsonValue>,
 }
 
+impl Default for Schema {
+    fn default() -> Self {
+        Self {
+            properties: HashMap::new(),
+        }
+    }
+}
+
 impl Schema {
     pub fn new(properties: HashMap<String, JsonValue>) -> Self {
         Self { properties }
@@ -73,7 +81,7 @@ impl Schema {
     pub fn generate_sql_schema(&self) -> Result<String> {
         let table_name = self.get_table_name();
         let columns = self.get_column_definitions()?;
-        
+
         let mut sql = format!("CREATE TABLE IF NOT EXISTS {} (\n", table_name);
         sql.push_str("    uuid UUID PRIMARY KEY,\n");
 
@@ -115,7 +123,7 @@ impl ClassDefinition {
         sql.push_str("    updated_by UUID,\n");
         sql.push_str("    published BOOLEAN NOT NULL DEFAULT FALSE,\n");
         sql.push_str("    version INTEGER NOT NULL DEFAULT 1,\n");
-        
+
         // Add custom_fields JSONB for any additional fields
         sql.push_str("    custom_fields JSONB NOT NULL DEFAULT '{}'\n");
         sql.push_str(");\n");
@@ -126,7 +134,7 @@ impl ClassDefinition {
             self.get_table_name(),
             self.get_table_name()
         ));
-        
+
         sql
     }
 

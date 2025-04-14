@@ -56,7 +56,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
     // Register API documentation endpoints
     cfg.service(admin_api_docs);
     cfg.service(entities_api_docs);
-    
+
     // Register Swagger UI
     let ui = SwaggerUi::new("/api/docs/{_:.*}");
     cfg.service(ui);

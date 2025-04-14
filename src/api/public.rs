@@ -2,7 +2,7 @@ use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use chrono;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::{Column, Row};
+use sqlx::{postgres::PgRow, Column, FromRow, Row};
 use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -99,21 +99,23 @@ async fn get_entity(data: web::Data<ApiState>, path: web::Path<(String, Uuid)>) 
     let pool = &data.db_pool;
 
     // Get class definition to understand table structure
-    let class_def_result: RdataResult<Option<ClassDefinition>> = sqlx::query_as!(
-        ClassDefinition,
-        "SELECT * FROM class_definitions WHERE entity_type = $1",
-        entity_type
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(Error::Database);
+    let class_def_result: RdataResult<Option<ClassDefinition>> =
+        sqlx::query("SELECT * FROM class_definitions WHERE entity_type = $1")
+            .bind(entity_type.clone())
+            .map(|row: PgRow| {
+                // Use the FromRow trait to convert the row
+                ClassDefinition::from_row(&row).expect("Error converting row to ClassDefinition")
+            })
+            .fetch_optional(pool)
+            .await
+            .map_err(Error::Database);
 
     let class_def = match &class_def_result {
         Ok(Some(def)) => Some(Arc::new(def.clone())),
         Ok(None) => {
             // Check if it's a system entity
             let system_entity_result = sqlx::query!(
-                "SELECT name FROM entities WHERE name = $1 AND is_system = true",
+                "SELECT entity_type FROM entity_registry WHERE entity_type = $1",
                 entity_type
             )
             .fetch_optional(pool)
@@ -198,7 +200,21 @@ async fn get_entity(data: web::Data<ApiState>, path: web::Path<(String, Uuid)>) 
                 data.insert(column, value);
             }
 
-            let entity = DynamicEntity::from_data(entity_type, data, class_def);
+            let entity = match class_def {
+                Some(cd) => DynamicEntity::from_data(entity_type, data, cd),
+                None => {
+                    let min_class_def = ClassDefinition::new(
+                        entity_type.clone(),
+                        entity_type.clone(), 
+                        None, 
+                        None,
+                        false,
+                        None,
+                        Vec::new(),
+                    );
+                    DynamicEntity::from_data(entity_type, data, Arc::new(min_class_def))
+                }
+            };
             HttpResponse::Ok().json(entity)
         }
         Ok(None) => HttpResponse::NotFound().json(serde_json::json!({
@@ -221,14 +237,16 @@ async fn list_entities(
     let pool = &data.db_pool;
 
     // Get class definition
-    let class_def_result: RdataResult<Option<ClassDefinition>> = sqlx::query_as!(
-        ClassDefinition,
-        "SELECT * FROM class_definitions WHERE entity_type = $1",
-        entity_type
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(Error::Database);
+    let class_def_result: RdataResult<Option<ClassDefinition>> =
+        sqlx::query("SELECT * FROM class_definitions WHERE entity_type = $1")
+            .bind(entity_type.clone())
+            .map(|row: PgRow| {
+                // Use the FromRow trait to convert the row
+                ClassDefinition::from_row(&row).expect("Error converting row to ClassDefinition")
+            })
+            .fetch_optional(pool)
+            .await
+            .map_err(Error::Database);
 
     // Build table name
     let table_name = match &class_def_result {
@@ -239,7 +257,7 @@ async fn list_entities(
         Ok(None) => {
             // Check if it's a system entity
             let system_entity_result = sqlx::query!(
-                "SELECT name FROM entities WHERE name = $1 AND is_system = true",
+                "SELECT entity_type FROM entity_registry WHERE entity_type = $1",
                 entity_type
             )
             .fetch_optional(pool)
@@ -436,7 +454,22 @@ async fn list_entities(
                         data.insert(column, value);
                     }
 
-                    DynamicEntity::from_data(entity_type.clone(), data, class_def.clone())
+                    // Use if let pattern to safely handle the Option
+                    if let Some(cd) = &class_def_result.as_ref().ok().and_then(|r| r.as_ref()) {
+                        DynamicEntity::from_data(entity_type.clone(), data, Arc::new((*cd).clone()))
+                    } else {
+                        // Create a minimal class definition if none exists
+                        let min_class_def = ClassDefinition::new(
+                            entity_type.clone(),
+                            entity_type.clone(),
+                            None,
+                            None,
+                            false,
+                            None,
+                            Vec::new(),
+                        );
+                        DynamicEntity::from_data(entity_type.clone(), data, Arc::new(min_class_def))
+                    }
                 })
                 .collect();
 
@@ -465,21 +498,23 @@ async fn create_entity(
     let pool = &data.db_pool;
 
     // Get class definition to understand table structure
-    let class_def_result: RdataResult<Option<ClassDefinition>> = sqlx::query_as!(
-        ClassDefinition,
-        "SELECT * FROM class_definitions WHERE entity_type = $1",
-        entity_type
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(Error::Database);
+    let class_def_result: RdataResult<Option<ClassDefinition>> =
+        sqlx::query("SELECT * FROM class_definitions WHERE entity_type = $1")
+            .bind(entity_type.clone())
+            .map(|row: PgRow| {
+                // Use the FromRow trait to convert the row
+                ClassDefinition::from_row(&row).expect("Error converting row to ClassDefinition")
+            })
+            .fetch_optional(pool)
+            .await
+            .map_err(Error::Database);
 
     let class_def = match &class_def_result {
         Ok(Some(def)) => Some(Arc::new(def.clone())),
         Ok(None) => {
             // Check if it's a system entity
             let system_entity_result = sqlx::query!(
-                "SELECT name FROM entities WHERE name = $1 AND is_system = true",
+                "SELECT entity_type FROM entity_registry WHERE entity_type = $1",
                 entity_type
             )
             .fetch_optional(pool)
@@ -507,7 +542,21 @@ async fn create_entity(
     };
 
     // Create dynamic entity
-    let mut entity = DynamicEntity::new(entity_type.clone(), class_def.clone());
+    let mut entity = if let Some(cd) = class_def.clone() {
+        DynamicEntity::new(entity_type.clone(), cd)
+    } else {
+        // Create a minimal class definition if none exists
+        let min_class_def = ClassDefinition::new(
+            entity_type.clone(),
+            entity_type.clone(),
+            None,
+            None,
+            false,
+            None,
+            Vec::new(),
+        );
+        DynamicEntity::new(entity_type.clone(), Arc::new(min_class_def))
+    };
 
     // Validate and populate fields from request data
     for (key, value) in entity_data.into_inner() {
@@ -532,7 +581,7 @@ async fn create_entity(
     let mut placeholders = Vec::new();
     let mut values = Vec::new();
 
-    for (i, (key, value)) in entity.data.iter().enumerate() {
+    for (i, (key, value)) in entity.field_data.iter().enumerate() {
         // Skip custom_fields as it's handled separately
         if key == "custom_fields" {
             columns.push(key.clone());
@@ -646,7 +695,21 @@ async fn create_entity(
                 data.insert(column, value);
             }
 
-            let entity = DynamicEntity::from_data(entity_type, data, class_def);
+            let entity = match class_def {
+                Some(cd) => DynamicEntity::from_data(entity_type, data, cd),
+                None => {
+                    let min_class_def = ClassDefinition::new(
+                        entity_type.clone(),
+                        entity_type.clone(), 
+                        None, 
+                        None,
+                        false,
+                        None,
+                        Vec::new(),
+                    );
+                    DynamicEntity::from_data(entity_type, data, Arc::new(min_class_def))
+                }
+            };
             HttpResponse::Created().json(entity)
         }
         Ok(None) => HttpResponse::InternalServerError().json(serde_json::json!({
@@ -678,21 +741,23 @@ async fn update_entity(
     let pool = &data.db_pool;
 
     // Get class definition
-    let class_def_result: RdataResult<Option<ClassDefinition>> = sqlx::query_as!(
-        ClassDefinition,
-        "SELECT * FROM class_definitions WHERE entity_type = $1",
-        entity_type
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(Error::Database);
+    let class_def_result: RdataResult<Option<ClassDefinition>> =
+        sqlx::query("SELECT * FROM class_definitions WHERE entity_type = $1")
+            .bind(entity_type.clone())
+            .map(|row: PgRow| {
+                // Use the FromRow trait to convert the row
+                ClassDefinition::from_row(&row).expect("Error converting row to ClassDefinition")
+            })
+            .fetch_optional(pool)
+            .await
+            .map_err(Error::Database);
 
     let class_def = match &class_def_result {
         Ok(Some(def)) => Some(Arc::new(def.clone())),
         Ok(None) => {
             // Check if it's a system entity
             let system_entity_result = sqlx::query!(
-                "SELECT name FROM entities WHERE name = $1 AND is_system = true",
+                "SELECT entity_type FROM entity_registry WHERE entity_type = $1",
                 entity_type
             )
             .fetch_optional(pool)
@@ -778,7 +843,7 @@ async fn update_entity(
                 data.insert(column, value);
             }
 
-            DynamicEntity::from_data(entity_type.clone(), data, class_def.clone())
+            DynamicEntity::from_data(entity_type.clone(), data, class_def.clone().unwrap())
         }
         Ok(None) => {
             return HttpResponse::NotFound().json(serde_json::json!({
@@ -792,14 +857,28 @@ async fn update_entity(
         }
     };
 
-    // Create a new entity based on existing one with updates
+    // Now update the entity with the new data
     let mut updated_entity = existing_entity;
-    updated_entity.definition = class_def.clone();
+    if let Some(cd) = class_def.clone() {
+        updated_entity.definition = cd;
+    } else {
+        // Create a minimal class definition if none exists
+        let min_class_def = ClassDefinition::new(
+            entity_type.clone(),
+            entity_type.clone(),
+            None,
+            None,
+            false,
+            None,
+            Vec::new(),
+        );
+        updated_entity.definition = Arc::new(min_class_def);
+    }
 
     // Update fields from request data
     for (key, value) in entity_data.into_inner() {
-        // Don't allow changing id, uuid, created_at, or version
-        if ["id", "uuid", "created_at", "version"].contains(&key.as_str()) {
+        // Don't allow changing uuid, created_at, or version
+        if ["uuid", "created_at", "version"].contains(&key.as_str()) {
             continue;
         }
 
@@ -826,9 +905,9 @@ async fn update_entity(
     let mut set_clauses = Vec::new();
     let mut values = Vec::new();
 
-    for (i, (key, value)) in updated_entity.data.iter().enumerate() {
-        // Skip id, uuid, created_at as they shouldn't be updated
-        if ["id", "uuid", "created_at"].contains(&key.as_str()) {
+    for (i, (key, value)) in updated_entity.field_data.iter().enumerate() {
+        // Skip uuid and created_at as they shouldn't be updated
+        if ["uuid", "created_at"].contains(&key.as_str()) {
             continue;
         }
 
@@ -934,7 +1013,21 @@ async fn update_entity(
                 data.insert(column, value);
             }
 
-            let entity = DynamicEntity::from_data(entity_type, data, class_def);
+            let entity = match class_def {
+                Some(cd) => DynamicEntity::from_data(entity_type, data, cd),
+                None => {
+                    let min_class_def = ClassDefinition::new(
+                        entity_type.clone(),
+                        entity_type.clone(), 
+                        None, 
+                        None,
+                        false,
+                        None,
+                        Vec::new(),
+                    );
+                    DynamicEntity::from_data(entity_type, data, Arc::new(min_class_def))
+                }
+            };
             HttpResponse::Ok().json(entity)
         }
         Ok(None) => HttpResponse::NotFound().json(serde_json::json!({
@@ -956,14 +1049,16 @@ async fn delete_entity(
     let pool = &data.db_pool;
 
     // Get class definition
-    let class_def_result: RdataResult<Option<ClassDefinition>> = sqlx::query_as!(
-        ClassDefinition,
-        "SELECT * FROM class_definitions WHERE entity_type = $1",
-        entity_type
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(Error::Database);
+    let class_def_result: RdataResult<Option<ClassDefinition>> =
+        sqlx::query("SELECT * FROM class_definitions WHERE entity_type = $1")
+            .bind(entity_type.clone())
+            .map(|row: PgRow| {
+                // Use the FromRow trait to convert the row
+                ClassDefinition::from_row(&row).expect("Error converting row to ClassDefinition")
+            })
+            .fetch_optional(pool)
+            .await
+            .map_err(Error::Database);
 
     // Build table name
     let table_name = match &class_def_result {
@@ -974,7 +1069,7 @@ async fn delete_entity(
         Ok(None) => {
             // Check if it's a system entity
             let system_entity_result = sqlx::query!(
-                "SELECT name FROM entities WHERE name = $1 AND is_system = true",
+                "SELECT entity_type FROM entity_registry WHERE entity_type = $1",
                 entity_type
             )
             .fetch_optional(pool)
@@ -1033,14 +1128,16 @@ async fn query_entities(
     let pool = &data.db_pool;
 
     // Get class definition
-    let class_def_result: RdataResult<Option<ClassDefinition>> = sqlx::query_as!(
-        ClassDefinition,
-        "SELECT * FROM class_definitions WHERE entity_type = $1",
-        entity_type
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(Error::Database);
+    let class_def_result: RdataResult<Option<ClassDefinition>> =
+        sqlx::query("SELECT * FROM class_definitions WHERE entity_type = $1")
+            .bind(entity_type.clone())
+            .map(|row: PgRow| {
+                // Use the FromRow trait to convert the row
+                ClassDefinition::from_row(&row).expect("Error converting row to ClassDefinition")
+            })
+            .fetch_optional(pool)
+            .await
+            .map_err(Error::Database);
 
     // Build table name
     let table_name = match &class_def_result {
@@ -1051,7 +1148,7 @@ async fn query_entities(
         Ok(None) => {
             // Check if it's a system entity
             let system_entity_result = sqlx::query!(
-                "SELECT name FROM entities WHERE name = $1 AND is_system = true",
+                "SELECT entity_type FROM entity_registry WHERE entity_type = $1",
                 entity_type
             )
             .fetch_optional(pool)
@@ -1248,7 +1345,22 @@ async fn query_entities(
                         data.insert(column, value);
                     }
 
-                    DynamicEntity::from_data(entity_type.clone(), data, class_def.clone())
+                    // Use if let pattern to safely handle the Option
+                    if let Some(cd) = &class_def_result.as_ref().ok().and_then(|r| r.as_ref()) {
+                        DynamicEntity::from_data(entity_type.clone(), data, Arc::new((*cd).clone()))
+                    } else {
+                        // Create a minimal class definition if none exists
+                        let min_class_def = ClassDefinition::new(
+                            entity_type.clone(),
+                            entity_type.clone(),
+                            None,
+                            None,
+                            false,
+                            None,
+                            Vec::new(),
+                        );
+                        DynamicEntity::from_data(entity_type.clone(), data, Arc::new(min_class_def))
+                    }
                 })
                 .collect();
 

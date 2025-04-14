@@ -174,12 +174,13 @@ pub async fn register(
     let db_pool = &data.db_pool;
 
     // Check if username or email already exists
-    let existing_user =
-        sqlx::query_as::<_, (i64,)>("SELECT id FROM admin_users WHERE username = $1 OR email = $2")
-            .bind(&register_req.username)
-            .bind(&register_req.email)
-            .fetch_optional(db_pool)
-            .await;
+    let existing_user = sqlx::query_as::<_, (i64,)>(
+        "SELECT uuid FROM admin_users WHERE username = $1 OR email = $2",
+    )
+    .bind(&register_req.username)
+    .bind(&register_req.email)
+    .fetch_optional(db_pool)
+    .await;
 
     if let Ok(Some(_)) = existing_user {
         return HttpResponse::BadRequest().json(serde_json::json!({
@@ -193,13 +194,13 @@ pub async fn register(
         register_req.email.clone(),
         "".to_string(), // Password hash will be set separately
         register_req.full_name.clone(),
-        UserRole::Viewer, // Default role
-        UserStatus::Active, // Default status
-        None, // No permission scheme initially
+        UserRole::Viewer,               // Default role
+        UserStatus::Active,             // Default status
+        None,                           // No permission scheme initially
         register_req.full_name.clone(), // Use full name as first name initially
-        "".to_string(), // Empty last name initially
-        true, // Active by default
-        false, // Not admin by default
+        "".to_string(),                 // Empty last name initially
+        true,                           // Active by default
+        false,                          // Not admin by default
     );
 
     // Set password

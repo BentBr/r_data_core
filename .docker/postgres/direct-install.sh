@@ -1,8 +1,12 @@
--- First, enable the standard UUID extension
+#!/bin/bash
+set -e
+
+# Define the SQL for the UUID v7 function
+cat > /tmp/uuid_v7.sql << 'EOF'
+-- Enable the standard UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Function to generate a UUID v7
--- This is a pure SQL implementation that doesn't require compilation
 CREATE OR REPLACE FUNCTION uuid_generate_v7()
 RETURNS uuid AS $$
 DECLARE
@@ -38,14 +42,12 @@ BEGIN
     RETURN v_result;
 END;
 $$ LANGUAGE plpgsql;
+EOF
 
--- Create a test to verify it's working
-DO $$
-BEGIN
-    -- Test UUID v7 generation
-    PERFORM uuid_generate_v7();
-    RAISE NOTICE 'UUID v7 function is working correctly';
-EXCEPTION 
-    WHEN OTHERS THEN
-        RAISE EXCEPTION 'Error testing UUID v7 function: %', SQLERRM;
-END $$; 
+# Create the function in the postgres database
+psql -U postgres -f /tmp/uuid_v7.sql
+
+# Test the function
+psql -U postgres -c "SELECT uuid_generate_v7() AS test_uuid;"
+
+echo "UUID v7 function installed successfully!" 

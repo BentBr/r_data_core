@@ -147,9 +147,7 @@ where
 
         let row = query.fetch_one(&self.pool).await.map_err(Error::Database)?;
 
-        let count: i64 = row
-            .try_get("count")
-            .map_err(Error::Database)?;
+        let count: i64 = row.try_get("count").map_err(Error::Database)?;
 
         Ok(count)
     }

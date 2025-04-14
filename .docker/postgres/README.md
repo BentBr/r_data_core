@@ -24,7 +24,7 @@ Our setup includes a robust mechanism to ensure UUID v7 functionality is availab
 When you run the application with Docker Compose, this custom image will be built and used automatically:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ## Using UUID v7 in SQL

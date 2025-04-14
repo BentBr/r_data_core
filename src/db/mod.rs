@@ -1,4 +1,3 @@
-pub mod migrations;
 mod repository;
 
 use sqlx::{postgres::PgPoolOptions, PgPool};
@@ -6,7 +5,6 @@ use std::time::Duration;
 
 use crate::config::DatabaseConfig;
 use crate::error::{Error, Result};
-pub use migrations::enum_types::create_or_update_enum;
 pub use repository::*;
 
 /// Database connection manager
@@ -26,11 +24,6 @@ impl Database {
             .map_err(Error::Database)?;
 
         Ok(Self { pool })
-    }
-
-    /// Run database migrations
-    pub async fn run_migrations(&self) -> Result<()> {
-        migrations::run_migrations(&self.pool).await
     }
 
     /// Check if the database connection is working

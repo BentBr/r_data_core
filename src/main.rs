@@ -4,7 +4,7 @@ use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 
 // Import library constants
-use r_data_core::{NAME, VERSION, DESCRIPTION};
+use r_data_core::{DESCRIPTION, NAME, VERSION};
 
 mod api;
 mod cache;
@@ -24,7 +24,6 @@ mod workflow;
 use crate::api::{admin, auth, docs, public, ApiState};
 use crate::cache::CacheManager;
 use crate::config::AppConfig;
-use crate::db::migrations;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -33,7 +32,7 @@ async fn main() -> std::io::Result<()> {
         Ok(cfg) => {
             info!("Configuration loaded successfully");
             cfg
-        },
+        }
         Err(e) => {
             error!("Failed to load configuration: {}", e);
             panic!("Failed to load configuration: {}", e);
@@ -53,13 +52,9 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to create database connection pool");
 
-    // Run migrations
-    if let Err(e) = migrations::run_migrations(&pool).await {
-        error!("Failed to run migrations: {}", e);
-        panic!("Failed to run migrations");
-    }
-
-    info!("Database migrations completed successfully");
+    // Run migrations using SQLx instead of custom Rust migrations
+    // Note: Run SQLx migrations with `cargo sqlx migrate run` before starting the application
+    info!("Using SQLx migrations (run with 'cargo sqlx migrate run')");
 
     // Initialize cache manager
     let redis_url = std::env::var("REDIS_URL").ok();
@@ -109,12 +104,12 @@ async fn main() -> std::io::Result<()> {
             .configure(auth::register_routes)
             .configure(admin::register_routes)
             .configure(public::register_routes);
-            
+
         // Only include Swagger UI if enabled in config
         if config.api.enable_docs {
             app = app.configure(docs::register_routes);
         }
-        
+
         app
     })
     .bind(bind_address)?

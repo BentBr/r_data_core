@@ -39,6 +39,12 @@ pub enum Error {
     #[error("Field not found: {0}")]
     FieldNotFound(String),
 
+    #[error("Field already exists: {0}")]
+    FieldAlreadyExists(String),
+
+    #[error("Validation failed: {0}")]
+    ValidationFailed(String),
+
     #[error("Field conversion error for {0}: {1}")]
     FieldConversion(String, String),
 

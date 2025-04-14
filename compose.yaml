@@ -1,7 +1,7 @@
 services:
   postgres:
     build:
-      context: ./docker/postgres
+      context: ./.docker/postgres
       dockerfile: Dockerfile
     container_name: rdata_postgres
     environment:
@@ -47,7 +47,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: ./docker/app/Dockerfile
+      dockerfile: ./.docker/app/Dockerfile
     container_name: rdata_app
     depends_on:
       postgres:

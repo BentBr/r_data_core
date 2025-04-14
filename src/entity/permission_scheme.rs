@@ -111,10 +111,7 @@ impl PermissionScheme {
         }
 
         // Get or create the role permissions list
-        let permissions = self
-            .role_permissions
-            .entry(role.to_string())
-            .or_default();
+        let permissions = self.role_permissions.entry(role.to_string()).or_default();
 
         // Check if permission already exists
         if permissions.contains(&permission) {
