@@ -21,7 +21,6 @@ pub use workflow::WorkflowEntity;
 pub use dynamic_entity::DynamicEntity;
 //pub use value;
 pub use class::ClassDefinition;
-pub use field::FieldType;
 
 use crate::error::Result;
 use std::collections::HashMap;

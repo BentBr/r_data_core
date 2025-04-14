@@ -1,12 +1,12 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT name FROM entities WHERE name = $1 AND is_system = true",
+  "query": "SELECT entity_type FROM entity_registry WHERE entity_type = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "name",
-        "type_info": "Text"
+        "name": "entity_type",
+        "type_info": "Varchar"
       }
     ],
     "parameters": {
@@ -18,5 +18,5 @@
       false
     ]
   },
-  "hash": "f682d1b8ce786d4cac73f9780ea7eb36369709edbde0427ba5751fcb35f7e02b"
+  "hash": "1e9f1e31941161bd4552aa08aa215bf1cd2c7f72239d224766a189906d8a0315"
 }

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE api_keys SET is_active = FALSE WHERE uuid = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "db351ad314c645f22f05d3e90afe55e5907cf2541d50f2fe3eade2cc291ad02a"
+}

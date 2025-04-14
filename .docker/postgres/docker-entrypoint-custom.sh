@@ -4,14 +4,14 @@ set -e
 # First, run the original entrypoint script with all arguments
 /usr/local/bin/docker-entrypoint.sh "$@" &
 
-# Wait for the database to start
-sleep 5
-
 # Wait more specifically for PostgreSQL to be ready
 until pg_isready -h localhost -U postgres; do
   echo "Waiting for PostgreSQL to be ready..."
   sleep 1
 done
+
+# Wait for the database to start
+sleep 5
 
 # Create SQL function definition
 cat > /tmp/uuid_v7.sql << 'EOF'

@@ -85,6 +85,18 @@ cargo sqlx migrate run
 cargo run
 ```
 
+
+renew database:
+```bash
+docker compose down -v && docker compose up -d redis postgres && cargo sqlx migrate run
+```
+
+update sqlx:
+```bash
+cargo sqlx prepare
+```
+
+
 ### Important Note about SQLx
 
 This project uses SQLx, which performs compile-time query verification. This means:
@@ -105,38 +117,7 @@ http://rdatacore.docker/api/docs
 
 ### Available APIs
 
-#### Authentication
-- `POST /api/auth/login` - Login with username and password
-- `POST /api/auth/refresh` - Refresh JWT token
-- `POST /api/auth/logout` - Logout and invalidate token
-
-#### Admin API
-- `GET /api/admin/users` - List admin users
-- `POST /api/admin/users` - Create admin user
-- `GET /api/admin/users/{id}` - Get admin user details
-- `PUT /api/admin/users/{id}` - Update admin user
-- `DELETE /api/admin/users/{id}` - Delete admin user
-
-#### API Keys
-- `GET /api/admin/api-keys` - List API keys
-- `POST /api/admin/api-keys` - Create API key
-- `GET /api/admin/api-keys/{id}` - Get API key details
-- `PUT /api/admin/api-keys/{id}` - Update API key
-- `DELETE /api/admin/api-keys/{id}` - Delete API key
-
-#### Class Definitions
-- `GET /api/admin/class-definitions` - List class definitions
-- `POST /api/admin/class-definitions` - Create class definition
-- `GET /api/admin/class-definitions/{id}` - Get class definition
-- `PUT /api/admin/class-definitions/{id}` - Update class definition
-- `DELETE /api/admin/class-definitions/{id}` - Delete class definition
-
-#### Dynamic Entities
-- `GET /api/entities/{type}` - List entities of a type
-- `POST /api/entities/{type}` - Create entity
-- `GET /api/entities/{type}/{id}` - Get entity details
-- `PUT /api/entities/{type}/{id}` - Update entity
-- `DELETE /api/entities/{type}/{id}` - Delete entity
+todo: see the api docs
 
 ## Configuration
 
