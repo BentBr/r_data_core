@@ -88,7 +88,7 @@ cargo run
 
 renew database:
 ```bash
-docker compose down -v && docker compose up -d redis postgres && cargo sqlx migrate run
+docker compose down -v && docker compose up -d redis postgres && sleep 7 && cargo sqlx migrate run
 ```
 
 update sqlx:
