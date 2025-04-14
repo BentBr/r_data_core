@@ -122,11 +122,11 @@ impl AppConfig {
         };
 
         let api = ApiConfig {
-            host: env::var("API_HOST").unwrap_or_else(|_| "127.0.0.1".to_string()),
+            host: env::var("API_HOST").unwrap_or_else(|_| "rdatacore.docker".to_string()),
             port: env::var("API_PORT")
-                .unwrap_or_else(|_| "8080".to_string())
+                .unwrap_or_else(|_| "8888".to_string())
                 .parse()
-                .unwrap_or(8080),
+                .unwrap_or(8888),
             use_tls: env::var("API_USE_TLS")
                 .unwrap_or_else(|_| "false".to_string())
                 .parse()
@@ -191,76 +191,5 @@ impl AppConfig {
             workflow,
             log,
         })
-    }
-
-    /// Get development configuration
-    pub fn development() -> Self {
-        Self {
-            environment: "development".to_string(),
-            database: DatabaseConfig {
-                connection_string: "postgres://postgres:postgres@localhost/r_data_core_dev"
-                    .to_string(),
-                max_connections: 10,
-                connection_timeout: 30,
-            },
-            api: ApiConfig {
-                host: "127.0.0.1".to_string(),
-                port: 8080,
-                use_tls: false,
-                jwt_secret: "development_secret_key".to_string(),
-                jwt_expiration: 86400,
-                enable_docs: true,
-                cors_origins: vec!["*".to_string()],
-            },
-            cache: CacheConfig {
-                enabled: true,
-                ttl: 300,
-                max_size: 10000,
-            },
-            workflow: WorkflowConfig {
-                worker_threads: 4,
-                default_timeout: 300,
-                max_concurrent: 10,
-            },
-            log: LogConfig {
-                level: "debug".to_string(),
-                file: None,
-            },
-        }
-    }
-
-    /// Get production configuration template
-    pub fn production_template() -> Self {
-        Self {
-            environment: "production".to_string(),
-            database: DatabaseConfig {
-                connection_string: "postgres://user:password@host/r_data_core_prod".to_string(),
-                max_connections: 20,
-                connection_timeout: 30,
-            },
-            api: ApiConfig {
-                host: "0.0.0.0".to_string(),
-                port: 8080,
-                use_tls: true,
-                jwt_secret: "replace_with_secure_key".to_string(),
-                jwt_expiration: 3600,
-                enable_docs: false,
-                cors_origins: vec!["https://your-domain.com".to_string()],
-            },
-            cache: CacheConfig {
-                enabled: true,
-                ttl: 600,
-                max_size: 100000,
-            },
-            workflow: WorkflowConfig {
-                worker_threads: 8,
-                default_timeout: 600,
-                max_concurrent: 50,
-            },
-            log: LogConfig {
-                level: "info".to_string(),
-                file: Some("/var/log/r_data_core.log".to_string()),
-            },
-        }
     }
 }

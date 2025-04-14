@@ -2,6 +2,7 @@ use actix_web::{web, App, HttpServer};
 use log::{error, info};
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
+use actix_web::middleware::Logger;
 
 // Import library constants
 use r_data_core::{DESCRIPTION, NAME, VERSION};
@@ -98,6 +99,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         let mut app = App::new()
             .app_data(app_state.clone())
+            .wrap(Logger::new("%a %{User-Agent}i %r %s %D"))
             // Enable CORS
             .wrap(actix_cors::Cors::permissive())
             // Configure API routes

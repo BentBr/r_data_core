@@ -55,19 +55,17 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:postgres@pg.rdatacore.docker:5432/rdata
-      REDIS_URL: redis://redis:6379
-      SERVER_HOST: 0.0.0.0
-      SERVER_PORT: 80
-      RUST_LOG: info
+      RUST_LOG: debug
       VIRTUAL_HOST: .rdatacore.docker
       MAIN_SERVICE: app
-    ports:
+#    ports:
+#      - '80'
+    expose:
       - '80'
     restart: unless-stopped
     extra_hosts:
-      - "pg.rdatacore.docker:host-gateway"  # Points to host machine
-      - "host.docker.internal:host-gateway"
+      - "pg.rdatacore.docker:host-gateway"
+      #- "host.docker.internal:host-gateway"
     networks:
       default:
         aliases:
