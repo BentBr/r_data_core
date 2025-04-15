@@ -186,7 +186,7 @@ Swagger:
 
 Todos:
 ~~- fix sqlx topic~~
-- fix swagger
+~~- fix swagger~~
 - add routes
 - update readme
 - test admin routes

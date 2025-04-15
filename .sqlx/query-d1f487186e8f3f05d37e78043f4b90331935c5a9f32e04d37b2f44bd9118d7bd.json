@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT uuid, name, description, is_active, created_at, expires_at, last_used_at\n        FROM api_keys \n        WHERE uuid = $1\n        ORDER BY created_at DESC\n        ",
+  "query": "\n        SELECT uuid, name, description, is_active, created_at, expires_at, last_used_at\n        FROM api_keys \n        WHERE user_uuid = $1\n        ORDER BY created_at DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -54,5 +54,5 @@
       true
     ]
   },
-  "hash": "e0f3f46095e7a36b87f0a32d387268177b618470f1cdf975ca520775c3dd0489"
+  "hash": "d1f487186e8f3f05d37e78043f4b90331935c5a9f32e04d37b2f44bd9118d7bd"
 }

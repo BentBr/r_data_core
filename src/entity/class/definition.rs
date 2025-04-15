@@ -98,7 +98,7 @@ impl ClassDefinition {
         let now = Utc::now();
         let context = ContextV7::new();
         let ts = timestamp::Timestamp::now(&context);
-        
+
         // Create a properties map for the schema
         let mut properties = HashMap::new();
         properties.insert(

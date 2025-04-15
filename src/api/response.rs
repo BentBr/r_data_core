@@ -1,5 +1,5 @@
+use actix_web::{http::StatusCode, HttpResponse, ResponseError};
 use serde::{Deserialize, Serialize};
-use actix_web::{HttpResponse, ResponseError, http::StatusCode};
 use std::fmt;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -9,18 +9,18 @@ pub enum Status {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ApiResponse<T> 
-where 
-    T: Serialize
+pub struct ApiResponse<T>
+where
+    T: Serialize,
 {
     pub status: Status,
     pub message: String,
     pub data: Option<T>,
 }
 
-impl<T> ApiResponse<T> 
-where 
-    T: Serialize
+impl<T> ApiResponse<T>
+where
+    T: Serialize,
 {
     pub fn success(data: T) -> Self {
         Self {

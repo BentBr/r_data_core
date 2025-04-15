@@ -1,10 +1,10 @@
+use actix_cors::Cors;
 use actix_web::middleware::Logger;
-use actix_web::{web, App, HttpServer, HttpResponse};
+use actix_web::{web, App, HttpResponse, HttpServer};
 use log::{error, info};
+use serde_json;
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
-use serde_json;
-use actix_cors::Cors;
 
 // Import library constants
 use r_data_core::{DESCRIPTION, NAME, VERSION};
@@ -24,8 +24,8 @@ mod workflow;
 // mod versioning;
 // mod notification;
 
-use crate::api::{admin, auth, docs, public, ApiState, ApiResponse};
 use crate::api::middleware::ErrorHandlers;
+use crate::api::{admin, auth, docs, public, ApiResponse, ApiState};
 use crate::cache::CacheManager;
 use crate::config::AppConfig;
 
@@ -113,9 +113,9 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::new("%a %{User-Agent}i %r %s %D"))
             .wrap(cors)
             .configure(api::configure_app)
-            .default_service(
-                web::to(|| async { HttpResponse::NotFound().json(ApiResponse::<()>::not_found("Resource not found")) })
-            )
+            .default_service(web::to(|| async {
+                HttpResponse::NotFound().json(ApiResponse::<()>::not_found("Resource not found"))
+            }))
     })
     .bind(bind_address)?
     .run()

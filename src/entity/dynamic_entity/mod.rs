@@ -1,4 +1,4 @@
-mod entity;
+pub mod entity;
 mod repository;
 mod validator;
 
