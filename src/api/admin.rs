@@ -69,6 +69,22 @@ async fn get_current_user(
 }
 
 /// List class definitions
+#[utoipa::path(
+    get,
+    path = "/admin/api/v1/class-definitions",
+    tag = "admin",
+    params(
+        ("limit" = Option<i64>, Query, description = "Maximum number of items to return"),
+        ("offset" = Option<i64>, Query, description = "Number of items to skip")
+    ),
+    responses(
+        (status = 200, description = "List of class definitions", body = Vec<ClassDefinition>),
+        (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt_auth" = [])
+    )
+)]
 #[get("/class-definitions")]
 async fn list_class_definitions(
     data: web::Data<ApiState>,
@@ -93,6 +109,22 @@ async fn list_class_definitions(
 }
 
 /// Get a class definition by UUID
+#[utoipa::path(
+    get,
+    path = "/admin/api/v1/class-definitions/{uuid}",
+    tag = "admin",
+    params(
+        ("uuid" = Uuid, Path, description = "Class definition UUID")
+    ),
+    responses(
+        (status = 200, description = "Class definition found", body = ClassDefinition),
+        (status = 404, description = "Class definition not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt_auth" = [])
+    )
+)]
 #[get("/class-definitions/{uuid}")]
 async fn get_class_definition(
     data: web::Data<ApiState>,

@@ -171,17 +171,25 @@ sudo make install
 psql -U postgres -d your_database_name -c "CREATE EXTENSION pg_uuidv7;"
 ```
 
-For more information about our PostgreSQL setup with UUID v7, see the [documentation](./docker/postgres/README.md).
+For more information about our PostgresSQL setup with UUID v7, see the [documentation](./docker/postgres/README.md).
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
 
 
+Routes:
+Swagger:
+/api/docs/
+/admin/api/docs/
+
+
 Todos:
+~~- fix sqlx topic~~
 - fix swagger
 - add routes
 - update readme
 - test admin routes
 - check entities and respective columns - we need proper creation and not everything serialized.
 - check env vars
+- clippy

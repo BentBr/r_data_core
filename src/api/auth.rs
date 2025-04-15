@@ -70,6 +70,18 @@ pub struct AuthUserClaims {
 }
 
 /// Login endpoint
+#[utoipa::path(
+    post,
+    path = "/login",
+    tag = "auth",
+    request_body = LoginRequest,
+    responses(
+        (status = 200, description = "Login successful", body = LoginResponse),
+        (status = 401, description = "Invalid credentials"),
+        (status = 403, description = "Account locked or inactive"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 #[post("/login")]
 pub async fn login(
     data: web::Data<ApiState>,
@@ -165,6 +177,17 @@ pub struct RegisterRequest {
 }
 
 /// Register a new user endpoint
+#[utoipa::path(
+    post,
+    path = "/register",
+    tag = "auth",
+    request_body = RegisterRequest,
+    responses(
+        (status = 200, description = "Registration successful", body = LoginResponse),
+        (status = 400, description = "Username or email already exists"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 #[post("/register")]
 pub async fn register(
     data: web::Data<ApiState>,

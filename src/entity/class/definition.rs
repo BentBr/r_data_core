@@ -4,7 +4,8 @@ use serde_json::Value as JsonValue;
 use sqlx::{postgres::PgRow, FromRow, Row};
 use std::collections::HashMap;
 use std::fmt::Debug;
-use uuid::{timestamp::Timestamp, NoContext, Uuid};
+use uuid::timestamp;
+use uuid::{ContextV7, Uuid};
 
 use super::schema::Schema;
 // Temporarily comment out missing function
@@ -95,7 +96,9 @@ impl ClassDefinition {
         fields: Vec<FieldDefinition>,
     ) -> Self {
         let now = Utc::now();
-
+        let context = ContextV7::new();
+        let ts = timestamp::Timestamp::now(&context);
+        
         // Create a properties map for the schema
         let mut properties = HashMap::new();
         properties.insert(
@@ -104,7 +107,7 @@ impl ClassDefinition {
         );
 
         ClassDefinition {
-            uuid: Uuid::new_v7(Timestamp::now(&NoContext)),
+            uuid: Uuid::new_v7(ts),
             entity_type,
             display_name,
             description,

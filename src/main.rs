@@ -1,8 +1,10 @@
 use actix_web::middleware::Logger;
-use actix_web::{web, App, HttpServer};
+use actix_web::{web, App, HttpServer, HttpResponse};
 use log::{error, info};
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
+use serde_json;
+use actix_cors::Cors;
 
 // Import library constants
 use r_data_core::{DESCRIPTION, NAME, VERSION};
@@ -22,7 +24,8 @@ mod workflow;
 // mod versioning;
 // mod notification;
 
-use crate::api::{admin, auth, docs, public, ApiState};
+use crate::api::{admin, auth, docs, public, ApiState, ApiResponse};
+use crate::api::middleware::ErrorHandlers;
 use crate::cache::CacheManager;
 use crate::config::AppConfig;
 
@@ -97,22 +100,22 @@ async fn main() -> std::io::Result<()> {
 
     // Start HTTP server
     HttpServer::new(move || {
-        let mut app = App::new()
+        // Configure CORS
+        let cors = Cors::default()
+            .allow_any_origin()
+            .allow_any_method()
+            .allow_any_header()
+            .expose_headers(vec!["content-disposition"])
+            .max_age(3600);
+
+        App::new()
             .app_data(app_state.clone())
             .wrap(Logger::new("%a %{User-Agent}i %r %s %D"))
-            // Enable CORS
-            .wrap(actix_cors::Cors::permissive())
-            // Configure API routes
-            .configure(auth::register_routes)
-            .configure(admin::register_routes)
-            .configure(public::register_routes);
-
-        // Only include Swagger UI if enabled in config
-        if config.api.enable_docs {
-            app = app.configure(docs::register_routes);
-        }
-
-        app
+            .wrap(cors)
+            .configure(api::configure_app)
+            .default_service(
+                web::to(|| async { HttpResponse::NotFound().json(ApiResponse::<()>::not_found("Resource not found")) })
+            )
     })
     .bind(bind_address)?
     .run()

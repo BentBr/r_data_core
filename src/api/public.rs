@@ -54,6 +54,15 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
 }
 
 /// List all available entity types
+#[utoipa::path(
+    get,
+    path = "/api/v1/entities",
+    tag = "public",
+    responses(
+        (status = 200, description = "List of available entities", body = Vec<EntityTypeInfo>),
+        (status = 500, description = "Internal server error")
+    )
+)]
 #[get("/entities")]
 async fn list_available_entities(data: web::Data<ApiState>) -> impl Responder {
     let pool = &data.db_pool;
@@ -93,6 +102,20 @@ async fn list_available_entities(data: web::Data<ApiState>) -> impl Responder {
 }
 
 /// Get a specific entity by type and UUID
+#[utoipa::path(
+    get,
+    path = "/api/v1/{entity_type}/{uuid}",
+    tag = "public",
+    params(
+        ("entity_type" = String, Path, description = "Entity type"),
+        ("uuid" = Uuid, Path, description = "Entity UUID")
+    ),
+    responses(
+        (status = 200, description = "Entity found", body = DynamicEntity),
+        (status = 404, description = "Entity not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 #[get("/{entity_type}/{uuid}")]
 async fn get_entity(data: web::Data<ApiState>, path: web::Path<(String, Uuid)>) -> impl Responder {
     let (entity_type, uuid) = path.into_inner();
@@ -374,7 +397,7 @@ async fn list_entities(
         Err(e) => {
             return HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": format!("Failed to count entities: {}", e)
-            }))
+            }));
         }
     };
 
@@ -1265,7 +1288,7 @@ async fn query_entities(
         Err(e) => {
             return HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": format!("Failed to count entities: {}", e)
-            }))
+            }));
         }
     };
 
