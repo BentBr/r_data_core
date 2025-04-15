@@ -1,0 +1,17 @@
+# Environment files
+.env
+.env.*
+
+# Development artifacts
+target/
+.idea/
+.vscode/
+
+# Git
+.git/
+.gitignore
+
+# Temp files
+**/*.rs.bk
+*.swp
+*.swo 

@@ -5,14 +5,14 @@ use argon2::{
     Argon2,
 };
 use chrono::{DateTime, Utc};
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sqlx::{
     decode::Decode,
     postgres::{PgRow, PgTypeInfo, PgValueRef},
     FromRow, Row, Type,
 };
+use time;
 use utoipa::ToSchema;
 use uuid::timestamp;
 use uuid::{ContextV7, Uuid};
@@ -152,9 +152,9 @@ pub struct ApiKey {
     pub name: String,
     pub description: Option<String>,
     pub is_active: bool,
-    pub created_at: DateTime<Utc>,
-    pub expires_at: Option<DateTime<Utc>>,
-    pub last_used_at: Option<DateTime<Utc>>,
+    pub created_at: time::OffsetDateTime,
+    pub expires_at: Option<time::OffsetDateTime>,
+    pub last_used_at: Option<time::OffsetDateTime>,
 }
 
 impl AdminUser {
@@ -276,9 +276,9 @@ impl ApiKey {
         user_uuid: Uuid,
         name: String,
         description: Option<String>,
-        expires_at: Option<DateTime<Utc>>,
+        expires_at: Option<time::OffsetDateTime>,
     ) -> Self {
-        let now = Utc::now();
+        let now = time::OffsetDateTime::now_utc();
         Self {
             uuid: None,
             user_uuid,
@@ -294,12 +294,14 @@ impl ApiKey {
 
     /// Generate a random API key
     pub fn generate_key() -> String {
-        let key: String = thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(32)
-            .map(char::from)
-            .collect();
-        key
+        const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        let mut rng = rand::rng();
+        (0..32)
+            .map(|_| {
+                let idx = rng.random_range(0..CHARSET.len());
+                CHARSET[idx] as char
+            })
+            .collect()
     }
 
     /// Check if the API key is valid (not expired and active)
@@ -309,7 +311,7 @@ impl ApiKey {
         }
 
         if let Some(expires_at) = self.expires_at {
-            if expires_at < Utc::now() {
+            if expires_at < time::OffsetDateTime::now_utc() {
                 return false;
             }
         }
@@ -319,7 +321,7 @@ impl ApiKey {
 
     /// Update the last used timestamp
     pub async fn update_last_used(&mut self, pool: &sqlx::PgPool) -> Result<()> {
-        let now = Utc::now();
+        let now = time::OffsetDateTime::now_utc();
         self.last_used_at = Some(now);
 
         sqlx::query("UPDATE api_keys SET last_used_at = $1 WHERE uuid = $2")

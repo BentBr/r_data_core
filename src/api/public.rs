@@ -205,8 +205,8 @@ async fn get_entity(data: web::Data<ApiState>, path: web::Path<(String, Uuid)>) 
                 None => {
                     let min_class_def = ClassDefinition::new(
                         entity_type.clone(),
-                        entity_type.clone(), 
-                        None, 
+                        entity_type.clone(),
+                        None,
                         None,
                         false,
                         None,
@@ -700,8 +700,8 @@ async fn create_entity(
                 None => {
                     let min_class_def = ClassDefinition::new(
                         entity_type.clone(),
-                        entity_type.clone(), 
-                        None, 
+                        entity_type.clone(),
+                        None,
                         None,
                         false,
                         None,
@@ -1018,8 +1018,8 @@ async fn update_entity(
                 None => {
                     let min_class_def = ClassDefinition::new(
                         entity_type.clone(),
-                        entity_type.clone(), 
-                        None, 
+                        entity_type.clone(),
+                        None,
                         None,
                         false,
                         None,

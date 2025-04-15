@@ -114,9 +114,13 @@ impl sqlx::postgres::PgHasArrayType for WorkflowStep {
 
 // Add Encode implementation to ensure WorkflowStep can be saved
 impl Encode<'_, sqlx::Postgres> for WorkflowStep {
-    fn encode_by_ref(&self, buf: &mut PgArgumentBuffer) -> IsNull {
-        let json = serde_json::to_value(self).expect("Failed to serialize WorkflowStep to JSON");
-        <serde_json::Value as Encode<sqlx::Postgres>>::encode(json, buf)
+    fn encode_by_ref(
+        &self,
+        buf: &mut PgArgumentBuffer,
+    ) -> std::result::Result<IsNull, Box<dyn std::error::Error + Send + Sync>> {
+        let json = serde_json::to_value(self)
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        <serde_json::Value as Encode<sqlx::Postgres>>::encode_by_ref(&json, buf)
     }
 
     fn size_hint(&self) -> usize {

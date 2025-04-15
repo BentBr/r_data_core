@@ -1,8 +1,8 @@
+use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use log::{error, info};
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
-use actix_web::middleware::Logger;
 
 // Import library constants
 use r_data_core::{DESCRIPTION, NAME, VERSION};

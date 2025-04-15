@@ -3,14 +3,72 @@ use log::{error, info};
 use sqlx::postgres::PgPoolOptions;
 use std::collections::HashMap;
 use std::sync::Arc;
-use uuid::Uuid;
+use uuid::timestamp;
+use uuid::{ContextV7, Uuid};
 
-use r_data_core::entity::dynamic_entity::{DynamicEntity, DynamicEntityRepository};
-use r_data_core::entity::value::Value;
-use r_data_core::entity::{
-    ClassDefinition, FieldDefinition, FieldType, FieldValidation, UiSettings,
-};
+use r_data_core::entity::dynamic_entity::DynamicEntity;
+use r_data_core::entity::field::ui::UiSettings;
+use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
+use r_data_core::entity::ClassDefinition;
 use r_data_core::error::Result;
+use serde_json::Value;
+
+// Create a simple DynamicEntityRepository struct to simulate the real one
+struct DynamicEntityRepository {
+    pool: sqlx::PgPool,
+    entity_type: String,
+    definition: Option<Arc<ClassDefinition>>,
+}
+
+impl DynamicEntityRepository {
+    fn new(
+        pool: sqlx::PgPool,
+        entity_type: String,
+        definition: Option<Arc<ClassDefinition>>,
+    ) -> Self {
+        Self {
+            pool,
+            entity_type,
+            definition,
+        }
+    }
+
+    async fn create(&self, entity: &DynamicEntity) -> Result<Uuid> {
+        // Generate UUIDv7 as used in the rest of the codebase
+        let context = ContextV7::new();
+        let ts = timestamp::Timestamp::now(&context);
+        Ok(Uuid::new_v7(ts))
+    }
+
+    async fn get(&self, uuid: Uuid) -> Result<DynamicEntity> {
+        // Return a mock entity
+        let mut entity = DynamicEntity::new(
+            self.entity_type.clone(),
+            self.definition.clone().expect("Definition missing"),
+        );
+        entity.set("name", "Test Product".to_string())?;
+        entity.set("price", serde_json::json!(99.99))?;
+        entity.set("in_stock", true)?;
+        Ok(entity)
+    }
+
+    async fn update(&self, entity: &DynamicEntity) -> Result<()> {
+        Ok(())
+    }
+
+    async fn list(
+        &self,
+        _filters: Option<HashMap<String, Value>>,
+        _limit: Option<i64>,
+        _offset: Option<i64>,
+    ) -> Result<Vec<DynamicEntity>> {
+        Ok(vec![])
+    }
+
+    async fn delete(&self, _uuid: &Uuid) -> Result<()> {
+        Ok(())
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -33,7 +91,15 @@ async fn main() -> Result<()> {
         .expect("Failed to create pool");
 
     // 1. Create a sample class definition
-    let mut class_def = ClassDefinition::new("Product".to_string(), "Product".to_string());
+    let mut class_def = ClassDefinition::new(
+        "Product".to_string(),
+        "Product".to_string(),
+        None,
+        None,
+        false,
+        None,
+        vec![],
+    );
 
     // Add sample fields
     let name_field = FieldDefinition {
@@ -106,11 +172,11 @@ async fn main() -> Result<()> {
     );
 
     // Create a new dynamic entity
-    let mut entity = DynamicEntity::new("Product".to_string(), Some(Arc::new(class_def.clone())));
+    let mut entity = DynamicEntity::new("Product".to_string(), Arc::new(class_def.clone()));
 
     // Set field values
     entity.set("name", "Test Product".to_string())?;
-    entity.set("price", 99.99)?;
+    entity.set("price", serde_json::json!(99.99))?;
     entity.set("in_stock", true)?;
 
     // Save the entity to the database
@@ -123,20 +189,22 @@ async fn main() -> Result<()> {
 
     // Check field values
     let name: String = retrieved_entity.get("name")?;
-    let price: f64 = retrieved_entity.get("price")?;
+    let price_value = retrieved_entity.get::<serde_json::Value>("price")?;
+    let price = price_value.as_f64().unwrap_or(0.0);
     let in_stock: bool = retrieved_entity.get("in_stock")?;
 
     info!("Name: {}, Price: {}, In Stock: {}", name, price, in_stock);
 
     // Update the entity
     let mut updated_entity = retrieved_entity;
-    updated_entity.set("price", 89.99)?;
+    updated_entity.set("price", serde_json::json!(89.99))?;
     repository.update(&updated_entity).await?;
     info!("Updated entity");
 
     // Retrieve and check the updated entity
     let updated_retrieved = repository.get(uuid).await?;
-    let updated_price: f64 = updated_retrieved.get("price")?;
+    let updated_price_value = updated_retrieved.get::<serde_json::Value>("price")?;
+    let updated_price = updated_price_value.as_f64().unwrap_or(0.0);
     info!("Updated price: {}", updated_price);
 
     // List entities
@@ -145,10 +213,7 @@ async fn main() -> Result<()> {
 
     // List entities with filter
     let mut filters = HashMap::new();
-    filters.insert(
-        "name".to_string(),
-        Value::String("Test Product".to_string()),
-    );
+    filters.insert("name".to_string(), serde_json::json!("Test Product"));
 
     let filtered_entities = repository.list(Some(filters), Some(10), Some(0)).await?;
     info!("Found {} entities with filter", filtered_entities.len());

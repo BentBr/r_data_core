@@ -55,6 +55,13 @@ cargo sqlx migrate run
 cargo run
 ```
 
+The application will be available at `http://rdatacore.docker:8888`.
+
+run via docker:
+```bash
+docker compose up -d
+```
+
 The application will be available at `http://rdatacore.docker:80`.
 
 ## Development Setup
@@ -169,3 +176,12 @@ For more information about our PostgreSQL setup with UUID v7, see the [documenta
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
+
+
+Todos:
+- fix swagger
+- add routes
+- update readme
+- test admin routes
+- check entities and respective columns - we need proper creation and not everything serialized.
+- check env vars

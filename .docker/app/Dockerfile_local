@@ -6,7 +6,7 @@ WORKDIR /usr/src/r_data_core
 COPY . .
 
 # Build for local development
-RUN DATABASE_URL="postgres://postgres:postgres@pg.rdatacore.docker:5432/rdata" cargo build
+RUN cargo build
 
 # Final stage
 FROM debian:bookworm-slim

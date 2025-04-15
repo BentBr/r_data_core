@@ -1,8 +1,8 @@
-use chrono::Utc;
 use serde_json::Value as JsonValue;
 use sqlx::{postgres::PgRow, FromRow, PgPool};
 use std::collections::HashMap;
 use std::sync::Arc;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::entity::class::definition::ClassDefinition;
@@ -65,8 +65,8 @@ impl DynamicEntityRepository {
             uuid,
             path,
             entity.entity_type,
-            Utc::now(),
-            Utc::now(),
+            OffsetDateTime::now_utc(),
+            OffsetDateTime::now_utc(),
             None::<Uuid>, // created_by
             None::<Uuid>, // updated_by
             false,        // published
@@ -108,7 +108,7 @@ impl DynamicEntityRepository {
             WHERE entity_type = $3
             "#,
             JsonValue::Object(entity.field_data.clone().into_iter().collect()),
-            Utc::now(),
+            OffsetDateTime::now_utc(),
             entity.entity_type
         )
         .execute(&self.pool)

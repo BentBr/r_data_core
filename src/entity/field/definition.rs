@@ -208,23 +208,6 @@ impl FieldDefinition {
         // Validate constraints based on field type
         match self.field_type {
             FieldType::String | FieldType::Text | FieldType::Wysiwyg => {
-                // String type validations
-                if let Some(min_length) = self.validation.min_length {
-                    if min_length < 0 {
-                        return Err(Error::Validation(format!(
-                            "Field '{}' min_length must be non-negative",
-                            self.name
-                        )));
-                    }
-                }
-                if let Some(max_length) = self.validation.max_length {
-                    if max_length < 0 {
-                        return Err(Error::Validation(format!(
-                            "Field '{}' max_length must be non-negative",
-                            self.name
-                        )));
-                    }
-                }
                 if let (Some(min), Some(max)) =
                     (self.validation.min_length, self.validation.max_length)
                 {

@@ -1,5 +1,6 @@
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 use crate::api::auth::AuthUserClaims;
 use crate::api::middleware::JwtAuth;
@@ -628,9 +629,9 @@ pub struct ApiKeyResponse {
     pub name: String,
     pub description: Option<String>,
     pub is_active: bool,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-    pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
-    pub last_used_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub created_at: OffsetDateTime,
+    pub expires_at: Option<OffsetDateTime>,
+    pub last_used_at: Option<OffsetDateTime>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -640,8 +641,8 @@ pub struct ApiKeyCreatedResponse {
     pub api_key: String, // Only returned once when created
     pub description: Option<String>,
     pub is_active: bool,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-    pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub created_at: OffsetDateTime,
+    pub expires_at: Option<OffsetDateTime>,
 }
 
 /// Create a new API key for the authenticated user
@@ -657,7 +658,7 @@ pub async fn create_api_key(
     // Calculate expiration date if provided
     let expires_at = req
         .expires_in_days
-        .map(|days| chrono::Utc::now() + chrono::Duration::days(days));
+        .map(|days| OffsetDateTime::now_utc() + time::Duration::days(days));
 
     // Create new API key
     let api_key = ApiKey::new(

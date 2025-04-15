@@ -5,7 +5,7 @@ WORKDIR /usr/src/r_data_core
 # Copy source code and manifests
 COPY . .
 
-# Build for release
+# Build for release with sqlx offline mode
 RUN cargo build --release
 
 # Final stage
