@@ -2,8 +2,15 @@ use actix_web::dev::ServiceResponse;
 use actix_web::http::StatusCode;
 use actix_web::{middleware::ErrorHandlerResponse, HttpResponse, Result};
 use serde_json;
+use serde::Serialize;
 
 use crate::api::response::ApiResponse;
+
+#[derive(Serialize)]
+struct ErrorResponse {
+    success: bool,
+    message: String,
+}
 
 pub struct ErrorHandlers;
 
@@ -19,8 +26,11 @@ impl ErrorHandlers {
         let status_code = res.status();
 
         if status_code == StatusCode::INTERNAL_SERVER_ERROR {
-            let response = ApiResponse::<()>::internal_error();
-            let body = serde_json::to_string(&response).unwrap();
+            let error_response = ErrorResponse {
+                success: false,
+                message: "An internal server error occurred".to_string(),
+            };
+            let body = serde_json::to_string(&error_response).unwrap();
 
             let resp = HttpResponse::InternalServerError()
                 .content_type("application/json")
@@ -33,8 +43,11 @@ impl ErrorHandlers {
         }
 
         if status_code == StatusCode::NOT_FOUND {
-            let response = ApiResponse::<()>::not_found("Resource not found");
-            let body = serde_json::to_string(&response).unwrap();
+            let error_response = ErrorResponse {
+                success: false,
+                message: "Resource not found".to_string(),
+            };
+            let body = serde_json::to_string(&error_response).unwrap();
 
             let resp = HttpResponse::NotFound()
                 .content_type("application/json")

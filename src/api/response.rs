@@ -49,24 +49,87 @@ where
     pub fn to_http_response(&self, status_code: StatusCode) -> HttpResponse {
         HttpResponse::build(status_code).json(self)
     }
+
+    // HTTP response helpers
+    pub fn ok(data: T) -> HttpResponse {
+        let response = Self::success(data);
+        response.to_http_response(StatusCode::OK)
+    }
+
+    pub fn ok_with_message(data: T, message: &str) -> HttpResponse {
+        let response = Self::success_with_message(data, message);
+        response.to_http_response(StatusCode::OK)
+    }
+
+    pub fn created(data: T, message: &str) -> HttpResponse {
+        let response = Self::success_with_message(data, message);
+        response.to_http_response(StatusCode::CREATED)
+    }
 }
 
 // Default responses
 impl ApiResponse<()> {
-    pub fn not_found(resource: &str) -> Self {
-        Self {
+    pub fn message(message: &str) -> HttpResponse {
+        let response = Self {
+            status: Status::Success,
+            message: message.to_string(),
+            data: None,
+        };
+        response.to_http_response(StatusCode::OK)
+    }
+
+    pub fn created_message(message: &str) -> HttpResponse {
+        let response = Self {
+            status: Status::Success,
+            message: message.to_string(),
+            data: None,
+        };
+        response.to_http_response(StatusCode::CREATED)
+    }
+
+    pub fn not_found(resource: &str) -> HttpResponse {
+        let response = Self {
             status: Status::Error,
             message: format!("{} not found", resource),
             data: None,
-        }
+        };
+        response.to_http_response(StatusCode::NOT_FOUND)
     }
 
-    pub fn internal_error() -> Self {
-        Self {
+    pub fn internal_error(message: &str) -> HttpResponse {
+        let response = Self {
             status: Status::Error,
-            message: "Internal server error".to_string(),
+            message: message.to_string(),
             data: None,
-        }
+        };
+        response.to_http_response(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+
+    pub fn bad_request(message: &str) -> HttpResponse {
+        let response = Self {
+            status: Status::Error,
+            message: message.to_string(),
+            data: None,
+        };
+        response.to_http_response(StatusCode::BAD_REQUEST)
+    }
+
+    pub fn unauthorized(message: &str) -> HttpResponse {
+        let response = Self {
+            status: Status::Error,
+            message: message.to_string(),
+            data: None,
+        };
+        response.to_http_response(StatusCode::UNAUTHORIZED)
+    }
+
+    pub fn forbidden(message: &str) -> HttpResponse {
+        let response = Self {
+            status: Status::Error,
+            message: message.to_string(),
+            data: None,
+        };
+        response.to_http_response(StatusCode::FORBIDDEN)
     }
 }
 
@@ -104,14 +167,12 @@ impl ResponseError for ApiError {
     }
 
     fn error_response(&self) -> HttpResponse {
-        let response = match self {
-            ApiError::NotFound(msg) => ApiResponse::<()>::error(msg),
-            ApiError::InternalError(_) => ApiResponse::<()>::internal_error(),
-            ApiError::BadRequest(msg) => ApiResponse::<()>::error(msg),
-            ApiError::Unauthorized(msg) => ApiResponse::<()>::error(msg),
-            ApiError::Forbidden(msg) => ApiResponse::<()>::error(msg),
-        };
-
-        HttpResponse::build(self.status_code()).json(response)
+        match self {
+            ApiError::NotFound(resource) => ApiResponse::<()>::not_found(resource),
+            ApiError::InternalError(msg) => ApiResponse::<()>::internal_error(msg),
+            ApiError::BadRequest(msg) => ApiResponse::<()>::bad_request(msg),
+            ApiError::Unauthorized(msg) => ApiResponse::<()>::unauthorized(msg),
+            ApiError::Forbidden(msg) => ApiResponse::<()>::forbidden(msg),
+        }
     }
 }

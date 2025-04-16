@@ -86,6 +86,11 @@ where
         }
     }
 
+    /// Get the database connection pool
+    pub fn get_pool(&self) -> &PgPool {
+        &self.pool
+    }
+
     /// Get an entity by UUID
     pub async fn get_by_uuid(&self, uuid: &Uuid) -> Result<T> {
         let query = format!("SELECT * FROM {} WHERE uuid = $1", self.table_name);

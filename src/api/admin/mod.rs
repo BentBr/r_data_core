@@ -1,4 +1,5 @@
 pub mod api_keys;
+pub mod auth;
 pub mod class_definitions;
 pub mod permissions;
 pub mod system;
@@ -7,19 +8,24 @@ pub mod workflows;
 use crate::api::middleware::JwtAuth;
 use actix_web::web;
 
-// Re-export PaginationQuery and PathUuid so they can still be referenced from other modules
-pub use class_definitions::models::PaginationQuery;
-pub use class_definitions::models::PathUuid;
-
 /// Register all admin API routes
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
+    // Login route doesn't require authentication
     cfg.service(
         web::scope("/admin/api/v1")
-            .wrap(JwtAuth::new())
-            .configure(class_definitions::register_routes)
-            .configure(workflows::register_routes)
-            .configure(permissions::register_routes)
-            .configure(system::register_routes)
-            .configure(api_keys::register_routes),
+            .service(auth::admin_login)
+            .service(
+                web::scope("")
+                    .wrap(JwtAuth::new())
+                    // Auth routes that require authentication
+                    .service(auth::admin_register)
+                    .service(auth::admin_logout)
+                    // Other admin modules
+                    .configure(class_definitions::register_routes)
+                    .configure(workflows::register_routes)
+                    .configure(permissions::register_routes)
+                    .configure(system::register_routes)
+                    .configure(api_keys::register_routes),
+            )
     );
 }

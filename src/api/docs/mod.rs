@@ -8,6 +8,9 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
 #[derive(OpenApi)]
 #[openapi(
     paths(
+        crate::api::admin::auth::admin_login,
+        crate::api::admin::auth::admin_register,
+        crate::api::admin::auth::admin_logout,
         crate::api::admin::class_definitions::routes::list_class_definitions,
         crate::api::admin::class_definitions::routes::get_class_definition,
         crate::api::admin::class_definitions::routes::create_class_definition,
@@ -16,12 +19,17 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
     ),
     components(
         schemas(
+            crate::api::admin::auth::AdminLoginRequest,
+            crate::api::admin::auth::AdminLoginResponse,
+            crate::api::admin::auth::AdminRegisterRequest,
+            crate::api::admin::auth::AdminRegisterResponse,
             crate::api::admin::class_definitions::models::PaginationQuery,
             crate::api::admin::class_definitions::models::PathUuid,
             // crate::entity::ClassDefinition
         )
     ),
     tags(
+        (name = "admin-auth", description = "Admin authentication endpoints"),
         (name = "admin", description = "Administrative endpoints")
     ),
     info(

@@ -18,6 +18,7 @@ mod error;
 mod notification;
 mod versioning;
 mod workflow;
+mod repository;
 
 // Todo: These modules will be implemented later
 // mod workflow;
@@ -114,7 +115,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(cors)
             .configure(api::configure_app)
             .default_service(web::to(|| async {
-                HttpResponse::NotFound().json(ApiResponse::<()>::not_found("Resource not found"))
+                ApiResponse::<()>::not_found("Resource not found")
             }))
     })
     .bind(bind_address)?
