@@ -22,7 +22,7 @@ use crate::entity::ClassDefinition;
         (status = 500, description = "Internal server error")
     ),
     security(
-        ("jwt_auth" = [])
+        ("bearerAuth" = [])
     )
 )]
 #[get("/class-definitions")]
@@ -58,7 +58,7 @@ async fn list_class_definitions(
         (status = 500, description = "Internal server error")
     ),
     security(
-        ("jwt_auth" = [])
+        ("bearerAuth" = [])
     )
 )]
 #[get("/class-definitions/{uuid}")]
@@ -88,7 +88,7 @@ async fn get_class_definition(
         (status = 500, description = "Internal server error")
     ),
     security(
-        ("jwt_auth" = [])
+        ("bearerAuth" = [])
     )
 )]
 #[post("/class-definitions")]
@@ -157,7 +157,7 @@ async fn create_class_definition(
         (status = 500, description = "Internal server error")
     ),
     security(
-        ("jwt_auth" = [])
+        ("bearerAuth" = [])
     )
 )]
 #[put("/class-definitions/{uuid}")]
@@ -225,7 +225,7 @@ async fn update_class_definition(
         (status = 500, description = "Internal server error")
     ),
     security(
-        ("jwt_auth" = [])
+        ("bearerAuth" = [])
     )
 )]
 #[delete("/class-definitions/{uuid}")]

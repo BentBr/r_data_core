@@ -61,10 +61,11 @@ pub struct LoginResponse {
 /// Claims for authentication
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AuthUserClaims {
-    pub sub: i64,       // User ID
+    pub sub: String,    // User UUID as string
     pub name: String,   // Username
     pub email: String,  // Email
     pub is_admin: bool, // Admin flag
+    pub role: String,   // User role
     pub exp: usize,     // Expiration timestamp
     pub iat: usize,     // Issued at timestamp
 }
@@ -270,10 +271,11 @@ pub fn generate_jwt(user: &AdminUser, secret: &str, expiration_seconds: u64) -> 
 
     // Create claims
     let claims = AuthUserClaims {
-        sub: user_uuid.as_u128() as i64,
+        sub: user_uuid.to_string(),
         name: user.username.clone(),
         email: user.email.clone(),
         is_admin: user.role == UserRole::Admin,
+        role: format!("{:?}", user.role),
         exp: expiration.timestamp() as usize,
         iat: Utc::now().timestamp() as usize,
     };

@@ -185,9 +185,11 @@ Swagger:
 
 
 Todos:
-~~- fix sqlx topic~~
-~~- fix swagger~~
+- ~~fix sqlx topic~~
+- ~~fix swagger~~
 - add routes
+  - auth (partially done)
+  - 
 - update readme
 - test admin routes
 - check entities and respective columns - we need proper creation and not everything serialized.

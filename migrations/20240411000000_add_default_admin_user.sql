@@ -26,8 +26,8 @@ BEGIN
             '/users', 
             'admin', 
             'admin@example.com',
-            -- 'admin' password with secure Argon2id parameters
-            '$argon2id$v=19$m=19456,t=2,p=1$b1pK3k7qagZI20+X9+vrEQ$MWDsdcKSHu/OIgzJ4HuVtVg1quD/ryj25gXuB6t7bbs',
+            -- 'adminadmin' password with secure Argon2id parameters
+            '$argon2id$v=19$m=19456,t=2,p=1$AyU4SymrYGzpmYfqDSbugg$AhzMvJ1bOxrv2WQ1ks3PRFXGezp966kjJwkoUdJbFY4',
             'System',
             'Administrator',
             TRUE,

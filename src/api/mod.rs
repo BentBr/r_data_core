@@ -6,7 +6,7 @@ pub mod public;
 pub mod response;
 
 use actix_web::middleware as web_middleware;
-use actix_web::{web, App, HttpResponse, ResponseError, Result};
+use actix_web::{web, App, HttpResponse, Responder, ResponseError, Result};
 use sqlx::PgPool;
 use std::sync::Arc;
 
@@ -25,9 +25,9 @@ pub struct ApiState {
     pub cache_manager: Arc<CacheManager>,
 }
 
-// 404 handler
-async fn not_found_handler() -> Result<HttpResponse, ApiError> {
-    Err(ApiError::NotFound("Resource not found".to_string()))
+// 404 handler for API routes within scope
+async fn not_found_handler() -> impl Responder {
+    ApiResponse::<()>::not_found("API resource not found")
 }
 
 // Configuration struct for API routes
@@ -80,6 +80,11 @@ pub fn configure_app_with_options(cfg: &mut web::ServiceConfig, options: ApiConf
         log::warn!("Documentation routes are DISABLED");
     }
 
-    cfg.service(scope.default_service(web::route().to(not_found_handler)));
+    // Add the default API 404 handler for all scoped routes
+    scope = scope.default_service(web::route().to(not_found_handler));
+
+    // Add the scoped service to the config
+    cfg.service(scope);
+
     log::debug!("All routes registered");
 }

@@ -1,10 +1,11 @@
 use actix_web::web;
 use actix_web::{get, HttpRequest, HttpResponse};
 use serde_json;
-use utoipa::OpenApi;
+use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
+use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::{Config, SwaggerUi};
 
-/// Generate API documentation for admin endpoints
+/// Admin API Documentation
 #[derive(OpenApi)]
 #[openapi(
     paths(
@@ -23,11 +24,12 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
             crate::api::admin::auth::AdminLoginResponse,
             crate::api::admin::auth::AdminRegisterRequest,
             crate::api::admin::auth::AdminRegisterResponse,
+            crate::api::admin::auth::EmptyRequest,
             crate::api::admin::class_definitions::models::PaginationQuery,
-            crate::api::admin::class_definitions::models::PathUuid,
-            // crate::entity::ClassDefinition
+            crate::api::admin::class_definitions::models::PathUuid
         )
     ),
+    modifiers(&SecurityAddon),
     tags(
         (name = "admin-auth", description = "Admin authentication endpoints"),
         (name = "admin", description = "Administrative endpoints")
@@ -47,7 +49,26 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
 )]
 struct AdminApiDoc;
 
-/// Generate API documentation for public endpoints
+/// Add a modifier for security scheme
+struct SecurityAddon;
+
+impl Modify for SecurityAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        if let Some(components) = openapi.components.as_mut() {
+            components.add_security_scheme(
+                "jwt",
+                SecurityScheme::Http(
+                    HttpBuilder::new()
+                        .scheme(HttpAuthScheme::Bearer)
+                        .bearer_format("JWT")
+                        .build(),
+                ),
+            );
+        }
+    }
+}
+
+/// Public API Documentation
 #[derive(OpenApi)]
 #[openapi(
     paths(
@@ -60,8 +81,7 @@ struct AdminApiDoc;
         schemas(
             crate::api::public::entities::models::EntityTypeInfo,
             crate::api::public::entities::models::EntityQuery,
-            crate::api::public::queries::models::AdvancedEntityQuery,
-            // crate::entity::DynamicEntity
+            crate::api::public::queries::models::AdvancedEntityQuery
         )
     ),
     tags(
@@ -135,7 +155,8 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
                     .try_it_out_enabled(true)
                     .display_request_duration(true)
                     .deep_linking(true)
-                    .filter(true),
+                    .filter(true)
+                    .persist_authorization(true), // Remember auth between page refreshes
             ),
     );
     log::debug!("Registered Admin Swagger UI at /admin/api/docs/");
@@ -149,7 +170,8 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
                     .try_it_out_enabled(true)
                     .display_request_duration(true)
                     .deep_linking(true)
-                    .filter(true),
+                    .filter(true)
+                    .persist_authorization(true), // Remember auth between page refreshes
             ),
     );
     log::debug!("Registered Public Swagger UI at /api/docs/");

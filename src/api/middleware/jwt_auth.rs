@@ -106,6 +106,7 @@ where
                         name: claims.name,
                         email: claims.email,
                         is_admin: claims.is_admin,
+                        role: claims.role,
                         exp: claims.exp,
                         iat: claims.iat,
                     });

@@ -132,7 +132,7 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
         let is_active: bool = row.try_get("is_active")?;
         let created_at: DateTime<Utc> = row.try_get("created_at")?;
         let updated_at: DateTime<Utc> = row.try_get("updated_at")?;
-        
+
         // Build full name from first name and last name
         let full_name = match (&first_name, &last_name) {
             (Some(first), Some(last)) => format!("{} {}", first, last),
@@ -140,17 +140,17 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
             (None, Some(last)) => last.clone(),
             (None, None) => username.clone(),
         };
-        
+
         // Get optional fields or use defaults for missing columns
         let last_login: Option<DateTime<Utc>> = row.try_get("last_login").unwrap_or(None);
-        
+
         // Use default values for fields that might not exist in the DB
         let role = UserRole::Admin; // Default role
         let status = UserStatus::Active; // Default status
         let failed_login_attempts = 0; // Default value
         let permission_scheme_uuid = None; // Default value
         let is_admin = false; // Default value
-        
+
         Ok(AdminUser {
             uuid,
             username,
@@ -241,14 +241,10 @@ impl AdminUser {
         use argon2::Params;
         let params = Params::new(19456, 2, 1, None)
             .map_err(|e| Error::PasswordHash(format!("Invalid parameters: {}", e)))?;
-        
+
         // Hash the password using the Argon2id algorithm with standard params
         let salt = SaltString::generate(&mut OsRng);
-        let argon2 = Argon2::new(
-            argon2::Algorithm::Argon2id, 
-            argon2::Version::V0x13, 
-            params
-        );
+        let argon2 = Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
 
         self.password_hash = argon2
             .hash_password(password.as_bytes(), &salt)
@@ -262,7 +258,7 @@ impl AdminUser {
     /// Verify a password against the stored hash
     pub fn verify_password(&self, password: &str) -> bool {
         log::debug!("Verifying password against hash: {}", self.password_hash);
-        
+
         // Try to parse the hash
         let parsed_hash = match PasswordHash::new(&self.password_hash) {
             Ok(hash) => hash,
@@ -273,7 +269,7 @@ impl AdminUser {
         };
 
         log::debug!("Hash parsed successfully");
-        
+
         // Check if this is a migration hash (very low memory parameter)
         if self.password_hash.contains("m=16,t=2,p=1") {
             log::debug!("Detected legacy low-memory hash format");
@@ -281,21 +277,21 @@ impl AdminUser {
             use argon2::Params;
             let legacy_params = Params::new(16, 2, 1, None).unwrap();
             let legacy_argon2 = Argon2::new(
-                argon2::Algorithm::Argon2id, 
-                argon2::Version::V0x13, 
-                legacy_params
+                argon2::Algorithm::Argon2id,
+                argon2::Version::V0x13,
+                legacy_params,
             );
-            
+
             return legacy_argon2
                 .verify_password(password.as_bytes(), &parsed_hash)
                 .is_ok();
         }
-        
+
         // Standard verification with default (or specified) parameters
         let result = Argon2::default()
             .verify_password(password.as_bytes(), &parsed_hash)
             .is_ok();
-        
+
         log::debug!("Password verification result: {}", result);
         result
     }
@@ -405,4 +401,4 @@ impl ApiKey {
 
         Ok(())
     }
-} 
+}

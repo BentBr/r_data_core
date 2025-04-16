@@ -1,8 +1,8 @@
 use actix_web::dev::ServiceResponse;
 use actix_web::http::StatusCode;
 use actix_web::{middleware::ErrorHandlerResponse, HttpResponse, Result};
-use serde_json;
 use serde::Serialize;
+use serde_json;
 
 use crate::api::response::ApiResponse;
 

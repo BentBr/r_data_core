@@ -56,7 +56,7 @@ pub async fn create_api_key(
     auth: web::ReqData<AuthUserClaims>,
 ) -> impl Responder {
     let pool = &state.db_pool;
-    let user_uuid = Uuid::from_u128(auth.sub as u128);
+    let user_uuid = Uuid::parse_str(&auth.sub).expect("Invalid UUID in auth token");
 
     // Calculate expiration date if provided
     let expires_at = req
@@ -120,7 +120,7 @@ pub async fn list_api_keys(
     auth: web::ReqData<AuthUserClaims>,
 ) -> impl Responder {
     let pool = &state.db_pool;
-    let user_uuid = Uuid::from_u128(auth.sub as u128);
+    let user_uuid = Uuid::parse_str(&auth.sub).expect("Invalid UUID in auth token");
 
     match sqlx::query!(
         r#"
@@ -168,7 +168,7 @@ pub async fn revoke_api_key(
 ) -> impl Responder {
     let pool = &state.db_pool;
     let api_key_uuid = path.into_inner();
-    let user_uuid = Uuid::from_u128(auth.sub as u128);
+    let user_uuid = Uuid::parse_str(&auth.sub).expect("Invalid UUID in auth token");
 
     // Verify the API key belongs to the authenticated user
     match sqlx::query!(

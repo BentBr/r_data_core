@@ -16,9 +16,9 @@ mod db;
 mod entity;
 mod error;
 mod notification;
+mod repository;
 mod versioning;
 mod workflow;
-mod repository;
 
 // Todo: These modules will be implemented later
 // mod workflow;

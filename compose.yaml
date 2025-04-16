@@ -60,6 +60,8 @@ services:
       SERVER_HOST: 0.0.0.0
       API_PORT: 80
       RUST_LOG: debug
+      LOG_LEVEL: info
+      API_ENABLE_DOCS: true
       VIRTUAL_HOST: .rdatacore.docker
       MAIN_SERVICE: app
       JWT_SECRET: development_secret_key

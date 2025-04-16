@@ -5,9 +5,9 @@ pub mod db;
 pub mod entity;
 pub mod error;
 pub mod notification;
+pub mod repository;
 pub mod versioning;
 pub mod workflow;
-pub mod repository;
 
 /// The version of the library
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
