@@ -1,8 +1,7 @@
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
-use actix_web::{web, App, HttpResponse, HttpServer};
+use actix_web::{web, App, HttpServer};
 use log::{error, info};
-use serde_json;
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 
@@ -25,8 +24,7 @@ mod workflow;
 // mod versioning;
 // mod notification;
 
-use crate::api::middleware::ErrorHandlers;
-use crate::api::{admin, auth, docs, public, ApiResponse, ApiState};
+use crate::api::{ApiResponse, ApiState};
 use crate::cache::CacheManager;
 use crate::config::AppConfig;
 

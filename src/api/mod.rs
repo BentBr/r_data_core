@@ -1,12 +1,11 @@
 pub mod admin;
-pub mod auth;
 pub mod docs;
+pub mod jwt;
 pub mod middleware;
 pub mod public;
 pub mod response;
 
-use actix_web::middleware as web_middleware;
-use actix_web::{web, App, HttpResponse, Responder, ResponseError, Result};
+use actix_web::{web, Responder};
 use sqlx::PgPool;
 use std::sync::Arc;
 
@@ -41,7 +40,7 @@ pub struct ApiConfiguration {
 impl Default for ApiConfiguration {
     fn default() -> Self {
         Self {
-            enable_auth: true,
+            enable_auth: false,
             enable_admin: true,
             enable_public: true,
             enable_docs: true,
@@ -57,11 +56,6 @@ pub fn configure_app(cfg: &mut web::ServiceConfig) {
 // Configure app with customizable options
 pub fn configure_app_with_options(cfg: &mut web::ServiceConfig, options: ApiConfiguration) {
     let mut scope = web::scope("");
-
-    if options.enable_auth {
-        log::debug!("Registering auth routes");
-        scope = scope.configure(auth::register_routes);
-    }
 
     if options.enable_admin {
         log::debug!("Registering admin routes");

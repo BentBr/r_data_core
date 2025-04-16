@@ -132,6 +132,14 @@ impl ApiResponse<()> {
         response.to_http_response(StatusCode::FORBIDDEN)
     }
 
+    pub fn inactive(message: &str) -> HttpResponse {
+        let response = Self {
+            status: Status::Error,
+            message: message.to_string(),
+            data: None,
+        };
+        response.to_http_response(StatusCode::FORBIDDEN)
+    }
     pub fn unprocessable_entity(message: &str) -> HttpResponse {
         let response = Self {
             status: Status::Error,
@@ -150,6 +158,7 @@ pub enum ApiError {
     BadRequest(String),
     Unauthorized(String),
     Forbidden(String),
+    Inactive(String),
     UnprocessableEntity(String),
 }
 
@@ -161,6 +170,7 @@ impl fmt::Display for ApiError {
             ApiError::BadRequest(msg) => write!(f, "Bad request: {}", msg),
             ApiError::Unauthorized(msg) => write!(f, "Unauthorized: {}", msg),
             ApiError::Forbidden(msg) => write!(f, "Forbidden: {}", msg),
+            ApiError::Inactive(msg) => write!(f, "Inactive: {}", msg),
             ApiError::UnprocessableEntity(msg) => write!(f, "Unprocessable entity: {}", msg),
         }
     }
@@ -174,6 +184,7 @@ impl ResponseError for ApiError {
             ApiError::BadRequest(_) => StatusCode::BAD_REQUEST,
             ApiError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
             ApiError::Forbidden(_) => StatusCode::FORBIDDEN,
+            ApiError::Inactive(_) => StatusCode::FORBIDDEN,
             ApiError::UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
         }
     }
@@ -185,6 +196,7 @@ impl ResponseError for ApiError {
             ApiError::BadRequest(msg) => ApiResponse::<()>::bad_request(msg),
             ApiError::Unauthorized(msg) => ApiResponse::<()>::unauthorized(msg),
             ApiError::Forbidden(msg) => ApiResponse::<()>::forbidden(msg),
+            ApiError::Inactive(msg) => ApiResponse::<()>::forbidden(msg),
             ApiError::UnprocessableEntity(msg) => ApiResponse::<()>::unprocessable_entity(msg),
         }
     }

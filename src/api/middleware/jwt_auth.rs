@@ -1,14 +1,13 @@
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     error::ErrorUnauthorized,
-    http::header,
+    http::header::{self},
     web, Error, HttpMessage,
 };
-use futures::future::LocalBoxFuture;
-use std::future::{ready, Ready};
+use futures::future::{ready, LocalBoxFuture, Ready};
 use std::rc::Rc;
 
-use crate::api::auth::{verify_jwt, AuthUserClaims};
+use crate::api::jwt::{verify_jwt, AuthUserClaims};
 use crate::api::ApiState;
 
 /// JWT authentication middleware

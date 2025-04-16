@@ -1,12 +1,12 @@
-use actix_web::{post, web, Responder, HttpRequest, HttpMessage};
+use actix_web::{post, web, HttpMessage, HttpRequest, Responder};
 use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::{Validate, ValidationError};
 
-use crate::api::ApiState;
+use crate::api::jwt::{generate_jwt, verify_jwt, AuthUserClaims};
 use crate::api::response::ApiResponse;
-use crate::api::auth::{generate_jwt, verify_jwt, AuthUserClaims};
+use crate::api::ApiState;
 use crate::repository::admin_user_repository::{AdminUserRepository, PgAdminUserRepository};
 use utoipa::ToSchema;
 
@@ -99,7 +99,7 @@ pub struct AdminRegisterResponse {
 fn get_auth_info(req: &HttpRequest) -> (bool, Uuid) {
     // Check for Authorization header first
     let auth_header = req.headers().get("Authorization");
-    
+
     let has_auth_header = if let Some(header) = auth_header {
         if let Ok(auth_str) = header.to_str() {
             log::debug!("Auth header value: {}", auth_str);
@@ -111,14 +111,14 @@ fn get_auth_info(req: &HttpRequest) -> (bool, Uuid) {
     } else {
         false
     };
-    
+
     // Check if this is an authenticated request through extensions (middleware added it)
     let auth_user = req.extensions().get::<AuthUserClaims>().cloned();
     let is_authenticated = auth_user.is_some() || has_auth_header;
-    
+
     log::debug!("Auth header present: {}", has_auth_header);
     log::debug!("Extensions has auth: {}", auth_user.is_some());
-    
+
     // Get creator UUID if authenticated
     let creator_uuid = if let Some(claims) = auth_user {
         // The sub claim is now the UUID string directly
@@ -126,7 +126,7 @@ fn get_auth_info(req: &HttpRequest) -> (bool, Uuid) {
             Ok(uuid) => {
                 log::debug!("Using UUID from claims.sub: {}", uuid);
                 uuid
-            },
+            }
             Err(e) => {
                 log::error!("Failed to parse UUID from claims.sub: {}", e);
                 Uuid::nil()
@@ -138,11 +138,11 @@ fn get_auth_info(req: &HttpRequest) -> (bool, Uuid) {
             if let Ok(auth_str) = header.to_str() {
                 if auth_str.starts_with("Bearer ") {
                     let token = &auth_str[7..]; // Remove "Bearer " prefix
-                    
+
                     // Get JWT secret from app state
                     if let Some(state) = req.app_data::<web::Data<ApiState>>() {
                         let jwt_secret = &state.jwt_secret;
-                        
+
                         // Verify JWT token
                         match verify_jwt(token, jwt_secret) {
                             Ok(claims) => {
@@ -151,7 +151,10 @@ fn get_auth_info(req: &HttpRequest) -> (bool, Uuid) {
                                     log::debug!("Manually extracted UUID from token: {}", uuid);
                                     return (true, uuid);
                                 } else {
-                                    log::error!("Failed to parse UUID from claims.sub: {}", claims.sub);
+                                    log::error!(
+                                        "Failed to parse UUID from claims.sub: {}",
+                                        claims.sub
+                                    );
                                 }
                             }
                             Err(e) => {
@@ -164,14 +167,14 @@ fn get_auth_info(req: &HttpRequest) -> (bool, Uuid) {
                 }
             }
         }
-        
+
         log::debug!("Could not extract UUID from auth header, using nil UUID");
         Uuid::nil()
     } else {
         log::debug!("No auth claims found, using nil UUID");
         Uuid::nil() // Use nil UUID for unauthenticated requests
     };
-    
+
     (is_authenticated, creator_uuid)
 }
 
@@ -221,12 +224,8 @@ pub async fn admin_login(
     let user_result = repo.find_by_username_or_email(&login_req.username).await;
 
     let user = match user_result {
-        Ok(Some(user)) => {
-            log::debug!("User found: {}, hash: {}", user.username, user.password_hash);
-            user
-        },
+        Ok(Some(user)) => user,
         Ok(None) => {
-            log::debug!("User not found: {}", login_req.username);
             // Don't reveal if user exists or not
             return ApiResponse::unauthorized("Invalid credentials");
         }
@@ -238,18 +237,16 @@ pub async fn admin_login(
 
     // Verify password
     let password_valid = user.verify_password(&login_req.password);
-    log::debug!("Password verification result: {}", password_valid);
-    
+
     if !password_valid {
         // Log failed attempt but don't reveal specific error
-        log::debug!("Password verification failed for user: {}", user.username);
         return ApiResponse::unauthorized("Invalid credentials");
     }
 
     // Check if user is active
     if !user.is_active {
         log::debug!("User account is inactive: {}", user.username);
-        return ApiResponse::forbidden("Authentication failed");
+        return ApiResponse::inactive("Account not active");
     }
 
     // Generate JWT token (30 day expiration for admin)
@@ -314,7 +311,7 @@ pub async fn admin_register(
             return ApiResponse::bad_request("Missing or invalid JSON body");
         }
     };
-    
+
     // Validate the request data using the Validate trait
     if let Err(errors) = register_req.validate() {
         // Format validation errors into a readable message
@@ -324,10 +321,7 @@ pub async fn admin_register(
 
     // Check if this is an authenticated request
     let (is_authenticated, creator_uuid) = get_auth_info(&req);
-    
-    // Log authentication status for debugging
-    log::debug!("Registration - Auth status: {}, User: {:?}", is_authenticated, creator_uuid);
-    
+
     // Create repository
     let repo = PgAdminUserRepository::new(data.db_pool.clone());
 
@@ -340,16 +334,18 @@ pub async fn admin_register(
     }
 
     // Attempt to create the user
-    let result = repo.create_admin_user(
-        &register_req.username,
-        &register_req.email,
-        &register_req.password,
-        &register_req.first_name,
-        &register_req.last_name,
-        register_req.role.as_deref(),
-        is_authenticated,
-        creator_uuid,
-    ).await;
+    let result = repo
+        .create_admin_user(
+            &register_req.username,
+            &register_req.email,
+            &register_req.password,
+            &register_req.first_name,
+            &register_req.last_name,
+            register_req.role.as_deref(),
+            is_authenticated,
+            creator_uuid,
+        )
+        .await;
 
     match result {
         Ok(uuid) => {
@@ -368,7 +364,7 @@ pub async fn admin_register(
                     "creator_uuid": creator_uuid.to_string()
                 }))
             }
-        },
+        }
         Err(e) => {
             // Log the detailed error for debugging
             log::error!("User registration failed: {:?}", e);
@@ -393,14 +389,12 @@ pub async fn admin_register(
     )
 )]
 #[post("/auth/logout")]
-pub async fn admin_logout(
-    _data: web::Data<ApiState>,
-) -> impl Responder {
+pub async fn admin_logout(_data: web::Data<ApiState>) -> impl Responder {
     //Todo: In a real-world implementation, you would:
     // 1. Extract the user ID from the token
     // 2. Add the token to a blacklist in Redis with expiration
     // 3. Log the event
-    
+
     // For now we'll just acknowledge the logout without token validation
     ApiResponse::message("Logout successful")
 }

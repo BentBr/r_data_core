@@ -1,3 +1,4 @@
+use crate::api::jwt::AuthUserClaims;
 use actix_web::{delete, get, post, web, HttpResponse, Responder};
 use log::error;
 use serde::{Deserialize, Serialize};
@@ -6,7 +7,6 @@ use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::api::auth::AuthUserClaims;
 use crate::api::ApiState;
 use crate::entity::admin_user::ApiKey;
 
