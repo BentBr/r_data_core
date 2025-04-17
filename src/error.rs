@@ -62,6 +62,9 @@ pub enum Error {
 
     #[error("Invalid schema: {0}")]
     InvalidSchema(String),
+
+    #[error("Invalid field type: {0}")]
+    InvalidFieldType(String),
 }
 
 impl From<redis::RedisError> for Error {
@@ -89,3 +92,14 @@ impl ResponseError for Error {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
+
+// Extension trait to convert sqlx errors to our database errors
+pub trait SqlxErrorExt: Sized {
+    fn into_db_error(self) -> std::result::Result<sqlx::Error, Self>;
+}
+
+impl SqlxErrorExt for sqlx::Error {
+    fn into_db_error(self) -> std::result::Result<sqlx::Error, Self> {
+        Ok(self)
+    }
+}

@@ -1,11 +1,13 @@
 use crate::db::PgPoolExtension;
 use crate::entity::ClassDefinition;
+use crate::entity::field::types::FieldType;
 use crate::error::{Error, Result};
 use log;
-use regex;
 use serde_json;
 use sqlx::PgPool;
 use uuid::Uuid;
+use std::collections::HashMap;
+use std::collections::HashSet;
 
 pub struct ClassDefinitionRepository {
     db_pool: PgPool,
@@ -201,123 +203,333 @@ impl ClassDefinitionRepository {
             statements.len()
         );
 
-        // Execute each statement
+        // Execute each statement, continuing on non-fatal errors
+        let mut success_count = 0;
+        let mut errors = Vec::new();
+
         for (i, statement) in statements.iter().enumerate() {
             if !statement.is_empty() {
                 log::debug!("Executing statement #{}: {}", i + 1, statement);
+                
+                // Determine if this is a statement we should continue on error
+                // We should continue on errors for:
+                // 1. CREATE/DROP with IF NOT EXISTS/IF EXISTS clauses
+                // 2. Index operations
+                // 3. Creating tables that already exist
+                // 4. Adding columns that already exist
+                // 5. Index errors due to non-existent columns (handled specially below)
+                let is_safe_to_continue = 
+                    statement.contains("IF NOT EXISTS") || 
+                    statement.contains("IF EXISTS") ||
+                    statement.contains("DROP INDEX") ||
+                    statement.contains("CREATE INDEX") ||
+                    statement.contains("CREATE TABLE") ||
+                    statement.contains("ADD COLUMN");
+                
+                // Add more detailed diagnostics for critical operations
+                if statement.contains("ALTER TABLE") {
+                    log::info!("Executing DDL operation: {}", statement);
+                }
+                
                 match sqlx::query(statement).execute(&self.db_pool).await {
-                    Ok(_) => log::debug!("Statement #{} executed successfully", i + 1),
+                    Ok(result) => {
+                        log::debug!(
+                            "Statement #{} executed successfully, rows affected: {}",
+                            i + 1,
+                            result.rows_affected()
+                        );
+                        success_count += 1;
+                    }
                     Err(e) => {
-                        log::error!("Error executing statement #{}: {}", i + 1, e);
-                        return Err(Error::Database(e));
+                        let error_msg = format!("Error executing statement #{}: {}", i + 1, e);
+                        log::error!("{}", error_msg);
+                        log::error!("Failed statement: {}", statement);
+                        
+                        // Special handling for index creation on non-existent columns
+                        let is_column_not_exist_error = e.to_string().contains("column") && 
+                                                       e.to_string().contains("does not exist") && 
+                                                       statement.contains("CREATE INDEX");
+                        
+                        // Store the error with statement details for better diagnosis
+                        errors.push(format!("Statement '{}' failed with: {}", statement, e));
+                        
+                        // For certain statements, we can continue even if they fail
+                        if is_safe_to_continue || is_column_not_exist_error {
+                            log::warn!("Continuing despite error on statement that uses IF NOT EXISTS/IF EXISTS or is an index operation");
+                        } else {
+                            return Err(Error::Database(e));
+                        }
                     }
                 }
             }
         }
 
-        Ok(())
+        if success_count == statements.len() {
+            log::info!("Schema applied successfully, all {} statements executed", success_count);
+            Ok(())
+        } else if success_count > 0 {
+            log::warn!("Schema partially applied: {}/{} statements succeeded", success_count, statements.len());
+            log::warn!("Errors: {}", errors.join("; "));
+            
+            // Return success if we had some successful statements and all failures were "safe to continue"
+            Ok(())
+        } else {
+            log::error!("Schema application failed completely");
+            Err(Error::InvalidSchema(errors.join("; ")))
+        }
     }
 
     /// Update entity table when fields change in a class definition
     pub async fn update_entity_table_for_class_definition(
         &self,
-        definition: &ClassDefinition,
+        class_definition: &ClassDefinition,
     ) -> Result<()> {
-        // Get table name
-        let table_name = definition.get_table_name();
-
-        // Check if table exists
+        // Get the table name from the class definition
+        let table_name = class_definition.get_table_name();
+        
+        // Check if the table exists
         let table_exists = self.check_table_exists(&table_name).await?;
-
+        
         if !table_exists {
-            // If table doesn't exist, apply the full schema
-            let schema_sql = definition.generate_schema_sql();
-            self.apply_schema(&schema_sql).await?;
-            return Ok(());
+            // If the table doesn't exist, apply the full schema
+            log::info!("Table {} doesn't exist, applying full schema", table_name);
+            let schema = class_definition.generate_sql_schema();
+            return self.apply_schema(&schema).await;
         }
 
-        // Table exists, check for fields that need to be added
-        let current_columns = self.get_table_columns(&table_name).await?;
-        log::info!("Current columns for {}: {:?}", table_name, current_columns);
+        // Get current columns with their types
+        let current_columns = self.get_table_columns_with_types(&table_name).await?;
+        log::info!("Current columns in table {}: {:?}", table_name, current_columns);
 
-        // Generate SQL for missing columns
-        let mut alter_sql = String::new();
+        let current_column_names: HashSet<String> = current_columns.keys().cloned().collect();
 
-        for field in definition.fields.iter() {
-            let field_name = &field.name;
+        // These are immutable system columns we never want to drop
+        let system_columns = ["uuid", "path", "created_at", "updated_at", 
+                             "created_by", "updated_by", "version", "published"];
 
-            // Skip if column already exists
-            if current_columns.contains(&field_name.to_lowercase()) {
-                continue;
+        // Prepare statements for different operations
+        let mut column_statements = Vec::new();       // Add standard columns
+        let mut drop_column_statements = Vec::new();  // Drop columns
+        let mut drop_index_statements = Vec::new();   // Drop indices
+        let mut index_statements = Vec::new();        // Create indices
+        
+        // Track which columns will exist after all operations
+        let mut future_columns = current_column_names.clone();
+        
+        // Find columns to be dropped (columns in the table but not mapped to any field)
+        for col_name in &current_column_names {
+            if system_columns.contains(&col_name.as_str()) {
+                continue; // Skip system columns
             }
+            
+            // Check if this column is represented by any field
+            let column_needed = class_definition.fields.iter().any(|field| {
+                match field.field_type {
+                    FieldType::ManyToOne => {
+                        // For many-to-one relations, the column name is field_name_uuid
+                        format!("{}_uuid", field.name.to_lowercase()) == *col_name
+                    },
+                    FieldType::ManyToMany => false, // Many-to-many uses separate tables
+                    _ => field.name.to_lowercase() == *col_name // Regular fields
+                }
+            });
+            
+            if !column_needed {
+                // First, find and drop any indices on the column to be removed
+                let drop_index_stmt = format!(
+                    "DROP INDEX IF EXISTS idx_{}_{}",
+                    table_name, col_name
+                );
+                log::info!("Will drop index for removed column: {}", col_name);
+                drop_index_statements.push(drop_index_stmt);
+                
+                // Then create the DROP COLUMN statement
+                let drop_stmt = format!(
+                    "ALTER TABLE {} DROP COLUMN IF EXISTS {}", 
+                    table_name, col_name
+                );
+                log::info!("Will drop removed column: {}", col_name);
+                drop_column_statements.push(drop_stmt);
+                
+                // Remove this column from our tracking set
+                future_columns.remove(col_name);
+            }
+        }
 
-            // Generate SQL type for this field
-            let sql_type = crate::entity::field::types::get_sql_type_for_field(
-                &field.field_type,
-                field.validation.max_length,
-                field.validation.options_source.as_ref().and_then(|os| {
-                    if let crate::entity::field::OptionsSource::Enum { enum_name } = os {
-                        Some(enum_name.as_str())
+        // Now check for columns that need to be added (fields in definition but not in db)
+        for field in &class_definition.fields {
+            let column_name = match field.field_type {
+                FieldType::ManyToOne => {
+                    if let Some(_) = &field.validation.target_class {
+                        format!("{}_uuid", field.name.to_lowercase())
                     } else {
-                        None
+                        continue; // Skip relation fields without target_class
                     }
-                }),
-            );
-
-            // Add NOT NULL constraint if required
-            let mut column_def = format!("{} {}", field_name, sql_type);
-            if field.required {
-                column_def.push_str(" NOT NULL");
+                },
+                FieldType::ManyToMany => {
+                    continue; // Skip many-to-many relationships - they use separate tables
+                },
+                _ => field.name.to_lowercase() // Regular fields
+            };
+            
+            if !current_column_names.contains(&column_name) {
+                // Determine SQL type based on field type
+                let sql_type = match field.field_type {
+                    FieldType::String => "TEXT",
+                    FieldType::Integer => "INTEGER",
+                    FieldType::Float => "DOUBLE PRECISION",
+                    FieldType::Boolean => "BOOLEAN",
+                    FieldType::Date => "DATE",
+                    FieldType::DateTime => "TIMESTAMP WITH TIME ZONE",
+                    FieldType::Json => "JSONB",
+                    FieldType::Uuid => "UUID",
+                    FieldType::ManyToOne => "UUID",
+                    FieldType::Select => "TEXT",
+                    FieldType::MultiSelect => "TEXT[]",
+                    FieldType::Array => "JSONB",
+                    FieldType::Object => "JSONB",
+                    FieldType::ManyToMany => continue, // Skip, handled separately
+                    FieldType::Text => "TEXT",
+                    FieldType::Wysiwyg => "TEXT",
+                    FieldType::Image => "TEXT",
+                    FieldType::File => "TEXT",
+                };
+                
+                // Determine if column should be nullable
+                let nullable = !field.required;
+                let null_constraint = if nullable { "" } else { " NOT NULL" };
+                
+                // Create the ALTER TABLE statement to add the column
+                let alter_statement = format!(
+                    "ALTER TABLE \"{}\" ADD COLUMN {} {}{}", 
+                    table_name, column_name, sql_type, null_constraint
+                );
+                
+                log::info!("Adding column statement for {}: {}", column_name, alter_statement);
+                column_statements.push(alter_statement);
+                
+                // Add this column to our tracking set for future index creation
+                future_columns.insert(column_name.clone());
             }
-
-            // Add column
-            alter_sql.push_str(&format!(
-                "ALTER TABLE {} ADD COLUMN {} {};\n",
-                table_name, field_name, sql_type
-            ));
-
-            // Add index if needed
+            
+            // Check if this field should be indexed
             if field.indexed {
-                alter_sql.push_str(&format!(
-                    "CREATE INDEX IF NOT EXISTS idx_{}_{} ON {} ({});\n",
-                    table_name, field_name, table_name, field_name
-                ));
+                // Only create index if the column will exist after all operations
+                if future_columns.contains(&column_name) {
+                    let index_name = format!("idx_{}_{}", table_name, column_name);
+                    
+                    // Check if index already exists to avoid duplicates
+                    let index_exists = sqlx::query_scalar::<_, bool>(
+                        "SELECT EXISTS (
+                            SELECT FROM pg_indexes
+                            WHERE schemaname = 'public'
+                            AND tablename = $1
+                            AND indexname = $2
+                        )",
+                    )
+                    .bind(&table_name)
+                    .bind(&index_name)
+                    .fetch_one(&self.db_pool)
+                    .await
+                    .map_err(Error::Database)?;
+                    
+                    if !index_exists {
+                        log::info!("Creating index {} for column {}", index_name, column_name);
+                        index_statements.push(format!(
+                            "CREATE INDEX IF NOT EXISTS {} ON {} ({})",
+                            index_name, table_name, column_name
+                        ));
+                    }
+                } else {
+                    log::warn!("Cannot create index for field {} as column {} won't exist after update", 
+                              field.name, column_name);
+                }
             }
         }
 
-        // Apply the ALTER statements if any
-        if !alter_sql.is_empty() {
-            log::info!(
-                "Applying ALTER statements for {}: {}",
-                table_name,
-                alter_sql
-            );
-            self.apply_schema(&alter_sql).await?;
+        // Handle many-to-many relationship tables
+        for field in &class_definition.fields {
+            if let FieldType::ManyToMany = field.field_type {
+                if let Some(target_class) = &field.validation.target_class {
+                    let relation_table_name = format!("rel_{}_{}", 
+                                                     class_definition.entity_type.to_lowercase(), 
+                                                     field.name.to_lowercase());
+                    
+                    // Check if the relation table exists
+                    let rel_table_exists = self.check_table_exists(&relation_table_name).await?;
+                    
+                    if !rel_table_exists {
+                        // Create the relation table
+                        let create_relation_table = format!(
+                            "CREATE TABLE IF NOT EXISTS {} (
+                                source_uuid UUID NOT NULL REFERENCES {} (uuid) ON DELETE CASCADE,
+                                target_uuid UUID NOT NULL REFERENCES {} (uuid) ON DELETE CASCADE,
+                                PRIMARY KEY (source_uuid, target_uuid)
+                            )",
+                            relation_table_name, table_name, format!("entity_{}", target_class.to_lowercase())
+                        );
+                        
+                        log::info!("Creating relation table: {}", relation_table_name);
+                        column_statements.push(create_relation_table);
+                    }
+                }
+            }
         }
 
-        Ok(())
+        // Gather all statements with proper execution ordering
+        let mut all_statements = Vec::new();
+        all_statements.extend(drop_index_statements);
+        all_statements.extend(drop_column_statements);
+        all_statements.extend(column_statements);
+        all_statements.extend(index_statements);
+
+        // Only apply statements if there are any
+        if !all_statements.is_empty() {
+            log::info!(
+                "Applying {} schema update statements for table {}",
+                all_statements.len(),
+                table_name
+            );
+            
+            let combined_schema = all_statements.join(";\n") + ";";
+            self.apply_schema(&combined_schema).await
+        } else {
+            log::info!("No schema changes needed for table {}", table_name);
+            Ok(())
+        }
     }
 
-    /// Get column names for a table
-    pub async fn get_table_columns(&self, table_name: &str) -> Result<Vec<String>> {
+    /// Get column names and their types for a table
+    pub async fn get_table_columns_with_types(&self, table_name: &str) -> Result<HashMap<String, String>> {
         let query = "
-            SELECT column_name 
+            SELECT column_name, data_type, udt_name
             FROM information_schema.columns 
             WHERE table_schema = 'public' AND table_name = $1
             ORDER BY column_name
         ";
 
-        let columns: Vec<(String,)> = sqlx::query_as(query)
+        let columns: Vec<(String, String, String)> = sqlx::query_as(query)
             .bind(table_name.to_lowercase())
             .fetch_all(&self.db_pool)
             .await
             .map_err(Error::Database)?;
 
-        Ok(columns.into_iter().map(|c| c.0.to_lowercase()).collect())
+        let mut result = HashMap::new();
+        for (name, data_type, udt_name) in columns {
+            // For custom types, use udt_name instead of data_type
+            let type_name = match data_type.as_str() {
+                "USER-DEFINED" => udt_name,
+                "ARRAY" => format!("{}[]", udt_name.trim_start_matches('_')),
+                _ => data_type,
+            };
+            result.insert(name.to_lowercase(), type_name.to_lowercase());
+        }
+
+        Ok(result)
     }
 
     pub async fn check_table_exists(&self, table_name: &str) -> Result<bool> {
-        let result: (bool,) = sqlx::query_as(
+        let result: (bool,) = sqlx::query_as::<_, (bool,)>(
             "SELECT EXISTS (
                 SELECT FROM information_schema.tables 
                 WHERE table_schema = 'public' 
@@ -326,15 +538,17 @@ impl ClassDefinitionRepository {
         )
         .bind(table_name.to_lowercase())
         .fetch_one(&self.db_pool)
-        .await?;
+        .await
+        .map_err(Error::Database)?;
 
         Ok(result.0)
     }
 
     pub async fn count_table_records(&self, table_name: &str) -> Result<i64> {
-        let result: (i64,) = sqlx::query_as(&format!("SELECT COUNT(*) FROM {}", table_name))
+        let result: (i64,) = sqlx::query_as::<_, (i64,)>(&format!("SELECT COUNT(*) FROM {}", table_name))
             .fetch_one(&self.db_pool)
-            .await?;
+            .await
+            .map_err(Error::Database)?;
 
         Ok(result.0)
     }
@@ -343,18 +557,21 @@ impl ClassDefinitionRepository {
         sqlx::query("DELETE FROM entities WHERE name = $1")
             .bind(entity_type)
             .execute(&self.db_pool)
-            .await?;
+            .await
+            .map_err(Error::Database)?;
 
         Ok(())
     }
 
     pub async fn get_by_entity_type(&self, entity_type: &str) -> Result<Option<ClassDefinition>> {
-        let sql = "SELECT * FROM class_definitions WHERE entity_type = $1";
-        let result = sqlx::query_as::<_, ClassDefinition>(sql)
-            .bind(entity_type)
-            .fetch_optional(&self.db_pool)
-            .await?;
-
-        Ok(result)
+        let definition = sqlx::query_as::<_, ClassDefinition>(
+            "SELECT * FROM class_definition WHERE LOWER(entity_type) = LOWER($1)",
+        )
+        .bind(entity_type)
+        .fetch_optional(&self.db_pool)
+        .await
+        .map_err(Error::Database)?;
+        
+        Ok(definition)
     }
 }

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 /// Field types supported in class definitions
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -23,6 +24,7 @@ pub enum FieldType {
     Object,
     Array,
     Uuid,
+    Json,
 
     // Relations
     ManyToOne,
@@ -35,6 +37,39 @@ pub enum FieldType {
     // Asset types
     Image,
     File,
+}
+
+impl FieldType {
+    /// Check if this field type is a relation
+    pub fn is_relation(&self) -> bool {
+        matches!(self, FieldType::ManyToOne | FieldType::ManyToMany)
+    }
+}
+
+// Implement Display for FieldType for better error messages
+impl fmt::Display for FieldType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FieldType::String => write!(f, "String"),
+            FieldType::Text => write!(f, "Text"),
+            FieldType::Wysiwyg => write!(f, "Wysiwyg"),
+            FieldType::Integer => write!(f, "Integer"),
+            FieldType::Float => write!(f, "Float"),
+            FieldType::Boolean => write!(f, "Boolean"),
+            FieldType::DateTime => write!(f, "DateTime"),
+            FieldType::Date => write!(f, "Date"),
+            FieldType::Object => write!(f, "Object"),
+            FieldType::Array => write!(f, "Array"),
+            FieldType::Uuid => write!(f, "Uuid"),
+            FieldType::Json => write!(f, "Json"),
+            FieldType::ManyToOne => write!(f, "ManyToOne"),
+            FieldType::ManyToMany => write!(f, "ManyToMany"),
+            FieldType::Select => write!(f, "Select"),
+            FieldType::MultiSelect => write!(f, "MultiSelect"),
+            FieldType::Image => write!(f, "Image"),
+            FieldType::File => write!(f, "File"),
+        }
+    }
 }
 
 /// Return SQL type for a given field type
@@ -70,7 +105,17 @@ pub fn get_sql_type_for_field(
         FieldType::MultiSelect => "TEXT[]".to_string(),
         FieldType::Image => "TEXT".to_string(), // Store path or ID
         FieldType::File => "TEXT".to_string(),  // Store path or ID
-        FieldType::Object | FieldType::Array => "JSONB".to_string(), // Complex types as JSON
+        FieldType::Object | FieldType::Array | FieldType::Json => "JSONB".to_string(), // Complex types as JSON
         _ => "TEXT".to_string(),                // Default for any other types
+    }
+}
+
+// Check if a field type is valid and supported
+pub fn is_valid_field_type(field_type: &str) -> bool {
+    match field_type {
+        "String" | "Text" | "Wysiwyg" | "Integer" | "Float" | "Boolean" |
+        "DateTime" | "Date" | "Object" | "Array" | "Uuid" | "Json" |
+        "ManyToOne" | "ManyToMany" | "Select" | "MultiSelect" | "Image" | "File" => true,
+        _ => false,
     }
 }

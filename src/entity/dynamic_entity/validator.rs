@@ -29,6 +29,7 @@ impl DynamicEntityValidator {
             FieldType::MultiSelect => Self::validate_multi_select(field_def, value),
             FieldType::ManyToOne | FieldType::ManyToMany => Self::validate_uuid(field_def, value),
             FieldType::Image | FieldType::File => Self::validate_string(field_def, value),
+            FieldType::Json => Self::validate_json(field_def, value),
         }
     }
 
@@ -472,6 +473,13 @@ impl DynamicEntityValidator {
             }
         }
 
+        Ok(())
+    }
+
+    /// Validate JSON fields
+    fn validate_json(field_def: &FieldDefinition, value: &Value) -> Result<()> {
+        // For JSON fields, we accept any valid JSON
+        // No additional validation needed as Value is already valid JSON
         Ok(())
     }
 }

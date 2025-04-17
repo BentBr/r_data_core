@@ -96,7 +96,6 @@ pub struct UiSettingsSchema {
 
 /// Field types available for class definitions
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "PascalCase")]
 pub enum FieldTypeSchema {
     String,
     Text,

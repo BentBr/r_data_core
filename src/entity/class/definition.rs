@@ -398,4 +398,15 @@ impl ClassDefinition {
 
         sql
     }
+
+    /// Returns the properly formatted table name for this class definition
+    pub fn table_name(&self) -> String {
+        self.entity_type.to_lowercase()
+    }
+
+    /// Generate SQL schema for this class definition
+    /// This is an alias for generate_schema_sql to maintain compatibility
+    pub fn generate_sql_schema(&self) -> String {
+        self.generate_schema_sql()
+    }
 }

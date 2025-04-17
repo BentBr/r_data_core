@@ -161,6 +161,10 @@ impl FieldDefinition {
                     )));
                 }
             }
+            FieldType::Json => {
+                // For Json fields, we accept any valid JSON value
+                // No additional validation needed as Value is already valid JSON
+            }
             FieldType::ManyToOne | FieldType::ManyToMany => {
                 if !value.is_string() && !value.is_array() {
                     return Err(Error::Validation(format!(
