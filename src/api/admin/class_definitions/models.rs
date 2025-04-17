@@ -4,16 +4,20 @@ use std::collections::HashMap;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-/// Pagination query parameters
+/// Query parameters for paginated API endpoints
+/// Used to control the number of items returned and pagination offset
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct PaginationQuery {
+    /// Maximum number of items to return (defaults to system default if not specified)
     pub limit: Option<i64>,
+    /// Number of items to skip (for pagination)
     pub offset: Option<i64>,
 }
 
-/// Path parameter for UUID
+/// Path parameter for endpoints that accept a UUID in the URL
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct PathUuid {
+    /// UUID identifier from the URL path
     pub uuid: Uuid,
 }
 
@@ -29,54 +33,61 @@ pub struct FieldValidationSchema {
 }
 
 /// Schema for options source in OpenAPI docs
+/// Defines how to populate options for Select and MultiSelect fields
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(tag = "type")]
 pub enum OptionsSourceSchema {
-    /// Fixed list of options
+    /// Fixed list of options defined statically
     #[serde(rename = "fixed")]
     Fixed { options: Vec<SelectOptionSchema> },
-    /// Options from an enum
+    /// Options from a pre-defined enum type
     #[serde(rename = "enum")]
     Enum { enum_name: String },
-    /// Options from a database query
+    /// Options dynamically loaded from a database query
     #[serde(rename = "query")]
     Query {
+        /// Target entity type to query
         entity_type: String,
+        /// Field to use as option value
         value_field: String,
+        /// Field to use as option display label
         label_field: String,
+        /// Optional filter criteria for the query
         filter: Option<Value>,
     },
 }
 
 /// Schema for select options in OpenAPI docs
+/// Used for defining individual options in fixed option lists
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct SelectOptionSchema {
-    /// Option value
+    /// Option value (stored in database)
     pub value: String,
-    /// Option display label
+    /// Option display label (shown in UI)
     pub label: String,
 }
 
 /// Schema for UI settings in OpenAPI docs
+/// Controls how fields are rendered in forms and lists
 #[derive(Debug, Serialize, Deserialize, ToSchema, Default)]
 pub struct UiSettingsSchema {
-    /// Placeholder text
+    /// Placeholder text shown in empty input fields
     pub placeholder: Option<String>,
-    /// Help text
+    /// Help text shown below the field to provide additional context
     pub help_text: Option<String>,
-    /// Hide in list views
+    /// Whether to hide this field in list views
     pub hide_in_lists: Option<bool>,
-    /// Layout width (1-12)
+    /// Layout width in grid units (1-12, where 12 is full width)
     pub width: Option<u8>,
-    /// Display order
+    /// Field display order in forms (lower numbers appear first)
     pub order: Option<i32>,
-    /// Group name
+    /// Group name for organizing fields into sections
     pub group: Option<String>,
-    /// CSS class
+    /// Custom CSS class to apply to the field container
     pub css_class: Option<String>,
-    /// WYSIWYG toolbar config
+    /// Configuration for WYSIWYG editor toolbar (for Wysiwyg fields)
     pub wysiwyg_toolbar: Option<String>,
-    /// Input type (e.g., "password")
+    /// HTML input type attribute (e.g., "password", "email", "tel")
     pub input_type: Option<String>,
 }
 
