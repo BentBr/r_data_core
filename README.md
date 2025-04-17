@@ -272,6 +272,4 @@ Todos:
 - key-value-store
 - relations 1:n + n:n
 
-delete tables when class-definition is deleted
-cleanup old tables command
-
+check json (validity)

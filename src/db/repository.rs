@@ -304,7 +304,7 @@ where
     /// Get a specific version of an entity
     pub async fn get_version(&self, uuid: &Uuid, version: i32) -> Result<VersionedData> {
         sqlx::query_as::<_, VersionedData>(
-            "SELECT * FROM entity_versions WHERE entity_uuid = $1 AND version_number = $2",
+            "SELECT * FROM entities_versions WHERE entity_uuid = $1 AND version_number = $2",
         )
         .bind(uuid)
         .bind(version)
@@ -316,7 +316,7 @@ where
     /// List versions of an entity
     pub async fn list_versions(&self, uuid: &Uuid) -> Result<Vec<VersionedData>> {
         sqlx::query_as::<_, VersionedData>(
-            "SELECT * FROM entity_versions WHERE entity_uuid = $1 ORDER BY version_number DESC",
+            "SELECT * FROM entities_versions WHERE entity_uuid = $1 ORDER BY version_number DESC",
         )
         .bind(uuid)
         .fetch_all(&self.pool)

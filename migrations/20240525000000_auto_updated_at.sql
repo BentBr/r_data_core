@@ -8,9 +8,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create triggers for each table
-DROP TRIGGER IF EXISTS set_timestamp ON entity_registry;
+DROP TRIGGER IF EXISTS set_timestamp ON entities_registry;
 CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON entity_registry
+BEFORE UPDATE ON entities_registry
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
 

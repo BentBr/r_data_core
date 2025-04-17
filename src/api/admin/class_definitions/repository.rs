@@ -140,6 +140,44 @@ impl ClassDefinitionRepository {
     }
 
     pub async fn delete(&self, uuid: &Uuid) -> Result<()> {
+        // First, get the class definition to get the entity type
+        let class_definition = self.get_by_uuid(uuid).await?;
+        let table_name = class_definition.get_table_name();
+        
+        // Drop the entity table if it exists
+        let table_exists = self.check_table_exists(&table_name).await?;
+        if table_exists {
+            // Also drop any relation tables if they exist
+            for field in &class_definition.fields {
+                if let FieldType::ManyToMany = field.field_type {
+                    let relation_table_name = format!("rel_{}_{}", 
+                        class_definition.entity_type.to_lowercase(), 
+                        field.name.to_lowercase());
+                    
+                    let rel_table_exists = self.check_table_exists(&relation_table_name).await?;
+                    if rel_table_exists {
+                        log::info!("Dropping relation table: {}", relation_table_name);
+                        let drop_sql = format!("DROP TABLE IF EXISTS {} CASCADE", relation_table_name);
+                        sqlx::query(&drop_sql)
+                            .execute(&self.db_pool)
+                            .await
+                            .map_err(Error::Database)?;
+                    }
+                }
+            }
+            
+            log::info!("Dropping entity table: {}", table_name);
+            let drop_sql = format!("DROP TABLE IF EXISTS {} CASCADE", table_name);
+            sqlx::query(&drop_sql)
+                .execute(&self.db_pool)
+                .await
+                .map_err(Error::Database)?;
+        }
+        
+        // Clean up the entity registry
+        self.delete_from_entities_registry(&class_definition.entity_type).await?;
+        
+        // Now delete the class definition itself
         self.db_pool
             .repository_with_table::<ClassDefinition>("class_definitions")
             .delete(uuid)
@@ -264,6 +302,9 @@ impl ClassDefinitionRepository {
             }
         }
 
+        // Clean up unused entity tables after schema application
+        self.cleanup_unused_entity_tables().await?;
+
         if success_count == statements.len() {
             log::info!("Schema applied successfully, all {} statements executed", success_count);
             Ok(())
@@ -277,6 +318,61 @@ impl ClassDefinitionRepository {
             log::error!("Schema application failed completely");
             Err(Error::InvalidSchema(errors.join("; ")))
         }
+    }
+
+    /// Clean up entity tables that don't have corresponding class definitions
+    pub async fn cleanup_unused_entity_tables(&self) -> Result<()> {
+        log::info!("Starting cleanup of unused entity tables");
+        
+        // Get all tables in the database that start with 'entity_'
+        let entity_tables: Vec<String> = sqlx::query_scalar(
+            "SELECT table_name FROM information_schema.tables 
+             WHERE table_schema = 'public' 
+             AND table_type = 'BASE TABLE'
+             AND table_name LIKE 'entity\\_%'"
+        )
+        .fetch_all(&self.db_pool)
+        .await
+        .map_err(Error::Database)?;
+        
+        // Get all class definitions (entity types)
+        let class_definitions: Vec<ClassDefinition> = sqlx::query_as(
+            "SELECT * FROM class_definitions"
+        )
+        .fetch_all(&self.db_pool)
+        .await
+        .map_err(Error::Database)?;
+        
+        // Create a set of valid entity table names
+        let valid_table_names: HashSet<String> = class_definitions
+            .iter()
+            .map(|def| def.get_table_name())
+            .collect();
+        
+        // Create a set of protected system tables that should never be dropped
+        let protected_tables: HashSet<String> = vec![
+            "entities_versions".to_string(),
+            "entities_registry".to_string(),
+        ].into_iter().collect();
+        
+        // Process entity tables
+        let mut dropped_tables = 0;
+        
+        for table in &entity_tables {
+            // Only process entity_* tables that aren't in our valid or protected sets
+            if !valid_table_names.contains(table) && !protected_tables.contains(table) {
+                log::info!("Dropping unused entity table: {}", table);
+                let drop_sql = format!("DROP TABLE IF EXISTS {} CASCADE", table);
+                sqlx::query(&drop_sql)
+                    .execute(&self.db_pool)
+                    .await
+                    .map_err(Error::Database)?;
+                dropped_tables += 1;
+            }
+        }
+        
+        log::info!("Cleanup complete. Dropped {} unused entity tables", dropped_tables);
+        Ok(())
     }
 
     /// Update entity table when fields change in a class definition
@@ -553,8 +649,8 @@ impl ClassDefinitionRepository {
         Ok(result.0)
     }
 
-    pub async fn delete_from_entity_registry(&self, entity_type: &str) -> Result<()> {
-        sqlx::query("DELETE FROM entities WHERE name = $1")
+    pub async fn delete_from_entities_registry(&self, entity_type: &str) -> Result<()> {
+        sqlx::query("DELETE FROM entities_registry WHERE entity_type = $1")
             .bind(entity_type)
             .execute(&self.db_pool)
             .await
@@ -565,7 +661,7 @@ impl ClassDefinitionRepository {
 
     pub async fn get_by_entity_type(&self, entity_type: &str) -> Result<Option<ClassDefinition>> {
         let definition = sqlx::query_as::<_, ClassDefinition>(
-            "SELECT * FROM class_definition WHERE LOWER(entity_type) = LOWER($1)",
+            "SELECT * FROM class_definitions WHERE LOWER(entity_type) = LOWER($1)",
         )
         .bind(entity_type)
         .fetch_optional(&self.db_pool)

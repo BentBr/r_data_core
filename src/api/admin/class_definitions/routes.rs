@@ -392,7 +392,7 @@ async fn delete_class_definition(
                 match repository.apply_schema(&drop_sql).await {
                     Ok(_) => {
                         // Also remove from the entity registry if it exists
-                        let _ = repository.delete_from_entity_registry(&definition.entity_type).await;
+                        let _ = repository.delete_from_entities_registry(&definition.entity_type).await;
 
                         HttpResponse::Ok().json(json!({
                             "message": "Class definition and associated table deleted successfully"
@@ -502,9 +502,16 @@ async fn apply_class_definition_schema(
                     results.push(result);
                 }
 
+                // Clean up any unused entity tables
+                let cleanup_result = match repository.cleanup_unused_entity_tables().await {
+                    Ok(_) => "Unused entity tables have been cleaned up".to_string(),
+                    Err(e) => format!("Warning: Failed to clean up unused entity tables: {}", e),
+                };
+
                 HttpResponse::Ok().json(json!({
                     "results": results,
                     "total": results.len(),
+                    "cleanup": cleanup_result,
                     "message": "Database schema application process completed"
                 }))
             }

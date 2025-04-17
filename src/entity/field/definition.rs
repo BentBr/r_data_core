@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use regex;
 
 use super::options::FieldValidation;
 use super::types::FieldType;
@@ -200,6 +201,14 @@ impl FieldDefinition {
         // Name validation
         if self.name.is_empty() {
             return Err(Error::Validation("Field name cannot be empty".into()));
+        }
+
+        // Check that field name only contains alphanumeric characters and underscores
+        let name_pattern = regex::Regex::new(r"^[a-zA-Z0-9_]+$").unwrap();
+        if !name_pattern.is_match(&self.name) {
+            return Err(Error::Validation(
+                "Field name must contain only alphanumeric characters and underscores (no spaces, hyphens, or special characters)".into(),
+            ));
         }
 
         // Display name validation

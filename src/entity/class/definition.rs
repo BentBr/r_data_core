@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use uuid::timestamp;
 use uuid::{ContextV7, Uuid};
+use regex;
 
 use super::schema::Schema;
 // Temporarily comment out missing function
@@ -210,6 +211,14 @@ impl ClassDefinition {
         if self.entity_type.is_empty() {
             return Err(Error::ValidationFailed(
                 "Entity type cannot be empty".to_string(),
+            ));
+        }
+
+        // Check that entity_type only contains alphanumeric characters and underscores
+        let name_pattern = regex::Regex::new(r"^[a-zA-Z0-9_]+$").unwrap();
+        if !name_pattern.is_match(&self.entity_type) {
+            return Err(Error::ValidationFailed(
+                "Entity type must contain only alphanumeric characters and underscores (no spaces, hyphens, or special characters)".to_string(),
             ));
         }
 

@@ -11,7 +11,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Entity Registry Table
-CREATE TABLE IF NOT EXISTS entity_registry (
+CREATE TABLE IF NOT EXISTS entities_registry (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
     entity_type VARCHAR(100) NOT NULL UNIQUE,
     display_name VARCHAR(255) NOT NULL,
@@ -21,14 +21,14 @@ CREATE TABLE IF NOT EXISTS entity_registry (
 );
 
 -- Add auto-update trigger for entity_registry
-DROP TRIGGER IF EXISTS set_timestamp_entity_registry ON entity_registry;
-CREATE TRIGGER set_timestamp_entity_registry
-BEFORE UPDATE ON entity_registry
+DROP TRIGGER IF EXISTS set_timestamp_entities_registry ON entities_registry;
+CREATE TRIGGER set_timestamp_entities_registry
+BEFORE UPDATE ON entities_registry
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
 
 -- Entity Versions Table
-CREATE TABLE IF NOT EXISTS entity_versions (
+CREATE TABLE IF NOT EXISTS entities_versions (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
     entity_uuid UUID NOT NULL,
     version INT NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS entity_versions (
     UNIQUE(entity_uuid, version)
 );
 
-CREATE INDEX IF NOT EXISTS idx_entity_versions_entity_uuid ON entity_versions(entity_uuid);
+CREATE INDEX IF NOT EXISTS idx_entities_versions_entity_uuid ON entities_versions(entity_uuid);
 
 -- Class Definitions Table
 CREATE TABLE IF NOT EXISTS class_definitions (

@@ -18,28 +18,14 @@ pub struct PathUuid {
 }
 
 /// Schema for field validation in OpenAPI docs
-#[derive(Debug, Serialize, Deserialize, ToSchema, Default)]
+/// Used for string pattern validation via regex. For other field type validations,
+/// use the constraints field instead.
+#[derive(Debug, Default, Serialize, Deserialize, ToSchema)]
 pub struct FieldValidationSchema {
-    /// Minimum string length
-    pub min_length: Option<usize>,
-    /// Maximum string length
-    pub max_length: Option<usize>,
-    /// Regex pattern for string validation
+    /// Regex pattern for validating string fields (e.g., "^[A-Za-z0-9_]+$" for alphanumeric validation)
     pub pattern: Option<String>,
-    /// Minimum numeric value
-    pub min_value: Option<Value>,
-    /// Maximum numeric value
-    pub max_value: Option<Value>,
-    /// Allow only positive values for numeric fields
-    pub positive_only: Option<bool>,
-    /// Minimum date (ISO string or "now")
-    pub min_date: Option<String>,
-    /// Maximum date (ISO string or "now")
-    pub max_date: Option<String>,
-    /// Target class for relation fields
-    pub target_class: Option<String>,
-    /// Options source for select fields
-    pub options_source: Option<OptionsSourceSchema>,
+    /// Custom error message to display when validation fails
+    pub error_message: Option<String>,
 }
 
 /// Schema for options source in OpenAPI docs
@@ -97,29 +83,46 @@ pub struct UiSettingsSchema {
 /// Field types available for class definitions
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub enum FieldTypeSchema {
+    /// Short text field (varchar in database)
     String,
+    /// Long text field (text in database)
     Text,
+    /// Rich text editor field (text in database, HTML content)
     Wysiwyg,
+    /// Whole number field (integer in database)
     Integer,
+    /// Decimal number field (float in database)
     Float,
+    /// True/false field (boolean in database)
     Boolean,
+    /// Date and time field (timestamp in database)
     DateTime,
+    /// Date only field (date in database)
     Date,
+    /// JSON object field (jsonb in database)
     Object,
+    /// JSON array field (jsonb in database)
     Array,
+    /// UUID field (uuid in database)
     Uuid,
+    /// Reference to a single related entity (foreign key)
     ManyToOne,
+    /// Reference to multiple related entities (junction table)
     ManyToMany,
+    /// Single option from a predefined list (enum or lookup)
     Select,
+    /// Multiple options from a predefined list (array in database)
     MultiSelect,
+    /// Image upload field (stores file reference)
     Image,
+    /// File upload field (stores file reference)
     File,
 }
 
 /// Schema for field definitions in OpenAPI docs
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct FieldDefinitionSchema {
-    /// Field name (must be unique within class)
+    /// Field name (must be unique within class and contain only alphanumeric characters, underscores, no spaces)
     pub name: String,
     /// User-friendly display name
     pub display_name: String,
@@ -141,19 +144,26 @@ pub struct FieldDefinitionSchema {
     /// UI settings for the field
     #[serde(default)]
     pub ui_settings: UiSettingsSchema,
-    /// Extra constraints
+    /// Extra constraints specific to field type:
+    /// - String/Text: min_length, max_length
+    /// - Integer/Float: min, max, positive_only
+    /// - DateTime/Date: min_date, max_date
+    /// - ManyToOne/ManyToMany: target_class
+    /// - Select/MultiSelect: options_source
+    /// - Object/Array: schema
     pub constraints: Option<HashMap<String, Value>>,
 }
 
 /// Schema for class definitions in OpenAPI docs
+/// Used to define entity types with their fields and metadata
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[schema(title = "ClassDefinitionSchema")]
 pub struct ClassDefinitionSchema {
-    /// Unique identifier
+    /// Unique identifier (automatically generated if not provided)
     pub uuid: Option<Uuid>,
-    /// Entity type name (must be unique)
+    /// Entity type name (must be unique, alphanumeric with underscores, no spaces)
     pub entity_type: String,
-    /// Display name for this entity type
+    /// User-friendly display name for this entity type
     pub display_name: String,
     /// Description of this entity type
     pub description: Option<String>,
@@ -161,7 +171,7 @@ pub struct ClassDefinitionSchema {
     pub group_name: Option<String>,
     /// Whether this entity type can have children
     pub allow_children: bool,
-    /// Icon for this entity type
+    /// Icon identifier for this entity type
     pub icon: Option<String>,
     /// Field definitions for this entity type
     pub fields: Vec<FieldDefinitionSchema>,
@@ -180,8 +190,11 @@ pub struct ClassDefinitionListResponse {
 }
 
 /// Model for apply-schema request
+/// Used to generate and apply SQL schema for a specific class definition or all definitions
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct ApplySchemaRequest {
+    /// Optional UUID of specific class definition to apply schema for
+    /// If not provided, schemas for all published class definitions will be applied
     #[serde(default)]
     pub uuid: Option<Uuid>,
 }
