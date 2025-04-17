@@ -1,10 +1,13 @@
-use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
+use actix_web::{delete, get, post, put, web, HttpMessage, HttpRequest, HttpResponse, Responder};
 use log::info;
 use serde_json::json;
+use uuid::Uuid;
 
+use super::models::ApplySchemaRequest;
 use super::models::PaginationQuery;
 use super::models::PathUuid;
 use super::repository::ClassDefinitionRepository;
+use crate::api::jwt::AuthUserClaims;
 use crate::api::ApiState;
 use crate::entity::ClassDefinition;
 
@@ -12,17 +15,18 @@ use crate::entity::ClassDefinition;
 #[utoipa::path(
     get,
     path = "/admin/api/v1/class-definitions",
-    tag = "admin",
+    tag = "class-definitions",
     params(
         ("limit" = Option<i64>, Query, description = "Maximum number of items to return"),
         ("offset" = Option<i64>, Query, description = "Number of items to skip")
     ),
     responses(
-        (status = 200, description = "List of class definitions", body = Vec<ClassDefinition>),
+        (status = 200, description = "List of class definitions", body = Vec<ClassDefinitionSchema>),
+        (status = 401, description = "Unauthorized"),
         (status = 500, description = "Internal server error")
     ),
     security(
-        ("bearerAuth" = [])
+        ("jwt" = [])
     )
 )]
 #[get("/class-definitions")]
@@ -48,17 +52,18 @@ async fn list_class_definitions(
 #[utoipa::path(
     get,
     path = "/admin/api/v1/class-definitions/{uuid}",
-    tag = "admin",
+    tag = "class-definitions",
     params(
         ("uuid" = Uuid, Path, description = "Class definition UUID")
     ),
     responses(
-        (status = 200, description = "Class definition found", body = ClassDefinition),
+        (status = 200, description = "Class definition found", body = ClassDefinitionSchema),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Class definition not found"),
         (status = 500, description = "Internal server error")
     ),
     security(
-        ("bearerAuth" = [])
+        ("jwt" = [])
     )
 )]
 #[get("/class-definitions/{uuid}")]
@@ -81,47 +86,91 @@ async fn get_class_definition(
 #[utoipa::path(
     post,
     path = "/admin/api/v1/class-definitions",
-    tag = "admin",
-    request_body = ClassDefinition,
+    tag = "class-definitions",
+    request_body = ClassDefinitionSchema,
     responses(
         (status = 201, description = "Class definition created successfully"),
+        (status = 400, description = "Invalid input data"),
+        (status = 401, description = "Unauthorized"),
+        (status = 422, description = "Validation failed"),
         (status = 500, description = "Internal server error")
     ),
     security(
-        ("bearerAuth" = [])
+        ("jwt" = [])
     )
 )]
 #[post("/class-definitions")]
 async fn create_class_definition(
     data: web::Data<ApiState>,
     definition: web::Json<ClassDefinition>,
+    req: HttpRequest,
 ) -> impl Responder {
     let db_pool = &data.db_pool;
     let repository = ClassDefinitionRepository::new(db_pool.clone());
 
-    // Save class definition
-    match repository.create(&definition).await {
-        Ok(uuid) => {
-            // Get the created definition with UUID
-            let created_def = definition.into_inner();
+    // Get authenticated user from JWT claims
+    let creator_uuid = match req.extensions().get::<AuthUserClaims>() {
+        Some(claims) => match Uuid::parse_str(&claims.sub) {
+            Ok(uuid) => Some(uuid),
+            Err(_) => None,
+        },
+        None => None,
+    };
 
+    // Extract definition and prepare for validation
+    let mut class_def = definition.into_inner();
+
+    // Generate a new UUID if one wasn't provided
+    if class_def.uuid == Uuid::nil() {
+        let context = uuid::ContextV7::new();
+        let ts = uuid::timestamp::Timestamp::now(&context);
+        class_def.uuid = Uuid::new_v7(ts);
+    }
+
+    // Set server-controlled fields
+    let now = chrono::Utc::now();
+    class_def.created_at = now;
+    class_def.updated_at = now;
+    class_def.created_by = creator_uuid;
+    class_def.updated_by = creator_uuid;
+    class_def.version = 1;
+
+    // Validate class definition
+    if let Err(e) = class_def.validate() {
+        return HttpResponse::UnprocessableEntity().json(json!({
+            "error": format!("Validation failed: {}", e),
+        }));
+    }
+
+    // Check if entity type already exists
+    match repository.get_by_entity_type(&class_def.entity_type).await {
+        Ok(Some(_)) => {
+            return HttpResponse::BadRequest().json(json!({
+                "error": format!("Entity type '{}' already exists", class_def.entity_type),
+            }));
+        }
+        Ok(None) => {} // Entity type doesn't exist, proceed
+        Err(e) => {
+            return HttpResponse::InternalServerError().json(json!({
+                "error": format!("Failed to check if entity type exists: {}", e),
+            }));
+        }
+    }
+
+    // Save class definition
+    match repository.create(&class_def).await {
+        Ok(uuid) => {
             // Create the database table for this entity type
             info!(
                 "Creating database table for entity type: {}",
-                created_def.entity_type
+                class_def.entity_type
             );
 
-            // Use the specific apply_to_database method
-            let schema_sql = match created_def.schema.generate_sql_schema() {
-                Ok(sql) => sql,
-                Err(e) => {
-                    return HttpResponse::InternalServerError().json(json!({
-                        "error": format!("Failed to generate SQL schema: {}", e)
-                    }));
-                }
-            };
-
-            match repository.apply_schema(&schema_sql).await {
+            // Update the entity table structure
+            match repository
+                .update_entity_table_for_class_definition(&class_def)
+                .await
+            {
                 Ok(_) => HttpResponse::Created().json(json!({
                     "uuid": uuid,
                     "message": "Class definition created successfully with database table"
@@ -146,18 +195,21 @@ async fn create_class_definition(
 #[utoipa::path(
     put,
     path = "/admin/api/v1/class-definitions/{uuid}",
-    tag = "admin",
+    tag = "class-definitions",
     params(
         ("uuid" = Uuid, Path, description = "Class definition UUID")
     ),
-    request_body = ClassDefinition,
+    request_body = ClassDefinitionSchema,
     responses(
         (status = 200, description = "Class definition updated successfully"),
+        (status = 400, description = "Invalid input data"),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Class definition not found"),
+        (status = 422, description = "Validation failed"),
         (status = 500, description = "Internal server error")
     ),
     security(
-        ("bearerAuth" = [])
+        ("jwt" = [])
     )
 )]
 #[put("/class-definitions/{uuid}")]
@@ -165,32 +217,87 @@ async fn update_class_definition(
     data: web::Data<ApiState>,
     path: web::Path<PathUuid>,
     definition: web::Json<ClassDefinition>,
+    req: HttpRequest,
 ) -> impl Responder {
     let db_pool = &data.db_pool;
     let repository = ClassDefinitionRepository::new(db_pool.clone());
 
+    // Get authenticated user from JWT claims
+    let updater_uuid = match req.extensions().get::<AuthUserClaims>() {
+        Some(claims) => match Uuid::parse_str(&claims.sub) {
+            Ok(uuid) => Some(uuid),
+            Err(_) => None,
+        },
+        None => None,
+    };
+
+    // Get existing definition
+    let existing_def = match repository.get_by_uuid(&path.uuid).await {
+        Ok(def) => def,
+        Err(_) => {
+            return HttpResponse::NotFound().json(json!({
+                "error": "Class definition not found"
+            }));
+        }
+    };
+
+    // Extract and prepare the updated definition
+    let mut updated_def = definition.into_inner();
+
+    // Ensure UUID remains the same
+    if updated_def.uuid != path.uuid {
+        return HttpResponse::BadRequest().json(json!({
+            "error": "UUID in path does not match UUID in body"
+        }));
+    }
+
+    // Preserve immutable fields
+    updated_def.created_at = existing_def.created_at;
+    updated_def.created_by = existing_def.created_by;
+    updated_def.version = existing_def.version + 1; // Increment version
+
+    // Update mutable fields
+    updated_def.updated_at = chrono::Utc::now();
+    updated_def.updated_by = updater_uuid;
+
+    // Validate updated definition
+    if let Err(e) = updated_def.validate() {
+        return HttpResponse::UnprocessableEntity().json(json!({
+            "error": format!("Validation failed: {}", e)
+        }));
+    }
+
+    // Check if entity type changed and ensure it doesn't conflict with an existing one
+    if updated_def.entity_type != existing_def.entity_type {
+        match repository
+            .get_by_entity_type(&updated_def.entity_type)
+            .await
+        {
+            Ok(Some(_)) => {
+                return HttpResponse::BadRequest().json(json!({
+                    "error": format!("Cannot change entity type to '{}' as it already exists", updated_def.entity_type)
+                }));
+            }
+            Ok(None) => {} // Entity type doesn't exist, proceed
+            Err(e) => {
+                return HttpResponse::InternalServerError().json(json!({
+                    "error": format!("Failed to check if entity type exists: {}", e)
+                }));
+            }
+        }
+    }
+
     // Update class definition
-    match repository.update(&path.uuid, &definition).await {
+    match repository.update(&path.uuid, &updated_def).await {
         Ok(_) => {
             // Update the database table structure for this entity type
-            let updated_def = definition.into_inner();
-
             info!(
                 "Updating database table for entity type: {}",
                 updated_def.entity_type
             );
 
-            // Use the specific apply_to_database method
-            let schema_sql = match updated_def.schema.generate_sql_schema() {
-                Ok(sql) => sql,
-                Err(e) => {
-                    return HttpResponse::InternalServerError().json(json!({
-                        "error": format!("Failed to generate SQL schema: {}", e)
-                    }));
-                }
-            };
-
-            match repository.apply_schema(&schema_sql).await {
+            // Update the entity table structure
+            match repository.update_entity_table_for_class_definition(&updated_def).await {
                 Ok(_) => {
                     HttpResponse::Ok().json(json!({
                         "message": "Class definition and database table updated successfully"
@@ -214,18 +321,19 @@ async fn update_class_definition(
 #[utoipa::path(
     delete,
     path = "/admin/api/v1/class-definitions/{uuid}",
-    tag = "admin",
+    tag = "class-definitions",
     params(
         ("uuid" = Uuid, Path, description = "Class definition UUID")
     ),
     responses(
         (status = 200, description = "Class definition deleted successfully"),
         (status = 400, description = "Cannot delete class definition with existing entities"),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Class definition not found"),
         (status = 500, description = "Internal server error")
     ),
     security(
-        ("bearerAuth" = [])
+        ("jwt" = [])
     )
 )]
 #[delete("/class-definitions/{uuid}")]
@@ -248,24 +356,29 @@ async fn delete_class_definition(
 
     // Check if there are any entities of this type
     let table_name = definition.get_table_name();
-
-    // Check if table exists
     let table_exists = match repository.check_table_exists(&table_name).await {
         Ok(exists) => exists,
-        Err(_) => false,
+        Err(e) => {
+            return HttpResponse::InternalServerError().json(json!({
+                "error": format!("Failed to check if table exists: {}", e)
+            }));
+        }
     };
 
     if table_exists {
-        // Check if there's data in the table
+        // Check if there are any records in the table
         let count = match repository.count_table_records(&table_name).await {
             Ok(count) => count,
-            Err(_) => 0,
+            Err(e) => {
+                return HttpResponse::InternalServerError().json(json!({
+                    "error": format!("Failed to count records in table: {}", e)
+                }));
+            }
         };
 
         if count > 0 {
             return HttpResponse::BadRequest().json(json!({
-                "error": format!("Cannot delete class definition '{}' because there are {} entities using it", 
-                    definition.entity_type, count)
+                "error": format!("Cannot delete class definition with existing entities. There are {} entities in table {}.", count, table_name)
             }));
         }
     }
@@ -273,15 +386,30 @@ async fn delete_class_definition(
     // Delete the class definition
     match repository.delete(&path.uuid).await {
         Ok(_) => {
-            // Also clean up from entity registry
-            let _ = repository
-                .delete_from_entity_registry(&definition.entity_type)
-                .await;
+            // Drop the table if it exists
+            if table_exists {
+                let drop_sql = format!("DROP TABLE IF EXISTS {} CASCADE", table_name);
+                match repository.apply_schema(&drop_sql).await {
+                    Ok(_) => {
+                        // Also remove from entity registry if it exists
+                        let _ = repository.delete_from_entity_registry(&definition.entity_type).await;
 
-            HttpResponse::Ok().json(json!({
-                "message": "Class definition deleted successfully",
-                "note": format!("Table {} was not dropped for safety reasons. Drop it manually if needed.", table_name)
-            }))
+                        HttpResponse::Ok().json(json!({
+                            "message": "Class definition and associated table deleted successfully"
+                        }))
+                    },
+                    Err(e) => {
+                        HttpResponse::Ok().json(json!({
+                            "warning": format!("Class definition deleted but failed to drop table: {}", e),
+                            "message": "Class definition was deleted but the database table may still exist"
+                        }))
+                    }
+                }
+            } else {
+                HttpResponse::Ok().json(json!({
+                    "message": "Class definition deleted successfully"
+                }))
+            }
         }
         Err(e) => HttpResponse::InternalServerError().json(json!({
             "error": format!("Failed to delete class definition: {}", e)
@@ -289,11 +417,111 @@ async fn delete_class_definition(
     }
 }
 
-/// Register class definition routes
+/// Apply database schema for class definitions
+#[utoipa::path(
+    post,
+    path = "/admin/api/v1/class-definitions/apply-schema",
+    tag = "class-definitions",
+    request_body(content = ApplySchemaRequest, description = "Optional class definition UUID. If not provided, applies schema for all class definitions"),
+    responses(
+        (status = 200, description = "Database schema applied successfully"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Class definition not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt" = [])
+    )
+)]
+#[post("/class-definitions/apply-schema")]
+async fn apply_class_definition_schema(
+    data: web::Data<ApiState>,
+    body: web::Json<ApplySchemaRequest>,
+) -> impl Responder {
+    log::info!(
+        "apply_class_definition_schema endpoint called with body: {:?}",
+        body
+    );
+
+    let db_pool = &data.db_pool;
+    let repository = ClassDefinitionRepository::new(db_pool.clone());
+
+    // If UUID is provided, apply schema for specific class definition
+    if let Some(uuid) = body.uuid {
+        match repository.get_by_uuid(&uuid).await {
+            Ok(definition) => {
+                // Update table structure using the columnar approach
+                match repository
+                    .update_entity_table_for_class_definition(&definition)
+                    .await
+                {
+                    Ok(_) => HttpResponse::Ok().json(json!({
+                        "success": true,
+                        "entity_type": definition.entity_type,
+                        "uuid": definition.uuid.to_string(),
+                        "message": "Database schema applied successfully"
+                    })),
+                    Err(e) => HttpResponse::InternalServerError().json(json!({
+                        "success": false,
+                        "entity_type": definition.entity_type,
+                        "uuid": definition.uuid.to_string(),
+                        "error": format!("Failed to apply database schema: {}", e)
+                    })),
+                }
+            }
+            Err(e) => HttpResponse::NotFound().json(json!({
+                "success": false,
+                "error": format!("Class definition not found: {}", e)
+            })),
+        }
+    } else {
+        // Apply schema for all class definitions
+        match repository.list(1000, 0).await {
+            Ok(definitions) => {
+                let mut results = Vec::new();
+
+                for definition in definitions {
+                    // Update table structure using the columnar approach
+                    let result = match repository
+                        .update_entity_table_for_class_definition(&definition)
+                        .await
+                    {
+                        Ok(_) => json!({
+                            "success": true,
+                            "entity_type": definition.entity_type,
+                            "uuid": definition.uuid.to_string(),
+                            "message": "Database schema applied successfully"
+                        }),
+                        Err(e) => json!({
+                            "success": false,
+                            "entity_type": definition.entity_type,
+                            "uuid": definition.uuid.to_string(),
+                            "error": format!("Failed to apply database schema: {}", e)
+                        }),
+                    };
+                    results.push(result);
+                }
+
+                HttpResponse::Ok().json(json!({
+                    "results": results,
+                    "total": results.len(),
+                    "message": "Database schema application process completed"
+                }))
+            }
+            Err(e) => HttpResponse::InternalServerError().json(json!({
+                "success": false,
+                "error": format!("Failed to list class definitions: {}", e)
+            })),
+        }
+    }
+}
+
+/// Register routes for class definitions
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(list_class_definitions)
         .service(get_class_definition)
         .service(create_class_definition)
         .service(update_class_definition)
-        .service(delete_class_definition);
+        .service(delete_class_definition)
+        .service(apply_class_definition_schema);
 }

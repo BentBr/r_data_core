@@ -1,4 +1,5 @@
 use super::definition::ClassDefinition;
+use crate::entity::field::FieldType;
 use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -78,7 +79,8 @@ impl Schema {
         "unknown_entities".to_string()
     }
 
-    pub fn generate_sql_schema(&self) -> Result<String> {
+    // Generate SQL DDL for this schema
+    pub fn generate_schema_sql(&self) -> Result<String> {
         let table_name = self.get_table_name();
         let columns = self.get_column_definitions()?;
 
@@ -100,46 +102,7 @@ impl Schema {
     }
 
     pub async fn apply_to_database(&self, pool: &PgPool) -> Result<()> {
-        let sql = self.generate_sql_schema()?;
-        sqlx::query(&sql)
-            .execute(pool)
-            .await
-            .map_err(Error::Database)?;
-        Ok(())
-    }
-}
-
-impl ClassDefinition {
-    /// Generate SQL table schema for this class
-    pub fn generate_sql_schema(&self) -> String {
-        // Base column definitions as string literals (no conversion needed)
-        let mut sql = format!("CREATE TABLE IF NOT EXISTS {} (\n", self.get_table_name());
-        sql.push_str("    id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),\n");
-        sql.push_str("    uuid UUID NOT NULL UNIQUE,\n");
-        sql.push_str("    path TEXT NOT NULL,\n");
-        sql.push_str("    created_at TIMESTAMP WITH TIME ZONE NOT NULL,\n");
-        sql.push_str("    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,\n");
-        sql.push_str("    created_by UUID,\n");
-        sql.push_str("    updated_by UUID,\n");
-        sql.push_str("    published BOOLEAN NOT NULL DEFAULT FALSE,\n");
-        sql.push_str("    version INTEGER NOT NULL DEFAULT 1,\n");
-
-        // Add custom_fields JSONB for any additional fields
-        sql.push_str("    custom_fields JSONB NOT NULL DEFAULT '{}'\n");
-        sql.push_str(");\n");
-
-        // Add indexes for searchable fields
-        sql.push_str(&format!(
-            "CREATE INDEX IF NOT EXISTS idx_{}_uuid ON {} (uuid);\n",
-            self.get_table_name(),
-            self.get_table_name()
-        ));
-
-        sql
-    }
-
-    pub async fn apply_to_database(&self, pool: &PgPool) -> Result<()> {
-        let sql = self.generate_sql_schema();
+        let sql = self.generate_schema_sql()?;
         sqlx::query(&sql)
             .execute(pool)
             .await

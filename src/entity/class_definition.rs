@@ -192,7 +192,7 @@ impl ClassDefinition {
     }
     
     /// Generate SQL table schema for this class
-    pub fn generate_sql_schema(&self) -> String {
+    pub fn generate_schema_sql(&self) -> String {
         let table_name = self.get_table_name();
         let mut sql = format!("CREATE TABLE IF NOT EXISTS {} (\n", table_name);
         sql.push_str("  uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),\n");
@@ -366,7 +366,7 @@ impl ClassDefinition {
     /// Apply the class definition to the database 
     pub async fn apply_to_database(&self, db: &PgPool) -> Result<(), Error> {
         // 1. Generate SQL schema and execute
-        let sql = self.generate_sql_schema();
+        let sql = self.generate_schema_sql();
         debug!("Applying SQL schema for class {}: {}", self.class_name, sql);
         
         // Execute the SQL schema

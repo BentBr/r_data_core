@@ -2,6 +2,7 @@ use actix_web::web;
 use actix_web::{get, HttpRequest, HttpResponse};
 use serde_json;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
+use utoipa::openapi::{Object, ObjectBuilder, Schema, SchemaType};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::{Config, SwaggerUi};
 
@@ -16,7 +17,8 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         crate::api::admin::class_definitions::routes::get_class_definition,
         crate::api::admin::class_definitions::routes::create_class_definition,
         crate::api::admin::class_definitions::routes::update_class_definition,
-        crate::api::admin::class_definitions::routes::delete_class_definition
+        crate::api::admin::class_definitions::routes::delete_class_definition,
+        crate::api::admin::class_definitions::routes::apply_class_definition_schema
     ),
     components(
         schemas(
@@ -26,13 +28,23 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
             crate::api::admin::auth::AdminRegisterResponse,
             crate::api::admin::auth::EmptyRequest,
             crate::api::admin::class_definitions::models::PaginationQuery,
-            crate::api::admin::class_definitions::models::PathUuid
+            crate::api::admin::class_definitions::models::PathUuid,
+            crate::api::admin::class_definitions::models::ClassDefinitionSchema,
+            crate::api::admin::class_definitions::models::FieldDefinitionSchema,
+            crate::api::admin::class_definitions::models::FieldTypeSchema,
+            crate::api::admin::class_definitions::models::FieldValidationSchema,
+            crate::api::admin::class_definitions::models::UiSettingsSchema,
+            crate::api::admin::class_definitions::models::OptionsSourceSchema,
+            crate::api::admin::class_definitions::models::SelectOptionSchema,
+            crate::api::admin::class_definitions::models::ClassDefinitionListResponse,
+            crate::api::admin::class_definitions::models::ApplySchemaRequest
         )
     ),
-    modifiers(&SecurityAddon),
+    modifiers(&SecurityAddon, &UuidSchemaAddon, &ModelSchemaAddon),
     tags(
         (name = "admin-auth", description = "Admin authentication endpoints"),
-        (name = "admin", description = "Administrative endpoints")
+        (name = "admin", description = "Administrative endpoints for managing system resources"),
+        (name = "class-definitions", description = "Endpoints for managing entity type definitions and structure")
     ),
     info(
         title = "R Data Core Admin API",
@@ -68,6 +80,59 @@ impl Modify for SecurityAddon {
     }
 }
 
+/// Add a modifier for Uuid schema
+struct UuidSchemaAddon;
+
+impl Modify for UuidSchemaAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        if let Some(components) = openapi.components.as_mut() {
+            components.schemas.insert(
+                "Uuid".to_string(),
+                utoipa::openapi::schema::Schema::Object(
+                    ObjectBuilder::new()
+                        .schema_type(SchemaType::String)
+                        .format(Some(utoipa::openapi::SchemaFormat::Custom(
+                            "uuid".to_string(),
+                        )))
+                        .description(Some("UUID v7 string".to_string()))
+                        .example(Some(serde_json::json!(
+                            "123e4567-e89b-12d3-a456-426614174000"
+                        )))
+                        .build(),
+                )
+                .into(),
+            );
+        }
+    }
+}
+
+/// Add a modifier to fix schema references
+struct ModelSchemaAddon;
+
+impl Modify for ModelSchemaAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        if let Some(components) = openapi.components.as_mut() {
+            // Find schema references with fully qualified paths and rename them
+            let mut schemas_to_rename = Vec::new();
+
+            // First collect the keys that need to be renamed
+            for key in components.schemas.keys() {
+                if key.contains("crate.api.admin.class_definitions.models.") {
+                    let new_key = key.split('.').last().unwrap_or(key).to_string();
+                    schemas_to_rename.push((key.clone(), new_key));
+                }
+            }
+
+            // Then perform the renames
+            for (old_key, new_key) in schemas_to_rename {
+                if let Some(schema) = components.schemas.remove(&old_key) {
+                    components.schemas.insert(new_key, schema);
+                }
+            }
+        }
+    }
+}
+
 /// Public API Documentation
 #[derive(OpenApi)]
 #[openapi(
@@ -84,6 +149,7 @@ impl Modify for SecurityAddon {
             crate::api::public::queries::models::AdvancedEntityQuery
         )
     ),
+    modifiers(&UuidSchemaAddon, &ModelSchemaAddon),
     tags(
         (name = "public", description = "Public API endpoints")
     ),

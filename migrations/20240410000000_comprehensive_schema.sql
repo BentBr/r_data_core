@@ -1,6 +1,15 @@
 -- Enable UUID extension and v7 function 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Create a function to automatically update the updated_at column
+CREATE OR REPLACE FUNCTION update_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+   NEW.updated_at = NOW();
+   RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Entity Registry Table
 CREATE TABLE IF NOT EXISTS entity_registry (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
@@ -10,6 +19,13 @@ CREATE TABLE IF NOT EXISTS entity_registry (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Add auto-update trigger for entity_registry
+DROP TRIGGER IF EXISTS set_timestamp_entity_registry ON entity_registry;
+CREATE TRIGGER set_timestamp_entity_registry
+BEFORE UPDATE ON entity_registry
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
 
 -- Entity Versions Table
 CREATE TABLE IF NOT EXISTS entity_versions (

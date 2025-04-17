@@ -161,8 +161,8 @@ async fn main() -> Result<()> {
         .add_field(in_stock_field)
         .expect("Failed to add in_stock field");
 
-    // Apply the class definition to the database
-    class_def.apply_to_database(&pool).await?;
+    // Apply schema to database
+    class_def.schema.apply_to_database(&pool).await?;
 
     // Create a repository for the dynamic entity
     let repository = DynamicEntityRepository::new(

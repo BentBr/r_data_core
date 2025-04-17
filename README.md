@@ -173,6 +173,63 @@ psql -U postgres -d your_database_name -c "CREATE EXTENSION pg_uuidv7;"
 
 For more information about our PostgresSQL setup with UUID v7, see the [documentation](./docker/postgres/README.md).
 
+## Entity System
+
+The R Data Core provides a flexible system for defining and working with dynamic entities. This allows you to create custom data structures at runtime through the API rather than needing to modify the application code.
+
+### Key Concepts
+
+#### Class Definitions
+
+A **Class Definition** is a schema that defines the structure of an entity type. It includes:
+- A unique identifier
+- An entity type name (which becomes the table name)
+- A set of field definitions
+- Metadata about the entity type (description, display name, etc.)
+- Schema information for database representation
+
+When a class definition is created or updated, the system automatically generates the necessary database tables and columns to store entities of that type.
+
+#### Fields
+
+Each **Field Definition** within a class specifies:
+- Field name and display name
+- Data type (String, Integer, Boolean, DateTime, etc.)
+- Validation rules (required, min/max length, patterns, etc.)
+- UI settings for rendering the field in client applications
+- Database storage settings (indexed, filterable, etc.)
+
+#### Dynamic Entities
+
+A **Dynamic Entity** is an actual data object that follows the structure defined by a class definition. Entities can be created, updated, queried, and deleted through the API. Each entity instance includes:
+- Standard system fields (UUID, creation timestamp, etc.)
+- The custom fields defined in its class definition
+- Metadata and relationship information
+
+### Supported Field Types
+
+The system supports a rich set of field types:
+- **Text Types**: String, Text, Wysiwyg (rich text)
+- **Numeric Types**: Integer, Float
+- **Boolean Type**: Boolean (true/false)
+- **Date Types**: Date, DateTime
+- **Complex Data Types**: Object, Array, UUID
+- **Relation Types**: ManyToOne, ManyToMany
+- **Select Types**: Select (single), MultiSelect (multiple)
+- **Asset Types**: Image, File
+
+### API Endpoints
+
+All class definition endpoints are secured with JWT authentication and require admin privileges:
+
+- `GET /admin/api/v1/class-definitions` - List all class definitions
+- `GET /admin/api/v1/class-definitions/{uuid}` - Get a specific class definition
+- `POST /admin/api/v1/class-definitions` - Create a new class definition 
+- `PUT /admin/api/v1/class-definitions/{uuid}` - Update an existing class definition
+- `DELETE /admin/api/v1/class-definitions/{uuid}` - Delete a class definition
+
+Entity data can be manipulated through the public API endpoints (documentation pending).
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
@@ -188,10 +245,28 @@ Todos:
 - ~~fix sqlx topic~~
 - ~~fix swagger~~
 - add routes
-  - auth (partially done)
-  - 
+  - ~~auth~~
+  - ~~class-definitions~~
+  - workflows
+    - export
+      - json, xml, csv
+      - graphql
+    - import
+      - json, xml, csv
+      - web
+      - webhooks
+    - manipulate data
+  - versions
+  - entities
+    - crud
+  - permissions
 - update readme
+- add options for custom tables (like bricks)
 - test admin routes
 - check entities and respective columns - we need proper creation and not everything serialized.
 - check env vars
 - clippy
+
+delete tables when class-definition is deleted
+cleanup old tables command
+
