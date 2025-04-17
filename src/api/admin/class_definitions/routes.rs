@@ -391,7 +391,7 @@ async fn delete_class_definition(
                 let drop_sql = format!("DROP TABLE IF EXISTS {} CASCADE", table_name);
                 match repository.apply_schema(&drop_sql).await {
                     Ok(_) => {
-                        // Also remove from entity registry if it exists
+                        // Also remove from the entity registry if it exists
                         let _ = repository.delete_from_entity_registry(&definition.entity_type).await;
 
                         HttpResponse::Ok().json(json!({

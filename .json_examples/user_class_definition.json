@@ -1,0 +1,269 @@
+{
+  "entity_type": "user",
+  "display_name": "User",
+  "description": "Customer/client account information",
+  "group_name": "accounts",
+  "allow_children": false,
+  "icon": "user",
+  "fields": [
+    {
+      "name": "email",
+      "display_name": "Email Address",
+      "description": "Primary email address used for login and communication",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "min_length": 5,
+        "max_length": 255,
+        "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+        "error_message": "Please enter a valid email address"
+      },
+      "ui_settings": {
+        "display_order": 1,
+        "section": "Account Info",
+        "control_type": "email"
+      }
+    },
+    {
+      "name": "username",
+      "display_name": "Username",
+      "description": "Unique identifier for the user account",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "min_length": 3,
+        "max_length": 50,
+        "pattern": "^[a-zA-Z0-9_-]+$",
+        "error_message": "Username can only contain letters, numbers, underscores and hyphens"
+      },
+      "ui_settings": {
+        "display_order": 2,
+        "section": "Account Info"
+      }
+    },
+    {
+      "name": "first_name",
+      "display_name": "First Name",
+      "description": "User's first/given name",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "min_length": 1,
+        "max_length": 50
+      },
+      "ui_settings": {
+        "display_order": 3,
+        "section": "Personal Info"
+      }
+    },
+    {
+      "name": "last_name",
+      "display_name": "Last Name",
+      "description": "User's last/family name",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "min_length": 1,
+        "max_length": 50
+      },
+      "ui_settings": {
+        "display_order": 4,
+        "section": "Personal Info"
+      }
+    },
+    {
+      "name": "phone",
+      "display_name": "Phone Number",
+      "description": "Primary contact phone number",
+      "field_type": "String",
+      "required": false,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "pattern": "^\\+?[1-9]\\d{1,14}$",
+        "error_message": "Please enter a valid phone number in international format"
+      },
+      "ui_settings": {
+        "display_order": 5,
+        "section": "Contact Info",
+        "control_type": "phone"
+      }
+    },
+    {
+      "name": "date_of_birth",
+      "display_name": "Date of Birth",
+      "description": "User's date of birth",
+      "field_type": "Date",
+      "required": false,
+      "indexed": false,
+      "filterable": true,
+      "constraints": {
+        "min_date": "1900-01-01",
+        "max_date": "today"
+      },
+      "ui_settings": {
+        "display_order": 6,
+        "section": "Personal Info"
+      }
+    },
+    {
+      "name": "address",
+      "display_name": "Address",
+      "description": "User's primary address",
+      "field_type": "Object",
+      "required": false,
+      "indexed": false,
+      "filterable": false,
+      "constraints": {},
+      "ui_settings": {
+        "display_order": 7,
+        "section": "Contact Info",
+        "schema": {
+          "street": {
+            "type": "String",
+            "required": true
+          },
+          "city": {
+            "type": "String",
+            "required": true
+          },
+          "state": {
+            "type": "String",
+            "required": true
+          },
+          "postal_code": {
+            "type": "String",
+            "required": true
+          },
+          "country": {
+            "type": "String",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "name": "role",
+      "display_name": "User Role",
+      "description": "System role for user permissions",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "options": [
+          "customer",
+          "staff",
+          "admin"
+        ]
+      },
+      "ui_settings": {
+        "display_order": 8,
+        "section": "Account Info",
+        "control_type": "dropdown"
+      }
+    },
+    {
+      "name": "status",
+      "display_name": "Account Status",
+      "description": "Current status of the user account",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "options": [
+          "active",
+          "inactive",
+          "suspended",
+          "pending"
+        ]
+      },
+      "ui_settings": {
+        "display_order": 9,
+        "section": "Account Info",
+        "control_type": "radio"
+      }
+    },
+    {
+      "name": "preferences",
+      "display_name": "User Preferences",
+      "description": "User-defined preferences and settings",
+      "field_type": "MultiSelect",
+      "required": false,
+      "indexed": false,
+      "filterable": true,
+      "constraints": {
+        "options": [
+          "email_notifications",
+          "sms_notifications",
+          "marketing_emails",
+          "dark_mode",
+          "two_factor_auth",
+          "show_recommendations",
+          "save_order_history",
+          "use_default_shipping",
+          "use_default_payment"
+        ]
+      },
+      "ui_settings": {
+        "display_order": 10,
+        "section": "Preferences",
+        "control_type": "checkbox_group"
+      }
+    },
+    {
+      "name": "newsletter_opt_in",
+      "display_name": "Newsletter Subscription",
+      "description": "User has opted in to receive newsletters",
+      "field_type": "Boolean",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {},
+      "ui_settings": {
+        "display_order": 11,
+        "section": "Communication Preferences",
+        "control_type": "checkbox"
+      }
+    },
+    {
+      "name": "last_login",
+      "display_name": "Last Login",
+      "description": "Timestamp of user's last login",
+      "field_type": "DateTime",
+      "required": false,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {},
+      "ui_settings": {
+        "display_order": 12,
+        "section": "Account Info",
+        "read_only": true
+      }
+    },
+    {
+      "name": "profile_image_url",
+      "display_name": "Profile Image",
+      "description": "URL to user's profile image",
+      "field_type": "String",
+      "required": false,
+      "indexed": false,
+      "filterable": false,
+      "constraints": {},
+      "ui_settings": {
+        "display_order": 13,
+        "section": "Personal Info",
+        "control_type": "image"
+      }
+    }
+  ]
+} 

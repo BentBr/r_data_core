@@ -190,6 +190,8 @@ A **Class Definition** is a schema that defines the structure of an entity type.
 
 When a class definition is created or updated, the system automatically generates the necessary database tables and columns to store entities of that type.
 
+You can find example json files in [example files](./.json_examples)
+
 #### Fields
 
 Each **Field Definition** within a class specifies:
@@ -266,6 +268,9 @@ Todos:
 - check entities and respective columns - we need proper creation and not everything serialized.
 - check env vars
 - clippy
+- custom field type (json with predefined content - like a preferences structure...)
+- key-value-store
+- relations 1:n + n:n
 
 delete tables when class-definition is deleted
 cleanup old tables command

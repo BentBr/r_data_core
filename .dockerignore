@@ -6,6 +6,7 @@
 target/
 .idea/
 .vscode/
+.json_examples/
 
 # Git
 .git/
@@ -14,4 +15,6 @@ target/
 # Temp files
 **/*.rs.bk
 *.swp
-*.swo 
+*.swo
+
+server.log

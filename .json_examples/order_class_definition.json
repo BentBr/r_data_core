@@ -1,0 +1,393 @@
+{
+  "entity_type": "order",
+  "display_name": "Order",
+  "description": "Customer order record containing product purchases",
+  "group_name": "commerce",
+  "allow_children": true,
+  "icon": "shopping-cart",
+  "fields": [
+    {
+      "name": "order_number",
+      "display_name": "Order Number",
+      "description": "Unique identifier for the order",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "pattern": "^ORD-[0-9]{8}-[A-Z0-9]{4}$",
+        "error_message": "Order number must be in format ORD-YYYYMMDD-XXXX"
+      },
+      "ui_settings": {
+        "display_order": 1,
+        "section": "Order Info",
+        "read_only": true
+      }
+    },
+    {
+      "name": "user_id",
+      "display_name": "Customer ID",
+      "description": "Reference to the customer who placed the order",
+      "field_type": "Uuid",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "reference_entity": "user"
+      },
+      "ui_settings": {
+        "display_order": 2,
+        "section": "Customer Info",
+        "reference_field": "email"
+      }
+    },
+    {
+      "name": "order_date",
+      "display_name": "Order Date",
+      "description": "Date and time when the order was placed",
+      "field_type": "DateTime",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {},
+      "ui_settings": {
+        "display_order": 3,
+        "section": "Order Info"
+      }
+    },
+    {
+      "name": "status",
+      "display_name": "Order Status",
+      "description": "Current status of the order",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "options": [
+          "pending",
+          "processing",
+          "shipped",
+          "delivered",
+          "cancelled",
+          "refunded"
+        ]
+      },
+      "ui_settings": {
+        "display_order": 4,
+        "section": "Order Info",
+        "control_type": "status"
+      }
+    },
+    {
+      "name": "items",
+      "display_name": "Order Items",
+      "description": "Products included in this order",
+      "field_type": "Array",
+      "required": true,
+      "indexed": false,
+      "filterable": false,
+      "constraints": {},
+      "ui_settings": {
+        "display_order": 5,
+        "section": "Order Items",
+        "array_item_schema": {
+          "product_id": {
+            "type": "Uuid",
+            "required": true,
+            "reference_entity": "product",
+            "reference_field": "name"
+          },
+          "quantity": {
+            "type": "Integer",
+            "required": true,
+            "min": 1
+          },
+          "unit_price": {
+            "type": "Float",
+            "required": true,
+            "precision": 2
+          },
+          "discount": {
+            "type": "Float",
+            "required": false,
+            "precision": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "subtotal",
+      "display_name": "Subtotal",
+      "description": "Sum of all item prices before tax and shipping",
+      "field_type": "Float",
+      "required": true,
+      "indexed": false,
+      "filterable": true,
+      "constraints": {
+        "min": 0,
+        "precision": 2
+      },
+      "ui_settings": {
+        "display_order": 6,
+        "section": "Order Summary",
+        "control_type": "currency"
+      }
+    },
+    {
+      "name": "tax",
+      "display_name": "Tax Amount",
+      "description": "Total tax applied to the order",
+      "field_type": "Float",
+      "required": true,
+      "indexed": false,
+      "filterable": true,
+      "constraints": {
+        "min": 0,
+        "precision": 2
+      },
+      "ui_settings": {
+        "display_order": 7,
+        "section": "Order Summary",
+        "control_type": "currency"
+      }
+    },
+    {
+      "name": "shipping_cost",
+      "display_name": "Shipping Cost",
+      "description": "Cost of shipping for this order",
+      "field_type": "Float",
+      "required": true,
+      "indexed": false,
+      "filterable": true,
+      "constraints": {
+        "min": 0,
+        "precision": 2
+      },
+      "ui_settings": {
+        "display_order": 8,
+        "section": "Order Summary",
+        "control_type": "currency"
+      }
+    },
+    {
+      "name": "total",
+      "display_name": "Order Total",
+      "description": "Final total amount including tax and shipping",
+      "field_type": "Float",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "min": 0,
+        "precision": 2
+      },
+      "ui_settings": {
+        "display_order": 9,
+        "section": "Order Summary",
+        "control_type": "currency"
+      }
+    },
+    {
+      "name": "payment_method",
+      "display_name": "Payment Method",
+      "description": "Method of payment used for this order",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "options": [
+          "credit_card",
+          "debit_card",
+          "paypal",
+          "bank_transfer",
+          "cryptocurrency",
+          "gift_card"
+        ]
+      },
+      "ui_settings": {
+        "display_order": 10,
+        "section": "Payment Info",
+        "control_type": "dropdown"
+      }
+    },
+    {
+      "name": "payment_status",
+      "display_name": "Payment Status",
+      "description": "Current status of payment for this order",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "options": [
+          "pending",
+          "authorized",
+          "paid",
+          "refunded",
+          "failed"
+        ]
+      },
+      "ui_settings": {
+        "display_order": 11,
+        "section": "Payment Info",
+        "control_type": "status"
+      }
+    },
+    {
+      "name": "shipping_address",
+      "display_name": "Shipping Address",
+      "description": "Address where the order will be delivered",
+      "field_type": "Object",
+      "required": true,
+      "indexed": false,
+      "filterable": false,
+      "constraints": {},
+      "ui_settings": {
+        "display_order": 12,
+        "section": "Shipping Info",
+        "schema": {
+          "recipient_name": {
+            "type": "String",
+            "required": true
+          },
+          "street": {
+            "type": "String",
+            "required": true
+          },
+          "city": {
+            "type": "String",
+            "required": true
+          },
+          "state": {
+            "type": "String",
+            "required": true
+          },
+          "postal_code": {
+            "type": "String",
+            "required": true
+          },
+          "country": {
+            "type": "String",
+            "required": true
+          },
+          "phone": {
+            "type": "String",
+            "required": false
+          }
+        }
+      }
+    },
+    {
+      "name": "billing_address",
+      "display_name": "Billing Address",
+      "description": "Address used for billing purposes",
+      "field_type": "Object",
+      "required": true,
+      "indexed": false,
+      "filterable": false,
+      "constraints": {},
+      "ui_settings": {
+        "display_order": 13,
+        "section": "Billing Info",
+        "schema": {
+          "recipient_name": {
+            "type": "String",
+            "required": true
+          },
+          "street": {
+            "type": "String",
+            "required": true
+          },
+          "city": {
+            "type": "String",
+            "required": true
+          },
+          "state": {
+            "type": "String",
+            "required": true
+          },
+          "postal_code": {
+            "type": "String",
+            "required": true
+          },
+          "country": {
+            "type": "String",
+            "required": true
+          },
+          "phone": {
+            "type": "String",
+            "required": false
+          }
+        }
+      }
+    },
+    {
+      "name": "shipping_method",
+      "display_name": "Shipping Method",
+      "description": "Method used to ship the order",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "options": [
+          "standard",
+          "express",
+          "overnight",
+          "international",
+          "pickup"
+        ]
+      },
+      "ui_settings": {
+        "display_order": 14,
+        "section": "Shipping Info",
+        "control_type": "dropdown"
+      }
+    },
+    {
+      "name": "tracking_number",
+      "display_name": "Tracking Number",
+      "description": "Shipping carrier tracking number",
+      "field_type": "String",
+      "required": false,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {},
+      "ui_settings": {
+        "display_order": 15,
+        "section": "Shipping Info"
+      }
+    },
+    {
+      "name": "notes",
+      "display_name": "Order Notes",
+      "description": "Additional notes about the order",
+      "field_type": "Text",
+      "required": false,
+      "indexed": false,
+      "filterable": false,
+      "constraints": {},
+      "ui_settings": {
+        "display_order": 16,
+        "section": "Additional Info",
+        "control_type": "textarea"
+      }
+    },
+    {
+      "name": "promo_code",
+      "display_name": "Promotion Code",
+      "description": "Promotional code applied to the order",
+      "field_type": "String",
+      "required": false,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {},
+      "ui_settings": {
+        "display_order": 17,
+        "section": "Additional Info"
+      }
+    }
+  ]
+} 
