@@ -20,12 +20,6 @@ BEFORE UPDATE ON class_definitions
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
 
-DROP TRIGGER IF EXISTS set_timestamp ON entities;
-CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON entities
-FOR EACH ROW
-EXECUTE FUNCTION update_timestamp();
-
 DROP TRIGGER IF EXISTS set_timestamp ON admin_users;
 CREATE TRIGGER set_timestamp
 BEFORE UPDATE ON admin_users

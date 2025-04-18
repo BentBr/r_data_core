@@ -382,15 +382,24 @@ impl ClassDefinitionRepository {
     ) -> Result<()> {
         // Get the table name from the class definition
         let table_name = class_definition.get_table_name();
+        let entity_type = &class_definition.entity_type;
         
         // Check if the table exists
         let table_exists = self.check_table_exists(&table_name).await?;
         
         if !table_exists {
-            // If the table doesn't exist, apply the full schema
-            log::info!("Table {} doesn't exist, applying full schema", table_name);
-            let schema = class_definition.generate_sql_schema();
-            return self.apply_schema(&schema).await;
+            // Create the entity table with just UUID (referenced to registry)
+            let create_table_sql = format!(
+                "CREATE TABLE IF NOT EXISTS {} (uuid UUID PRIMARY KEY REFERENCES entities_registry(uuid) ON DELETE CASCADE)",
+                table_name
+            );
+            
+            sqlx::query(&create_table_sql)
+                .execute(&self.db_pool)
+                .await
+                .map_err(Error::Database)?;
+                
+            log::info!("Created entity table: {}", table_name);
         }
 
         // Get current columns with their types
@@ -399,9 +408,8 @@ impl ClassDefinitionRepository {
 
         let current_column_names: HashSet<String> = current_columns.keys().cloned().collect();
 
-        // These are immutable system columns we never want to drop
-        let system_columns = ["uuid", "path", "created_at", "updated_at", 
-                             "created_by", "updated_by", "version", "published"];
+        // Only 'uuid' is a required system column in the entity-specific table
+        let system_columns = ["uuid"];
 
         // Prepare statements for different operations
         let mut column_statements = Vec::new();       // Add standard columns
@@ -453,7 +461,15 @@ impl ClassDefinitionRepository {
         }
 
         // Now check for columns that need to be added (fields in definition but not in db)
+        // Skip system fields as they're now stored in entities_registry
+        let registry_fields = ["path", "created_at", "updated_at", "created_by", "updated_by", "published", "version"];
+        
         for field in &class_definition.fields {
+            // Skip if this is a system field now stored in entities_registry
+            if registry_fields.contains(&field.name.as_str()) {
+                continue;
+            }
+            
             let column_name = match field.field_type {
                 FieldType::ManyToOne => {
                     if let Some(_) = &field.validation.target_class {
@@ -547,52 +563,111 @@ impl ClassDefinitionRepository {
         for field in &class_definition.fields {
             if let FieldType::ManyToMany = field.field_type {
                 if let Some(target_class) = &field.validation.target_class {
-                    let relation_table_name = format!("rel_{}_{}", 
-                                                     class_definition.entity_type.to_lowercase(), 
-                                                     field.name.to_lowercase());
+                    // Format for relation table: rel_[entity_type]_[field_name]
+                    let relation_table = format!("rel_{}_{}", 
+                        class_definition.entity_type.to_lowercase(), 
+                        field.name.to_lowercase());
                     
                     // Check if the relation table exists
-                    let rel_table_exists = self.check_table_exists(&relation_table_name).await?;
+                    let relation_table_exists = self.check_table_exists(&relation_table).await?;
                     
-                    if !rel_table_exists {
-                        // Create the relation table
-                        let create_relation_table = format!(
-                            "CREATE TABLE IF NOT EXISTS {} (
-                                source_uuid UUID NOT NULL REFERENCES {} (uuid) ON DELETE CASCADE,
-                                target_uuid UUID NOT NULL REFERENCES {} (uuid) ON DELETE CASCADE,
-                                PRIMARY KEY (source_uuid, target_uuid)
-                            )",
-                            relation_table_name, table_name, format!("entity_{}", target_class.to_lowercase())
-                        );
+                    if !relation_table_exists {
+                        log::info!("Creating relation table {}", relation_table);
                         
-                        log::info!("Creating relation table: {}", relation_table_name);
-                        column_statements.push(create_relation_table);
+                        // Create the relation table
+                        sqlx::query(&format!(
+                            "CREATE TABLE {} (
+                                id SERIAL PRIMARY KEY,
+                                {}_uuid UUID NOT NULL REFERENCES {} (uuid) ON DELETE CASCADE,
+                                {}_uuid UUID NOT NULL,
+                                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                                UNIQUE({}_uuid, {}_uuid)
+                            )",
+                            relation_table,
+                            class_definition.entity_type.to_lowercase(),
+                            table_name,
+                            target_class.to_lowercase(),
+                            class_definition.entity_type.to_lowercase(),
+                            target_class.to_lowercase()
+                        ))
+                        .execute(&self.db_pool)
+                        .await
+                        .map_err(Error::Database)?;
+                        
+                        // Create indices for the relation table
+                        sqlx::query(&format!(
+                            "CREATE INDEX idx_{}_{} ON {} ({}_uuid)",
+                            relation_table,
+                            class_definition.entity_type.to_lowercase(),
+                            relation_table,
+                            class_definition.entity_type.to_lowercase()
+                        ))
+                        .execute(&self.db_pool)
+                        .await
+                        .map_err(Error::Database)?;
+                        
+                        sqlx::query(&format!(
+                            "CREATE INDEX idx_{}_{} ON {} ({}_uuid)",
+                            relation_table,
+                            target_class.to_lowercase(),
+                            relation_table,
+                            target_class.to_lowercase()
+                        ))
+                        .execute(&self.db_pool)
+                        .await
+                        .map_err(Error::Database)?;
                     }
                 }
             }
         }
-
-        // Gather all statements with proper execution ordering
-        let mut all_statements = Vec::new();
-        all_statements.extend(drop_index_statements);
-        all_statements.extend(drop_column_statements);
-        all_statements.extend(column_statements);
-        all_statements.extend(index_statements);
-
-        // Only apply statements if there are any
-        if !all_statements.is_empty() {
-            log::info!(
-                "Applying {} schema update statements for table {}",
-                all_statements.len(),
-                table_name
-            );
-            
-            let combined_schema = all_statements.join(";\n") + ";";
-            self.apply_schema(&combined_schema).await
-        } else {
-            log::info!("No schema changes needed for table {}", table_name);
-            Ok(())
+        
+        // Execute all prepared statements
+        for drop_index_stmt in &drop_index_statements {
+            log::info!("Executing: {}", drop_index_stmt);
+            match sqlx::query(drop_index_stmt).execute(&self.db_pool).await {
+                Ok(_) => {},
+                Err(e) => log::warn!("Error dropping index: {}", e),
+            }
         }
+        
+        for drop_stmt in &drop_column_statements {
+            log::info!("Executing: {}", drop_stmt);
+            match sqlx::query(drop_stmt).execute(&self.db_pool).await {
+                Ok(_) => {},
+                Err(e) => log::warn!("Error dropping column: {}", e),
+            }
+        }
+        
+        for column_stmt in &column_statements {
+            log::info!("Executing: {}", column_stmt);
+            match sqlx::query(column_stmt).execute(&self.db_pool).await {
+                Ok(_) => {},
+                Err(e) => log::warn!("Error adding column: {}", e),
+            }
+        }
+        
+        for index_stmt in &index_statements {
+            log::info!("Executing: {}", index_stmt);
+            match sqlx::query(index_stmt).execute(&self.db_pool).await {
+                Ok(_) => {},
+                Err(e) => log::warn!("Error creating index: {}", e),
+            }
+        }
+        
+        // Refresh the view
+        let view_name = format!("entity_{}_view", entity_type);
+        let refresh_view_sql = format!("
+            SELECT create_entity_view('{}')
+        ", entity_type);
+        
+        sqlx::query(&refresh_view_sql)
+            .execute(&self.db_pool)
+            .await
+            .map_err(Error::Database)?;
+            
+        log::info!("Refreshed view: {}", view_name);
+        
+        Ok(())
     }
 
     /// Get column names and their types for a table
