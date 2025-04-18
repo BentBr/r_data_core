@@ -1,7 +1,10 @@
-pub mod api_auth;
-pub mod error_handlers;
-pub mod jwt_auth;
+mod api_auth;
+mod base_auth;
+mod combined_auth;
+mod error_handlers;
+mod jwt_auth;
 
 pub use api_auth::ApiAuth;
-pub use error_handlers::ErrorHandlers;
-pub use jwt_auth::JwtAuth;
+pub use base_auth::AuthMiddlewareService;
+pub use combined_auth::{ApiKeyInfo, AuthMethod, CombinedAuth};
+pub use error_handlers::{create_error_handlers, handle_middleware_panic, AppErrorHandlers};

@@ -24,6 +24,8 @@ pub struct AuthUserClaims {
 pub fn generate_jwt(user: &AdminUser, secret: &str, expiration_seconds: u64) -> Result<String> {
     let user_uuid = user.uuid;
 
+    log::debug!("Generating JWT for user: {}", user.username);
+
     // Create expiration time
     let expiration = Utc::now()
         .checked_add_signed(Duration::seconds(expiration_seconds as i64))
@@ -53,15 +55,20 @@ pub fn generate_jwt(user: &AdminUser, secret: &str, expiration_seconds: u64) -> 
 
 /// Verify and decode a JWT token
 pub fn verify_jwt(token: &str, secret: &str) -> Result<AuthUserClaims> {
-    // Decode and validate the token
-    let token_data = decode::<AuthUserClaims>(
+    // Decode and validate the token with minimal logging
+    let validation = Validation::default();
+
+    match decode::<AuthUserClaims>(
         token,
         &DecodingKey::from_secret(secret.as_bytes()),
-        &Validation::default(),
-    )
-    .map_err(|e| Error::Auth(format!("Token validation error: {}", e)))?;
-
-    Ok(token_data.claims)
+        &validation,
+    ) {
+        Ok(token_data) => Ok(token_data.claims),
+        Err(e) => {
+            log::error!("JWT validation error: {}", e);
+            Err(Error::Auth(format!("Token validation error: {}", e)))
+        }
+    }
 }
 
 // Add AdminOnly extractor if needed

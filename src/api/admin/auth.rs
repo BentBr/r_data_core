@@ -1,3 +1,4 @@
+use crate::api::auth::auth_enum;
 use actix_web::{post, web, HttpMessage, HttpRequest, Responder};
 use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
@@ -97,8 +98,11 @@ pub struct AdminRegisterResponse {
 
 /// Helper to get authenticated user info if available
 fn get_auth_info(req: &HttpRequest) -> (bool, Uuid) {
+    log::debug!("get_auth_info called");
+
     // Check for Authorization header first
     let auth_header = req.headers().get("Authorization");
+    log::debug!("Authorization header present: {}", auth_header.is_some());
 
     let has_auth_header = if let Some(header) = auth_header {
         if let Ok(auth_str) = header.to_str() {
@@ -114,38 +118,53 @@ fn get_auth_info(req: &HttpRequest) -> (bool, Uuid) {
 
     // Check if this is an authenticated request through extensions (middleware added it)
     let auth_user = req.extensions().get::<AuthUserClaims>().cloned();
+    log::debug!("AuthUserClaims in extensions: {}", auth_user.is_some());
+    if let Some(ref claims) = auth_user {
+        log::debug!("Claims content: {:?}", claims);
+    }
+
     let is_authenticated = auth_user.is_some() || has_auth_header;
 
     log::debug!("Auth header present: {}", has_auth_header);
     log::debug!("Extensions has auth: {}", auth_user.is_some());
+    log::debug!("Is authenticated: {}", is_authenticated);
 
     // Get creator UUID if authenticated
     let creator_uuid = if let Some(claims) = auth_user {
         // The sub claim is now the UUID string directly
+        log::debug!("Parsing UUID from claims.sub: {}", claims.sub);
         match Uuid::parse_str(&claims.sub) {
             Ok(uuid) => {
                 log::debug!("Using UUID from claims.sub: {}", uuid);
                 uuid
             }
             Err(e) => {
-                log::error!("Failed to parse UUID from claims.sub: {}", e);
+                log::error!(
+                    "Failed to parse UUID from claims.sub: {}, error: {}",
+                    claims.sub,
+                    e
+                );
                 Uuid::nil()
             }
         }
     } else if has_auth_header {
+        log::debug!("No claims in extensions, trying to extract from auth header");
         // If we have an auth header but no claims in extensions, try to extract the token and verify it manually
         if let Some(header) = auth_header {
             if let Ok(auth_str) = header.to_str() {
                 if auth_str.starts_with("Bearer ") {
                     let token = &auth_str[7..]; // Remove "Bearer " prefix
+                    log::debug!("Extracted token from header: {}", token);
 
                     // Get JWT secret from app state
                     if let Some(state) = req.app_data::<web::Data<ApiState>>() {
                         let jwt_secret = &state.jwt_secret;
+                        log::debug!("Got JWT secret, length: {}", jwt_secret.len());
 
                         // Verify JWT token
                         match verify_jwt(token, jwt_secret) {
                             Ok(claims) => {
+                                log::debug!("Manually verified JWT token, claims: {:?}", claims);
                                 // Extract the UUID
                                 if let Ok(uuid) = Uuid::parse_str(&claims.sub) {
                                     log::debug!("Manually extracted UUID from token: {}", uuid);
@@ -175,6 +194,11 @@ fn get_auth_info(req: &HttpRequest) -> (bool, Uuid) {
         Uuid::nil() // Use nil UUID for unauthenticated requests
     };
 
+    log::debug!(
+        "Final result - is_authenticated: {}, creator_uuid: {}",
+        is_authenticated,
+        creator_uuid
+    );
     (is_authenticated, creator_uuid)
 }
 
@@ -265,14 +289,14 @@ pub async fn admin_login(
         .timestamp();
 
     // Update last login time using repository
-    if let Err(_) = repo.update_last_login(&user.base.uuid).await {
+    if let Err(_) = repo.update_last_login(&user.uuid).await {
         // Continue even if update fails, just log it in a real implementation
     }
 
     // Build response
     let response = AdminLoginResponse {
         token,
-        user_uuid: user.base.uuid.to_string(),
+        user_uuid: user.uuid.to_string(),
         username: user.username,
         role: format!("{:?}", user.role),
         expires_at,
@@ -302,7 +326,7 @@ pub async fn admin_login(
 pub async fn admin_register(
     data: web::Data<ApiState>,
     register_req: Option<web::Json<AdminRegisterRequest>>,
-    req: HttpRequest,
+    auth: auth_enum::OptionalAuth,
 ) -> impl Responder {
     // Check if JSON body is provided
     let register_req = match register_req {
@@ -319,8 +343,25 @@ pub async fn admin_register(
         return ApiResponse::unprocessable_entity(&error_message);
     }
 
-    // Check if this is an authenticated request
-    let (is_authenticated, creator_uuid) = get_auth_info(&req);
+    // Get authentication info from the OptionalAuth extractor
+    let (is_authenticated, creator_uuid) = match &auth.0 {
+        Some(claims) => {
+            // Extract the UUID
+            let creator = match Uuid::parse_str(&claims.sub) {
+                Ok(uuid) => uuid,
+                Err(e) => {
+                    log::error!(
+                        "Failed to parse UUID from claims.sub: {}, error: {}",
+                        claims.sub,
+                        e
+                    );
+                    Uuid::nil()
+                }
+            };
+            (true, creator)
+        }
+        None => (false, Uuid::nil()),
+    };
 
     // Create repository
     let repo = PgAdminUserRepository::new(data.db_pool.clone());
@@ -389,19 +430,13 @@ pub async fn admin_register(
     )
 )]
 #[post("/auth/logout")]
-pub async fn admin_logout(_data: web::Data<ApiState>) -> impl Responder {
-    //Todo: In a real-world implementation, you would:
-    // 1. Extract the user ID from the token
-    // 2. Add the token to a blacklist in Redis with expiration
-    // 3. Log the event
+pub async fn admin_logout(
+    _body: web::Json<EmptyRequest>,
+    auth: auth_enum::RequiredAuth,
+) -> impl Responder {
+    log::debug!("Logout successful for user: {}", auth.0.name);
 
-    // For now we'll just acknowledge the logout without token validation
+    // Acknowledge the logout
+    log::debug!("Sending logout successful response");
     ApiResponse::message("Logout successful")
-}
-
-/// Register admin auth routes
-pub fn register_routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(admin_login)
-        .service(admin_register)
-        .service(admin_logout);
 }

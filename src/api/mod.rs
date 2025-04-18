@@ -1,15 +1,18 @@
 pub mod admin;
+pub mod auth;
 pub mod docs;
+pub mod health;
 pub mod jwt;
 pub mod middleware;
+pub mod models;
 pub mod public;
 pub mod response;
 
-use actix_web::{web, Responder};
+use actix_web::{get, web, Responder};
 use sqlx::PgPool;
 use std::sync::Arc;
 
-pub use crate::api::response::{ApiError, ApiResponse, Status};
+pub use crate::api::response::{ApiResponse, Status};
 use crate::cache::CacheManager;
 
 /// Shared application state
@@ -27,6 +30,12 @@ pub struct ApiState {
 // 404 handler for API routes within scope
 async fn not_found_handler() -> impl Responder {
     ApiResponse::<()>::not_found("API resource not found")
+}
+
+/// Health check endpoint
+#[get("/admin/api/v1/health")]
+async fn health_check() -> impl Responder {
+    ApiResponse::message("Service is healthy")
 }
 
 // Configuration struct for API routes
@@ -55,6 +64,10 @@ pub fn configure_app(cfg: &mut web::ServiceConfig) {
 
 // Configure app with customizable options
 pub fn configure_app_with_options(cfg: &mut web::ServiceConfig, options: ApiConfiguration) {
+    // Add health check endpoints
+    cfg.service(health::admin_health_check)
+        .service(health::public_health_check);
+
     let mut scope = web::scope("");
 
     if options.enable_admin {

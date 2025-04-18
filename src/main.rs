@@ -109,6 +109,7 @@ async fn main() -> std::io::Result<()> {
 
         App::new()
             .app_data(app_state.clone())
+            .wrap(api::middleware::create_error_handlers())
             .wrap(Logger::new("%a %{User-Agent}i %r %s %D"))
             .wrap(cors)
             .configure(api::configure_app)

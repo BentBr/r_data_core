@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -84,35 +83,35 @@ pub enum FieldConstraints {
     /// String field constraints
     #[serde(rename = "string")]
     String(StringConstraints),
-    
+
     /// Integer field constraints
     #[serde(rename = "integer")]
     Integer(NumericConstraints),
-    
+
     /// Float field constraints
     #[serde(rename = "float")]
     Float(NumericConstraints),
-    
+
     /// Date/time field constraints
     #[serde(rename = "datetime")]
     DateTime(DateTimeConstraints),
-    
+
     /// Date field constraints
     #[serde(rename = "date")]
     Date(DateTimeConstraints),
-    
+
     /// Select field constraints
     #[serde(rename = "select")]
     Select(SelectConstraints),
-    
+
     /// Multi-select field constraints
     #[serde(rename = "multiselect")]
     MultiSelect(SelectConstraints),
-    
+
     /// Relation field constraints
     #[serde(rename = "relation")]
     Relation(RelationConstraints),
-    
+
     /// Object/Array field constraints
     #[serde(rename = "schema")]
     Schema(SchemaConstraints),

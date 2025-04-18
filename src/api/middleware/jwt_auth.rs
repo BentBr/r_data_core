@@ -1,52 +1,66 @@
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     error::ErrorUnauthorized,
-    http::header::{self},
     web, Error, HttpMessage,
 };
 use futures::future::{ready, LocalBoxFuture, Ready};
+use std::panic::AssertUnwindSafe;
 use std::rc::Rc;
 
-use crate::api::jwt::{verify_jwt, AuthUserClaims};
+use crate::api::auth::extract_and_validate_jwt;
+use crate::api::middleware::AuthMiddlewareService;
 use crate::api::ApiState;
-
-/// JWT authentication middleware
-pub struct JwtAuth;
-
-impl Default for JwtAuth {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl JwtAuth {
-    /// Create a new instance of JwtAuth middleware
-    pub fn new() -> Self {
-        Self {}
-    }
-}
 
 /// Middleware service for JWT auth
 pub struct JwtAuthMiddleware<S> {
     service: Rc<S>,
 }
 
-impl<S, B> Transform<S, ServiceRequest> for JwtAuth
+impl<S, B> AuthMiddlewareService<S, B> for JwtAuthMiddleware<S>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
     S::Future: 'static,
     B: 'static,
 {
-    type Response = ServiceResponse<B>;
-    type Error = Error;
-    type Transform = JwtAuthMiddleware<S>;
-    type InitError = ();
-    type Future = Ready<Result<Self::Transform, Self::InitError>>;
+    fn process_auth(
+        &self,
+        req: ServiceRequest,
+        service: Rc<S>,
+    ) -> LocalBoxFuture<'static, Result<ServiceResponse<B>, Error>> {
+        let request = req.request().clone();
+        let state_result = req.app_data::<web::Data<ApiState>>().cloned();
+        let service_clone = service.clone();
 
-    fn new_transform(&self, service: S) -> Self::Future {
-        ready(Ok(JwtAuthMiddleware {
-            service: Rc::new(service),
-        }))
+        Box::pin(async move {
+            let state = match state_result {
+                Some(state) => state,
+                None => {
+                    log::error!("Failed to extract API state from request");
+                    return Err(ErrorUnauthorized("Missing application state"));
+                }
+            };
+
+            let jwt_secret = &state.jwt_secret;
+
+            match extract_and_validate_jwt(&request, jwt_secret).await {
+                Ok(Some(claims)) => {
+                    // Add claims to request extensions
+                    req.extensions_mut().insert(claims);
+
+                    // Always proceed to the handler - auth enforcement happens at handler level now
+                    service_clone.call(req).await
+                }
+                Ok(None) => {
+                    // No JWT token found or invalid token
+                    // Let the handler decide whether this is acceptable
+                    service_clone.call(req).await
+                }
+                Err(e) => {
+                    log::error!("JWT validation error: {:?}", e);
+                    service_clone.call(req).await
+                }
+            }
+        })
     }
 }
 
@@ -63,58 +77,11 @@ where
     forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        let service = self.service.clone();
+        log::debug!("JwtAuthMiddleware processing path: {}", req.path());
 
-        // Clone what we need from the request
-        let state_opt = req.app_data::<web::Data<ApiState>>().cloned();
-        let auth_header_str = req
-            .headers()
-            .get(header::AUTHORIZATION)
-            .and_then(|h| h.to_str().ok())
-            .map(|s| s.to_string());
+        let path = req.path();
 
-        Box::pin(async move {
-            // Verify state is available
-            let state = match state_opt {
-                Some(state) => state,
-                None => return Err(ErrorUnauthorized("Missing application state")),
-            };
-
-            // Get JWT secret
-            let jwt_secret = &state.jwt_secret;
-
-            // Verify auth header is present and parse it
-            let auth_str = match auth_header_str {
-                Some(s) => s,
-                None => return Err(ErrorUnauthorized("Authorization header missing")),
-            };
-
-            // Check for Bearer prefix
-            if !auth_str.starts_with("Bearer ") {
-                return Err(ErrorUnauthorized("Invalid authorization header format"));
-            }
-
-            let token = &auth_str[7..]; // Remove "Bearer " prefix
-
-            // Verify JWT token
-            match verify_jwt(token, jwt_secret) {
-                Ok(claims) => {
-                    // Add user claims to request extensions
-                    req.extensions_mut().insert(AuthUserClaims {
-                        sub: claims.sub,
-                        name: claims.name,
-                        email: claims.email,
-                        is_admin: claims.is_admin,
-                        role: claims.role,
-                        exp: claims.exp,
-                        iat: claims.iat,
-                    });
-
-                    // Continue with the request
-                    service.call(req).await
-                }
-                Err(_) => Err(ErrorUnauthorized("Invalid or expired token")),
-            }
-        })
+        // For all other paths, use process_auth to handle authentication
+        self.process_auth(req, self.service.clone())
     }
 }

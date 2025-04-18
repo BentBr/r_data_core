@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use sqlx::{postgres::PgRow, FromRow, Row};
@@ -6,7 +7,6 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use uuid::timestamp;
 use uuid::{ContextV7, Uuid};
-use regex;
 
 use super::schema::Schema;
 // Temporarily comment out missing function
@@ -420,9 +420,11 @@ impl ClassDefinition {
     }
 
     /// Convert to API schema model
-    pub fn to_schema_model(&self) -> crate::api::admin::class_definitions::models::ClassDefinitionSchema {
+    pub fn to_schema_model(
+        &self,
+    ) -> crate::api::admin::class_definitions::models::ClassDefinitionSchema {
         use crate::api::admin::class_definitions::models::ClassDefinitionSchema;
-        
+
         ClassDefinitionSchema {
             uuid: Some(self.uuid),
             entity_type: self.entity_type.clone(),

@@ -13,23 +13,39 @@ pub struct DynamicEntityValidator;
 impl DynamicEntityValidator {
     /// Validate a field against its definition
     pub fn validate_field(field_def: &FieldDefinition, value: &Value) -> Result<()> {
+        // Check if the field is required and the value is null
+        if field_def.required
+            && (value.is_null() || (value.is_string() && value.as_str().unwrap().is_empty()))
+        {
+            return Err(Error::Validation(format!(
+                "Field '{}' is required",
+                field_def.name
+            )));
+        }
+
+        // If the value is null and the field is not required, skip validation
+        if value.is_null() {
+            return Ok(());
+        }
+
+        // Validate based on field type
         match field_def.field_type {
-            FieldType::String | FieldType::Text | FieldType::Wysiwyg => {
-                Self::validate_string(field_def, value)
-            }
+            FieldType::String => Self::validate_string(field_def, value),
+            FieldType::Text => Self::validate_string(field_def, value),
+            FieldType::Wysiwyg => Self::validate_string(field_def, value),
             FieldType::Integer => Self::validate_integer(field_def, value),
             FieldType::Float => Self::validate_float(field_def, value),
             FieldType::Boolean => Self::validate_boolean(field_def, value),
-            FieldType::Array => Self::validate_array(field_def, value),
-            FieldType::Object => Self::validate_object(field_def, value),
             FieldType::Date => Self::validate_date(field_def, value),
             FieldType::DateTime => Self::validate_datetime(field_def, value),
             FieldType::Uuid => Self::validate_uuid(field_def, value),
             FieldType::Select => Self::validate_select(field_def, value),
             FieldType::MultiSelect => Self::validate_multi_select(field_def, value),
-            FieldType::ManyToOne | FieldType::ManyToMany => Self::validate_uuid(field_def, value),
-            FieldType::Image | FieldType::File => Self::validate_string(field_def, value),
+            FieldType::Array => Self::validate_array(field_def, value),
+            FieldType::Object => Self::validate_object(field_def, value),
             FieldType::Json => Self::validate_json(field_def, value),
+            FieldType::ManyToOne | FieldType::ManyToMany => Ok(()), // Relation validation is handled separately
+            FieldType::Image | FieldType::File => Ok(()), // Asset validation is handled separately
         }
     }
 

@@ -2,12 +2,10 @@ use serde_json::Value as JsonValue;
 use sqlx::{postgres::PgRow, FromRow, PgPool, Row};
 use std::collections::HashMap;
 use std::sync::Arc;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::entity::class::definition::ClassDefinition;
 use crate::entity::dynamic_entity::entity::DynamicEntity;
-use crate::entity::DynamicFields;
 use crate::error::{Error, Result};
 
 /// Repository for managing dynamic entities
@@ -147,13 +145,23 @@ impl DynamicEntityRepository {
         // Extract column names
         let valid_columns: Vec<String> = columns_result
             .iter()
-            .map(|row| row.try_get::<String, _>("column_name").unwrap_or_default().to_lowercase())
+            .map(|row| {
+                row.try_get::<String, _>("column_name")
+                    .unwrap_or_default()
+                    .to_lowercase()
+            })
             .collect();
 
         // Registry fields that should not be included in the entity table
         let registry_fields = [
-            "entity_type", "path", "created_at", "updated_at", 
-            "created_by", "updated_by", "published", "version"
+            "entity_type",
+            "path",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "updated_by",
+            "published",
+            "version",
         ];
 
         // Build query for entity-specific table
@@ -168,32 +176,37 @@ impl DynamicEntityRepository {
 
             if valid_columns.contains(&key.to_lowercase()) {
                 columns.push(key.clone());
-                
+
                 // Format the value appropriately based on its type
                 let value_str = match value {
                     JsonValue::String(s) => format!("'{}'", s.replace("'", "''")),
                     JsonValue::Number(n) => n.to_string(),
-                    JsonValue::Bool(b) => if *b { "TRUE".to_string() } else { "FALSE".to_string() },
+                    JsonValue::Bool(b) => {
+                        if *b {
+                            "TRUE".to_string()
+                        } else {
+                            "FALSE".to_string()
+                        }
+                    }
                     JsonValue::Null => "NULL".to_string(),
                     _ => format!("'{}'", value.to_string().replace("'", "''")), // For complex types
                 };
-                
+
                 values.push(value_str);
             }
         }
 
         // Create the INSERT statement for the entity table
-        if columns.len() > 1 { // If we have more than just the UUID
+        if columns.len() > 1 {
+            // If we have more than just the UUID
             let query = format!(
                 "INSERT INTO {} ({}) VALUES ({})",
                 table_name,
                 columns.join(", "),
                 values.join(", ")
             );
-            
-            sqlx::query(&query)
-                .execute(&mut *tx)
-                .await?;
+
+            sqlx::query(&query).execute(&mut *tx).await?;
         } else {
             // If we only have the UUID, just insert that
             sqlx::query(&format!("INSERT INTO {} (uuid) VALUES ($1)", table_name))
@@ -271,8 +284,10 @@ impl DynamicEntityRepository {
         // Always update timestamp and increment version
         let update_registry_query = if registry_fields.is_empty() {
             // Just update the timestamp and version
-            String::from("UPDATE entities_registry SET updated_at = NOW(), version = version + 1 
-                WHERE uuid = $1 AND entity_type = $2")
+            String::from(
+                "UPDATE entities_registry SET updated_at = NOW(), version = version + 1 
+                WHERE uuid = $1 AND entity_type = $2",
+            )
         } else {
             format!(
                 "UPDATE entities_registry SET {}, updated_at = NOW(), version = version + 1 
@@ -311,13 +326,23 @@ impl DynamicEntityRepository {
         // Extract column names
         let valid_columns: Vec<String> = columns_result
             .iter()
-            .map(|row| row.try_get::<String, _>("column_name").unwrap_or_default().to_lowercase())
+            .map(|row| {
+                row.try_get::<String, _>("column_name")
+                    .unwrap_or_default()
+                    .to_lowercase()
+            })
             .collect();
 
         // Registry fields that should not be included in the entity table
         let registry_fields = [
-            "entity_type", "path", "created_at", "updated_at", 
-            "created_by", "updated_by", "published", "version"
+            "entity_type",
+            "path",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "updated_by",
+            "published",
+            "version",
         ];
 
         // Build SET clauses for entity-specific fields
@@ -333,11 +358,17 @@ impl DynamicEntityRepository {
                 let value_str = match value {
                     JsonValue::String(s) => format!("'{}'", s.replace("'", "''")),
                     JsonValue::Number(n) => n.to_string(),
-                    JsonValue::Bool(b) => if *b { "TRUE".to_string() } else { "FALSE".to_string() },
+                    JsonValue::Bool(b) => {
+                        if *b {
+                            "TRUE".to_string()
+                        } else {
+                            "FALSE".to_string()
+                        }
+                    }
                     JsonValue::Null => "NULL".to_string(),
                     _ => format!("'{}'", value.to_string().replace("'", "''")), // For complex types
                 };
-                
+
                 set_clauses.push(format!("{} = {}", key, value_str));
             }
         }
@@ -350,10 +381,8 @@ impl DynamicEntityRepository {
                 set_clauses.join(", "),
                 uuid
             );
-            
-            sqlx::query(&update_entity_query)
-                .execute(&mut *tx)
-                .await?;
+
+            sqlx::query(&update_entity_query).execute(&mut *tx).await?;
         }
 
         // Commit the transaction
@@ -390,24 +419,42 @@ impl DynamicEntityRepository {
                     // Create a HashMap containing all fields from the row
                     let mut data = HashMap::new();
                     data.insert("uuid".to_string(), JsonValue::String(row.uuid.to_string()));
-                    data.insert("entity_type".to_string(), JsonValue::String(row.entity_type.clone()));
+                    data.insert(
+                        "entity_type".to_string(),
+                        JsonValue::String(row.entity_type.clone()),
+                    );
                     data.insert("path".to_string(), JsonValue::String(row.path.clone()));
-                    
+
                     // Add dates properly formatted
-                    data.insert("created_at".to_string(), JsonValue::String(row.created_at.to_string()));
-                    data.insert("updated_at".to_string(), JsonValue::String(row.updated_at.to_string()));
-                    
+                    data.insert(
+                        "created_at".to_string(),
+                        JsonValue::String(row.created_at.to_string()),
+                    );
+                    data.insert(
+                        "updated_at".to_string(),
+                        JsonValue::String(row.updated_at.to_string()),
+                    );
+
                     // Add optional fields checking for nulls
                     if let Some(created_by) = row.created_by {
-                        data.insert("created_by".to_string(), JsonValue::String(created_by.to_string()));
+                        data.insert(
+                            "created_by".to_string(),
+                            JsonValue::String(created_by.to_string()),
+                        );
                     }
                     if let Some(updated_by) = row.updated_by {
-                        data.insert("updated_by".to_string(), JsonValue::String(updated_by.to_string()));
+                        data.insert(
+                            "updated_by".to_string(),
+                            JsonValue::String(updated_by.to_string()),
+                        );
                     }
-                    
+
                     data.insert("published".to_string(), JsonValue::Bool(row.published));
-                    data.insert("version".to_string(), JsonValue::Number(serde_json::Number::from(row.version)));
-                    
+                    data.insert(
+                        "version".to_string(),
+                        JsonValue::Number(serde_json::Number::from(row.version)),
+                    );
+
                     data
                 };
                 Ok(Some(DynamicEntity {

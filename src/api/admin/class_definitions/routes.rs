@@ -2,6 +2,7 @@ use actix_web::{delete, get, post, put, web, HttpMessage, HttpRequest, HttpRespo
 use log::info;
 use serde_json::json;
 use uuid::Uuid;
+use crate::api::auth::auth_enum;
 
 use super::models::ApplySchemaRequest;
 use super::models::PaginationQuery;
@@ -29,10 +30,11 @@ use crate::entity::ClassDefinition;
         ("jwt" = [])
     )
 )]
-#[get("/class-definitions")]
+#[get("")]
 async fn list_class_definitions(
     data: web::Data<ApiState>,
     query: web::Query<PaginationQuery>,
+    _: auth_enum::RequiredAuth,
 ) -> impl Responder {
     let db_pool = &data.db_pool;
     let repository = ClassDefinitionRepository::new(db_pool.clone());
@@ -43,12 +45,13 @@ async fn list_class_definitions(
     match repository.list(limit, offset).await {
         Ok(definitions) => {
             // Convert to schema models
-            let schema_definitions = definitions.iter()
+            let schema_definitions = definitions
+                .iter()
                 .map(|def| def.to_schema_model())
                 .collect::<Vec<_>>();
-            
+
             HttpResponse::Ok().json(schema_definitions)
-        },
+        }
         Err(e) => HttpResponse::InternalServerError().json(json!({
             "error": format!("Failed to list class definitions: {}", e)
         })),
@@ -73,10 +76,11 @@ async fn list_class_definitions(
         ("jwt" = [])
     )
 )]
-#[get("/class-definitions/{uuid}")]
+#[get("/{uuid}")]
 async fn get_class_definition(
     data: web::Data<ApiState>,
     path: web::Path<PathUuid>,
+    _: auth_enum::RequiredAuth,
 ) -> impl Responder {
     let db_pool = &data.db_pool;
     let repository = ClassDefinitionRepository::new(db_pool.clone());
@@ -86,7 +90,7 @@ async fn get_class_definition(
             // Convert to schema model
             let schema_definition = definition.to_schema_model();
             HttpResponse::Ok().json(schema_definition)
-        },
+        }
         Err(_) => HttpResponse::NotFound().json(json!({
             "error": "Class definition not found"
         })),
@@ -110,11 +114,12 @@ async fn get_class_definition(
         ("jwt" = [])
     )
 )]
-#[post("/class-definitions")]
+#[post("")]
 async fn create_class_definition(
     data: web::Data<ApiState>,
     definition: web::Json<ClassDefinition>,
     req: HttpRequest,
+    _: auth_enum::RequiredAuth,
 ) -> impl Responder {
     let db_pool = &data.db_pool;
     let repository = ClassDefinitionRepository::new(db_pool.clone());
@@ -223,12 +228,13 @@ async fn create_class_definition(
         ("jwt" = [])
     )
 )]
-#[put("/class-definitions/{uuid}")]
+#[put("/{uuid}")]
 async fn update_class_definition(
     data: web::Data<ApiState>,
     path: web::Path<PathUuid>,
     definition: web::Json<ClassDefinition>,
     req: HttpRequest,
+    _: auth_enum::RequiredAuth,
 ) -> impl Responder {
     let db_pool = &data.db_pool;
     let repository = ClassDefinitionRepository::new(db_pool.clone());
@@ -347,10 +353,11 @@ async fn update_class_definition(
         ("jwt" = [])
     )
 )]
-#[delete("/class-definitions/{uuid}")]
+#[delete("/{uuid}")]
 async fn delete_class_definition(
     data: web::Data<ApiState>,
     path: web::Path<PathUuid>,
+    _: auth_enum::RequiredAuth,
 ) -> impl Responder {
     let db_pool = &data.db_pool;
     let repository = ClassDefinitionRepository::new(db_pool.clone());
@@ -444,10 +451,11 @@ async fn delete_class_definition(
         ("jwt" = [])
     )
 )]
-#[post("/class-definitions/apply-schema")]
+#[post("/apply-schema")]
 async fn apply_class_definition_schema(
     data: web::Data<ApiState>,
     body: web::Json<ApplySchemaRequest>,
+    _: auth_enum::RequiredAuth,
 ) -> impl Responder {
     log::info!(
         "apply_class_definition_schema endpoint called with body: {:?}",

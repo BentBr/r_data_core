@@ -106,16 +106,16 @@ pub fn get_sql_type_for_field(
         FieldType::Image => "TEXT".to_string(), // Store path or ID
         FieldType::File => "TEXT".to_string(),  // Store path or ID
         FieldType::Object | FieldType::Array | FieldType::Json => "JSONB".to_string(), // Complex types as JSON
-        _ => "TEXT".to_string(),                // Default for any other types
+        _ => "TEXT".to_string(), // Default for any other types
     }
 }
 
 // Check if a field type is valid and supported
 pub fn is_valid_field_type(field_type: &str) -> bool {
     match field_type {
-        "String" | "Text" | "Wysiwyg" | "Integer" | "Float" | "Boolean" |
-        "DateTime" | "Date" | "Object" | "Array" | "Uuid" | "Json" |
-        "ManyToOne" | "ManyToMany" | "Select" | "MultiSelect" | "Image" | "File" => true,
+        "String" | "Text" | "Wysiwyg" | "Integer" | "Float" | "Boolean" | "DateTime" | "Date"
+        | "Object" | "Array" | "Uuid" | "Json" | "ManyToOne" | "ManyToMany" | "Select"
+        | "MultiSelect" | "Image" | "File" => true,
         _ => false,
     }
 }

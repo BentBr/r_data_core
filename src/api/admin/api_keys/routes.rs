@@ -49,7 +49,7 @@ pub struct ApiKeyCreatedResponse {
 }
 
 /// Create a new API key for the authenticated user
-#[post("/api-keys")]
+#[post("")]
 pub async fn create_api_key(
     state: web::Data<ApiState>,
     req: web::Json<CreateApiKeyRequest>,
@@ -114,7 +114,7 @@ pub async fn create_api_key(
 }
 
 /// List all API keys for the authenticated user
-#[get("/api-keys")]
+#[get("")]
 pub async fn list_api_keys(
     state: web::Data<ApiState>,
     auth: web::ReqData<AuthUserClaims>,
@@ -160,7 +160,7 @@ pub async fn list_api_keys(
 }
 
 /// Revoke an API key
-#[delete("/api-keys/{uuid}")]
+#[delete("/{uuid}")]
 pub async fn revoke_api_key(
     state: web::Data<ApiState>,
     path: web::Path<Uuid>,

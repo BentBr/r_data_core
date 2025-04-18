@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM entities_registry WHERE entity_type = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0f368ac39c10bf8529acb1cb8b6e5a2bf9d6c7b2efd8348b196e708055cd48d1"
+}

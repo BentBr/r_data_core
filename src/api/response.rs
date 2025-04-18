@@ -61,8 +61,14 @@ where
         response.to_http_response(StatusCode::OK)
     }
 
-    pub fn created(data: T, message: &str) -> HttpResponse {
-        let response = Self::success_with_message(data, message);
+    /// Create a resource that was created successfully
+    pub fn created<D: Serialize>(data: D) -> HttpResponse {
+        let response = ApiResponse {
+            status: Status::Success,
+            message: "Resource created successfully".to_string(),
+            data: Some(data),
+        };
+
         response.to_http_response(StatusCode::CREATED)
     }
 }

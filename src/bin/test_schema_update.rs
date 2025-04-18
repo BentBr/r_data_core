@@ -1,11 +1,13 @@
-use r_data_core::config::{AppConfig, DatabaseConfig, ApiConfig, CacheConfig, WorkflowConfig, LogConfig};
+use chrono::Utc;
+use r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository;
+use r_data_core::config::{
+    ApiConfig, AppConfig, CacheConfig, DatabaseConfig, LogConfig, WorkflowConfig,
+};
 use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core::entity::ClassDefinition;
-use r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository;
 use sqlx::postgres::PgPoolOptions;
-use uuid::{Uuid, ContextV7};
 use std::time::Duration;
-use chrono::Utc;
+use uuid::{ContextV7, Uuid};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -13,7 +15,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = AppConfig {
         environment: "development".to_string(),
         database: DatabaseConfig {
-            connection_string: "postgres://postgres:postgres@localhost:5432/r_data_core".to_string(),
+            connection_string: "postgres://postgres:postgres@localhost:5432/r_data_core"
+                .to_string(),
             max_connections: 10,
             connection_timeout: 10,
         },
@@ -105,7 +108,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create the class definition and apply initial schema
     println!("Creating initial class definition with 2 fields");
     repo.create(&test_class).await?;
-    repo.update_entity_table_for_class_definition(&test_class).await?;
+    repo.update_entity_table_for_class_definition(&test_class)
+        .await?;
     println!("Initial schema applied");
 
     // Let's modify the class definition by:
@@ -113,13 +117,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 2. Removing field2
     // 3. Adding an index to field1
     println!("Modifying class definition - adding field3, removing field2");
-    
+
     // First, get the class definition from the database to ensure we have the latest version
     let mut updated_class = repo.get_by_uuid(&test_class.uuid).await?;
-    
+
     // Remove field2
     updated_class.fields.retain(|f| f.name != "field2");
-    
+
     // Add field3
     updated_class.fields.push(FieldDefinition {
         name: "field3".to_string(),
@@ -134,15 +138,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ui_settings: Default::default(),
         constraints: Default::default(),
     });
-    
+
     // Update the class definition and apply schema changes
     repo.update(&updated_class.uuid, &updated_class).await?;
     println!("Updated class definition in database");
-    
+
     // Apply schema changes
-    repo.update_entity_table_for_class_definition(&updated_class).await?;
+    repo.update_entity_table_for_class_definition(&updated_class)
+        .await?;
     println!("Schema updated successfully");
-    
+
     // Now, let's add a relation field to test _uuid column handling
     println!("Adding a relation field");
     updated_class.fields.push(FieldDefinition {
@@ -161,25 +166,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ui_settings: Default::default(),
         constraints: Default::default(),
     });
-    
+
     // Update the class definition and apply schema changes
     repo.update(&updated_class.uuid, &updated_class).await?;
     println!("Added relation field to class definition");
-    
+
     // Apply schema changes
-    repo.update_entity_table_for_class_definition(&updated_class).await?;
-    println!("Schema updated for relation field");
-    
-    // Finally, clean up by dropping the table
-    sqlx::query(&format!("DROP TABLE IF EXISTS entity_{}", updated_class.entity_type))
-        .execute(&pool)
+    repo.update_entity_table_for_class_definition(&updated_class)
         .await?;
+    println!("Schema updated for relation field");
+
+    // Finally, clean up by dropping the table
+    sqlx::query(&format!(
+        "DROP TABLE IF EXISTS entity_{}",
+        updated_class.entity_type
+    ))
+    .execute(&pool)
+    .await?;
     println!("Test table dropped");
-    
+
     // And delete the class definition
     repo.delete(&updated_class.uuid).await?;
     println!("Class definition deleted");
-    
+
     println!("Test completed successfully!");
     Ok(())
-} 
+}
