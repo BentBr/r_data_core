@@ -271,5 +271,5 @@ Todos:
 - custom field type (json with predefined content - like a preferences structure...)
 - key-value-store
 - relations 1:n + n:n
-
-check json (validity)
+- admin swagger field definitions / contraints
+- tests

@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Deserializer};
 use serde_json::Value;
 use std::collections::HashMap;
 use regex;
@@ -9,7 +9,7 @@ use super::ui::UiSettings;
 use crate::error::{Error, Result};
 
 /// Definition of a field in a class
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct FieldDefinition {
     /// Field name (must be unique within class)
     pub name: String,
@@ -44,7 +44,123 @@ pub struct FieldDefinition {
     pub ui_settings: UiSettings,
 
     /// Extra field constraints or validation rules
+    #[serde(default)]
     pub constraints: HashMap<String, Value>,
+}
+
+// Manual implementation of Deserialize for FieldDefinition to handle constraints
+impl<'de> Deserialize<'de> for FieldDefinition {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct FieldDefinitionHelper {
+            pub name: String,
+            pub display_name: String,
+            pub field_type: FieldType,
+            pub description: Option<String>,
+            pub required: bool,
+            pub indexed: bool,
+            #[serde(default)]
+            pub filterable: bool,
+            pub default_value: Option<Value>,
+            #[serde(default)]
+            pub validation: FieldValidation,
+            #[serde(default)]
+            pub ui_settings: UiSettings,
+            #[serde(default)]
+            pub constraints: HashMap<String, Value>,
+        }
+
+        let mut helper = FieldDefinitionHelper::deserialize(deserializer)?;
+        
+        // Extract validation fields from constraints
+        if let Some(pattern) = helper.constraints.get("pattern").cloned() {
+            if let Some(pattern_str) = pattern.as_str() {
+                helper.validation.pattern = Some(pattern_str.to_string());
+            }
+        }
+        
+        if let Some(min_length) = helper.constraints.get("min_length").cloned() {
+            if let Some(min_len) = min_length.as_u64() {
+                helper.validation.min_length = Some(min_len as usize);
+            }
+        }
+        
+        if let Some(max_length) = helper.constraints.get("max_length").cloned() {
+            if let Some(max_len) = max_length.as_u64() {
+                helper.validation.max_length = Some(max_len as usize);
+            }
+        }
+        
+        if let Some(min) = helper.constraints.get("min").cloned() {
+            helper.validation.min_value = Some(min);
+        }
+        
+        if let Some(max) = helper.constraints.get("max").cloned() {
+            helper.validation.max_value = Some(max);
+        }
+        
+        if let Some(positive_only) = helper.constraints.get("positive_only").cloned() {
+            if let Some(positive) = positive_only.as_bool() {
+                helper.validation.positive_only = Some(positive);
+            }
+        }
+        
+        if let Some(min_date) = helper.constraints.get("min_date").cloned() {
+            if let Some(date_str) = min_date.as_str() {
+                helper.validation.min_date = Some(date_str.to_string());
+            }
+        }
+        
+        if let Some(max_date) = helper.constraints.get("max_date").cloned() {
+            if let Some(date_str) = max_date.as_str() {
+                helper.validation.max_date = Some(date_str.to_string());
+            }
+        }
+        
+        if let Some(target_class) = helper.constraints.get("target_class").cloned() {
+            if let Some(class_str) = target_class.as_str() {
+                helper.validation.target_class = Some(class_str.to_string());
+            }
+        }
+        
+        // Handle options source for Select/MultiSelect fields
+        if let Some(options) = helper.constraints.get("options").cloned() {
+            if let Some(options_array) = options.as_array() {
+                let mut select_options = Vec::new();
+                for opt in options_array {
+                    if let Some(opt_str) = opt.as_str() {
+                        select_options.push(super::options::SelectOption {
+                            value: opt_str.to_string(),
+                            label: opt_str.to_string(),
+                        });
+                    }
+                }
+                
+                if !select_options.is_empty() {
+                    helper.validation.options_source = Some(super::options::OptionsSource::Fixed {
+                        options: select_options,
+                    });
+                }
+            }
+        }
+
+        Ok(FieldDefinition {
+            name: helper.name,
+            display_name: helper.display_name,
+            field_type: helper.field_type,
+            description: helper.description,
+            required: helper.required,
+            indexed: helper.indexed,
+            filterable: helper.filterable,
+            default_value: helper.default_value,
+            validation: helper.validation,
+            ui_settings: helper.ui_settings,
+            constraints: helper.constraints,
+        })
+    }
 }
 
 impl FieldDefinition {
@@ -62,6 +178,177 @@ impl FieldDefinition {
             validation: FieldValidation::default(),
             ui_settings: UiSettings::default(),
             constraints: HashMap::new(),
+        }
+    }
+
+    /// Convert to API schema model with properly typed constraints
+    pub fn to_schema_model(&self) -> crate::api::admin::class_definitions::models::FieldDefinitionSchema {
+        use crate::api::admin::class_definitions::models::{
+            FieldConstraints, FieldDefinitionSchema, FieldTypeSchema, StringConstraints,
+            NumericConstraints, DateTimeConstraints, SelectConstraints, RelationConstraints,
+            SchemaConstraints, UiSettingsSchema
+        };
+        
+        // Determine the field type
+        let field_type = match self.field_type {
+            FieldType::String => FieldTypeSchema::String,
+            FieldType::Text => FieldTypeSchema::Text,
+            FieldType::Wysiwyg => FieldTypeSchema::Wysiwyg,
+            FieldType::Integer => FieldTypeSchema::Integer,
+            FieldType::Float => FieldTypeSchema::Float,
+            FieldType::Boolean => FieldTypeSchema::Boolean,
+            FieldType::DateTime => FieldTypeSchema::DateTime,
+            FieldType::Date => FieldTypeSchema::Date,
+            FieldType::Json => FieldTypeSchema::Object, // Map Json to Object
+            FieldType::Object => FieldTypeSchema::Object,
+            FieldType::Array => FieldTypeSchema::Array,
+            FieldType::Uuid => FieldTypeSchema::Uuid,
+            FieldType::ManyToOne => FieldTypeSchema::ManyToOne,
+            FieldType::ManyToMany => FieldTypeSchema::ManyToMany,
+            FieldType::Select => FieldTypeSchema::Select,
+            FieldType::MultiSelect => FieldTypeSchema::MultiSelect,
+            FieldType::Image => FieldTypeSchema::Image,
+            FieldType::File => FieldTypeSchema::File,
+        };
+        
+        // Convert constraints to typed constraints
+        let constraints = match self.field_type {
+            FieldType::String | FieldType::Text | FieldType::Wysiwyg => {
+                let string_constraints = StringConstraints {
+                    min_length: self.validation.min_length,
+                    max_length: self.validation.max_length,
+                    pattern: self.validation.pattern.clone(),
+                    error_message: self.constraints.get("error_message")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                };
+                
+                if string_constraints.min_length.is_some() || 
+                   string_constraints.max_length.is_some() || 
+                   string_constraints.pattern.is_some() || 
+                   string_constraints.error_message.is_some() {
+                    Some(FieldConstraints::String(string_constraints))
+                } else {
+                    None
+                }
+            },
+            FieldType::Integer | FieldType::Float => {
+                let numeric_constraints = NumericConstraints {
+                    min: self.validation.min_value.as_ref().and_then(|v| v.as_f64()),
+                    max: self.validation.max_value.as_ref().and_then(|v| v.as_f64()),
+                    precision: self.constraints.get("precision")
+                        .and_then(|v| v.as_u64())
+                        .map(|p| p as u8),
+                    positive_only: self.validation.positive_only,
+                };
+                
+                if numeric_constraints.min.is_some() || 
+                   numeric_constraints.max.is_some() || 
+                   numeric_constraints.precision.is_some() ||
+                   numeric_constraints.positive_only.is_some() {
+                    if self.field_type == FieldType::Integer {
+                        Some(FieldConstraints::Integer(numeric_constraints))
+                    } else {
+                        Some(FieldConstraints::Float(numeric_constraints))
+                    }
+                } else {
+                    None
+                }
+            },
+            FieldType::DateTime | FieldType::Date => {
+                let datetime_constraints = DateTimeConstraints {
+                    min_date: self.validation.min_date.clone(),
+                    max_date: self.validation.max_date.clone(),
+                };
+                
+                if datetime_constraints.min_date.is_some() || 
+                   datetime_constraints.max_date.is_some() {
+                    if self.field_type == FieldType::DateTime {
+                        Some(FieldConstraints::DateTime(datetime_constraints))
+                    } else {
+                        Some(FieldConstraints::Date(datetime_constraints))
+                    }
+                } else {
+                    None
+                }
+            },
+            FieldType::Select | FieldType::MultiSelect => {
+                // Extract options from options_source
+                let options = match &self.validation.options_source {
+                    Some(source) => match source {
+                        super::options::OptionsSource::Fixed { options } => {
+                            Some(options.iter().map(|opt| opt.value.clone()).collect())
+                        },
+                        _ => None, // Handle other option sources
+                    },
+                    None => self.constraints.get("options")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| arr.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect()),
+                };
+                
+                if let Some(opts) = options {
+                    let select_constraints = SelectConstraints {
+                        options: Some(opts),
+                    };
+                    
+                    if self.field_type == FieldType::Select {
+                        Some(FieldConstraints::Select(select_constraints))
+                    } else {
+                        Some(FieldConstraints::MultiSelect(select_constraints))
+                    }
+                } else {
+                    None
+                }
+            },
+            FieldType::ManyToOne | FieldType::ManyToMany => {
+                if let Some(target) = &self.validation.target_class {
+                    let relation_constraints = RelationConstraints {
+                        target_class: target.clone(),
+                    };
+                    Some(FieldConstraints::Relation(relation_constraints))
+                } else {
+                    None
+                }
+            },
+            FieldType::Object | FieldType::Array | FieldType::Json => {
+                if let Some(schema) = self.constraints.get("schema") {
+                    let schema_constraints = SchemaConstraints {
+                        schema: schema.clone(),
+                    };
+                    Some(FieldConstraints::Schema(schema_constraints))
+                } else {
+                    None
+                }
+            },
+            _ => None,
+        };
+        
+        // Convert UI settings
+        let ui_settings = UiSettingsSchema {
+            placeholder: self.ui_settings.placeholder.clone(),
+            help_text: self.ui_settings.help_text.clone(),
+            hide_in_lists: self.ui_settings.hide_in_lists,
+            width: self.ui_settings.width,
+            order: self.ui_settings.order,
+            group: self.ui_settings.group.clone(),
+            css_class: self.ui_settings.css_class.clone(),
+            wysiwyg_toolbar: self.ui_settings.wysiwyg_toolbar.clone(),
+            input_type: self.ui_settings.input_type.clone(),
+        };
+        
+        FieldDefinitionSchema {
+            name: self.name.clone(),
+            display_name: self.display_name.clone(),
+            field_type,
+            description: self.description.clone(),
+            required: self.required,
+            indexed: self.indexed,
+            filterable: self.filterable,
+            default_value: self.default_value.clone(),
+            constraints,
+            ui_settings,
         }
     }
 

@@ -21,15 +21,105 @@ pub struct PathUuid {
     pub uuid: Uuid,
 }
 
-/// Schema for field validation in OpenAPI docs
-/// Used for string pattern validation via regex. For other field type validations,
-/// use the constraints field instead.
-#[derive(Debug, Default, Serialize, Deserialize, ToSchema)]
-pub struct FieldValidationSchema {
-    /// Regex pattern for validating string fields (e.g., "^[A-Za-z0-9_]+$" for alphanumeric validation)
+/// String field constraints
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone)]
+pub struct StringConstraints {
+    /// Minimum string length
+    pub min_length: Option<usize>,
+    /// Maximum string length
+    pub max_length: Option<usize>,
+    /// Regex pattern for validation (e.g., "^[A-Z0-9]{2,20}$")
     pub pattern: Option<String>,
-    /// Custom error message to display when validation fails
+    /// Custom error message when validation fails
     pub error_message: Option<String>,
+}
+
+/// Numeric field constraints
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone)]
+pub struct NumericConstraints {
+    /// Minimum allowed value
+    pub min: Option<f64>,
+    /// Maximum allowed value
+    pub max: Option<f64>,
+    /// Decimal precision for float values
+    pub precision: Option<u8>,
+    /// Whether only positive values are allowed
+    pub positive_only: Option<bool>,
+}
+
+/// Date/time field constraints
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone)]
+pub struct DateTimeConstraints {
+    /// Minimum allowed date
+    pub min_date: Option<String>,
+    /// Maximum allowed date
+    pub max_date: Option<String>,
+}
+
+/// Select field constraints
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone)]
+pub struct SelectConstraints {
+    /// Array of allowed values
+    pub options: Option<Vec<String>>,
+}
+
+/// Relation field constraints
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone)]
+pub struct RelationConstraints {
+    /// Name of the related entity type
+    pub target_class: String,
+}
+
+/// Object/Array field constraints
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone)]
+pub struct SchemaConstraints {
+    /// JSON schema for validating the object/array structure
+    pub schema: Value,
+}
+
+/// Field constraints based on field type
+#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
+#[serde(tag = "type", content = "constraints")]
+pub enum FieldConstraints {
+    /// String field constraints
+    #[serde(rename = "string")]
+    String(StringConstraints),
+    
+    /// Integer field constraints
+    #[serde(rename = "integer")]
+    Integer(NumericConstraints),
+    
+    /// Float field constraints
+    #[serde(rename = "float")]
+    Float(NumericConstraints),
+    
+    /// Date/time field constraints
+    #[serde(rename = "datetime")]
+    DateTime(DateTimeConstraints),
+    
+    /// Date field constraints
+    #[serde(rename = "date")]
+    Date(DateTimeConstraints),
+    
+    /// Select field constraints
+    #[serde(rename = "select")]
+    Select(SelectConstraints),
+    
+    /// Multi-select field constraints
+    #[serde(rename = "multiselect")]
+    MultiSelect(SelectConstraints),
+    
+    /// Relation field constraints
+    #[serde(rename = "relation")]
+    Relation(RelationConstraints),
+    
+    /// Object/Array field constraints
+    #[serde(rename = "schema")]
+    Schema(SchemaConstraints),
+
+    /// No constraints
+    #[serde(rename = "none")]
+    None,
 }
 
 /// Schema for options source in OpenAPI docs
@@ -149,20 +239,12 @@ pub struct FieldDefinitionSchema {
     pub filterable: bool,
     /// Default value for the field
     pub default_value: Option<Value>,
-    /// Field validation/constraints
+    /// Type-specific field constraints
     #[serde(default)]
-    pub validation: FieldValidationSchema,
+    pub constraints: Option<FieldConstraints>,
     /// UI settings for the field
     #[serde(default)]
     pub ui_settings: UiSettingsSchema,
-    /// Extra constraints specific to field type:
-    /// - String/Text: min_length, max_length
-    /// - Integer/Float: min, max, positive_only
-    /// - DateTime/Date: min_date, max_date
-    /// - ManyToOne/ManyToMany: target_class
-    /// - Select/MultiSelect: options_source
-    /// - Object/Array: schema
-    pub constraints: Option<HashMap<String, Value>>,
 }
 
 /// Schema for class definitions in OpenAPI docs

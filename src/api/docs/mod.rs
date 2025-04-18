@@ -32,12 +32,18 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
             crate::api::admin::class_definitions::models::ClassDefinitionSchema,
             crate::api::admin::class_definitions::models::FieldDefinitionSchema,
             crate::api::admin::class_definitions::models::FieldTypeSchema,
-            crate::api::admin::class_definitions::models::FieldValidationSchema,
             crate::api::admin::class_definitions::models::UiSettingsSchema,
             crate::api::admin::class_definitions::models::OptionsSourceSchema,
             crate::api::admin::class_definitions::models::SelectOptionSchema,
             crate::api::admin::class_definitions::models::ClassDefinitionListResponse,
-            crate::api::admin::class_definitions::models::ApplySchemaRequest
+            crate::api::admin::class_definitions::models::ApplySchemaRequest,
+            crate::api::admin::class_definitions::models::FieldConstraints,
+            crate::api::admin::class_definitions::models::StringConstraints,
+            crate::api::admin::class_definitions::models::NumericConstraints,
+            crate::api::admin::class_definitions::models::DateTimeConstraints,
+            crate::api::admin::class_definitions::models::SelectConstraints,
+            crate::api::admin::class_definitions::models::RelationConstraints,
+            crate::api::admin::class_definitions::models::SchemaConstraints
         )
     ),
     modifiers(&SecurityAddon, &UuidSchemaAddon, &ModelSchemaAddon),

@@ -41,7 +41,14 @@ async fn list_class_definitions(
     let offset = query.offset.unwrap_or(0);
 
     match repository.list(limit, offset).await {
-        Ok(definitions) => HttpResponse::Ok().json(definitions),
+        Ok(definitions) => {
+            // Convert to schema models
+            let schema_definitions = definitions.iter()
+                .map(|def| def.to_schema_model())
+                .collect::<Vec<_>>();
+            
+            HttpResponse::Ok().json(schema_definitions)
+        },
         Err(e) => HttpResponse::InternalServerError().json(json!({
             "error": format!("Failed to list class definitions: {}", e)
         })),
@@ -75,7 +82,11 @@ async fn get_class_definition(
     let repository = ClassDefinitionRepository::new(db_pool.clone());
 
     match repository.get_by_uuid(&path.uuid).await {
-        Ok(definition) => HttpResponse::Ok().json(definition),
+        Ok(definition) => {
+            // Convert to schema model
+            let schema_definition = definition.to_schema_model();
+            HttpResponse::Ok().json(schema_definition)
+        },
         Err(_) => HttpResponse::NotFound().json(json!({
             "error": "Class definition not found"
         })),

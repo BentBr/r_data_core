@@ -418,4 +418,21 @@ impl ClassDefinition {
     pub fn generate_sql_schema(&self) -> String {
         self.generate_schema_sql()
     }
+
+    /// Convert to API schema model
+    pub fn to_schema_model(&self) -> crate::api::admin::class_definitions::models::ClassDefinitionSchema {
+        use crate::api::admin::class_definitions::models::ClassDefinitionSchema;
+        
+        ClassDefinitionSchema {
+            uuid: Some(self.uuid),
+            entity_type: self.entity_type.clone(),
+            display_name: self.display_name.clone(),
+            description: self.description.clone(),
+            group_name: self.group_name.clone(),
+            allow_children: self.allow_children,
+            icon: self.icon.clone(),
+            fields: self.fields.iter().map(|f| f.to_schema_model()).collect(),
+            published: Some(self.published),
+        }
+    }
 }
