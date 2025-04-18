@@ -78,13 +78,35 @@ DECLARE
     col_record RECORD;
     column_list TEXT := '';
     separator TEXT := '';
+    existing_view BOOLEAN;
 BEGIN
     -- Set the view name based on the entity type
     view_name := 'entity_' || entity_type || '_view';
     entity_table := 'entity_' || entity_type;
-
-    -- Drop the view if it exists
-    EXECUTE 'DROP VIEW IF EXISTS ' || view_name || ' CASCADE';
+    
+    -- Check if view already exists
+    SELECT EXISTS(
+        SELECT FROM information_schema.views 
+        WHERE table_schema = 'public' AND table_name = view_name
+    ) INTO existing_view;
+    
+    -- Log start of view creation/update
+    RAISE NOTICE 'Creating or replacing view % for entity table %', view_name, entity_table;
+    
+    -- Only try to drop the view if it exists
+    IF existing_view THEN
+        -- Drop the view if it exists
+        EXECUTE 'DROP VIEW IF EXISTS ' || view_name || ' CASCADE';
+        RAISE NOTICE 'Dropped existing view %', view_name;
+    END IF;
+    
+    -- Verify that entity table exists
+    PERFORM 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = entity_table;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Entity table % does not exist', entity_table;
+    END IF;
 
     -- Get columns from entity table, excluding uuid
     FOR col_record IN
@@ -96,6 +118,7 @@ BEGIN
             ORDER BY ordinal_position
         ', entity_table)
         LOOP
+            RAISE NOTICE 'Including column % from entity table', col_record.column_name;
             column_list := column_list || separator || 'e.' || col_record.column_name;
             separator := ', ';
         END LOOP;
@@ -122,9 +145,31 @@ BEGIN
     RAISE NOTICE 'Creating view with query: %', view_query;
 
     EXECUTE view_query;
+    
+    -- Verify view was created properly
+    PERFORM column_name FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = view_name;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Failed to create view % properly', view_name;
+    END IF;
+    
+    -- Log column list for debugging
+    FOR col_record IN
+        EXECUTE format('
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = ''public'' AND table_name = %L
+            ORDER BY ordinal_position
+        ', view_name)
+        LOOP
+            RAISE NOTICE 'View % contains column %', view_name, col_record.column_name;
+        END LOOP;
 
     -- Grant permissions on the view
     EXECUTE 'GRANT SELECT ON ' || view_name || ' TO PUBLIC';
+    
+    RAISE NOTICE 'Successfully created/updated view %', view_name;
 END;
 $$ LANGUAGE plpgsql;
 

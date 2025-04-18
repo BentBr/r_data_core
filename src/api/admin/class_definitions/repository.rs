@@ -428,14 +428,20 @@ impl ClassDefinitionRepository {
             
             // Check if this column is represented by any field
             let column_needed = class_definition.fields.iter().any(|field| {
-                match field.field_type {
+                let matches = match field.field_type {
                     FieldType::ManyToOne => {
                         // For many-to-one relations, the column name is field_name_uuid
                         format!("{}_uuid", field.name.to_lowercase()) == *col_name
                     },
                     FieldType::ManyToMany => false, // Many-to-many uses separate tables
                     _ => field.name.to_lowercase() == *col_name // Regular fields
+                };
+                
+                if matches {
+                    log::debug!("Column '{}' matches field '{}'", col_name, field.name);
                 }
+                
+                matches
             });
             
             if !column_needed {
@@ -444,7 +450,7 @@ impl ClassDefinitionRepository {
                     "DROP INDEX IF EXISTS idx_{}_{}",
                     table_name, col_name
                 );
-                log::info!("Will drop index for removed column: {}", col_name);
+                log::info!("Column '{}' not needed - will drop index", col_name);
                 drop_index_statements.push(drop_index_stmt);
                 
                 // Then create the DROP COLUMN statement
@@ -452,11 +458,13 @@ impl ClassDefinitionRepository {
                     "ALTER TABLE {} DROP COLUMN IF EXISTS {}", 
                     table_name, col_name
                 );
-                log::info!("Will drop removed column: {}", col_name);
+                log::info!("Column '{}' not needed - will drop column", col_name);
                 drop_column_statements.push(drop_stmt);
                 
                 // Remove this column from our tracking set
                 future_columns.remove(col_name);
+            } else {
+                log::info!("Column '{}' is still needed - keeping", col_name);
             }
         }
 
@@ -630,14 +638,65 @@ impl ClassDefinitionRepository {
             }
         }
         
-        for drop_stmt in &drop_column_statements {
-            log::info!("Executing: {}", drop_stmt);
-            match sqlx::query(drop_stmt).execute(&self.db_pool).await {
-                Ok(_) => {},
-                Err(e) => log::warn!("Error dropping column: {}", e),
+        // First drop the view if it exists to ensure a clean recreation
+        // The view must be dropped BEFORE dropping columns to avoid dependency constraints
+        let view_name = format!("entity_{}_view", entity_type);
+        let drop_view_sql = format!("DROP VIEW IF EXISTS {} CASCADE", view_name);
+        
+        match sqlx::query(&drop_view_sql).execute(&self.db_pool).await {
+            Ok(_) => log::info!("Dropped view: {} before table modifications", view_name),
+            Err(e) => {
+                log::error!("Error dropping view: {} - {}", view_name, e);
+                return Err(Error::Database(e));
             }
         }
         
+        // Now execute drop column statements after the view has been dropped
+        for drop_stmt in &drop_column_statements {
+            log::info!("Executing: {}", drop_stmt);
+            match sqlx::query(drop_stmt).execute(&self.db_pool).await {
+                Ok(_) => {
+                    log::info!("Successfully dropped column with: {}", drop_stmt);
+                },
+                Err(e) => {
+                    // Instead of just warning, handle specific error cases
+                    let error_msg = e.to_string();
+                    
+                    // For "column does not exist" errors, we can safely continue
+                    if error_msg.contains("column") && error_msg.contains("does not exist") {
+                        log::warn!("Column already doesn't exist, continuing: {}", error_msg);
+                    } else {
+                        // For other errors, return an error to prevent view recreation with incorrect columns
+                        log::error!("Failed to drop column: {} - Error: {}", drop_stmt, error_msg);
+                        return Err(Error::Database(e));
+                    }
+                },
+            }
+        }
+        
+        // Verify that columns were actually dropped before proceeding
+        if !drop_column_statements.is_empty() {
+            // Get the current columns again to verify drops were successful
+            let updated_columns = self.get_table_columns_with_types(&table_name).await?;
+            log::info!("Columns after dropping: {:?}", updated_columns);
+            
+            // Check if any columns that should have been dropped still exist
+            for drop_stmt in &drop_column_statements {
+                // Extract column name from the DROP statement
+                let parts: Vec<&str> = drop_stmt.split_whitespace().collect();
+                if parts.len() >= 6 {
+                    let col_name = parts[5].trim_end_matches(|c| c == ';' || c == ',' || c == ' ');
+                    if updated_columns.contains_key(col_name) {
+                        log::error!("Column {} was not dropped properly", col_name);
+                        return Err(Error::Database(sqlx::Error::Protocol(format!(
+                            "Failed to drop column {}", col_name
+                        ))));
+                    }
+                }
+            }
+        }
+        
+        // Add columns and create indexes
         for column_stmt in &column_statements {
             log::info!("Executing: {}", column_stmt);
             match sqlx::query(column_stmt).execute(&self.db_pool).await {
@@ -654,18 +713,39 @@ impl ClassDefinitionRepository {
             }
         }
         
-        // Refresh the view
-        let view_name = format!("entity_{}_view", entity_type);
-        let refresh_view_sql = format!("
-            SELECT create_entity_view('{}')
-        ", entity_type);
+        // After all table modifications are complete, create the view
+        // using the create_entity_view function
+        // This function dynamically builds the view excluding duplicate uuid columns
+        let refresh_view_sql = format!("SELECT create_entity_view('{}')", entity_type);
         
-        sqlx::query(&refresh_view_sql)
-            .execute(&self.db_pool)
+        match sqlx::query(&refresh_view_sql).execute(&self.db_pool).await {
+            Ok(_) => log::info!("Created view: {}", view_name),
+            Err(e) => {
+                log::error!("Error creating view: {} - {}", view_name, e);
+                return Err(Error::Database(e));
+            }
+        }
+        
+        // Verify the view has been correctly created with expected columns
+        let verify_sql = format!(
+            "SELECT column_name FROM information_schema.columns 
+             WHERE table_schema = 'public' AND table_name = '{}'
+             ORDER BY ordinal_position",
+            view_name
+        );
+        
+        let view_columns: Vec<(String,)> = sqlx::query_as(&verify_sql)
+            .fetch_all(&self.db_pool)
             .await
-            .map_err(Error::Database)?;
+            .map_err(|e| {
+                log::error!("Error verifying view columns: {}", e);
+                Error::Database(e)
+            })?;
             
-        log::info!("Refreshed view: {}", view_name);
+        log::info!("View {} created with columns: {:?}", 
+            view_name, 
+            view_columns.iter().map(|c| &c.0).collect::<Vec<&String>>()
+        );
         
         Ok(())
     }
