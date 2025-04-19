@@ -1,6 +1,6 @@
 use crate::entity::admin_user::ApiKey;
 use crate::error::{Error, Result};
-use log::{debug, error};
+use log::{error};
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
@@ -133,7 +133,12 @@ impl ApiKeyRepository {
     }
 
     /// List all API keys for a user
-    pub async fn list_by_user(&self, user_uuid: Uuid, limit: i64, offset: i64) -> Result<Vec<ApiKey>> {
+    pub async fn list_by_user(
+        &self,
+        user_uuid: Uuid,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ApiKey>> {
         let api_keys = sqlx::query_as::<_, ApiKey>(
             r#"
             SELECT *

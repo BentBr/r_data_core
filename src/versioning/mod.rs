@@ -16,7 +16,7 @@ pub struct Version {
     /// Data at this version
     pub data: serde_json::Value,
     /// User who created this version
-    pub created_by: Option<Uuid>,
+    pub created_by: Uuid,
     /// When this version was created
     pub created_at: OffsetDateTime,
     /// Comment for this version

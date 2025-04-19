@@ -128,10 +128,18 @@ async fn create_class_definition(
     // Get authenticated user from JWT claims
     let creator_uuid = match req.extensions().get::<AuthUserClaims>() {
         Some(claims) => match Uuid::parse_str(&claims.sub) {
-            Ok(uuid) => Some(uuid),
-            Err(_) => None,
+            Ok(uuid) => uuid,
+            Err(_) => {
+                return HttpResponse::InternalServerError().json(json!({
+                    "error": "Invalid user UUID in JWT claims"
+                }));
+            }
         },
-        None => None,
+        None => {
+            return HttpResponse::Unauthorized().json(json!({
+                "error": "No authentication claims found"
+            }));
+        }
     };
 
     // Extract definition and prepare for validation
@@ -149,7 +157,7 @@ async fn create_class_definition(
     class_def.created_at = now;
     class_def.updated_at = now;
     class_def.created_by = creator_uuid;
-    class_def.updated_by = creator_uuid;
+    class_def.updated_by = Some(creator_uuid);
     class_def.version = 1;
 
     // Validate class definition
@@ -243,10 +251,18 @@ async fn update_class_definition(
     // Get authenticated user from JWT claims
     let updater_uuid = match req.extensions().get::<AuthUserClaims>() {
         Some(claims) => match Uuid::parse_str(&claims.sub) {
-            Ok(uuid) => Some(uuid),
-            Err(_) => None,
+            Ok(uuid) => uuid,
+            Err(_) => {
+                return HttpResponse::InternalServerError().json(json!({
+                    "error": "Invalid user UUID in JWT claims"
+                }));
+            }
         },
-        None => None,
+        None => {
+            return HttpResponse::Unauthorized().json(json!({
+                "error": "No authentication claims found"
+            }));
+        }
     };
 
     // Get existing definition
@@ -276,7 +292,7 @@ async fn update_class_definition(
 
     // Update mutable fields
     updated_def.updated_at = OffsetDateTime::now_utc();
-    updated_def.updated_by = updater_uuid;
+    updated_def.updated_by = Some(updater_uuid);
 
     // Validate updated definition
     if let Err(e) = updated_def.validate() {

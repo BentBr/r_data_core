@@ -3,11 +3,9 @@ use std::collections::HashMap;
 use sqlx::PgPool;
 use log;
 use regex::Regex;
-use chrono;
 use uuid::Uuid;
 use std::sync::Arc;
 
-use crate::db::migrations;
 use super::AbstractRDataEntity;
 use super::field::{FieldType, FieldDefinition, FieldValidation, UiSettings, OptionsSource, SelectOption};
 use super::value::{FromValue, ToValue, Value};
@@ -153,11 +151,14 @@ pub struct ClassDefinition {
     
     /// Field definitions for this class
     pub fields: Vec<FieldDefinition>,
+
+    /// Created by user UUID
+    pub created_by: Uuid,
 }
 
 impl ClassDefinition {
     /// Create a new class definition
-    pub fn new(class_name: String, display_name: String) -> Self {
+    pub fn new(class_name: String, display_name: String, created_by: Uuid) -> Self {
         Self {
             base: AbstractRDataEntity::new("/classes".to_string()),
             class_name,
@@ -167,11 +168,12 @@ impl ClassDefinition {
             allow_children: false,
             icon: None,
             fields: Vec::new(),
+            created_by,
         }
     }
     
     /// Add a field to the class definition
-    pub fn add_field(&mut self, field: FieldDefinition) -> Result<(), String> {
+    pub fn add_field(&mut self, field: FieldDefinition) -> Result<()> {
         // Check if field with same name already exists
         if self.fields.iter().any(|f| f.name == field.name) {
             return Err(format!("Field with name '{}' already exists", field.name));
@@ -235,7 +237,7 @@ impl ClassDefinition {
                 FieldType::Boolean => "BOOLEAN", 
                 FieldType::DateTime => "TIMESTAMP WITH TIME ZONE",
                 FieldType::Date => "DATE",
-                FieldType::UUID => "UUID",
+                FieldType::Uuid => "UUID",
                 FieldType::Select => {
                     // If this is an enum-backed select, use enum type
                     if let Some(OptionsSource::Enum { enum_name }) = &field.validation.options_source {
@@ -437,7 +439,7 @@ impl Product {
 
 impl FieldDefinition {
     /// Validate a value against this field's type and constraints
-    pub fn validate_value(&self, value: &serde_json::Value) -> Result<(), String> {
+    pub fn validate_value(&self, value: &serde_json::Value) -> Result<()> {
         // For null values, only check if field is required
         if value.is_null() {
             if self.required {

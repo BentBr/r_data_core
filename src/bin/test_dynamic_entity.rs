@@ -99,6 +99,7 @@ async fn main() -> Result<()> {
         false,
         None,
         vec![],
+        Uuid::nil(),
     );
 
     // Add sample fields

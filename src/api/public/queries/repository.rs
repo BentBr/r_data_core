@@ -1,9 +1,7 @@
 use super::models::AdvancedEntityQuery;
 use crate::entity::DynamicEntity;
 use crate::error::Result;
-use serde_json::Value;
 use sqlx::PgPool;
-use std::collections::HashMap;
 
 pub struct QueryRepository {
     db_pool: PgPool,

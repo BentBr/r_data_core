@@ -6,6 +6,7 @@ use r_data_core::entity::field::types::FieldType;
 use r_data_core::entity::field::ui::UiSettings;
 use sqlx::PgPool;
 use std::env;
+use uuid::Uuid;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -56,6 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 default_value: None,
             },
         ],
+        Uuid::nil(),
     );
 
     // Create the class definition in the database

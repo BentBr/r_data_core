@@ -1,5 +1,5 @@
 use regex;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use sqlx::{postgres::PgRow, FromRow, Row};
 use std::collections::HashMap;
@@ -10,8 +10,6 @@ use uuid::timestamp;
 use uuid::{ContextV7, Uuid};
 
 use super::schema::Schema;
-// Temporarily comment out missing function
-// use crate::db::create_or_update_enum;
 use crate::entity::field::FieldDefinition;
 use crate::entity::field::FieldType;
 use crate::error::{Error, Result};
@@ -72,7 +70,7 @@ pub struct ClassDefinition {
     #[serde(with = "datetime_serde")]
     pub updated_at: OffsetDateTime,
     /// Created by user uuid
-    pub created_by: Option<Uuid>,
+    pub created_by: Uuid,
     /// Updated by user uuid
     pub updated_by: Option<Uuid>,
     /// Whether this entity type is published
@@ -97,7 +95,7 @@ impl Default for ClassDefinition {
             schema: Schema::default(),
             created_at: now,
             updated_at: now,
-            created_by: None,
+            created_by: Uuid::nil(),
             updated_by: None,
             published: false,
             version: default_version(),
@@ -162,6 +160,7 @@ impl ClassDefinition {
         allow_children: bool,
         icon: Option<String>,
         fields: Vec<FieldDefinition>,
+        created_by: Uuid,
     ) -> Self {
         let now = OffsetDateTime::now_utc();
         let context = ContextV7::new();
@@ -186,7 +185,7 @@ impl ClassDefinition {
             schema: Schema::new(properties),
             created_at: now,
             updated_at: now,
-            created_by: None,
+            created_by,
             updated_by: None,
             published: false,
             version: 1,

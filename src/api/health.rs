@@ -1,6 +1,7 @@
 use actix_web::{get, HttpRequest, HttpResponse, Responder};
 use time::OffsetDateTime;
 use uuid::Uuid;
+use time::format_description::well_known::Rfc3339;
 
 use crate::api::models::HealthData;
 
@@ -20,7 +21,7 @@ pub async fn health_check_handler(req: HttpRequest) -> impl Responder {
 
     // Create health data
     let health_data = HealthData {
-        date: OffsetDateTime::now_utc(),
+        date: OffsetDateTime::now_utc().format(&Rfc3339).unwrap(),
         uuid: health_id,
         route: path,
         agent: user_agent,

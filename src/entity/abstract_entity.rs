@@ -30,7 +30,7 @@ pub struct AbstractRDataEntity {
     pub updated_at: OffsetDateTime,
 
     /// Who created the entity
-    pub created_by: Option<Uuid>,
+    pub created_by: Uuid,
 
     /// Who last modified the entity
     pub updated_by: Option<Uuid>,
@@ -74,7 +74,7 @@ impl AbstractRDataEntity {
             path,
             created_at: now,
             updated_at: now,
-            created_by: None,
+            created_by: Uuid::nil(),
             updated_by: None,
             published: false,
             version: 1,

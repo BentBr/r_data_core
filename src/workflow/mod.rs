@@ -56,7 +56,7 @@ pub struct WorkflowInstance {
     /// Status of the workflow
     pub status: String,
     /// UUID of the user who created this workflow
-    pub created_by: Option<Uuid>,
+    pub created_by: Uuid,
 }
 
 /// Workflow task

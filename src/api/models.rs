@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -7,7 +6,7 @@ use uuid::Uuid;
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct HealthData {
     /// Current date and time
-    pub date: OffsetDateTime,
+    pub date: String,
 
     /// Generated UUID for this health check
     pub uuid: Uuid,

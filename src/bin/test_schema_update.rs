@@ -99,7 +99,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         schema: Default::default(),
         created_at: OffsetDateTime::now_utc(),
         updated_at: OffsetDateTime::now_utc(),
-        created_by: None,
+        created_by: Uuid::nil(),
         updated_by: None,
         published: false,
         version: 1,

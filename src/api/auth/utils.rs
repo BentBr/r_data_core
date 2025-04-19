@@ -1,13 +1,20 @@
-use actix_web::{error::ErrorUnauthorized, http::header, Error as ActixError, HttpRequest};
+use actix_web::{
+    error::{Error as ActixError, ErrorUnauthorized},
+    http::header,
+    HttpRequest,
+};
 use log::{debug, error};
-use sqlx::PgPool;
-use std::result::Result as StdResult;
+use sqlx::{PgPool};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::api::jwt::{verify_jwt, AuthUserClaims};
-use crate::entity::admin_user::ApiKey;
-use crate::error::{Error, Result};
+use crate::{
+    api::jwt::{verify_jwt, AuthUserClaims},
+    entity::admin_user::ApiKey,
+    error::{Error, Result},
+};
+
+use std::result::Result as StdResult;
 
 /// Extract and validate JWT token from request headers
 pub async fn extract_and_validate_jwt(
@@ -85,7 +92,16 @@ async fn find_api_key(
     api_key: &str,
     pool: &PgPool,
 ) -> StdResult<Option<(ApiKey, Uuid)>, sqlx::Error> {
-    // Query the database for the API key
+    // First, hash the API key
+    let key_hash = match ApiKey::hash_api_key(api_key) {
+        Ok(hash) => hash,
+        Err(e) => {
+            error!("Failed to hash API key: {:?}", e);
+            return Ok(None);
+        }
+    };
+
+    // Query the database for the API key hash
     let row = sqlx::query_as::<
         _,
         (
@@ -119,7 +135,7 @@ async fn find_api_key(
         WHERE key_hash = $1
         "#,
     )
-    .bind(api_key)
+    .bind(key_hash)  // Use the hash, not the raw API key
     .fetch_optional(pool)
     .await?;
 

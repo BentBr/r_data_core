@@ -1,7 +1,6 @@
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
 
 use crate::entity::admin_user::UserRole;
 use crate::entity::AdminUser;

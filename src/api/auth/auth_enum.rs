@@ -10,7 +10,6 @@ use log::debug;
 use std::cell::RefCell;
 use std::future::Future;
 use std::pin::Pin;
-use uuid::Uuid;
 
 thread_local! {
     static PROCESSING_AUTH: RefCell<bool> = RefCell::new(false);

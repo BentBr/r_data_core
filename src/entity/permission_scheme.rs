@@ -285,7 +285,7 @@ impl FromRow<'_, PgRow> for PermissionScheme {
             path: row.try_get("path")?,
             created_at: row.try_get("created_at")?,
             updated_at: row.try_get("updated_at")?,
-            created_by: row.try_get("created_by").ok(),
+            created_by: row.try_get("created_by").unwrap_or_else(|_| Uuid::nil()),
             updated_by: row.try_get("updated_by").ok(),
             published: row.try_get("published").unwrap_or(false),
             version: row.try_get("version").unwrap_or(1),

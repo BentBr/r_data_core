@@ -436,12 +436,10 @@ impl DynamicEntityRepository {
                     );
 
                     // Add optional fields checking for nulls
-                    if let Some(created_by) = row.created_by {
-                        data.insert(
-                            "created_by".to_string(),
-                            JsonValue::String(created_by.to_string()),
-                        );
-                    }
+                    data.insert(
+                        "created_by".to_string(),
+                        JsonValue::String(row.created_by.to_string()),
+                    );
                     if let Some(updated_by) = row.updated_by {
                         data.insert(
                             "updated_by".to_string(),

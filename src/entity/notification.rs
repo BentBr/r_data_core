@@ -1,6 +1,5 @@
 use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
-use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;

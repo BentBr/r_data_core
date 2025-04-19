@@ -12,6 +12,7 @@ fn main() {
         false,
         Some("user".to_string()),
         Vec::new(),
+        Uuid::nil(),
     );
 
     // Add some sample fields

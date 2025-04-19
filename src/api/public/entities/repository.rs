@@ -73,7 +73,7 @@ impl EntityRepository {
         let class_def_result = sqlx::query!(
             r#"
             SELECT entity_type, display_name, description, 
-                   group_name, allow_children, icon 
+                   group_name, allow_children, icon, created_by
             FROM class_definitions
             WHERE entity_type = $1 AND published = true
             "#,
@@ -92,6 +92,7 @@ impl EntityRepository {
                 row.allow_children,
                 row.icon,
                 Vec::<FieldDefinition>::new(), // Empty fields for now
+                row.created_by,
             )
         } else {
             return Err(crate::error::Error::NotFound(format!(
@@ -144,7 +145,7 @@ impl EntityRepository {
         let class_def_result = sqlx::query!(
             r#"
             SELECT entity_type, display_name, description, 
-                   group_name, allow_children, icon 
+                   group_name, allow_children, icon, created_by
             FROM class_definitions
             WHERE entity_type = $1
             "#,
@@ -163,6 +164,7 @@ impl EntityRepository {
                 row.allow_children,
                 row.icon,
                 Vec::<FieldDefinition>::new(), // Empty fields for now
+                row.created_by,
             )
         } else {
             return Err(crate::error::Error::NotFound(format!(
@@ -312,7 +314,7 @@ impl EntityRepository {
         let class_def_result = sqlx::query!(
             r#"
             SELECT entity_type, display_name, description, 
-                   group_name, allow_children, icon 
+                   group_name, allow_children, icon, created_by
             FROM class_definitions
             WHERE entity_type = $1
             "#,
@@ -331,6 +333,7 @@ impl EntityRepository {
                 row.allow_children,
                 row.icon,
                 Vec::<FieldDefinition>::new(), // Empty fields for now
+                row.created_by,
             )
         } else {
             return Err(crate::error::Error::NotFound(format!(

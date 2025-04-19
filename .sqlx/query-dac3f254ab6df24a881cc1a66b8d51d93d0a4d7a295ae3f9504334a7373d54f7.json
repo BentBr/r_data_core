@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                uuid, entity_type, display_name, description, group_name, \n                allow_children, icon, field_definitions as \"field_definitions: serde_json::Value\",\n                created_at, updated_at, \n                created_by as \"created_by: Uuid\", updated_by,\n                published, version\n            FROM class_definitions\n            WHERE uuid = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "entity_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "display_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "group_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "allow_children",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "icon",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "field_definitions: serde_json::Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_by: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 12,
+        "name": "published",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 13,
+        "name": "version",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "dac3f254ab6df24a881cc1a66b8d51d93d0a4d7a295ae3f9504334a7373d54f7"
+}
