@@ -3,6 +3,6 @@
     "database_url": "postgres://postgres:postgres@pg.rdatacore.docker:5432/rdata"
   },
   "test": {
-    "database_url": "postgres://postgres:postgres@pg.rdatacore.docker:5432/rdata"
+    "database_url": "postgres://postgres:postgres@pg-test.rdatacore.docker:5433/rdata_test"
   }
 }

@@ -147,9 +147,7 @@ async fn create_class_definition(
 
     // Generate a new UUID if one wasn't provided
     if class_def.uuid == Uuid::nil() {
-        let context = uuid::ContextV7::new();
-        let ts = uuid::timestamp::Timestamp::now(&context);
-        class_def.uuid = Uuid::new_v7(ts);
+        class_def.uuid = Uuid::now_v7();
     }
 
     // Set server-controlled fields

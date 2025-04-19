@@ -12,6 +12,9 @@ pub enum Error {
     #[error("Authentication error: {0}")]
     Auth(String),
 
+    #[error("Authorization error: {0}")]
+    Forbidden(String),
+
     #[error("Entity error: {0}")]
     Entity(String),
 

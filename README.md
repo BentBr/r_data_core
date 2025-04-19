@@ -92,6 +92,11 @@ cargo sqlx migrate run
 cargo run
 ```
 
+Run our applicaiton
+```bash
+# Run the application with logging and backtrace enabled (info is defined in .env, debug for extensive output)
+RUST_BACKTRACE=1 RUST_LOG=info cargo run --bin r_data_core
+```
 
 renew database:
 ```bash
@@ -103,6 +108,24 @@ update sqlx:
 cargo sqlx prepare
 ```
 
+testing: 
+```bash
+# Only r_data_core unit tests
+cargo test --lib -p r_data_core
+
+# All tests, including integration tests in tests/ directory
+cargo test
+```
+
+Hint:
+- Unit tests are within the `src` directory in each file
+- Integration tests are located in the `tests` directory
+- Tests can be run by their name without the `test_` prefix
+
+Binaries
+- `r_data_core` - The main application binary
+- `r_data_core_migrations` - The binary for running database migrations (or use `cargo sqlx migrate`)
+- `hash_password` - A utility for hashing passwords (for admin users)
 
 ### Important Note about SQLx
 

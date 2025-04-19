@@ -7,7 +7,7 @@ use r_data_core::entity::ClassDefinition;
 use sqlx::postgres::PgPoolOptions;
 use std::time::Duration;
 use time::OffsetDateTime;
-use uuid::{ContextV7, Uuid};
+use uuid::Uuid;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -58,10 +58,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let repo = ClassDefinitionRepository::new(pool.clone());
 
     // Create a test class definition
-    let context = ContextV7::new();
-    let ts = uuid::timestamp::Timestamp::now(&context);
     let mut test_class = ClassDefinition {
-        uuid: Uuid::new_v7(ts),
+        uuid: Uuid::now_v7(),
         entity_type: "test_schema_update".to_string(),
         display_name: "Test Schema Update".to_string(),
         description: Some("A class for testing schema updates".to_string()),

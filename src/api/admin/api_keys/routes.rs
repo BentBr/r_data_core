@@ -10,6 +10,7 @@ use crate::api::auth::auth_enum;
 use crate::api::models::PaginationQuery;
 use crate::api::ApiState;
 use crate::entity::admin_user::repository::ApiKeyRepository;
+use crate::entity::admin_user::repository_trait::ApiKeyRepositoryTrait;
 use std::sync::Arc;
 
 /// Register API key routes

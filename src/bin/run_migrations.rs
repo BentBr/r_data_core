@@ -10,7 +10,7 @@ async fn main() -> Result<(), sqlx::Error> {
     // Get database URL from environment variables
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
-    // Create connection pool
+    // Create the connection pool
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(&database_url)

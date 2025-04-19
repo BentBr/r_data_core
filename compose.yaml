@@ -24,6 +24,31 @@ services:
         aliases:
           - pg.rdatacore.docker
 
+  postgres_test:
+    build:
+      context: ./.docker/postgres
+      dockerfile: Dockerfile
+    container_name: rdata_postgres_test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: rdata_test
+      VIRTUAL_HOST: .pg-test.rdatacore.docker
+    ports:
+      - '5433:5432'
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          - pg-test.rdatacore.docker
+
   redis:
     image: redis:7-alpine
     container_name: rdata_redis
@@ -78,4 +103,5 @@ services:
 
 volumes:
   postgres_data:
+  postgres_test_data:
   redis_data:

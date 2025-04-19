@@ -1,7 +1,7 @@
 use actix_web::{get, HttpRequest, HttpResponse, Responder};
+use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use uuid::Uuid;
-use time::format_description::well_known::Rfc3339;
 
 use crate::api::models::HealthData;
 

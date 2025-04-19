@@ -35,9 +35,7 @@ impl DynamicEntityRepository {
 
     async fn create(&self, entity: &DynamicEntity) -> Result<Uuid> {
         // Generate UUIDv7 as used in the rest of the codebase
-        let context = ContextV7::new();
-        let ts = timestamp::Timestamp::now(&context);
-        Ok(Uuid::new_v7(ts))
+        Ok(Uuid::now_v7())
     }
 
     async fn get(&self, uuid: Uuid) -> Result<DynamicEntity> {

@@ -67,10 +67,8 @@ impl AbstractRDataEntity {
     /// Create a new entity with default values
     pub fn new(path: String) -> Self {
         let now = OffsetDateTime::now_utc();
-        let context = ContextV7::new();
-        let ts = timestamp::Timestamp::now(&context);
         Self {
-            uuid: Uuid::new_v7(ts),
+            uuid: Uuid::now_v7(),
             path,
             created_at: now,
             updated_at: now,

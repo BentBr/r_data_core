@@ -4,7 +4,7 @@ use actix_web::{
     HttpRequest,
 };
 use log::{debug, error};
-use sqlx::{PgPool};
+use sqlx::PgPool;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -135,7 +135,7 @@ async fn find_api_key(
         WHERE key_hash = $1
         "#,
     )
-    .bind(key_hash)  // Use the hash, not the raw API key
+    .bind(key_hash) // Use the hash, not the raw API key
     .fetch_optional(pool)
     .await?;
 

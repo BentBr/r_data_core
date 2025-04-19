@@ -176,10 +176,8 @@ impl EntityRepository {
         // Build table name
         let table_name = class_def.get_table_name();
 
-        // Generate UUID for new entity
-        let context = uuid::ContextV7::new();
-        let ts = uuid::timestamp::Timestamp::now(&context);
-        let uuid = Uuid::new_v7(ts);
+        // Generate UUID for a new entity
+        let uuid = Uuid::now_v7();
 
         // If no path is provided, generate a default one
         let path = fields

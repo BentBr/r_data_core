@@ -66,6 +66,7 @@ validator_derive = "0.20.0"
 # Command-line argument parsing
 clap = "3.2"
 base64 = "0.22.1"
+hex = "0.4"
 
 [lib]
 name = "r_data_core"
@@ -82,3 +83,10 @@ path = "src/bin/run_migrations.rs"
 [[bin]]
 name = "apply_schema"
 path = "src/bin/apply_schema.rs"
+
+[dev-dependencies]
+mockall = "0.12"
+actix-http = "3.4"
+actix-service = "2.0"
+httpmock = "0.6"
+serial_test = "2.0"

@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use uuid::timestamp;
-use uuid::{ContextV7, Uuid};
+use uuid::Uuid;
 
 use super::schema::Schema;
 use crate::entity::field::FieldDefinition;
@@ -105,9 +105,7 @@ impl Default for ClassDefinition {
 
 /// Generate a new UUID v7 for deserialization defaults
 fn generate_uuid() -> Uuid {
-    let context = uuid::ContextV7::new();
-    let ts = uuid::timestamp::Timestamp::now(&context);
-    Uuid::new_v7(ts)
+    Uuid::now_v7()
 }
 
 /// Default version for new entities
@@ -163,8 +161,6 @@ impl ClassDefinition {
         created_by: Uuid,
     ) -> Self {
         let now = OffsetDateTime::now_utc();
-        let context = ContextV7::new();
-        let ts = timestamp::Timestamp::now(&context);
 
         // Create a properties map for the schema
         let mut properties = HashMap::new();
@@ -174,7 +170,7 @@ impl ClassDefinition {
         );
 
         ClassDefinition {
-            uuid: Uuid::new_v7(ts),
+            uuid: Uuid::now_v7(),
             entity_type,
             display_name,
             description,

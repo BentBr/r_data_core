@@ -4,8 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
-use uuid::timestamp;
-use uuid::{ContextV7, Uuid};
+use uuid::Uuid;
 
 use crate::entity::class::definition::ClassDefinition;
 use crate::entity::field::FieldDefinition;
@@ -130,13 +129,11 @@ impl DynamicEntity {
     /// Create a new dynamic entity
     pub fn new(entity_type: String, definition: Arc<ClassDefinition>) -> Self {
         let mut field_data = HashMap::new();
-        let context = ContextV7::new();
-        let ts = timestamp::Timestamp::now(&context);
 
         // Initialize system fields
         field_data.insert(
             "uuid".to_string(),
-            JsonValue::String(Uuid::new_v7(ts).to_string()),
+            JsonValue::String(Uuid::now_v7().to_string()),
         );
         field_data.insert(
             "path".to_string(),

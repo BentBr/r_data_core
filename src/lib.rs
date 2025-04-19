@@ -6,6 +6,7 @@ pub mod entity;
 pub mod error;
 pub mod notification;
 pub mod repository;
+pub mod services;
 pub mod versioning;
 pub mod workflow;
 
@@ -23,6 +24,9 @@ pub use error::{Error, Result};
 
 /// API state that can be shared across handlers
 pub use api::ApiState;
+
+/// Re-export services
+pub use services::ApiKeyService;
 
 use log::info;
 

@@ -1,9 +1,12 @@
-use super::AbstractRDataEntity;
-use crate::error::{Error, Result};
+use crate::{
+    entity::AbstractRDataEntity,
+    error::{Error, Result},
+};
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use sqlx::{
     decode::Decode,
@@ -12,8 +15,7 @@ use sqlx::{
 };
 use time::OffsetDateTime;
 use utoipa::ToSchema;
-use uuid::timestamp;
-use uuid::{ContextV7, Uuid};
+use uuid::Uuid;
 
 /// Admin user roles
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -202,8 +204,7 @@ impl AdminUser {
         is_admin: bool,
     ) -> Self {
         let now = OffsetDateTime::now_utc();
-        let context = ContextV7::new();
-        let ts = timestamp::Timestamp::now(&context);
+
         Self {
             base: AbstractRDataEntity::new("/admin/users".to_string()),
             username,
@@ -215,7 +216,7 @@ impl AdminUser {
             last_login: None,
             failed_login_attempts: 0,
             permission_scheme_uuid,
-            uuid: Uuid::new_v7(ts),
+            uuid: Uuid::now_v7(),
             first_name: Some(first_name),
             last_name: Some(last_name),
             is_active,
@@ -248,64 +249,34 @@ impl AdminUser {
 
         self.password_hash = argon2
             .hash_password(password.as_bytes(), &salt)
-            .map_err(|e| Error::PasswordHash(e.to_string()))?
+            .map_err(|e| Error::PasswordHash(format!("Failed to hash password: {}", e)))?
             .to_string();
 
-        log::debug!("Created password hash: {}", self.password_hash);
         Ok(())
     }
 
     /// Verify a password against the stored hash
     pub fn verify_password(&self, password: &str) -> bool {
-        log::debug!("Verifying password against hash: {}", self.password_hash);
-
-        // Try to parse the hash
+        // Parse the stored hash
         let parsed_hash = match PasswordHash::new(&self.password_hash) {
             Ok(hash) => hash,
-            Err(e) => {
-                log::error!("Failed to parse password hash: {:?}", e);
-                return false;
-            }
+            Err(_) => return false,
         };
 
-        log::debug!("Hash parsed successfully");
-
-        // Check if this is a migration hash (very low memory parameter)
-        if self.password_hash.contains("m=16,t=2,p=1") {
-            log::debug!("Detected legacy low-memory hash format");
-            // Create a custom argon2 configuration with low memory parameters
-            use argon2::Params;
-            let legacy_params = Params::new(16, 2, 1, None).unwrap();
-            let legacy_argon2 = Argon2::new(
-                argon2::Algorithm::Argon2id,
-                argon2::Version::V0x13,
-                legacy_params,
-            );
-
-            return legacy_argon2
-                .verify_password(password.as_bytes(), &parsed_hash)
-                .is_ok();
-        }
-
-        // Standard verification with default (or specified) parameters
-        let result = Argon2::default()
+        // Verify the password using Argon2id
+        Argon2::default()
             .verify_password(password.as_bytes(), &parsed_hash)
-            .is_ok();
-
-        log::debug!("Password verification result: {}", result);
-        result
+            .is_ok()
     }
 
-    /// Check if user has a specific permission
+    /// Check if the user has a specific permission
+    /// Note: This is a placeholder until permissions are implemented
     pub fn has_permission(&self, _permission: &str) -> bool {
-        // SuperAdmin always has all permissions
-        if let UserRole::SuperAdmin = self.role {
-            return true;
+        match self.role {
+            UserRole::SuperAdmin => true,
+            UserRole::Admin => true,
+            _ => false,
         }
-
-        // TODO: Implement permission checking with PermissionScheme
-        // This is a placeholder for the actual implementation
-        false
     }
 
     /// Record a successful login
@@ -317,29 +288,24 @@ impl AdminUser {
     /// Record a failed login attempt
     pub fn record_login_failure(&mut self) {
         self.failed_login_attempts += 1;
-
-        // Automatically lock account after too many failed attempts
         if self.failed_login_attempts >= 5 {
             self.status = UserStatus::Locked;
         }
     }
 
-    /// Check if the user account is active and can log in
+    /// Check if the user can login
     pub fn can_login(&self) -> bool {
-        matches!(self.status, UserStatus::Active)
+        self.is_active && self.status == UserStatus::Active
     }
 
+    /// Get the user's full name
     pub fn full_name(&self) -> String {
-        match (&self.first_name, &self.last_name) {
-            (Some(first), Some(last)) => format!("{} {}", first, last),
-            (Some(first), None) => first.clone(),
-            (None, Some(last)) => last.clone(),
-            (None, None) => self.username.clone(),
-        }
+        self.full_name.clone()
     }
 }
 
 impl ApiKey {
+    /// Create a new API key
     pub fn new(
         user_uuid: Uuid,
         name: String,
@@ -348,12 +314,11 @@ impl ApiKey {
         created_by: Uuid,
     ) -> Self {
         let now = OffsetDateTime::now_utc();
-        let context = ContextV7::new();
-        let ts = timestamp::Timestamp::now(&context);
+
         Self {
-            uuid: Uuid::new_v7(ts),
+            uuid: Uuid::now_v7(),
             user_uuid,
-            key_hash: Self::generate_key(),
+            key_hash: String::new(), // Will be set separately
             name,
             description,
             is_active: true,
@@ -365,35 +330,29 @@ impl ApiKey {
         }
     }
 
-    /// Generate a random API key using cryptographically secure methods
+    /// Generate a secure random API key
     pub fn generate_key() -> String {
-        use argon2::password_hash::rand_core::{OsRng, RngCore};
-        use base64::{engine::general_purpose::URL_SAFE, Engine};
+        use rand::{rng, RngCore};
 
-        // Generate 48 bytes of random data (384 bits)
-        let mut buffer = [0u8; 48];
-        OsRng.fill_bytes(&mut buffer);
+        let mut bytes = [0u8; 32];
+        rng().fill_bytes(&mut bytes);
 
-        // Encode as URL-safe base64 and remove padding
-        let encoded = URL_SAFE.encode(buffer);
-        encoded.trim_end_matches('=').to_string()
+        // Use base64 without padding for a URL-safe token
+        base64::encode(&bytes)
     }
 
     /// Hash an API key for storage
     pub fn hash_api_key(api_key: &str) -> Result<String> {
-        // Use SHA-256 for API key hashing - faster than Argon2 and suitable for API keys
-        // as they are already high-entropy random values
         use sha2::{Digest, Sha256};
 
         let mut hasher = Sha256::new();
         hasher.update(api_key.as_bytes());
         let result = hasher.finalize();
 
-        // Convert to hex string
-        Ok(format!("{:x}", result))
+        Ok(hex::encode(result))
     }
 
-    /// Check if the API key is valid (not expired and active)
+    /// Check if an API key is valid (not expired)
     pub fn is_valid(&self) -> bool {
         if !self.is_active {
             return false;
@@ -408,21 +367,20 @@ impl ApiKey {
         true
     }
 
-    /// Update the last used timestamp
+    /// Update the last_used_at timestamp
     pub async fn update_last_used(&mut self, pool: &sqlx::PgPool) -> Result<()> {
         let now = OffsetDateTime::now_utc();
         self.last_used_at = Some(now);
 
-        sqlx::query("UPDATE api_keys SET last_used_at = $1 WHERE uuid = $2")
-            .bind(now)
-            .bind(self.uuid)
-            .execute(pool)
-            .await
-            .map_err(Error::Database)?;
+        sqlx::query!(
+            "UPDATE api_keys SET last_used_at = $1 WHERE uuid = $2",
+            now,
+            self.uuid
+        )
+        .execute(pool)
+        .await
+        .map_err(|e| Error::Database(e))?;
 
         Ok(())
     }
 }
-
-// Export the repository module
-pub mod repository;
