@@ -9,10 +9,11 @@ We've implemented the first phase of the refactoring strategy, focusing on the A
 2. ✅ Implemented the trait for the existing repository (`ApiKeyRepository`)
 3. ✅ Created a service layer for API keys (`ApiKeyService`)
 4. ✅ Added unit tests for the service layer with mock repositories
-5. ✅ Set up an integration test structure with:
+5. ✅ Fixed issues with the API key service tests (lifetime problems, unused variables)
+6. ✅ Set up an integration test structure with:
    - Common test utilities for database setup
    - Repository tests
-   - Placeholders for service and API integration tests
+   - API key service tests
 
 ### Admin User Refactoring
 1. ✅ Created a repository trait for admin users (`AdminUserRepositoryTrait`)
@@ -20,6 +21,13 @@ We've implemented the first phase of the refactoring strategy, focusing on the A
 3. ✅ Created a service layer for admin users (`AdminUserService`)
 4. ✅ Added unit tests for the service layer with mock repositories
 5. ✅ Added integration tests for the admin user repository
+6. ✅ Added JWT login test for admin users
+
+### API Authentication
+1. ✅ Fixed API key hashing and validation in authentication flow
+2. ✅ Ensured API key last_used_at is updated correctly
+3. ✅ Ensured JWT-based admin authentication works correctly
+4. ✅ Added tests for both authentication paths
 
 ### Next Entity to Refactor: Class Definitions
 1. 🔄 Create a repository trait for class definitions (`ClassDefinitionRepositoryTrait`)
@@ -40,7 +48,7 @@ The implemented changes provide several advantages:
 2. **Testability**:
    - Repository interfaces can be mocked for unit testing
    - Service logic can be tested independently from database
-   - Integration tests can verify the full workflow
+   - Integration tests verify the full workflow
 
 3. **Dependency Injection**:
    - Services accept repository interfaces rather than concrete implementations
@@ -84,6 +92,13 @@ To continue the refactoring:
    - 🔄 Add integration tests for all API endpoints
    - 🔄 Add repository tests for all database operations
    - 🔄 Add service tests for all business logic
+
+## Current Issues Resolved
+
+1. ✅ Fixed API key authentication by ensuring the key is hashed before querying
+2. ✅ Fixed integration tests for API key service
+3. ✅ Resolved conflicts with the `class_definition.rs` module
+4. ✅ Improved error handling in authentication flows
 
 ## Testing Strategy
 
