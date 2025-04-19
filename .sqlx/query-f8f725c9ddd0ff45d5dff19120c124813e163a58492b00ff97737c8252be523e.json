@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT entity_type, display_name, description, \n                   group_name, allow_children, icon \n            FROM class_definitions\n            WHERE entity_type = $1\n            ",
+  "query": "\n            SELECT entity_type, display_name, description, \n                   group_name, allow_children, icon, created_by\n            FROM class_definitions\n            WHERE entity_type = $1 AND published = true\n            ",
   "describe": {
     "columns": [
       {
@@ -32,6 +32,11 @@
         "ordinal": 5,
         "name": "icon",
         "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_by",
+        "type_info": "Uuid"
       }
     ],
     "parameters": {
@@ -45,8 +50,9 @@
       true,
       true,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "e1c5cf6c4d5ad7ddb9743a2ffa5a9e0a6e56fac52dd6f669fde5915d3d89c4fa"
+  "hash": "f8f725c9ddd0ff45d5dff19120c124813e163a58492b00ff97737c8252be523e"
 }
