@@ -8,7 +8,9 @@ use validator::{Validate, ValidationError};
 use crate::api::jwt::{generate_jwt, verify_jwt, AuthUserClaims};
 use crate::api::response::ApiResponse;
 use crate::api::ApiState;
-use crate::repository::admin_user_repository::{AdminUserRepository, PgAdminUserRepository};
+use crate::entity::admin_user::repository::AdminUserRepository;
+use crate::entity::admin_user::repository_trait::AdminUserRepositoryTrait;
+use std::sync::Arc;
 use utoipa::ToSchema;
 
 /// Empty request body for endpoints that don't require any input
@@ -240,14 +242,16 @@ pub async fn admin_login(
     }
 
     // Create repository
-    let repo = PgAdminUserRepository::new(data.db_pool.clone());
+    let pool = Arc::new(data.db_pool.clone());
+    let repo = Arc::new(AdminUserRepository::new(pool));
 
     // Debug: Log the login attempt
     log::debug!("Login attempt for username: {}", login_req.username);
 
-    // Find user by username or email
+    // Find the user
     let user_result = repo.find_by_username_or_email(&login_req.username).await;
-
+    
+    // Handle database error
     let user = match user_result {
         Ok(Some(user)) => user,
         Ok(None) => {
@@ -261,9 +265,7 @@ pub async fn admin_login(
     };
 
     // Verify password
-    let password_valid = user.verify_password(&login_req.password);
-
-    if !password_valid {
+    if !user.verify_password(&login_req.password) {
         // Log failed attempt but don't reveal specific error
         log::debug!(
             "Password verification failed for user: {}",
@@ -276,6 +278,12 @@ pub async fn admin_login(
     if !user.is_active {
         log::debug!("User account is inactive: {}", user.username);
         return ApiResponse::inactive("Account not active");
+    }
+
+    // Update last login time
+    if let Err(e) = repo.update_last_login(&user.uuid).await {
+        // Log the error but continue with authentication
+        log::error!("Failed to update last login: {:?}", e);
     }
 
     // Generate JWT token (30 day expiration for admin)
@@ -291,11 +299,6 @@ pub async fn admin_login(
     let expires_at = OffsetDateTime::now_utc()
         .checked_add(Duration::seconds(2592000))
         .unwrap_or(OffsetDateTime::now_utc());
-
-    // Update last login time using repository
-    if let Err(_) = repo.update_last_login(&user.uuid).await {
-        // Continue even if update fails, just log it in a real implementation
-    }
 
     // Build response
     let response = AdminLoginResponse {
@@ -368,29 +371,48 @@ pub async fn admin_register(
     };
 
     // Create repository
-    let repo = PgAdminUserRepository::new(data.db_pool.clone());
+    let pool = Arc::new(data.db_pool.clone());
+    let repo = Arc::new(AdminUserRepository::new(pool));
 
-    // Check if username or email already exists - don't leak this info in response
-    let existing_user = repo.find_by_username_or_email(&register_req.username).await;
-    if let Ok(Some(_)) = existing_user {
-        // Don't reveal that username exists, just return success response
-        // This prevents user enumeration attacks
-        return ApiResponse::created_message("User registration processed");
-    }
+    // Check if username or email already exists
+    let existing_user = match repo.find_by_username_or_email(&register_req.username).await {
+        Ok(Some(_)) => {
+            // Don't reveal that username exists, just return success response
+            // This prevents user enumeration attacks
+            return ApiResponse::created_message("User registration processed");
+        }
+        Ok(None) => false,
+        Err(e) => {
+            log::error!("Error checking for existing user: {:?}", e);
+            return ApiResponse::internal_error("Registration failed");
+        }
+    };
 
-    // Attempt to create the user
-    let result = repo
-        .create_admin_user(
-            &register_req.username,
-            &register_req.email,
-            &register_req.password,
-            &register_req.first_name,
-            &register_req.last_name,
-            register_req.role.as_deref(),
-            is_authenticated,
-            creator_uuid,
-        )
-        .await;
+    // Also check by email 
+    let existing_email = match repo.find_by_username_or_email(&register_req.email).await {
+        Ok(Some(_)) => {
+            // Don't reveal that email exists, just return success response
+            // This prevents user enumeration attacks
+            return ApiResponse::created_message("User registration processed");
+        }
+        Ok(None) => false,
+        Err(e) => {
+            log::error!("Error checking for existing email: {:?}", e);
+            return ApiResponse::internal_error("Registration failed");
+        }
+    };
+
+    // Create the user
+    let result = repo.create_admin_user(
+        &register_req.username,
+        &register_req.email,
+        &register_req.password,
+        &register_req.first_name,
+        &register_req.last_name,
+        register_req.role.as_deref(),
+        is_authenticated,
+        creator_uuid,
+    ).await;
 
     match result {
         Ok(uuid) => {

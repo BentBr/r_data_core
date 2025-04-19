@@ -3,7 +3,6 @@ use crate::{
     error::{Error, Result},
 };
 use std::sync::Arc;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// Service for handling API key operations

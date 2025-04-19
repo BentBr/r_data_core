@@ -15,7 +15,6 @@ mod db;
 mod entity;
 mod error;
 mod notification;
-mod repository;
 mod versioning;
 mod workflow;
 

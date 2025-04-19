@@ -181,7 +181,7 @@ pub async fn create_api_key(
     let creator_uuid = Uuid::parse_str(&auth.0.sub).expect("Invalid UUID in auth token");
     let user_uuid = creator_uuid; // Assign to the authenticated user by default
 
-    // First check if the user already has a key with this name
+    // First, check if the user already has a key with this name
     let repo = ApiKeyRepository::new(pool);
 
     match repo.get_by_name(user_uuid, &req.name).await {

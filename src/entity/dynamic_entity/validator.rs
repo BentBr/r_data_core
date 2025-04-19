@@ -1,6 +1,6 @@
 use regex::Regex;
 use serde_json::Value;
-use time::{format_description, macros::format_description, Date, OffsetDateTime};
+use time::{macros::format_description, Date, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::entity::field::{FieldDefinition, FieldType};

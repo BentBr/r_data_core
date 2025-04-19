@@ -6,9 +6,9 @@ use uuid::Uuid;
 
 /// Set up a test database connection
 pub async fn setup_test_db() -> PgPool {
-    dotenv().ok();
+    dotenv::from_filename(".env.test").ok();
 
-    // Use the test database URL from environment or fallback to a default
+    // Use the test database URL from the environment or fallback to a default
     let database_url = std::env::var("DATABASE_URL").expect("Failed to get test database URL");
 
     debug!("Connecting to test database: {}", database_url);
@@ -17,12 +17,13 @@ pub async fn setup_test_db() -> PgPool {
         .await
         .expect("Failed to connect to test database");
 
-    // Drop all tables
-    sqlx::query("DROP SCHEMA public CASCADE")
+    // Drop and recreate the public schema safely
+    sqlx::query("DROP SCHEMA IF EXISTS public CASCADE")
         .execute(&pool)
         .await
         .expect("Failed to drop schema");
-    sqlx::query("CREATE SCHEMA public")
+    
+    sqlx::query("CREATE SCHEMA IF NOT EXISTS public")
         .execute(&pool)
         .await
         .expect("Failed to create schema");

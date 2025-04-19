@@ -6,7 +6,6 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
-use uuid::timestamp;
 use uuid::Uuid;
 
 use super::schema::Schema;

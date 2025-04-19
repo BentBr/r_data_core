@@ -1,5 +1,3 @@
-use super::definition::ClassDefinition;
-use crate::entity::field::FieldType;
 use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
