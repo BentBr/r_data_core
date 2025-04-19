@@ -17,16 +17,42 @@ pub async fn setup_test_db() -> PgPool {
         .await
         .expect("Failed to connect to test database");
 
-    // Drop and recreate the public schema safely
-    sqlx::query("DROP SCHEMA IF EXISTS public CASCADE")
-        .execute(&pool)
-        .await
-        .expect("Failed to drop schema");
-    
-    sqlx::query("CREATE SCHEMA IF NOT EXISTS public")
-        .execute(&pool)
-        .await
-        .expect("Failed to create schema");
+    let tables = sqlx::query_scalar!(
+        "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = 'public'"
+    )
+    .fetch_all(&pool)
+    .await
+    .expect("Failed to fetch table names");
+
+    for table in tables {
+        if let Some(table_name) = table {
+            sqlx::query(&format!("TRUNCATE TABLE {} CASCADE", table_name))
+                .execute(&pool)
+                .await
+                .expect(&format!("Failed to truncate table {}", table_name));
+        }
+    }
+
+    // Optionally, reset sequences
+    sqlx::query(
+        r#"
+        DO $$ DECLARE
+            seq RECORD;
+        BEGIN
+            FOR seq IN
+                SELECT c.oid::regclass::text AS seqname
+                FROM pg_class c
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                WHERE c.relkind = 'S' AND n.nspname = 'public'
+            LOOP
+                EXECUTE 'ALTER SEQUENCE ' || seq.seqname || ' RESTART WITH 1';
+            END LOOP;
+        END $$;
+        "#,
+    )
+    .execute(&pool)
+    .await
+    .expect("Failed to reset sequences");
 
     // Run migrations
     sqlx::migrate!("./migrations")

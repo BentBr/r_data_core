@@ -29,7 +29,11 @@ impl AdminUserService {
         }
 
         // Find the user
-        let user = match self.repository.find_by_username_or_email(username_or_email).await? {
+        let user = match self
+            .repository
+            .find_by_username_or_email(username_or_email)
+            .await?
+        {
             Some(user) => user,
             None => return Ok(None),
         };
@@ -111,9 +115,10 @@ impl AdminUserService {
         // Check if the user exists
         let existing_user = self.repository.find_by_uuid(&user.uuid).await?;
         if existing_user.is_none() {
-            return Err(Error::NotFound(
-                format!("User with UUID {} not found", user.uuid)
-            ));
+            return Err(Error::NotFound(format!(
+                "User with UUID {} not found",
+                user.uuid
+            )));
         }
 
         self.repository.update_admin_user(user).await
@@ -124,9 +129,10 @@ impl AdminUserService {
         // Check if the user exists
         let existing_user = self.repository.find_by_uuid(uuid).await?;
         if existing_user.is_none() {
-            return Err(Error::NotFound(
-                format!("User with UUID {} not found", uuid)
-            ));
+            return Err(Error::NotFound(format!(
+                "User with UUID {} not found",
+                uuid
+            )));
         }
 
         self.repository.delete_admin_user(uuid).await
@@ -145,16 +151,16 @@ impl AdminUserService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::entity::admin_user::{UserRole, UserStatus};
+    use crate::entity::AbstractRDataEntity;
     use async_trait::async_trait;
     use mockall::mock;
     use mockall::predicate::*;
     use time::OffsetDateTime;
-    use crate::entity::admin_user::{UserRole, UserStatus};
-    use crate::entity::AbstractRDataEntity;
 
     mock! {
         pub AdminUserRepo {}
-        
+
         #[async_trait]
         impl AdminUserRepositoryTrait for AdminUserRepo {
             async fn find_by_username_or_email(&self, username_or_email: &str) -> Result<Option<AdminUser>>;
@@ -182,7 +188,7 @@ mod tests {
         let mut mock_repo = MockAdminUserRepo::new();
         let user_uuid = Uuid::now_v7();
         let now = OffsetDateTime::now_utc();
-        
+
         // Create a test user
         let test_user = AdminUser {
             uuid: user_uuid,
@@ -203,48 +209,47 @@ mod tests {
             updated_at: now,
             base: AbstractRDataEntity::new("/admin/users".to_string()),
         };
-        
+
         // Setup expectations
         mock_repo
             .expect_find_by_username_or_email()
             .with(eq("testuser"))
             .returning(move |_| Ok(Some(test_user.clone())));
-            
+
         mock_repo
             .expect_update_last_login()
             .with(eq(user_uuid))
             .returning(|_| Ok(()));
-        
+
         let service = AdminUserService::new(Arc::new(mock_repo));
-        
+
         // This will fail because the password hash is not for "wrongpassword"
         let result = service.authenticate("testuser", "wrongpassword").await;
-        
+
         // Should return None for wrong password
         assert!(result.is_ok());
         assert!(result.unwrap().is_none());
     }
-    
+
     #[tokio::test]
     async fn test_register_user_success() {
         let mut mock_repo = MockAdminUserRepo::new();
         let user_uuid = Uuid::now_v7();
         let creator_uuid = Uuid::now_v7();
-        
+
         // Setup expectations
         mock_repo
             .expect_find_by_username_or_email()
             .with(eq("newuser"))
             .returning(|_| Ok(None));
-            
+
         mock_repo
             .expect_find_by_username_or_email()
             .with(eq("new@example.com"))
             .returning(|_| Ok(None));
-            
-        mock_repo
-            .expect_create_admin_user()
-            .returning(move |username, email, password, first_name, last_name, role, is_active, creator| {
+
+        mock_repo.expect_create_admin_user().returning(
+            move |username, email, password, first_name, last_name, role, is_active, creator| {
                 assert_eq!(username, "newuser");
                 assert_eq!(email, "new@example.com");
                 assert_eq!(password, "password123");
@@ -254,32 +259,35 @@ mod tests {
                 assert!(is_active);
                 assert_eq!(creator, creator_uuid);
                 Ok(user_uuid)
-            });
-        
+            },
+        );
+
         let service = AdminUserService::new(Arc::new(mock_repo));
-        
-        let result = service.register_user(
-            "newuser",
-            "new@example.com",
-            "password123",
-            "New",
-            "User",
-            None,
-            true,
-            creator_uuid
-        ).await;
-        
+
+        let result = service
+            .register_user(
+                "newuser",
+                "new@example.com",
+                "password123",
+                "New",
+                "User",
+                None,
+                true,
+                creator_uuid,
+            )
+            .await;
+
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), user_uuid);
     }
-    
+
     #[tokio::test]
     async fn test_register_user_existing_username() {
         let mut mock_repo = MockAdminUserRepo::new();
         let user_uuid = Uuid::now_v7();
         let creator_uuid = Uuid::now_v7();
         let now = OffsetDateTime::now_utc();
-        
+
         // Create a test user
         let test_user = AdminUser {
             uuid: user_uuid,
@@ -300,26 +308,28 @@ mod tests {
             updated_at: now,
             base: AbstractRDataEntity::new("/admin/users".to_string()),
         };
-        
+
         // Setup expectations
         mock_repo
             .expect_find_by_username_or_email()
             .with(eq("existinguser"))
             .returning(move |_| Ok(Some(test_user.clone())));
-        
+
         let service = AdminUserService::new(Arc::new(mock_repo));
-        
-        let result = service.register_user(
-            "existinguser",
-            "new@example.com",
-            "password123",
-            "New",
-            "User",
-            None,
-            true,
-            creator_uuid
-        ).await;
-        
+
+        let result = service
+            .register_user(
+                "existinguser",
+                "new@example.com",
+                "password123",
+                "New",
+                "User",
+                None,
+                true,
+                creator_uuid,
+            )
+            .await;
+
         assert!(result.is_err());
         match result {
             Err(Error::Validation(msg)) => {
@@ -328,4 +338,4 @@ mod tests {
             _ => panic!("Expected validation error"),
         }
     }
-} 
+}

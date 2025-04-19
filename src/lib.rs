@@ -25,7 +25,7 @@ pub use error::{Error, Result};
 pub use api::ApiState;
 
 /// Re-export services
-pub use crate::services::{ApiKeyService, AdminUserService};
+pub use crate::services::{AdminUserService, ApiKeyService};
 
 use log::info;
 

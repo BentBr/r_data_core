@@ -6,7 +6,7 @@ use sqlx::{
 };
 use std::collections::HashMap;
 use time::OffsetDateTime;
-use uuid::{Uuid};
+use uuid::Uuid;
 
 use super::class::ClassDefinition;
 use super::DynamicFields;

@@ -1,16 +1,18 @@
-use crate::entity::admin_user::repository_trait::{is_key_valid, ApiKeyRepositoryTrait, AdminUserRepositoryTrait};
-use crate::entity::admin_user::{ApiKey, AdminUser};
+use crate::entity::admin_user::repository_trait::{
+    is_key_valid, AdminUserRepositoryTrait, ApiKeyRepositoryTrait,
+};
+use crate::entity::admin_user::{AdminUser, ApiKey};
 use crate::error::{Error, Result};
+use argon2::{
+    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
+    Argon2,
+};
 use async_trait::async_trait;
 use log::error;
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
-use uuid::{Uuid};
-use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
-    Argon2,
-};
+use uuid::Uuid;
 
 /// Repository for API key operations
 pub struct ApiKeyRepository {
@@ -38,7 +40,10 @@ impl AdminUserRepository {
 
 #[async_trait]
 impl AdminUserRepositoryTrait for AdminUserRepository {
-    async fn find_by_username_or_email(&self, username_or_email: &str) -> Result<Option<AdminUser>> {
+    async fn find_by_username_or_email(
+        &self,
+        username_or_email: &str,
+    ) -> Result<Option<AdminUser>> {
         sqlx::query_as::<_, AdminUser>(
             "SELECT * FROM admin_users WHERE username = $1 OR email = $1",
         )
@@ -50,20 +55,18 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
             Error::Database(e)
         })
     }
-    
+
     async fn find_by_uuid(&self, uuid: &Uuid) -> Result<Option<AdminUser>> {
-        sqlx::query_as::<_, AdminUser>(
-            "SELECT * FROM admin_users WHERE uuid = $1",
-        )
-        .bind(uuid)
-        .fetch_optional(&*self.pool)
-        .await
-        .map_err(|e| {
-            error!("Error finding user by UUID: {:?}", e);
-            Error::Database(e)
-        })
+        sqlx::query_as::<_, AdminUser>("SELECT * FROM admin_users WHERE uuid = $1")
+            .bind(uuid)
+            .fetch_optional(&*self.pool)
+            .await
+            .map_err(|e| {
+                error!("Error finding user by UUID: {:?}", e);
+                Error::Database(e)
+            })
     }
-    
+
     async fn update_last_login(&self, uuid: &Uuid) -> Result<()> {
         sqlx::query(
             "UPDATE admin_users SET last_login = NOW(), updated_at = NOW() WHERE uuid = $1",
@@ -78,7 +81,7 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
 
         Ok(())
     }
-    
+
     async fn create_admin_user<'a>(
         &self,
         username: &str,
@@ -149,7 +152,7 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
 
         Ok(user_uuid)
     }
-    
+
     async fn update_admin_user(&self, user: &AdminUser) -> Result<()> {
         sqlx::query!(
             "UPDATE admin_users SET 
@@ -178,7 +181,7 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
 
         Ok(())
     }
-    
+
     async fn delete_admin_user(&self, uuid: &Uuid) -> Result<()> {
         // Soft delete by setting is_active to false
         sqlx::query!(
@@ -195,7 +198,7 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
 
         Ok(())
     }
-    
+
     async fn list_admin_users(&self, limit: i64, offset: i64) -> Result<Vec<AdminUser>> {
         sqlx::query_as::<_, AdminUser>(
             "SELECT * FROM admin_users ORDER BY created_at DESC LIMIT $1 OFFSET $2",

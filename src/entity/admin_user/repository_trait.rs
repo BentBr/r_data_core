@@ -1,5 +1,5 @@
-use crate::entity::admin_user::ApiKey;
 use crate::entity::admin_user::AdminUser;
+use crate::entity::admin_user::ApiKey;
 use crate::error::Result;
 use async_trait::async_trait;
 use time::OffsetDateTime;
@@ -49,14 +49,15 @@ pub trait ApiKeyRepositoryTrait: Send + Sync {
 #[async_trait]
 pub trait AdminUserRepositoryTrait: Send + Sync {
     /// Find a user by username or email
-    async fn find_by_username_or_email(&self, username_or_email: &str) -> Result<Option<AdminUser>>;
-    
+    async fn find_by_username_or_email(&self, username_or_email: &str)
+        -> Result<Option<AdminUser>>;
+
     /// Find a user by UUID
     async fn find_by_uuid(&self, uuid: &Uuid) -> Result<Option<AdminUser>>;
-    
+
     /// Update a user's last login timestamp
     async fn update_last_login(&self, uuid: &Uuid) -> Result<()>;
-    
+
     /// Create a new admin user
     async fn create_admin_user<'a>(
         &self,
@@ -69,13 +70,13 @@ pub trait AdminUserRepositoryTrait: Send + Sync {
         is_active: bool,
         creator_uuid: Uuid,
     ) -> Result<Uuid>;
-    
+
     /// Update an admin user
     async fn update_admin_user(&self, user: &AdminUser) -> Result<()>;
-    
+
     /// Delete an admin user
     async fn delete_admin_user(&self, uuid: &Uuid) -> Result<()>;
-    
+
     /// List admin users with pagination
     async fn list_admin_users(&self, limit: i64, offset: i64) -> Result<Vec<AdminUser>>;
 }

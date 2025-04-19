@@ -250,7 +250,7 @@ pub async fn admin_login(
 
     // Find the user
     let user_result = repo.find_by_username_or_email(&login_req.username).await;
-    
+
     // Handle database error
     let user = match user_result {
         Ok(Some(user)) => user,
@@ -388,7 +388,7 @@ pub async fn admin_register(
         }
     };
 
-    // Also check by email 
+    // Also check by email
     let existing_email = match repo.find_by_username_or_email(&register_req.email).await {
         Ok(Some(_)) => {
             // Don't reveal that email exists, just return success response
@@ -403,16 +403,18 @@ pub async fn admin_register(
     };
 
     // Create the user
-    let result = repo.create_admin_user(
-        &register_req.username,
-        &register_req.email,
-        &register_req.password,
-        &register_req.first_name,
-        &register_req.last_name,
-        register_req.role.as_deref(),
-        is_authenticated,
-        creator_uuid,
-    ).await;
+    let result = repo
+        .create_admin_user(
+            &register_req.username,
+            &register_req.email,
+            &register_req.password,
+            &register_req.first_name,
+            &register_req.last_name,
+            register_req.role.as_deref(),
+            is_authenticated,
+            creator_uuid,
+        )
+        .await;
 
     match result {
         Ok(uuid) => {
