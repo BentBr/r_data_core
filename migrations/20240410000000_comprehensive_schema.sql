@@ -1,3 +1,7 @@
+-- Comprehensive schema for RData Core
+-- All TIMESTAMPTZ fields are interacted with using time::OffsetDateTime in application code
+-- Note: This migration assumes PostgreSQL 13+ with uuid-ossp extension
+
 -- Enable UUID extension and v7 function 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -17,7 +21,7 @@ CREATE TABLE IF NOT EXISTS entities_registry (
     path VARCHAR(255) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by UUID,
+    created_by UUID NOT NULL,
     updated_by UUID,
     published BOOLEAN NOT NULL DEFAULT FALSE,
     version INTEGER NOT NULL DEFAULT 1
@@ -40,7 +44,7 @@ CREATE TABLE IF NOT EXISTS entities_versions (
     entity_uuid UUID NOT NULL,
     version INT NOT NULL,
     data JSONB NOT NULL,
-    created_by UUID,
+    created_by UUID NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     comment TEXT,
     UNIQUE(entity_uuid, version)
@@ -60,7 +64,7 @@ CREATE TABLE IF NOT EXISTS class_definitions (
     field_definitions JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by UUID,
+    created_by UUID NOT NULL,
     updated_by UUID,
     published BOOLEAN NOT NULL DEFAULT FALSE,
     version INTEGER NOT NULL DEFAULT 1
@@ -235,7 +239,7 @@ CREATE TABLE IF NOT EXISTS permission_schemes (
     rules JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by UUID,
+    created_by UUID NOT NULL,
     updated_by UUID,
     published BOOLEAN NOT NULL DEFAULT FALSE,
     version INTEGER NOT NULL DEFAULT 1
@@ -257,10 +261,11 @@ CREATE TABLE IF NOT EXISTS api_keys (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by UUID,
+    created_by UUID NOT NULL,
     updated_by UUID,
     published BOOLEAN NOT NULL DEFAULT FALSE,
-    version INTEGER NOT NULL DEFAULT 1
+    version INTEGER NOT NULL DEFAULT 1,
+    UNIQUE (user_uuid, name)
 );
 
 CREATE INDEX IF NOT EXISTS idx_api_keys_user_uuid ON api_keys(user_uuid);
@@ -273,7 +278,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     notification_type VARCHAR(50) NOT NULL,
     subject TEXT NOT NULL,
     body TEXT NOT NULL,
-    recipient_uuid UUID,
+    recipient_uuid UUID NOT NULL,
     recipient_email TEXT,
     priority VARCHAR(20) NOT NULL DEFAULT 'normal',
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
@@ -283,7 +288,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     read_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by UUID,
+    created_by UUID NOT NULL,
     updated_by UUID,
     published BOOLEAN NOT NULL DEFAULT FALSE,
     version INTEGER NOT NULL DEFAULT 1
@@ -304,7 +309,7 @@ CREATE TABLE IF NOT EXISTS workflow_definitions (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by UUID,
+    created_by UUID NOT NULL,
     updated_by UUID,
     published BOOLEAN NOT NULL DEFAULT FALSE,
     version INTEGER NOT NULL DEFAULT 1
@@ -325,7 +330,7 @@ CREATE TABLE IF NOT EXISTS workflows (
     status VARCHAR(50) NOT NULL DEFAULT 'active',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by UUID,
+    created_by UUID NOT NULL,
     updated_by UUID,
     published BOOLEAN NOT NULL DEFAULT FALSE,
     version INTEGER NOT NULL DEFAULT 1

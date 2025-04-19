@@ -92,16 +92,8 @@ where
                 log::debug!("API key UUID: {:?}", key.uuid);
 
                 // Add API key info to request extensions
-                let key_uuid = match key.uuid {
-                    Some(uuid) => {
-                        log::debug!("Using actual key UUID: {}", uuid);
-                        uuid
-                    }
-                    None => {
-                        log::debug!("No key UUID found, using nil UUID");
-                        uuid::Uuid::nil()
-                    }
-                };
+                let key_uuid = key.uuid;
+                log::debug!("Using API key UUID: {}", key_uuid);
 
                 req.extensions_mut().insert(ApiKeyInfo {
                     uuid: key_uuid,

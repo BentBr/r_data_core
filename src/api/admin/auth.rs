@@ -1,7 +1,7 @@
 use crate::api::auth::auth_enum;
 use actix_web::{post, web, HttpMessage, HttpRequest, Responder};
-use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 use validator::{Validate, ValidationError};
 
@@ -42,8 +42,9 @@ pub struct AdminLoginResponse {
     /// User role
     pub role: String,
 
-    /// Token expiration (timestamp)
-    pub expires_at: i64,
+    /// Token expiration (RFC3339 timestamp)
+    #[serde(with = "time::serde::rfc3339")]
+    pub expires_at: OffsetDateTime,
 }
 
 /// Validate email format
@@ -264,6 +265,10 @@ pub async fn admin_login(
 
     if !password_valid {
         // Log failed attempt but don't reveal specific error
+        log::debug!(
+            "Password verification failed for user: {}",
+            login_req.username
+        );
         return ApiResponse::unauthorized("Invalid credentials");
     }
 
@@ -283,10 +288,9 @@ pub async fn admin_login(
     };
 
     // Calculate expiration time
-    let expires_at = Utc::now()
-        .checked_add_signed(Duration::seconds(2592000))
-        .unwrap_or(Utc::now())
-        .timestamp();
+    let expires_at = OffsetDateTime::now_utc()
+        .checked_add(Duration::seconds(2592000))
+        .unwrap_or(OffsetDateTime::now_utc());
 
     // Update last login time using repository
     if let Err(_) = repo.update_last_login(&user.uuid).await {

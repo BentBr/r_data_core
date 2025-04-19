@@ -126,6 +126,7 @@ impl ApiResponse<()> {
             message: message.to_string(),
             data: None,
         };
+        log::debug!("Creating unauthorized response with message: {}", message);
         response.to_http_response(StatusCode::UNAUTHORIZED)
     }
 

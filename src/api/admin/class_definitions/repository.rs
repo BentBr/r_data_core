@@ -1,6 +1,6 @@
 use crate::db::PgPoolExtension;
+use crate::entity::class::definition::ClassDefinition;
 use crate::entity::field::types::FieldType;
-use crate::entity::ClassDefinition;
 use crate::error::{Error, Result};
 use log;
 use serde_json;
@@ -26,18 +26,57 @@ impl ClassDefinitionRepository {
     }
 
     pub async fn get_by_uuid(&self, uuid: &Uuid) -> Result<ClassDefinition> {
-        self.db_pool
-            .repository_with_table::<ClassDefinition>("class_definitions")
-            .get_by_uuid(uuid)
-            .await
+        // Use custom query with explicit type casting
+        let class_def = sqlx::query!(
+            r#"
+            SELECT 
+                uuid, entity_type, display_name, description, group_name, 
+                allow_children, icon, field_definitions as "field_definitions: serde_json::Value",
+                created_at, updated_at, 
+                created_by as "created_by: Uuid", updated_by,
+                published, version
+            FROM class_definitions
+            WHERE uuid = $1
+            "#,
+            uuid
+        )
+        .fetch_optional(&self.db_pool)
+        .await
+        .map_err(Error::Database)?
+        .ok_or_else(|| Error::NotFound(format!("Class definition with UUID {} not found", uuid)))?;
+
+        // Create schema
+        let mut properties = HashMap::new();
+        properties.insert(
+            "entity_type".to_string(),
+            serde_json::Value::String(class_def.entity_type.clone()),
+        );
+        let schema = crate::entity::class::schema::Schema::new(properties);
+
+        // Convert to ClassDefinition
+        Ok(ClassDefinition {
+            uuid: class_def.uuid,
+            entity_type: class_def.entity_type,
+            display_name: class_def.display_name,
+            description: class_def.description,
+            group_name: class_def.group_name,
+            allow_children: class_def.allow_children,
+            icon: class_def.icon,
+            fields: serde_json::from_value(class_def.field_definitions)
+                .map_err(|e| Error::Serialization(e))?,
+            schema,
+            created_at: class_def.created_at,
+            updated_at: class_def.updated_at,
+            created_by: class_def.created_by,
+            updated_by: class_def.updated_by,
+            published: class_def.published,
+            version: class_def.version,
+        })
     }
 
     pub async fn create(&self, definition: &ClassDefinition) -> Result<Uuid> {
         // We need a custom implementation because the general repository requires a path field
         // that class definitions don't have
-
-        // Convert the definition to JSON
-        let json = serde_json::to_value(definition).map_err(|e| Error::Serialization(e))?;
 
         // Build the SQL fields and values
         let uuid = definition.uuid;
@@ -858,14 +897,57 @@ impl ClassDefinitionRepository {
     }
 
     pub async fn get_by_entity_type(&self, entity_type: &str) -> Result<Option<ClassDefinition>> {
-        let definition = sqlx::query_as::<_, ClassDefinition>(
-            "SELECT * FROM class_definitions WHERE LOWER(entity_type) = LOWER($1)",
+        // Use custom query with explicit type casting
+        let class_def = sqlx::query!(
+            r#"
+            SELECT 
+                uuid, entity_type, display_name, description, group_name, 
+                allow_children, icon, field_definitions as "field_definitions: serde_json::Value",
+                created_at, updated_at, 
+                created_by as "created_by: Uuid", updated_by,
+                published, version
+            FROM class_definitions
+            WHERE LOWER(entity_type) = LOWER($1)
+            "#,
+            entity_type
         )
-        .bind(entity_type)
         .fetch_optional(&self.db_pool)
         .await
         .map_err(Error::Database)?;
 
-        Ok(definition)
+        // Return early if not found
+        if class_def.is_none() {
+            return Ok(None);
+        }
+
+        let class_def = class_def.unwrap();
+
+        // Create schema
+        let mut properties = HashMap::new();
+        properties.insert(
+            "entity_type".to_string(),
+            serde_json::Value::String(class_def.entity_type.clone()),
+        );
+        let schema = crate::entity::class::schema::Schema::new(properties);
+
+        // Convert to ClassDefinition
+        Ok(Some(ClassDefinition {
+            uuid: class_def.uuid,
+            entity_type: class_def.entity_type,
+            display_name: class_def.display_name,
+            description: class_def.description,
+            group_name: class_def.group_name,
+            allow_children: class_def.allow_children,
+            icon: class_def.icon,
+            fields: serde_json::from_value(class_def.field_definitions)
+                .map_err(|e| Error::Serialization(e))?,
+            schema,
+            created_at: class_def.created_at,
+            updated_at: class_def.updated_at,
+            created_by: class_def.created_by,
+            updated_by: class_def.updated_by,
+            published: class_def.published,
+            version: class_def.version,
+        }))
     }
 }

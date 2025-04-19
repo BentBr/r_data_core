@@ -2,6 +2,8 @@ use serde_json::Value as JsonValue;
 use sqlx::{postgres::PgRow, FromRow, PgPool, Row};
 use std::collections::HashMap;
 use std::sync::Arc;
+use time;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::entity::class::definition::ClassDefinition;
@@ -75,22 +77,20 @@ impl DynamicEntityRepository {
             .get("created_at")
             .and_then(|v| v.as_str())
             .map(|s| {
-                chrono::DateTime::parse_from_rfc3339(s)
-                    .map(|dt| dt.with_timezone(&chrono::Utc))
-                    .unwrap_or_else(|_| chrono::Utc::now())
+                OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)
+                    .unwrap_or_else(|_| OffsetDateTime::now_utc())
             })
-            .unwrap_or_else(chrono::Utc::now);
+            .unwrap_or_else(OffsetDateTime::now_utc);
 
         let updated_at = entity
             .field_data
             .get("updated_at")
             .and_then(|v| v.as_str())
             .map(|s| {
-                chrono::DateTime::parse_from_rfc3339(s)
-                    .map(|dt| dt.with_timezone(&chrono::Utc))
-                    .unwrap_or_else(|_| chrono::Utc::now())
+                OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)
+                    .unwrap_or_else(|_| OffsetDateTime::now_utc())
             })
-            .unwrap_or_else(chrono::Utc::now);
+            .unwrap_or_else(OffsetDateTime::now_utc);
 
         let created_by = entity
             .field_data

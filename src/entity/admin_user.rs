@@ -4,15 +4,13 @@ use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
-use chrono::{DateTime, Utc};
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sqlx::{
     decode::Decode,
     postgres::{PgRow, PgTypeInfo, PgValueRef},
     FromRow, Row, Type,
 };
-use time;
+use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::timestamp;
 use uuid::{ContextV7, Uuid};
@@ -103,7 +101,7 @@ pub struct AdminUser {
     pub status: UserStatus,
 
     /// Last login time
-    pub last_login: Option<chrono::DateTime<chrono::Utc>>,
+    pub last_login: Option<OffsetDateTime>,
 
     /// Failed login attempts
     pub failed_login_attempts: i32,
@@ -116,8 +114,8 @@ pub struct AdminUser {
     pub last_name: Option<String>,
     pub is_active: bool,
     pub is_admin: bool,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
+    pub updated_at: OffsetDateTime,
 }
 
 impl<'r> FromRow<'r, PgRow> for AdminUser {
@@ -130,8 +128,8 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
         let first_name: Option<String> = row.try_get("first_name")?;
         let last_name: Option<String> = row.try_get("last_name")?;
         let is_active: bool = row.try_get("is_active")?;
-        let created_at: DateTime<Utc> = row.try_get("created_at")?;
-        let updated_at: DateTime<Utc> = row.try_get("updated_at")?;
+        let created_at: OffsetDateTime = row.try_get("created_at")?;
+        let updated_at: OffsetDateTime = row.try_get("updated_at")?;
 
         // Build full name from first name and last name
         let full_name = match (&first_name, &last_name) {
@@ -142,7 +140,7 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
         };
 
         // Get optional fields or use defaults for missing columns
-        let last_login: Option<DateTime<Utc>> = row.try_get("last_login").unwrap_or(None);
+        let last_login: Option<OffsetDateTime> = row.try_get("last_login").unwrap_or(None);
 
         // Use default values for fields that might not exist in the DB
         let role = UserRole::Admin; // Default role
@@ -175,15 +173,17 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct ApiKey {
-    pub uuid: Option<Uuid>,
+    pub uuid: Uuid,
     pub user_uuid: Uuid,
-    pub api_key: String,
+    pub key_hash: String,
     pub name: String,
     pub description: Option<String>,
     pub is_active: bool,
-    pub created_at: time::OffsetDateTime,
-    pub expires_at: Option<time::OffsetDateTime>,
-    pub last_used_at: Option<time::OffsetDateTime>,
+    pub created_at: OffsetDateTime,
+    pub expires_at: Option<OffsetDateTime>,
+    pub last_used_at: Option<OffsetDateTime>,
+    pub created_by: Uuid,
+    pub published: bool,
 }
 
 impl AdminUser {
@@ -201,7 +201,7 @@ impl AdminUser {
         is_active: bool,
         is_admin: bool,
     ) -> Self {
-        let now = Utc::now();
+        let now = OffsetDateTime::now_utc();
         let context = ContextV7::new();
         let ts = timestamp::Timestamp::now(&context);
         Self {
@@ -310,7 +310,7 @@ impl AdminUser {
 
     /// Record a successful login
     pub fn record_login_success(&mut self) {
-        self.last_login = Some(chrono::Utc::now());
+        self.last_login = Some(OffsetDateTime::now_utc());
         self.failed_login_attempts = 0;
     }
 
@@ -344,32 +344,53 @@ impl ApiKey {
         user_uuid: Uuid,
         name: String,
         description: Option<String>,
-        expires_at: Option<time::OffsetDateTime>,
+        expires_at: Option<OffsetDateTime>,
+        created_by: Uuid,
     ) -> Self {
-        let now = time::OffsetDateTime::now_utc();
+        let now = OffsetDateTime::now_utc();
+        let context = ContextV7::new();
+        let ts = timestamp::Timestamp::now(&context);
         Self {
-            uuid: None,
+            uuid: Uuid::new_v7(ts),
             user_uuid,
-            api_key: Self::generate_key(),
+            key_hash: Self::generate_key(),
             name,
             description,
             is_active: true,
             created_at: now,
             expires_at,
             last_used_at: None,
+            created_by,
+            published: true,
         }
     }
 
-    /// Generate a random API key
+    /// Generate a random API key using cryptographically secure methods
     pub fn generate_key() -> String {
-        const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        let mut rng = rand::rng();
-        (0..32)
-            .map(|_| {
-                let idx = rng.random_range(0..CHARSET.len());
-                CHARSET[idx] as char
-            })
-            .collect()
+        use argon2::password_hash::rand_core::{OsRng, RngCore};
+        use base64::{engine::general_purpose::URL_SAFE, Engine};
+
+        // Generate 48 bytes of random data (384 bits)
+        let mut buffer = [0u8; 48];
+        OsRng.fill_bytes(&mut buffer);
+
+        // Encode as URL-safe base64 and remove padding
+        let encoded = URL_SAFE.encode(buffer);
+        encoded.trim_end_matches('=').to_string()
+    }
+
+    /// Hash an API key for storage
+    pub fn hash_api_key(api_key: &str) -> Result<String> {
+        // Use SHA-256 for API key hashing - faster than Argon2 and suitable for API keys
+        // as they are already high-entropy random values
+        use sha2::{Digest, Sha256};
+
+        let mut hasher = Sha256::new();
+        hasher.update(api_key.as_bytes());
+        let result = hasher.finalize();
+
+        // Convert to hex string
+        Ok(format!("{:x}", result))
     }
 
     /// Check if the API key is valid (not expired and active)
@@ -379,7 +400,7 @@ impl ApiKey {
         }
 
         if let Some(expires_at) = self.expires_at {
-            if expires_at < time::OffsetDateTime::now_utc() {
+            if expires_at < OffsetDateTime::now_utc() {
                 return false;
             }
         }
@@ -389,7 +410,7 @@ impl ApiKey {
 
     /// Update the last used timestamp
     pub async fn update_last_used(&mut self, pool: &sqlx::PgPool) -> Result<()> {
-        let now = time::OffsetDateTime::now_utc();
+        let now = OffsetDateTime::now_utc();
         self.last_used_at = Some(now);
 
         sqlx::query("UPDATE api_keys SET last_used_at = $1 WHERE uuid = $2")
@@ -402,3 +423,6 @@ impl ApiKey {
         Ok(())
     }
 }
+
+// Export the repository module
+pub mod repository;

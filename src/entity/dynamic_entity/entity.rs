@@ -1,8 +1,9 @@
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use std::sync::Arc;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 use uuid::timestamp;
 use uuid::{ContextV7, Uuid};
 
@@ -143,11 +144,11 @@ impl DynamicEntity {
         );
         field_data.insert(
             "created_at".to_string(),
-            JsonValue::String(Utc::now().to_rfc3339()),
+            JsonValue::String(OffsetDateTime::now_utc().format(&Rfc3339).unwrap()),
         );
         field_data.insert(
             "updated_at".to_string(),
-            JsonValue::String(Utc::now().to_rfc3339()),
+            JsonValue::String(OffsetDateTime::now_utc().format(&Rfc3339).unwrap()),
         );
         field_data.insert("published".to_string(), JsonValue::Bool(false));
         field_data.insert("version".to_string(), JsonValue::Number(1.into()));
@@ -205,7 +206,7 @@ impl DynamicEntity {
                 // Auto-update timestamp
                 self.field_data.insert(
                     field.to_string(),
-                    JsonValue::String(Utc::now().to_rfc3339()),
+                    JsonValue::String(OffsetDateTime::now_utc().format(&Rfc3339).unwrap()),
                 );
                 return Ok(());
             }
@@ -248,7 +249,7 @@ impl DynamicEntity {
             .insert("version".to_string(), JsonValue::Number(new_version.into()));
         self.field_data.insert(
             "updated_at".to_string(),
-            JsonValue::String(Utc::now().to_rfc3339()),
+            JsonValue::String(OffsetDateTime::now_utc().format(&Rfc3339).unwrap()),
         );
         Ok(())
     }

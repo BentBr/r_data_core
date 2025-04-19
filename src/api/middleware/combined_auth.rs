@@ -65,6 +65,7 @@ where
     ) -> LocalBoxFuture<'static, Result<ServiceResponse<B>, Error>> {
         // Extract what we need from the request before creating the future
         let request = req.request().clone();
+        let path = request.path().to_string();
 
         // Get the API state
         let state_result = req.app_data::<web::Data<ApiState>>().cloned();
@@ -77,7 +78,7 @@ where
                 None => {
                     log::error!(
                         "Failed to extract API state from request for path: {}",
-                        request.path()
+                        path
                     );
                     return Err(ErrorUnauthorized("Missing application state"));
                 }
@@ -98,9 +99,13 @@ where
                 }
                 Ok(None) => {
                     // JWT authentication failed, continue to API key
+                    log::debug!(
+                        "JWT authentication failed, trying API key for path: {}",
+                        path
+                    );
                 }
                 Err(e) => {
-                    log::error!("JWT authentication error: {:?}", e);
+                    log::debug!("JWT authentication error: {:?}", e);
                     // Continue to API key auth even on JWT error
                 }
             }
@@ -109,8 +114,7 @@ where
             let api_key_result = extract_and_validate_api_key(&request, &state.db_pool).await;
             match api_key_result {
                 Ok(Some((key, user_uuid))) => {
-                    // Debug key.uuid before unwrap
-                    let key_uuid = key.uuid.unwrap_or_else(Uuid::nil);
+                    let key_uuid = key.uuid;
 
                     req.extensions_mut().insert(ApiKeyInfo {
                         uuid: key_uuid,
@@ -128,18 +132,27 @@ where
                 }
                 Ok(None) => {
                     // API key authentication failed
-                    log::error!(
+                    log::debug!(
                         "Authentication failed for path {}: both JWT and API key auth failed",
-                        request.path()
+                        path
                     );
                 }
                 Err(e) => {
-                    log::error!("API key authentication error: {:?}", e);
+                    log::debug!("API key authentication error: {:?}", e);
                 }
             }
 
-            // If both authentication methods failed and authentication is required
-            Err(ErrorUnauthorized("Authentication required"))
+            // Authentication failed, return an error that will be handled by the global error handler
+            // This ensures proper handling by the standard Actix error handlers
+            let error_message =
+                "Authentication required. Please provide a valid JWT token or API key.";
+            log::debug!(
+                "Authentication failed for path {}: {}",
+                request.path(),
+                error_message
+            );
+
+            Err(ErrorUnauthorized(error_message))
         })
     }
 }
@@ -158,8 +171,10 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let path = req.path();
+        log::debug!("CombinedAuthMiddleware processing path: {}", path);
 
-        // For all other paths, use process_auth to handle authentication
+        // Process authentication for all paths
+        // The decision about which paths need auth is made at the route registration level
         self.process_auth(req, self.service.clone())
     }
 }

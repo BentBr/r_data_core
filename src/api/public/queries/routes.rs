@@ -3,6 +3,7 @@ use serde_json::json;
 
 use super::models::AdvancedEntityQuery;
 use super::repository::QueryRepository;
+use crate::api::auth::auth_enum::CombinedRequiredAuth;
 use crate::api::ApiState;
 
 /// Advanced query for entities with more complex filtering
@@ -16,8 +17,13 @@ use crate::api::ApiState;
     request_body = AdvancedEntityQuery,
     responses(
         (status = 200, description = "Query results", body = Vec<DynamicEntity>),
+        (status = 401, description = "Unauthorized - No valid authentication provided"),
         (status = 404, description = "Entity type not found"),
         (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt" = []),
+        ("apiKey" = [])
     )
 )]
 #[post("/{entity_type}/query")]
@@ -25,6 +31,7 @@ async fn query_entities(
     data: web::Data<ApiState>,
     path: web::Path<String>,
     query: web::Json<AdvancedEntityQuery>,
+    _: CombinedRequiredAuth,
 ) -> impl Responder {
     let entity_type = path.into_inner();
     let repository = QueryRepository::new(data.db_pool.clone());

@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{
     decode::Decode,
@@ -6,6 +5,7 @@ use sqlx::{
     Type,
 };
 use std::collections::HashMap;
+use time::OffsetDateTime;
 use uuid::timestamp;
 use uuid::{ContextV7, Uuid};
 
@@ -24,10 +24,10 @@ pub struct AbstractRDataEntity {
     pub path: String,
 
     /// When the entity was created
-    pub created_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
 
     /// When the entity was last modified
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: OffsetDateTime,
 
     /// Who created the entity
     pub created_by: Option<Uuid>,
@@ -66,7 +66,7 @@ impl<'r> Decode<'r, sqlx::Postgres> for AbstractRDataEntity {
 impl AbstractRDataEntity {
     /// Create a new entity with default values
     pub fn new(path: String) -> Self {
-        let now = Utc::now();
+        let now = OffsetDateTime::now_utc();
         let context = ContextV7::new();
         let ts = timestamp::Timestamp::now(&context);
         Self {
@@ -94,7 +94,7 @@ impl AbstractRDataEntity {
     /// Increment version when entity is updated
     pub fn increment_version(&mut self) {
         self.version += 1;
-        self.updated_at = Utc::now();
+        self.updated_at = OffsetDateTime::now_utc();
     }
 
     /// Create a versioned snapshot of the current entity state
@@ -103,7 +103,7 @@ impl AbstractRDataEntity {
             entity_uuid: self.uuid,
             version_number: self.version,
             data: serde_json::to_value(self).unwrap_or(serde_json::Value::Null),
-            created_at: Utc::now(),
+            created_at: OffsetDateTime::now_utc(),
         }
     }
 }

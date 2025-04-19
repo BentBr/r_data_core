@@ -1,9 +1,8 @@
 use actix_web::{get, HttpRequest, HttpResponse, Responder};
-use chrono::Utc;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::api::models::HealthData;
-use crate::api::response::ApiResponse;
 
 /// Common health check handler for both admin and public API routes
 pub async fn health_check_handler(req: HttpRequest) -> impl Responder {
@@ -21,7 +20,7 @@ pub async fn health_check_handler(req: HttpRequest) -> impl Responder {
 
     // Create health data
     let health_data = HealthData {
-        date: Utc::now(),
+        date: OffsetDateTime::now_utc(),
         uuid: health_id,
         route: path,
         agent: user_agent,

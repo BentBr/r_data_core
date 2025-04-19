@@ -277,16 +277,6 @@ Todos:
 
 
 
-
-Task 2:
-- the public api + docs under /api/docs and /api/v1 must be accessible only via jwt login (as admin api) and via static api key
-- create a new endpoint to CRUD (without update) api_keys (static random strings) under the /admin/api namespace
-- those keys must have fields: the key itself, created_by (uuid), created_at, expiry (default 1year in future), name (free text)
--- those api keys can only be queried by the created_by user and on one else. so listing only returns "own"
-- the public api must always check for jwt or api and respond properly
-- all public endpoints must be secured
-
-
 Task 3:
 - Fix the entities routes. currently nothing is coming back.
 - swager must be updated (dynamically) such as:

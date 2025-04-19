@@ -1,11 +1,10 @@
-use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
+use actix_web::{get, web, HttpResponse, Responder};
 use serde_json::json;
 use uuid::Uuid;
 
-use super::models::{EntityQuery, EntityTypeInfo};
 use super::repository::EntityRepository;
+use crate::api::auth::auth_enum::CombinedRequiredAuth;
 use crate::api::ApiState;
-use crate::entity::DynamicEntity;
 
 /// List all available entity types
 #[utoipa::path(
@@ -14,11 +13,19 @@ use crate::entity::DynamicEntity;
     tag = "public",
     responses(
         (status = 200, description = "List of available entities", body = Vec<EntityTypeInfo>),
+        (status = 401, description = "Unauthorized - No valid authentication provided"),
         (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt" = []),
+        ("apiKey" = [])
     )
 )]
 #[get("/entities")]
-async fn list_available_entities(data: web::Data<ApiState>) -> impl Responder {
+async fn list_available_entities(
+    data: web::Data<ApiState>,
+    _: CombinedRequiredAuth,
+) -> impl Responder {
     let repository = EntityRepository::new(data.db_pool.clone());
 
     match repository.list_available_entities().await {
@@ -40,12 +47,21 @@ async fn list_available_entities(data: web::Data<ApiState>) -> impl Responder {
     ),
     responses(
         (status = 200, description = "Entity found", body = DynamicEntity),
+        (status = 401, description = "Unauthorized - No valid authentication provided"),
         (status = 404, description = "Entity not found"),
         (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt" = []),
+        ("apiKey" = [])
     )
 )]
 #[get("/{entity_type}/{uuid}")]
-async fn get_entity(data: web::Data<ApiState>, path: web::Path<(String, Uuid)>) -> impl Responder {
+async fn get_entity(
+    data: web::Data<ApiState>,
+    path: web::Path<(String, Uuid)>,
+    _: CombinedRequiredAuth,
+) -> impl Responder {
     let (entity_type, uuid) = path.into_inner();
     let repository = EntityRepository::new(data.db_pool.clone());
 

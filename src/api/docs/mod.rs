@@ -1,9 +1,9 @@
 use actix_web::web;
-use actix_web::{get, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse};
 use serde_json;
 use serde_json::json;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
-use utoipa::openapi::{ObjectBuilder, SchemaFormat, SchemaType, OpenApi as UtoipaOpenApi};
+use utoipa::openapi::{ObjectBuilder, OpenApi as UtoipaOpenApi, SchemaFormat, SchemaType};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::{Config, SwaggerUi};
 
@@ -20,7 +20,10 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         crate::api::admin::class_definitions::routes::create_class_definition,
         crate::api::admin::class_definitions::routes::update_class_definition,
         crate::api::admin::class_definitions::routes::delete_class_definition,
-        crate::api::admin::class_definitions::routes::apply_class_definition_schema
+        crate::api::admin::class_definitions::routes::apply_class_definition_schema,
+        crate::api::admin::api_keys::routes::create_api_key,
+        crate::api::admin::api_keys::routes::list_api_keys,
+        crate::api::admin::api_keys::routes::revoke_api_key
     ),
     components(
         schemas(
@@ -46,7 +49,10 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
             crate::api::admin::class_definitions::models::DateTimeConstraints,
             crate::api::admin::class_definitions::models::SelectConstraints,
             crate::api::admin::class_definitions::models::RelationConstraints,
-            crate::api::admin::class_definitions::models::SchemaConstraints
+            crate::api::admin::class_definitions::models::SchemaConstraints,
+            crate::api::admin::api_keys::routes::CreateApiKeyRequest,
+            crate::api::admin::api_keys::routes::ApiKeyResponse,
+            crate::api::admin::api_keys::routes::ApiKeyCreatedResponse
         )
     ),
     modifiers(&SecurityAddon, &UuidSchemaAddon, &DateTimeSchemaAddon, &ModelSchemaAddon),
@@ -54,7 +60,8 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         (name = "admin-auth", description = "Admin authentication endpoints"),
         (name = "admin-health", description = "Admin health check endpoints"),
         (name = "admin", description = "Administrative endpoints for managing system resources"),
-        (name = "class-definitions", description = "Endpoints for managing entity type definitions and structure")
+        (name = "class-definitions", description = "Endpoints for managing entity type definitions and structure"),
+        (name = "api-keys", description = "Endpoints for managing API keys")
     ),
     info(
         title = "R Data Core Admin API",
@@ -77,6 +84,7 @@ struct SecurityAddon;
 impl Modify for SecurityAddon {
     fn modify(&self, openapi: &mut UtoipaOpenApi) {
         if let Some(components) = openapi.components.as_mut() {
+            // Add JWT Bearer authentication
             components.add_security_scheme(
                 "jwt",
                 SecurityScheme::Http(
@@ -85,6 +93,20 @@ impl Modify for SecurityAddon {
                         .bearer_format("JWT")
                         .build(),
                 ),
+            );
+
+            // Add API Key authentication
+            // The simplified way - using serde_json to build the schema
+            let api_key_scheme = serde_json::json!({
+                "type": "apiKey",
+                "name": "X-API-Key",
+                "in": "header",
+                "description": "API Key for accessing the API"
+            });
+
+            components.security_schemes.insert(
+                "apiKey".to_string(),
+                serde_json::from_value(api_key_scheme).unwrap(),
             );
         }
     }
@@ -100,9 +122,7 @@ impl Modify for UuidSchemaAddon {
                 "Uuid".to_owned(),
                 ObjectBuilder::new()
                     .schema_type(SchemaType::String)
-                    .format(Some(SchemaFormat::Custom(
-                        "uuid".to_owned(),
-                    )))
+                    .format(Some(SchemaFormat::Custom("uuid".to_owned())))
                     .description(Some("UUID string"))
                     .example(Some(json!("550e8400-e29b-41d4-a716-446655440000")))
                     .build()
@@ -112,20 +132,19 @@ impl Modify for UuidSchemaAddon {
     }
 }
 
-/// Custom schema for DateTime<Utc>
+/// Custom schema for time::OffsetDateTime
 pub struct DateTimeSchemaAddon;
 
 impl Modify for DateTimeSchemaAddon {
     fn modify(&self, openapi: &mut UtoipaOpenApi) {
         if let Some(components) = openapi.components.as_mut() {
+            // Add the OffsetDateTime schema
             components.schemas.insert(
-                "DateTime".to_owned(),
+                "OffsetDateTime".to_owned(),
                 ObjectBuilder::new()
                     .schema_type(SchemaType::String)
-                    .format(Some(SchemaFormat::Custom(
-                        "date-time".to_owned(),
-                    )))
-                    .description(Some("ISO 8601 date and time"))
+                    .format(Some(SchemaFormat::Custom("date-time".to_owned())))
+                    .description(Some("ISO 8601 date and time with offset"))
                     .example(Some(json!("2023-01-01T12:00:00Z")))
                     .build()
                     .into(),
@@ -166,7 +185,6 @@ impl Modify for ModelSchemaAddon {
 #[openapi(
     paths(
         crate::api::health::public_health_check,
-        crate::api::docs::test_endpoint,
         crate::api::public::entities::routes::list_available_entities,
         crate::api::public::entities::routes::get_entity,
         crate::api::public::queries::routes::query_entities
@@ -179,7 +197,7 @@ impl Modify for ModelSchemaAddon {
             crate::api::public::queries::models::AdvancedEntityQuery
         )
     ),
-    modifiers(&UuidSchemaAddon, &DateTimeSchemaAddon, &ModelSchemaAddon),
+    modifiers(&SecurityAddon, &UuidSchemaAddon, &DateTimeSchemaAddon, &ModelSchemaAddon),
     tags(
         (name = "public-health", description = "Public health check endpoints"),
         (name = "public", description = "Public API endpoints")
@@ -198,22 +216,6 @@ impl Modify for ModelSchemaAddon {
     )
 )]
 struct PublicApiDoc;
-
-/// Test endpoint to verify the server is working
-#[utoipa::path(
-    get,
-    path = "/test",
-    responses(
-        (status = 200, description = "Test endpoint working", body = String)
-    )
-)]
-#[get("/test")]
-pub async fn test_endpoint() -> HttpResponse {
-    HttpResponse::Ok().json(serde_json::json!({
-        "status": "ok",
-        "message": "API is working!"
-    }))
-}
 
 /// Generate the OpenAPI specification for admin endpoints
 fn generate_admin_openapi_spec() -> utoipa::openapi::OpenApi {
@@ -238,7 +240,6 @@ pub async fn public_openapi_json(_req: HttpRequest) -> HttpResponse {
 /// Register documentation routes
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
     log::debug!("Registering documentation routes");
-    cfg.service(test_endpoint);
 
     // Configure SwaggerUI for admin API
     cfg.service(

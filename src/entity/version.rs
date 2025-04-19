@@ -1,6 +1,6 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// Represents a versioned snapshot of an entity
@@ -16,7 +16,7 @@ pub struct VersionedData {
     pub data: serde_json::Value,
 
     /// When this version was created
-    pub created_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
 }
 
 impl VersionedData {
@@ -26,7 +26,7 @@ impl VersionedData {
             entity_uuid,
             version_number,
             data,
-            created_at: Utc::now(),
+            created_at: OffsetDateTime::now_utc(),
         }
     }
 

@@ -1,10 +1,9 @@
 use actix_web::{
-    dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
+    dev::{forward_ready, Service, ServiceRequest, ServiceResponse},
     error::ErrorUnauthorized,
     web, Error, HttpMessage,
 };
-use futures::future::{ready, LocalBoxFuture, Ready};
-use std::panic::AssertUnwindSafe;
+use futures::future::LocalBoxFuture;
 use std::rc::Rc;
 
 use crate::api::auth::extract_and_validate_jwt;
@@ -78,8 +77,6 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         log::debug!("JwtAuthMiddleware processing path: {}", req.path());
-
-        let path = req.path();
 
         // For all other paths, use process_auth to handle authentication
         self.process_auth(req, self.service.clone())

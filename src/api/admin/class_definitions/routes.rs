@@ -1,8 +1,9 @@
+use crate::api::auth::auth_enum;
 use actix_web::{delete, get, post, put, web, HttpMessage, HttpRequest, HttpResponse, Responder};
 use log::info;
 use serde_json::json;
+use time::OffsetDateTime;
 use uuid::Uuid;
-use crate::api::auth::auth_enum;
 
 use super::models::ApplySchemaRequest;
 use super::models::PaginationQuery;
@@ -144,7 +145,7 @@ async fn create_class_definition(
     }
 
     // Set server-controlled fields
-    let now = chrono::Utc::now();
+    let now = OffsetDateTime::now_utc();
     class_def.created_at = now;
     class_def.updated_at = now;
     class_def.created_by = creator_uuid;
@@ -274,7 +275,7 @@ async fn update_class_definition(
     updated_def.version = existing_def.version + 1; // Increment version
 
     // Update mutable fields
-    updated_def.updated_at = chrono::Utc::now();
+    updated_def.updated_at = OffsetDateTime::now_utc();
     updated_def.updated_by = updater_uuid;
 
     // Validate updated definition

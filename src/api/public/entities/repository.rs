@@ -5,7 +5,7 @@ use crate::entity::field::FieldDefinition;
 use crate::error::Result;
 use serde_json::Value;
 use sqlx::Column;
-use sqlx::{postgres::PgRow, PgPool, Row};
+use sqlx::{PgPool, Row};
 use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;

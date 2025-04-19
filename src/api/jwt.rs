@@ -1,6 +1,6 @@
-use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::entity::admin_user::UserRole;
@@ -27,8 +27,9 @@ pub fn generate_jwt(user: &AdminUser, secret: &str, expiration_seconds: u64) -> 
     log::debug!("Generating JWT for user: {}", user.username);
 
     // Create expiration time
-    let expiration = Utc::now()
-        .checked_add_signed(Duration::seconds(expiration_seconds as i64))
+    let now = OffsetDateTime::now_utc();
+    let expiration = now
+        .checked_add(Duration::seconds(expiration_seconds as i64))
         .ok_or_else(|| Error::Auth("Could not create token expiration".to_string()))?;
 
     // Create claims
@@ -38,8 +39,8 @@ pub fn generate_jwt(user: &AdminUser, secret: &str, expiration_seconds: u64) -> 
         email: user.email.clone(),
         is_admin: user.role == UserRole::Admin,
         role: format!("{:?}", user.role),
-        exp: expiration.timestamp() as usize,
-        iat: Utc::now().timestamp() as usize,
+        exp: expiration.unix_timestamp() as usize,
+        iat: now.unix_timestamp() as usize,
     };
 
     // Generate the token

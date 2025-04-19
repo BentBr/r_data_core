@@ -1,7 +1,7 @@
 // Basic versioning module - to be expanded in future
 use crate::error::Result;
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// Version history entry
@@ -18,7 +18,7 @@ pub struct Version {
     /// User who created this version
     pub created_by: Option<Uuid>,
     /// When this version was created
-    pub created_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
     /// Comment for this version
     pub comment: Option<String>,
 }

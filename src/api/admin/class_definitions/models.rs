@@ -269,6 +269,12 @@ pub struct ClassDefinitionSchema {
     pub fields: Vec<FieldDefinitionSchema>,
     /// Published state (whether visible to users)
     pub published: Option<bool>,
+    /// Created at timestamp
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    /// Updated at timestamp
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
 }
 
 /// Response for listing class definitions

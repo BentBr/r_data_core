@@ -1,6 +1,6 @@
-use chrono::{DateTime, NaiveDate, Utc};
 use regex::Regex;
 use serde_json::Value;
+use time::{format_description, macros::format_description, Date, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::entity::field::{FieldDefinition, FieldType};
@@ -274,7 +274,10 @@ impl DynamicEntityValidator {
             }
         };
 
-        let date = NaiveDate::parse_from_str(date_str, "%Y-%m-%d").map_err(|_| {
+        // Format description for YYYY-MM-DD
+        let format = format_description!("[year]-[month]-[day]");
+
+        let date = Date::parse(date_str, &format).map_err(|_| {
             Error::Validation(format!(
                 "Field '{}' must be a valid date in YYYY-MM-DD format",
                 field_def.name
@@ -282,13 +285,13 @@ impl DynamicEntityValidator {
         })?;
 
         // Date range validation
-        let now = Utc::now().date_naive();
+        let now = OffsetDateTime::now_utc().date();
 
         if let Some(min_date_str) = &field_def.validation.min_date {
             let min_date = if min_date_str == "now" {
                 now
             } else {
-                NaiveDate::parse_from_str(min_date_str, "%Y-%m-%d").map_err(|_| {
+                Date::parse(min_date_str, &format).map_err(|_| {
                     Error::Validation(format!(
                         "Invalid min_date format for field '{}': {}",
                         field_def.name, min_date_str
@@ -308,7 +311,7 @@ impl DynamicEntityValidator {
             let max_date = if max_date_str == "now" {
                 now
             } else {
-                NaiveDate::parse_from_str(max_date_str, "%Y-%m-%d").map_err(|_| {
+                Date::parse(max_date_str, &format).map_err(|_| {
                     Error::Validation(format!(
                         "Invalid max_date format for field '{}': {}",
                         field_def.name, max_date_str
@@ -339,24 +342,24 @@ impl DynamicEntityValidator {
             }
         };
 
-        let datetime = DateTime::parse_from_rfc3339(datetime_str)
-            .map(|dt| dt.with_timezone(&Utc))
-            .map_err(|_| {
-                Error::Validation(format!(
-                    "Field '{}' must be a valid datetime in RFC3339 format",
-                    field_def.name
-                ))
-            })?;
+        // Parse ISO8601 / RFC3339 datetime
+        let datetime =
+            OffsetDateTime::parse(datetime_str, &time::format_description::well_known::Rfc3339)
+                .map_err(|_| {
+                    Error::Validation(format!(
+                        "Field '{}' must be a valid datetime in RFC3339 format",
+                        field_def.name
+                    ))
+                })?;
 
         // Datetime range validation
-        let now = Utc::now();
+        let now = OffsetDateTime::now_utc();
 
         if let Some(min_date_str) = &field_def.validation.min_date {
             let min_date = if min_date_str == "now" {
                 now
             } else {
-                DateTime::parse_from_rfc3339(min_date_str)
-                    .map(|dt| dt.with_timezone(&Utc))
+                OffsetDateTime::parse(min_date_str, &time::format_description::well_known::Rfc3339)
                     .map_err(|_| {
                         Error::Validation(format!(
                             "Invalid min_date format for field '{}': {}",
@@ -377,8 +380,7 @@ impl DynamicEntityValidator {
             let max_date = if max_date_str == "now" {
                 now
             } else {
-                DateTime::parse_from_rfc3339(max_date_str)
-                    .map(|dt| dt.with_timezone(&Utc))
+                OffsetDateTime::parse(max_date_str, &time::format_description::well_known::Rfc3339)
                     .map_err(|_| {
                         Error::Validation(format!(
                             "Invalid max_date format for field '{}': {}",

@@ -1,7 +1,7 @@
 // Basic notification module - to be expanded in future
 use crate::error::Result;
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// Notification priority
@@ -73,17 +73,17 @@ pub struct Notification {
     /// Priority of the notification
     pub priority: NotificationPriority,
     /// Scheduled delivery time
-    pub scheduled_for: Option<DateTime<Utc>>,
+    pub scheduled_for: Option<OffsetDateTime>,
     /// When the notification was sent
-    pub sent_at: Option<DateTime<Utc>>,
+    pub sent_at: Option<OffsetDateTime>,
     /// When the notification was read
-    pub read_at: Option<DateTime<Utc>>,
+    pub read_at: Option<OffsetDateTime>,
     /// Number of retry attempts
     pub retry_count: i32,
     /// Error message if sending failed
     pub error_message: Option<String>,
     /// Creation timestamp
-    pub created_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
     /// Additional data
     pub additional_data: Option<serde_json::Value>,
 }
@@ -97,7 +97,7 @@ pub trait NotificationManager {
     fn schedule_notification(
         &self,
         notification: &Notification,
-        scheduled_for: DateTime<Utc>,
+        scheduled_for: OffsetDateTime,
     ) -> Result<Notification>;
 
     /// Cancel a notification

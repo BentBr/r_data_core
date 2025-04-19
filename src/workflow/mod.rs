@@ -1,6 +1,7 @@
 // Basic workflow module - to be expanded in future
 use crate::error::Result;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// Basic workflow state
@@ -76,7 +77,7 @@ pub struct WorkflowTask {
     /// User assigned to the task
     pub assigned_to: Option<Uuid>,
     /// Due date of the task
-    pub due_date: Option<chrono::DateTime<chrono::Utc>>,
+    pub due_date: Option<OffsetDateTime>,
 }
 
 /// Workflow history entry
@@ -93,7 +94,7 @@ pub struct WorkflowHistory {
     /// User who performed the action
     pub performed_by: Option<Uuid>,
     /// When the event occurred
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: OffsetDateTime,
 }
 
 /// Workflow manager trait

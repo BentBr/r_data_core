@@ -13,12 +13,13 @@ actix-cors = "0.7"
 actix-rt = "2.9"
 
 # Database
-sqlx = { version = "0.8.4", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json", "time"] }
+sqlx = { version = "0.8.4", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }
 tokio = { version = "1.35", features = ["full"] }
 
 # Authentication
 jsonwebtoken = "9.2"
 argon2 = "0.5"
+sha2 = "0.10.8"
 
 # Serialization/Deserialization
 serde = { version = "1.0", features = ["derive"] }
@@ -36,8 +37,7 @@ uuid = { version = "1.6", features = ["v7", "serde"] }
 rand = "0.9.0"
 
 # Time handling
-chrono = { version = "0.4", features = ["serde"] }
-time = { version = "0.3", features = ["serde"] }
+time = { version = "0.3", features = ["serde", "formatting", "parsing", "macros"] }
 
 # Error handling
 thiserror = "1.0"
@@ -65,6 +65,7 @@ validator_derive = "0.20.0"
 
 # Command-line argument parsing
 clap = "3.2"
+base64 = "0.22.1"
 
 [lib]
 name = "r_data_core"

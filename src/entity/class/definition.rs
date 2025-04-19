@@ -1,10 +1,11 @@
-use chrono::{DateTime, Utc};
 use regex;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value as JsonValue;
 use sqlx::{postgres::PgRow, FromRow, Row};
 use std::collections::HashMap;
 use std::fmt::Debug;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 use uuid::timestamp;
 use uuid::{ContextV7, Uuid};
 
@@ -15,8 +16,35 @@ use crate::entity::field::FieldDefinition;
 use crate::entity::field::FieldType;
 use crate::error::{Error, Result};
 
+/// Function to serialize/deserialize OffsetDateTime with defaults
+mod datetime_serde {
+    use serde::{Deserialize, Deserializer, Serializer};
+    use time::format_description::well_known::Rfc3339;
+    use time::OffsetDateTime;
+
+    pub fn serialize<S>(date: &OffsetDateTime, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let formatted = date.format(&Rfc3339).map_err(serde::ser::Error::custom)?;
+        serializer.serialize_str(&formatted)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<OffsetDateTime, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match OffsetDateTime::parse(&s, &Rfc3339) {
+            Ok(date) => Ok(date),
+            Err(_) => Ok(OffsetDateTime::now_utc()),
+        }
+    }
+}
+
 /// A class definition that describes the structure of an entity type
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct ClassDefinition {
     /// Unique identifier for this entity type definition
     #[serde(default = "generate_uuid")]
@@ -34,29 +62,47 @@ pub struct ClassDefinition {
     /// Icon for this entity type
     pub icon: Option<String>,
     /// Field definitions for this entity type
-    #[serde(default)]
     pub fields: Vec<FieldDefinition>,
     /// Schema for this entity type
-    #[serde(default)]
     pub schema: Schema,
     /// Created at timestamp
-    #[serde(default = "default_datetime")]
-    pub created_at: DateTime<Utc>,
+    #[serde(with = "datetime_serde")]
+    pub created_at: OffsetDateTime,
     /// Updated at timestamp
-    #[serde(default = "default_datetime")]
-    pub updated_at: DateTime<Utc>,
+    #[serde(with = "datetime_serde")]
+    pub updated_at: OffsetDateTime,
     /// Created by user uuid
-    #[serde(default)]
     pub created_by: Option<Uuid>,
     /// Updated by user uuid
-    #[serde(default)]
     pub updated_by: Option<Uuid>,
     /// Whether this entity type is published
-    #[serde(default)]
     pub published: bool,
     /// Version of this entity type
     #[serde(default = "default_version")]
     pub version: i32,
+}
+
+impl Default for ClassDefinition {
+    fn default() -> Self {
+        let now = OffsetDateTime::now_utc();
+        Self {
+            uuid: generate_uuid(),
+            entity_type: String::new(),
+            display_name: String::new(),
+            description: None,
+            group_name: None,
+            allow_children: false,
+            icon: None,
+            fields: Vec::new(),
+            schema: Schema::default(),
+            created_at: now,
+            updated_at: now,
+            created_by: None,
+            updated_by: None,
+            published: false,
+            version: default_version(),
+        }
+    }
 }
 
 /// Generate a new UUID v7 for deserialization defaults
@@ -64,11 +110,6 @@ fn generate_uuid() -> Uuid {
     let context = uuid::ContextV7::new();
     let ts = uuid::timestamp::Timestamp::now(&context);
     Uuid::new_v7(ts)
-}
-
-/// Default datetime for created_at and updated_at
-fn default_datetime() -> DateTime<Utc> {
-    Utc::now()
 }
 
 /// Default version for new entities
@@ -122,7 +163,7 @@ impl ClassDefinition {
         icon: Option<String>,
         fields: Vec<FieldDefinition>,
     ) -> Self {
-        let now = Utc::now();
+        let now = OffsetDateTime::now_utc();
         let context = ContextV7::new();
         let ts = timestamp::Timestamp::now(&context);
 
@@ -272,7 +313,7 @@ impl ClassDefinition {
 
             // For ManyToOne, add a reference column
             if matches!(field.field_type, FieldType::ManyToOne) {
-                if let Some(target_class) = &field.validation.target_class {
+                if let Some(_) = &field.validation.target_class {
                     sql.push_str(&format!(",\n    {}_uuid UUID", field_name));
                 }
                 continue;
@@ -435,6 +476,8 @@ impl ClassDefinition {
             icon: self.icon.clone(),
             fields: self.fields.iter().map(|f| f.to_schema_model()).collect(),
             published: Some(self.published),
+            created_at: Some(self.created_at.format(&Rfc3339).unwrap_or_default()),
+            updated_at: Some(self.updated_at.format(&Rfc3339).unwrap_or_default()),
         }
     }
 }

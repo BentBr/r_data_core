@@ -1,6 +1,7 @@
 use crate::error::{Error, Result};
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -100,13 +101,13 @@ pub struct Notification {
     pub priority: NotificationPriority,
 
     /// When to send the notification (if scheduled)
-    pub scheduled_for: Option<DateTime<Utc>>,
+    pub scheduled_for: Option<OffsetDateTime>,
 
     /// When the notification was sent
-    pub sent_at: Option<DateTime<Utc>>,
+    pub sent_at: Option<OffsetDateTime>,
 
     /// When the notification was read
-    pub read_at: Option<DateTime<Utc>>,
+    pub read_at: Option<OffsetDateTime>,
 
     /// Retry count if sending failed
     pub retry_count: i32,
@@ -161,7 +162,7 @@ impl Notification {
     }
 
     /// Schedule the notification for a future time
-    pub fn schedule_for(mut self, time: DateTime<Utc>) -> Self {
+    pub fn schedule_for(mut self, time: OffsetDateTime) -> Self {
         self.scheduled_for = Some(time);
         self
     }
@@ -169,13 +170,13 @@ impl Notification {
     /// Mark the notification as sent
     pub fn mark_as_sent(&mut self) {
         self.status = NotificationStatus::Sent;
-        self.sent_at = Some(Utc::now());
+        self.sent_at = Some(OffsetDateTime::now_utc());
     }
 
     /// Mark the notification as read
     pub fn mark_as_read(&mut self) {
         self.status = NotificationStatus::Read;
-        self.read_at = Some(Utc::now());
+        self.read_at = Some(OffsetDateTime::now_utc());
     }
 
     /// Mark the notification as failed
@@ -189,7 +190,7 @@ impl Notification {
     pub fn is_ready_to_send(&self) -> bool {
         if let NotificationStatus::Pending = self.status {
             if let Some(scheduled_time) = self.scheduled_for {
-                Utc::now() >= scheduled_time
+                OffsetDateTime::now_utc() >= scheduled_time
             } else {
                 true
             }

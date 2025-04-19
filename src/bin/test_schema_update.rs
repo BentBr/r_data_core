@@ -1,4 +1,3 @@
-use chrono::Utc;
 use r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository;
 use r_data_core::config::{
     ApiConfig, AppConfig, CacheConfig, DatabaseConfig, LogConfig, WorkflowConfig,
@@ -7,6 +6,7 @@ use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core::entity::ClassDefinition;
 use sqlx::postgres::PgPoolOptions;
 use std::time::Duration;
+use time::OffsetDateTime;
 use uuid::{ContextV7, Uuid};
 
 #[tokio::main]
@@ -97,8 +97,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
         ],
         schema: Default::default(),
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
+        created_at: OffsetDateTime::now_utc(),
+        updated_at: OffsetDateTime::now_utc(),
         created_by: None,
         updated_by: None,
         published: false,
