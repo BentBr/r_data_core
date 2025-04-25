@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE admin_users SET \n                username = $1, \n                email = $2, \n                first_name = $3, \n                last_name = $4, \n                is_active = $5, \n                updated_at = $6,\n                version = version + 1\n            WHERE uuid = $7",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Bool",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d72f1f5e6fbe1683a37c52e0fc82c948b472852828904c4e2e61e12a41b25939"
+}
