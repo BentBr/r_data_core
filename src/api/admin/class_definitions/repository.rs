@@ -184,7 +184,11 @@ impl ClassDefinitionRepositoryTrait for ClassDefinitionRepository {
         // Log values for debugging
         log::debug!("Creating class definition with UUID: {}", uuid);
         log::debug!("Entity type: {}", entity_type);
-        log::debug!("Created by: {} (type: {})", created_by, std::any::type_name_of_val(&created_by));
+        log::debug!(
+            "Created by: {} (type: {})",
+            created_by,
+            std::any::type_name_of_val(&created_by)
+        );
 
         // SQL query with named parameters for clarity
         let query = "INSERT INTO class_definitions 
@@ -374,13 +378,13 @@ impl ClassDefinitionRepositoryTrait for ClassDefinitionRepository {
                     "Successfully created/updated table and view for entity type {}",
                     class_definition.entity_type
                 );
-                
+
                 // Commit the transaction only if successful
                 tx.commit().await.map_err(|e| {
                     log::error!("Failed to commit transaction: {}", e);
                     Error::Database(e)
                 })?;
-                
+
                 Ok(())
             }
             Err(e) => {
@@ -390,7 +394,7 @@ impl ClassDefinitionRepositoryTrait for ClassDefinitionRepository {
                     class_definition.entity_type,
                     e
                 );
-                
+
                 // Provide more context in the error message
                 Err(Error::Database(e))
             }

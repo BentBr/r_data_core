@@ -3,15 +3,17 @@ use r_data_core::{
     entity::admin_user::{ApiKeyRepository, ApiKeyRepositoryTrait},
     error::{Error, Result},
 };
+use serial_test::serial;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 #[tokio::test]
+#[serial]
 async fn test_create_and_find_api_key() -> Result<()> {
     // Setup and making sure to only work in transactions
     let pool = common::setup_test_db().await;
-    pool.begin().await?;
+    common::clear_test_db(&pool).await?;
 
     let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
     let name = common::random_string("test_key");
@@ -52,10 +54,11 @@ async fn test_create_and_find_api_key() -> Result<()> {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_create_api_key_with_non_existent_user() -> Result<()> {
     // Setup
     let pool = common::setup_test_db().await;
-    pool.begin().await?;
+    common::clear_test_db(&pool).await?;
 
     let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
     let name = common::random_string("test_key");
@@ -102,10 +105,11 @@ async fn test_create_api_key_with_non_existent_user() -> Result<()> {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_api_key_last_used_update() -> Result<()> {
     // Setup
     let pool = common::setup_test_db().await;
-    pool.begin().await?;
+    common::clear_test_db(&pool).await?;
 
     let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
     let name = common::random_string("test_key");
@@ -118,20 +122,34 @@ async fn test_api_key_last_used_update() -> Result<()> {
         .await?;
 
     // Verify the initial state-last_used_at should be None
-    let initial_key = repo.get_by_uuid(key_uuid).await?.unwrap();
+    let initial_key = repo.get_by_uuid(key_uuid).await?;
+    assert!(
+        initial_key.is_some(),
+        "Key should exist after creation"
+    );
+    let initial_key = initial_key.unwrap();
     assert!(
         initial_key.last_used_at.is_none(),
         "New key should have null last_used_at"
     );
 
     // Use the key for authentication (which should update last_used_at)
-    let _ = repo.find_api_key_for_auth(&key_value).await?;
+    let auth_result = repo.find_api_key_for_auth(&key_value).await?;
+    assert!(
+        auth_result.is_some(),
+        "Key should be valid for authentication"
+    );
 
     // Small delay to ensure the timestamp change is detectable
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
     // Verify the key's last_used_at was updated
-    let updated_key = repo.get_by_uuid(key_uuid).await?.unwrap();
+    let updated_key = repo.get_by_uuid(key_uuid).await?;
+    assert!(
+        updated_key.is_some(),
+        "Key should still exist after authentication"
+    );
+    let updated_key = updated_key.unwrap();
     assert!(
         updated_key.last_used_at.is_some(),
         "Key should have last_used_at timestamp after authentication"
@@ -144,10 +162,23 @@ async fn test_api_key_last_used_update() -> Result<()> {
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
     // Use the key again
-    let _ = repo.find_api_key_for_auth(&key_value).await?;
+    let auth_result2 = repo.find_api_key_for_auth(&key_value).await?;
+    assert!(
+        auth_result2.is_some(),
+        "Key should be valid for second authentication"
+    );
 
     // Verify timestamp updated
-    let latest_key = repo.get_by_uuid(key_uuid).await?.unwrap();
+    let latest_key = repo.get_by_uuid(key_uuid).await?;
+    assert!(
+        latest_key.is_some(),
+        "Key should still exist after second authentication"
+    );
+    let latest_key = latest_key.unwrap();
+    assert!(
+        latest_key.last_used_at.is_some(),
+        "Key should have last_used_at timestamp after second authentication"
+    );
     let latest_used_at = latest_key.last_used_at.unwrap();
 
     assert!(
@@ -161,10 +192,11 @@ async fn test_api_key_last_used_update() -> Result<()> {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_expired_api_key() -> Result<()> {
     // Setup
     let pool = common::setup_test_db().await;
-    pool.begin().await?;
+    common::clear_test_db(&pool).await?;
 
     let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
     let name = common::random_string("expired_key");

@@ -1,6 +1,6 @@
 use crate::api::auth::auth_enum;
 use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
-use log::{debug, info, error};
+use log::{debug, error, info};
 use serde_json::json;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -134,12 +134,11 @@ async fn create_class_definition(
             debug!("Required auth claims: {:?}", auth);
             debug!("Parsed UUID from auth token: {}", uuid);
             uuid
-        },
+        }
         Err(e) => {
             error!(
                 "Failed to parse UUID from claims.0.sub: {}, error: {}",
-                &auth.0.sub,
-                e
+                &auth.0.sub, e
             );
             return HttpResponse::InternalServerError().json(json!({
                 "error": "No authentication claims found"
@@ -166,11 +165,13 @@ async fn create_class_definition(
     class_def.created_by = creator_uuid;
     class_def.updated_by = Some(creator_uuid);
     class_def.version = 1;
-    
+
     // Log again after setting
-    log::debug!("Created_by after setting: {} (type: {})", 
-                class_def.created_by, 
-                std::any::type_name_of_val(&class_def.created_by));
+    log::debug!(
+        "Created_by after setting: {} (type: {})",
+        class_def.created_by,
+        std::any::type_name_of_val(&class_def.created_by)
+    );
 
     // Validate class definition
     if let Err(e) = class_def.validate() {
@@ -202,7 +203,7 @@ async fn create_class_definition(
                 "Created class definition for entity type: {}",
                 class_def.entity_type
             );
-            
+
             HttpResponse::Created().json(json!({
                 "uuid": uuid,
                 "message": "Class definition created successfully"

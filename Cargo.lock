@@ -2604,6 +2604,7 @@ dependencies = [
  "hex",
  "httpmock",
  "jsonwebtoken",
+ "lazy_static",
  "log",
  "lru",
  "mockall",

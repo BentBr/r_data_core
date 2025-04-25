@@ -6,6 +6,43 @@ description = "A Digital Asset Management backend providing efficient data handl
 authors = ["Bent Brüggemann <mail@bent-brueggemann.de>"]
 license = "MIT"
 
+# Force single-threaded test execution
+[lib]
+name = "r_data_core"
+path = "src/lib.rs"
+doctest = false  # Disable doc tests as they can run in parallel
+
+[[bin]]
+name = "r_data_core"
+path = "src/main.rs"
+
+[[bin]]
+name = "run_migrations"
+path = "src/bin/run_migrations.rs"
+
+[[bin]]
+name = "apply_schema"
+path = "src/bin/apply_schema.rs"
+
+# These test configurations ensure tests run serially
+[package.metadata.cargo-test]
+single-threaded = true
+
+# This is the proper way to configure test thread counts
+[package.metadata.test]
+test-threads = 1
+
+# Use serial_test crate effectively
+[dev-dependencies]
+mockall = "0.12"
+actix-http = "3.4"
+actix-service = "2.0"
+httpmock = "0.6"
+serial_test = { version = "2.0", features = ["async"] }
+tokio = { version = "1.35", features = ["full", "macros", "rt-multi-thread"] }
+lazy_static = "1.4"
+
+# The rest of the dependencies
 [dependencies]
 # Web framework
 actix-web = "4.5"
@@ -67,27 +104,3 @@ validator_derive = "0.20.0"
 clap = "3.2"
 base64 = "0.22.1"
 hex = "0.4"
-
-[lib]
-name = "r_data_core"
-path = "src/lib.rs"
-
-[[bin]]
-name = "r_data_core"
-path = "src/main.rs"
-
-[[bin]]
-name = "run_migrations"
-path = "src/bin/run_migrations.rs"
-
-[[bin]]
-name = "apply_schema"
-path = "src/bin/apply_schema.rs"
-
-[dev-dependencies]
-mockall = "0.12"
-actix-http = "3.4"
-actix-service = "2.0"
-httpmock = "0.6"
-serial_test = "2.0"
-tokio = { version = "1.35", features = ["full", "macros", "rt-multi-thread"] }

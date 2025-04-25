@@ -1,14 +1,25 @@
-use crate::repositories::get_class_definition_repository;
+use crate::common::clear_test_db;
+use crate::repositories::{get_class_definition_repository_with_pool, TestRepository};
 use r_data_core::entity::class::definition::ClassDefinition;
+use r_data_core::entity::class::repository_trait::ClassDefinitionRepositoryTrait;
 use r_data_core::entity::field::types::FieldType;
 use r_data_core::entity::field::ui::UiSettings;
 use r_data_core::entity::field::FieldDefinition;
+use serial_test::serial;
 use std::collections::HashMap;
 use uuid::Uuid;
 
 #[tokio::test]
+#[serial]
 async fn test_create_and_get_class_definition() {
-    let repository = get_class_definition_repository().await;
+    // Get test repository and clear database first
+    let TestRepository {
+        repository,
+        db_pool,
+    } = get_class_definition_repository_with_pool().await;
+    clear_test_db(&db_pool)
+        .await
+        .expect("Failed to clear database");
 
     // Create test definition
     let creator_id = Uuid::now_v7();
@@ -80,11 +91,15 @@ async fn test_create_and_get_class_definition() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_list_class_definitions() {
-    let repository = get_class_definition_repository().await;
-
-    // Get initial count
-    let initial_count = repository.list(100, 0).await.unwrap().len();
+    let TestRepository {
+        repository,
+        db_pool,
+    } = get_class_definition_repository_with_pool().await;
+    clear_test_db(&db_pool)
+        .await
+        .expect("Failed to clear database");
 
     // Create a few test definitions
     let creator_id = Uuid::now_v7();
@@ -121,7 +136,7 @@ async fn test_list_class_definitions() {
 
     // Check we can list all definitions
     let all_definitions = repository.list(100, 0).await.unwrap();
-    assert!(all_definitions.len() >= initial_count + 3);
+    assert_eq!(all_definitions.len(), 3);
 
     // Check pagination works - get first 2 items
     let first_page = repository.list(2, 0).await.unwrap();
@@ -129,7 +144,7 @@ async fn test_list_class_definitions() {
 
     // Get another page
     let second_page = repository.list(2, 2).await.unwrap();
-    assert!(second_page.len() > 0);
+    assert_eq!(second_page.len(), 1);
 
     // Ensure the pages are different
     assert_ne!(first_page[0].uuid, second_page[0].uuid);
@@ -141,8 +156,15 @@ async fn test_list_class_definitions() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_update_class_definition() {
-    let repository = get_class_definition_repository().await;
+    let TestRepository {
+        repository,
+        db_pool,
+    } = get_class_definition_repository_with_pool().await;
+    clear_test_db(&db_pool)
+        .await
+        .expect("Failed to clear database");
 
     // Create a test definition
     let creator_id = Uuid::now_v7();
@@ -227,8 +249,15 @@ async fn test_update_class_definition() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_delete_class_definition() {
-    let repository = get_class_definition_repository().await;
+    let TestRepository {
+        repository,
+        db_pool,
+    } = get_class_definition_repository_with_pool().await;
+    clear_test_db(&db_pool)
+        .await
+        .expect("Failed to clear database");
 
     // Create a test definition
     let creator_id = Uuid::now_v7();
@@ -279,8 +308,15 @@ async fn test_delete_class_definition() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_table_operations() {
-    let repository = get_class_definition_repository().await;
+    let TestRepository {
+        repository,
+        db_pool,
+    } = get_class_definition_repository_with_pool().await;
+    clear_test_db(&db_pool)
+        .await
+        .expect("Failed to clear database");
 
     // Create a test definition
     let creator_id = Uuid::now_v7();
@@ -385,8 +421,16 @@ async fn test_table_operations() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_create_class_definition_from_json_examples() {
-    let repository = get_class_definition_repository().await;
+    let TestRepository {
+        repository,
+        db_pool,
+    } = get_class_definition_repository_with_pool().await;
+    clear_test_db(&db_pool)
+        .await
+        .expect("Failed to clear database");
+
     let creator_id = Uuid::now_v7();
 
     // Load JSON examples

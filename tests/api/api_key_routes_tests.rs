@@ -7,13 +7,15 @@ mod tests {
         entity::admin_user::{ApiKeyRepository, ApiKeyRepositoryTrait},
         error::Result,
     };
+    use serial_test::serial;
     use std::sync::Arc;
 
     #[tokio::test]
+    #[serial]
     async fn test_api_key_last_used_update() -> Result<()> {
-        // Setup test database
+        // Setup test database with proper cleaning
         let pool = crate::common::setup_test_db().await;
-        pool.begin().await?;
+        crate::common::clear_test_db(&pool).await?;
 
         // Create a repository to work with API keys directly
         let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
@@ -27,7 +29,12 @@ mod tests {
             .await?;
 
         // Get the API key to check its initial state
-        let initial_key = repo.get_by_uuid(key_uuid).await?.unwrap();
+        let initial_key = repo.get_by_uuid(key_uuid).await?;
+        assert!(
+            initial_key.is_some(),
+            "API key should exist after creation"
+        );
+        let initial_key = initial_key.unwrap();
         assert!(
             initial_key.last_used_at.is_none(),
             "New key should have no last_used_at timestamp"
@@ -41,7 +48,12 @@ mod tests {
         );
 
         // Fetch the API key again to check if last_used_at was updated
-        let updated_key = repo.get_by_uuid(key_uuid).await?.unwrap();
+        let updated_key = repo.get_by_uuid(key_uuid).await?;
+        assert!(
+            updated_key.is_some(),
+            "API key should still exist after authentication"
+        );
+        let updated_key = updated_key.unwrap();
         assert!(
             updated_key.last_used_at.is_some(),
             "API key's last_used_at should be updated after auth"
