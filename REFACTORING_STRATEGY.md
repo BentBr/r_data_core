@@ -14,6 +14,7 @@ We've implemented the first phase of the refactoring strategy, focusing on the A
    - Common test utilities for database setup
    - Repository tests
    - API key service tests
+7. ✅ Created a repository adapter pattern to cleanly implement trait wrappers
 
 ### Admin User Refactoring
 1. ✅ Created a repository trait for admin users (`AdminUserRepositoryTrait`)
@@ -29,12 +30,26 @@ We've implemented the first phase of the refactoring strategy, focusing on the A
 3. ✅ Ensured JWT-based admin authentication works correctly
 4. ✅ Added tests for both authentication paths
 
-### Next Entity to Refactor: Class Definitions
-1. 🔄 Create a repository trait for class definitions (`ClassDefinitionRepositoryTrait`)
+### Class Definition Refactoring ✅
+1. ✅ Created a repository trait for class definitions (`ClassDefinitionRepositoryTrait`)
+2. ✅ Implemented the trait for the existing repository
+3. ✅ Created a service layer for class definitions (`ClassDefinitionService`)
+4. ✅ Added unit tests for the service layer with mock repositories
+   - Tests for creating class definitions with validation
+   - Tests for retrieving class definitions by UUID and entity type
+   - Tests for updating class definitions with validation
+   - Tests for deleting class definitions with record checks
+   - Tests for applying schema updates
+   - Tests for cleaning up unused entity tables
+5. ✅ Updated the API handlers to use the service instead of the repository directly
+6. ✅ Added a wrapper for the repository to handle trait implementation
+
+### Next Entity to Refactor: Dynamic Entities
+1. 🔄 Create a repository trait for dynamic entities (`DynamicEntityRepositoryTrait`)
 2. 🔄 Implement the trait for the existing repository
-3. 🔄 Create a service layer for class definitions (`ClassDefinitionService`)
+3. 🔄 Create a service layer for dynamic entities (`DynamicEntityService`)
 4. 🔄 Add unit tests for the service layer with mock repositories
-5. 🔄 Add integration tests for the class definition repository
+5. 🔄 Add integration tests for the dynamic entity repository
 
 ## Next Steps
 
@@ -43,13 +58,14 @@ To continue the refactoring:
 1. ✅ Create repository traits and services for key entities:
    - ✅ API Keys
    - ✅ Admin Users
-   - 🔄 Class Definitions
-   - ❌ Dynamic Entities
+   - ✅ Class Definitions
+   - 🔄 Dynamic Entities
    - ❌ Workflows
 
 2. 🔄 Update API handlers to use the service layer instead of repositories directly:
    - ✅ Inject the `ApiKeyService` into the routes
-   - 🔄 Inject the `AdminUserService` into the admin routes
+   - ✅ Inject the `AdminUserService` into the admin routes
+   - ✅ Inject the `ClassDefinitionService` into the class definition routes
    - ❌ Update other API handlers to use appropriate services
    - ❌ Remove direct database access from handlers
 
@@ -66,6 +82,7 @@ To continue the refactoring:
    - ✅ Add repository tests for admin users
    - ✅ Add service tests for API keys
    - ✅ Add service tests for admin users
+   - ✅ Add service tests for class definitions
    - 🔄 Add integration tests for all API endpoints
    - 🔄 Add repository tests for all database operations
    - 🔄 Add service tests for all business logic
@@ -76,6 +93,9 @@ To continue the refactoring:
 2. ✅ Fixed integration tests for API key service
 3. ✅ Resolved conflicts with the `class_definition.rs` module
 4. ✅ Improved error handling in authentication flows
+5. ✅ Fixed dependency issues with the services implementation
+6. ✅ Created repository adapter pattern for clean trait implementation
+7. ✅ Removed verbose adapter implementation from main.rs to services/adapters.rs
 
 ## Testing Strategy
 
@@ -112,4 +132,44 @@ Throughout the refactoring, maintain these principles:
 6. **Validation**: Validate input early in the process flow
 7. **Testing**: Write tests for both success and failure scenarios
 
-By following this strategy, the codebase will become more maintainable, testable, and easier to extend. 
+By following this strategy, the codebase will become more maintainable, testable, and easier to extend.
+
+## Best Practices Identified
+
+1. **Repository Pattern**: Use repository interfaces (traits) to abstract database access
+2. **Service Layer**: Implement business logic in services rather than directly in handlers
+3. **Dependency Injection**: Use dependency injection for loosely coupled components
+4. **Adapter Pattern**: Use adapters to implement traits for external types without modifying them
+5. **Testing Isolation**: Use mock repositories for unit testing services
+
+## Repository Adapter Pattern
+
+To handle the implementation of repository traits for existing repository implementations without modifying the original code or repeating boilerplate in main.rs, we've implemented an adapter pattern:
+
+1. Created a `services/adapters.rs` module to house repository adapters
+2. Each adapter wraps an actual repository and implements the corresponding trait
+3. The adapter simply delegates method calls to the inner repository implementation
+4. This allows for clean dependency injection without verbose code in main.rs
+5. New repositories should follow this pattern when needed
+
+Example:
+```rust
+// In services/adapters.rs
+pub struct ClassDefinitionRepositoryAdapter {
+    inner: ClassDefinitionRepository
+}
+
+#[async_trait]
+impl ClassDefinitionRepositoryTrait for ClassDefinitionRepositoryAdapter {
+    async fn list(&self, limit: i64, offset: i64) -> Result<Vec<ClassDefinition>> {
+        self.inner.list(limit, offset).await
+    }
+    // Other methods delegated to inner repository
+}
+
+// In main.rs - clean usage
+let adapter = ClassDefinitionRepositoryAdapter::new(repository);
+let service = ClassDefinitionService::new(Arc::new(adapter));
+```
+
+This pattern keeps the codebase clean and maintainable as more repositories and services are added. 

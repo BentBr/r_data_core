@@ -14,6 +14,9 @@ use std::sync::Arc;
 
 pub use crate::api::response::{ApiResponse, Status};
 use crate::cache::CacheManager;
+use crate::services::AdminUserService;
+use crate::services::ApiKeyService;
+use crate::services::ClassDefinitionService;
 
 /// Shared application state
 pub struct ApiState {
@@ -25,6 +28,15 @@ pub struct ApiState {
 
     /// Cache manager
     pub cache_manager: Arc<CacheManager>,
+    
+    /// API Key service
+    pub api_key_service: ApiKeyService,
+    
+    /// Admin User service
+    pub admin_user_service: AdminUserService,
+    
+    /// Class Definition service
+    pub class_definition_service: ClassDefinitionService,
 }
 
 // 404 handler for API routes within scope

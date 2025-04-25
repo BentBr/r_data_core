@@ -8,9 +8,7 @@ use uuid::Uuid;
 use super::models::ApplySchemaRequest;
 use super::models::PaginationQuery;
 use super::models::PathUuid;
-use super::repository::ClassDefinitionRepository;
 use crate::api::ApiState;
-use crate::entity::class::repository_trait::ClassDefinitionRepositoryTrait;
 use crate::entity::ClassDefinition;
 
 /// List class definitions
@@ -37,13 +35,10 @@ async fn list_class_definitions(
     query: web::Query<PaginationQuery>,
     _: auth_enum::RequiredAuth,
 ) -> impl Responder {
-    let db_pool = &data.db_pool;
-    let repository = ClassDefinitionRepository::new(db_pool.clone());
-
     let limit = query.limit.unwrap_or(20);
     let offset = query.offset.unwrap_or(0);
 
-    match repository.list(limit, offset).await {
+    match data.class_definition_service.list_class_definitions(limit, offset).await {
         Ok(definitions) => {
             // Convert to schema models
             let schema_definitions = definitions
@@ -83,20 +78,17 @@ async fn get_class_definition(
     path: web::Path<PathUuid>,
     _: auth_enum::RequiredAuth,
 ) -> impl Responder {
-    let db_pool = &data.db_pool;
-    let repository = ClassDefinitionRepository::new(db_pool.clone());
-
-    match repository.get_by_uuid(&path.uuid).await {
-        Ok(Some(definition)) => {
+    match data.class_definition_service.get_class_definition(&path.uuid).await {
+        Ok(definition) => {
             // Convert to schema model
             let schema_definition = definition.to_schema_model();
             HttpResponse::Ok().json(schema_definition)
         }
-        Ok(None) => HttpResponse::NotFound().json(json!({
+        Err(crate::error::Error::NotFound(_)) => HttpResponse::NotFound().json(json!({
             "error": "Class definition not found"
         })),
-        Err(_) => HttpResponse::InternalServerError().json(json!({
-            "error": "Failed to retrieve class definition"
+        Err(e) => HttpResponse::InternalServerError().json(json!({
+            "error": format!("Failed to retrieve class definition: {}", e)
         })),
     }
 }
@@ -124,9 +116,6 @@ async fn create_class_definition(
     definition: web::Json<ClassDefinition>,
     auth: auth_enum::RequiredAuth,
 ) -> impl Responder {
-    let db_pool = &data.db_pool;
-    let repository = ClassDefinitionRepository::new(db_pool.clone());
-
     // Get authentication info from the RequiredAuth extractor
     let creator_uuid = match Uuid::parse_str(&auth.0.sub) {
         Ok(uuid) => {
@@ -164,9 +153,20 @@ async fn create_class_definition(
     class_def.created_by = creator_uuid;
     class_def.updated_by = Some(creator_uuid);
     class_def.version = 1;
+    
+    // Ensure schema is properly initialized with entity_type
+    if class_def.schema.properties.get("entity_type").is_none() {
+        let mut properties = class_def.schema.properties.clone();
+        properties.insert(
+            "entity_type".to_string(),
+            serde_json::Value::String(class_def.entity_type.clone()),
+        );
+        class_def.schema = crate::entity::class::schema::Schema::new(properties);
+        debug!("Schema initialized with entity_type: {}", class_def.entity_type);
+    }
 
     // Log again after setting
-    log::debug!(
+    debug!(
         "Created_by after setting: {} (type: {})",
         class_def.created_by,
         std::any::type_name_of_val(&class_def.created_by)
@@ -179,23 +179,8 @@ async fn create_class_definition(
         }));
     }
 
-    // Check if entity type already exists
-    match repository.get_by_entity_type(&class_def.entity_type).await {
-        Ok(Some(_)) => {
-            return HttpResponse::BadRequest().json(json!({
-                "error": format!("Entity type '{}' already exists", class_def.entity_type),
-            }));
-        }
-        Ok(None) => {} // Entity type doesn't exist, proceed
-        Err(e) => {
-            return HttpResponse::InternalServerError().json(json!({
-                "error": format!("Failed to check if entity type exists: {}", e),
-            }));
-        }
-    }
-
-    // Save class definition
-    match repository.create(&class_def).await {
+    // Create the class definition using the service
+    match data.class_definition_service.create_class_definition(&class_def).await {
         Ok(uuid) => {
             // Class definition created successfully
             info!(
@@ -208,12 +193,23 @@ async fn create_class_definition(
                 "message": "Class definition created successfully"
             }))
         }
+        Err(crate::error::Error::Validation(msg)) => {
+            error!("Validation error when creating class definition: {}", msg);
+            HttpResponse::UnprocessableEntity().json(json!({
+                "error": msg
+            }))
+        }
         Err(e) => {
             // Log the full error details
             error!(
                 "Failed to create class definition for {}: {:?}",
                 class_def.entity_type, e
             );
+            
+            // Add more detailed logging for diagnosis
+            debug!("Class definition details: {:#?}", class_def);
+            debug!("Error details: {:#?}", e);
+            
             HttpResponse::InternalServerError().json(json!({
                 "error": format!("Failed to create class definition: {}", e),
                 "details": format!("{:?}", e)
@@ -250,9 +246,6 @@ async fn update_class_definition(
     definition: web::Json<ClassDefinition>,
     auth: auth_enum::RequiredAuth,
 ) -> impl Responder {
-    let db_pool = &data.db_pool;
-    let repository = ClassDefinitionRepository::new(db_pool.clone());
-
     // Get authentication info from the RequiredAuth extractor
     let updater_uuid = match Uuid::parse_str(&auth.0.sub) {
         Ok(uuid) => uuid,
@@ -268,10 +261,10 @@ async fn update_class_definition(
         }
     };
 
-    // Check if the class definition exists
-    let existing_def = match repository.get_by_uuid(&path.uuid).await {
-        Ok(Some(def)) => def,
-        Ok(None) => {
+    // First, get the existing definition to preserve system fields
+    let existing_def = match data.class_definition_service.get_class_definition(&path.uuid).await {
+        Ok(def) => def,
+        Err(crate::error::Error::NotFound(_)) => {
             return HttpResponse::NotFound().json(json!({
                 "error": "Class definition not found"
             }));
@@ -299,42 +292,18 @@ async fn update_class_definition(
         }));
     }
 
-    // Entity type cannot be changed if the entity type is already used
-    if updated_def.entity_type != existing_def.entity_type {
-        match repository
-            .get_by_entity_type(&updated_def.entity_type)
-            .await
-        {
-            Ok(Some(_)) => {
-                return HttpResponse::BadRequest().json(json!({
-                    "error": format!("Entity type '{}' already exists", updated_def.entity_type),
-                }));
-            }
-            Ok(None) => {} // Entity type is available
-            Err(e) => {
-                return HttpResponse::InternalServerError().json(json!({
-                    "error": format!("Failed to check entity type: {}", e),
-                }));
-            }
-        }
-    }
-
     // Update the class definition
-    match repository.update(&path.uuid, &updated_def).await {
+    match data.class_definition_service.update_class_definition(&path.uuid, &updated_def).await {
         Ok(_) => {
-            // Now update the database table structure
-            match repository
-                .update_entity_view_for_class_definition(&updated_def)
-                .await
-            {
-                Ok(_) => HttpResponse::Ok().json(json!({
-                    "message": "Class definition updated successfully",
-                    "uuid": path.uuid
-                })),
-                Err(e) => HttpResponse::InternalServerError().json(json!({
-                    "error": format!("Failed to update table structure: {}", e)
-                })),
-            }
+            HttpResponse::Ok().json(json!({
+                "message": "Class definition updated successfully",
+                "uuid": path.uuid
+            }))
+        }
+        Err(crate::error::Error::Validation(msg)) => {
+            HttpResponse::BadRequest().json(json!({
+                "error": msg
+            }))
         }
         Err(e) => HttpResponse::InternalServerError().json(json!({
             "error": format!("Failed to update class definition: {}", e)
@@ -367,57 +336,15 @@ async fn delete_class_definition(
     path: web::Path<PathUuid>,
     _: auth_enum::RequiredAuth,
 ) -> impl Responder {
-    let db_pool = &data.db_pool;
-    let repository = ClassDefinitionRepository::new(db_pool.clone());
-
-    // Get the class definition
-    let definition = match repository.get_by_uuid(&path.uuid).await {
-        Ok(Some(def)) => def,
-        Ok(None) => {
-            return HttpResponse::NotFound().json(json!({
-                "error": "Class definition not found"
-            }));
-        }
-        Err(e) => {
-            return HttpResponse::InternalServerError().json(json!({
-                "error": format!("Failed to retrieve class definition: {}", e)
-            }));
-        }
-    };
-
-    // Check if the table exists
-    let table_name = definition.get_table_name();
-    let table_exists = match repository.check_view_exists(&table_name).await {
-        Ok(exists) => exists,
-        Err(e) => {
-            return HttpResponse::InternalServerError().json(json!({
-                "error": format!("Failed to check if table exists: {}", e)
-            }));
-        }
-    };
-
-    // If the table exists, check for records
-    if table_exists {
-        let count = match repository.count_view_records(&table_name).await {
-            Ok(c) => c,
-            Err(e) => {
-                return HttpResponse::InternalServerError().json(json!({
-                    "error": format!("Failed to count records: {}", e)
-                }));
-            }
-        };
-
-        if count > 0 {
-            return HttpResponse::UnprocessableEntity().json(json!({
-                "error": format!("Cannot delete class definition that has {} entities. Delete all entities first.", count)
-            }));
-        }
-    }
-
-    // Delete the class definition
-    match repository.delete(&path.uuid).await {
+    match data.class_definition_service.delete_class_definition(&path.uuid).await {
         Ok(_) => HttpResponse::Ok().json(json!({
             "message": "Class definition deleted successfully"
+        })),
+        Err(crate::error::Error::NotFound(_)) => HttpResponse::NotFound().json(json!({
+            "error": "Class definition not found"
+        })),
+        Err(crate::error::Error::Validation(msg)) => HttpResponse::BadRequest().json(json!({
+            "error": msg
         })),
         Err(e) => HttpResponse::InternalServerError().json(json!({
             "error": format!("Failed to delete class definition: {}", e)
@@ -447,85 +374,49 @@ async fn apply_class_definition_schema(
     body: web::Json<ApplySchemaRequest>,
     _: auth_enum::RequiredAuth,
 ) -> impl Responder {
-    let db_pool = &data.db_pool;
-    let repository = ClassDefinitionRepository::new(db_pool.clone());
-
-    // Validate UUID if provided
-    if let Some(uuid) = body.uuid {
-        match repository.get_by_uuid(&uuid).await {
-            Ok(Some(definition)) => {
-                match repository
-                    .update_entity_view_for_class_definition(&definition)
-                    .await
-                {
-                    Ok(_) => {
-                        return HttpResponse::Ok().json(json!({
-                            "message": "Database schema applied successfully",
-                            "uuid": definition.uuid,
-                            "entity_type": definition.entity_type,
-                        }));
-                    }
-                    Err(e) => {
-                        return HttpResponse::InternalServerError().json(json!({
-                            "error": format!("Failed to apply schema: {}", e),
-                            "uuid": definition.uuid,
-                            "entity_type": definition.entity_type,
-                        }));
-                    }
+    let uuid_option = body.uuid.as_ref();
+    
+    match data.class_definition_service.apply_schema(uuid_option).await {
+        Ok((success_count, failed)) => {
+            if uuid_option.is_some() {
+                // If a specific UUID was provided
+                if failed.is_empty() {
+                    HttpResponse::Ok().json(json!({
+                        "message": "Database schema applied successfully",
+                        "uuid": uuid_option.unwrap()
+                    }))
+                } else {
+                    let (entity_type, uuid, error) = &failed[0];
+                    HttpResponse::InternalServerError().json(json!({
+                        "error": format!("Failed to apply schema for {}: {}", entity_type, error),
+                        "uuid": uuid
+                    }))
                 }
-            }
-            Ok(None) => {
-                return HttpResponse::NotFound().json(json!({
-                    "error": format!("Class definition with UUID {} not found", uuid)
-                }));
-            }
-            Err(e) => {
-                return HttpResponse::InternalServerError().json(json!({
-                    "error": format!("Failed to retrieve class definition: {}", e)
-                }));
-            }
-        }
-    }
-
-    // If no UUID, apply schema for all class definitions
-    match repository.list(1000, 0).await {
-        Ok(definitions) => {
-            let mut success_count = 0;
-            let mut failed = Vec::new();
-
-            for definition in definitions {
-                match repository
-                    .update_entity_view_for_class_definition(&definition)
-                    .await
-                {
-                    Ok(_) => {
-                        success_count += 1;
-                    }
-                    Err(e) => {
-                        failed.push((
-                            definition.entity_type.clone(),
-                            definition.uuid,
-                            e.to_string(),
-                        ));
-                    }
-                }
-            }
-
-            if failed.is_empty() {
-                HttpResponse::Ok().json(json!({
-                    "message": format!("Applied schema for {} class definitions", success_count)
-                }))
             } else {
-                HttpResponse::PartialContent().json(json!({
-                    "message": format!("Applied schema for {} class definitions, {} failed", success_count, failed.len()),
-                    "successful": success_count,
-                    "failed": failed
-                }))
+                // If applying schema for all definitions
+                if failed.is_empty() {
+                    HttpResponse::Ok().json(json!({
+                        "message": format!("Applied schema for {} class definitions", success_count)
+                    }))
+                } else {
+                    HttpResponse::PartialContent().json(json!({
+                        "message": format!("Applied schema for {} class definitions, {} failed", success_count, failed.len()),
+                        "successful": success_count,
+                        "failed": failed
+                    }))
+                }
             }
+        },
+        Err(crate::error::Error::NotFound(_)) => {
+            HttpResponse::NotFound().json(json!({
+                "error": format!("Class definition with UUID {} not found", uuid_option.unwrap())
+            }))
+        },
+        Err(e) => {
+            HttpResponse::InternalServerError().json(json!({
+                "error": format!("Failed to apply schema: {}", e)
+            }))
         }
-        Err(e) => HttpResponse::InternalServerError().json(json!({
-            "error": format!("Failed to list class definitions: {}", e)
-        })),
     }
 }
 

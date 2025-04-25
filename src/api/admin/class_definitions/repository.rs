@@ -189,6 +189,8 @@ impl ClassDefinitionRepositoryTrait for ClassDefinitionRepository {
             created_by,
             std::any::type_name_of_val(&created_by)
         );
+        log::debug!("Fields: {}", fields);
+        log::debug!("Schema properties: {:?}", definition.schema.properties);
 
         // SQL query with named parameters for clarity
         let query = "INSERT INTO class_definitions 

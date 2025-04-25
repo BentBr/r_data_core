@@ -16,6 +16,13 @@ impl AdminUserService {
         Self { repository }
     }
 
+    /// Create a new admin user service from a concrete repository
+    pub fn from_repository<T: AdminUserRepositoryTrait + 'static>(repository: T) -> Self {
+        Self {
+            repository: Arc::new(repository),
+        }
+    }
+
     /// Authenticate a user with username/email and password
     pub async fn authenticate(
         &self,

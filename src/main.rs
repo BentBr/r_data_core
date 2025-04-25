@@ -4,6 +4,9 @@ use actix_web::{web, App, HttpServer};
 use log::{error, info};
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
+use uuid::Uuid;
+use async_trait::async_trait;
+use std::collections::HashMap;
 
 // Import library constants
 use r_data_core::{DESCRIPTION, NAME, VERSION};
@@ -17,6 +20,7 @@ mod error;
 mod notification;
 mod versioning;
 mod workflow;
+mod services;
 
 // Todo: These modules will be implemented later
 // mod workflow;
@@ -26,6 +30,12 @@ mod workflow;
 use crate::api::{ApiResponse, ApiState};
 use crate::cache::CacheManager;
 use crate::config::AppConfig;
+use crate::entity::admin_user::{AdminUserRepository, ApiKeyRepository};
+use crate::api::admin::class_definitions::repository::ClassDefinitionRepository;
+use crate::services::AdminUserService;
+use crate::services::ApiKeyService;
+use crate::services::ClassDefinitionService;
+use crate::services::adapters::ClassDefinitionRepositoryAdapter;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -42,10 +52,16 @@ async fn main() -> std::io::Result<()> {
     };
 
     // Initialize logger
-    env_logger::init_from_env(env_logger::Env::new().default_filter_or(&config.log.level));
+    let env = env_logger::Env::new().default_filter_or(&config.log.level);
+    env_logger::Builder::from_env(env)
+        .format_timestamp(Some(env_logger::fmt::TimestampPrecision::Millis))
+        .format_module_path(true)
+        .format_target(true)
+        .init();
 
     info!("Starting R Data Core server...");
     info!("Environment: {}", config.environment);
+    info!("Log level: {}", config.log.level);
 
     // Create database connection pool
     let pool = PgPoolOptions::new()
@@ -86,11 +102,28 @@ async fn main() -> std::io::Result<()> {
         }
     };
 
+    // Initialize repositories and services
+    let pool_arc = Arc::new(pool.clone());
+    let api_key_repository = ApiKeyRepository::new(pool_arc.clone());
+    let admin_user_repository = AdminUserRepository::new(pool_arc.clone());
+    let class_definition_repository = ClassDefinitionRepository::new(pool.clone());
+    
+    // Initialize services
+    let api_key_service = ApiKeyService::from_repository(api_key_repository);
+    let admin_user_service = AdminUserService::from_repository(admin_user_repository);
+    
+    // Use the adapter for ClassDefinitionRepository
+    let class_definition_adapter = ClassDefinitionRepositoryAdapter::new(class_definition_repository);
+    let class_definition_service = ClassDefinitionService::new(Arc::new(class_definition_adapter));
+
     // Shared application state
     let app_state = web::Data::new(ApiState {
         db_pool: pool,
         jwt_secret: config.api.jwt_secret.clone(),
         cache_manager: cache_manager.clone(),
+        api_key_service,
+        admin_user_service,
+        class_definition_service,
     });
 
     let bind_address = format!("{}:{}", config.api.host, config.api.port);
