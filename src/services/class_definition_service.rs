@@ -3,7 +3,6 @@ use crate::entity::class::repository_trait::ClassDefinitionRepositoryTrait;
 use crate::error::{Error, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// Service for managing class definitions

@@ -26,7 +26,7 @@ impl RedisCache {
             .map_err(|e| Error::Cache(format!("Failed to get Redis connection: {}", e)))?;
 
         redis::cmd("PING")
-            .query_async(&mut conn)
+            .query_async::<_, ()>(&mut conn)
             .await
             .map_err(|e| Error::Cache(format!("Failed to ping Redis: {}", e)))?;
 
@@ -80,7 +80,7 @@ impl CacheBackend for RedisCache {
         // Set with expiration
         let ttl = ttl.unwrap_or(self.default_ttl);
 
-        conn.set_ex(key, serialized, ttl)
+        conn.set_ex::<_, _, ()>(key, serialized, ttl)
             .await
             .map_err(|e| Error::Cache(e.to_string()))?;
 
@@ -90,7 +90,7 @@ impl CacheBackend for RedisCache {
     async fn delete(&self, key: &str) -> Result<()> {
         let mut conn = self.get_connection().await?;
 
-        conn.del(key)
+        conn.del::<_, ()>(key)
             .await
             .map_err(|e| Error::Cache(format!("Failed to delete value from Redis: {}", e)))?;
 
@@ -101,7 +101,7 @@ impl CacheBackend for RedisCache {
         let mut conn = self.get_connection().await?;
 
         redis::cmd("FLUSHDB")
-            .query_async(&mut conn)
+            .query_async::<_, ()>(&mut conn)
             .await
             .map_err(|e| Error::Cache(format!("Failed to clear Redis: {}", e)))?;
 

@@ -1,5 +1,5 @@
 use crate::api::auth::auth_enum;
-use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use log::{debug, error, info};
 use serde_json::json;
 use time::OffsetDateTime;
@@ -9,7 +9,6 @@ use super::models::ApplySchemaRequest;
 use super::models::PaginationQuery;
 use super::models::PathUuid;
 use super::repository::ClassDefinitionRepository;
-use crate::api::jwt::AuthUserClaims;
 use crate::api::ApiState;
 use crate::entity::class::repository_trait::ClassDefinitionRepositoryTrait;
 use crate::entity::ClassDefinition;

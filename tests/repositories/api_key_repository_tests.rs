@@ -123,10 +123,7 @@ async fn test_api_key_last_used_update() -> Result<()> {
 
     // Verify the initial state-last_used_at should be None
     let initial_key = repo.get_by_uuid(key_uuid).await?;
-    assert!(
-        initial_key.is_some(),
-        "Key should exist after creation"
-    );
+    assert!(initial_key.is_some(), "Key should exist after creation");
     let initial_key = initial_key.unwrap();
     assert!(
         initial_key.last_used_at.is_none(),

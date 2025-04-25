@@ -30,10 +30,7 @@ mod tests {
 
         // Get the API key to check its initial state
         let initial_key = repo.get_by_uuid(key_uuid).await?;
-        assert!(
-            initial_key.is_some(),
-            "API key should exist after creation"
-        );
+        assert!(initial_key.is_some(), "API key should exist after creation");
         let initial_key = initial_key.unwrap();
         assert!(
             initial_key.last_used_at.is_none(),
