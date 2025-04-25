@@ -288,7 +288,7 @@ impl ClassDefinition {
         // Check if table exists and create it if not
         sql.push_str(&format!("CREATE TABLE IF NOT EXISTS {} (\n", table_name));
         sql.push_str("    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),\n");
-        sql.push_str("    path TEXT NOT NULL,\n");
+        sql.push_str("    path TEXT,\n");
         sql.push_str("    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n");
         sql.push_str("    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n");
         sql.push_str("    created_by UUID,\n");
@@ -335,35 +335,6 @@ impl ClassDefinition {
 
         sql.push_str("\n);\n\n");
 
-        // Add indexes for common search fields
-        sql.push_str(&format!(
-            "CREATE INDEX IF NOT EXISTS idx_{}_path ON {} (path);\n\n",
-            table_name, table_name
-        ));
-
-        // Add indexes for fields marked as indexed
-        for field in &self.fields {
-            if field.indexed {
-                let field_name = &field.name;
-
-                // For ManyToOne relations, index the reference column
-                if matches!(field.field_type, FieldType::ManyToOne) {
-                    if let Some(_) = &field.validation.target_class {
-                        sql.push_str(&format!(
-                            "CREATE INDEX IF NOT EXISTS idx_{}_{}_uuid ON {} ({}_uuid);\n\n",
-                            table_name, field_name, table_name, field_name
-                        ));
-                    }
-                } else if !matches!(field.field_type, FieldType::ManyToMany) {
-                    // Don't add index for ManyToMany as those are in separate tables
-                    sql.push_str(&format!(
-                        "CREATE INDEX IF NOT EXISTS idx_{}_{} ON {} ({});\n\n",
-                        table_name, field_name, table_name, field_name
-                    ));
-                }
-            }
-        }
-
         // Create relationship tables for ManyToMany relations
         for field in &self.fields {
             if matches!(field.field_type, FieldType::ManyToMany) {
@@ -391,23 +362,25 @@ impl ClassDefinition {
                     sql.push_str(
                         "    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n",
                     );
+                    sql.push_str("    PRIMARY KEY (");
                     sql.push_str(&format!(
-                        "    PRIMARY KEY ({}_uuid, {}_uuid)\n",
+                        "{}_uuid, {}_uuid",
                         self.entity_type.to_lowercase(),
                         target_class.to_lowercase()
                     ));
-                    sql.push_str(");\n\n");
+                    sql.push_str(")\n);\n\n");
 
-                    // Add indexes for the relation table
+                    // Add indexes for the relation table with explicit comments for identification
+                    sql.push_str(&format!("-- INDEX: Relation table source index\n"));
                     sql.push_str(&format!(
-                        "CREATE INDEX IF NOT EXISTS idx_{}_source ON {} ({}_uuid);\n",
-                        relation_table,
+                        "CREATE INDEX IF NOT EXISTS idx_{0}_{1}_uuid ON {0} ({1}_uuid);\n\n",
                         relation_table,
                         self.entity_type.to_lowercase()
                     ));
+
+                    sql.push_str(&format!("-- INDEX: Relation table target index\n"));
                     sql.push_str(&format!(
-                        "CREATE INDEX IF NOT EXISTS idx_{}_target ON {} ({}_uuid);\n\n",
-                        relation_table,
+                        "CREATE INDEX IF NOT EXISTS idx_{0}_{1}_uuid ON {0} ({1}_uuid);\n\n",
                         relation_table,
                         target_class.to_lowercase()
                     ));
@@ -415,30 +388,30 @@ impl ClassDefinition {
             }
         }
 
-        // Add the auto-update timestamp trigger function if it doesn't exist
-        sql.push_str("-- Create auto-update timestamp function if it doesn't exist\n");
-        sql.push_str("DO $$ BEGIN\n");
-        sql.push_str(
-            "    IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'update_timestamp') THEN\n",
-        );
-        sql.push_str("        CREATE FUNCTION update_timestamp() RETURNS TRIGGER AS $$\n");
-        sql.push_str("        BEGIN\n");
-        sql.push_str("            NEW.updated_at = NOW();\n");
-        sql.push_str("            RETURN NEW;\n");
-        sql.push_str("        END;\n");
-        sql.push_str("        $$ LANGUAGE plpgsql;\n");
-        sql.push_str("    END IF;\n");
-        sql.push_str("END $$;\n\n");
+        // Add indexes for fields marked as indexed, with appropriate comments
+        for field in &self.fields {
+            if field.indexed {
+                let field_name = &field.name;
 
-        // Create a unique trigger for this table
-        sql.push_str(&format!(
-            "DROP TRIGGER IF EXISTS set_timestamp_{0} ON {0};\n",
-            table_name
-        ));
-        sql.push_str(&format!("CREATE TRIGGER set_timestamp_{0}\n", table_name));
-        sql.push_str(&format!("BEFORE UPDATE ON {}\n", table_name));
-        sql.push_str("FOR EACH ROW\n");
-        sql.push_str("EXECUTE FUNCTION update_timestamp();\n");
+                // For ManyToOne relations, index the reference column
+                if matches!(field.field_type, FieldType::ManyToOne) {
+                    if let Some(_) = &field.validation.target_class {
+                        sql.push_str(&format!("-- INDEX: ManyToOne reference field index\n"));
+                        sql.push_str(&format!(
+                            "CREATE INDEX IF NOT EXISTS idx_{}_{}_uuid ON {} ({}_uuid);\n\n",
+                            table_name, field_name, table_name, field_name
+                        ));
+                    }
+                } else if !matches!(field.field_type, FieldType::ManyToMany) {
+                    // Don't add index for ManyToMany as those are in separate tables
+                    sql.push_str(&format!("-- INDEX: Regular field index\n"));
+                    sql.push_str(&format!(
+                        "CREATE INDEX IF NOT EXISTS idx_{}_{} ON {} ({});\n\n",
+                        table_name, field_name, table_name, field_name
+                    ));
+                }
+            }
+        }
 
         sql
     }

@@ -4,11 +4,10 @@
 #[cfg(test)]
 mod tests {
     use r_data_core::{
-        entity::admin_user::{ApiKey, ApiKeyRepository, ApiKeyRepositoryTrait},
+        entity::admin_user::{ApiKeyRepository, ApiKeyRepositoryTrait},
         error::Result,
     };
     use std::sync::Arc;
-    use uuid::Uuid;
 
     #[tokio::test]
     async fn test_api_key_last_used_update() -> Result<()> {

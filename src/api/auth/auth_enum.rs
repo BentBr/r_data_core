@@ -16,6 +16,7 @@ thread_local! {
 }
 
 /// Extractor for required authentication
+#[derive(Debug)]
 pub struct RequiredAuth(pub AuthUserClaims);
 
 /// Extractor for optional authentication

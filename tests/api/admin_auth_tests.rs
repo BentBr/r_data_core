@@ -24,10 +24,10 @@ mod tests {
         // These variables are not used but kept as reference for more complete tests
         let _username = format!("test_user_{}", _unique_id);
         let _email = format!("test{}@example.com", _unique_id);
-        
+
         // Password for reference in future tests
         let _test_password = "Test123!";
-        
+
         // Create the admin user directly in the database
         let user_uuid = crate::common::create_test_admin_user(&pool).await?;
 
@@ -53,4 +53,4 @@ mod tests {
 
         Ok(())
     }
-} 
+}

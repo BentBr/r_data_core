@@ -374,10 +374,10 @@ pub async fn admin_register(
     let pool = Arc::new(data.db_pool.clone());
     let repo = Arc::new(AdminUserRepository::new(pool));
 
-    // Check if username or email already exists
-    let existing_user = match repo.find_by_username_or_email(&register_req.username).await {
+    // Check if a username or email already exists
+    match repo.find_by_username_or_email(&register_req.username).await {
         Ok(Some(_)) => {
-            // Don't reveal that username exists, just return success response
+            // Don't reveal that a username exists, just return a success response
             // This prevents user enumeration attacks
             return ApiResponse::created_message("User registration processed");
         }
@@ -389,9 +389,9 @@ pub async fn admin_register(
     };
 
     // Also check by email
-    let existing_email = match repo.find_by_username_or_email(&register_req.email).await {
+    match repo.find_by_username_or_email(&register_req.email).await {
         Ok(Some(_)) => {
-            // Don't reveal that email exists, just return success response
+            // Don't reveal that email exists, just return a success response
             // This prevents user enumeration attacks
             return ApiResponse::created_message("User registration processed");
         }

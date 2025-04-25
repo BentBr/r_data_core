@@ -2,7 +2,8 @@ use clap::{App, Arg};
 use log::{error, info};
 use r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository;
 use r_data_core::config::AppConfig;
-use r_data_core::error::Result;
+use r_data_core::entity::class::repository_trait::ClassDefinitionRepositoryTrait;
+use r_data_core::error::{Error, Result};
 use sqlx::postgres::PgPoolOptions;
 use std::process;
 use uuid::Uuid;
@@ -76,7 +77,7 @@ async fn run() -> Result<()> {
                 println!("Applying schema for class definition with UUID: {}", uuid);
 
                 match repository.get_by_uuid(&uuid).await {
-                    Ok(definition) => {
+                    Ok(Some(definition)) => {
                         println!(
                             "Found class definition: {} ({})",
                             definition.entity_type, definition.display_name
@@ -105,8 +106,18 @@ async fn run() -> Result<()> {
                             }
                         }
                     }
+                    Ok(None) => {
+                        eprintln!("❌ Class definition with UUID {} not found", uuid);
+                        return Err(Error::NotFound(format!(
+                            "ClassDefinition with UUID {}",
+                            uuid
+                        )));
+                    }
                     Err(e) => {
-                        eprintln!("❌ Class definition with UUID {} not found: {}", uuid, e);
+                        eprintln!(
+                            "❌ Error fetching class definition with UUID {}: {}",
+                            uuid, e
+                        );
                         return Err(e);
                     }
                 }

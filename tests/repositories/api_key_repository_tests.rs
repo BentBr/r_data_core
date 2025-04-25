@@ -117,7 +117,7 @@ async fn test_api_key_last_used_update() -> Result<()> {
         .create_new_api_key(&name, "Test key for last_used tracking", user_uuid, 30)
         .await?;
 
-    // Verify initial state - last_used_at should be None
+    // Verify the initial state-last_used_at should be None
     let initial_key = repo.get_by_uuid(key_uuid).await?.unwrap();
     assert!(
         initial_key.last_used_at.is_none(),
@@ -127,7 +127,7 @@ async fn test_api_key_last_used_update() -> Result<()> {
     // Use the key for authentication (which should update last_used_at)
     let _ = repo.find_api_key_for_auth(&key_value).await?;
 
-    // Small delay to ensure timestamp change is detectable
+    // Small delay to ensure the timestamp change is detectable
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
     // Verify the key's last_used_at was updated
@@ -140,7 +140,7 @@ async fn test_api_key_last_used_update() -> Result<()> {
     // Use it again and verify timestamp changes
     let first_used_at = updated_key.last_used_at.unwrap();
 
-    // Small delay to ensure timestamp change is detectable
+    // Small delay to ensure the timestamp change is detectable
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
     // Use the key again
@@ -207,7 +207,11 @@ async fn test_expired_api_key() -> Result<()> {
 
     // Verify we can still retrieve the key directly
     let expired_key = repo.get_by_uuid(key_uuid).await?;
-    assert!(expired_key.is_some());
+    assert!(
+        expired_key.is_some(),
+        "Key should be retrievable for uuid {}",
+        key_uuid
+    );
     let key = expired_key.unwrap();
     assert!(key.expires_at.is_some());
     assert!(

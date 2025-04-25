@@ -285,3 +285,168 @@ async fn test_negative_expiration_days() -> Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_reassign_key() -> Result<()> {
+    let mut mock_repo = MockApiKeyRepo::new();
+    let key_uuid = Uuid::now_v7();
+    let original_user_uuid = Uuid::now_v7();
+    let new_user_uuid = Uuid::now_v7();
+
+    // Setup a key that belongs to original_user_uuid
+    let api_key = ApiKey {
+        uuid: key_uuid,
+        user_uuid: original_user_uuid,
+        key_hash: "hashed_key".to_string(),
+        name: "Test Key".to_string(),
+        description: Some("Test Description".to_string()),
+        is_active: true,
+        created_at: OffsetDateTime::now_utc(),
+        expires_at: None,
+        last_used_at: None,
+        created_by: original_user_uuid,
+        published: true,
+    };
+
+    // Mock returns the key when requested
+    mock_repo
+        .expect_get_by_uuid()
+        .with(eq(key_uuid))
+        .returning(move |_| Ok(Some(api_key.clone())));
+
+    // Mock successful reassignment
+    mock_repo
+        .expect_reassign()
+        .with(eq(key_uuid), eq(new_user_uuid))
+        .returning(|_, _| Ok(()));
+
+    let service = ApiKeyService::new(Arc::new(mock_repo));
+
+    // Reassign the key to a new user
+    let result = service.reassign_key(key_uuid, new_user_uuid).await;
+
+    // Verify success
+    assert!(result.is_ok());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_reassign_nonexistent_key() -> Result<()> {
+    let mut mock_repo = MockApiKeyRepo::new();
+    let nonexistent_key_uuid = Uuid::now_v7();
+    let new_user_uuid = Uuid::now_v7();
+
+    // Mock returns None for the nonexistent key
+    mock_repo
+        .expect_get_by_uuid()
+        .with(eq(nonexistent_key_uuid))
+        .returning(|_| Ok(None));
+
+    let service = ApiKeyService::new(Arc::new(mock_repo));
+
+    // Attempt to reassign a nonexistent key
+    let result = service
+        .reassign_key(nonexistent_key_uuid, new_user_uuid)
+        .await;
+
+    // Verify we get a NotFound error
+    assert!(result.is_err());
+    match result {
+        Err(Error::NotFound(msg)) => {
+            assert!(
+                msg.contains("not found"),
+                "Expected 'not found' in error message"
+            );
+        }
+        _ => panic!("Expected NotFound error, got: {:?}", result),
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_reassign_key_detailed() -> Result<()> {
+    let key_uuid = Uuid::now_v7();
+    let original_user_uuid = Uuid::now_v7();
+    let new_user_uuid = Uuid::now_v7();
+
+    // Create mock API key with original user
+    let api_key = ApiKey {
+        uuid: key_uuid,
+        user_uuid: original_user_uuid,
+        key_hash: "hashed_key".to_string(),
+        name: "Test Key".to_string(),
+        description: Some("Test Description".to_string()),
+        is_active: true,
+        created_at: OffsetDateTime::now_utc(),
+        expires_at: None,
+        last_used_at: None,
+        created_by: original_user_uuid,
+        published: true,
+    };
+
+    // Create mock API key with new user_uuid after reassignment
+    let reassigned_api_key = ApiKey {
+        uuid: key_uuid,
+        user_uuid: new_user_uuid, // This is now the new user
+        key_hash: "hashed_key".to_string(),
+        name: "Test Key".to_string(),
+        description: Some("Test Description".to_string()),
+        is_active: true,
+        created_at: OffsetDateTime::now_utc(),
+        expires_at: None,
+        last_used_at: None,
+        created_by: original_user_uuid,
+        published: true,
+    };
+
+    // Setup mock repository
+    let mut mock_repo = MockApiKeyRepo::new();
+
+    // Mock returns the key when requested before reassignment
+    mock_repo
+        .expect_get_by_uuid()
+        .with(eq(key_uuid))
+        .returning(move |_| Ok(Some(api_key.clone())))
+        .times(1); // Only for the first call
+
+    // Mock successful reassignment
+    mock_repo
+        .expect_reassign()
+        .with(eq(key_uuid), eq(new_user_uuid))
+        .returning(|_, _| Ok(()));
+
+    // Mock returns the reassigned key when requested after reassignment
+    mock_repo
+        .expect_get_by_uuid()
+        .with(eq(key_uuid))
+        .returning(move |_| Ok(Some(reassigned_api_key.clone())))
+        .times(1); // For the verification call
+
+    // Create service with mock repository
+    let service = ApiKeyService::new(Arc::new(mock_repo));
+
+    // Reassign the key
+    let result = service.reassign_key(key_uuid, new_user_uuid).await;
+    assert!(result.is_ok(), "Key reassignment should succeed");
+
+    // Verify the key has been reassigned by getting it and checking the user_uuid
+    let key_after_reassign = service.get_key(key_uuid).await?;
+    assert!(
+        key_after_reassign.is_some(),
+        "Key should exist after reassignment"
+    );
+
+    let key = key_after_reassign.unwrap();
+    assert_eq!(
+        key.user_uuid, new_user_uuid,
+        "Key should be assigned to the new user"
+    );
+    assert_ne!(
+        key.user_uuid, original_user_uuid,
+        "Key should no longer be assigned to the original user"
+    );
+
+    Ok(())
+}

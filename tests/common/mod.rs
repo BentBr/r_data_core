@@ -1,5 +1,5 @@
-use dotenv::dotenv;
 use log::debug;
+use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -13,7 +13,10 @@ pub async fn setup_test_db() -> PgPool {
 
     debug!("Connecting to test database: {}", database_url);
 
-    let pool = PgPool::connect(&database_url)
+    let pool = PgPoolOptions::new()
+        // Making sure to only work in one consecutive transaction at any time
+        .max_connections(1)
+        .connect(&database_url)
         .await
         .expect("Failed to connect to test database");
 
@@ -26,10 +29,25 @@ pub async fn setup_test_db() -> PgPool {
 
     for table in tables {
         if let Some(table_name) = table {
-            sqlx::query(&format!("TRUNCATE TABLE {} CASCADE", table_name))
-                .execute(&pool)
-                .await
-                .expect(&format!("Failed to truncate table {}", table_name));
+            let exists = sqlx::query_scalar!(
+                "SELECT EXISTS (
+                SELECT FROM pg_tables 
+                WHERE schemaname = 'public' 
+                AND tablename = $1
+            )",
+                table_name
+            )
+            .fetch_one(&pool)
+            .await
+            .expect(&format!("Failed to check if table {} exists", table_name));
+
+            if exists.unwrap_or(false) {
+                // Actually truncate the table if it exists
+                sqlx::query(&format!("TRUNCATE TABLE {} CASCADE", table_name))
+                    .execute(&pool)
+                    .await
+                    .expect(&format!("Failed to truncate table {}", table_name));
+            }
         }
     }
 
@@ -84,8 +102,8 @@ pub async fn create_test_admin_user(pool: &PgPool) -> Result<Uuid, sqlx::Error> 
     // Create a new admin user if none exists
     let uuid = Uuid::now_v7();
     sqlx::query!(
-        "INSERT INTO admin_users (uuid, username, email, password_hash, first_name, last_name, is_active, created_at, updated_at) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)",
+        "INSERT INTO admin_users (uuid, username, email, password_hash, first_name, last_name, is_active, created_at, updated_at, created_by) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $1)",
         uuid,
         "test_admin",
         "test@example.com",
