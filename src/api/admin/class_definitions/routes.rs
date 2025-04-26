@@ -38,7 +38,11 @@ async fn list_class_definitions(
     let limit = query.limit.unwrap_or(20);
     let offset = query.offset.unwrap_or(0);
 
-    match data.class_definition_service.list_class_definitions(limit, offset).await {
+    match data
+        .class_definition_service
+        .list_class_definitions(limit, offset)
+        .await
+    {
         Ok(definitions) => {
             // Convert to schema models
             let schema_definitions = definitions
@@ -78,7 +82,11 @@ async fn get_class_definition(
     path: web::Path<PathUuid>,
     _: auth_enum::RequiredAuth,
 ) -> impl Responder {
-    match data.class_definition_service.get_class_definition(&path.uuid).await {
+    match data
+        .class_definition_service
+        .get_class_definition(&path.uuid)
+        .await
+    {
         Ok(definition) => {
             // Convert to schema model
             let schema_definition = definition.to_schema_model();
@@ -153,7 +161,7 @@ async fn create_class_definition(
     class_def.created_by = creator_uuid;
     class_def.updated_by = Some(creator_uuid);
     class_def.version = 1;
-    
+
     // Ensure schema is properly initialized with entity_type
     if class_def.schema.properties.get("entity_type").is_none() {
         let mut properties = class_def.schema.properties.clone();
@@ -162,7 +170,10 @@ async fn create_class_definition(
             serde_json::Value::String(class_def.entity_type.clone()),
         );
         class_def.schema = crate::entity::class::schema::Schema::new(properties);
-        debug!("Schema initialized with entity_type: {}", class_def.entity_type);
+        debug!(
+            "Schema initialized with entity_type: {}",
+            class_def.entity_type
+        );
     }
 
     // Log again after setting
@@ -180,7 +191,11 @@ async fn create_class_definition(
     }
 
     // Create the class definition using the service
-    match data.class_definition_service.create_class_definition(&class_def).await {
+    match data
+        .class_definition_service
+        .create_class_definition(&class_def)
+        .await
+    {
         Ok(uuid) => {
             // Class definition created successfully
             info!(
@@ -205,11 +220,11 @@ async fn create_class_definition(
                 "Failed to create class definition for {}: {:?}",
                 class_def.entity_type, e
             );
-            
+
             // Add more detailed logging for diagnosis
             debug!("Class definition details: {:#?}", class_def);
             debug!("Error details: {:#?}", e);
-            
+
             HttpResponse::InternalServerError().json(json!({
                 "error": format!("Failed to create class definition: {}", e),
                 "details": format!("{:?}", e)
@@ -262,7 +277,11 @@ async fn update_class_definition(
     };
 
     // First, get the existing definition to preserve system fields
-    let existing_def = match data.class_definition_service.get_class_definition(&path.uuid).await {
+    let existing_def = match data
+        .class_definition_service
+        .get_class_definition(&path.uuid)
+        .await
+    {
         Ok(def) => def,
         Err(crate::error::Error::NotFound(_)) => {
             return HttpResponse::NotFound().json(json!({
@@ -293,18 +312,18 @@ async fn update_class_definition(
     }
 
     // Update the class definition
-    match data.class_definition_service.update_class_definition(&path.uuid, &updated_def).await {
-        Ok(_) => {
-            HttpResponse::Ok().json(json!({
-                "message": "Class definition updated successfully",
-                "uuid": path.uuid
-            }))
-        }
-        Err(crate::error::Error::Validation(msg)) => {
-            HttpResponse::BadRequest().json(json!({
-                "error": msg
-            }))
-        }
+    match data
+        .class_definition_service
+        .update_class_definition(&path.uuid, &updated_def)
+        .await
+    {
+        Ok(_) => HttpResponse::Ok().json(json!({
+            "message": "Class definition updated successfully",
+            "uuid": path.uuid
+        })),
+        Err(crate::error::Error::Validation(msg)) => HttpResponse::BadRequest().json(json!({
+            "error": msg
+        })),
         Err(e) => HttpResponse::InternalServerError().json(json!({
             "error": format!("Failed to update class definition: {}", e)
         })),
@@ -336,7 +355,11 @@ async fn delete_class_definition(
     path: web::Path<PathUuid>,
     _: auth_enum::RequiredAuth,
 ) -> impl Responder {
-    match data.class_definition_service.delete_class_definition(&path.uuid).await {
+    match data
+        .class_definition_service
+        .delete_class_definition(&path.uuid)
+        .await
+    {
         Ok(_) => HttpResponse::Ok().json(json!({
             "message": "Class definition deleted successfully"
         })),
@@ -375,8 +398,12 @@ async fn apply_class_definition_schema(
     _: auth_enum::RequiredAuth,
 ) -> impl Responder {
     let uuid_option = body.uuid.as_ref();
-    
-    match data.class_definition_service.apply_schema(uuid_option).await {
+
+    match data
+        .class_definition_service
+        .apply_schema(uuid_option)
+        .await
+    {
         Ok((success_count, failed)) => {
             if uuid_option.is_some() {
                 // If a specific UUID was provided
@@ -406,17 +433,13 @@ async fn apply_class_definition_schema(
                     }))
                 }
             }
-        },
-        Err(crate::error::Error::NotFound(_)) => {
-            HttpResponse::NotFound().json(json!({
-                "error": format!("Class definition with UUID {} not found", uuid_option.unwrap())
-            }))
-        },
-        Err(e) => {
-            HttpResponse::InternalServerError().json(json!({
-                "error": format!("Failed to apply schema: {}", e)
-            }))
         }
+        Err(crate::error::Error::NotFound(_)) => HttpResponse::NotFound().json(json!({
+            "error": format!("Class definition with UUID {} not found", uuid_option.unwrap())
+        })),
+        Err(e) => HttpResponse::InternalServerError().json(json!({
+            "error": format!("Failed to apply schema: {}", e)
+        })),
     }
 }
 

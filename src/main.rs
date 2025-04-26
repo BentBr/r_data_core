@@ -1,12 +1,12 @@
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
+use async_trait::async_trait;
 use log::{error, info};
 use sqlx::postgres::PgPoolOptions;
+use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
-use async_trait::async_trait;
-use std::collections::HashMap;
 
 // Import library constants
 use r_data_core::{DESCRIPTION, NAME, VERSION};
@@ -18,24 +18,24 @@ mod db;
 mod entity;
 mod error;
 mod notification;
+mod services;
 mod versioning;
 mod workflow;
-mod services;
 
 // Todo: These modules will be implemented later
 // mod workflow;
 // mod versioning;
 // mod notification;
 
+use crate::api::admin::class_definitions::repository::ClassDefinitionRepository;
 use crate::api::{ApiResponse, ApiState};
 use crate::cache::CacheManager;
 use crate::config::AppConfig;
 use crate::entity::admin_user::{AdminUserRepository, ApiKeyRepository};
-use crate::api::admin::class_definitions::repository::ClassDefinitionRepository;
+use crate::services::adapters::ClassDefinitionRepositoryAdapter;
 use crate::services::AdminUserService;
 use crate::services::ApiKeyService;
 use crate::services::ClassDefinitionService;
-use crate::services::adapters::ClassDefinitionRepositoryAdapter;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -107,13 +107,14 @@ async fn main() -> std::io::Result<()> {
     let api_key_repository = ApiKeyRepository::new(pool_arc.clone());
     let admin_user_repository = AdminUserRepository::new(pool_arc.clone());
     let class_definition_repository = ClassDefinitionRepository::new(pool.clone());
-    
+
     // Initialize services
     let api_key_service = ApiKeyService::from_repository(api_key_repository);
     let admin_user_service = AdminUserService::from_repository(admin_user_repository);
-    
+
     // Use the adapter for ClassDefinitionRepository
-    let class_definition_adapter = ClassDefinitionRepositoryAdapter::new(class_definition_repository);
+    let class_definition_adapter =
+        ClassDefinitionRepositoryAdapter::new(class_definition_repository);
     let class_definition_service = ClassDefinitionService::new(Arc::new(class_definition_adapter));
 
     // Shared application state

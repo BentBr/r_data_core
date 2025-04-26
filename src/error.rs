@@ -45,6 +45,9 @@ pub enum Error {
     #[error("Field already exists: {0}")]
     FieldAlreadyExists(String),
 
+    #[error("Class already exists: {0}")]
+    ClassAlreadyExists(String),
+
     #[error("Validation failed: {0}")]
     ValidationFailed(String),
 

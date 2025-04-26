@@ -1,14 +1,14 @@
 use crate::entity::class::definition::ClassDefinition;
 use crate::entity::class::repository_trait::ClassDefinitionRepositoryTrait;
 use crate::entity::class::schema::Schema;
-use crate::error::{Error, Result};
-use std::collections::HashMap;
-use std::sync::Arc;
-use uuid::Uuid;
-use time::OffsetDateTime;
 use crate::entity::field::types::FieldType;
 use crate::entity::field::FieldDefinition;
+use crate::error::{Error, Result};
 use serde_json::Value as JsonValue;
+use std::collections::HashMap;
+use std::sync::Arc;
+use time::OffsetDateTime;
+use uuid::Uuid;
 
 /// Service for managing class definitions
 pub struct ClassDefinitionService {
@@ -59,6 +59,18 @@ impl ClassDefinitionService {
 
         // Validate field names and configurations
         self.validate_fields(&definition)?;
+
+        // Check for duplicate entity type
+        let existing = self
+            .repository
+            .get_by_entity_type(&definition.entity_type)
+            .await?;
+        if existing.is_some() {
+            return Err(Error::ClassAlreadyExists(format!(
+                "Entity type '{}' already exists",
+                definition.entity_type
+            )));
+        }
 
         // Create the class definition
         let uuid = self.repository.create(definition).await?;
@@ -149,14 +161,7 @@ impl ClassDefinitionService {
 
         // Check reserved words
         let reserved_words = [
-            "class",
-            "entity",
-            "table",
-            "column",
-            "row",
-            "index",
-            "view",
-            "schema",
+            "class", "entity", "table", "column", "row", "index", "view", "schema",
         ];
 
         if reserved_words.contains(&entity_type.to_lowercase().as_str()) {
@@ -209,15 +214,26 @@ impl ClassDefinitionService {
     }
 
     /// Apply database schema for a specific class definition or all if uuid is None
-    pub async fn apply_schema(&self, uuid: Option<&Uuid>) -> Result<(i32, Vec<(String, Uuid, String)>)> {
+    pub async fn apply_schema(
+        &self,
+        uuid: Option<&Uuid>,
+    ) -> Result<(i32, Vec<(String, Uuid, String)>)> {
         if let Some(id) = uuid {
             // Apply schema for a specific class definition
             let definition = self.get_class_definition(id).await?;
-            
-            match self.repository.update_entity_view_for_class_definition(&definition).await {
+
+            match self
+                .repository
+                .update_entity_view_for_class_definition(&definition)
+                .await
+            {
                 Ok(_) => Ok((1, Vec::new())),
                 Err(e) => {
-                    let failed = vec![(definition.entity_type.clone(), definition.uuid, e.to_string())];
+                    let failed = vec![(
+                        definition.entity_type.clone(),
+                        definition.uuid,
+                        e.to_string(),
+                    )];
                     Ok((0, failed))
                 }
             }
@@ -228,7 +244,11 @@ impl ClassDefinitionService {
             let mut failed = Vec::new();
 
             for definition in definitions {
-                match self.repository.update_entity_view_for_class_definition(&definition).await {
+                match self
+                    .repository
+                    .update_entity_view_for_class_definition(&definition)
+                    .await
+                {
                     Ok(_) => {
                         success_count += 1;
                     }
@@ -257,7 +277,7 @@ mod tests {
     use mockall::predicate::{self, eq};
     use std::collections::HashMap;
     use time::OffsetDateTime;
-    
+
     // Create a mock for the repository trait
     mock! {
         pub ClassDefinitionRepo {}
@@ -283,7 +303,7 @@ mod tests {
     fn create_test_class_definition() -> ClassDefinition {
         let creator_id = Uuid::now_v7();
         let now = OffsetDateTime::now_utc();
-        
+
         let mut field_definitions = vec![
             FieldDefinition {
                 name: "name".to_string(),
@@ -312,16 +332,16 @@ mod tests {
                 validation: Default::default(),
             },
         ];
-        
+
         // Create a properties map for the schema
         let mut properties = HashMap::new();
         properties.insert(
             "entity_type".to_string(),
             JsonValue::String("TestEntity".to_string()),
         );
-        
+
         let uuid = Uuid::now_v7();
-        
+
         ClassDefinition {
             uuid,
             entity_type: "TestEntity".to_string(),
@@ -390,6 +410,12 @@ mod tests {
         let mut mock_repo = MockClassDefinitionRepo::new();
         let definition = create_test_class_definition();
         let expected_uuid = definition.uuid;
+
+        // Expect check for duplicate entity type (should return None for success case)
+        mock_repo
+            .expect_get_by_entity_type()
+            .with(eq("TestEntity"))
+            .returning(|_| Ok(None));
 
         mock_repo
             .expect_create()
@@ -541,25 +567,25 @@ mod tests {
         let mut mock_repo = MockClassDefinitionRepo::new();
         let uuid = Uuid::now_v7();
         let definition = create_test_class_definition();
-        
+
         mock_repo
             .expect_get_by_uuid()
             .withf(move |id| id == &uuid)
             .returning(move |_| Ok(Some(definition.clone())));
-            
+
         mock_repo
             .expect_update_entity_view_for_class_definition()
             .returning(|_| Ok(()));
-            
+
         let service = ClassDefinitionService::new(Arc::new(mock_repo));
         let result = service.apply_schema(Some(&uuid)).await?;
-        
+
         assert_eq!(result.0, 1); // 1 success
         assert!(result.1.is_empty()); // 0 failures
-        
+
         Ok(())
     }
-    
+
     #[tokio::test]
     async fn test_apply_schema_all() -> Result<()> {
         let mut mock_repo = MockClassDefinitionRepo::new();
@@ -568,23 +594,23 @@ mod tests {
             create_test_class_definition(),
             create_test_class_definition(),
         ];
-        
+
         mock_repo
             .expect_list()
             .withf(|limit, offset| *limit == 1000 && *offset == 0)
             .returning(move |_, _| Ok(definitions.clone()));
-            
+
         mock_repo
             .expect_update_entity_view_for_class_definition()
             .times(3)
             .returning(|_| Ok(()));
-            
+
         let service = ClassDefinitionService::new(Arc::new(mock_repo));
         let result = service.apply_schema(None).await?;
-        
+
         assert_eq!(result.0, 3); // 3 successes
         assert!(result.1.is_empty()); // 0 failures
-        
+
         Ok(())
     }
 
@@ -600,7 +626,9 @@ mod tests {
             .returning(move |_| Ok(Some(expected_definition.clone())));
 
         let service = ClassDefinitionService::new(Arc::new(mock_repo));
-        let result = service.get_class_definition_by_entity_type(entity_type).await?;
+        let result = service
+            .get_class_definition_by_entity_type(entity_type)
+            .await?;
 
         assert_eq!(result.entity_type, "TestEntity");
         assert_eq!(result.display_name, "Test Entity");
@@ -620,7 +648,9 @@ mod tests {
             .returning(|_| Ok(None));
 
         let service = ClassDefinitionService::new(Arc::new(mock_repo));
-        let result = service.get_class_definition_by_entity_type(entity_type).await;
+        let result = service
+            .get_class_definition_by_entity_type(entity_type)
+            .await;
 
         assert!(result.is_err());
         if let Err(Error::NotFound(msg)) = result {
@@ -692,10 +722,10 @@ mod tests {
     async fn test_update_class_definition_invalid_entity_type() -> Result<()> {
         let mut mock_repo = MockClassDefinitionRepo::new();
         let uuid = Uuid::now_v7();
-        
+
         // Create definitions separately to avoid borrow issues
         let valid_definition = create_test_class_definition();
-        
+
         // Create an invalid definition
         let mut invalid_definition = create_test_class_definition();
         invalid_definition.entity_type = "123InvalidStart".to_string();
@@ -709,7 +739,9 @@ mod tests {
             });
 
         let service = ClassDefinitionService::new(Arc::new(mock_repo));
-        let result = service.update_class_definition(&uuid, &invalid_definition).await;
+        let result = service
+            .update_class_definition(&uuid, &invalid_definition)
+            .await;
 
         assert!(result.is_err());
         if let Err(Error::Validation(msg)) = result {
@@ -720,20 +752,20 @@ mod tests {
 
         Ok(())
     }
-    
+
     #[tokio::test]
     async fn test_cleanup_unused_entity_tables() -> Result<()> {
         let mut mock_repo = MockClassDefinitionRepo::new();
-        
+
         mock_repo
             .expect_cleanup_unused_entity_view()
             .returning(|| Ok(()));
-            
+
         let service = ClassDefinitionService::new(Arc::new(mock_repo));
         let result = service.cleanup_unused_entity_tables().await;
-        
+
         assert!(result.is_ok());
-        
+
         Ok(())
     }
 }

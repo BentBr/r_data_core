@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::entity::class::definition::ClassDefinition;
 use crate::entity::dynamic_entity::entity::DynamicEntity;
+use crate::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
 use crate::error::{Error, Result};
 
 /// Repository for managing dynamic entities
@@ -480,5 +481,261 @@ impl DynamicEntityRepository {
         .await?;
 
         Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
+    async fn create(&self, entity: &DynamicEntity) -> Result<()> {
+        self.create(entity).await
+    }
+
+    async fn update(&self, entity: &DynamicEntity) -> Result<()> {
+        self.update(entity).await
+    }
+
+    async fn get_by_type(&self, entity_type: &str) -> Result<Option<DynamicEntity>> {
+        self.get_by_type(entity_type).await
+    }
+
+    async fn get_all_by_type(&self, entity_type: &str) -> Result<Vec<DynamicEntity>> {
+        let table_name = format!("entity_{}", entity_type.to_lowercase());
+
+        // Get the class definition
+        let class_def = sqlx::query("SELECT * FROM class_definitions WHERE entity_type = $1")
+            .bind(entity_type)
+            .map(|row: PgRow| {
+                ClassDefinition::from_row(&row).expect("Error converting row to ClassDefinition")
+            })
+            .fetch_optional(&self.pool)
+            .await?
+            .ok_or_else(|| {
+                Error::NotFound(format!(
+                    "Class definition for type {} not found",
+                    entity_type
+                ))
+            })?;
+
+        // Create a shared Arc for the class definition
+        let class_def_arc = Arc::new(class_def);
+
+        // Query the registry and entity table
+        let query = format!(
+            "SELECT r.*, e.* 
+             FROM entities_registry r
+             JOIN {} e ON r.uuid = e.uuid
+             WHERE r.entity_type = $1",
+            table_name
+        );
+
+        let rows = sqlx::query(&query)
+            .bind(entity_type)
+            .fetch_all(&self.pool)
+            .await?;
+
+        // Convert rows to DynamicEntity objects
+        let mut entities = Vec::new();
+        for row in rows {
+            let mut field_data = HashMap::new();
+
+            // Add system fields from registry
+            field_data.insert(
+                "uuid".to_string(),
+                JsonValue::String(row.get::<Uuid, _>("uuid").to_string()),
+            );
+            field_data.insert(
+                "entity_type".to_string(),
+                JsonValue::String(row.get::<String, _>("entity_type")),
+            );
+            field_data.insert(
+                "path".to_string(),
+                JsonValue::String(row.get::<String, _>("path")),
+            );
+            // Add other system fields
+
+            // Add custom fields from the entity table
+            for field in &class_def_arc.fields {
+                let field_name = &field.name;
+                if let Ok(value) = row.try_get::<JsonValue, _>(field_name.as_str()) {
+                    field_data.insert(field_name.clone(), value);
+                }
+            }
+
+            entities.push(DynamicEntity {
+                entity_type: entity_type.to_string(),
+                field_data,
+                definition: class_def_arc.clone(),
+            });
+        }
+
+        Ok(entities)
+    }
+
+    async fn delete_by_type(&self, entity_type: &str) -> Result<()> {
+        self.delete_by_type(entity_type).await
+    }
+
+    async fn filter_entities(
+        &self,
+        entity_type: &str,
+        filters: &HashMap<String, JsonValue>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<DynamicEntity>> {
+        let table_name = format!("entity_{}", entity_type.to_lowercase());
+
+        // Get the class definition
+        let class_def = sqlx::query("SELECT * FROM class_definitions WHERE entity_type = $1")
+            .bind(entity_type)
+            .map(|row: PgRow| {
+                ClassDefinition::from_row(&row).expect("Error converting row to ClassDefinition")
+            })
+            .fetch_optional(&self.pool)
+            .await?
+            .ok_or_else(|| {
+                Error::NotFound(format!(
+                    "Class definition for type {} not found",
+                    entity_type
+                ))
+            })?;
+
+        // Create a shared Arc for the class definition
+        let class_def_arc = Arc::new(class_def);
+
+        // Build the WHERE clause for filtering
+        let mut where_clauses = Vec::new();
+        let mut bind_params: Vec<String> = Vec::new();
+
+        for (field, value) in filters {
+            // Handle registry fields vs entity fields
+            let registry_fields = ["uuid", "entity_type", "path", "created_at", "updated_at"];
+
+            if registry_fields.contains(&field.as_str()) {
+                match value {
+                    JsonValue::String(s) => {
+                        where_clauses.push(format!("r.{} = '{}'", field, s.replace("'", "''")));
+                    }
+                    JsonValue::Number(n) => {
+                        where_clauses.push(format!("r.{} = {}", field, n));
+                    }
+                    JsonValue::Bool(b) => {
+                        where_clauses.push(format!(
+                            "r.{} = {}",
+                            field,
+                            if *b { "TRUE" } else { "FALSE" }
+                        ));
+                    }
+                    _ => {
+                        where_clauses.push(format!(
+                            "r.{} = '{}'",
+                            field,
+                            value.to_string().replace("'", "''")
+                        ));
+                    }
+                }
+            } else {
+                // Entity-specific field
+                match value {
+                    JsonValue::String(s) => {
+                        where_clauses.push(format!("e.{} = '{}'", field, s.replace("'", "''")));
+                    }
+                    JsonValue::Number(n) => {
+                        where_clauses.push(format!("e.{} = {}", field, n));
+                    }
+                    JsonValue::Bool(b) => {
+                        where_clauses.push(format!(
+                            "e.{} = {}",
+                            field,
+                            if *b { "TRUE" } else { "FALSE" }
+                        ));
+                    }
+                    _ => {
+                        where_clauses.push(format!(
+                            "e.{} = '{}'",
+                            field,
+                            value.to_string().replace("'", "''")
+                        ));
+                    }
+                }
+            }
+        }
+
+        // Construct the query
+        let where_clause = if where_clauses.is_empty() {
+            String::new()
+        } else {
+            format!("AND {}", where_clauses.join(" AND "))
+        };
+
+        let query = format!(
+            "SELECT r.*, e.* 
+             FROM entities_registry r
+             JOIN {} e ON r.uuid = e.uuid
+             WHERE r.entity_type = $1 {}
+             LIMIT {} OFFSET {}",
+            table_name, where_clause, limit, offset
+        );
+
+        let rows = sqlx::query(&query)
+            .bind(entity_type)
+            .fetch_all(&self.pool)
+            .await?;
+
+        // Convert rows to DynamicEntity objects (similar to get_all_by_type)
+        let mut entities = Vec::new();
+        for row in rows {
+            let mut field_data = HashMap::new();
+
+            // Add system fields from registry
+            field_data.insert(
+                "uuid".to_string(),
+                JsonValue::String(row.get::<Uuid, _>("uuid").to_string()),
+            );
+            field_data.insert(
+                "entity_type".to_string(),
+                JsonValue::String(row.get::<String, _>("entity_type")),
+            );
+            field_data.insert(
+                "path".to_string(),
+                JsonValue::String(row.get::<String, _>("path")),
+            );
+            // Add other system fields
+
+            // Add custom fields from the entity table
+            for field in &class_def_arc.fields {
+                let field_name = &field.name;
+                if let Ok(value) = row.try_get::<JsonValue, _>(field_name.as_str()) {
+                    field_data.insert(field_name.clone(), value);
+                }
+            }
+
+            entities.push(DynamicEntity {
+                entity_type: entity_type.to_string(),
+                field_data,
+                definition: class_def_arc.clone(),
+            });
+        }
+
+        Ok(entities)
+    }
+
+    async fn count_entities(&self, entity_type: &str) -> Result<i64> {
+        let table_name = format!("entity_{}", entity_type.to_lowercase());
+
+        let query = format!(
+            "SELECT COUNT(*) as count
+             FROM entities_registry r
+             JOIN {} e ON r.uuid = e.uuid
+             WHERE r.entity_type = $1",
+            table_name
+        );
+
+        let row = sqlx::query(&query)
+            .bind(entity_type)
+            .fetch_one(&self.pool)
+            .await?;
+
+        let count: i64 = row.get("count");
+        Ok(count)
     }
 }

@@ -43,13 +43,15 @@ We've implemented the first phase of the refactoring strategy, focusing on the A
    - Tests for cleaning up unused entity tables
 5. ✅ Updated the API handlers to use the service instead of the repository directly
 6. ✅ Added a wrapper for the repository to handle trait implementation
+7. ✅ Fixed bug in class definition service to check for duplicate entity types during creation
 
-### Next Entity to Refactor: Dynamic Entities
-1. 🔄 Create a repository trait for dynamic entities (`DynamicEntityRepositoryTrait`)
-2. 🔄 Implement the trait for the existing repository
-3. 🔄 Create a service layer for dynamic entities (`DynamicEntityService`)
-4. 🔄 Add unit tests for the service layer with mock repositories
-5. 🔄 Add integration tests for the dynamic entity repository
+### Dynamic Entities Refactoring
+1. ✅ Created a repository trait for dynamic entities (`DynamicEntityRepositoryTrait`)
+2. ✅ Implemented the trait for the existing repository
+3. ✅ Added test placeholders for the dynamic entity repository
+4. 🔄 Create a service layer for dynamic entities (`DynamicEntityService`)
+5. 🔄 Add unit tests for the service layer with mock repositories
+6. 🔄 Add integration tests for the dynamic entity repository
 
 ## Next Steps
 
@@ -59,13 +61,15 @@ To continue the refactoring:
    - ✅ API Keys
    - ✅ Admin Users
    - ✅ Class Definitions
-   - 🔄 Dynamic Entities
+   - ✅ Dynamic Entities (trait and implementation completed)
+   - 🔄 Dynamic Entities (service layer needed)
    - ❌ Workflows
 
 2. 🔄 Update API handlers to use the service layer instead of repositories directly:
    - ✅ Inject the `ApiKeyService` into the routes
    - ✅ Inject the `AdminUserService` into the admin routes
    - ✅ Inject the `ClassDefinitionService` into the class definition routes
+   - 🔄 Create and inject the `DynamicEntityService` into the dynamic entity routes
    - ❌ Update other API handlers to use appropriate services
    - ❌ Remove direct database access from handlers
 
@@ -83,6 +87,7 @@ To continue the refactoring:
    - ✅ Add service tests for API keys
    - ✅ Add service tests for admin users
    - ✅ Add service tests for class definitions
+   - 🔄 Add placeholder tests for dynamic entity repository 
    - 🔄 Add integration tests for all API endpoints
    - 🔄 Add repository tests for all database operations
    - 🔄 Add service tests for all business logic
@@ -96,6 +101,8 @@ To continue the refactoring:
 5. ✅ Fixed dependency issues with the services implementation
 6. ✅ Created repository adapter pattern for clean trait implementation
 7. ✅ Removed verbose adapter implementation from main.rs to services/adapters.rs
+8. ✅ Fixed bug in class definition service to properly check for duplicate entity types
+9. ✅ Added public interfaces for dynamic entity repository and trait
 
 ## Testing Strategy
 
@@ -141,6 +148,7 @@ By following this strategy, the codebase will become more maintainable, testable
 3. **Dependency Injection**: Use dependency injection for loosely coupled components
 4. **Adapter Pattern**: Use adapters to implement traits for external types without modifying them
 5. **Testing Isolation**: Use mock repositories for unit testing services
+6. **Validation Flow**: Validate inputs before processing database operations to fail fast and prevent data corruption
 
 ## Repository Adapter Pattern
 

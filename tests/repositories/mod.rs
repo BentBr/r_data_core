@@ -1,6 +1,7 @@
 pub mod admin_user_repository_tests;
 pub mod api_key_repository_tests;
 pub mod class_definition_repository_tests;
+pub mod dynamic_entity_repository_tests;
 
 use crate::common::setup_test_db;
 use r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository;

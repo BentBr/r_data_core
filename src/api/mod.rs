@@ -28,13 +28,13 @@ pub struct ApiState {
 
     /// Cache manager
     pub cache_manager: Arc<CacheManager>,
-    
+
     /// API Key service
     pub api_key_service: ApiKeyService,
-    
+
     /// Admin User service
     pub admin_user_service: AdminUserService,
-    
+
     /// Class Definition service
     pub class_definition_service: ClassDefinitionService,
 }
