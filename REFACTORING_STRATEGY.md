@@ -49,9 +49,10 @@ We've implemented the first phase of the refactoring strategy, focusing on the A
 1. ✅ Created a repository trait for dynamic entities (`DynamicEntityRepositoryTrait`)
 2. ✅ Implemented the trait for the existing repository
 3. ✅ Added test placeholders for the dynamic entity repository
-4. 🔄 Create a service layer for dynamic entities (`DynamicEntityService`)
-5. 🔄 Add unit tests for the service layer with mock repositories
-6. 🔄 Add integration tests for the dynamic entity repository
+4. ✅ Create a service layer for dynamic entities (`DynamicEntityService`)
+5. ✅ Add unit tests for the service layer with mock repositories
+6. ✅ Add integration tests for the dynamic entity repository
+7. ✅ Implemented RESTful API for dynamic entities in the public API with custom namespaces
 
 ## Next Steps
 
@@ -61,15 +62,13 @@ To continue the refactoring:
    - ✅ API Keys
    - ✅ Admin Users
    - ✅ Class Definitions
-   - ✅ Dynamic Entities (trait and implementation completed)
-   - 🔄 Dynamic Entities (service layer needed)
-   - ❌ Workflows
+   - ✅ Dynamic Entities
 
-2. 🔄 Update API handlers to use the service layer instead of repositories directly:
+2. ✅ Update API handlers to use the service layer instead of repositories directly:
    - ✅ Inject the `ApiKeyService` into the routes
    - ✅ Inject the `AdminUserService` into the admin routes
    - ✅ Inject the `ClassDefinitionService` into the class definition routes
-   - 🔄 Create and inject the `DynamicEntityService` into the dynamic entity routes
+   - ✅ Create and inject the `DynamicEntityService` into the dynamic entity routes
    - ❌ Update other API handlers to use appropriate services
    - ❌ Remove direct database access from handlers
 

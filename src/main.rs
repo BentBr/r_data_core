@@ -1,15 +1,10 @@
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
-use async_trait::async_trait;
 use log::{error, info};
 use sqlx::postgres::PgPoolOptions;
-use std::collections::HashMap;
 use std::sync::Arc;
-use uuid::Uuid;
 
-// Import library constants
-use r_data_core::{DESCRIPTION, NAME, VERSION};
 
 mod api;
 mod cache;
@@ -32,10 +27,18 @@ use crate::api::{ApiResponse, ApiState};
 use crate::cache::CacheManager;
 use crate::config::AppConfig;
 use crate::entity::admin_user::{AdminUserRepository, ApiKeyRepository};
-use crate::services::adapters::ClassDefinitionRepositoryAdapter;
+use crate::entity::dynamic_entity::repository::DynamicEntityRepository;
+use crate::services::adapters::{ClassDefinitionRepositoryAdapter, DynamicEntityRepositoryAdapter, AdminUserRepositoryAdapter};
 use crate::services::AdminUserService;
 use crate::services::ApiKeyService;
+use crate::services::ApiKeyRepositoryAdapter;
 use crate::services::ClassDefinitionService;
+use crate::services::DynamicEntityService;
+
+// 404 handler function
+async fn default_404_handler() -> impl actix_web::Responder {
+    ApiResponse::<()>::not_found("Resource not found")
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -107,15 +110,27 @@ async fn main() -> std::io::Result<()> {
     let api_key_repository = ApiKeyRepository::new(pool_arc.clone());
     let admin_user_repository = AdminUserRepository::new(pool_arc.clone());
     let class_definition_repository = ClassDefinitionRepository::new(pool.clone());
+    let dynamic_entity_repository = DynamicEntityRepository::new(pool.clone());
 
-    // Initialize services
-    let api_key_service = ApiKeyService::from_repository(api_key_repository);
-    let admin_user_service = AdminUserService::from_repository(admin_user_repository);
+    // Initialize services with adapters
+    let api_key_adapter = ApiKeyRepositoryAdapter::new(api_key_repository);
+    let api_key_service = ApiKeyService::new(Arc::new(api_key_adapter));
+    
+    // Use adapter for AdminUserRepository
+    let admin_user_adapter = AdminUserRepositoryAdapter::new(admin_user_repository);
+    let admin_user_service = AdminUserService::new(Arc::new(admin_user_adapter));
 
     // Use the adapter for ClassDefinitionRepository
     let class_definition_adapter =
         ClassDefinitionRepositoryAdapter::new(class_definition_repository);
     let class_definition_service = ClassDefinitionService::new(Arc::new(class_definition_adapter));
+    
+    // Initialize dynamic entity service
+    let dynamic_entity_adapter = DynamicEntityRepositoryAdapter::from_repository(dynamic_entity_repository);
+    let dynamic_entity_service = DynamicEntityService::new(
+        Arc::new(dynamic_entity_adapter),
+        Arc::new(class_definition_service.clone()),
+    );
 
     // Shared application state
     let app_state = web::Data::new(ApiState {
@@ -125,6 +140,7 @@ async fn main() -> std::io::Result<()> {
         api_key_service,
         admin_user_service,
         class_definition_service,
+        dynamic_entity_service: Some(Arc::new(dynamic_entity_service)),
     });
 
     let bind_address = format!("{}:{}", config.api.host, config.api.port);
@@ -146,9 +162,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::new("%a %{User-Agent}i %r %s %D"))
             .wrap(cors)
             .configure(api::configure_app)
-            .default_service(web::to(|| async {
-                ApiResponse::<()>::not_found("Resource not found")
-            }))
+            .default_service(web::route().to(default_404_handler))
     })
     .bind(bind_address)?
     .run()

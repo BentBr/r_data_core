@@ -1,7 +1,7 @@
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use log::error;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::Value;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -9,6 +9,7 @@ use uuid::Uuid;
 use crate::api::auth::auth_enum;
 use crate::api::models::PaginationQuery;
 use crate::api::ApiState;
+use crate::api::response::ApiResponse;
 use crate::entity::admin_user::repository::ApiKeyRepository;
 use crate::entity::admin_user::repository_trait::ApiKeyRepositoryTrait;
 use std::sync::Arc;
@@ -144,13 +145,11 @@ pub async fn list_api_keys(
                 })
                 .collect();
 
-            HttpResponse::Ok().json(api_keys)
+            ApiResponse::ok(api_keys)
         }
         Err(e) => {
             error!("Failed to list API keys: {}", e);
-            HttpResponse::InternalServerError().json(json!({
-                "error": "Failed to retrieve API keys"
-            }))
+            ApiResponse::<()>::internal_error("Failed to retrieve API keys")
         }
     }
 }
@@ -186,70 +185,55 @@ pub async fn create_api_key(
 
     match repo.get_by_name(user_uuid, &req.name).await {
         Ok(Some(_)) => {
-            return HttpResponse::Conflict().json(json!({
-                "error": "An API key with this name already exists for this user"
-            }));
+            return ApiResponse::<()>::conflict("An API key with this name already exists for this user");
         }
         Ok(None) => {
             // Proceed with creation
         }
         Err(e) => {
             error!("Failed to check for existing API key: {}", e);
-            return HttpResponse::InternalServerError().json(json!({
-                "error": "Failed to check for existing API key"
-            }));
+            return ApiResponse::<()>::internal_error("Failed to check for existing API key");
         }
     }
 
     // Create the API key
+    let description = req.description.clone().unwrap_or_default();
     let expires_in_days = req.expires_in_days.unwrap_or(365) as i32;
 
-    let result = repo
-        .create_new_api_key(
-            &req.name,
-            &req.description.as_deref().unwrap_or(""),
-            creator_uuid,
-            expires_in_days,
-        )
-        .await;
-
-    match result {
-        Ok((api_key_uuid, api_key_value)) => {
-            // Get the created API key
-            match repo.get_by_uuid(api_key_uuid).await {
-                Ok(Some(api_key)) => {
-                    HttpResponse::Created().json(ApiKeyCreatedResponse {
-                        uuid: api_key.uuid,
-                        name: api_key.name,
-                        api_key: api_key_value, // Use the actual generated key value
-                        description: api_key.description,
-                        is_active: api_key.is_active,
-                        created_at: api_key.created_at,
-                        expires_at: api_key.expires_at,
-                        created_by: api_key.created_by,
-                        user_uuid: api_key.user_uuid,
-                        published: api_key.published,
-                    })
+    match repo
+        .create_new_api_key(&req.name, &description, creator_uuid, expires_in_days)
+        .await
+    {
+        Ok((uuid, api_key)) => {
+            match repo.get_by_uuid(uuid).await {
+                Ok(Some(key)) => {
+                    let response: ApiKeyCreatedResponse = ApiKeyCreatedResponse {
+                        uuid: key.uuid,
+                        name: key.name.clone(),
+                        api_key,
+                        description: key.description.clone(),
+                        is_active: key.is_active,
+                        created_at: key.created_at,
+                        expires_at: key.expires_at,
+                        created_by: key.created_by,
+                        user_uuid: key.user_uuid,
+                        published: key.published,
+                    };
+                    ApiResponse::<ApiKeyCreatedResponse>::created(response)
                 }
                 Ok(None) => {
-                    error!("API key not found after creation");
-                    HttpResponse::InternalServerError().json(json!({
-                        "error": "Failed to retrieve API key after creation"
-                    }))
+                    error!("API key created but not found: {}", uuid);
+                    ApiResponse::<()>::internal_error("API key created but not found")
                 }
                 Err(e) => {
-                    error!("Failed to retrieve API key after creation: {}", e);
-                    HttpResponse::InternalServerError().json(json!({
-                        "error": "Failed to retrieve API key after creation"
-                    }))
+                    error!("Failed to retrieve created API key: {}", e);
+                    ApiResponse::<()>::internal_error("Failed to retrieve created API key")
                 }
             }
         }
         Err(e) => {
             error!("Failed to create API key: {}", e);
-            HttpResponse::InternalServerError().json(json!({
-                "error": "Failed to create API key"
-            }))
+            ApiResponse::<()>::internal_error("Failed to create API key")
         }
     }
 }
@@ -260,7 +244,7 @@ pub async fn create_api_key(
     path = "/admin/api/v1/api-keys/{uuid}",
     tag = "api-keys",
     params(
-        ("uuid" = Uuid, Path, description = "API key UUID to revoke")
+        ("uuid" = Uuid, Path, description = "UUID of the API key to revoke")
     ),
     responses(
         (status = 200, description = "API key revoked successfully"),
@@ -280,42 +264,32 @@ pub async fn revoke_api_key(
     auth: auth_enum::RequiredAuth,
 ) -> impl Responder {
     let pool = Arc::new(state.db_pool.clone());
+    let user_uuid = Uuid::parse_str(&auth.0.sub).expect("Invalid UUID in auth token");
     let api_key_uuid = path.into_inner();
-    let auth_user_uuid = Uuid::parse_str(&auth.0.sub).expect("Invalid UUID in auth token");
 
     let repo = ApiKeyRepository::new(pool);
 
-    // Verify the API key belongs to the user
+    // First, check if the API key exists and belongs to the user
     match repo.get_by_uuid(api_key_uuid).await {
-        Ok(Some(api_key)) => {
-            // Check if the authenticated user owns the API key
-            if api_key.user_uuid != auth_user_uuid {
-                return HttpResponse::Forbidden().json(json!({
-                    "success": false,
-                    "error": "You do not have permission to revoke this API key"
-                }));
+        Ok(Some(key)) => {
+            if key.user_uuid != user_uuid {
+                return ApiResponse::<()>::forbidden("You don't have permission to revoke this API key");
             }
 
-            // Revoke the API key
+            // Revoke the key
             match repo.revoke(api_key_uuid).await {
-                Ok(_) => HttpResponse::Ok().json(json!({
-                    "success": true,
-                    "message": "API key revoked successfully"
-                })),
-                Err(e) => HttpResponse::InternalServerError().json(json!({
-                    "success": false,
-                    "error": format!("Failed to revoke API key: {}", e)
-                })),
+                Ok(_) => ApiResponse::<()>::message("API key revoked successfully"),
+                Err(e) => {
+                    error!("Failed to revoke API key: {}", e);
+                    ApiResponse::<()>::internal_error("Failed to revoke API key")
+                }
             }
         }
-        Ok(None) => HttpResponse::NotFound().json(json!({
-            "success": false,
-            "error": "API key not found"
-        })),
-        Err(e) => HttpResponse::InternalServerError().json(json!({
-            "success": false,
-            "error": format!("Database error: {}", e)
-        })),
+        Ok(None) => ApiResponse::<()>::not_found("API key"),
+        Err(e) => {
+            error!("Failed to retrieve API key: {}", e);
+            ApiResponse::<()>::internal_error("Failed to retrieve API key")
+        }
     }
 }
 
@@ -325,7 +299,7 @@ pub async fn revoke_api_key(
     path = "/admin/api/v1/api-keys/{uuid}/reassign",
     tag = "api-keys",
     params(
-        ("uuid" = Uuid, Path, description = "API key UUID to reassign")
+        ("uuid" = Uuid, Path, description = "UUID of the API key to reassign")
     ),
     request_body = ReassignApiKeyRequest,
     responses(
@@ -348,57 +322,44 @@ pub async fn reassign_api_key(
     auth: auth_enum::RequiredAuth,
 ) -> impl Responder {
     let pool = Arc::new(state.db_pool.clone());
+    let user_uuid = Uuid::parse_str(&auth.0.sub).expect("Invalid UUID in auth token");
     let api_key_uuid = path.into_inner();
-    let auth_user_uuid = Uuid::parse_str(&auth.0.sub).expect("Invalid UUID in auth token");
     let new_user_uuid = req.user_uuid;
 
-    // First, check if the key exists and the authenticated user is the creator
     let repo = ApiKeyRepository::new(pool);
 
+    // First, check if the API key exists and belongs to the user
     match repo.get_by_uuid(api_key_uuid).await {
-        Ok(Some(api_key)) => {
-            // Check if the authenticated user is authorized to reassign this key
-            if api_key.created_by != auth_user_uuid {
-                return HttpResponse::Forbidden().json(json!({
-                    "success": false,
-                    "error": "You do not have permission to reassign this API key"
-                }));
+        Ok(Some(key)) => {
+            if key.user_uuid != user_uuid {
+                return ApiResponse::<()>::forbidden("You don't have permission to reassign this API key");
             }
 
             // Check if the key with the same name already exists for the new user
-            match repo.get_by_name(new_user_uuid, &api_key.name).await {
+            match repo.get_by_name(new_user_uuid, &key.name).await {
                 Ok(Some(_)) => {
-                    return HttpResponse::BadRequest().json(json!({
-                        "success": false,
-                        "error": "An API key with this name already exists for the target user"
-                    }));
+                    return ApiResponse::<()>::conflict("An API key with this name already exists for the target user");
                 }
                 Ok(None) => {
                     // Reassign the key
                     match repo.reassign(api_key_uuid, new_user_uuid).await {
-                        Ok(_) => HttpResponse::Ok().json(json!({
-                            "success": true,
-                            "message": "API key reassigned successfully"
-                        })),
-                        Err(e) => HttpResponse::InternalServerError().json(json!({
-                            "success": false,
-                            "error": format!("Failed to reassign API key: {}", e)
-                        })),
+                        Ok(_) => ApiResponse::<()>::message("API key reassigned successfully"),
+                        Err(e) => {
+                            error!("Failed to reassign API key: {}", e);
+                            ApiResponse::<()>::internal_error("Failed to reassign API key")
+                        }
                     }
                 }
-                Err(e) => HttpResponse::InternalServerError().json(json!({
-                    "success": false,
-                    "error": format!("Database error checking for existing keys: {}", e)
-                })),
+                Err(e) => {
+                    error!("Failed to check for existing API key: {}", e);
+                    ApiResponse::<()>::internal_error("Failed to check for existing API key")
+                }
             }
         }
-        Ok(None) => HttpResponse::NotFound().json(json!({
-            "success": false,
-            "error": "API key not found"
-        })),
-        Err(e) => HttpResponse::InternalServerError().json(json!({
-            "success": false,
-            "error": format!("Database error: {}", e)
-        })),
+        Ok(None) => ApiResponse::<()>::not_found("API key"),
+        Err(e) => {
+            error!("Failed to retrieve API key: {}", e);
+            ApiResponse::<()>::internal_error("Failed to retrieve API key")
+        }
     }
 }

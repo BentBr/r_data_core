@@ -300,7 +300,7 @@ Todos:
 
 
 
-Task 3:
-- Fix the entities routes. currently nothing is coming back.
-- swager must be updated (dynamically) such as:
--- created class definitions must give respective endpoints in swagger public api doc so users see all entities and their fields with types etc.
+fixes:
+- getting all fields from dynamic entities
+- further refactoring
+- tests (unit and integration) for dynamic entities

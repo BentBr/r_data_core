@@ -11,6 +11,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// Service for managing class definitions
+#[derive(Clone)]
 pub struct ClassDefinitionService {
     repository: Arc<dyn ClassDefinitionRepositoryTrait>,
 }
@@ -724,7 +725,7 @@ mod tests {
         let uuid = Uuid::now_v7();
 
         // Create definitions separately to avoid borrow issues
-        let valid_definition = create_test_class_definition();
+        create_test_class_definition();
 
         // Create an invalid definition
         let mut invalid_definition = create_test_class_definition();

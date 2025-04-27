@@ -5,6 +5,7 @@ use std::sync::Arc;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use uuid::Uuid;
+use utoipa::ToSchema;
 
 use crate::entity::class::definition::ClassDefinition;
 use crate::entity::field::FieldDefinition;
@@ -112,7 +113,7 @@ impl ToValue for JsonValue {
 }
 
 /// A dynamic entity that can have any fields defined by its class definition
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct DynamicEntity {
     /// The type of the entity
     pub entity_type: String,
@@ -122,6 +123,7 @@ pub struct DynamicEntity {
 
     /// The class definition for this entity type
     #[serde(skip)]
+    #[schema(skip)]
     pub definition: Arc<ClassDefinition>,
 }
 

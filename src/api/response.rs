@@ -102,6 +102,15 @@ impl ApiResponse<()> {
         response.to_http_response(StatusCode::NOT_FOUND)
     }
 
+    pub fn conflict(message: &str) -> HttpResponse {
+        let response = Self {
+            status: Status::Error,
+            message: message.to_string(),
+            data: None,
+        };
+        response.to_http_response(StatusCode::CONFLICT)
+    }
+
     pub fn internal_error(message: &str) -> HttpResponse {
         let response = Self {
             status: Status::Error,

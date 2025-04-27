@@ -14,14 +14,14 @@ pub trait DynamicEntityRepositoryTrait: Send + Sync {
     /// Update an existing dynamic entity
     async fn update(&self, entity: &DynamicEntity) -> Result<()>;
 
-    /// Get a dynamic entity by type
-    async fn get_by_type(&self, entity_type: &str) -> Result<Option<DynamicEntity>>;
+    /// Get a dynamic entity by type and UUID
+    async fn get_by_type(&self, entity_type: &str, uuid: &Uuid) -> Result<Option<DynamicEntity>>;
 
-    /// Get all entities of a specific type
-    async fn get_all_by_type(&self, entity_type: &str) -> Result<Vec<DynamicEntity>>;
+    /// Get all entities of a specific type with pagination
+    async fn get_all_by_type(&self, entity_type: &str, limit: i64, offset: i64) -> Result<Vec<DynamicEntity>>;
 
-    /// Delete an entity by type
-    async fn delete_by_type(&self, entity_type: &str) -> Result<()>;
+    /// Delete an entity by type and UUID
+    async fn delete_by_type(&self, entity_type: &str, uuid: &Uuid) -> Result<()>;
 
     /// Filter entities by field values
     async fn filter_entities(

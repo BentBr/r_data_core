@@ -187,20 +187,28 @@ impl Modify for ModelSchemaAddon {
         crate::api::health::public_health_check,
         crate::api::public::entities::routes::list_available_entities,
         crate::api::public::entities::routes::get_entity,
-        crate::api::public::queries::routes::query_entities
+        crate::api::public::queries::routes::query_entities,
+        crate::api::public::dynamic_entity::list_entities,
+        crate::api::public::dynamic_entity::create_entity,
+        crate::api::public::dynamic_entity::get_entity,
+        crate::api::public::dynamic_entity::update_entity,
+        crate::api::public::dynamic_entity::delete_entity
     ),
     components(
         schemas(
             crate::api::models::HealthData,
             crate::api::public::entities::models::EntityTypeInfo,
             crate::api::public::entities::models::EntityQuery,
-            crate::api::public::queries::models::AdvancedEntityQuery
+            crate::api::public::queries::models::AdvancedEntityQuery,
+            crate::api::public::dynamic_entity::PaginationQuery,
+            crate::entity::dynamic_entity::entity::DynamicEntity
         )
     ),
     modifiers(&SecurityAddon, &UuidSchemaAddon, &DateTimeSchemaAddon, &ModelSchemaAddon),
     tags(
         (name = "public-health", description = "Public health check endpoints"),
-        (name = "public", description = "Public API endpoints")
+        (name = "public", description = "Public API endpoints"),
+        (name = "dynamic-entities", description = "Dynamic entity CRUD operations")
     ),
     info(
         title = "R Data Core Public API",

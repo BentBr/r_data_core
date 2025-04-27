@@ -10,6 +10,7 @@ use log::debug;
 use std::cell::RefCell;
 use std::future::Future;
 use std::pin::Pin;
+use uuid::Uuid;
 
 thread_local! {
     static PROCESSING_AUTH: RefCell<bool> = RefCell::new(false);
@@ -157,5 +158,24 @@ impl FromRequest for CombinedRequiredAuth {
                 "Authentication required. Please provide a valid JWT token or API key.",
             ))
         })
+    }
+}
+
+impl CombinedRequiredAuth {
+    /// Get user UUID from either JWT claims or API key info
+    pub fn get_user_uuid(&self) -> Option<Uuid> {
+        // Extract from API key information
+        if let Some(api_key_info) = &self.api_key_info {
+            return Some(api_key_info.user_uuid);
+        }
+        
+        // Or extract from JWT claims
+        if let Some(claims) = &self.jwt_claims {
+            if let Ok(uuid) = Uuid::parse_str(&claims.sub) {
+                return Some(uuid);
+            }
+        }
+        
+        None
     }
 }

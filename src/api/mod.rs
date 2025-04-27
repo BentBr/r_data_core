@@ -17,6 +17,7 @@ use crate::cache::CacheManager;
 use crate::services::AdminUserService;
 use crate::services::ApiKeyService;
 use crate::services::ClassDefinitionService;
+use crate::services::DynamicEntityService;
 
 /// Shared application state
 pub struct ApiState {
@@ -37,6 +38,9 @@ pub struct ApiState {
 
     /// Class Definition service
     pub class_definition_service: ClassDefinitionService,
+
+    /// Dynamic Entity service
+    pub dynamic_entity_service: Option<Arc<DynamicEntityService>>,
 }
 
 // 404 handler for API routes within scope
