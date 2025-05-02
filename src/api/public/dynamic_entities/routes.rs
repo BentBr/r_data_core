@@ -1,15 +1,15 @@
 use actix_web::{web, HttpResponse};
 use log::{error, info};
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use uuid::Uuid;
+use std::collections::HashMap;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
-use crate::api::ApiState;
 use crate::api::auth::auth_enum::CombinedRequiredAuth;
 use crate::api::middleware::ApiKeyInfo;
 use crate::api::response::ApiResponse;
+use crate::api::ApiState;
 use crate::entity::dynamic_entity::entity::DynamicEntity;
 use crate::error::Error;
 
@@ -167,11 +167,12 @@ async fn list_entities(
             .await
         {
             Ok(entities) => {
-                let response: Vec<DynamicEntityResponse> = entities.into_iter()
+                let response: Vec<DynamicEntityResponse> = entities
+                    .into_iter()
                     .map(DynamicEntityResponse::from)
                     .collect();
                 ApiResponse::ok(response)
-            },
+            }
             Err(e) => handle_entity_error(e, &entity_type),
         }
     } else {
@@ -226,9 +227,12 @@ async fn create_entity(
         {
             Ok(class_def) => {
                 if !class_def.published {
-                    return ApiResponse::<()>::not_found(&format!("Entity type {} not found or not published", entity_type));
+                    return ApiResponse::<()>::not_found(&format!(
+                        "Entity type {} not found or not published",
+                        entity_type
+                    ));
                 }
-                
+
                 // We need to create a dynamic entity
                 let uuid = Uuid::now_v7();
                 let mut field_data = entity.into_inner();
@@ -244,10 +248,7 @@ async fn create_entity(
 
                 match service.create_entity(&dynamic_entity).await {
                     Ok(_) => {
-                        let response_data = EntityResponse {
-                            uuid,
-                            entity_type,
-                        };
+                        let response_data = EntityResponse { uuid, entity_type };
                         ApiResponse::<EntityResponse>::created(response_data)
                     }
                     Err(e) => handle_entity_error(e, &entity_type),
@@ -373,13 +374,13 @@ async fn update_entity(
             Ok(Some(mut existing_entity)) => {
                 // Update the entity with the new data
                 let mut new_data = entity_data.into_inner();
-                
+
                 // Ensure UUID is consistent
                 new_data.insert("uuid".to_string(), json!(uuid.to_string()));
-                
+
                 // Add audit fields
                 new_data.insert("updated_by".to_string(), json!(user_uuid.to_string()));
-                
+
                 // Merge the new data with existing data (update only changed fields)
                 for (key, value) in new_data {
                     existing_entity.field_data.insert(key, value);
@@ -387,10 +388,7 @@ async fn update_entity(
 
                 match service.update_entity(&existing_entity).await {
                     Ok(_) => {
-                        let response_data = EntityResponse {
-                            uuid,
-                            entity_type,
-                        };
+                        let response_data = EntityResponse { uuid, entity_type };
                         ApiResponse::ok(response_data)
                     }
                     Err(e) => handle_entity_error(e, &entity_type),
@@ -452,9 +450,10 @@ async fn delete_entity(
 /// Helper function to handle entity-related errors
 fn handle_entity_error(error: Error, entity_type: &str) -> HttpResponse {
     match error {
-        Error::NotFound(_) => {
-            ApiResponse::<()>::not_found(&format!("Entity type '{}' not found or not published", entity_type))
-        }
+        Error::NotFound(_) => ApiResponse::<()>::not_found(&format!(
+            "Entity type '{}' not found or not published",
+            entity_type
+        )),
         Error::Validation(msg) => ApiResponse::<()>::unprocessable_entity(&msg),
         Error::Database(_) => {
             error!("Database error: {}", error);
@@ -465,4 +464,4 @@ fn handle_entity_error(error: Error, entity_type: &str) -> HttpResponse {
             ApiResponse::<()>::internal_error("Internal server error")
         }
     }
-} 
+}

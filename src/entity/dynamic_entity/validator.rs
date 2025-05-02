@@ -23,7 +23,11 @@ impl<'a> ValidationContext<'a> {
         }
     }
 
-    pub fn with_field_name(field_def: &'a FieldDefinition, value: &'a Value, field_name: &'a str) -> Self {
+    pub fn with_field_name(
+        field_def: &'a FieldDefinition,
+        value: &'a Value,
+        field_name: &'a str,
+    ) -> Self {
         Self {
             field_def,
             field_name,
@@ -38,18 +42,18 @@ impl<'a> ValidationContext<'a> {
     pub fn validate_number_range(&self, num_value: f64) -> Result<()> {
         // Range validation
         if let Some(min_value) = &self.field_def.validation.min_value {
-            let min = min_value.as_f64().ok_or_else(|| {
-                self.create_validation_error("has invalid min_value")
-            })?;
+            let min = min_value
+                .as_f64()
+                .ok_or_else(|| self.create_validation_error("has invalid min_value"))?;
             if num_value < min {
                 return Err(self.create_validation_error(&format!("must be at least {}", min)));
             }
         }
 
         if let Some(max_value) = &self.field_def.validation.max_value {
-            let max = max_value.as_f64().ok_or_else(|| {
-                self.create_validation_error("has invalid max_value")
-            })?;
+            let max = max_value
+                .as_f64()
+                .ok_or_else(|| self.create_validation_error("has invalid max_value"))?;
             if num_value > max {
                 return Err(self.create_validation_error(&format!("must be no more than {}", max)));
             }
@@ -68,7 +72,8 @@ impl<'a> ValidationContext<'a> {
     pub fn check_required(&self) -> Result<bool> {
         // Check if the field is required and the value is null or empty
         if self.field_def.required
-            && (self.value.is_null() || (self.value.is_string() && self.value.as_str().unwrap().is_empty()))
+            && (self.value.is_null()
+                || (self.value.is_string() && self.value.as_str().unwrap().is_empty()))
         {
             return Err(self.create_validation_error("is required"));
         }
@@ -85,13 +90,13 @@ impl DynamicEntityValidator {
     /// Validate a field against its definition
     pub fn validate_field(field_def: &FieldDefinition, value: &Value) -> Result<()> {
         let ctx = ValidationContext::new(field_def, value);
-        
+
         // Skip further validation if not required and null
         if !ctx.check_required()? {
             return Ok(());
         }
 
-        // Validate based on field type
+        // Validate based on a field type
         match field_def.field_type {
             FieldType::String | FieldType::Text | FieldType::Wysiwyg => Self::validate_string(&ctx),
             FieldType::Integer => Self::validate_integer(&ctx),
@@ -122,7 +127,8 @@ impl DynamicEntityValidator {
         if let Some(min_length) = ctx.field_def.validation.min_length {
             if string_value.len() < min_length {
                 return Err(ctx.create_validation_error(&format!(
-                    "must be at least {} characters", min_length
+                    "must be at least {} characters",
+                    min_length
                 )));
             }
         }
@@ -130,7 +136,8 @@ impl DynamicEntityValidator {
         if let Some(max_length) = ctx.field_def.validation.max_length {
             if string_value.len() > max_length {
                 return Err(ctx.create_validation_error(&format!(
-                    "must be no more than {} characters", max_length
+                    "must be no more than {} characters",
+                    max_length
                 )));
             }
         }
@@ -140,14 +147,14 @@ impl DynamicEntityValidator {
             match Regex::new(pattern) {
                 Ok(re) => {
                     if !re.is_match(string_value) {
-                        return Err(ctx.create_validation_error(&format!(
-                            "must match pattern: {}", pattern
-                        )));
+                        return Err(ctx
+                            .create_validation_error(&format!("must match pattern: {}", pattern)));
                     }
                 }
                 Err(_) => {
                     return Err(ctx.create_validation_error(&format!(
-                        "has invalid regex pattern: {}", pattern
+                        "has invalid regex pattern: {}",
+                        pattern
                     )));
                 }
             }
@@ -161,9 +168,9 @@ impl DynamicEntityValidator {
         let int_value = match ctx.value {
             Value::Number(n) if n.is_i64() => n.as_i64().unwrap(),
             Value::Number(n) if n.is_u64() => n.as_u64().unwrap() as i64,
-            Value::String(s) => s.parse::<i64>().map_err(|_| {
-                ctx.create_validation_error("must be a valid integer")
-            })?,
+            Value::String(s) => s
+                .parse::<i64>()
+                .map_err(|_| ctx.create_validation_error("must be a valid integer"))?,
             _ => {
                 return Err(ctx.create_validation_error("must be an integer"));
             }
@@ -178,9 +185,9 @@ impl DynamicEntityValidator {
     fn validate_float(ctx: &ValidationContext) -> Result<()> {
         let float_value = match ctx.value {
             Value::Number(n) => n.as_f64().unwrap(),
-            Value::String(s) => s.parse::<f64>().map_err(|_| {
-                ctx.create_validation_error("must be a valid number")
-            })?,
+            Value::String(s) => s
+                .parse::<f64>()
+                .map_err(|_| ctx.create_validation_error("must be a valid number"))?,
             _ => {
                 return Err(ctx.create_validation_error("must be a number"));
             }
@@ -249,13 +256,14 @@ impl DynamicEntityValidator {
             let min_date = if min_date_str == "now" {
                 now
             } else {
-                Date::parse(min_date_str, &format).map_err(|_| {
-                    ctx.create_validation_error("Invalid min_date format")
-                })?
+                Date::parse(min_date_str, &format)
+                    .map_err(|_| ctx.create_validation_error("Invalid min_date format"))?
             };
 
             if date < min_date {
-                return Err(ctx.create_validation_error(&format!("must be on or after {}", min_date)));
+                return Err(
+                    ctx.create_validation_error(&format!("must be on or after {}", min_date))
+                );
             }
         }
 
@@ -263,13 +271,14 @@ impl DynamicEntityValidator {
             let max_date = if max_date_str == "now" {
                 now
             } else {
-                Date::parse(max_date_str, &format).map_err(|_| {
-                    ctx.create_validation_error("Invalid max_date format")
-                })?
+                Date::parse(max_date_str, &format)
+                    .map_err(|_| ctx.create_validation_error("Invalid max_date format"))?
             };
 
             if date > max_date {
-                return Err(ctx.create_validation_error(&format!("must be on or before {}", max_date)));
+                return Err(
+                    ctx.create_validation_error(&format!("must be on or before {}", max_date))
+                );
             }
         }
 
@@ -300,13 +309,13 @@ impl DynamicEntityValidator {
                 now
             } else {
                 OffsetDateTime::parse(min_date_str, &time::format_description::well_known::Rfc3339)
-                    .map_err(|_| {
-                        ctx.create_validation_error("Invalid min_date format")
-                    })?
+                    .map_err(|_| ctx.create_validation_error("Invalid min_date format"))?
             };
 
             if datetime < min_date {
-                return Err(ctx.create_validation_error(&format!("must be on or after {}", min_date)));
+                return Err(
+                    ctx.create_validation_error(&format!("must be on or after {}", min_date))
+                );
             }
         }
 
@@ -315,13 +324,13 @@ impl DynamicEntityValidator {
                 now
             } else {
                 OffsetDateTime::parse(max_date_str, &time::format_description::well_known::Rfc3339)
-                    .map_err(|_| {
-                        ctx.create_validation_error("Invalid max_date format")
-                    })?
+                    .map_err(|_| ctx.create_validation_error("Invalid max_date format"))?
             };
 
             if datetime > max_date {
-                return Err(ctx.create_validation_error(&format!("must be on or before {}", max_date)));
+                return Err(
+                    ctx.create_validation_error(&format!("must be on or before {}", max_date))
+                );
             }
         }
 
@@ -337,9 +346,8 @@ impl DynamicEntityValidator {
             }
         };
 
-        Uuid::parse_str(uuid_str).map_err(|_| {
-            ctx.create_validation_error("must be a valid UUID")
-        })?;
+        Uuid::parse_str(uuid_str)
+            .map_err(|_| ctx.create_validation_error("must be a valid UUID"))?;
 
         Ok(())
     }
@@ -474,10 +482,11 @@ pub fn validate_field(field_def: &Value, value: &Value, field_name: &str) -> Res
 
 pub fn validate_entity(entity: &Value, class_def: &ClassDefinition) -> Result<()> {
     let mut validation_errors = Vec::new();
-    let entity_type = entity.get("entity_type")
+    let entity_type = entity
+        .get("entity_type")
         .and_then(|v| v.as_str())
         .ok_or_else(|| Error::Validation("Entity must have an entity_type field".to_string()))?;
-    
+
     if entity_type != class_def.entity_type {
         return Err(Error::Validation(format!(
             "Entity type '{}' does not match class definition type '{}'",
@@ -485,7 +494,8 @@ pub fn validate_entity(entity: &Value, class_def: &ClassDefinition) -> Result<()
         )));
     }
 
-    let field_data = entity.get("field_data")
+    let field_data = entity
+        .get("field_data")
         .and_then(|v| v.as_object())
         .ok_or_else(|| Error::Validation("Entity must have a field_data object".to_string()))?;
 
@@ -506,8 +516,14 @@ pub fn validate_entity(entity: &Value, class_def: &ClassDefinition) -> Result<()
         } else {
             // Skip system fields
             let system_fields = [
-                "uuid", "path", "created_at", "updated_at", 
-                "created_by", "updated_by", "published", "version"
+                "uuid",
+                "path",
+                "created_at",
+                "updated_at",
+                "created_by",
+                "updated_by",
+                "published",
+                "version",
             ];
             if !system_fields.contains(&field_name.as_str()) {
                 validation_errors.push(format!("Unknown field '{}'", field_name));

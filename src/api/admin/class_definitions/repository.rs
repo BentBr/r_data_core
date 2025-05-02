@@ -24,7 +24,7 @@ impl ClassDefinitionRepository {
     fn get_pool(&self) -> &PgPool {
         &self.db_pool
     }
-    
+
     /// Check if a view exists in the database
     async fn check_view_exists(&self, view_name: &str) -> Result<bool> {
         // First check for views
@@ -63,9 +63,12 @@ impl ClassDefinitionRepository {
 
         Ok(table_exists)
     }
-    
+
     /// Get columns and their types for a view
-    async fn get_view_columns_with_types(&self, view_name: &str) -> Result<HashMap<String, String>> {
+    async fn get_view_columns_with_types(
+        &self,
+        view_name: &str,
+    ) -> Result<HashMap<String, String>> {
         let columns = sqlx::query!(
             r#"
             SELECT column_name, data_type 
@@ -87,20 +90,17 @@ impl ClassDefinitionRepository {
 
         Ok(column_types)
     }
-    
+
     /// Count records in a view or table
     async fn count_view_records(&self, table_name: &str) -> Result<i64> {
-        let count = sqlx::query_scalar::<_, i64>(&format!(
-            "SELECT COUNT(*) FROM {}",
-            table_name
-        ))
-        .fetch_one(&self.db_pool)
-        .await
-        .map_err(Error::Database)?;
+        let count = sqlx::query_scalar::<_, i64>(&format!("SELECT COUNT(*) FROM {}", table_name))
+            .fetch_one(&self.db_pool)
+            .await
+            .map_err(Error::Database)?;
 
         Ok(count)
     }
-    
+
     /// Get all column names for a table or view
     async fn get_existing_table_columns(&self, table_name: &str) -> Result<Vec<String>> {
         let columns = sqlx::query!(
@@ -120,7 +120,7 @@ impl ClassDefinitionRepository {
             .filter_map(|col| col.column_name)
             .collect())
     }
-    
+
     /// Get available columns from the entities_registry table
     async fn get_available_registry_columns(&self) -> Result<Vec<String>> {
         let columns = sqlx::query!(
@@ -549,7 +549,10 @@ impl ClassDefinitionRepositoryTrait for ClassDefinitionRepository {
     }
 
     /// Get columns and their types for a view
-    async fn get_view_columns_with_types(&self, view_name: &str) -> Result<HashMap<String, String>> {
+    async fn get_view_columns_with_types(
+        &self,
+        view_name: &str,
+    ) -> Result<HashMap<String, String>> {
         let columns = sqlx::query!(
             r#"
             SELECT column_name, data_type 
@@ -571,16 +574,13 @@ impl ClassDefinitionRepositoryTrait for ClassDefinitionRepository {
 
         Ok(column_types)
     }
-    
+
     /// Count records in a view or table
     async fn count_view_records(&self, view_name: &str) -> Result<i64> {
-        let count = sqlx::query_scalar::<_, i64>(&format!(
-            "SELECT COUNT(*) FROM {}",
-            view_name
-        ))
-        .fetch_one(&self.db_pool)
-        .await
-        .map_err(Error::Database)?;
+        let count = sqlx::query_scalar::<_, i64>(&format!("SELECT COUNT(*) FROM {}", view_name))
+            .fetch_one(&self.db_pool)
+            .await
+            .map_err(Error::Database)?;
 
         Ok(count)
     }

@@ -1,8 +1,5 @@
-use sqlx::PgPool;
-use uuid::Uuid;
-use std::collections::HashMap;
 use crate::error::Result;
-use serde_json::Value;
+use sqlx::PgPool;
 
 pub struct DynamicEntityRepository {
     db_pool: PgPool,
@@ -39,4 +36,4 @@ impl DynamicEntityRepository {
 
         Ok(count)
     }
-} 
+}

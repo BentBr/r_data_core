@@ -8,8 +8,6 @@ use uuid::Uuid;
 use crate::entity::class::definition::ClassDefinition;
 use crate::entity::dynamic_entity::entity::DynamicEntity;
 use crate::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
-use crate::entity::field::FieldDefinition;
-use crate::entity::DynamicFields;
 use crate::error::{Error, Result};
 use crate::services::ClassDefinitionService;
 
@@ -38,14 +36,19 @@ impl DynamicEntityService {
     }
 
     // Check if entity type exists and is published - common check for all operations
-    async fn check_entity_type_exists_and_published(&self, entity_type: &str) -> Result<ClassDefinition> {
-        let class_definition = self.class_definition_service
+    async fn check_entity_type_exists_and_published(
+        &self,
+        entity_type: &str,
+    ) -> Result<ClassDefinition> {
+        let class_definition = self
+            .class_definition_service
             .get_class_definition_by_entity_type(entity_type)
             .await?;
-        
+
         if !class_definition.published {
             return Err(Error::NotFound(format!(
-                "Entity type '{}' not found or not published", entity_type
+                "Entity type '{}' not found or not published",
+                entity_type
             )));
         }
 
@@ -61,8 +64,9 @@ impl DynamicEntityService {
         exclusive_fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>> {
         // Verify the entity type exists and is published
-        self.check_entity_type_exists_and_published(entity_type).await?;
-        
+        self.check_entity_type_exists_and_published(entity_type)
+            .await?;
+
         self.repository
             .get_all_by_type(entity_type, limit, offset, exclusive_fields)
             .await
@@ -71,8 +75,9 @@ impl DynamicEntityService {
     /// Count entities of a specific type
     pub async fn count_entities(&self, entity_type: &str) -> Result<i64> {
         // Verify the entity type exists and is published
-        self.check_entity_type_exists_and_published(entity_type).await?;
-        
+        self.check_entity_type_exists_and_published(entity_type)
+            .await?;
+
         self.repository.count_entities(entity_type).await
     }
 
@@ -84,8 +89,9 @@ impl DynamicEntityService {
         exclusive_fields: Option<Vec<String>>,
     ) -> Result<Option<DynamicEntity>> {
         // Verify the entity type exists and is published
-        self.check_entity_type_exists_and_published(entity_type).await?;
-        
+        self.check_entity_type_exists_and_published(entity_type)
+            .await?;
+
         self.repository
             .get_by_type(entity_type, uuid, exclusive_fields)
             .await
@@ -94,8 +100,9 @@ impl DynamicEntityService {
     /// Create a new entity with validation
     pub async fn create_entity(&self, entity: &DynamicEntity) -> Result<()> {
         // Check if the entity type is published
-        self.check_entity_type_exists_and_published(&entity.entity_type).await?;
-        
+        self.check_entity_type_exists_and_published(&entity.entity_type)
+            .await?;
+
         // Validate entity against class definition
         self.validate_entity(entity)?;
 
@@ -105,8 +112,9 @@ impl DynamicEntityService {
     /// Update an existing entity with validation
     pub async fn update_entity(&self, entity: &DynamicEntity) -> Result<()> {
         // Check if the entity type is published
-        self.check_entity_type_exists_and_published(&entity.entity_type).await?;
-        
+        self.check_entity_type_exists_and_published(&entity.entity_type)
+            .await?;
+
         // Validate entity against class definition
         self.validate_entity(entity)?;
 
@@ -116,8 +124,9 @@ impl DynamicEntityService {
     /// Delete an entity
     pub async fn delete_entity(&self, entity_type: &str, uuid: &Uuid) -> Result<()> {
         // Verify the entity type exists and is published
-        self.check_entity_type_exists_and_published(entity_type).await?;
-        
+        self.check_entity_type_exists_and_published(entity_type)
+            .await?;
+
         self.repository.delete_by_type(entity_type, uuid).await
     }
 
@@ -229,7 +238,8 @@ impl DynamicEntityService {
         exclusive_fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>> {
         // Verify the entity type exists and is published
-        self.check_entity_type_exists_and_published(entity_type).await?;
+        self.check_entity_type_exists_and_published(entity_type)
+            .await?;
 
         self.repository
             .filter_entities(entity_type, filters, limit, offset, exclusive_fields)
@@ -476,7 +486,7 @@ mod tests {
             .expect_get_by_entity_type()
             .with(predicate::eq("test_entity"))
             .returning(move |_| Ok(Some(create_test_class_definition())));
-        
+
         // Create a new entity with only age field (missing both uuid and required "name" field)
         // Without the uuid field, this will be treated as a create operation
         let entity = DynamicEntity {
@@ -494,10 +504,10 @@ mod tests {
         // Create service with proper mocks
         let class_service = ClassDefinitionService::new(Arc::new(class_repo));
         let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
-        
+
         // Try to create the entity, should fail because of missing required field
         let result = service.create_entity(&entity).await;
-        
+
         // Check that we got a validation error
         assert!(result.is_err());
         match result {

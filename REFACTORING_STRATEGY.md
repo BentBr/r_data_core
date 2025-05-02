@@ -54,6 +54,22 @@ We've implemented the first phase of the refactoring strategy, focusing on the A
 6. ✅ Add integration tests for the dynamic entity repository
 7. ✅ Implemented RESTful API for dynamic entities in the public API with custom namespaces
 
+### Testing Improvements
+1. ✅ Created a comprehensive test plan document with focus on:
+   - Three-layered testing approach (Unit, Integration, API)
+   - Edge case identification and testing strategy
+   - Test coverage goals and metrics
+   - Implementation phases and priorities
+2. ✅ Improved dynamic entity service test coverage:
+   - Added comprehensive unit tests with mock repositories
+   - Added tests for field validation (pattern, range, enum)
+   - Added edge case tests (missing fields, unknown fields, malformed data)
+3. ✅ Added API route tests for dynamic entities:
+   - Tests for all CRUD operations
+   - Tests for error handling
+   - Tests for edge cases (malformed JSON, mismatched types)
+   - Tests for complex filtering
+
 ## Next Steps
 
 To continue the refactoring:
@@ -86,7 +102,8 @@ To continue the refactoring:
    - ✅ Add service tests for API keys
    - ✅ Add service tests for admin users
    - ✅ Add service tests for class definitions
-   - 🔄 Add placeholder tests for dynamic entity repository 
+   - ✅ Add comprehensive tests for dynamic entity service 
+   - ✅ Add API route tests for dynamic entities
    - 🔄 Add integration tests for all API endpoints
    - 🔄 Add repository tests for all database operations
    - 🔄 Add service tests for all business logic
@@ -102,6 +119,8 @@ To continue the refactoring:
 7. ✅ Removed verbose adapter implementation from main.rs to services/adapters.rs
 8. ✅ Fixed bug in class definition service to properly check for duplicate entity types
 9. ✅ Added public interfaces for dynamic entity repository and trait
+10. ✅ Added comprehensive test coverage for dynamic entity service
+11. ✅ Added API route tests for dynamic entities with edge cases
 
 ## Testing Strategy
 
@@ -148,6 +167,8 @@ By following this strategy, the codebase will become more maintainable, testable
 4. **Adapter Pattern**: Use adapters to implement traits for external types without modifying them
 5. **Testing Isolation**: Use mock repositories for unit testing services
 6. **Validation Flow**: Validate inputs before processing database operations to fail fast and prevent data corruption
+7. **Edge Case Testing**: Test boundary conditions and error paths thoroughly
+8. **API Contract Testing**: Ensure API endpoints adhere to the expected contract
 
 ## Repository Adapter Pattern
 
@@ -180,3 +201,30 @@ let service = ClassDefinitionService::new(Arc::new(adapter));
 ```
 
 This pattern keeps the codebase clean and maintainable as more repositories and services are added. 
+
+## Edge Case Testing Strategy
+
+For thorough testing, we now focus on these categories of edge cases:
+
+1. **Data Validation**:
+   - Empty/null inputs
+   - Boundary values (min/max)
+   - Malformed data
+   - Type mismatches
+   - Pattern violations (emails, URLs)
+   - Duplicate data where uniqueness required
+
+2. **Resource Handling**:
+   - Not found scenarios
+   - Permission/authorization failures
+   - Rate limiting behavior
+   - Concurrent access
+
+3. **API Interactions**:
+   - Malformed requests
+   - Missing parameters
+   - Invalid parameter types
+   - Error response codes
+   - Content negotiation
+
+A detailed test plan has been created in TEST_PLAN.md to guide future testing efforts. 

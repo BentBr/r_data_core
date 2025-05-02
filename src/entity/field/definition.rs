@@ -52,15 +52,17 @@ pub struct FieldDefinition {
 pub trait FieldDefinitionModule {
     /// Validate a field definition for common issues like invalid constraints
     fn validate(&self) -> Result<()>;
-    
+
     /// Validate a value against this field definition
     fn validate_value(&self, value: &Value) -> Result<()>;
-    
+
     /// Get the SQL type for this field
     fn get_sql_type(&self) -> String;
-    
+
     /// Create a field definition with default values
-    fn new_with_defaults(name: String, display_name: String, field_type: FieldType) -> Self where Self: Sized;
+    fn new_with_defaults(name: String, display_name: String, field_type: FieldType) -> Self
+    where
+        Self: Sized;
 }
 
 // Manual implementation of Deserialize for FieldDefinition to handle constraints

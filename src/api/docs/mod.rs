@@ -193,10 +193,12 @@ impl Modify for JsonValueSchemaAddon {
                     .format(Some(SchemaFormat::Custom("json".to_owned())))
                     .description(Some("JSON value"))
                     .example(Some(serde_json::json!({"example": "value"})))
-                    .build()
+                    .build(),
             );
-            
-            components.schemas.insert("Value".to_owned(), utoipa::openapi::RefOr::T(schema));
+
+            components
+                .schemas
+                .insert("Value".to_owned(), utoipa::openapi::RefOr::T(schema));
         }
     }
 }
