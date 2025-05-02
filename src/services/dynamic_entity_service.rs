@@ -37,6 +37,21 @@ impl DynamicEntityService {
         &self.repository
     }
 
+    // Check if entity type exists and is published - common check for all operations
+    async fn check_entity_type_exists_and_published(&self, entity_type: &str) -> Result<ClassDefinition> {
+        let class_definition = self.class_definition_service
+            .get_class_definition_by_entity_type(entity_type)
+            .await?;
+        
+        if !class_definition.published {
+            return Err(Error::NotFound(format!(
+                "Entity type '{}' not found or not published", entity_type
+            )));
+        }
+
+        Ok(class_definition)
+    }
+
     /// List entities with pagination
     pub async fn list_entities(
         &self,
@@ -45,11 +60,9 @@ impl DynamicEntityService {
         offset: i64,
         exclusive_fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>> {
-        // Verify the entity type exists
-        self.class_definition_service
-            .get_class_definition_by_entity_type(entity_type)
-            .await?;
-
+        // Verify the entity type exists and is published
+        self.check_entity_type_exists_and_published(entity_type).await?;
+        
         self.repository
             .get_all_by_type(entity_type, limit, offset, exclusive_fields)
             .await
@@ -57,11 +70,9 @@ impl DynamicEntityService {
 
     /// Count entities of a specific type
     pub async fn count_entities(&self, entity_type: &str) -> Result<i64> {
-        // Verify the entity type exists
-        self.class_definition_service
-            .get_class_definition_by_entity_type(entity_type)
-            .await?;
-
+        // Verify the entity type exists and is published
+        self.check_entity_type_exists_and_published(entity_type).await?;
+        
         self.repository.count_entities(entity_type).await
     }
 
@@ -72,11 +83,9 @@ impl DynamicEntityService {
         uuid: &Uuid,
         exclusive_fields: Option<Vec<String>>,
     ) -> Result<Option<DynamicEntity>> {
-        // Verify the entity type exists
-        self.class_definition_service
-            .get_class_definition_by_entity_type(entity_type)
-            .await?;
-
+        // Verify the entity type exists and is published
+        self.check_entity_type_exists_and_published(entity_type).await?;
+        
         self.repository
             .get_by_type(entity_type, uuid, exclusive_fields)
             .await
@@ -84,8 +93,9 @@ impl DynamicEntityService {
 
     /// Create a new entity with validation
     pub async fn create_entity(&self, entity: &DynamicEntity) -> Result<()> {
-        // The class definition should already be in the entity
-
+        // Check if the entity type is published
+        self.check_entity_type_exists_and_published(&entity.entity_type).await?;
+        
         // Validate entity against class definition
         self.validate_entity(entity)?;
 
@@ -94,8 +104,9 @@ impl DynamicEntityService {
 
     /// Update an existing entity with validation
     pub async fn update_entity(&self, entity: &DynamicEntity) -> Result<()> {
-        // The class definition should already be in the entity
-
+        // Check if the entity type is published
+        self.check_entity_type_exists_and_published(&entity.entity_type).await?;
+        
         // Validate entity against class definition
         self.validate_entity(entity)?;
 
@@ -104,11 +115,9 @@ impl DynamicEntityService {
 
     /// Delete an entity
     pub async fn delete_entity(&self, entity_type: &str, uuid: &Uuid) -> Result<()> {
-        // Verify the entity type exists
-        self.class_definition_service
-            .get_class_definition_by_entity_type(entity_type)
-            .await?;
-
+        // Verify the entity type exists and is published
+        self.check_entity_type_exists_and_published(entity_type).await?;
+        
         self.repository.delete_by_type(entity_type, uuid).await
     }
 
@@ -118,7 +127,45 @@ impl DynamicEntityService {
         let mut validation_errors = Vec::new();
 
         // Check for unknown fields - fields in the data that are not defined in the class definition
-        let mut unknown_fields = Vec::new();
+        let unknown_fields = self.check_unknown_fields(entity);
+        if !unknown_fields.is_empty() {
+            validation_errors.push(format!(
+                "Unknown fields found: {}. Only fields defined in the class definition are allowed.",
+                unknown_fields.join(", ")
+            ));
+        }
+
+        // For update operations, we only need to validate the fields that are being submitted
+        // For create operations, check all required fields
+        let is_update = self.is_update_operation(entity);
+        debug!("Validation - is update operation: {}", is_update);
+
+        if !is_update {
+            // This is a create operation, so check all required fields
+            self.check_required_fields(entity, &mut validation_errors);
+        }
+
+        // Validate field values against their types and constraints (only for fields that are present)
+        self.validate_field_values(entity, &mut validation_errors);
+
+        // If we've collected any errors, return them all as one validation error
+        if !validation_errors.is_empty() {
+            return Err(Error::Validation(format!(
+                "Validation failed with the following errors: {}",
+                validation_errors.join("; ")
+            )));
+        }
+
+        Ok(())
+    }
+
+    // Check if this is an update operation based on presence of UUID
+    fn is_update_operation(&self, entity: &DynamicEntity) -> bool {
+        entity.field_data.contains_key("uuid") && entity.field_data.get("uuid").is_some()
+    }
+
+    // Check for unknown fields
+    fn check_unknown_fields(&self, entity: &DynamicEntity) -> Vec<String> {
         let reserved_fields = [
             "uuid",
             "path",
@@ -130,6 +177,7 @@ impl DynamicEntityService {
             "version",
         ];
 
+        let mut unknown_fields = Vec::new();
         for field_name in entity.field_data.keys() {
             // Skip system/reserved fields
             if reserved_fields.contains(&field_name.as_str()) {
@@ -147,29 +195,20 @@ impl DynamicEntityService {
             }
         }
 
-        if !unknown_fields.is_empty() {
-            validation_errors.push(format!(
-                "Unknown fields found: {}. Only fields defined in the class definition are allowed.",
-                unknown_fields.join(", ")
-            ));
-        }
+        unknown_fields
+    }
 
-        // For update operations, we only need to validate the fields that are being submitted
-        // For create operations, check all required fields
-        let is_update =
-            entity.field_data.contains_key("uuid") && entity.field_data.get("uuid").is_some();
-        debug!("Validation - is update operation: {}", is_update);
-
-        if !is_update {
-            // This is a create operation, so check all required fields
-            for field in &entity.definition.fields {
-                if field.required && !entity.field_data.contains_key(&field.name) {
-                    validation_errors.push(format!("Required field '{}' is missing", field.name));
-                }
+    // Check required fields
+    fn check_required_fields(&self, entity: &DynamicEntity, validation_errors: &mut Vec<String>) {
+        for field in &entity.definition.fields {
+            if field.required && !entity.field_data.contains_key(&field.name) {
+                validation_errors.push(format!("Required field '{}' is missing", field.name));
             }
         }
+    }
 
-        // Validate field values against their types and constraints (only for fields that are present)
+    // Validate field values
+    fn validate_field_values(&self, entity: &DynamicEntity, validation_errors: &mut Vec<String>) {
         for field in &entity.definition.fields {
             if let Some(value) = entity.field_data.get(&field.name) {
                 if let Err(e) = field.validate_value(value) {
@@ -178,16 +217,6 @@ impl DynamicEntityService {
                 }
             }
         }
-
-        // If we've collected any errors, return them all as one validation error
-        if !validation_errors.is_empty() {
-            return Err(Error::Validation(format!(
-                "Validation failed with the following errors: {}",
-                validation_errors.join("; ")
-            )));
-        }
-
-        Ok(())
     }
 
     /// Filter entities based on field values
@@ -199,14 +228,18 @@ impl DynamicEntityService {
         offset: i64,
         exclusive_fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>> {
-        // Verify the entity type exists
-        self.class_definition_service
-            .get_class_definition_by_entity_type(entity_type)
-            .await?;
+        // Verify the entity type exists and is published
+        self.check_entity_type_exists_and_published(entity_type).await?;
 
         self.repository
             .filter_entities(entity_type, filters, limit, offset, exclusive_fields)
             .await
+    }
+
+    /// Validate an entity against its class definition - exported for testing
+    #[cfg(test)]
+    pub fn validate_entity_for_test(&self, entity: &DynamicEntity) -> Result<()> {
+        self.validate_entity(entity)
     }
 }
 
@@ -309,7 +342,7 @@ mod tests {
                     constraints: HashMap::new(),
                 },
             ],
-            published: false,
+            published: true,
         }
     }
 
@@ -405,9 +438,15 @@ mod tests {
     #[tokio::test]
     async fn test_create_entity() -> Result<()> {
         let mut repo = MockDynamicEntityRepo::new();
-        let class_repo = MockClassDefinitionRepo::new();
+        let mut class_repo = MockClassDefinitionRepo::new();
 
         let entity = create_test_entity();
+
+        // Setup mock class definition repository to return a published class definition
+        class_repo
+            .expect_get_by_entity_type()
+            .with(predicate::eq("test_entity"))
+            .returning(|_| Ok(Some(create_test_class_definition())));
 
         // Setup mock repository response
         repo.expect_create()
@@ -429,23 +468,43 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_entity_missing_required_field() -> Result<()> {
-        let repo = MockDynamicEntityRepo::new();
-        let class_repo = MockClassDefinitionRepo::new();
+        let mut repo = MockDynamicEntityRepo::new();
+        let mut class_repo = MockClassDefinitionRepo::new();
 
-        // Create entity with missing required field
-        let mut entity = create_test_entity();
-        entity.field_data.remove("name");
+        // Setup mock class definition repository
+        class_repo
+            .expect_get_by_entity_type()
+            .with(predicate::eq("test_entity"))
+            .returning(move |_| Ok(Some(create_test_class_definition())));
+        
+        // Create a new entity with only age field (missing both uuid and required "name" field)
+        // Without the uuid field, this will be treated as a create operation
+        let entity = DynamicEntity {
+            entity_type: "test_entity".to_string(),
+            field_data: {
+                let mut fields = HashMap::new();
+                // NOT adding uuid field - this is important to test create validation logic
+                fields.insert("age".to_string(), json!(30));
+                // Explicitly NOT adding the required "name" field
+                fields
+            },
+            definition: Arc::new(create_test_class_definition()),
+        };
 
         // Create service with proper mocks
         let class_service = ClassDefinitionService::new(Arc::new(class_repo));
         let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
-
+        
+        // Try to create the entity, should fail because of missing required field
         let result = service.create_entity(&entity).await;
-
+        
+        // Check that we got a validation error
         assert!(result.is_err());
         match result {
-            Err(Error::Validation(_)) => (),
-            _ => panic!("Expected validation error"),
+            Err(Error::Validation(msg)) => {
+                assert!(msg.contains("Required field 'name' is missing"));
+            }
+            _ => panic!("Expected validation error, got: {:?}", result),
         }
 
         Ok(())

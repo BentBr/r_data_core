@@ -1,0 +1,468 @@
+use actix_web::{web, HttpResponse};
+use log::{error, info};
+use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use uuid::Uuid;
+use utoipa::ToSchema;
+
+use crate::api::ApiState;
+use crate::api::auth::auth_enum::CombinedRequiredAuth;
+use crate::api::middleware::ApiKeyInfo;
+use crate::api::response::ApiResponse;
+use crate::entity::dynamic_entity::entity::DynamicEntity;
+use crate::error::Error;
+
+use super::repository::DynamicEntityRepository;
+
+/// Register routes for dynamic entities
+pub fn register_routes(cfg: &mut web::ServiceConfig) {
+    info!("Registering dynamic entity routes");
+    cfg.service(
+        web::scope("")
+            .route("/{entity_type}", web::get().to(list_entities))
+            .route("/{entity_type}", web::post().to(create_entity))
+            .route("/{entity_type}/{uuid}", web::get().to(get_entity))
+            .route("/{entity_type}/{uuid}", web::put().to(update_entity))
+            .route("/{entity_type}/{uuid}", web::delete().to(delete_entity)),
+    );
+}
+
+/// Schema for dynamic entity serialization
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct DynamicEntityResponse {
+    pub entity_type: String,
+    pub field_data: HashMap<String, Value>,
+}
+
+impl From<DynamicEntity> for DynamicEntityResponse {
+    fn from(entity: DynamicEntity) -> Self {
+        Self {
+            entity_type: entity.entity_type,
+            field_data: entity.field_data,
+        }
+    }
+}
+
+/// Response for entity creation/update
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct EntityResponse {
+    pub uuid: Uuid,
+    pub entity_type: String,
+}
+
+/// Query parameters for pagination and field selection
+#[derive(Deserialize, ToSchema)]
+pub struct PaginationQuery {
+    /// Maximum number of entities to return
+    pub limit: Option<i64>,
+    /// Number of entities to skip
+    pub offset: Option<i64>,
+    /// Comma-separated list of fields to exclusively return (ignores others)
+    pub exclusive_fields: Option<String>,
+}
+
+impl PaginationQuery {
+    /// Parse exclusive fields from the query string
+    pub fn parse_exclusive_fields(&self) -> Option<Vec<String>> {
+        self.exclusive_fields.as_ref().map(|fields| {
+            fields
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect::<Vec<String>>()
+        })
+    }
+}
+
+/// Helper to validate requested fields against class definition
+async fn validate_requested_fields(
+    data: &web::Data<ApiState>,
+    entity_type: &str,
+    exclusive_fields: &Option<Vec<String>>,
+) -> Result<(), HttpResponse> {
+    if let Some(fields) = exclusive_fields {
+        let class_def_service = &data.class_definition_service;
+        match class_def_service
+            .get_class_definition_by_entity_type(entity_type)
+            .await
+        {
+            Ok(class_def) => {
+                // Always include these system fields
+                let system_fields = vec![
+                    "uuid",
+                    "created_at",
+                    "updated_at",
+                    "created_by",
+                    "updated_by",
+                    "published",
+                    "version",
+                    "path",
+                ];
+
+                // Validate the requested fields
+                let invalid_fields: Vec<String> = fields
+                    .iter()
+                    .filter(|field| {
+                        !system_fields.contains(&field.as_str())
+                            && class_def.get_field(field).is_none()
+                    })
+                    .cloned()
+                    .collect();
+
+                if !invalid_fields.is_empty() {
+                    return Err(ApiResponse::<()>::unprocessable_entity(&format!(
+                        "Invalid fields requested: {}",
+                        invalid_fields.join(", ")
+                    )));
+                }
+            }
+            Err(e) => return Err(handle_entity_error(e, entity_type)),
+        }
+    }
+    Ok(())
+}
+
+/// Handler for listing entities of a specific type
+#[utoipa::path(
+    get,
+    path = "/api/v1/{entity_type}",
+    tag = "dynamic-entities",
+    params(
+        ("entity_type" = String, Path, description = "The type of entity to list"),
+        ("limit" = Option<i64>, Query, description = "Maximum number of entities to return"),
+        ("offset" = Option<i64>, Query, description = "Number of entities to skip"),
+        ("exclusive_fields" = Option<String>, Query, description = "Comma-separated list of fields to exclusively return")
+    ),
+    responses(
+        (status = 200, description = "List of entities", body = Vec<DynamicEntityResponse>),
+        (status = 404, description = "Entity type not found"),
+        (status = 422, description = "Invalid field requested"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt" = []),
+        ("apiKey" = [])
+    )
+)]
+async fn list_entities(
+    data: web::Data<ApiState>,
+    path: web::Path<String>,
+    query: web::Query<PaginationQuery>,
+    _: CombinedRequiredAuth,
+) -> HttpResponse {
+    let entity_type = path.into_inner();
+    let limit = query.limit.unwrap_or(20);
+    let offset = query.offset.unwrap_or(0);
+    let exclusive_fields = query.parse_exclusive_fields();
+
+    // Validate requested fields
+    if let Err(response) = validate_requested_fields(&data, &entity_type, &exclusive_fields).await {
+        return response;
+    }
+
+    if let Some(service) = &data.dynamic_entity_service {
+        // If validation passed, proceed with the query
+        match service
+            .list_entities(&entity_type, limit, offset, exclusive_fields)
+            .await
+        {
+            Ok(entities) => {
+                let response: Vec<DynamicEntityResponse> = entities.into_iter()
+                    .map(DynamicEntityResponse::from)
+                    .collect();
+                ApiResponse::ok(response)
+            },
+            Err(e) => handle_entity_error(e, &entity_type),
+        }
+    } else {
+        ApiResponse::<()>::internal_error("Dynamic entity service not initialized")
+    }
+}
+
+/// Handler for creating a new entity
+#[utoipa::path(
+    post,
+    path = "/api/v1/{entity_type}",
+    tag = "dynamic-entities",
+    params(
+        ("entity_type" = String, Path, description = "The type of entity to create")
+    ),
+    request_body = HashMap<String, Value>,
+    responses(
+        (status = 201, description = "Entity created successfully", body = EntityResponse),
+        (status = 400, description = "Invalid entity data"),
+        (status = 404, description = "Entity type not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt" = []),
+        ("apiKey" = [])
+    )
+)]
+async fn create_entity(
+    data: web::Data<ApiState>,
+    path: web::Path<String>,
+    entity: web::Json<HashMap<String, Value>>,
+    auth: CombinedRequiredAuth,
+) -> HttpResponse {
+    let entity_type = path.into_inner();
+
+    // Get the user's UUID from either API key or JWT
+    let user_uuid = match auth.get_user_uuid() {
+        Some(uuid) => uuid,
+        None => {
+            return ApiResponse::<()>::unauthorized(
+                "User UUID could not be determined from authentication",
+            );
+        }
+    };
+
+    if let Some(service) = &data.dynamic_entity_service {
+        // First, we need to find the class definition to create the entity
+        let class_def_service = &data.class_definition_service;
+        match class_def_service
+            .get_class_definition_by_entity_type(&entity_type)
+            .await
+        {
+            Ok(class_def) => {
+                if !class_def.published {
+                    return ApiResponse::<()>::not_found(&format!("Entity type {} not found or not published", entity_type));
+                }
+                
+                // We need to create a dynamic entity
+                let uuid = Uuid::now_v7();
+                let mut field_data = entity.into_inner();
+                field_data.insert("uuid".to_string(), json!(uuid.to_string()));
+                field_data.insert("created_by".to_string(), json!(user_uuid.to_string()));
+                field_data.insert("updated_by".to_string(), json!(user_uuid.to_string()));
+
+                let dynamic_entity = DynamicEntity {
+                    entity_type: entity_type.clone(),
+                    field_data,
+                    definition: std::sync::Arc::new(class_def),
+                };
+
+                match service.create_entity(&dynamic_entity).await {
+                    Ok(_) => {
+                        let response_data = EntityResponse {
+                            uuid,
+                            entity_type,
+                        };
+                        ApiResponse::<EntityResponse>::created(response_data)
+                    }
+                    Err(e) => handle_entity_error(e, &entity_type),
+                }
+            }
+            Err(e) => handle_entity_error(e, &entity_type),
+        }
+    } else {
+        ApiResponse::<()>::internal_error("Dynamic entity service not initialized")
+    }
+}
+
+/// Handler for getting a specific entity by UUID
+#[utoipa::path(
+    get,
+    path = "/api/v1/{entity_type}/{uuid}",
+    tag = "dynamic-entities",
+    params(
+        ("entity_type" = String, Path, description = "The type of entity to retrieve"),
+        ("uuid" = String, Path, description = "The UUID of the entity to retrieve"),
+        ("exclusive_fields" = Option<String>, Query, description = "Comma-separated list of fields to exclusively return")
+    ),
+    responses(
+        (status = 200, description = "Entity found", body = DynamicEntityResponse),
+        (status = 404, description = "Entity not found"),
+        (status = 422, description = "Invalid field requested"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt" = []),
+        ("apiKey" = [])
+    )
+)]
+async fn get_entity(
+    data: web::Data<ApiState>,
+    path: web::Path<(String, String)>,
+    query: web::Query<PaginationQuery>,
+    _: CombinedRequiredAuth,
+) -> HttpResponse {
+    let (entity_type, uuid_str) = path.into_inner();
+    let uuid = match Uuid::parse_str(&uuid_str) {
+        Ok(id) => id,
+        Err(_) => {
+            return ApiResponse::<()>::bad_request(&format!("Invalid UUID: {}", uuid_str));
+        }
+    };
+
+    let exclusive_fields = query.parse_exclusive_fields();
+
+    // Validate requested fields
+    if let Err(response) = validate_requested_fields(&data, &entity_type, &exclusive_fields).await {
+        return response;
+    }
+
+    if let Some(service) = &data.dynamic_entity_service {
+        match service
+            .get_entity_by_uuid(&entity_type, &uuid, exclusive_fields)
+            .await
+        {
+            Ok(Some(entity)) => {
+                let response = DynamicEntityResponse::from(entity);
+                ApiResponse::ok(response)
+            }
+            Ok(None) => ApiResponse::<()>::not_found(&format!(
+                "Entity with UUID {} not found in type {}",
+                uuid, entity_type
+            )),
+            Err(e) => handle_entity_error(e, &entity_type),
+        }
+    } else {
+        ApiResponse::<()>::internal_error("Dynamic entity service not initialized")
+    }
+}
+
+/// Handler for updating an entity
+#[utoipa::path(
+    put,
+    path = "/api/v1/{entity_type}/{uuid}",
+    tag = "dynamic-entities",
+    params(
+        ("entity_type" = String, Path, description = "The type of entity to update"),
+        ("uuid" = uuid::Uuid, Path, description = "The UUID of the entity to update")
+    ),
+    request_body = HashMap<String, Value>,
+    responses(
+        (status = 200, description = "Entity updated successfully", body = EntityResponse),
+        (status = 400, description = "Invalid entity data"),
+        (status = 404, description = "Entity or field not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt" = []),
+        ("apiKey" = [])
+    )
+)]
+async fn update_entity(
+    data: web::Data<ApiState>,
+    path: web::Path<(String, String)>,
+    entity_data: web::Json<HashMap<String, Value>>,
+    auth: CombinedRequiredAuth,
+) -> HttpResponse {
+    let (entity_type, uuid_str) = path.into_inner();
+    let uuid = match Uuid::parse_str(&uuid_str) {
+        Ok(id) => id,
+        Err(_) => {
+            return ApiResponse::<()>::bad_request(&format!("Invalid UUID: {}", uuid_str));
+        }
+    };
+
+    // Get the user's UUID
+    let user_uuid = match auth.get_user_uuid() {
+        Some(id) => id,
+        None => {
+            return ApiResponse::<()>::unauthorized(
+                "User UUID could not be determined from authentication",
+            );
+        }
+    };
+
+    if let Some(service) = &data.dynamic_entity_service {
+        // First, we need to get the existing entity
+        match service.get_entity_by_uuid(&entity_type, &uuid, None).await {
+            Ok(Some(mut existing_entity)) => {
+                // Update the entity with the new data
+                let mut new_data = entity_data.into_inner();
+                
+                // Ensure UUID is consistent
+                new_data.insert("uuid".to_string(), json!(uuid.to_string()));
+                
+                // Add audit fields
+                new_data.insert("updated_by".to_string(), json!(user_uuid.to_string()));
+                
+                // Merge the new data with existing data (update only changed fields)
+                for (key, value) in new_data {
+                    existing_entity.field_data.insert(key, value);
+                }
+
+                match service.update_entity(&existing_entity).await {
+                    Ok(_) => {
+                        let response_data = EntityResponse {
+                            uuid,
+                            entity_type,
+                        };
+                        ApiResponse::ok(response_data)
+                    }
+                    Err(e) => handle_entity_error(e, &entity_type),
+                }
+            }
+            Ok(None) => ApiResponse::<()>::not_found(&format!(
+                "Entity with UUID {} not found in type {}",
+                uuid, entity_type
+            )),
+            Err(e) => handle_entity_error(e, &entity_type),
+        }
+    } else {
+        ApiResponse::<()>::internal_error("Dynamic entity service not initialized")
+    }
+}
+
+/// Handler for deleting an entity
+#[utoipa::path(
+    delete,
+    path = "/api/v1/{entity_type}/{uuid}",
+    tag = "dynamic-entities",
+    params(
+        ("entity_type" = String, Path, description = "The type of entity to delete"),
+        ("uuid" = uuid::Uuid, Path, description = "The UUID of the entity to delete")
+    ),
+    responses(
+        (status = 204, description = "Entity deleted successfully"),
+        (status = 404, description = "Entity not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt" = []),
+        ("apiKey" = [])
+    )
+)]
+async fn delete_entity(
+    data: web::Data<ApiState>,
+    path: web::Path<(String, String)>,
+    _: CombinedRequiredAuth,
+) -> HttpResponse {
+    let (entity_type, uuid_str) = path.into_inner();
+    let uuid = match Uuid::parse_str(&uuid_str) {
+        Ok(id) => id,
+        Err(_) => {
+            return ApiResponse::<()>::bad_request(&format!("Invalid UUID: {}", uuid_str));
+        }
+    };
+
+    if let Some(service) = &data.dynamic_entity_service {
+        match service.delete_entity(&entity_type, &uuid).await {
+            Ok(_) => HttpResponse::NoContent().finish(),
+            Err(e) => handle_entity_error(e, &entity_type),
+        }
+    } else {
+        ApiResponse::<()>::internal_error("Dynamic entity service not initialized")
+    }
+}
+
+/// Helper function to handle entity-related errors
+fn handle_entity_error(error: Error, entity_type: &str) -> HttpResponse {
+    match error {
+        Error::NotFound(_) => {
+            ApiResponse::<()>::not_found(&format!("Entity type '{}' not found or not published", entity_type))
+        }
+        Error::Validation(msg) => ApiResponse::<()>::unprocessable_entity(&msg),
+        Error::Database(_) => {
+            error!("Database error: {}", error);
+            ApiResponse::<()>::internal_error("Database error")
+        }
+        _ => {
+            error!("Internal error: {}", error);
+            ApiResponse::<()>::internal_error("Internal server error")
+        }
+    }
+} 

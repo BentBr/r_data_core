@@ -48,6 +48,21 @@ pub struct FieldDefinition {
     pub constraints: HashMap<String, Value>,
 }
 
+/// Trait to define common operations for field definitions
+pub trait FieldDefinitionModule {
+    /// Validate a field definition for common issues like invalid constraints
+    fn validate(&self) -> Result<()>;
+    
+    /// Validate a value against this field definition
+    fn validate_value(&self, value: &Value) -> Result<()>;
+    
+    /// Get the SQL type for this field
+    fn get_sql_type(&self) -> String;
+    
+    /// Create a field definition with default values
+    fn new_with_defaults(name: String, display_name: String, field_type: FieldType) -> Self where Self: Sized;
+}
+
 // Manual implementation of Deserialize for FieldDefinition to handle constraints
 impl<'de> Deserialize<'de> for FieldDefinition {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
@@ -773,5 +788,74 @@ fn validate_object_constraint(constraint_value: &Value) -> Result<()> {
             "Constraint value must be an object, got: {:?}",
             constraint_value
         )))
+    }
+}
+
+// Implement the trait for FieldDefinition
+impl FieldDefinitionModule for FieldDefinition {
+    fn validate(&self) -> Result<()> {
+        // Ensure name does not contain spaces or special characters
+        let valid_name_pattern = regex::Regex::new(r"^[a-zA-Z][a-zA-Z0-9_]*$").unwrap();
+        if !valid_name_pattern.is_match(&self.name) {
+            return Err(Error::Validation(format!(
+                "Field name '{}' must start with a letter and contain only letters, numbers, and underscores",
+                self.name
+            )));
+        }
+
+        // Validate constraints based on field type
+        for (constraint_name, constraint_value) in &self.constraints {
+            self.handle_constraint(constraint_name, constraint_value)?;
+        }
+
+        Ok(())
+    }
+
+    fn validate_value(&self, value: &Value) -> Result<()> {
+        use crate::entity::dynamic_entity::validator::DynamicEntityValidator;
+        DynamicEntityValidator::validate_field(self, value)
+    }
+
+    fn get_sql_type(&self) -> String {
+        match self.field_type {
+            FieldType::String => {
+                if let Some(max_length) = self.validation.max_length {
+                    if max_length <= 255 {
+                        format!("VARCHAR({})", max_length)
+                    } else {
+                        "TEXT".to_string()
+                    }
+                } else {
+                    "VARCHAR(255)".to_string()
+                }
+            }
+            FieldType::Text | FieldType::Wysiwyg => "TEXT".to_string(),
+            FieldType::Integer => "INTEGER".to_string(),
+            FieldType::Float => "DOUBLE PRECISION".to_string(),
+            FieldType::Boolean => "BOOLEAN".to_string(),
+            FieldType::Date => "DATE".to_string(),
+            FieldType::DateTime => "TIMESTAMP WITH TIME ZONE".to_string(),
+            FieldType::Uuid => "UUID".to_string(),
+            FieldType::Object | FieldType::Json | FieldType::Array => "JSONB".to_string(),
+            FieldType::Select | FieldType::MultiSelect => "VARCHAR(255)".to_string(),
+            FieldType::ManyToOne | FieldType::ManyToMany => "UUID".to_string(),
+            FieldType::Image | FieldType::File => "VARCHAR(255)".to_string(),
+        }
+    }
+
+    fn new_with_defaults(name: String, display_name: String, field_type: FieldType) -> Self {
+        Self {
+            name,
+            display_name,
+            field_type,
+            description: None,
+            required: false,
+            indexed: false,
+            filterable: false,
+            default_value: None,
+            validation: FieldValidation::default(),
+            ui_settings: UiSettings::default(),
+            constraints: HashMap::new(),
+        }
     }
 }

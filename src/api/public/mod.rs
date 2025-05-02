@@ -1,6 +1,6 @@
 use actix_web::web;
 
-pub mod dynamic_entity;
+pub mod dynamic_entities;
 pub mod entities;
 pub mod queries;
 
@@ -8,8 +8,8 @@ pub mod queries;
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api/v1")
-            .configure(entities::register_routes)
+            .configure(entities::routes::register_routes)
             .configure(queries::register_routes)
-            .configure(dynamic_entity::register_routes),
+            .configure(dynamic_entities::register_routes),
     );
 }

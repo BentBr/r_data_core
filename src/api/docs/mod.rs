@@ -180,19 +180,39 @@ impl Modify for ModelSchemaAddon {
     }
 }
 
+/// Custom schema for serde_json::Value
+pub struct JsonValueSchemaAddon;
+
+impl Modify for JsonValueSchemaAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        if let Some(components) = openapi.components.as_mut() {
+            // Create a simpler schema for JSON Value
+            let schema = utoipa::openapi::Schema::Object(
+                ObjectBuilder::new()
+                    .schema_type(SchemaType::String)
+                    .format(Some(SchemaFormat::Custom("json".to_owned())))
+                    .description(Some("JSON value"))
+                    .example(Some(serde_json::json!({"example": "value"})))
+                    .build()
+            );
+            
+            components.schemas.insert("Value".to_owned(), utoipa::openapi::RefOr::T(schema));
+        }
+    }
+}
+
 /// Public API Documentation
 #[derive(OpenApi)]
 #[openapi(
     paths(
         crate::api::health::public_health_check,
         crate::api::public::entities::routes::list_available_entities,
-        crate::api::public::entities::routes::get_entity,
         crate::api::public::queries::routes::query_entities,
-        crate::api::public::dynamic_entity::list_entities,
-        crate::api::public::dynamic_entity::create_entity,
-        crate::api::public::dynamic_entity::get_entity,
-        crate::api::public::dynamic_entity::update_entity,
-        crate::api::public::dynamic_entity::delete_entity
+        crate::api::public::dynamic_entities::routes::list_entities,
+        crate::api::public::dynamic_entities::routes::create_entity,
+        crate::api::public::dynamic_entities::routes::get_entity,
+        crate::api::public::dynamic_entities::routes::update_entity,
+        crate::api::public::dynamic_entities::routes::delete_entity
     ),
     components(
         schemas(
@@ -200,11 +220,12 @@ impl Modify for ModelSchemaAddon {
             crate::api::public::entities::models::EntityTypeInfo,
             crate::api::public::entities::models::EntityQuery,
             crate::api::public::queries::models::AdvancedEntityQuery,
-            crate::api::public::dynamic_entity::PaginationQuery,
-            crate::entity::dynamic_entity::entity::DynamicEntity
+            crate::api::public::dynamic_entities::routes::PaginationQuery,
+            crate::api::public::dynamic_entities::routes::DynamicEntityResponse,
+            crate::api::public::dynamic_entities::routes::EntityResponse
         )
     ),
-    modifiers(&SecurityAddon, &UuidSchemaAddon, &DateTimeSchemaAddon, &ModelSchemaAddon),
+    modifiers(&SecurityAddon, &UuidSchemaAddon, &DateTimeSchemaAddon, &ModelSchemaAddon, &JsonValueSchemaAddon),
     tags(
         (name = "public-health", description = "Public health check endpoints"),
         (name = "public", description = "Public API endpoints"),

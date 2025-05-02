@@ -20,6 +20,107 @@ impl ClassDefinitionRepository {
         Self { db_pool }
     }
 
+    /// Get the database connection pool
+    fn get_pool(&self) -> &PgPool {
+        &self.db_pool
+    }
+    
+    /// Check if a view exists in the database
+    async fn check_view_exists(&self, view_name: &str) -> Result<bool> {
+        // First check for views
+        let view_exists = sqlx::query!(
+            r#"
+            SELECT EXISTS (
+                SELECT FROM information_schema.views 
+                WHERE table_schema = 'public' AND table_name = $1
+            ) as "exists!"
+            "#,
+            view_name
+        )
+        .fetch_one(&self.db_pool)
+        .await
+        .map_err(Error::Database)?
+        .exists;
+
+        if view_exists {
+            return Ok(true);
+        }
+
+        // If view doesn't exist, check for table
+        let table_exists = sqlx::query!(
+            r#"
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' AND table_name = $1
+            ) as "exists!"
+            "#,
+            view_name
+        )
+        .fetch_one(&self.db_pool)
+        .await
+        .map_err(Error::Database)?
+        .exists;
+
+        Ok(table_exists)
+    }
+    
+    /// Get columns and their types for a view
+    async fn get_view_columns_with_types(&self, view_name: &str) -> Result<HashMap<String, String>> {
+        let columns = sqlx::query!(
+            r#"
+            SELECT column_name, data_type 
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = $1
+            "#,
+            view_name
+        )
+        .fetch_all(&self.db_pool)
+        .await
+        .map_err(Error::Database)?;
+
+        let mut column_types = HashMap::new();
+        for column in columns {
+            if let (Some(name), Some(data_type)) = (column.column_name, column.data_type) {
+                column_types.insert(name, data_type);
+            }
+        }
+
+        Ok(column_types)
+    }
+    
+    /// Count records in a view or table
+    async fn count_view_records(&self, table_name: &str) -> Result<i64> {
+        let count = sqlx::query_scalar::<_, i64>(&format!(
+            "SELECT COUNT(*) FROM {}",
+            table_name
+        ))
+        .fetch_one(&self.db_pool)
+        .await
+        .map_err(Error::Database)?;
+
+        Ok(count)
+    }
+    
+    /// Get all column names for a table or view
+    async fn get_existing_table_columns(&self, table_name: &str) -> Result<Vec<String>> {
+        let columns = sqlx::query!(
+            r#"
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = $1
+            "#,
+            table_name
+        )
+        .fetch_all(&self.db_pool)
+        .await
+        .map_err(Error::Database)?;
+
+        Ok(columns
+            .into_iter()
+            .filter_map(|col| col.column_name)
+            .collect())
+    }
+    
     /// Get available columns from the entities_registry table
     async fn get_available_registry_columns(&self) -> Result<Vec<String>> {
         let columns = sqlx::query!(
@@ -41,6 +142,8 @@ impl ClassDefinitionRepository {
 
         Ok(available_columns)
     }
+
+    // Add other helper methods from the repository here
 }
 
 #[async_trait]
@@ -403,64 +506,6 @@ impl ClassDefinitionRepositoryTrait for ClassDefinitionRepository {
         }
     }
 
-    /// Check if a table exists
-    async fn check_view_exists(&self, table_name: &str) -> Result<bool> {
-        let result = sqlx::query!(
-            r#"
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_schema = 'public'
-                AND table_name = $1
-            ) as "exists!: bool"
-            "#,
-            table_name
-        )
-        .fetch_one(&self.db_pool)
-        .await
-        .map_err(Error::Database)?;
-
-        Ok(result.exists)
-    }
-
-    /// Get view columns with their types
-    async fn get_view_columns_with_types(
-        &self,
-        view_name: &str,
-    ) -> Result<HashMap<String, String>> {
-        let rows = sqlx::query!(
-            r#"
-            SELECT column_name, data_type
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-            AND table_name = $1
-            "#,
-            view_name
-        )
-        .fetch_all(&self.db_pool)
-        .await
-        .map_err(Error::Database)?;
-
-        let mut columns = HashMap::new();
-        for row in rows {
-            if let (Some(column_name), Some(data_type)) = (row.column_name, row.data_type) {
-                columns.insert(column_name, data_type);
-            }
-        }
-
-        Ok(columns)
-    }
-
-    /// Count records in a table
-    async fn count_view_records(&self, table_name: &str) -> Result<i64> {
-        let count_sql = format!("SELECT COUNT(*) FROM {}", table_name);
-        let count = sqlx::query_scalar::<_, i64>(&count_sql)
-            .fetch_one(&self.db_pool)
-            .await
-            .map_err(Error::Database)?;
-
-        Ok(count)
-    }
-
     /// Cleanup unused entity tables
     async fn cleanup_unused_entity_view(&self) -> Result<()> {
         // Get all class definitions
@@ -502,6 +547,82 @@ impl ClassDefinitionRepositoryTrait for ClassDefinitionRepository {
 
         Ok(())
     }
+
+    /// Get columns and their types for a view
+    async fn get_view_columns_with_types(&self, view_name: &str) -> Result<HashMap<String, String>> {
+        let columns = sqlx::query!(
+            r#"
+            SELECT column_name, data_type 
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = $1
+            "#,
+            view_name
+        )
+        .fetch_all(&self.db_pool)
+        .await
+        .map_err(Error::Database)?;
+
+        let mut column_types = HashMap::new();
+        for column in columns {
+            if let (Some(name), Some(data_type)) = (column.column_name, column.data_type) {
+                column_types.insert(name, data_type);
+            }
+        }
+
+        Ok(column_types)
+    }
+    
+    /// Count records in a view or table
+    async fn count_view_records(&self, view_name: &str) -> Result<i64> {
+        let count = sqlx::query_scalar::<_, i64>(&format!(
+            "SELECT COUNT(*) FROM {}",
+            view_name
+        ))
+        .fetch_one(&self.db_pool)
+        .await
+        .map_err(Error::Database)?;
+
+        Ok(count)
+    }
+
+    /// Check if a view or table exists in the database
+    async fn check_view_exists(&self, view_name: &str) -> Result<bool> {
+        // First check for views
+        let view_exists = sqlx::query!(
+            r#"
+            SELECT EXISTS (
+                SELECT FROM information_schema.views 
+                WHERE table_schema = 'public' AND table_name = $1
+            ) as "exists!"
+            "#,
+            view_name
+        )
+        .fetch_one(&self.db_pool)
+        .await
+        .map_err(Error::Database)?
+        .exists;
+
+        if view_exists {
+            return Ok(true);
+        }
+
+        // If view doesn't exist, check for table
+        let table_exists = sqlx::query!(
+            r#"
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' AND table_name = $1
+            ) as "exists!"
+            "#,
+            view_name
+        )
+        .fetch_one(&self.db_pool)
+        .await
+        .map_err(Error::Database)?
+        .exists;
+
+        Ok(table_exists)
+    }
 }
 
 // Keep these helper methods
@@ -518,29 +639,6 @@ impl ClassDefinitionRepository {
         .map_err(Error::Database)?;
 
         Ok(())
-    }
-
-    /// Get existing columns for a table
-    async fn get_existing_table_columns(&self, table_name: &str) -> Result<Vec<String>> {
-        let columns = sqlx::query!(
-            r#"
-            SELECT column_name 
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-            AND table_name = $1
-            "#,
-            table_name
-        )
-        .fetch_all(&self.db_pool)
-        .await
-        .map_err(Error::Database)?;
-
-        let column_names: Vec<String> = columns
-            .into_iter()
-            .filter_map(|col| col.column_name.map(|name| name.to_lowercase()))
-            .collect();
-
-        Ok(column_names)
     }
 }
 

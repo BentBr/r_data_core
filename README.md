@@ -301,7 +301,6 @@ Todos:
 
 
 fixes:
-- getting all fields from dynamic entities (refactoring dynamic entities as there are hard-coded fields for each entity)
 - setting all fields for dynamic entities
 - testing validations (+ tests)
 - auth tests for all api routes
