@@ -168,14 +168,14 @@ impl CombinedRequiredAuth {
         if let Some(api_key_info) = &self.api_key_info {
             return Some(api_key_info.user_uuid);
         }
-        
+
         // Or extract from JWT claims
         if let Some(claims) = &self.jwt_claims {
             if let Ok(uuid) = Uuid::parse_str(&claims.sub) {
                 return Some(uuid);
             }
         }
-        
+
         None
     }
 }

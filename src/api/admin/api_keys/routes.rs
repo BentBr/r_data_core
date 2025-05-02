@@ -8,8 +8,8 @@ use uuid::Uuid;
 
 use crate::api::auth::auth_enum;
 use crate::api::models::PaginationQuery;
-use crate::api::ApiState;
 use crate::api::response::ApiResponse;
+use crate::api::ApiState;
 use crate::entity::admin_user::repository::ApiKeyRepository;
 use crate::entity::admin_user::repository_trait::ApiKeyRepositoryTrait;
 use std::sync::Arc;
@@ -185,7 +185,9 @@ pub async fn create_api_key(
 
     match repo.get_by_name(user_uuid, &req.name).await {
         Ok(Some(_)) => {
-            return ApiResponse::<()>::conflict("An API key with this name already exists for this user");
+            return ApiResponse::<()>::conflict(
+                "An API key with this name already exists for this user",
+            );
         }
         Ok(None) => {
             // Proceed with creation
@@ -204,33 +206,31 @@ pub async fn create_api_key(
         .create_new_api_key(&req.name, &description, creator_uuid, expires_in_days)
         .await
     {
-        Ok((uuid, api_key)) => {
-            match repo.get_by_uuid(uuid).await {
-                Ok(Some(key)) => {
-                    let response: ApiKeyCreatedResponse = ApiKeyCreatedResponse {
-                        uuid: key.uuid,
-                        name: key.name.clone(),
-                        api_key,
-                        description: key.description.clone(),
-                        is_active: key.is_active,
-                        created_at: key.created_at,
-                        expires_at: key.expires_at,
-                        created_by: key.created_by,
-                        user_uuid: key.user_uuid,
-                        published: key.published,
-                    };
-                    ApiResponse::<ApiKeyCreatedResponse>::created(response)
-                }
-                Ok(None) => {
-                    error!("API key created but not found: {}", uuid);
-                    ApiResponse::<()>::internal_error("API key created but not found")
-                }
-                Err(e) => {
-                    error!("Failed to retrieve created API key: {}", e);
-                    ApiResponse::<()>::internal_error("Failed to retrieve created API key")
-                }
+        Ok((uuid, api_key)) => match repo.get_by_uuid(uuid).await {
+            Ok(Some(key)) => {
+                let response: ApiKeyCreatedResponse = ApiKeyCreatedResponse {
+                    uuid: key.uuid,
+                    name: key.name.clone(),
+                    api_key,
+                    description: key.description.clone(),
+                    is_active: key.is_active,
+                    created_at: key.created_at,
+                    expires_at: key.expires_at,
+                    created_by: key.created_by,
+                    user_uuid: key.user_uuid,
+                    published: key.published,
+                };
+                ApiResponse::<ApiKeyCreatedResponse>::created(response)
             }
-        }
+            Ok(None) => {
+                error!("API key created but not found: {}", uuid);
+                ApiResponse::<()>::internal_error("API key created but not found")
+            }
+            Err(e) => {
+                error!("Failed to retrieve created API key: {}", e);
+                ApiResponse::<()>::internal_error("Failed to retrieve created API key")
+            }
+        },
         Err(e) => {
             error!("Failed to create API key: {}", e);
             ApiResponse::<()>::internal_error("Failed to create API key")
@@ -273,7 +273,9 @@ pub async fn revoke_api_key(
     match repo.get_by_uuid(api_key_uuid).await {
         Ok(Some(key)) => {
             if key.user_uuid != user_uuid {
-                return ApiResponse::<()>::forbidden("You don't have permission to revoke this API key");
+                return ApiResponse::<()>::forbidden(
+                    "You don't have permission to revoke this API key",
+                );
             }
 
             // Revoke the key
@@ -332,13 +334,17 @@ pub async fn reassign_api_key(
     match repo.get_by_uuid(api_key_uuid).await {
         Ok(Some(key)) => {
             if key.user_uuid != user_uuid {
-                return ApiResponse::<()>::forbidden("You don't have permission to reassign this API key");
+                return ApiResponse::<()>::forbidden(
+                    "You don't have permission to reassign this API key",
+                );
             }
 
             // Check if the key with the same name already exists for the new user
             match repo.get_by_name(new_user_uuid, &key.name).await {
                 Ok(Some(_)) => {
-                    return ApiResponse::<()>::conflict("An API key with this name already exists for the target user");
+                    return ApiResponse::<()>::conflict(
+                        "An API key with this name already exists for the target user",
+                    );
                 }
                 Ok(None) => {
                     // Reassign the key

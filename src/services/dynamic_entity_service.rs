@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use log::debug;
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
 use crate::entity::class::definition::ClassDefinition;
-use crate::entity::field::FieldDefinition;
 use crate::entity::dynamic_entity::entity::DynamicEntity;
 use crate::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
+use crate::entity::field::FieldDefinition;
 use crate::entity::DynamicFields;
 use crate::error::{Error, Result};
 use crate::services::ClassDefinitionService;
@@ -31,24 +32,36 @@ impl DynamicEntityService {
         }
     }
 
+    /// Get the underlying repository - helper for debugging
+    pub fn get_repository(&self) -> &Arc<dyn DynamicEntityRepositoryTrait + Send + Sync> {
+        &self.repository
+    }
+
     /// List entities with pagination
     pub async fn list_entities(
         &self,
         entity_type: &str,
         limit: i64,
         offset: i64,
+        exclusive_fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>> {
         // Verify the entity type exists
-        let _ = self.class_definition_service.get_class_definition_by_entity_type(entity_type).await?;
-        
-        self.repository.get_all_by_type(entity_type, limit, offset).await
+        self.class_definition_service
+            .get_class_definition_by_entity_type(entity_type)
+            .await?;
+
+        self.repository
+            .get_all_by_type(entity_type, limit, offset, exclusive_fields)
+            .await
     }
 
     /// Count entities of a specific type
     pub async fn count_entities(&self, entity_type: &str) -> Result<i64> {
         // Verify the entity type exists
-        let _ = self.class_definition_service.get_class_definition_by_entity_type(entity_type).await?;
-        
+        self.class_definition_service
+            .get_class_definition_by_entity_type(entity_type)
+            .await?;
+
         self.repository.count_entities(entity_type).await
     }
 
@@ -57,38 +70,45 @@ impl DynamicEntityService {
         &self,
         entity_type: &str,
         uuid: &Uuid,
+        exclusive_fields: Option<Vec<String>>,
     ) -> Result<Option<DynamicEntity>> {
         // Verify the entity type exists
-        let _ = self.class_definition_service.get_class_definition_by_entity_type(entity_type).await?;
-        
-        self.repository.get_by_type(entity_type, uuid).await
+        self.class_definition_service
+            .get_class_definition_by_entity_type(entity_type)
+            .await?;
+
+        self.repository
+            .get_by_type(entity_type, uuid, exclusive_fields)
+            .await
     }
 
     /// Create a new entity with validation
     pub async fn create_entity(&self, entity: &DynamicEntity) -> Result<()> {
         // The class definition should already be in the entity
-        
+
         // Validate entity against class definition
         self.validate_entity(entity)?;
-        
+
         self.repository.create(entity).await
     }
 
     /// Update an existing entity with validation
     pub async fn update_entity(&self, entity: &DynamicEntity) -> Result<()> {
         // The class definition should already be in the entity
-        
+
         // Validate entity against class definition
         self.validate_entity(entity)?;
-        
+
         self.repository.update(entity).await
     }
 
     /// Delete an entity
     pub async fn delete_entity(&self, entity_type: &str, uuid: &Uuid) -> Result<()> {
         // Verify the entity type exists
-        let _ = self.class_definition_service.get_class_definition_by_entity_type(entity_type).await?;
-        
+        self.class_definition_service
+            .get_class_definition_by_entity_type(entity_type)
+            .await?;
+
         self.repository.delete_by_type(entity_type, uuid).await
     }
 
@@ -96,53 +116,69 @@ impl DynamicEntityService {
     fn validate_entity(&self, entity: &DynamicEntity) -> Result<()> {
         // Collect all validation errors instead of returning on first error
         let mut validation_errors = Vec::new();
-        
-        // First check for missing required fields
-        for field in &entity.definition.fields {
-            if field.required && !entity.field_data.contains_key(&field.name) {
-                validation_errors.push(format!(
-                    "Required field '{}' is missing",
-                    field.name
-                ));
-            }
-        }
-        
+
         // Check for unknown fields - fields in the data that are not defined in the class definition
         let mut unknown_fields = Vec::new();
-        let reserved_fields = ["uuid", "entity_type", "path", "created_at", "updated_at", "created_by", 
-                              "updated_by", "published", "version"];
-        
+        let reserved_fields = [
+            "uuid",
+            "path",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "updated_by",
+            "published",
+            "version",
+        ];
+
         for field_name in entity.field_data.keys() {
             // Skip system/reserved fields
             if reserved_fields.contains(&field_name.as_str()) {
                 continue;
             }
-            
+
             // Check if this field exists in the class definition
-            if !entity.definition.fields.iter().any(|f| f.name == *field_name) {
+            if !entity
+                .definition
+                .fields
+                .iter()
+                .any(|f| f.name == *field_name)
+            {
                 unknown_fields.push(field_name.clone());
             }
         }
-        
+
         if !unknown_fields.is_empty() {
             validation_errors.push(format!(
                 "Unknown fields found: {}. Only fields defined in the class definition are allowed.",
                 unknown_fields.join(", ")
             ));
         }
-        
-        // Validate field values against their types and constraints
-        for field in &entity.definition.fields {
-            if let Some(value) = entity.field_data.get(&field.name) {
-                if let Err(e) = field.validate_value(value) {
-                    validation_errors.push(format!(
-                        "Field '{}' validation error: {}",
-                        field.name, e
-                    ));
+
+        // For update operations, we only need to validate the fields that are being submitted
+        // For create operations, check all required fields
+        let is_update =
+            entity.field_data.contains_key("uuid") && entity.field_data.get("uuid").is_some();
+        debug!("Validation - is update operation: {}", is_update);
+
+        if !is_update {
+            // This is a create operation, so check all required fields
+            for field in &entity.definition.fields {
+                if field.required && !entity.field_data.contains_key(&field.name) {
+                    validation_errors.push(format!("Required field '{}' is missing", field.name));
                 }
             }
         }
-        
+
+        // Validate field values against their types and constraints (only for fields that are present)
+        for field in &entity.definition.fields {
+            if let Some(value) = entity.field_data.get(&field.name) {
+                if let Err(e) = field.validate_value(value) {
+                    validation_errors
+                        .push(format!("Field '{}' validation error: {}", field.name, e));
+                }
+            }
+        }
+
         // If we've collected any errors, return them all as one validation error
         if !validation_errors.is_empty() {
             return Err(Error::Validation(format!(
@@ -150,10 +186,10 @@ impl DynamicEntityService {
                 validation_errors.join("; ")
             )));
         }
-        
+
         Ok(())
     }
-    
+
     /// Filter entities based on field values
     pub async fn filter_entities(
         &self,
@@ -161,11 +197,16 @@ impl DynamicEntityService {
         filters: &HashMap<String, JsonValue>,
         limit: i64,
         offset: i64,
+        exclusive_fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>> {
         // Verify the entity type exists
-        let _ = self.class_definition_service.get_class_definition_by_entity_type(entity_type).await?;
-        
-        self.repository.filter_entities(entity_type, filters, limit, offset).await
+        self.class_definition_service
+            .get_class_definition_by_entity_type(entity_type)
+            .await?;
+
+        self.repository
+            .filter_entities(entity_type, filters, limit, offset, exclusive_fields)
+            .await
     }
 }
 
@@ -176,7 +217,7 @@ mod tests {
     use mockall::mock;
     use mockall::predicate::{self, eq};
     use serde_json::json;
-    
+
     mock! {
         pub DynamicEntityRepo {}
 
@@ -184,20 +225,21 @@ mod tests {
         impl DynamicEntityRepositoryTrait for DynamicEntityRepo {
             async fn create(&self, entity: &DynamicEntity) -> Result<()>;
             async fn update(&self, entity: &DynamicEntity) -> Result<()>;
-            async fn get_by_type(&self, entity_type: &str, uuid: &Uuid) -> Result<Option<DynamicEntity>>;
-            async fn get_all_by_type(&self, entity_type: &str, limit: i64, offset: i64) -> Result<Vec<DynamicEntity>>;
+            async fn get_by_type(&self, entity_type: &str, uuid: &Uuid, exclusive_fields: Option<Vec<String>>) -> Result<Option<DynamicEntity>>;
+            async fn get_all_by_type(&self, entity_type: &str, limit: i64, offset: i64, exclusive_fields: Option<Vec<String>>) -> Result<Vec<DynamicEntity>>;
             async fn delete_by_type(&self, entity_type: &str, uuid: &Uuid) -> Result<()>;
             async fn filter_entities(
-                &self, 
-                entity_type: &str, 
+                &self,
+                entity_type: &str,
                 filters: &HashMap<String, JsonValue>,
                 limit: i64,
-                offset: i64
+                offset: i64,
+                exclusive_fields: Option<Vec<String>>
             ) -> Result<Vec<DynamicEntity>>;
             async fn count_entities(&self, entity_type: &str) -> Result<i64>;
         }
     }
-    
+
     // Create a mock for the class definition repository trait
     mock! {
         pub ClassDefinitionRepo {}
@@ -218,13 +260,13 @@ mod tests {
             async fn cleanup_unused_entity_view(&self) -> Result<()>;
         }
     }
-    
+
     fn create_test_class_definition() -> ClassDefinition {
         use crate::entity::class::schema::Schema;
         use crate::entity::field::types::FieldType;
         use crate::entity::field::FieldDefinition;
         use time::OffsetDateTime;
-        
+
         ClassDefinition {
             uuid: Uuid::nil(),
             entity_type: "test_entity".to_string(),
@@ -270,141 +312,142 @@ mod tests {
             published: false,
         }
     }
-    
+
     fn create_test_entity() -> DynamicEntity {
         let class_def = create_test_class_definition();
         let mut field_data = HashMap::new();
         field_data.insert("name".to_string(), json!("Test Entity"));
         field_data.insert("age".to_string(), json!(30));
         field_data.insert("uuid".to_string(), json!(Uuid::nil().to_string()));
-        
+
         DynamicEntity {
             entity_type: "test_entity".to_string(),
             field_data,
             definition: Arc::new(class_def),
         }
     }
-    
+
     #[tokio::test]
     async fn test_list_entities() -> Result<()> {
         let mut repo = MockDynamicEntityRepo::new();
         let mut class_repo = MockClassDefinitionRepo::new();
-        
+
         let entity_type = "test_entity";
         let limit = 10;
         let offset = 0;
-        
+
         // Setup mock class definition repository
         class_repo
             .expect_get_by_entity_type()
             .with(predicate::eq(entity_type))
             .returning(|_| Ok(Some(create_test_class_definition())));
-        
+
         // Setup mock repository response
         repo.expect_get_all_by_type()
-            .with(predicate::eq(entity_type), predicate::eq(limit), predicate::eq(offset))
-            .returning(|_, _, _| Ok(vec![create_test_entity()]));
-        
+            .with(
+                predicate::eq(entity_type),
+                predicate::eq(limit),
+                predicate::eq(offset),
+                predicate::eq(None),
+            )
+            .returning(|_, _, _, _| Ok(vec![create_test_entity()]));
+
         // Create service with proper mocks
         let class_service = ClassDefinitionService::new(Arc::new(class_repo));
-        let service = DynamicEntityService::new(
-            Arc::new(repo),
-            Arc::new(class_service),
-        );
-        
-        let entities = service.list_entities(entity_type, limit, offset).await?;
-        
+        let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
+
+        let entities = service
+            .list_entities(entity_type, limit, offset, None)
+            .await?;
+
         assert_eq!(entities.len(), 1);
         assert_eq!(entities[0].entity_type, entity_type);
-        
+
         Ok(())
     }
-    
+
     #[tokio::test]
     async fn test_get_entity_by_uuid() -> Result<()> {
         let mut repo = MockDynamicEntityRepo::new();
         let mut class_repo = MockClassDefinitionRepo::new();
-        
+
         let entity_type = "test_entity";
         let uuid = Uuid::nil();
-        
+
         // Setup mock class definition repository
         class_repo
             .expect_get_by_entity_type()
             .with(predicate::eq(entity_type))
             .returning(|_| Ok(Some(create_test_class_definition())));
-        
+
         // Setup mock repository response
         repo.expect_get_by_type()
-            .with(predicate::eq(entity_type), predicate::eq(uuid.clone()))
-            .returning(|_, _| Ok(Some(create_test_entity())));
-        
+            .with(
+                predicate::eq(entity_type),
+                predicate::eq(uuid.clone()),
+                predicate::eq(None),
+            )
+            .returning(|_, _, _| Ok(Some(create_test_entity())));
+
         // Create service with proper mocks
         let class_service = ClassDefinitionService::new(Arc::new(class_repo));
-        let service = DynamicEntityService::new(
-            Arc::new(repo),
-            Arc::new(class_service),
-        );
-        
-        let entity = service.get_entity_by_uuid(entity_type, &uuid).await?;
-        
+        let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
+
+        let entity = service.get_entity_by_uuid(entity_type, &uuid, None).await?;
+
         assert!(entity.is_some());
         let entity = entity.unwrap();
         assert_eq!(entity.entity_type, entity_type);
-        
+
         Ok(())
     }
-    
+
     #[tokio::test]
     async fn test_create_entity() -> Result<()> {
         let mut repo = MockDynamicEntityRepo::new();
         let class_repo = MockClassDefinitionRepo::new();
-        
+
         let entity = create_test_entity();
-        
+
         // Setup mock repository response
         repo.expect_create()
-            .with(predicate::function(|e: &DynamicEntity| e.entity_type == "test_entity"))
+            .with(predicate::function(|e: &DynamicEntity| {
+                e.entity_type == "test_entity"
+            }))
             .returning(|_| Ok(()));
-        
+
         // Create service with proper mocks
         let class_service = ClassDefinitionService::new(Arc::new(class_repo));
-        let service = DynamicEntityService::new(
-            Arc::new(repo),
-            Arc::new(class_service),
-        );
-        
+        let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
+
         let result = service.create_entity(&entity).await;
-        
+
         assert!(result.is_ok());
-        
+
         Ok(())
     }
-    
+
     #[tokio::test]
     async fn test_create_entity_missing_required_field() -> Result<()> {
         let repo = MockDynamicEntityRepo::new();
         let class_repo = MockClassDefinitionRepo::new();
-        
+
         // Create entity with missing required field
         let mut entity = create_test_entity();
         entity.field_data.remove("name");
-        
+
         // Create service with proper mocks
         let class_service = ClassDefinitionService::new(Arc::new(class_repo));
-        let service = DynamicEntityService::new(
-            Arc::new(repo),
-            Arc::new(class_service),
-        );
-        
+        let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
+
         let result = service.create_entity(&entity).await;
-        
+
         assert!(result.is_err());
         match result {
             Err(Error::Validation(_)) => (),
             _ => panic!("Expected validation error"),
         }
-        
+
         Ok(())
     }
 
@@ -413,31 +456,25 @@ mod tests {
         let mut repo = MockDynamicEntityRepo::new();
         let mut class_repo = MockClassDefinitionRepo::new();
         let entity_type = "test_entity";
-        
+
         // Create a UUID that lives for the entire test function
         let uuid = Uuid::nil();
 
         repo.expect_get_by_type()
-            .with(eq(entity_type), eq(uuid.clone()))
-            .returning(|_, _| {
-                Ok(Some(create_test_entity()))
-            });
+            .with(eq(entity_type), eq(uuid.clone()), eq(None))
+            .returning(|_, _, _| Ok(Some(create_test_entity())));
 
-        class_repo.expect_get_by_entity_type()
+        class_repo
+            .expect_get_by_entity_type()
             .with(eq(entity_type))
-            .returning(|_| {
-                Ok(Some(create_test_class_definition()))
-            });
+            .returning(|_| Ok(Some(create_test_class_definition())));
 
         // Create service with proper mocks
         let class_service = ClassDefinitionService::new(Arc::new(class_repo));
-        let service = DynamicEntityService::new(
-            Arc::new(repo),
-            Arc::new(class_service),
-        );
+        let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
 
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(service.get_entity_by_uuid(entity_type, &uuid));
+        let result = rt.block_on(service.get_entity_by_uuid(entity_type, &uuid, None));
         assert!(result.is_ok());
     }
 
@@ -445,32 +482,34 @@ mod tests {
     async fn test_get_entity_by_type() -> Result<()> {
         let mut repo = MockDynamicEntityRepo::new();
         let mut class_repo = MockClassDefinitionRepo::new();
-        
+
         let entity_type = "test_entity";
-        
+
         // Setup mock class definition repository
         class_repo
             .expect_get_by_entity_type()
             .with(predicate::eq(entity_type))
             .returning(|_| Ok(Some(create_test_class_definition())));
-        
+
         // Setup mock repository response for the entity type
         repo.expect_get_all_by_type()
-            .with(predicate::eq(entity_type), predicate::always(), predicate::always())
-            .returning(|_, _, _| Ok(vec![create_test_entity()]));
-        
+            .with(
+                predicate::eq(entity_type),
+                predicate::always(),
+                predicate::always(),
+                predicate::eq(None),
+            )
+            .returning(|_, _, _, _| Ok(vec![create_test_entity()]));
+
         // Create service with proper mocks
         let class_service = ClassDefinitionService::new(Arc::new(class_repo));
-        let service = DynamicEntityService::new(
-            Arc::new(repo),
-            Arc::new(class_service),
-        );
-        
-        let entities = service.list_entities(entity_type, 10, 0).await?;
-        
+        let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
+
+        let entities = service.list_entities(entity_type, 10, 0, None).await?;
+
         assert!(!entities.is_empty());
         assert_eq!(entities[0].entity_type, entity_type);
-        
+
         Ok(())
     }
-} 
+}

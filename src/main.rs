@@ -5,7 +5,6 @@ use log::{error, info};
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 
-
 mod api;
 mod cache;
 mod config;
@@ -28,10 +27,12 @@ use crate::cache::CacheManager;
 use crate::config::AppConfig;
 use crate::entity::admin_user::{AdminUserRepository, ApiKeyRepository};
 use crate::entity::dynamic_entity::repository::DynamicEntityRepository;
-use crate::services::adapters::{ClassDefinitionRepositoryAdapter, DynamicEntityRepositoryAdapter, AdminUserRepositoryAdapter};
+use crate::services::adapters::{
+    AdminUserRepositoryAdapter, ClassDefinitionRepositoryAdapter, DynamicEntityRepositoryAdapter,
+};
 use crate::services::AdminUserService;
-use crate::services::ApiKeyService;
 use crate::services::ApiKeyRepositoryAdapter;
+use crate::services::ApiKeyService;
 use crate::services::ClassDefinitionService;
 use crate::services::DynamicEntityService;
 
@@ -115,7 +116,7 @@ async fn main() -> std::io::Result<()> {
     // Initialize services with adapters
     let api_key_adapter = ApiKeyRepositoryAdapter::new(api_key_repository);
     let api_key_service = ApiKeyService::new(Arc::new(api_key_adapter));
-    
+
     // Use adapter for AdminUserRepository
     let admin_user_adapter = AdminUserRepositoryAdapter::new(admin_user_repository);
     let admin_user_service = AdminUserService::new(Arc::new(admin_user_adapter));
@@ -124,9 +125,10 @@ async fn main() -> std::io::Result<()> {
     let class_definition_adapter =
         ClassDefinitionRepositoryAdapter::new(class_definition_repository);
     let class_definition_service = ClassDefinitionService::new(Arc::new(class_definition_adapter));
-    
+
     // Initialize dynamic entity service
-    let dynamic_entity_adapter = DynamicEntityRepositoryAdapter::from_repository(dynamic_entity_repository);
+    let dynamic_entity_adapter =
+        DynamicEntityRepositoryAdapter::from_repository(dynamic_entity_repository);
     let dynamic_entity_service = DynamicEntityService::new(
         Arc::new(dynamic_entity_adapter),
         Arc::new(class_definition_service.clone()),

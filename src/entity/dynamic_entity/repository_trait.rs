@@ -15,10 +15,21 @@ pub trait DynamicEntityRepositoryTrait: Send + Sync {
     async fn update(&self, entity: &DynamicEntity) -> Result<()>;
 
     /// Get a dynamic entity by type and UUID
-    async fn get_by_type(&self, entity_type: &str, uuid: &Uuid) -> Result<Option<DynamicEntity>>;
+    async fn get_by_type(
+        &self,
+        entity_type: &str,
+        uuid: &Uuid,
+        exclusive_fields: Option<Vec<String>>,
+    ) -> Result<Option<DynamicEntity>>;
 
     /// Get all entities of a specific type with pagination
-    async fn get_all_by_type(&self, entity_type: &str, limit: i64, offset: i64) -> Result<Vec<DynamicEntity>>;
+    async fn get_all_by_type(
+        &self,
+        entity_type: &str,
+        limit: i64,
+        offset: i64,
+        exclusive_fields: Option<Vec<String>>,
+    ) -> Result<Vec<DynamicEntity>>;
 
     /// Delete an entity by type and UUID
     async fn delete_by_type(&self, entity_type: &str, uuid: &Uuid) -> Result<()>;
@@ -30,6 +41,7 @@ pub trait DynamicEntityRepositoryTrait: Send + Sync {
         filters: &HashMap<String, JsonValue>,
         limit: i64,
         offset: i64,
+        exclusive_fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>>;
 
     /// Count entities of a specific type

@@ -1,14 +1,16 @@
+use log::{debug, error, warn};
 use serde_json::Value as JsonValue;
-use sqlx::{postgres::PgRow, FromRow, PgPool, Row};
+use sqlx::{postgres::PgRow, Column, FromRow, PgPool, Row};
 use std::collections::HashMap;
 use std::sync::Arc;
-use time;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::entity::class::definition::ClassDefinition;
 use crate::entity::dynamic_entity::entity::DynamicEntity;
+use crate::entity::dynamic_entity::mapper;
 use crate::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
+use crate::entity::dynamic_entity::utils;
 use crate::error::{Error, Result};
 
 /// Repository for managing dynamic entities
@@ -26,20 +28,7 @@ impl DynamicEntityRepository {
     /// Create a new dynamic entity
     pub async fn create(&self, entity: &DynamicEntity) -> Result<()> {
         // Get the class definition to validate against
-        let class_def = sqlx::query("SELECT * FROM class_definitions WHERE entity_type = $1")
-            .bind(&entity.entity_type)
-            .map(|row: PgRow| {
-                // Use the FromRow trait to convert the row
-                ClassDefinition::from_row(&row).expect("Error converting row to ClassDefinition")
-            })
-            .fetch_optional(&self.pool)
-            .await?
-            .ok_or_else(|| {
-                Error::NotFound(format!(
-                    "Class definition for type {} not found",
-                    entity.entity_type
-                ))
-            })?;
+        let class_def = utils::get_class_definition(&self.pool, &entity.entity_type).await?;
 
         // Validate the entity against the class definition
         entity.validate()?;
@@ -131,7 +120,7 @@ impl DynamicEntityRepository {
             .await?;
 
         // Then, insert custom fields into the entity-specific table
-        let table_name = format!("entity_{}", entity.entity_type.to_lowercase());
+        let table_name = utils::get_table_name(&entity.entity_type);
 
         // Get column names for this table
         let columns_result = sqlx::query(
@@ -224,22 +213,6 @@ impl DynamicEntityRepository {
 
     /// Update an existing dynamic entity
     pub async fn update(&self, entity: &DynamicEntity) -> Result<()> {
-        // Get the class definition to validate against
-        let class_def = sqlx::query("SELECT * FROM class_definitions WHERE entity_type = $1")
-            .bind(&entity.entity_type)
-            .map(|row: PgRow| {
-                // Use the FromRow trait to convert the row
-                ClassDefinition::from_row(&row).expect("Error converting row to ClassDefinition")
-            })
-            .fetch_optional(&self.pool)
-            .await?
-            .ok_or_else(|| {
-                Error::NotFound(format!(
-                    "Class definition for type {} not found",
-                    entity.entity_type
-                ))
-            })?;
-
         // Validate the entity against the class definition
         entity.validate()?;
 
@@ -312,7 +285,7 @@ impl DynamicEntityRepository {
         registry_query.execute(&mut *tx).await?;
 
         // 2. Update entity-specific table
-        let table_name = format!("entity_{}", entity.entity_type.to_lowercase());
+        let table_name = utils::get_table_name(&entity.entity_type);
 
         // Get column names for this table
         let columns_result = sqlx::query(
@@ -392,97 +365,6 @@ impl DynamicEntityRepository {
         Ok(())
     }
 
-    /// Get a dynamic entity by its type
-    pub async fn get_by_type(&self, entity_type: &str) -> Result<Option<DynamicEntity>> {
-        // Get the class definition
-        let class_def = sqlx::query("SELECT * FROM class_definitions WHERE entity_type = $1")
-            .bind(entity_type)
-            .map(|row: PgRow| {
-                // Use the FromRow trait to convert the row
-                ClassDefinition::from_row(&row).expect("Error converting row to ClassDefinition")
-            })
-            .fetch_optional(&self.pool)
-            .await?;
-
-        if let Some(class_def) = class_def {
-            // Get the entity data
-            let row = sqlx::query!(
-                r#"
-                SELECT * FROM entities_registry WHERE entity_type = $1
-                "#,
-                entity_type
-            )
-            .fetch_optional(&self.pool)
-            .await?;
-
-            if let Some(row) = row {
-                let field_data: HashMap<String, JsonValue> = {
-                    // Create a HashMap containing all fields from the row
-                    let mut data = HashMap::new();
-                    data.insert("uuid".to_string(), JsonValue::String(row.uuid.to_string()));
-                    data.insert(
-                        "entity_type".to_string(),
-                        JsonValue::String(row.entity_type.clone()),
-                    );
-                    data.insert("path".to_string(), JsonValue::String(row.path.clone()));
-
-                    // Add dates properly formatted
-                    data.insert(
-                        "created_at".to_string(),
-                        JsonValue::String(row.created_at.to_string()),
-                    );
-                    data.insert(
-                        "updated_at".to_string(),
-                        JsonValue::String(row.updated_at.to_string()),
-                    );
-
-                    // Add optional fields checking for nulls
-                    data.insert(
-                        "created_by".to_string(),
-                        JsonValue::String(row.created_by.to_string()),
-                    );
-                    if let Some(updated_by) = row.updated_by {
-                        data.insert(
-                            "updated_by".to_string(),
-                            JsonValue::String(updated_by.to_string()),
-                        );
-                    }
-
-                    data.insert("published".to_string(), JsonValue::Bool(row.published));
-                    data.insert(
-                        "version".to_string(),
-                        JsonValue::Number(serde_json::Number::from(row.version)),
-                    );
-
-                    data
-                };
-                Ok(Some(DynamicEntity {
-                    entity_type: row.entity_type,
-                    field_data,
-                    definition: Arc::new(class_def),
-                }))
-            } else {
-                Ok(None)
-            }
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// Delete a dynamic entity by its type
-    pub async fn delete_by_type(&self, entity_type: &str) -> Result<()> {
-        sqlx::query!(
-            r#"
-            DELETE FROM entities_registry WHERE entity_type = $1
-            "#,
-            entity_type
-        )
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
-    }
-
     /// Filter entities based on field values
     pub async fn filter_entities(
         &self,
@@ -490,173 +372,119 @@ impl DynamicEntityRepository {
         filters: &HashMap<String, JsonValue>,
         limit: i64,
         offset: i64,
+        exclusive_fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>> {
-        log::debug!("Filtering entities of type {} with filters: {:?}", entity_type, filters);
-        
-        // First check if the class definition exists
-        let class_def = sqlx::query("SELECT * FROM class_definitions WHERE entity_type = $1")
-            .bind(entity_type)
-            .map(|row: PgRow| {
-                ClassDefinition::from_row(&row).expect("Error converting row to ClassDefinition")
-            })
-            .fetch_optional(&self.pool)
-            .await?;
-        
-        // If the class definition doesn't exist, return NotFound error
-        let class_def = match class_def {
-            Some(def) => def,
-            None => {
-                return Err(Error::NotFound(format!(
-                    "Class definition for entity type '{}' not found",
-                    entity_type
-                )));
-            }
-        };
-        
-        // Check if the entity table exists
-        let table_name = format!("entity_{}", entity_type.to_lowercase());
-        let view_name = format!("{}_view", entity_type.to_lowercase());
-        
-        // Build query parts
-        let mut where_clauses = Vec::new();
-        let mut params = Vec::new();
-        let mut param_idx = 1;
-        
-        // Add entity_type filter
-        where_clauses.push(format!("entity_type = ${}", param_idx));
-        params.push(entity_type.to_string());
-        param_idx += 1;
-        
-        // Add other filters
-        for (key, value) in filters {
-            let op = "="; // Default operator
-            
-            // Skip null values
-            if value.is_null() {
-                continue;
-            }
-            
-            // Handle different types of values
-            match value {
-                JsonValue::String(s) => {
-                    where_clauses.push(format!("{} {} ${}", key, op, param_idx));
-                    params.push(s.clone());
-                }
-                JsonValue::Number(n) => {
-                    where_clauses.push(format!("{} {} ${}", key, op, param_idx));
-                    params.push(n.to_string());
-                }
-                JsonValue::Bool(b) => {
-                    where_clauses.push(format!("{} {} ${}", key, op, param_idx));
-                    params.push(b.to_string());
-                }
-                _ => {
-                    // For complex types, we'll skip them for now
-                    continue;
-                }
-            }
-            param_idx += 1;
-        }
-        
-        // Build the query
-        let where_clause = if where_clauses.is_empty() {
-            "".to_string()
-        } else {
-            format!("WHERE {}", where_clauses.join(" AND "))
-        };
-        
-        let query = format!(
-            "SELECT * FROM entities_registry {} ORDER BY created_at DESC LIMIT ${}::bigint OFFSET ${}::bigint",
-            where_clause, param_idx, param_idx + 1
+        debug!(
+            "Filtering entities of type {} with filters: {:?}",
+            entity_type, filters
         );
-        
-        // Add pagination parameters
-        let mut query_builder = sqlx::query(&query);
-        
-        // Bind filter parameters
-        for param in params {
+
+        // Get the class definition to understand entity structure
+        let class_def = utils::get_class_definition(&self.pool, entity_type).await?;
+
+        // Get the view name
+        let view_name = utils::get_view_name(entity_type);
+
+        // Build WHERE clause from filters
+        let (where_clause, params) = utils::build_where_clause(filters, &class_def);
+
+        // Build the query with field selection
+        let query = if let Some(fields) = &exclusive_fields {
+            // Always include system fields
+            let mut selected_fields = vec![
+                "uuid".to_string(),
+                "created_at".to_string(),
+                "updated_at".to_string(),
+                "created_by".to_string(),
+                "updated_by".to_string(),
+                "published".to_string(),
+                "version".to_string(),
+                "path".to_string(),
+            ];
+
+            // Add requested fields
+            for field in fields {
+                if !selected_fields.contains(field) {
+                    selected_fields.push(field.clone());
+                }
+            }
+
+            format!(
+                "SELECT {} FROM {} WHERE {}",
+                selected_fields.join(", "),
+                view_name,
+                where_clause
+            )
+        } else {
+            format!("SELECT * FROM {} WHERE {}", view_name, where_clause)
+        };
+
+        // Add pagination
+        let mut final_query = query + &format!(" LIMIT {} OFFSET {}", limit, offset);
+
+        debug!("Query: {}", final_query);
+
+        // Execute the query
+        let mut query_builder = sqlx::query(&final_query);
+        for param in &params {
             query_builder = query_builder.bind(param);
         }
-        
-        // Bind pagination parameters properly as i64
-        query_builder = query_builder.bind(limit);
-        query_builder = query_builder.bind(offset);
-        
-        let query_result = query_builder.fetch_all(&self.pool).await;
-        
-        // If the query fails (e.g., table doesn't exist), return empty result
-        let rows = match query_result {
-            Ok(r) => r,
-            Err(e) => {
-                log::warn!("Error filtering entities: {}", e);
-                return Ok(Vec::new());
-            }
-        };
-        
-        // Convert rows to entities
+
+        let rows = query_builder.fetch_all(&self.pool).await?;
+
+        // Convert rows to DynamicEntity
         let mut entities = Vec::new();
-        let class_def_arc = Arc::new(class_def);
-        
+
+        debug!("Rows: {:?}", rows);
+
         for row in rows {
-            // Extract UUID and entity type
-            let uuid: Uuid = row.try_get("uuid")?;
-            let entity_type: String = row.try_get("entity_type")?;
-            
-            // Create a field data map
-            let mut field_data = HashMap::new();
-            field_data.insert("uuid".to_string(), JsonValue::String(uuid.to_string()));
-            field_data.insert("entity_type".to_string(), JsonValue::String(entity_type.clone()));
-            
-            // Extract other fields from registry
-            let path: String = row.try_get("path")?;
-            field_data.insert("path".to_string(), JsonValue::String(path));
-            
-            let created_at: OffsetDateTime = row.try_get("created_at")?;
-            field_data.insert(
-                "created_at".to_string(),
-                JsonValue::String(created_at.format(&time::format_description::well_known::Rfc3339).unwrap()),
-            );
-            
-            let updated_at: OffsetDateTime = row.try_get("updated_at")?;
-            field_data.insert(
-                "updated_at".to_string(),
-                JsonValue::String(updated_at.format(&time::format_description::well_known::Rfc3339).unwrap()),
-            );
-            
-            let created_by: Uuid = row.try_get("created_by")?;
-            field_data.insert(
-                "created_by".to_string(),
-                JsonValue::String(created_by.to_string()),
-            );
-            
-            // Optional fields
-            if let Ok(updated_by) = row.try_get::<Uuid, _>("updated_by") {
-                field_data.insert(
-                    "updated_by".to_string(),
-                    JsonValue::String(updated_by.to_string()),
-                );
-            }
-            
-            let published: bool = row.try_get("published")?;
-            field_data.insert("published".to_string(), JsonValue::Bool(published));
-            
-            let version: i32 = row.try_get("version")?;
-            field_data.insert(
-                "version".to_string(),
-                JsonValue::Number(serde_json::Number::from(version)),
-            );
-            
-            // Create and add the entity
-            let entity = DynamicEntity {
-                entity_type,
-                field_data,
-                definition: class_def_arc.clone(),
-            };
-            
+            debug!("Row: {:?}", row);
+            let field_data = mapper::extract_field_data(&row);
+            debug!("field data: {:?}", field_data);
+            let entity =
+                mapper::create_entity(entity_type.to_string(), field_data, class_def.clone());
             entities.push(entity);
         }
-        
+
         Ok(entities)
+    }
+
+    /// Count entities of a specific type
+    pub async fn count_entities(&self, entity_type: &str) -> Result<i64> {
+        // Use the view for this entity type
+        let view_name = utils::get_view_name(entity_type);
+
+        // Check if view exists
+        let view_exists = sqlx::query_scalar!(
+            r#"
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.tables
+                WHERE table_schema = 'public'
+                AND table_name = $1
+            ) AS "exists!"
+            "#,
+            &view_name
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(Error::Database)?;
+
+        if !view_exists {
+            return Err(Error::NotFound(format!(
+                "Entity type '{}' not found",
+                entity_type
+            )));
+        }
+
+        // Query count
+        let query = format!("SELECT COUNT(*) FROM {}", view_name);
+        let count: i64 = sqlx::query_scalar(&query)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(Error::Database)?;
+
+        Ok(count)
     }
 }
 
@@ -670,19 +498,171 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
         self.update(entity).await
     }
 
-    async fn get_by_type(&self, entity_type: &str, uuid: &Uuid) -> Result<Option<DynamicEntity>> {
-        log::warn!("Using limited implementation of get_by_type");
-        Ok(None) // Stub - this will be properly implemented in the future
+    async fn get_by_type(
+        &self,
+        entity_type: &str,
+        uuid: &Uuid,
+        exclusive_fields: Option<Vec<String>>,
+    ) -> Result<Option<DynamicEntity>> {
+        debug!("Getting entity of type {} with UUID {}", entity_type, uuid);
+
+        // Get the class definition to understand entity structure
+        let class_def = utils::get_class_definition(&self.pool, entity_type).await?;
+
+        // Get the view name
+        let view_name = utils::get_view_name(entity_type);
+
+        // Build the query with field selection
+        let query = if let Some(fields) = &exclusive_fields {
+            // Always include system fields
+            let mut selected_fields = vec![
+                "uuid".to_string(),
+                "created_at".to_string(),
+                "updated_at".to_string(),
+                "created_by".to_string(),
+                "updated_by".to_string(),
+                "published".to_string(),
+                "version".to_string(),
+                "path".to_string(),
+            ];
+
+            // Add requested fields
+            for field in fields {
+                if !selected_fields.contains(field) {
+                    selected_fields.push(field.clone());
+                }
+            }
+
+            format!(
+                "SELECT {} FROM {} WHERE uuid = $1",
+                selected_fields.join(", "),
+                view_name
+            )
+        } else {
+            format!("SELECT * FROM {} WHERE uuid = $1", view_name)
+        };
+
+        debug!("Query: {}", query);
+
+        let row = sqlx::query(&query)
+            .bind(uuid)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| {
+                error!("Error fetching entity: {:?}", e);
+                Error::Database(e)
+            })?;
+
+        if let Some(row) = row {
+            // Map the row to a DynamicEntity
+            let entity = mapper::map_row_to_entity(&row, entity_type, &class_def);
+            Ok(Some(entity))
+        } else {
+            Ok(None)
+        }
     }
 
-    async fn get_all_by_type(&self, entity_type: &str, limit: i64, offset: i64) -> Result<Vec<DynamicEntity>> {
-        log::warn!("Using limited implementation of get_all_by_type");
-        Ok(Vec::new()) // Stub - this will be properly implemented in the future
+    async fn get_all_by_type(
+        &self,
+        entity_type: &str,
+        limit: i64,
+        offset: i64,
+        exclusive_fields: Option<Vec<String>>,
+    ) -> Result<Vec<DynamicEntity>> {
+        debug!("Getting all entities of type {}", entity_type);
+
+        // Get the class definition to understand entity structure
+        let class_def = utils::get_class_definition(&self.pool, entity_type).await?;
+
+        // Get the view name
+        let view_name = utils::get_view_name(entity_type);
+
+        // Build the query with field selection
+        let query = if let Some(fields) = &exclusive_fields {
+            // Always include system fields
+            let mut selected_fields = vec![
+                "uuid".to_string(),
+                "created_at".to_string(),
+                "updated_at".to_string(),
+                "created_by".to_string(),
+                "updated_by".to_string(),
+                "published".to_string(),
+                "version".to_string(),
+                "path".to_string(),
+            ];
+
+            // Add requested fields
+            for field in fields {
+                if !selected_fields.contains(field) {
+                    selected_fields.push(field.clone());
+                }
+            }
+
+            format!(
+                "SELECT {} FROM {} ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+                selected_fields.join(", "),
+                view_name
+            )
+        } else {
+            format!(
+                "SELECT * FROM {} ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+                view_name
+            )
+        };
+
+        debug!("Query: {}", query);
+
+        // Query all entities
+        let rows = sqlx::query(&query)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| {
+                error!("Error fetching entities: {:?}", e);
+                Error::Database(e)
+            })?;
+
+        // Convert rows to DynamicEntity objects
+        let entities = rows
+            .iter()
+            .map(|row| mapper::map_row_to_entity(row, entity_type, &class_def))
+            .collect();
+
+        Ok(entities)
     }
 
     async fn delete_by_type(&self, entity_type: &str, uuid: &Uuid) -> Result<()> {
-        log::warn!("Using limited implementation of delete_by_type");
-        Ok(()) // Stub - this will be properly implemented in the future
+        debug!("Deleting entity of type {} with UUID {}", entity_type, uuid);
+
+        // Get the table name
+        let table_name = utils::get_table_name(entity_type);
+
+        // Start a transaction
+        let mut tx = self.pool.begin().await?;
+
+        // First, delete from the entity-specific table
+        let query = format!("DELETE FROM {} WHERE uuid = $1", table_name);
+
+        let result = sqlx::query(&query).bind(uuid).execute(&mut *tx).await;
+
+        // If the entity table doesn't exist, just log a warning
+        if let Err(e) = result {
+            warn!("Error deleting from {}: {}", table_name, e);
+        }
+
+        // Then delete from entities_registry
+        sqlx::query("DELETE FROM entities_registry WHERE uuid = $1 AND entity_type = $2")
+            .bind(uuid)
+            .bind(entity_type)
+            .execute(&mut *tx)
+            .await
+            .map_err(Error::Database)?;
+
+        // Commit the transaction
+        tx.commit().await?;
+
+        Ok(())
     }
 
     async fn filter_entities(
@@ -691,8 +671,10 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
         filters: &HashMap<String, JsonValue>,
         limit: i64,
         offset: i64,
+        exclusive_fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>> {
-        self.filter_entities(entity_type, filters, limit, offset).await
+        self.filter_entities(entity_type, filters, limit, offset, exclusive_fields)
+            .await
     }
 
     async fn count_entities(&self, entity_type: &str) -> Result<i64> {

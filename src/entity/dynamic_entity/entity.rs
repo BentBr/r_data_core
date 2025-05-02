@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
-use uuid::Uuid;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 use crate::entity::class::definition::ClassDefinition;
 use crate::entity::field::FieldDefinition;

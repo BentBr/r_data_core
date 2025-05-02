@@ -1,9 +1,9 @@
-use async_trait::async_trait;
-use uuid::Uuid;
-use crate::error::Result;
 use crate::entity::admin_user::repository::ApiKeyRepository;
 use crate::entity::admin_user::repository_trait::ApiKeyRepositoryTrait;
 use crate::entity::admin_user::ApiKey;
+use crate::error::Result;
+use async_trait::async_trait;
+use uuid::Uuid;
 
 /// Repository adapter for ApiKeyRepository
 pub struct ApiKeyRepositoryAdapter {
@@ -53,7 +53,9 @@ impl ApiKeyRepositoryTrait for ApiKeyRepositoryAdapter {
         created_by: Uuid,
         expires_in_days: i32,
     ) -> Result<(Uuid, String)> {
-        self.inner.create_new_api_key(name, description, created_by, expires_in_days).await
+        self.inner
+            .create_new_api_key(name, description, created_by, expires_in_days)
+            .await
     }
 
     async fn update_last_used(&self, uuid: Uuid) -> Result<()> {
@@ -63,4 +65,4 @@ impl ApiKeyRepositoryTrait for ApiKeyRepositoryAdapter {
     async fn reassign(&self, uuid: Uuid, new_user_uuid: Uuid) -> Result<()> {
         self.inner.reassign(uuid, new_user_uuid).await
     }
-} 
+}

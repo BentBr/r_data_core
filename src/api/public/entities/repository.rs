@@ -2,7 +2,7 @@ use super::models::EntityTypeInfo;
 use crate::entity::class::definition::ClassDefinition;
 use crate::entity::dynamic_entity::entity::DynamicEntity;
 use crate::entity::field::FieldDefinition;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use serde_json::Value;
 use sqlx::Column;
 use sqlx::{PgPool, Row};
