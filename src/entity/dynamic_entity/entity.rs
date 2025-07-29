@@ -221,13 +221,11 @@ impl DynamicEntity {
     /// Validate the entity against its class definition
     pub fn validate(&self) -> Result<()> {
         for field in &self.definition.fields {
-            if field.required {
-                if !self.field_data.contains_key(&field.name) {
-                    return Err(Error::Validation(format!(
-                        "Required field '{}' is missing",
-                        field.name
-                    )));
-                }
+            if field.required && !self.field_data.contains_key(&field.name) {
+                return Err(Error::Validation(format!(
+                    "Required field '{}' is missing",
+                    field.name
+                )));
             }
 
             if let Some(value) = self.field_data.get(&field.name) {
@@ -294,13 +292,11 @@ impl DynamicFields for DynamicEntity {
     fn validate(&self, class_def: &ClassDefinition) -> Result<()> {
         // Basic validation - ensure all required fields are present
         for field in &class_def.fields {
-            if field.required {
-                if !self.field_data.contains_key(&field.name) {
-                    return Err(Error::Validation(format!(
-                        "Required field '{}' is missing",
-                        field.name
-                    )));
-                }
+            if field.required && !self.field_data.contains_key(&field.name) {
+                return Err(Error::Validation(format!(
+                    "Required field '{}' is missing",
+                    field.name
+                )));
             }
 
             if let Some(value) = self.field_data.get(&field.name) {

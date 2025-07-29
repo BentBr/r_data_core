@@ -26,7 +26,7 @@ impl DynamicEntityRepository {
     /// Create a new dynamic entity
     pub async fn create(&self, entity: &DynamicEntity) -> Result<()> {
         // Get the class definition to validate against
-        let class_def = utils::get_class_definition(&self.pool, &entity.entity_type).await?;
+        let _class_def = utils::get_class_definition(&self.pool, &entity.entity_type).await?;
 
         // Validate the entity against the class definition
         entity.validate()?;

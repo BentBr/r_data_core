@@ -26,7 +26,7 @@ pub async fn get_class_definition(db_pool: &PgPool, entity_type: &str) -> Result
         // Parse the class definition from the row
         let fields: Vec<FieldDefinition> =
             serde_json::from_value(row.try_get("field_definitions").map_err(Error::Database)?)
-                .map_err(|e| Error::Serialization(e))?;
+                .map_err(Error::Serialization)?;
 
         Ok(ClassDefinition::new(
             row.try_get("entity_type").map_err(Error::Database)?,
