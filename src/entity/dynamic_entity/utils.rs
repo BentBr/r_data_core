@@ -3,6 +3,7 @@ use crate::entity::field::FieldDefinition;
 use crate::error::{Error, Result};
 use serde_json::{self, Value as JsonValue};
 use sqlx::{PgPool, Row};
+use uuid::Uuid;
 
 /// Get a class definition by entity type
 pub async fn get_class_definition(db_pool: &PgPool, entity_type: &str) -> Result<ClassDefinition> {
@@ -113,4 +114,22 @@ pub fn build_where_clause(
     };
 
     (clause, params)
+}
+
+/// Extract UUID from a JsonValue field
+/// Returns None if the field is not a string or if the string is not a valid UUID
+pub fn extract_uuid_from_json(value: &JsonValue) -> Option<Uuid> {
+    match value {
+        JsonValue::String(s) => Uuid::parse_str(s).ok(),
+        _ => None,
+    }
+}
+
+/// Extract UUID from entity field data
+/// Returns None if the field is missing, not a string, or not a valid UUID
+pub fn extract_uuid_from_entity_field_data(
+    field_data: &std::collections::HashMap<String, JsonValue>,
+    field_name: &str,
+) -> Option<Uuid> {
+    field_data.get(field_name).and_then(extract_uuid_from_json)
 }

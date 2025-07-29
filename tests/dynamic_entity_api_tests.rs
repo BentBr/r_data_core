@@ -213,11 +213,10 @@ mod dynamic_entity_tests {
 
     // Helper to get UUID from entity's field_data
     fn get_entity_uuid(entity: &DynamicEntity) -> Option<Uuid> {
-        entity
-            .field_data
-            .get("uuid")
-            .and_then(|v| v.as_str())
-            .and_then(|s| Uuid::parse_str(s).ok())
+        r_data_core::entity::dynamic_entity::utils::extract_uuid_from_entity_field_data(
+            &entity.field_data,
+            "uuid",
+        )
     }
 
     /// Create a test class definition from a JSON file with a unique entity type

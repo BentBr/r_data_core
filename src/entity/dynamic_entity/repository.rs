@@ -32,13 +32,7 @@ impl DynamicEntityRepository {
         entity.validate()?;
 
         // Extract UUID from the entity
-        let uuid = entity
-            .field_data
-            .get("uuid")
-            .and_then(|v| match v {
-                JsonValue::String(s) => Uuid::parse_str(s).ok(),
-                _ => None,
-            })
+        let uuid = utils::extract_uuid_from_entity_field_data(&entity.field_data, "uuid")
             .ok_or_else(|| Error::Validation("Entity is missing a valid UUID".to_string()))?;
 
         // Extract the path or generate a default one
@@ -80,17 +74,11 @@ impl DynamicEntityRepository {
             })
             .unwrap_or_else(OffsetDateTime::now_utc);
 
-        let created_by = entity
-            .field_data
-            .get("created_by")
-            .and_then(|v| v.as_str())
-            .and_then(|s| Uuid::parse_str(s).ok());
+        let created_by =
+            utils::extract_uuid_from_entity_field_data(&entity.field_data, "created_by");
 
-        let updated_by = entity
-            .field_data
-            .get("updated_by")
-            .and_then(|v| v.as_str())
-            .and_then(|s| Uuid::parse_str(s).ok());
+        let updated_by =
+            utils::extract_uuid_from_entity_field_data(&entity.field_data, "updated_by");
 
         let published = entity
             .field_data
@@ -215,13 +203,7 @@ impl DynamicEntityRepository {
         entity.validate()?;
 
         // Extract UUID from the entity
-        let uuid = entity
-            .field_data
-            .get("uuid")
-            .and_then(|v| match v {
-                JsonValue::String(s) => Uuid::parse_str(s).ok(),
-                _ => None,
-            })
+        let uuid = utils::extract_uuid_from_entity_field_data(&entity.field_data, "uuid")
             .ok_or_else(|| Error::Validation("Entity is missing a valid UUID".to_string()))?;
 
         // Start a transaction
@@ -242,20 +224,17 @@ impl DynamicEntityRepository {
             registry_values.push(published.to_string());
         }
 
-        let updated_by = entity
-            .field_data
-            .get("updated_by")
-            .and_then(|v| v.as_str())
-            .and_then(|s| Uuid::parse_str(s).ok());
+        let updated_by =
+            utils::extract_uuid_from_entity_field_data(&entity.field_data, "updated_by");
 
-        if updated_by.is_some() {
+        if let Some(item) = updated_by {
             registry_fields.push("updated_by = $3");
-            registry_values.push(updated_by.unwrap().to_string());
+            registry_values.push(item.to_string());
         }
 
         // Always update timestamp and increment version
         let update_registry_query = if registry_fields.is_empty() {
-            // Just update the timestamp and version
+            // Update the timestamp and version
             String::from(
                 "UPDATE entities_registry SET updated_at = NOW(), version = version + 1 
                 WHERE uuid = $1 AND entity_type = $2",

@@ -36,7 +36,7 @@ impl DynamicEntityService {
         &self.repository
     }
 
-    // Check if entity type exists and is published - common check for all operations
+    // Check if the entity type exists and is published - common check for all operations
     async fn check_entity_type_exists_and_published(
         &self,
         entity_type: &str,

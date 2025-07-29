@@ -9,7 +9,7 @@ no_docker_compose = true
         "description" = "Runs all tests sequentially (as we need to have it for integration tests. Needs the test database"
     [commands.test-unit]
         "alias" = "test-unit"
-        "execution" = "RUST_LOG=warning cargo test --lib -p r_data_core"
+        "execution" = "RUST_LOG=warning cargo test --lib -p r_data_core && RUST_LOG=warning cargo test --test hash_passwords"
         "description" = "Runs all unit tests"
     [commands.clippy]
         "alias" = "clippy"
