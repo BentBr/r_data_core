@@ -168,7 +168,7 @@ impl MockClassDefinitionService {
         Ok(definition)
     }
 
-    async fn get_class_definition(&self, _uuid: &Uuid) -> Result<ClassDefinition> {
+    async fn _get_class_definition(&self, _uuid: &Uuid) -> Result<ClassDefinition> {
         if !self.entity_type_exists {
             return Err(Error::NotFound("Class definition not found".to_string()));
         }

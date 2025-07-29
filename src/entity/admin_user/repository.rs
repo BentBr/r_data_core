@@ -385,6 +385,15 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         created_by: Uuid,
         expires_in_days: i32,
     ) -> Result<(Uuid, String)> {
+        // Validate input parameters
+        if name.trim().is_empty() {
+            return Err(Error::Validation("API key name cannot be empty".to_string()));
+        }
+
+        if expires_in_days < 0 {
+            return Err(Error::Validation("Expiration days cannot be negative".to_string()));
+        }
+
         // Generate a secure random API key
         let key_value = ApiKey::generate_key();
 
@@ -416,7 +425,7 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
             created_at,
             expires_at,
             created_by,
-            false        // Not published by default
+            true         // Published by default
         )
         .fetch_one(&*self.pool)
         .await
