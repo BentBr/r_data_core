@@ -58,20 +58,42 @@ impl FieldDefinition {
 
                 // Check pattern
                 if let Some(pattern) = &self.validation.pattern {
-                    match Regex::new(pattern) {
-                        Ok(re) => {
-                            if !re.is_match(s) {
+                    // Skip pattern validation for empty strings if field is not required
+                    if !self.required && s.is_empty() {
+                        // Allow empty strings for optional fields
+                    } else {
+                        match Regex::new(pattern) {
+                            Ok(re) => {
+                                if !re.is_match(s) {
+                                    return Err(Error::Validation(format!(
+                                        "Field '{}' does not match pattern",
+                                        self.name
+                                    )));
+                                }
+                            }
+                            Err(_) => {
                                 return Err(Error::Validation(format!(
-                                    "Field '{}' does not match pattern",
+                                    "Invalid pattern for field '{}'",
                                     self.name
-                                )));
+                                )))
                             }
                         }
-                        Err(_) => {
+                    }
+                }
+
+                // Check enum options if present
+                if let Some(options_source) = &self.validation.options_source {
+                    if let crate::entity::field::options::OptionsSource::Fixed { options } =
+                        options_source
+                    {
+                        let valid_options: Vec<&String> =
+                            options.iter().map(|opt| &opt.value).collect();
+
+                        if !valid_options.contains(&&s.to_string()) {
                             return Err(Error::Validation(format!(
-                                "Invalid pattern for field '{}'",
-                                self.name
-                            )))
+                                "Field '{}' value must be one of {:?}",
+                                self.name, valid_options
+                            )));
                         }
                     }
                 }

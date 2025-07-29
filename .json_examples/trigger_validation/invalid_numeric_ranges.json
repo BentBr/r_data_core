@@ -1,0 +1,179 @@
+{
+  "entity_type": "product",
+  "display_name": "Product",
+  "description": "Test product with invalid numeric ranges",
+  "group_name": "test",
+  "allow_children": true,
+  "icon": "package",
+  "fields": [
+    {
+      "name": "sku",
+      "display_name": "SKU",
+      "description": "Valid SKU for testing",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "pattern": "^[A-Z0-9]{2,20}$",
+        "error_message": "SKU must contain 2-20 uppercase letters and numbers only"
+      },
+      "ui_settings": {
+        "display_order": 1,
+        "section": "Basic Information"
+      }
+    },
+    {
+      "name": "name",
+      "display_name": "Product Name",
+      "description": "Valid product name",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "min_length": 3,
+        "max_length": 100
+      },
+      "ui_settings": {
+        "display_order": 2,
+        "section": "Basic Information"
+      }
+    },
+    {
+      "name": "description",
+      "display_name": "Description",
+      "description": "Valid description",
+      "field_type": "Text",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {},
+      "ui_settings": {
+        "display_order": 3,
+        "section": "Basic Information",
+        "control_type": "rich_text"
+      }
+    },
+    {
+      "name": "category",
+      "display_name": "Category",
+      "description": "Valid category",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {},
+      "ui_settings": {
+        "display_order": 4,
+        "section": "Basic Information",
+        "control_type": "dropdown"
+      }
+    },
+    {
+      "name": "brand",
+      "display_name": "Brand",
+      "description": "Valid brand",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {},
+      "ui_settings": {
+        "display_order": 5,
+        "section": "Basic Information"
+      }
+    },
+    {
+      "name": "price",
+      "display_name": "Price",
+      "description": "Price with negative value constraint",
+      "field_type": "Float",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "min": 0,
+        "precision": 2
+      },
+      "ui_settings": {
+        "display_order": 6,
+        "section": "Pricing",
+        "control_type": "currency"
+      }
+    },
+    {
+      "name": "cost",
+      "display_name": "Cost",
+      "description": "Cost with negative value constraint",
+      "field_type": "Float",
+      "required": true,
+      "indexed": false,
+      "filterable": true,
+      "constraints": {
+        "min": 0,
+        "precision": 2
+      },
+      "ui_settings": {
+        "display_order": 7,
+        "section": "Pricing",
+        "control_type": "currency",
+        "visibility": "admin"
+      }
+    },
+    {
+      "name": "tax_category",
+      "display_name": "Tax Category",
+      "description": "Valid tax category",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "options": [
+          "standard",
+          "reduced",
+          "zero",
+          "exempt"
+        ]
+      },
+      "ui_settings": {
+        "display_order": 8,
+        "section": "Pricing",
+        "control_type": "dropdown"
+      }
+    },
+    {
+      "name": "quantity_in_stock",
+      "display_name": "Quantity in Stock",
+      "description": "Quantity with negative value constraint",
+      "field_type": "Integer",
+      "required": true,
+      "indexed": false,
+      "filterable": true,
+      "constraints": {
+        "min": 0
+      },
+      "ui_settings": {
+        "display_order": 9,
+        "section": "Inventory"
+      }
+    },
+    {
+      "name": "min_stock_level",
+      "display_name": "Minimum Stock Level",
+      "description": "Minimum stock with negative value constraint",
+      "field_type": "Integer",
+      "required": true,
+      "indexed": false,
+      "filterable": true,
+      "constraints": {
+        "min": 0
+      },
+      "ui_settings": {
+        "display_order": 10,
+        "section": "Inventory"
+      }
+    }
+  ]
+} 

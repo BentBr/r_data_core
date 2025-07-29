@@ -1,0 +1,83 @@
+{
+  "entity_type": "user",
+  "display_name": "User",
+  "description": "Test user with invalid email patterns",
+  "group_name": "test",
+  "allow_children": false,
+  "icon": "user",
+  "fields": [
+    {
+      "name": "email",
+      "display_name": "Email Address",
+      "description": "Invalid email patterns for testing",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "min_length": 5,
+        "max_length": 255,
+        "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+        "error_message": "Please enter a valid email address"
+      },
+      "ui_settings": {
+        "display_order": 1,
+        "section": "Account Info",
+        "control_type": "email"
+      }
+    },
+    {
+      "name": "username",
+      "display_name": "Username",
+      "description": "Valid username for testing",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "min_length": 3,
+        "max_length": 50,
+        "pattern": "^[a-zA-Z0-9_-]+$",
+        "error_message": "Username can only contain letters, numbers, underscores and hyphens"
+      },
+      "ui_settings": {
+        "display_order": 2,
+        "section": "Account Info"
+      }
+    },
+    {
+      "name": "first_name",
+      "display_name": "First Name",
+      "description": "Valid first name",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "min_length": 1,
+        "max_length": 50
+      },
+      "ui_settings": {
+        "display_order": 3,
+        "section": "Personal Info"
+      }
+    },
+    {
+      "name": "last_name",
+      "display_name": "Last Name",
+      "description": "Valid last name",
+      "field_type": "String",
+      "required": true,
+      "indexed": true,
+      "filterable": true,
+      "constraints": {
+        "min_length": 1,
+        "max_length": 50
+      },
+      "ui_settings": {
+        "display_order": 4,
+        "section": "Personal Info"
+      }
+    }
+  ]
+} 
