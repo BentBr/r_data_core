@@ -294,8 +294,7 @@ pub async fn fast_clear_test_db(pool: &PgPool) -> Result<()> {
     // Get the main entity tables
     let mut tables = Vec::new();
 
-    // Always clear these key tables
-    tables.push("class_definitions".to_string());
+    // Clear these key tables but NOT class_definitions to avoid race conditions
     tables.push("entities_registry".to_string());
     tables.push("admin_users".to_string());
     tables.push("api_keys".to_string());
@@ -334,6 +333,19 @@ pub async fn fast_clear_test_db(pool: &PgPool) -> Result<()> {
     tx.commit().await?;
 
     debug!("Test database cleared successfully");
+    Ok(())
+}
+
+/// Clear class definitions separately when needed
+#[allow(dead_code)]
+pub async fn clear_class_definitions(pool: &PgPool) -> Result<()> {
+    debug!("Clearing class definitions");
+
+    sqlx::query("TRUNCATE TABLE class_definitions CASCADE")
+        .execute(pool)
+        .await?;
+
+    debug!("Class definitions cleared successfully");
     Ok(())
 }
 
@@ -478,7 +490,7 @@ pub async fn create_class_definition_from_json(pool: &PgPool, json_path: &str) -
 
     // The view creation should be handled by the service, but we'll add a small delay
     // to ensure all database operations complete
-    tokio::time::sleep(Duration::from_millis(1000)).await;
+    tokio::time::sleep(Duration::from_millis(500)).await;
 
     Ok(uuid)
 }

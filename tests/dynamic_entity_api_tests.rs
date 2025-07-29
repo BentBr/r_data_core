@@ -868,6 +868,9 @@ mod dynamic_entity_tests {
         let class_service = ClassDefinitionService::new(Arc::new(class_repo));
         let class_uuid = class_service.create_class_definition(&class_def).await?;
 
+        // Wait for database operations to complete
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
         // Get the class definition
         let class_def = class_service.get_class_definition(&class_uuid).await?;
 
