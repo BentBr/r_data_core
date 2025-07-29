@@ -1,40 +1,20 @@
-# This project config must be located in: %project_root%/.rusty_dev_tool/config.toml
-
-# Mandatory field
-local_key = "rdt"
+local_key = "rdatacore"
 # Just using it for aliases
 no_docker_compose = true
 
-# Mandatory node
 [commands]
-# All commands must have a command and an alias but are optional in general
-    [commands.stop]
-        "alias" = "stop"
-        # This is being used on macOS to easy and fast build during coding
-        "execution" = "docker compose stop"
-        "description" = "Overridden stop command"
-    [commands.build]
-        "alias" = "build"
-        # This is being used on macOS to easy and fast build during coding
-        "execution" = "cargo build --release && cp target/release/rusty_dev_tool /usr/local/bin/rdt && ls -lah /usr/local/bin/rdt && echo \"\\033[32mBuilt and copied!\\033[39m\""
-        "description" = "Builds the project and copies the binary to /usr/local/bin/rdt"
+    [commands.test]
+        "alias" = "test"
+        "execution" = "RUST_LOG=warning cargo test -- --test-threads=1"
+        "description" = "Runs all tests sequentially (as we need to have it for integration tests. Needs the test database"
+    [commands.test-unit]
+        "alias" = "test-unit"
+        "execution" = "RUST_LOG=warning cargo test --lib -p r_data_core"
+        "description" = "Runs all unit tests"
     [commands.clippy]
         "alias" = "clippy"
         "execution" = "cargo clippy -- -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery"
         "description" = "Runs clippy with all lints enabled"
-    [commands.test]
-        "alias" = "test"
-        "execution" = "cargo test"
-        "description" = "Runs all tests"
-    [commands.test-coverage]
-        "alias" = "test-coverage"
-        "execution" = "RUSTFLAGS=\"-C instrument-coverage\" LLVM_PROFILE_FILE=\"rusty_dev_tool-%p-%m.profraw\" cargo clean && RUSTFLAGS=\"-C instrument-coverage\" LLVM_PROFILE_FILE=\"rusty_dev_tool-%p-%m.profraw\" cargo test && grcov . --binary-path ./target/debug/ -s . -t html --ignore-not-existing --excl-start \"#\\[cfg\\(test\\)\\]\" --excl-line \"#\\[derive\\(\" --ignore \"/*\" -o ./target/debug/coverage/ && rm rusty_dev_tool*.profraw"
-        "description" = "Runs all tests with coverage via grcov"
-    [commands.generate-completions]
-        # Updating our completions script
-        "alias" = "generate-completions"
-        "execution" = "rdt --generate-completions > ~/.zsh/completions_script.sh && source ~/.zsh/completions_script.sh"
-        "description" = "Generates completions script for zsh"
 
 # Mandatory node
 [environments]

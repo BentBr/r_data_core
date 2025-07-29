@@ -24,14 +24,6 @@ path = "src/bin/run_migrations.rs"
 name = "apply_schema"
 path = "src/bin/apply_schema.rs"
 
-# These test configurations ensure tests run serially
-[package.metadata.cargo-test]
-single-threaded = true
-
-# This is the proper way to configure test thread counts
-[package.metadata.test]
-test-threads = 1
-
 # Use serial_test crate effectively
 [dev-dependencies]
 mockall = "0.12"
