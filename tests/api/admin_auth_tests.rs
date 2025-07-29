@@ -13,23 +13,35 @@ mod tests {
     #[tokio::test]
     async fn test_admin_user_last_login_update() -> Result<()> {
         // Setup test database
-        let pool = crate::common::setup_test_db().await;
-        pool.begin().await?;
+        let pool = crate::common::utils::setup_test_db().await;
+
+        // Clear any existing data
+        crate::common::utils::clear_test_db(&pool)
+            .await
+            .expect("Failed to clear test database");
 
         // Create a repository to work with admin users directly
         let repo = AdminUserRepository::new(Arc::new(pool.clone()));
 
         // Generate a username and email that won't conflict
-        let _unique_id = Uuid::now_v7().to_string()[0..8].to_string();
-        // These variables are not used but kept as reference for more complete tests
-        let _username = format!("test_user_{}", _unique_id);
-        let _email = format!("test{}@example.com", _unique_id);
-
-        // Password for reference in future tests
-        let _test_password = "Test123!";
+        let unique_id = Uuid::now_v7().to_string()[0..8].to_string();
+        let username = format!("test_user_{}", unique_id);
+        let email = format!("test{}@example.com", unique_id);
+        let test_password = "Test123!";
 
         // Create the admin user directly in the database
-        let user_uuid = crate::common::create_test_admin_user(&pool).await?;
+        let user_uuid = repo
+            .create_admin_user(
+                &username,
+                &email,
+                test_password,
+                "Test",
+                "User",
+                None,
+                true,
+                Uuid::now_v7(),
+            )
+            .await?;
 
         // Verify the user has no last_login timestamp initially
         let initial_user = repo.find_by_uuid(&user_uuid).await?.unwrap();

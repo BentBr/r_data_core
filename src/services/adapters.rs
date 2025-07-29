@@ -154,14 +154,17 @@ impl DynamicEntityRepositoryAdapter {
 
 #[async_trait]
 impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
+    /// Create a new entity
     async fn create(&self, entity: &DynamicEntity) -> Result<()> {
         self.inner.create(entity).await
     }
 
+    /// Update an existing entity
     async fn update(&self, entity: &DynamicEntity) -> Result<()> {
         self.inner.update(entity).await
     }
 
+    /// Get a dynamic entity by type and UUID
     async fn get_by_type(
         &self,
         entity_type: &str,
@@ -173,6 +176,7 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
             .await
     }
 
+    /// Get all entities of a specific type with pagination
     async fn get_all_by_type(
         &self,
         entity_type: &str,
@@ -185,23 +189,28 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
             .await
     }
 
+    /// Delete an entity by type and UUID
     async fn delete_by_type(&self, entity_type: &str, uuid: &Uuid) -> Result<()> {
         self.inner.delete_by_type(entity_type, uuid).await
     }
 
+    /// Filter entities by field values with advanced options
     async fn filter_entities(
         &self,
         entity_type: &str,
-        filters: &HashMap<String, JsonValue>,
         limit: i64,
         offset: i64,
-        exclusive_fields: Option<Vec<String>>,
+        filters: Option<HashMap<String, JsonValue>>,
+        search: Option<(String, Vec<String>)>,
+        sort: Option<(String, String)>,
+        fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>> {
         self.inner
-            .filter_entities(entity_type, filters, limit, offset, exclusive_fields)
+            .filter_entities(entity_type, limit, offset, filters, search, sort, fields)
             .await
     }
 
+    /// Count entities of a specific type
     async fn count_entities(&self, entity_type: &str) -> Result<i64> {
         self.inner.count_entities(entity_type).await
     }

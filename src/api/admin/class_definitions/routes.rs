@@ -298,6 +298,8 @@ async fn update_class_definition(
     // Take user input and keep system fields
     let mut updated_def = definition.into_inner();
     updated_def.uuid = path.uuid; // Ensure UUID matches the path
+    updated_def.entity_type = existing_def.entity_type;
+    updated_def.display_name = existing_def.display_name;
     updated_def.created_at = existing_def.created_at;
     updated_def.created_by = existing_def.created_by;
     updated_def.version = existing_def.version + 1; // Increment version

@@ -5,23 +5,9 @@ use uuid::Uuid;
 use crate::entity::dynamic_entity::entity::DynamicEntity;
 use crate::error::Result;
 
-/// Trait defining the interface for DynamicEntityRepository implementations
+/// Trait defining the contract for dynamic entity repositories
 #[async_trait::async_trait]
-pub trait DynamicEntityRepositoryTrait: Send + Sync {
-    /// Create a new dynamic entity
-    async fn create(&self, entity: &DynamicEntity) -> Result<()>;
-
-    /// Update an existing dynamic entity
-    async fn update(&self, entity: &DynamicEntity) -> Result<()>;
-
-    /// Get a dynamic entity by type and UUID
-    async fn get_by_type(
-        &self,
-        entity_type: &str,
-        uuid: &Uuid,
-        exclusive_fields: Option<Vec<String>>,
-    ) -> Result<Option<DynamicEntity>>;
-
+pub trait DynamicEntityRepositoryTrait {
     /// Get all entities of a specific type with pagination
     async fn get_all_by_type(
         &self,
@@ -31,17 +17,33 @@ pub trait DynamicEntityRepositoryTrait: Send + Sync {
         exclusive_fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>>;
 
-    /// Delete an entity by type and UUID
+    /// Get a specific entity by type and UUID
+    async fn get_by_type(
+        &self,
+        entity_type: &str,
+        uuid: &Uuid,
+        exclusive_fields: Option<Vec<String>>,
+    ) -> Result<Option<DynamicEntity>>;
+
+    /// Create a new dynamic entity
+    async fn create(&self, entity: &DynamicEntity) -> Result<()>;
+
+    /// Update an existing dynamic entity
+    async fn update(&self, entity: &DynamicEntity) -> Result<()>;
+
+    /// Delete a dynamic entity by type and UUID
     async fn delete_by_type(&self, entity_type: &str, uuid: &Uuid) -> Result<()>;
 
-    /// Filter entities by field values
+    /// Filter entities by field values with advanced options
     async fn filter_entities(
         &self,
         entity_type: &str,
-        filters: &HashMap<String, JsonValue>,
         limit: i64,
         offset: i64,
-        exclusive_fields: Option<Vec<String>>,
+        filters: Option<HashMap<String, JsonValue>>,
+        search: Option<(String, Vec<String>)>,
+        sort: Option<(String, String)>,
+        fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>>;
 
     /// Count entities of a specific type

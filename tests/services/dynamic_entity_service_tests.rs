@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use async_trait::async_trait;
 use mockall::predicate;
 use serde_json::{json, Value};
 use uuid::Uuid;
-use async_trait::async_trait;
 
 use r_data_core::entity::class::definition::ClassDefinition;
 use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
 use r_data_core::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
-use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core::entity::field::ui::UiSettings;
+use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core::error::{Error, Result};
 
 // Create a struct to represent DynamicFields since we can't use the trait directly
@@ -21,11 +21,11 @@ impl TestDynamicFields {
     fn new() -> Self {
         Self(HashMap::new())
     }
-    
+
     fn insert(&mut self, key: String, value: Value) {
         self.0.insert(key, value);
     }
-    
+
     fn contains_key(&self, key: &str) -> bool {
         self.0.contains_key(key)
     }
@@ -34,7 +34,7 @@ impl TestDynamicFields {
 // Create a mock for DynamicEntityRepositoryTrait
 mockall::mock! {
     pub DynamicEntityRepositoryTrait {}
-    
+
     #[async_trait]
     impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryTrait {
         async fn get_all_by_type(&self, entity_type: &str, limit: i64, offset: i64, exclusive_fields: Option<Vec<String>>) -> Result<Vec<DynamicEntity>>;
@@ -42,7 +42,16 @@ mockall::mock! {
         async fn create(&self, entity: &DynamicEntity) -> Result<()>;
         async fn update(&self, entity: &DynamicEntity) -> Result<()>;
         async fn delete_by_type(&self, entity_type: &str, uuid: &Uuid) -> Result<()>;
-        async fn filter_entities(&self, entity_type: &str, filters: &HashMap<String, Value>, limit: i64, offset: i64, exclusive_fields: Option<Vec<String>>) -> Result<Vec<DynamicEntity>>;
+        async fn filter_entities(
+            &self,
+            entity_type: &str,
+            limit: i64,
+            offset: i64,
+            filters: Option<HashMap<String, Value>>,
+            search: Option<(String, Vec<String>)>,
+            sort: Option<(String, String)>,
+            fields: Option<Vec<String>>
+        ) -> Result<Vec<DynamicEntity>>;
         async fn count_entities(&self, entity_type: &str) -> Result<i64>;
     }
 }
@@ -61,16 +70,22 @@ impl MockClassDefinitionService {
             entity_type_published,
         }
     }
-    
-    async fn get_class_definition_by_entity_type(&self, entity_type: &str) -> Result<ClassDefinition> {
+
+    async fn get_class_definition_by_entity_type(
+        &self,
+        entity_type: &str,
+    ) -> Result<ClassDefinition> {
         if !self.entity_type_exists {
-            return Err(Error::NotFound(format!("Class definition for entity type '{}' not found", entity_type)));
+            return Err(Error::NotFound(format!(
+                "Class definition for entity type '{}' not found",
+                entity_type
+            )));
         }
-        
+
         let mut definition = ClassDefinition::default();
         definition.entity_type = entity_type.to_string();
         definition.published = self.entity_type_published;
-        
+
         // Add fields to the definition
         let required_field = FieldDefinition {
             name: "required_field".to_string(),
@@ -85,7 +100,7 @@ impl MockClassDefinitionService {
             ui_settings: UiSettings::default(),
             constraints: HashMap::new(),
         };
-        
+
         let optional_field = FieldDefinition {
             name: "optional_field".to_string(),
             field_type: FieldType::Text,
@@ -99,7 +114,7 @@ impl MockClassDefinitionService {
             ui_settings: UiSettings::default(),
             constraints: HashMap::new(),
         };
-        
+
         let string_field = FieldDefinition {
             name: "email_field".to_string(),
             field_type: FieldType::Text,
@@ -113,7 +128,7 @@ impl MockClassDefinitionService {
             ui_settings: UiSettings::default(),
             constraints: HashMap::new(),
         };
-        
+
         let number_field = FieldDefinition {
             name: "score".to_string(),
             field_type: FieldType::Text,
@@ -127,7 +142,7 @@ impl MockClassDefinitionService {
             ui_settings: UiSettings::default(),
             constraints: HashMap::new(),
         };
-        
+
         let enum_field = FieldDefinition {
             name: "status".to_string(),
             field_type: FieldType::Text,
@@ -141,7 +156,7 @@ impl MockClassDefinitionService {
             ui_settings: UiSettings::default(),
             constraints: HashMap::new(),
         };
-        
+
         definition.fields = vec![
             required_field,
             optional_field,
@@ -149,19 +164,19 @@ impl MockClassDefinitionService {
             number_field,
             enum_field,
         ];
-        
+
         Ok(definition)
     }
-    
+
     async fn get_class_definition(&self, _uuid: &Uuid) -> Result<ClassDefinition> {
         if !self.entity_type_exists {
             return Err(Error::NotFound("Class definition not found".to_string()));
         }
-        
+
         let mut definition = ClassDefinition::default();
         definition.entity_type = "test_entity".to_string();
         definition.published = self.entity_type_published;
-        
+
         Ok(definition)
     }
 }
@@ -169,20 +184,24 @@ impl MockClassDefinitionService {
 fn create_test_entity(entity_type: &str, with_required_field: bool) -> DynamicEntity {
     let uuid = Uuid::nil();
     let definition = Arc::new(ClassDefinition::default());
-    
+
     // Create the entity with a valid definition
     let mut entity = DynamicEntity {
         entity_type: entity_type.to_string(),
         field_data: HashMap::new(),
         definition,
     };
-    
-    entity.field_data.insert("uuid".to_string(), json!(uuid.to_string()));
-    
+
+    entity
+        .field_data
+        .insert("uuid".to_string(), json!(uuid.to_string()));
+
     if with_required_field {
-        entity.field_data.insert("required_field".to_string(), json!("value"));
+        entity
+            .field_data
+            .insert("required_field".to_string(), json!("value"));
     }
-    
+
     entity
 }
 
@@ -196,36 +215,62 @@ impl TestService {
     fn new(entity_type_exists: bool, entity_type_published: bool) -> Self {
         Self {
             repository: MockDynamicEntityRepositoryTrait::new(),
-            class_service: MockClassDefinitionService::new(entity_type_exists, entity_type_published),
+            class_service: MockClassDefinitionService::new(
+                entity_type_exists,
+                entity_type_published,
+            ),
         }
     }
-    
-    async fn list_entities(&self, entity_type: &str, limit: i64, offset: i64, exclusive_fields: Option<Vec<String>>) -> Result<Vec<DynamicEntity>> {
+
+    async fn list_entities(
+        &self,
+        entity_type: &str,
+        limit: i64,
+        offset: i64,
+        exclusive_fields: Option<Vec<String>>,
+    ) -> Result<Vec<DynamicEntity>> {
         // First check if the entity type exists and is published
-        let class_def = self.class_service.get_class_definition_by_entity_type(entity_type).await?;
-        
+        let class_def = self
+            .class_service
+            .get_class_definition_by_entity_type(entity_type)
+            .await?;
+
         if !class_def.published {
-            return Err(Error::NotFound(format!("Entity type '{}' not found or not published", entity_type)));
+            return Err(Error::NotFound(format!(
+                "Entity type '{}' not found or not published",
+                entity_type
+            )));
         }
-        
-        self.repository.get_all_by_type(entity_type, limit, offset, exclusive_fields).await
+
+        self.repository
+            .get_all_by_type(entity_type, limit, offset, exclusive_fields)
+            .await
     }
-    
+
     async fn create_entity(&self, entity: &DynamicEntity) -> Result<()> {
         // Check if the entity type is published
-        let class_def = self.class_service.get_class_definition_by_entity_type(&entity.entity_type).await?;
-        
+        let class_def = self
+            .class_service
+            .get_class_definition_by_entity_type(&entity.entity_type)
+            .await?;
+
         if !class_def.published {
-            return Err(Error::NotFound(format!("Entity type '{}' not found or not published", entity.entity_type)));
+            return Err(Error::NotFound(format!(
+                "Entity type '{}' not found or not published",
+                entity.entity_type
+            )));
         }
-        
+
         // Very basic validation - check for required fields
         for field in &class_def.fields {
             if field.required && !entity.field_data.contains_key(&field.name) {
-                return Err(Error::Validation(format!("Required field '{}' is missing", field.name)));
+                return Err(Error::Validation(format!(
+                    "Required field '{}' is missing",
+                    field.name
+                )));
             }
         }
-        
+
         self.repository.create(entity).await
     }
 }
@@ -234,9 +279,10 @@ impl TestService {
 async fn test_list_entities_success() -> Result<()> {
     // Arrange
     let mut test_service = TestService::new(true, true);
-    
+
     // Set up expectations directly
-    test_service.repository
+    test_service
+        .repository
         .expect_get_all_by_type()
         .with(
             predicate::eq("test_entity"),
@@ -245,14 +291,16 @@ async fn test_list_entities_success() -> Result<()> {
             predicate::always(),
         )
         .returning(|_, _, _, _| Ok(vec![create_test_entity("test_entity", true)]));
-    
+
     // Act
-    let entities = test_service.list_entities("test_entity", 10, 0, None).await?;
-    
+    let entities = test_service
+        .list_entities("test_entity", 10, 0, None)
+        .await?;
+
     // Assert
     assert_eq!(entities.len(), 1);
     assert_eq!(entities[0].entity_type, "test_entity");
-    
+
     Ok(())
 }
 
@@ -260,10 +308,12 @@ async fn test_list_entities_success() -> Result<()> {
 async fn test_list_entities_nonexistent_type() {
     // Arrange
     let test_service = TestService::new(false, false);
-    
+
     // Act
-    let result = test_service.list_entities("nonexistent_type", 10, 0, None).await;
-    
+    let result = test_service
+        .list_entities("nonexistent_type", 10, 0, None)
+        .await;
+
     // Assert
     assert!(result.is_err());
     match result {
@@ -276,10 +326,10 @@ async fn test_list_entities_nonexistent_type() {
 async fn test_list_entities_unpublished_type() {
     // Arrange
     let test_service = TestService::new(true, false);
-    
+
     // Act
     let result = test_service.list_entities("test_entity", 10, 0, None).await;
-    
+
     // Assert
     assert!(result.is_err());
     match result {
@@ -292,21 +342,22 @@ async fn test_list_entities_unpublished_type() {
 async fn test_create_entity_success() -> Result<()> {
     // Arrange
     let mut test_service = TestService::new(true, true);
-    
+
     // Set up expectations directly
-    test_service.repository
+    test_service
+        .repository
         .expect_create()
         .with(predicate::always())
         .returning(|_| Ok(()));
-    
+
     let entity = create_test_entity("test_entity", true);
-    
+
     // Act
     let result = test_service.create_entity(&entity).await;
-    
+
     // Assert
     assert!(result.is_ok());
-    
+
     Ok(())
 }
 
@@ -314,12 +365,12 @@ async fn test_create_entity_success() -> Result<()> {
 async fn test_create_entity_missing_required_field() {
     // Arrange
     let test_service = TestService::new(true, true);
-    
+
     let entity = create_test_entity("test_entity", false);
-    
+
     // Act
     let result = test_service.create_entity(&entity).await;
-    
+
     // Assert
     assert!(result.is_err());
     match result {

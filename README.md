@@ -111,10 +111,12 @@ cargo sqlx prepare
 testing: 
 ```bash
 # Only r_data_core unit tests
+# Unit tests can run concurrently
 cargo test --lib -p r_data_core
 
 # All tests, including integration tests in tests/ directory
-cargo test
+# We have to set the threads to 1 in order to not have tests running concurrently doing the same things (like altering tables)
+RUST_LOG=warning cargo test -- --test-threads=1
 ```
 
 Hint:
@@ -255,18 +257,13 @@ All class definition endpoints are secured with JWT authentication and require a
 
 Entity data can be manipulated through the public API endpoints (documentation pending).
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
-
-
-Routes:
+## Routes
 Swagger:
 /api/docs/
 /admin/api/docs/
 
 
-Todos:
+## Todos
 - ~~fix sqlx topic~~
 - ~~fix swagger~~
 - add routes

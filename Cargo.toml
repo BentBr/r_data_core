@@ -78,7 +78,6 @@ time = { version = "0.3", features = ["serde", "formatting", "parsing", "macros"
 
 # Error handling
 thiserror = "1.0"
-anyhow = "1.0"
 
 # Logging
 log = "0.4"

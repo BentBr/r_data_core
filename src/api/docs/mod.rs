@@ -222,7 +222,7 @@ impl Modify for JsonValueSchemaAddon {
             crate::api::public::entities::models::EntityTypeInfo,
             crate::api::public::entities::models::EntityQuery,
             crate::api::public::queries::models::AdvancedEntityQuery,
-            crate::api::public::dynamic_entities::routes::PaginationQuery,
+            crate::api::query::PaginationQuery,
             crate::api::public::dynamic_entities::routes::DynamicEntityResponse,
             crate::api::public::dynamic_entities::routes::EntityResponse
         )

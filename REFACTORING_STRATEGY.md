@@ -1,8 +1,10 @@
+use std::collections::HashMap;
+
 # Refactoring Strategy for r_data_core
 
 ## Implementation Status
 
-We've implemented the first phase of the refactoring strategy, focusing on the API key and admin user functionality:
+We've implemented several key phases of the refactoring strategy:
 
 ### API Key Refactoring
 1. ✅ Created a repository trait for API keys (`ApiKeyRepositoryTrait`)
@@ -14,136 +16,142 @@ We've implemented the first phase of the refactoring strategy, focusing on the A
    - Common test utilities for database setup
    - Repository tests
    - API key service tests
-7. ✅ Created a repository adapter pattern to cleanly implement trait wrappers
+7. ✅ Created a repository adapter pattern for adapter traits
 
 ### Admin User Refactoring
 1. ✅ Created a repository trait for admin users (`AdminUserRepositoryTrait`)
 2. ✅ Implemented the trait for the existing repository (`AdminUserRepository`)
 3. ✅ Created a service layer for admin users (`AdminUserService`)
 4. ✅ Added unit tests for the service layer with mock repositories
-5. ✅ Added integration tests for the admin user repository
-6. ✅ Added JWT login test for admin users
+5. ✅ Set up an environment for tests:
+   - Database utilities for testing repositories
+   - Mocking library for testing services
 
-### API Authentication
-1. ✅ Fixed API key hashing and validation in authentication flow
-2. ✅ Ensured API key last_used_at is updated correctly
-3. ✅ Ensured JWT-based admin authentication works correctly
-4. ✅ Added tests for both authentication paths
-
-### Class Definition Refactoring ✅
-1. ✅ Created a repository trait for class definitions (`ClassDefinitionRepositoryTrait`)
-2. ✅ Implemented the trait for the existing repository
-3. ✅ Created a service layer for class definitions (`ClassDefinitionService`)
-4. ✅ Added unit tests for the service layer with mock repositories
-   - Tests for creating class definitions with validation
-   - Tests for retrieving class definitions by UUID and entity type
-   - Tests for updating class definitions with validation
-   - Tests for deleting class definitions with record checks
-   - Tests for applying schema updates
-   - Tests for cleaning up unused entity tables
-5. ✅ Updated the API handlers to use the service instead of the repository directly
-6. ✅ Added a wrapper for the repository to handle trait implementation
-7. ✅ Fixed bug in class definition service to check for duplicate entity types during creation
-
-### Dynamic Entities Refactoring
+### Dynamic Entity Refactoring
 1. ✅ Created a repository trait for dynamic entities (`DynamicEntityRepositoryTrait`)
-2. ✅ Implemented the trait for the existing repository
-3. ✅ Added test placeholders for the dynamic entity repository
-4. ✅ Create a service layer for dynamic entities (`DynamicEntityService`)
-5. ✅ Add unit tests for the service layer with mock repositories
-6. ✅ Add integration tests for the dynamic entity repository
+2. ✅ Implemented the trait for the existing repository (`DynamicEntityRepository`)
+3. ✅ Created a service layer for dynamic entities (`DynamicEntityService`)
+4. ✅ Added unit tests for the service layer with mock repositories
+5. ✅ Set up a validation system for entity data validation
+6. ✅ Added support for custom validations and hooks in dynamic entities
 7. ✅ Implemented RESTful API for dynamic entities in the public API with custom namespaces
 
-### Testing Improvements
-1. ✅ Created a comprehensive test plan document with focus on:
-   - Three-layered testing approach (Unit, Integration, API)
-   - Edge case identification and testing strategy
-   - Test coverage goals and metrics
-   - Implementation phases and priorities
-2. ✅ Improved dynamic entity service test coverage:
-   - Added comprehensive unit tests with mock repositories
-   - Added tests for field validation (pattern, range, enum)
-   - Added edge case tests (missing fields, unknown fields, malformed data)
-3. ✅ Added API route tests for dynamic entities:
-   - Tests for all CRUD operations
-   - Tests for error handling
-   - Tests for edge cases (malformed JSON, mismatched types)
-   - Tests for complex filtering
+### File Structure Improvements
+1. ✅ Split large files into smaller, more focused modules
+   - Split `src/entity/field/definition.rs` (863 lines) into:
+     - `src/entity/field/definition/mod.rs` - Main struct definition and exports
+     - `src/entity/field/definition/schema.rs` - Schema conversion methods
+     - `src/entity/field/definition/validation.rs` - Value validation logic
+     - `src/entity/field/definition/constraints.rs` - Constraint handling and validation
+     - `src/entity/field/definition/serialization.rs` - Serialization/deserialization logic
 
-## Next Steps
+### Error Handling Improvements
+1. ✅ Added basic error handling tests to ensure error messages are formatted properly
 
-To continue the refactoring:
+## Remaining Tasks
 
-1. ✅ Create repository traits and services for key entities:
-   - ✅ API Keys
-   - ✅ Admin Users
-   - ✅ Class Definitions
-   - ✅ Dynamic Entities
+### File Structure Improvements
+1. ⬜ Continue splitting large files:
+   - `src/services/class_definition_service.rs` (772 lines)
+   - `src/entity/dynamic_entity/repository.rs` (683 lines)
+   - `src/entity/dynamic_entity/validator.rs` (542 lines)
+   - `src/api/admin/auth.rs` (470 lines)
 
-2. ✅ Update API handlers to use the service layer instead of repositories directly:
-   - ✅ Inject the `ApiKeyService` into the routes
-   - ✅ Inject the `AdminUserService` into the admin routes
-   - ✅ Inject the `ClassDefinitionService` into the class definition routes
-   - ✅ Create and inject the `DynamicEntityService` into the dynamic entity routes
-   - ❌ Update other API handlers to use appropriate services
-   - ❌ Remove direct database access from handlers
+### Error Handling Improvements
+1. ⬜ Enhance the `Error` enum structure:
+   - Add error codes to all error variants
+   - Add context information to errors
+   - Implement helper functions for error context and codes
 
-3. ❌ Extract configuration management:
-   - ❌ Create a unified config module
-   - ❌ Use dependency injection for configuration
+2. ⬜ Improve error response handling:
+   - Create standardized error responses with error codes
+   - Add structured logging for errors
+   - Implement proper HTTP status code mapping
 
-4. ❌ Split large files:
-   - ❌ Break down large entity files into smaller components
-   - ❌ Focus on cohesive modules with single responsibilities
+3. ⬜ Create a middleware for error logging:
+   - Log errors with context
+   - Track error frequency and patterns
 
-5. 🔄 Complete test coverage:
-   - ✅ Add repository tests for API keys
-   - ✅ Add repository tests for admin users
-   - ✅ Add service tests for API keys
-   - ✅ Add service tests for admin users
-   - ✅ Add service tests for class definitions
-   - ✅ Add comprehensive tests for dynamic entity service 
-   - ✅ Add API route tests for dynamic entities
-   - 🔄 Add integration tests for all API endpoints
-   - 🔄 Add repository tests for all database operations
-   - 🔄 Add service tests for all business logic
+### API Standardization
+1. ⬜ Create consistent API response formats:
+   - Standardize success and error response formats
+   - Implement common response envelope structure with:
+     - Status code
+     - Message
+     - Data payload
+     - Metadata (pagination, etc.)
+   - Add support for pagination metadata
+   - Implement field selection capabilities
 
-## Current Issues Resolved
+2. ⬜ Implement standard query parameters:
+   - Sorting parameters (`sort_by`, `sort_direction`)
+   - Filtering parameters (`filter[]`, `q` for search)
+   - Pagination parameters (`page`, `per_page` or `limit`, `offset`)
+   - Field selection parameters (`fields[]`)
+   - Include parameters for related data (`include[]`)
 
-1. ✅ Fixed API key authentication by ensuring the key is hashed before querying
-2. ✅ Fixed integration tests for API key service
-3. ✅ Resolved conflicts with the `class_definition.rs` module
-4. ✅ Improved error handling in authentication flows
-5. ✅ Fixed dependency issues with the services implementation
-6. ✅ Created repository adapter pattern for clean trait implementation
-7. ✅ Removed verbose adapter implementation from main.rs to services/adapters.rs
-8. ✅ Fixed bug in class definition service to properly check for duplicate entity types
-9. ✅ Added public interfaces for dynamic entity repository and trait
-10. ✅ Added comprehensive test coverage for dynamic entity service
-11. ✅ Added API route tests for dynamic entities with edge cases
+3. ⬜ Standardize endpoint naming and HTTP methods:
+   - Use proper HTTP methods (GET, POST, PUT, DELETE, PATCH)
+   - Follow RESTful resource naming conventions
+   - Implement consistent path parameters
+   - Use plural resource names for collections
+   - Implement versioning strategy (URI, header, or content negotiation)
 
-## Testing Strategy
+4. ⬜ Create documentation for API standards:
+   - Document response formats
+   - Document query parameter usage
+   - Create examples for common operations
+   - Implement OpenAPI/Swagger documentation
 
-Three levels of testing:
+## Implementation Plan
 
-1. **Unit Tests**:
-   - Test individual components in isolation
-   - Use mocks for dependencies
-   - Focus on logic and edge cases
-   - Negative test cases included for validation and error handling
+### Near-term (Next 2 weeks)
+1. Complete file structure refactoring
+2. Implement error handling improvements
+3. Begin API standardization
 
-2. **Integration Tests**:
-   - Test repositories against real database
-   - Test services with real repositories
-   - Focus on interaction between components
-   - Include potential failure scenarios
+### Mid-term (Next 4-6 weeks)
+1. Complete API standardization
+2. Add comprehensive documentation
+3. Create examples of API usage
 
-3. **API Tests**:
-   - Test HTTP endpoints
-   - Ensure correct request/response handling
-   - Focus on API contract adherence
-   - Include authentication/authorization scenarios
-   - Test error responses and status codes
+### Long-term (Next 2-3 months)
+1. Optimize performance
+2. Add additional features
+   - Enhanced caching
+   - Batch operations
+   - Real-time notifications
+
+## Implementation Strategies
+
+### Repository Pattern
+Implement a clean repository pattern for all data access:
+- Repository traits define the interface
+- Concrete implementations provide the actual data access
+- Services use repositories via traits (dependency injection)
+- Mock repositories for testing
+
+### Service Layer
+Create a service layer for business logic:
+- Services use repositories via traits
+- Services expose high-level operations
+- Services handle validation and business rules
+- Services are testable with mock repositories
+
+### API Layer
+Standardize the API layer:
+- Controllers use services for business logic
+- Controllers handle HTTP concerns
+- Controllers validate input
+- Controllers format output
+- Controllers handle errors
+
+### Testing Strategy
+Implement a comprehensive testing strategy:
+- Unit tests for services with mock repositories
+- Integration tests for repositories with test database
+- Integration tests for API endpoints
+- Performance tests for critical paths
 
 ## Design Principles
 
@@ -228,3 +236,30 @@ For thorough testing, we now focus on these categories of edge cases:
    - Content negotiation
 
 A detailed test plan has been created in TEST_PLAN.md to guide future testing efforts. 
+
+## Implementation Plan
+
+The implementation will proceed in phases:
+
+1. **Phase 1: File Splitting** (3-4 weeks)
+   - Split large files according to FILE_SPLITTING_PLAN.md
+   - Update imports and exports
+   - Ensure tests pass after each refactoring
+
+2. **Phase 2: Error Handling** (2-3 weeks)
+   - Implement new error structure
+   - Add context builders
+   - Update error conversions
+   - Add structured logging
+
+3. **Phase 3: API Standardization** (3-4 weeks)
+   - Update response formats
+   - Implement pagination, filtering, and sorting
+   - Add field selection
+   - Add request tracking
+
+4. **Phase 4: Testing Improvements** (2-3 weeks)
+   - Expand API tests
+   - Add more integration tests
+   - Add performance benchmarks
+   - Document testing approaches 

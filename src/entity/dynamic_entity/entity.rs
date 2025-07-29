@@ -312,3 +312,13 @@ impl DynamicFields for DynamicEntity {
         Ok(())
     }
 }
+
+impl Default for DynamicEntity {
+    fn default() -> Self {
+        Self {
+            entity_type: String::new(),
+            field_data: HashMap::new(),
+            definition: Arc::new(ClassDefinition::default()),
+        }
+    }
+}

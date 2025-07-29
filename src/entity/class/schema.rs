@@ -67,46 +67,6 @@ impl Schema {
 
         Ok(columns)
     }
-
-    pub fn get_table_name(&self) -> String {
-        if let Some(entity_type) = self.properties.get("entity_type") {
-            if let Some(entity_type_str) = entity_type.as_str() {
-                return format!("{}_entities", entity_type_str);
-            }
-        }
-        "unknown_entities".to_string()
-    }
-
-    // Generate SQL DDL for this schema
-    pub fn generate_schema_sql(&self) -> Result<String> {
-        let table_name = self.get_table_name();
-        let columns = self.get_column_definitions()?;
-
-        let mut sql = format!("CREATE TABLE IF NOT EXISTS {} (\n", table_name);
-        sql.push_str("    uuid UUID PRIMARY KEY,\n");
-
-        for (i, column) in columns.iter().enumerate() {
-            sql.push_str("    ");
-            sql.push_str(column);
-            if i < columns.len() - 1 || columns.is_empty() {
-                sql.push_str(",\n");
-            } else {
-                sql.push('\n');
-            }
-        }
-
-        sql.push_str(");");
-        Ok(sql)
-    }
-
-    pub async fn apply_to_database(&self, pool: &PgPool) -> Result<()> {
-        let sql = self.generate_schema_sql()?;
-        sqlx::query(&sql)
-            .execute(pool)
-            .await
-            .map_err(Error::Database)?;
-        Ok(())
-    }
 }
 
 impl From<JsonValue> for Schema {

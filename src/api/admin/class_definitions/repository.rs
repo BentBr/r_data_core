@@ -26,7 +26,7 @@ impl ClassDefinitionRepository {
     }
 
     /// Check if a view exists in the database
-    async fn check_view_exists(&self, view_name: &str) -> Result<bool> {
+    pub async fn check_view_exists(&self, view_name: &str) -> Result<bool> {
         // First check for views
         let view_exists = sqlx::query!(
             r#"
@@ -65,7 +65,7 @@ impl ClassDefinitionRepository {
     }
 
     /// Get columns and their types for a view
-    async fn get_view_columns_with_types(
+    pub async fn get_view_columns_with_types(
         &self,
         view_name: &str,
     ) -> Result<HashMap<String, String>> {
@@ -92,7 +92,7 @@ impl ClassDefinitionRepository {
     }
 
     /// Count records in a view or table
-    async fn count_view_records(&self, table_name: &str) -> Result<i64> {
+    pub async fn count_view_records(&self, table_name: &str) -> Result<i64> {
         let count = sqlx::query_scalar::<_, i64>(&format!("SELECT COUNT(*) FROM {}", table_name))
             .fetch_one(&self.db_pool)
             .await
@@ -143,7 +143,20 @@ impl ClassDefinitionRepository {
         Ok(available_columns)
     }
 
-    // Add other helper methods from the repository here
+    /// Delete entities from the entities_registry by entity type
+    pub async fn delete_from_entities_registry(&self, entity_type: &str) -> Result<()> {
+        sqlx::query!(
+            r#"
+            DELETE FROM entities_registry WHERE entity_type = $1
+            "#,
+            entity_type
+        )
+        .execute(&self.db_pool)
+        .await
+        .map_err(Error::Database)?;
+
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -548,98 +561,21 @@ impl ClassDefinitionRepositoryTrait for ClassDefinitionRepository {
         Ok(())
     }
 
-    /// Get columns and their types for a view
+    /// Get columns and their types for a view - delegates to implementation in ClassDefinitionRepository
     async fn get_view_columns_with_types(
         &self,
         view_name: &str,
     ) -> Result<HashMap<String, String>> {
-        let columns = sqlx::query!(
-            r#"
-            SELECT column_name, data_type 
-            FROM information_schema.columns
-            WHERE table_schema = 'public' AND table_name = $1
-            "#,
-            view_name
-        )
-        .fetch_all(&self.db_pool)
-        .await
-        .map_err(Error::Database)?;
-
-        let mut column_types = HashMap::new();
-        for column in columns {
-            if let (Some(name), Some(data_type)) = (column.column_name, column.data_type) {
-                column_types.insert(name, data_type);
-            }
-        }
-
-        Ok(column_types)
+        ClassDefinitionRepository::get_view_columns_with_types(self, view_name).await
     }
 
-    /// Count records in a view or table
+    /// Count records in a view or table - delegates to implementation in ClassDefinitionRepository
     async fn count_view_records(&self, view_name: &str) -> Result<i64> {
-        let count = sqlx::query_scalar::<_, i64>(&format!("SELECT COUNT(*) FROM {}", view_name))
-            .fetch_one(&self.db_pool)
-            .await
-            .map_err(Error::Database)?;
-
-        Ok(count)
+        ClassDefinitionRepository::count_view_records(self, view_name).await
     }
 
-    /// Check if a view or table exists in the database
+    /// Check if a view or table exists in the database - delegates to implementation in ClassDefinitionRepository
     async fn check_view_exists(&self, view_name: &str) -> Result<bool> {
-        // First check for views
-        let view_exists = sqlx::query!(
-            r#"
-            SELECT EXISTS (
-                SELECT FROM information_schema.views 
-                WHERE table_schema = 'public' AND table_name = $1
-            ) as "exists!"
-            "#,
-            view_name
-        )
-        .fetch_one(&self.db_pool)
-        .await
-        .map_err(Error::Database)?
-        .exists;
-
-        if view_exists {
-            return Ok(true);
-        }
-
-        // If view doesn't exist, check for table
-        let table_exists = sqlx::query!(
-            r#"
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_schema = 'public' AND table_name = $1
-            ) as "exists!"
-            "#,
-            view_name
-        )
-        .fetch_one(&self.db_pool)
-        .await
-        .map_err(Error::Database)?
-        .exists;
-
-        Ok(table_exists)
+        ClassDefinitionRepository::check_view_exists(self, view_name).await
     }
 }
-
-// Keep these helper methods
-impl ClassDefinitionRepository {
-    pub async fn delete_from_entities_registry(&self, entity_type: &str) -> Result<()> {
-        sqlx::query!(
-            r#"
-            DELETE FROM entities_registry WHERE entity_type = $1
-            "#,
-            entity_type
-        )
-        .execute(&self.db_pool)
-        .await
-        .map_err(Error::Database)?;
-
-        Ok(())
-    }
-}
-
-// ... Keep the rest of your existing implementation for helper methods ...(existing code continues)

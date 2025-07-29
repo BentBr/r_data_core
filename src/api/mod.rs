@@ -6,6 +6,7 @@ pub mod jwt;
 pub mod middleware;
 pub mod models;
 pub mod public;
+pub mod query;
 pub mod response;
 
 use actix_web::{get, web, Responder};
@@ -84,7 +85,7 @@ pub fn configure_app_with_options(cfg: &mut web::ServiceConfig, options: ApiConf
     cfg.service(health::admin_health_check)
         .service(health::public_health_check);
 
-    let mut scope = web::scope("");
+    let mut scope = web::scope("").wrap(middleware::ErrorHandler); // Add our error handler middleware
 
     if options.enable_admin {
         log::debug!("Registering admin routes");
@@ -111,3 +112,6 @@ pub fn configure_app_with_options(cfg: &mut web::ServiceConfig, options: ApiConf
 
     log::debug!("All routes registered");
 }
+
+// Add query export to the public API
+pub use query::StandardQuery;

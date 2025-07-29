@@ -8,6 +8,7 @@ use uuid::Uuid;
 use crate::entity::class::definition::ClassDefinition;
 use crate::entity::dynamic_entity::entity::DynamicEntity;
 use crate::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
+use crate::entity::field::types::FieldType;
 use crate::error::{Error, Result};
 use crate::services::ClassDefinitionService;
 
@@ -232,17 +233,19 @@ impl DynamicEntityService {
     pub async fn filter_entities(
         &self,
         entity_type: &str,
-        filters: &HashMap<String, JsonValue>,
         limit: i64,
         offset: i64,
-        exclusive_fields: Option<Vec<String>>,
+        filters: Option<HashMap<String, JsonValue>>,
+        search: Option<(String, Vec<String>)>,
+        sort: Option<(String, String)>,
+        fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>> {
         // Verify the entity type exists and is published
         self.check_entity_type_exists_and_published(entity_type)
             .await?;
 
         self.repository
-            .filter_entities(entity_type, filters, limit, offset, exclusive_fields)
+            .filter_entities(entity_type, limit, offset, filters, search, sort, fields)
             .await
     }
 
@@ -250,6 +253,148 @@ impl DynamicEntityService {
     #[cfg(test)]
     pub fn validate_entity_for_test(&self, entity: &DynamicEntity) -> Result<()> {
         self.validate_entity(entity)
+    }
+
+    /// List entities with advanced filtering options
+    pub async fn list_entities_with_filters(
+        &self,
+        entity_type: &str,
+        limit: i64,
+        offset: i64,
+        fields: Option<Vec<String>>,
+        sort_by: Option<String>,
+        sort_direction: Option<String>,
+        filter: Option<serde_json::Value>,
+        search_query: Option<String>,
+    ) -> Result<(Vec<DynamicEntity>, i64)> {
+        // Verify the entity type exists and is published
+        let class_def = self.get_class_definition_for_query(entity_type).await?;
+
+        // Count entities first for pagination
+        let total = self.repository.count_entities(entity_type).await?;
+
+        // Build filter conditions from the structured filter
+        let mut filter_conditions = HashMap::new();
+
+        if let Some(filter_value) = filter {
+            if let Some(obj) = filter_value.as_object() {
+                for (key, value) in obj {
+                    filter_conditions.insert(key.clone(), value.clone());
+                }
+            }
+        }
+
+        // Add search query if provided
+        let search_fields = if let Some(query) = search_query {
+            // Get text/string fields from class definition for searching
+            let searchable_fields: Vec<String> = class_def
+                .fields
+                .iter()
+                .filter(|field| {
+                    matches!(
+                        field.field_type,
+                        FieldType::String | FieldType::Text | FieldType::Wysiwyg
+                    )
+                })
+                .map(|field| field.name.clone())
+                .collect();
+
+            // Return the query and fields to search in
+            if !searchable_fields.is_empty() {
+                Some((query, searchable_fields))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Build sort information
+        let sort_info = if let Some(field) = sort_by {
+            let direction = sort_direction.unwrap_or_else(|| "ASC".to_string());
+            Some((field, direction))
+        } else {
+            // Default sort by created_at descending if not specified
+            Some(("created_at".to_string(), "DESC".to_string()))
+        };
+
+        // Fetch the entities
+        let entities = self
+            .repository
+            .filter_entities(
+                entity_type,
+                limit,
+                offset,
+                Some(filter_conditions),
+                search_fields,
+                sort_info,
+                fields,
+            )
+            .await?;
+
+        Ok((entities, total))
+    }
+
+    /// Helper method to get class definition for query operations
+    async fn get_class_definition_for_query(&self, entity_type: &str) -> Result<ClassDefinition> {
+        // Look up the class definition
+        let class_def = match self
+            .class_definition_service
+            .get_class_definition_by_entity_type(entity_type)
+            .await
+        {
+            Ok(class_def) => class_def,
+            Err(Error::NotFound(_)) => {
+                return Err(Error::NotFound(format!(
+                    "Entity type '{}' not found",
+                    entity_type
+                )));
+            }
+            Err(e) => return Err(e),
+        };
+
+        // Ensure the class is published
+        if !class_def.published {
+            return Err(Error::ValidationFailed(format!(
+                "Entity type '{}' is not published",
+                entity_type
+            )));
+        }
+
+        Ok(class_def)
+    }
+
+    async fn get_entities_with_filters(
+        &self,
+        entity_type: &str,
+        filters: Option<HashMap<String, JsonValue>>,
+        limit: i64,
+        offset: i64,
+        exclusive_fields: Option<Vec<String>>,
+    ) -> Result<Vec<DynamicEntity>> {
+        // If no filters, use the standard method
+        if filters.is_none() {
+            return self
+                .repository
+                .get_all_by_type(entity_type, limit, offset, exclusive_fields)
+                .await;
+        }
+
+        // Validate entity type
+        let _ = self.get_class_definition_for_query(entity_type).await?;
+
+        // Use the new filter_entities method with the structured parameters
+        self.repository
+            .filter_entities(
+                entity_type,
+                limit,
+                offset,
+                filters,
+                None, // no search
+                None, // no sort
+                exclusive_fields,
+            )
+            .await
     }
 }
 
@@ -274,10 +419,12 @@ mod tests {
             async fn filter_entities(
                 &self,
                 entity_type: &str,
-                filters: &HashMap<String, JsonValue>,
                 limit: i64,
                 offset: i64,
-                exclusive_fields: Option<Vec<String>>
+                filters: Option<HashMap<String, JsonValue>>,
+                search: Option<(String, Vec<String>)>,
+                sort: Option<(String, String)>,
+                fields: Option<Vec<String>>
             ) -> Result<Vec<DynamicEntity>>;
             async fn count_entities(&self, entity_type: &str) -> Result<i64>;
         }

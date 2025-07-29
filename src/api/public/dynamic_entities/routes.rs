@@ -8,12 +8,11 @@ use uuid::Uuid;
 
 use crate::api::auth::auth_enum::CombinedRequiredAuth;
 use crate::api::middleware::ApiKeyInfo;
+use crate::api::query::StandardQuery;
 use crate::api::response::ApiResponse;
 use crate::api::ApiState;
 use crate::entity::dynamic_entity::entity::DynamicEntity;
 use crate::error::Error;
-
-use super::repository::DynamicEntityRepository;
 
 /// Register routes for dynamic entities
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
@@ -51,36 +50,13 @@ pub struct EntityResponse {
     pub entity_type: String,
 }
 
-/// Query parameters for pagination and field selection
-#[derive(Deserialize, ToSchema)]
-pub struct PaginationQuery {
-    /// Maximum number of entities to return
-    pub limit: Option<i64>,
-    /// Number of entities to skip
-    pub offset: Option<i64>,
-    /// Comma-separated list of fields to exclusively return (ignores others)
-    pub exclusive_fields: Option<String>,
-}
-
-impl PaginationQuery {
-    /// Parse exclusive fields from the query string
-    pub fn parse_exclusive_fields(&self) -> Option<Vec<String>> {
-        self.exclusive_fields.as_ref().map(|fields| {
-            fields
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .collect::<Vec<String>>()
-        })
-    }
-}
-
 /// Helper to validate requested fields against class definition
 async fn validate_requested_fields(
     data: &web::Data<ApiState>,
     entity_type: &str,
-    exclusive_fields: &Option<Vec<String>>,
+    fields: &Option<Vec<String>>,
 ) -> Result<(), HttpResponse> {
-    if let Some(fields) = exclusive_fields {
+    if let Some(fields) = fields {
         let class_def_service = &data.class_definition_service;
         match class_def_service
             .get_class_definition_by_entity_type(entity_type)
@@ -88,7 +64,7 @@ async fn validate_requested_fields(
         {
             Ok(class_def) => {
                 // Always include these system fields
-                let system_fields = vec![
+                let system_fields = [
                     "uuid",
                     "created_at",
                     "updated_at",
@@ -129,9 +105,14 @@ async fn validate_requested_fields(
     tag = "dynamic-entities",
     params(
         ("entity_type" = String, Path, description = "The type of entity to list"),
-        ("limit" = Option<i64>, Query, description = "Maximum number of entities to return"),
-        ("offset" = Option<i64>, Query, description = "Number of entities to skip"),
-        ("exclusive_fields" = Option<String>, Query, description = "Comma-separated list of fields to exclusively return")
+        ("page" = Option<i64>, Query, description = "Page number (1-based)"),
+        ("per_page" = Option<i64>, Query, description = "Number of items per page"),
+        ("sort_by" = Option<String>, Query, description = "Field to sort by"),
+        ("sort_direction" = Option<String>, Query, description = "Sort direction (ASC or DESC)"),
+        ("fields" = Option<String>, Query, description = "Comma-separated list of fields to include"),
+        ("filter" = Option<String>, Query, description = "Filter expression"),
+        ("q" = Option<String>, Query, description = "Search query"),
+        ("include" = Option<String>, Query, description = "Comma-separated list of related entities to include")
     ),
     responses(
         (status = 200, description = "List of entities", body = Vec<DynamicEntityResponse>),
@@ -147,31 +128,49 @@ async fn validate_requested_fields(
 async fn list_entities(
     data: web::Data<ApiState>,
     path: web::Path<String>,
-    query: web::Query<PaginationQuery>,
+    query: web::Query<StandardQuery>,
     _: CombinedRequiredAuth,
 ) -> HttpResponse {
     let entity_type = path.into_inner();
-    let limit = query.limit.unwrap_or(20);
-    let offset = query.offset.unwrap_or(0);
-    let exclusive_fields = query.parse_exclusive_fields();
+    let (limit, offset) = query.pagination.to_limit_offset(1, 20, 100);
+    let fields = query.fields.get_fields();
+    let sort_by = query.sorting.sort_by.clone();
+    let sort_direction = Some(query.sorting.get_sort_direction());
+
+    // Handle filters - we'll need to adjust the service to handle the new filter format
+    let filter = query.filter.parse_filter();
+    let search_query = query.filter.q.clone();
 
     // Validate requested fields
-    if let Err(response) = validate_requested_fields(&data, &entity_type, &exclusive_fields).await {
+    if let Err(response) = validate_requested_fields(&data, &entity_type, &fields).await {
         return response;
     }
 
     if let Some(service) = &data.dynamic_entity_service {
         // If validation passed, proceed with the query
         match service
-            .list_entities(&entity_type, limit, offset, exclusive_fields)
+            .list_entities_with_filters(
+                &entity_type,
+                limit,
+                offset,
+                fields,
+                sort_by,
+                sort_direction,
+                filter,
+                search_query,
+            )
             .await
         {
-            Ok(entities) => {
-                let response: Vec<DynamicEntityResponse> = entities
+            Ok((entities, total)) => {
+                let entity_responses: Vec<DynamicEntityResponse> = entities
                     .into_iter()
                     .map(DynamicEntityResponse::from)
                     .collect();
-                ApiResponse::ok(response)
+
+                let page = query.pagination.get_page(1);
+                let per_page = query.pagination.get_per_page(20, 100);
+
+                ApiResponse::ok_paginated(entity_responses, total, page, per_page)
             }
             Err(e) => handle_entity_error(e, &entity_type),
         }
@@ -261,18 +260,19 @@ async fn create_entity(
     }
 }
 
-/// Handler for getting a specific entity by UUID
+/// Handler for getting a single entity by UUID
 #[utoipa::path(
     get,
     path = "/api/v1/{entity_type}/{uuid}",
     tag = "dynamic-entities",
     params(
-        ("entity_type" = String, Path, description = "The type of entity to retrieve"),
-        ("uuid" = String, Path, description = "The UUID of the entity to retrieve"),
-        ("exclusive_fields" = Option<String>, Query, description = "Comma-separated list of fields to exclusively return")
+        ("entity_type" = String, Path, description = "The type of entity to get"),
+        ("uuid" = Uuid, Path, description = "The UUID of the entity to get"),
+        ("fields" = Option<String>, Query, description = "Comma-separated list of fields to include"),
+        ("include" = Option<String>, Query, description = "Comma-separated list of related entities to include")
     ),
     responses(
-        (status = 200, description = "Entity found", body = DynamicEntityResponse),
+        (status = 200, description = "Entity retrieved successfully", body = DynamicEntityResponse),
         (status = 404, description = "Entity not found"),
         (status = 422, description = "Invalid field requested"),
         (status = 500, description = "Internal server error")
@@ -285,27 +285,29 @@ async fn create_entity(
 async fn get_entity(
     data: web::Data<ApiState>,
     path: web::Path<(String, String)>,
-    query: web::Query<PaginationQuery>,
+    query: web::Query<StandardQuery>,
     _: CombinedRequiredAuth,
 ) -> HttpResponse {
     let (entity_type, uuid_str) = path.into_inner();
-    let uuid = match Uuid::parse_str(&uuid_str) {
-        Ok(id) => id,
-        Err(_) => {
-            return ApiResponse::<()>::bad_request(&format!("Invalid UUID: {}", uuid_str));
-        }
-    };
-
-    let exclusive_fields = query.parse_exclusive_fields();
+    let fields = query.fields.get_fields();
+    let includes = query.include.get_includes();
 
     // Validate requested fields
-    if let Err(response) = validate_requested_fields(&data, &entity_type, &exclusive_fields).await {
+    if let Err(response) = validate_requested_fields(&data, &entity_type, &fields).await {
         return response;
     }
 
+    // Parse UUID
+    let uuid = match Uuid::parse_str(&uuid_str) {
+        Ok(uuid) => uuid,
+        Err(_) => {
+            return ApiResponse::<()>::bad_request(&format!("Invalid UUID format: {}", uuid_str));
+        }
+    };
+
     if let Some(service) = &data.dynamic_entity_service {
         match service
-            .get_entity_by_uuid(&entity_type, &uuid, exclusive_fields)
+            .get_entity_by_uuid(&entity_type, &uuid, fields)
             .await
         {
             Ok(Some(entity)) => {
@@ -313,8 +315,8 @@ async fn get_entity(
                 ApiResponse::ok(response)
             }
             Ok(None) => ApiResponse::<()>::not_found(&format!(
-                "Entity with UUID {} not found in type {}",
-                uuid, entity_type
+                "Entity of type '{}' with UUID '{}' not found",
+                entity_type, uuid
             )),
             Err(e) => handle_entity_error(e, &entity_type),
         }

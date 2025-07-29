@@ -1,4 +1,4 @@
-use crate::common::clear_test_db;
+use crate::common::utils::clear_test_db;
 use crate::repositories::{get_class_definition_repository_with_pool, TestRepository};
 use r_data_core::entity::class::definition::ClassDefinition;
 use r_data_core::entity::class::repository_trait::ClassDefinitionRepositoryTrait;

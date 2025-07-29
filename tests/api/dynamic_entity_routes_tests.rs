@@ -1,129 +1,98 @@
-use actix_web::{test, App, web, HttpResponse, Responder};
-use serde_json::{json, Value};
-use std::collections::HashMap;
-use uuid::Uuid;
+use actix_web::{test, web, App};
+use r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository;
+use r_data_core::api::{configure_app, ApiState};
+use r_data_core::cache::CacheManager;
+use r_data_core::config::CacheConfig;
+use r_data_core::entity::admin_user::repository::{AdminUserRepository, ApiKeyRepository};
+use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
+use r_data_core::error::Result;
+use r_data_core::services::{
+    AdminUserService, ApiKeyService, ClassDefinitionService, DynamicEntityService,
+};
+use std::sync::Arc;
 
-// Create a simpler test endpoint that doesn't need mocking or real services
-async fn get_test_entities() -> impl Responder {
-    let mut entity_data = HashMap::new();
-    entity_data.insert("uuid".to_string(), json!(Uuid::nil().to_string()));
-    entity_data.insert("name".to_string(), json!("Test Entity"));
-    
-    let test_entity = json!({
-        "entity_type": "test_entity",
-        "field_data": entity_data
-    });
-    
-    HttpResponse::Ok().json(vec![test_entity])
-}
+// Import common test utilities
+#[path = "../common/mod.rs"]
+mod common;
 
-async fn create_test_entity(entity: web::Json<HashMap<String, Value>>) -> impl Responder {
-    // Check if the required field exists
-    if !entity.contains_key("required_field") {
-        return HttpResponse::BadRequest().json(json!({
-            "error": "Required field 'required_field' is missing"
-        }));
+#[cfg(test)]
+mod dynamic_entity_api_tests {
+    use super::*;
+
+    async fn setup_test_app() -> Result<
+        impl actix_web::dev::Service<
+            actix_http::Request,
+            Response = actix_web::dev::ServiceResponse,
+            Error = actix_web::Error,
+        >,
+    > {
+        // Setup database
+        let pool = common::utils::setup_test_db().await;
+        common::utils::clear_test_db(&pool).await?;
+
+        // Create required services
+        let cache_config = CacheConfig {
+            enabled: true,
+            ttl: 300,
+            max_size: 10000,
+        };
+        let cache_manager = Arc::new(CacheManager::new(cache_config));
+
+        // Create user class definition
+        let user_def_uuid = common::utils::create_test_class_definition(&pool, "user").await?;
+
+        // Create test users
+        for i in 1..=5 {
+            common::utils::create_test_entity(
+                &pool,
+                "user",
+                &format!("Test User {}", i),
+                &format!("user{}@example.com", i),
+            )
+            .await?;
+        }
+
+        // Create an API key
+        let api_key = "test_api_key_12345";
+        common::utils::create_test_api_key(&pool, api_key.to_string()).await?;
+
+        // Create services
+        let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.clone())));
+        let api_key_service = ApiKeyService::new(api_key_repository);
+
+        let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.clone())));
+        let admin_user_service = AdminUserService::new(admin_user_repository);
+
+        let class_definition_repository = Arc::new(ClassDefinitionRepository::new(pool.clone()));
+        let class_definition_service = ClassDefinitionService::new(class_definition_repository);
+
+        let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
+        let dynamic_entity_service = Arc::new(DynamicEntityService::new(
+            dynamic_entity_repository,
+            Arc::new(class_definition_service.clone()),
+        ));
+
+        // Create app state
+        let app_state = web::Data::new(ApiState {
+            db_pool: pool.clone(),
+            jwt_secret: "test_secret".to_string(),
+            cache_manager,
+            api_key_service,
+            admin_user_service,
+            class_definition_service,
+            dynamic_entity_service: Some(dynamic_entity_service),
+        });
+
+        // Build test app
+        let app = test::init_service(
+            App::new()
+                .app_data(app_state.clone())
+                .configure(configure_app),
+        )
+        .await;
+
+        Ok(app)
     }
-    
-    HttpResponse::Created().json(json!({
-        "status": "created",
-        "uuid": Uuid::nil().to_string()
-    }))
-}
 
-#[actix_web::test]
-async fn test_get_entities() {
-    // Initialize the test app with our test endpoint
-    let app = test::init_service(
-        App::new().service(
-            web::resource("/api/entities/test_entity")
-                .route(web::get().to(get_test_entities))
-        )
-    ).await;
-    
-    // Create a test request
-    let req = test::TestRequest::get()
-        .uri("/api/entities/test_entity")
-        .to_request();
-    
-    // Perform the request
-    let resp = test::call_service(&app, req).await;
-    
-    // Assert the response
-    assert!(resp.status().is_success());
-    
-    // Parse the response body
-    let body: Value = test::read_body_json(resp).await;
-    
-    // Verify structure
-    assert!(body.is_array());
-    assert_eq!(body.as_array().unwrap().len(), 1);
-    assert_eq!(body[0]["entity_type"], "test_entity");
-    assert!(body[0]["field_data"]["name"].is_string());
-    assert_eq!(body[0]["field_data"]["name"], "Test Entity");
-}
-
-#[actix_web::test]
-async fn test_create_entity_success() {
-    // Initialize the test app with our test endpoint
-    let app = test::init_service(
-        App::new().service(
-            web::resource("/api/entities/test_entity")
-                .route(web::post().to(create_test_entity))
-        )
-    ).await;
-    
-    // Create a test request with valid data
-    let req = test::TestRequest::post()
-        .uri("/api/entities/test_entity")
-        .set_json(json!({
-            "required_field": "test value",
-            "optional_field": 42
-        }))
-        .to_request();
-    
-    // Perform the request
-    let resp = test::call_service(&app, req).await;
-    
-    // Assert the response
-    assert_eq!(resp.status().as_u16(), 201); // Created
-    
-    // Parse the response body
-    let body: Value = test::read_body_json(resp).await;
-    
-    // Verify structure
-    assert_eq!(body["status"], "created");
-    assert!(body["uuid"].is_string());
-}
-
-#[actix_web::test]
-async fn test_create_entity_missing_required_field() {
-    // Initialize the test app with our test endpoint
-    let app = test::init_service(
-        App::new().service(
-            web::resource("/api/entities/test_entity")
-                .route(web::post().to(create_test_entity))
-        )
-    ).await;
-    
-    // Create a test request with missing required field
-    let req = test::TestRequest::post()
-        .uri("/api/entities/test_entity")
-        .set_json(json!({
-            "optional_field": 42
-        }))
-        .to_request();
-    
-    // Perform the request
-    let resp = test::call_service(&app, req).await;
-    
-    // Assert the response
-    assert_eq!(resp.status().as_u16(), 400); // Bad Request
-    
-    // Parse the response body
-    let body: Value = test::read_body_json(resp).await;
-    
-    // Verify structure
-    assert!(body["error"].is_string());
-    assert_eq!(body["error"], "Required field 'required_field' is missing");
+    // The tests will be written here
 }

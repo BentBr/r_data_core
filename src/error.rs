@@ -91,6 +91,12 @@ impl From<&str> for Error {
     }
 }
 
+impl From<uuid::Error> for Error {
+    fn from(err: uuid::Error) -> Self {
+        Error::Conversion(err.to_string())
+    }
+}
+
 impl ResponseError for Error {
     fn status_code(&self) -> actix_web::http::StatusCode {
         actix_web::http::StatusCode::INTERNAL_SERVER_ERROR

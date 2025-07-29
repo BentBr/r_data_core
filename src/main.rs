@@ -67,7 +67,7 @@ async fn main() -> std::io::Result<()> {
     info!("Environment: {}", config.environment);
     info!("Log level: {}", config.log.level);
 
-    // Create database connection pool
+    // Create a database connection pool
     let pool = PgPoolOptions::new()
         .max_connections(config.database.max_connections)
         .connect(&config.database.connection_string)

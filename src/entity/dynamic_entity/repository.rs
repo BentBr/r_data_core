@@ -1,12 +1,10 @@
 use log::{debug, error, warn};
 use serde_json::Value as JsonValue;
-use sqlx::{postgres::PgRow, Column, FromRow, PgPool, Row};
+use sqlx::{PgPool, Row};
 use std::collections::HashMap;
-use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::entity::class::definition::ClassDefinition;
 use crate::entity::dynamic_entity::entity::DynamicEntity;
 use crate::entity::dynamic_entity::mapper;
 use crate::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
@@ -365,31 +363,22 @@ impl DynamicEntityRepository {
         Ok(())
     }
 
-    /// Filter entities based on field values
-    pub async fn filter_entities(
+    /// Filter entities by field values with advanced options
+    async fn filter_entities(
         &self,
         entity_type: &str,
-        filters: &HashMap<String, JsonValue>,
         limit: i64,
         offset: i64,
-        exclusive_fields: Option<Vec<String>>,
+        filters: Option<HashMap<String, JsonValue>>,
+        search: Option<(String, Vec<String>)>,
+        sort: Option<(String, String)>,
+        fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>> {
-        debug!(
-            "Filtering entities of type {} with filters: {:?}",
-            entity_type, filters
-        );
-
-        // Get the class definition to understand entity structure
-        let class_def = utils::get_class_definition(&self.pool, entity_type).await?;
-
-        // Get the view name
+        // Get the view name using the correct format
         let view_name = utils::get_view_name(entity_type);
 
-        // Build WHERE clause from filters
-        let (where_clause, params) = utils::build_where_clause(filters, &class_def);
-
-        // Build the query with field selection
-        let query = if let Some(fields) = &exclusive_fields {
+        // Start building the query with field selection
+        let query_prefix = if let Some(field_list) = &fields {
             // Always include system fields
             let mut selected_fields = vec![
                 "uuid".to_string(),
@@ -403,46 +392,154 @@ impl DynamicEntityRepository {
             ];
 
             // Add requested fields
-            for field in fields {
+            for field in field_list {
                 if !selected_fields.contains(field) {
                     selected_fields.push(field.clone());
                 }
             }
 
-            format!(
-                "SELECT {} FROM {} WHERE {}",
-                selected_fields.join(", "),
-                view_name,
-                where_clause
-            )
+            format!("SELECT {} FROM {}", selected_fields.join(", "), view_name)
         } else {
-            format!("SELECT * FROM {} WHERE {}", view_name, where_clause)
+            format!("SELECT * FROM {}", view_name)
         };
 
-        // Add pagination
-        let mut final_query = query + &format!(" LIMIT {} OFFSET {}", limit, offset);
+        // Base WHERE clause - no need to filter by entity_type as each view only contains one type
+        let mut query = format!("{}", query_prefix);
+        let mut bind_values: Vec<String> = vec![];
+        let mut param_index = 1;
 
-        debug!("Query: {}", final_query);
+        // Add filter conditions if provided
+        if let Some(filter_map) = &filters {
+            if !filter_map.is_empty() {
+                query.push_str(" WHERE ");
+                let mut is_first = true;
 
-        // Execute the query
-        let mut query_builder = sqlx::query(&final_query);
-        for param in &params {
-            query_builder = query_builder.bind(param);
+                for (field, value) in filter_map {
+                    if !is_first {
+                        query.push_str(" AND ");
+                    }
+
+                    match value {
+                        JsonValue::String(s) => {
+                            query.push_str(&format!("{} = ${}", field, param_index));
+                            bind_values.push(s.to_string());
+                            param_index += 1;
+                        }
+                        JsonValue::Number(n) => {
+                            query.push_str(&format!("{} = ${}", field, param_index));
+                            bind_values.push(n.to_string());
+                            param_index += 1;
+                        }
+                        JsonValue::Bool(b) => {
+                            query.push_str(&format!("{} = ${}", field, param_index));
+                            bind_values.push(b.to_string());
+                            param_index += 1;
+                        }
+                        JsonValue::Null => {
+                            query.push_str(&format!("{} IS NULL", field));
+                        }
+                        _ => {
+                            query.push_str(&format!("{} = ${}", field, param_index));
+                            bind_values.push(value.to_string());
+                            param_index += 1;
+                        }
+                    }
+                    is_first = false;
+                }
+            }
         }
 
-        let rows = query_builder.fetch_all(&self.pool).await?;
+        // Add search condition if provided
+        if let Some((search_term, search_fields)) = &search {
+            if !search_fields.is_empty() {
+                // If we have no WHERE clause yet, add one
+                if bind_values.is_empty() {
+                    query.push_str(" WHERE ");
+                } else {
+                    query.push_str(" AND ");
+                }
 
-        // Convert rows to DynamicEntity
+                let search_conditions: Vec<String> = search_fields
+                    .iter()
+                    .map(|field| {
+                        let condition = format!("{} ILIKE ${}", field, param_index);
+                        bind_values.push(format!("%{}%", search_term));
+                        param_index += 1;
+                        condition
+                    })
+                    .collect();
+
+                if !search_conditions.is_empty() {
+                    query.push_str("(");
+                    query.push_str(&search_conditions.join(" OR "));
+                    query.push_str(")");
+                }
+            }
+        }
+
+        // Add sort if provided
+        if let Some((field, direction)) = &sort {
+            // Sanitize the direction to prevent SQL injection
+            let sanitized_direction = match direction.to_uppercase().as_str() {
+                "ASC" => "ASC",
+                _ => "DESC",
+            };
+
+            query.push_str(&format!(" ORDER BY {} {}", field, sanitized_direction));
+        } else {
+            // Default sort
+            query.push_str(" ORDER BY created_at DESC");
+        }
+
+        // Add pagination
+        query.push_str(&format!(" LIMIT {} OFFSET {}", limit, offset));
+
+        debug!("Executing filter query: {}", query);
+
+        // Get the class definition for mapping
+        let class_def = utils::get_class_definition(&self.pool, entity_type).await?;
+
+        // Prepare and execute the query with proper parameter binding
+        let mut sql = sqlx::query(&query);
+
+        // Bind parameters with proper types
+        if let Some(filter_map) = &filters {
+            for (_, value) in filter_map {
+                match value {
+                    JsonValue::String(s) => sql = sql.bind(s),
+                    JsonValue::Number(n) => {
+                        if let Some(i) = n.as_i64() {
+                            sql = sql.bind(i);
+                        } else if let Some(f) = n.as_f64() {
+                            sql = sql.bind(f);
+                        } else {
+                            sql = sql.bind(n.to_string());
+                        }
+                    }
+                    JsonValue::Bool(b) => sql = sql.bind(*b),
+                    JsonValue::Null => {
+                        // NULL values are handled in the query with IS NULL
+                        continue;
+                    }
+                    _ => sql = sql.bind(value.to_string()),
+                }
+            }
+        }
+
+        // Bind search parameters
+        if let Some((search_term, _)) = &search {
+            sql = sql.bind(format!("%{}%", search_term));
+        }
+
+        let rows = sql.fetch_all(&self.pool).await.map_err(|e| {
+            error!("Database error: {}", e);
+            Error::Database(e)
+        })?;
+
+        // Map rows to DynamicEntity objects
         let mut entities = Vec::new();
-
-        debug!("Rows: {:?}", rows);
-
         for row in rows {
-            debug!("Row: {:?}", row);
-            let field_data = mapper::extract_field_data(&row);
-            debug!("field data: {:?}", field_data);
-            let entity =
-                mapper::create_entity(entity_type.to_string(), field_data, class_def.clone());
+            let entity = mapper::map_row_to_entity(&row, entity_type, &class_def);
             entities.push(entity);
         }
 
@@ -668,12 +765,14 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
     async fn filter_entities(
         &self,
         entity_type: &str,
-        filters: &HashMap<String, JsonValue>,
         limit: i64,
         offset: i64,
-        exclusive_fields: Option<Vec<String>>,
+        filters: Option<HashMap<String, JsonValue>>,
+        search: Option<(String, Vec<String>)>,
+        sort: Option<(String, String)>,
+        fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>> {
-        self.filter_entities(entity_type, filters, limit, offset, exclusive_fields)
+        self.filter_entities(entity_type, limit, offset, filters, search, sort, fields)
             .await
     }
 
