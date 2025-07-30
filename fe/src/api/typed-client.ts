@@ -58,8 +58,27 @@ class TypedHttpClient {
                 // Try to extract error message from response
                 try {
                     const errorData = await response.json()
-                    throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
-                } catch {
+                    if (this.enableLogging) {
+                        console.error('[API] HTTP Error Response:', {
+                            status: response.status,
+                            statusText: response.statusText,
+                            errorData,
+                            endpoint,
+                        })
+                    }
+                    
+                    // Handle backend API response format
+                    if (errorData.status === 'Error' && errorData.message) {
+                        throw new Error(errorData.message)
+                    }
+                    
+                    // Handle other error formats
+                    const errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`
+                    throw new Error(errorMessage)
+                } catch (parseError) {
+                    if (this.enableLogging) {
+                        console.error('[API] Failed to parse error response:', parseError)
+                    }
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`)
                 }
             }
@@ -71,7 +90,26 @@ class TypedHttpClient {
             }
 
             // Runtime validation with Zod
-            const validatedResponse = schema.parse(rawData)
+            let validatedResponse
+            try {
+                validatedResponse = schema.parse(rawData)
+            } catch (validationError) {
+                if (validationError instanceof z.ZodError) {
+                    if (this.enableLogging) {
+                        console.error('[API] Response validation failed:', {
+                            rawData,
+                            validationIssues: validationError.issues,
+                            endpoint,
+                        })
+                    }
+                    // Create a more user-friendly error message
+                    const firstIssue = validationError.issues[0]
+                    const fieldPath = firstIssue?.path?.join('.') || 'unknown field'
+                    const message = firstIssue?.message || 'Invalid format'
+                    throw new Error(`Response validation failed: ${message} (${fieldPath})`)
+                }
+                throw validationError
+            }
 
             if (validatedResponse.status === 'Error') {
                 throw new Error(validatedResponse.message)
@@ -83,14 +121,12 @@ class TypedHttpClient {
 
             return validatedResponse.data
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                if (this.enableLogging) {
-                    console.error('[API] Response validation failed:', error.issues)
-                }
-                throw new Error(`Invalid response format: ${error.issues[0]?.message}`)
-            }
             if (this.enableLogging) {
-                console.error('[API] Error:', error)
+                console.error('[API] Error:', {
+                    error: error instanceof Error ? error.message : error,
+                    endpoint,
+                    stack: error instanceof Error ? error.stack : undefined,
+                })
             }
             throw error
         }

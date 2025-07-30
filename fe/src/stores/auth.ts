@@ -2,9 +2,13 @@ import { defineStore } from 'pinia'
 import { ref, computed, readonly } from 'vue'
 import { typedHttpClient } from '@/api/typed-client'
 import { env } from '@/env-check'
+import { useTranslations } from '@/composables/useTranslations'
 import type { LoginRequest, LoginResponse, User } from '@/types/schemas'
 
 export const useAuthStore = defineStore('auth', () => {
+    // Translation system
+    const { translateError } = useTranslations()
+    
     // State
     const token = ref<string | null>(localStorage.getItem('auth_token'))
     const user = ref<User | null>(null)
@@ -66,14 +70,18 @@ export const useAuthStore = defineStore('auth', () => {
                 })
             }
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Login failed'
-            error.value = errorMessage
+            const rawErrorMessage = err instanceof Error ? err.message : 'Login failed'
+            const translatedErrorMessage = translateError(rawErrorMessage)
+            error.value = translatedErrorMessage
             
             if (env.enableApiLogging) {
-                console.error('[Auth] Login failed:', errorMessage)
+                console.error('[Auth] Login failed:', {
+                    rawError: rawErrorMessage,
+                    translatedError: translatedErrorMessage
+                })
             }
             
-            throw new Error(errorMessage)
+            throw new Error(translatedErrorMessage)
         } finally {
             isLoading.value = false
         }

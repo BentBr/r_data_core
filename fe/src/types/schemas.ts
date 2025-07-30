@@ -1,8 +1,27 @@
 import { z } from 'zod'
 
-// Base schemas for common patterns
-const UuidSchema = z.string().uuid()
-const TimestampSchema = z.string().datetime()
+// Base schemas for common patterns - handle both traditional UUID and UUIDv7 formats
+const UuidSchema = z.string().refine(
+    (val) => {
+        // UUID format: 8-4-4-4-12 hexadecimal (covers UUID v1-v7)
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        return uuidRegex.test(val)
+    },
+    {
+        message: "Invalid UUID format",
+    }
+)
+// More flexible timestamp schema to handle backend nanosecond precision
+const TimestampSchema = z.string().refine(
+    (val) => {
+        // Allow ISO 8601 format with varying precision
+        const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?$/
+        return isoRegex.test(val) && !isNaN(Date.parse(val))
+    },
+    {
+        message: "Invalid timestamp format, expected ISO 8601",
+    }
+)
 
 // API Response wrapper schema
 export const ApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
@@ -22,11 +41,11 @@ export const ApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
                         has_next: z.boolean(),
                     })
                     .optional(),
-                request_id: UuidSchema,
-                timestamp: TimestampSchema,
+                request_id: UuidSchema.optional(),
+                timestamp: TimestampSchema.optional(),
                 custom: z.any().optional(),
             })
-            .optional(),
+            .nullish(), // Allow null, undefined, or the object
     })
 
 // Auth schemas

@@ -17,17 +17,23 @@ export default defineConfig({
         host: '0.0.0.0',
         allowedHosts: ['admin.rdatacore.docker', 'localhost'],
         proxy: {
-            '/api': {
+            // Specific API endpoints - avoid conflicts with frontend routes like /api-keys
+            '/api/v1': {
                 target: 'http://rdatacore.docker',
                 changeOrigin: true,
                 secure: false
             },
-            '/admin/api': {
+            '/admin/api/v1': {
                 target: 'http://rdatacore.docker',
                 changeOrigin: true,
                 secure: false
             }
         }
+    },
+    // Configure for SPA routing in production
+    preview: {
+        port: 80,
+        host: '0.0.0.0',
     },
     build: {
         target: 'esnext',

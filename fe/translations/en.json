@@ -1,0 +1,56 @@
+{
+  "auth": {
+    "login": {
+      "title": "Sign In",
+      "username": "Username",
+      "password": "Password", 
+      "submit": "Sign In",
+      "forgot_password": "Forgot your password?",
+      "forgot_password_message": "Password reset functionality is not yet implemented.",
+      "loading": "Signing in...",
+      "success": "Login successful",
+      "errors": {
+        "invalid_credentials": "Invalid username or password",
+        "username_required": "Username is required",
+        "password_required": "Password is required",
+        "username_too_short": "Username must be at least 3 characters",
+        "password_too_short": "Password must be at least 8 characters",
+        "validation_failed": "Login failed due to validation error",
+        "network_error": "Network error, please try again",
+        "server_error": "Server error, please try again later",
+        "authentication_required": "Authentication required"
+      }
+    }
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "class_definitions": "Class Definitions", 
+    "entities": "Entities",
+    "api_keys": "API Keys",
+    "permissions": "Permissions",
+    "system": "System",
+    "logout": "Logout"
+  },
+  "general": {
+    "errors": {
+      "unknown": "An unknown error occurred",
+      "network": "Network connection failed",
+      "server": "Server error"
+    },
+    "language": {
+      "switch": "Switch Language"
+    },
+    "theme": {
+      "toggle": "Toggle Theme",
+      "light": "Light Mode",
+      "dark": "Dark Mode",
+      "system": "System",
+      "mode": "Theme"
+    },
+    "user": {
+      "profile": "Profile",
+      "profile_subtitle": "Edit your profile settings",
+      "logout_subtitle": "Sign out of your account"
+    }
+  }
+}

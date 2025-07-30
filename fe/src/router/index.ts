@@ -49,6 +49,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/system/SystemPage.vue'),
         meta: { requiresAuth: true },
     },
+    // Catch-all route for 404 handling
+    {
+        path: '/:pathMatch(.*)*',
+        name: 'NotFound',
+        redirect: '/dashboard',
+    }
 ]
 
 const router = createRouter({
