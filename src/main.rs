@@ -1,7 +1,7 @@
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
-use log::{error, info};
+use log::{debug, error, info};
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 
@@ -46,6 +46,7 @@ async fn main() -> std::io::Result<()> {
     // Load environment variables and configure the application
     let config = match AppConfig::from_env() {
         Ok(cfg) => {
+            debug!("Loaded conf: {:?}", cfg);
             info!("Configuration loaded successfully");
             cfg
         }
@@ -66,6 +67,7 @@ async fn main() -> std::io::Result<()> {
     info!("Starting R Data Core server...");
     info!("Environment: {}", config.environment);
     info!("Log level: {}", config.log.level);
+    info!("API docs enabled: {}", config.api.enable_docs);
 
     // Create a database connection pool
     let pool = PgPoolOptions::new()
@@ -158,12 +160,19 @@ async fn main() -> std::io::Result<()> {
             .expose_headers(vec!["content-disposition"])
             .max_age(3600);
 
+        let api_config = api::ApiConfiguration {
+            enable_auth: false,  // Todo
+            enable_admin: true,  // Todo
+            enable_public: true, // Todo
+            enable_docs: config.api.enable_docs,
+        };
+
         App::new()
             .app_data(app_state.clone())
             .wrap(api::middleware::create_error_handlers())
             .wrap(Logger::new("%a %{User-Agent}i %r %s %D"))
             .wrap(cors)
-            .configure(api::configure_app)
+            .configure(move |cfg| api::configure_app_with_options(cfg, api_config))
             .default_service(web::route().to(default_404_handler))
     })
     .bind(bind_address)?

@@ -13,7 +13,7 @@ use actix_web::{get, web, Responder};
 use sqlx::PgPool;
 use std::sync::Arc;
 
-pub use crate::api::response::{ApiResponse, Status};
+pub use crate::api::response::ApiResponse;
 use crate::cache::CacheManager;
 use crate::services::AdminUserService;
 use crate::services::ApiKeyService;

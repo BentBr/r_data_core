@@ -4,16 +4,16 @@ use actix_web::{
 };
 use r_data_core::{
     api::{
-        auth::{extract_and_validate_api_key},
-        jwt::{AuthUserClaims},
+        auth::extract_and_validate_api_key,
+        jwt::AuthUserClaims,
         middleware::{ApiAuth, ApiKeyInfo},
         ApiState,
     },
-    entity::admin_user::{ApiKey, ApiKeyRepository, ApiKeyRepositoryTrait, AdminUserRepository},
-    error::{Error, Result},
-    services::{AdminUserService, ApiKeyService, ClassDefinitionService},
     cache::CacheManager,
     config::CacheConfig,
+    entity::admin_user::{AdminUserRepository, ApiKey, ApiKeyRepository, ApiKeyRepositoryTrait},
+    error::{Error, Result},
+    services::{AdminUserService, ApiKeyService, ClassDefinitionService},
 };
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -34,7 +34,11 @@ mod tests {
         let user_uuid = utils::create_test_admin_user(&pool).await?;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(pool.clone()));
+        let class_def_repo = Arc::new(
+            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+                pool.clone(),
+            ),
+        );
 
         // Create API key
         let (key_uuid, key_value) = api_key_repo
@@ -108,7 +112,11 @@ mod tests {
         let pool = utils::setup_test_db().await;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(pool.clone()));
+        let class_def_repo = Arc::new(
+            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+                pool.clone(),
+            ),
+        );
 
         // Create cache config
         let cache_config = CacheConfig {
@@ -118,22 +126,21 @@ mod tests {
         };
 
         // Create test app with API key authentication middleware
-        let app = test::init_service(
-            App::new()
-                .wrap(r_data_core::api::middleware::create_error_handlers())
-                .app_data(web::Data::new(ApiState {
-                    db_pool: pool.clone(),
-                    jwt_secret: "test_secret".to_string(),
-                    cache_manager: Arc::new(CacheManager::new(cache_config)),
-                    api_key_service: ApiKeyService::from_repository(api_key_repo),
-                    admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    class_definition_service: ClassDefinitionService::new(class_def_repo),
-                    dynamic_entity_service: None,
-                }))
-                .service(
-                    web::resource("/test")
-                        .wrap(ApiAuth)
-                        .to(|req: HttpRequest| async move {
+        let app =
+            test::init_service(
+                App::new()
+                    .wrap(r_data_core::api::middleware::create_error_handlers())
+                    .app_data(web::Data::new(ApiState {
+                        db_pool: pool.clone(),
+                        jwt_secret: "test_secret".to_string(),
+                        cache_manager: Arc::new(CacheManager::new(cache_config)),
+                        api_key_service: ApiKeyService::from_repository(api_key_repo),
+                        admin_user_service: AdminUserService::from_repository(admin_user_repo),
+                        class_definition_service: ClassDefinitionService::new(class_def_repo),
+                        dynamic_entity_service: None,
+                    }))
+                    .service(web::resource("/test").wrap(ApiAuth).to(
+                        |req: HttpRequest| async move {
                             // Check if API key info was added to request extensions
                             if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
                                 HttpResponse::Ok().json(serde_json::json!({
@@ -147,10 +154,10 @@ mod tests {
                                     "message": "No API key found"
                                 }))
                             }
-                        }),
-                ),
-        )
-        .await;
+                        },
+                    )),
+            )
+            .await;
 
         // Test with invalid API key
         let req = test::TestRequest::get()
@@ -172,7 +179,11 @@ mod tests {
         let pool = utils::setup_test_db().await;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(pool.clone()));
+        let class_def_repo = Arc::new(
+            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+                pool.clone(),
+            ),
+        );
 
         // Create cache config
         let cache_config = CacheConfig {
@@ -219,7 +230,10 @@ mod tests {
         let req = test::TestRequest::get().uri("/test").to_request();
 
         let result = test::try_call_service(&app, req).await;
-        assert!(result.is_err(), "Expected an error for missing API key header");
+        assert!(
+            result.is_err(),
+            "Expected an error for missing API key header"
+        );
 
         utils::clear_test_db(&pool).await?;
         Ok(())
@@ -233,7 +247,11 @@ mod tests {
         let user_uuid = utils::create_test_admin_user(&pool).await?;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(pool.clone()));
+        let class_def_repo = Arc::new(
+            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+                pool.clone(),
+            ),
+        );
 
         // Create API key
         let (key_uuid, key_value) = api_key_repo
@@ -270,7 +288,8 @@ mod tests {
                                     "auth_method": "jwt",
                                     "user_uuid": claims.sub
                                 }))
-                            } else if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
+                            } else if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>()
+                            {
                                 HttpResponse::Ok().json(serde_json::json!({
                                     "status": "success",
                                     "auth_method": "api_key",
@@ -313,11 +332,20 @@ mod tests {
         let pool = utils::setup_test_db().await;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(pool.clone()));
+        let class_def_repo = Arc::new(
+            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+                pool.clone(),
+            ),
+        );
 
         // Create API key
         let (key_uuid, key_value) = api_key_repo
-            .create_new_api_key("TestKey", "Test Description", utils::create_test_admin_user(&pool).await?, 30)
+            .create_new_api_key(
+                "TestKey",
+                "Test Description",
+                utils::create_test_admin_user(&pool).await?,
+                30,
+            )
             .await?;
 
         // Create cache config
@@ -350,7 +378,8 @@ mod tests {
                                     "auth_method": "jwt",
                                     "user_uuid": claims.sub
                                 }))
-                            } else if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
+                            } else if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>()
+                            {
                                 HttpResponse::Ok().json(serde_json::json!({
                                     "status": "success",
                                     "auth_method": "api_key",
@@ -386,7 +415,11 @@ mod tests {
         let user_uuid = utils::create_test_admin_user(&pool).await?;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(pool.clone()));
+        let class_def_repo = Arc::new(
+            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+                pool.clone(),
+            ),
+        );
 
         // Create API key with no expiration
         let (key_uuid, key_value) = api_key_repo
@@ -463,7 +496,11 @@ mod tests {
         let user_uuid = utils::create_test_admin_user(&pool).await?;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(pool.clone()));
+        let class_def_repo = Arc::new(
+            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+                pool.clone(),
+            ),
+        );
 
         // Create API key
         let (key_uuid, key_value) = api_key_repo
@@ -526,4 +563,4 @@ mod tests {
         utils::clear_test_db(&pool).await?;
         Ok(())
     }
-} 
+}

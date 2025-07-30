@@ -7,11 +7,11 @@ use r_data_core::{
         middleware::{ApiAuth, ApiKeyInfo},
         ApiState,
     },
-    entity::admin_user::{ApiKey, ApiKeyRepository, ApiKeyRepositoryTrait, AdminUserRepository},
-    error::{Error, Result},
-    services::{AdminUserService, ApiKeyService, ClassDefinitionService},
     cache::CacheManager,
     config::CacheConfig,
+    entity::admin_user::{AdminUserRepository, ApiKey, ApiKeyRepository, ApiKeyRepositoryTrait},
+    error::{Error, Result},
+    services::{AdminUserService, ApiKeyService, ClassDefinitionService},
 };
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -34,7 +34,11 @@ mod tests {
         // Create test app
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(pool.clone()));
+        let class_def_repo = Arc::new(
+            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+                pool.clone(),
+            ),
+        );
 
         let cache_config = CacheConfig {
             enabled: true,
@@ -53,16 +57,15 @@ mod tests {
                     class_definition_service: ClassDefinitionService::new(class_def_repo),
                     dynamic_entity_service: None,
                 }))
-                .service(
-                    web::resource("/api/admin/api-keys")
-                        .route(web::post().to(move |req: HttpRequest| async move {
-                            // Simulate API key creation endpoint
-                            HttpResponse::Ok().json(serde_json::json!({
-                                "status": "success",
-                                "message": "API key created"
-                            }))
-                        })),
-                ),
+                .service(web::resource("/api/admin/api-keys").route(web::post().to(
+                    move |req: HttpRequest| async move {
+                        // Simulate API key creation endpoint
+                        HttpResponse::Ok().json(serde_json::json!({
+                            "status": "success",
+                            "message": "API key created"
+                        }))
+                    },
+                ))),
         )
         .await;
 
@@ -104,7 +107,11 @@ mod tests {
         // Create test app
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(pool.clone()));
+        let class_def_repo = Arc::new(
+            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+                pool.clone(),
+            ),
+        );
 
         let cache_config = CacheConfig {
             enabled: true,
@@ -115,7 +122,7 @@ mod tests {
         // Clone the UUIDs to move into the closure
         let key1_uuid_clone = key1_uuid;
         let key2_uuid_clone = key2_uuid;
-        
+
         let app = test::init_service(
             App::new()
                 .app_data(web::Data::new(ApiState {
@@ -186,7 +193,11 @@ mod tests {
         // Create test app
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(pool.clone()));
+        let class_def_repo = Arc::new(
+            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+                pool.clone(),
+            ),
+        );
 
         let cache_config = CacheConfig {
             enabled: true,
@@ -212,38 +223,44 @@ mod tests {
                 .service(
                     web::resource("/api/admin/api-keys/{uuid}")
                         .wrap(ApiAuth::new())
-                        .route(web::delete().to(move |req: HttpRequest, path: web::Path<String>| {
-                            let repo_clone = repo_for_handler.clone();
-                            async move {
-                                // Simulate API key revocation endpoint
-                                if let Some(_auth) = req.extensions().get::<ApiKeyInfo>() {
-                                    let key_uuid_str = path.into_inner();
-                                    if let Ok(key_uuid) = uuid::Uuid::parse_str(&key_uuid_str) {
-                                        // Actually revoke the key in the database
-                                        match repo_clone.revoke(key_uuid).await {
-                                            Ok(_) => HttpResponse::Ok().json(serde_json::json!({
-                                                "status": "success",
-                                                "message": "API key revoked"
-                                            })),
-                                            Err(_) => HttpResponse::InternalServerError().json(serde_json::json!({
+                        .route(web::delete().to(
+                            move |req: HttpRequest, path: web::Path<String>| {
+                                let repo_clone = repo_for_handler.clone();
+                                async move {
+                                    // Simulate API key revocation endpoint
+                                    if let Some(_auth) = req.extensions().get::<ApiKeyInfo>() {
+                                        let key_uuid_str = path.into_inner();
+                                        if let Ok(key_uuid) = uuid::Uuid::parse_str(&key_uuid_str) {
+                                            // Actually revoke the key in the database
+                                            match repo_clone.revoke(key_uuid).await {
+                                                Ok(_) => {
+                                                    HttpResponse::Ok().json(serde_json::json!({
+                                                        "status": "success",
+                                                        "message": "API key revoked"
+                                                    }))
+                                                }
+                                                Err(_) => HttpResponse::InternalServerError().json(
+                                                    serde_json::json!({
+                                                        "status": "error",
+                                                        "message": "Failed to revoke API key"
+                                                    }),
+                                                ),
+                                            }
+                                        } else {
+                                            HttpResponse::BadRequest().json(serde_json::json!({
                                                 "status": "error",
-                                                "message": "Failed to revoke API key"
+                                                "message": "Invalid UUID format"
                                             }))
                                         }
                                     } else {
-                                        HttpResponse::BadRequest().json(serde_json::json!({
+                                        HttpResponse::Unauthorized().json(serde_json::json!({
                                             "status": "error",
-                                            "message": "Invalid UUID format"
+                                            "message": "Unauthorized"
                                         }))
                                     }
-                                } else {
-                                    HttpResponse::Unauthorized().json(serde_json::json!({
-                                        "status": "error",
-                                        "message": "Unauthorized"
-                                    }))
                                 }
-                            }
-                        })),
+                            },
+                        )),
                 ),
         )
         .await;
@@ -281,7 +298,11 @@ mod tests {
         // Create test app
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(pool.clone()));
+        let class_def_repo = Arc::new(
+            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+                pool.clone(),
+            ),
+        );
 
         let cache_config = CacheConfig {
             enabled: true,
@@ -289,21 +310,20 @@ mod tests {
             max_size: 1000,
         };
 
-        let app = test::init_service(
-            App::new()
-                .app_data(web::Data::new(ApiState {
-                    db_pool: pool.clone(),
-                    jwt_secret: "test_secret".to_string(),
-                    cache_manager: Arc::new(CacheManager::new(cache_config)),
-                    api_key_service: ApiKeyService::from_repository(api_key_repo),
-                    admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    class_definition_service: ClassDefinitionService::new(class_def_repo),
-                    dynamic_entity_service: None,
-                }))
-                .service(
-                    web::resource("/protected")
-                        .wrap(ApiAuth::new())
-                        .route(web::get().to(move |req: HttpRequest| async move {
+        let app =
+            test::init_service(
+                App::new()
+                    .app_data(web::Data::new(ApiState {
+                        db_pool: pool.clone(),
+                        jwt_secret: "test_secret".to_string(),
+                        cache_manager: Arc::new(CacheManager::new(cache_config)),
+                        api_key_service: ApiKeyService::from_repository(api_key_repo),
+                        admin_user_service: AdminUserService::from_repository(admin_user_repo),
+                        class_definition_service: ClassDefinitionService::new(class_def_repo),
+                        dynamic_entity_service: None,
+                    }))
+                    .service(web::resource("/protected").wrap(ApiAuth::new()).route(
+                        web::get().to(move |req: HttpRequest| async move {
                             // Simulate protected endpoint
                             if let Some(auth) = req.extensions().get::<ApiKeyInfo>() {
                                 HttpResponse::Ok().json(serde_json::json!({
@@ -316,10 +336,10 @@ mod tests {
                                     "message": "Unauthorized"
                                 }))
                             }
-                        })),
-                ),
-        )
-        .await;
+                        }),
+                    )),
+            )
+            .await;
 
         // Test with API key
         let req = test::TestRequest::get()
@@ -358,7 +378,11 @@ mod tests {
         // Create test app
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(pool.clone()));
+        let class_def_repo = Arc::new(
+            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+                pool.clone(),
+            ),
+        );
 
         let cache_config = CacheConfig {
             enabled: true,
@@ -366,21 +390,20 @@ mod tests {
             max_size: 1000,
         };
 
-        let app = test::init_service(
-            App::new()
-                .app_data(web::Data::new(ApiState {
-                    db_pool: pool.clone(),
-                    jwt_secret: "test_secret".to_string(),
-                    cache_manager: Arc::new(CacheManager::new(cache_config)),
-                    api_key_service: ApiKeyService::from_repository(api_key_repo),
-                    admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    class_definition_service: ClassDefinitionService::new(class_def_repo),
-                    dynamic_entity_service: None,
-                }))
-                .service(
-                    web::resource("/protected")
-                        .wrap(ApiAuth::new())
-                        .route(web::get().to(move |req: HttpRequest| async move {
+        let app =
+            test::init_service(
+                App::new()
+                    .app_data(web::Data::new(ApiState {
+                        db_pool: pool.clone(),
+                        jwt_secret: "test_secret".to_string(),
+                        cache_manager: Arc::new(CacheManager::new(cache_config)),
+                        api_key_service: ApiKeyService::from_repository(api_key_repo),
+                        admin_user_service: AdminUserService::from_repository(admin_user_repo),
+                        class_definition_service: ClassDefinitionService::new(class_def_repo),
+                        dynamic_entity_service: None,
+                    }))
+                    .service(web::resource("/protected").wrap(ApiAuth::new()).route(
+                        web::get().to(move |req: HttpRequest| async move {
                             // Simulate protected endpoint
                             if let Some(auth) = req.extensions().get::<ApiKeyInfo>() {
                                 HttpResponse::Ok().json(serde_json::json!({
@@ -393,10 +416,10 @@ mod tests {
                                     "message": "Unauthorized"
                                 }))
                             }
-                        })),
-                ),
-        )
-        .await;
+                        }),
+                    )),
+            )
+            .await;
 
         // Test with expired API key
         let req = test::TestRequest::get()
@@ -442,7 +465,11 @@ mod tests {
         // Create test app
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(pool.clone()));
+        let class_def_repo = Arc::new(
+            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+                pool.clone(),
+            ),
+        );
 
         let cache_config = CacheConfig {
             enabled: true,
@@ -450,21 +477,20 @@ mod tests {
             max_size: 1000,
         };
 
-        let app = test::init_service(
-            App::new()
-                .app_data(web::Data::new(ApiState {
-                    db_pool: pool.clone(),
-                    jwt_secret: "test_secret".to_string(),
-                    cache_manager: Arc::new(CacheManager::new(cache_config)),
-                    api_key_service: ApiKeyService::from_repository(api_key_repo),
-                    admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    class_definition_service: ClassDefinitionService::new(class_def_repo),
-                    dynamic_entity_service: None,
-                }))
-                .service(
-                    web::resource("/protected")
-                        .wrap(ApiAuth::new())
-                        .route(web::get().to(move |req: HttpRequest| async move {
+        let app =
+            test::init_service(
+                App::new()
+                    .app_data(web::Data::new(ApiState {
+                        db_pool: pool.clone(),
+                        jwt_secret: "test_secret".to_string(),
+                        cache_manager: Arc::new(CacheManager::new(cache_config)),
+                        api_key_service: ApiKeyService::from_repository(api_key_repo),
+                        admin_user_service: AdminUserService::from_repository(admin_user_repo),
+                        class_definition_service: ClassDefinitionService::new(class_def_repo),
+                        dynamic_entity_service: None,
+                    }))
+                    .service(web::resource("/protected").wrap(ApiAuth::new()).route(
+                        web::get().to(move |req: HttpRequest| async move {
                             // Simulate protected endpoint
                             if let Some(auth) = req.extensions().get::<ApiKeyInfo>() {
                                 HttpResponse::Ok().json(serde_json::json!({
@@ -477,10 +503,10 @@ mod tests {
                                     "message": "Unauthorized"
                                 }))
                             }
-                        })),
-                ),
-        )
-        .await;
+                        }),
+                    )),
+            )
+            .await;
 
         // Use the API key through the middleware
         let req = test::TestRequest::get()
@@ -508,15 +534,21 @@ mod tests {
         let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
 
         // Test empty name validation
-        let result = repo.create_new_api_key("", "Test description", user_uuid, 30).await;
+        let result = repo
+            .create_new_api_key("", "Test description", user_uuid, 30)
+            .await;
         assert!(result.is_err());
 
         // Test negative expiration validation
-        let result = repo.create_new_api_key("Test Key", "Test description", user_uuid, -5).await;
+        let result = repo
+            .create_new_api_key("Test Key", "Test description", user_uuid, -5)
+            .await;
         assert!(result.is_err());
 
         // Test valid creation
-        let result = repo.create_new_api_key("Valid Key", "Valid description", user_uuid, 30).await;
+        let result = repo
+            .create_new_api_key("Valid Key", "Valid description", user_uuid, 30)
+            .await;
         assert!(result.is_ok());
 
         utils::clear_test_db(&pool).await?;
@@ -568,7 +600,11 @@ mod tests {
         // Create test app
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(pool.clone()));
+        let class_def_repo = Arc::new(
+            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+                pool.clone(),
+            ),
+        );
 
         let cache_config = CacheConfig {
             enabled: true,
@@ -576,21 +612,20 @@ mod tests {
             max_size: 1000,
         };
 
-        let app = test::init_service(
-            App::new()
-                .app_data(web::Data::new(ApiState {
-                    db_pool: pool.clone(),
-                    jwt_secret: "test_secret".to_string(),
-                    cache_manager: Arc::new(CacheManager::new(cache_config)),
-                    api_key_service: ApiKeyService::from_repository(api_key_repo),
-                    admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    class_definition_service: ClassDefinitionService::new(class_def_repo),
-                    dynamic_entity_service: None,
-                }))
-                .service(
-                    web::resource("/protected")
-                        .wrap(ApiAuth::new())
-                        .route(web::get().to(move |req: HttpRequest| async move {
+        let app =
+            test::init_service(
+                App::new()
+                    .app_data(web::Data::new(ApiState {
+                        db_pool: pool.clone(),
+                        jwt_secret: "test_secret".to_string(),
+                        cache_manager: Arc::new(CacheManager::new(cache_config)),
+                        api_key_service: ApiKeyService::from_repository(api_key_repo),
+                        admin_user_service: AdminUserService::from_repository(admin_user_repo),
+                        class_definition_service: ClassDefinitionService::new(class_def_repo),
+                        dynamic_entity_service: None,
+                    }))
+                    .service(web::resource("/protected").wrap(ApiAuth::new()).route(
+                        web::get().to(move |req: HttpRequest| async move {
                             // Simulate protected endpoint
                             if let Some(auth) = req.extensions().get::<ApiKeyInfo>() {
                                 HttpResponse::Ok().json(serde_json::json!({
@@ -603,10 +638,10 @@ mod tests {
                                     "message": "Unauthorized"
                                 }))
                             }
-                        })),
-                ),
-        )
-        .await;
+                        }),
+                    )),
+            )
+            .await;
 
         // Test concurrent usage - run requests sequentially since app doesn't implement Clone
         for _ in 0..5 {
@@ -626,4 +661,4 @@ mod tests {
         utils::clear_test_db(&pool).await?;
         Ok(())
     }
-} 
+}

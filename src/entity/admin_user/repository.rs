@@ -387,11 +387,15 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
     ) -> Result<(Uuid, String)> {
         // Validate input parameters
         if name.trim().is_empty() {
-            return Err(Error::Validation("API key name cannot be empty".to_string()));
+            return Err(Error::Validation(
+                "API key name cannot be empty".to_string(),
+            ));
         }
 
         if expires_in_days < 0 {
-            return Err(Error::Validation("Expiration days cannot be negative".to_string()));
+            return Err(Error::Validation(
+                "Expiration days cannot be negative".to_string(),
+            ));
         }
 
         // Generate a secure random API key

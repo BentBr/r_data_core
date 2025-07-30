@@ -66,14 +66,14 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
     info(
         title = "R Data Core Admin API",
         version = "0.1.0",
-        description = "Administrative interface for the Digital Asset Management backend",
+        description = "Administrative interface for the Master Data Management backend",
         license(
             name = "MIT",
             url = "https://opensource.org/licenses/MIT"
         )
     ),
     servers(
-        (url = "http://localhost:8888", description = "Local development server")
+        (url = "http://rdatacore.docker", description = "Local development server")
     )
 )]
 struct AdminApiDoc;
@@ -236,14 +236,14 @@ impl Modify for JsonValueSchemaAddon {
     info(
         title = "R Data Core Public API",
         version = "0.1.0",
-        description = "Public API for the Digital Asset Management backend",
+        description = "Public API for the Master Data Management",
         license(
             name = "MIT",
             url = "https://opensource.org/licenses/MIT"
         )
     ),
     servers(
-        (url = "http://localhost:8888", description = "Local development server")
+        (url = "http://rdatacore.docker", description = "Local development server")
     )
 )]
 struct PublicApiDoc;

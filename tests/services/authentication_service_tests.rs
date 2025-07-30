@@ -68,7 +68,7 @@ mod tests {
         // Test validation
         let result = mock_repo.find_api_key_for_auth("valid_api_key").await?;
         assert!(result.is_some());
-        
+
         if let Some((key, extracted_user_uuid)) = result {
             assert_eq!(key.uuid, key_uuid);
             assert_eq!(extracted_user_uuid, user_uuid);
@@ -143,7 +143,9 @@ mod tests {
             .expect_create_new_api_key()
             .with(eq(""), eq("Test description"), eq(user_uuid), eq(30))
             .returning(|_, _, _, _| {
-                Err(Error::Validation("API key name cannot be empty".to_string()))
+                Err(Error::Validation(
+                    "API key name cannot be empty".to_string(),
+                ))
             });
 
         let result = mock_repo
@@ -160,9 +162,16 @@ mod tests {
         // Test with negative expiration
         mock_repo
             .expect_create_new_api_key()
-            .with(eq("Test Key"), eq("Test description"), eq(user_uuid), eq(-1))
+            .with(
+                eq("Test Key"),
+                eq("Test description"),
+                eq(user_uuid),
+                eq(-1),
+            )
             .returning(|_, _, _, _| {
-                Err(Error::Validation("Expiration days cannot be negative".to_string()))
+                Err(Error::Validation(
+                    "Expiration days cannot be negative".to_string(),
+                ))
             });
 
         let result = mock_repo
@@ -282,7 +291,7 @@ mod tests {
         // Test listing
         let result = mock_repo.list_by_user(user_uuid, 10, 0).await;
         assert!(result.is_ok());
-        
+
         if let Ok(keys) = result {
             assert_eq!(keys.len(), 2);
             assert_eq!(keys[0].name, "Key 1");
@@ -328,4 +337,4 @@ mod tests {
 
         Ok(())
     }
-} 
+}

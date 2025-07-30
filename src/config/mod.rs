@@ -122,7 +122,9 @@ impl AppConfig {
         };
 
         let api = ApiConfig {
-            host: env::var("API_HOST").unwrap_or_else(|_| "rdatacore.docker".to_string()),
+            host: env::var("API_HOST")
+                .or_else(|_| env::var("API_HOST"))
+                .unwrap_or_else(|_| "0.0.0.0".to_string()),
             port: env::var("API_PORT")
                 .unwrap_or_else(|_| "8888".to_string())
                 .parse()

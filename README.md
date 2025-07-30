@@ -159,7 +159,7 @@ The application can be configured using environment variables. See `.env.example
 
 - `DATABASE_URL` - PostgreSQL connection URL
 - `DATABASE_MAX_CONNECTIONS` - Maximum database connections
-- `SERVER_HOST` - Server host address
+- `API_HOST` - Server host address
 - `SERVER_PORT` - Server port
 - `JWT_SECRET` - Secret key for JWT tokens
 - `JWT_EXPIRATION` - JWT token expiration in seconds
