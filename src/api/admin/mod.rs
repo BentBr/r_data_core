@@ -14,6 +14,9 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
             .service(auth::admin_login)
             .service(auth::admin_register)
             .service(auth::admin_logout)
+            .service(auth::admin_refresh_token)
+            .service(auth::admin_revoke_token)
+            .service(auth::admin_revoke_all_tokens)
             // Module routes
             .service(
                 web::scope("/class-definitions")

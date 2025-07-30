@@ -7,6 +7,10 @@ use crate::entity::AdminUser;
 use crate::error::{Error, Result};
 use utoipa::ToSchema;
 
+// Token expiry constants
+pub const ACCESS_TOKEN_EXPIRY_SECONDS: u64 = 1800; // 30 minutes
+pub const REFRESH_TOKEN_EXPIRY_SECONDS: u64 = 2592000; // 30 days
+
 /// Claims for authentication
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AuthUserClaims {
@@ -17,6 +21,11 @@ pub struct AuthUserClaims {
     pub role: String,   // User role
     pub exp: usize,     // Expiration timestamp
     pub iat: usize,     // Issued at timestamp
+}
+
+/// Generate an access JWT token for a user with short expiry
+pub fn generate_access_token(user: &AdminUser, secret: &str) -> Result<String> {
+    generate_jwt(user, secret, ACCESS_TOKEN_EXPIRY_SECONDS)
 }
 
 /// Generate a JWT token for a user

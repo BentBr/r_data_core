@@ -6,12 +6,15 @@ import {
     ApiKeySchema,
     UserSchema,
     LoginResponseSchema,
+    RefreshTokenResponseSchema,
     type ApiResponse,
     type ClassDefinition,
     type ApiKey,
     type User,
     type LoginResponse,
     type LoginRequest,
+    type RefreshTokenRequest,
+    type RefreshTokenResponse,
 } from '@/types/schemas'
 
 class TypedHttpClient {
@@ -47,8 +50,45 @@ class TypedHttpClient {
 
             if (!response.ok) {
                 if (response.status === 401) {
-                    // Handle unauthorized - clear auth and redirect to login
+                    // Handle unauthorized - try refresh first, then clear auth
+                    const refreshToken = localStorage.getItem('refresh_token')
+                    if (refreshToken && !endpoint.includes('/auth/refresh')) {
+                        // Try to refresh the token once
+                        try {
+                            const refreshResponse = await this.refreshToken({
+                                refresh_token: refreshToken,
+                            })
+
+                            // Update stored tokens
+                            localStorage.setItem('auth_token', refreshResponse.access_token)
+                            localStorage.setItem('refresh_token', refreshResponse.refresh_token)
+
+                            // Retry the original request with new token
+                            const retryConfig = {
+                                ...config,
+                                headers: {
+                                    ...config.headers,
+                                    Authorization: `Bearer ${refreshResponse.access_token}`,
+                                },
+                            }
+                            const retryResponse = await fetch(
+                                `${this.baseURL}${endpoint}`,
+                                retryConfig
+                            )
+
+                            if (retryResponse.ok) {
+                                return await retryResponse.json()
+                            }
+                        } catch (refreshError) {
+                            if (this.enableLogging) {
+                                console.error('[API] Token refresh failed:', refreshError)
+                            }
+                        }
+                    }
+
+                    // Clear auth and redirect to login
                     localStorage.removeItem('auth_token')
+                    localStorage.removeItem('refresh_token')
                     if (window.location.pathname !== '/login') {
                         window.location.href = '/login'
                     }
@@ -210,6 +250,39 @@ class TypedHttpClient {
         return this.request(
             `/admin/api/v1/users?limit=${pageSize}&offset=${offset}`,
             ApiResponseSchema(z.array(UserSchema))
+        )
+    }
+
+    async refreshToken(refreshTokenRequest: RefreshTokenRequest): Promise<RefreshTokenResponse> {
+        return this.request(
+            '/admin/api/v1/auth/refresh',
+            ApiResponseSchema(RefreshTokenResponseSchema),
+            {
+                method: 'POST',
+                body: JSON.stringify(refreshTokenRequest),
+            }
+        )
+    }
+
+    async revokeToken(revokeTokenRequest: { refresh_token: string }): Promise<{ message: string }> {
+        return this.request(
+            '/admin/api/v1/auth/revoke',
+            ApiResponseSchema(z.object({ message: z.string() })),
+            {
+                method: 'POST',
+                body: JSON.stringify(revokeTokenRequest),
+            }
+        )
+    }
+
+    async revokeAllTokens(): Promise<{ message: string }> {
+        return this.request(
+            '/admin/api/v1/auth/revoke-all',
+            ApiResponseSchema(z.object({ message: z.string() })),
+            {
+                method: 'POST',
+                body: JSON.stringify({}),
+            }
         )
     }
 }

@@ -55,11 +55,13 @@ export const LoginRequestSchema = z.object({
 })
 
 export const LoginResponseSchema = z.object({
-    token: z.string(),
+    access_token: z.string(),
+    refresh_token: z.string(),
     user_uuid: UuidSchema,
     username: z.string(),
     role: z.string(),
-    expires_at: TimestampSchema,
+    access_expires_at: TimestampSchema,
+    refresh_expires_at: TimestampSchema,
 })
 
 // Field Definition schema
@@ -154,6 +156,26 @@ export const UserSchema = z.object({
 export type ApiResponse<T> = z.infer<ReturnType<typeof ApiResponseSchema<z.ZodType<T>>>>
 export type LoginRequest = z.infer<typeof LoginRequestSchema>
 export type LoginResponse = z.infer<typeof LoginResponseSchema>
+
+// Refresh token schemas
+export const RefreshTokenRequestSchema = z.object({
+    refresh_token: z.string(),
+})
+
+export const RefreshTokenResponseSchema = z.object({
+    access_token: z.string(),
+    refresh_token: z.string(),
+    access_expires_at: TimestampSchema,
+    refresh_expires_at: TimestampSchema,
+})
+
+export const RevokeTokenRequestSchema = z.object({
+    refresh_token: z.string(),
+})
+
+export type RefreshTokenRequest = z.infer<typeof RefreshTokenRequestSchema>
+export type RefreshTokenResponse = z.infer<typeof RefreshTokenResponseSchema>
+export type RevokeTokenRequest = z.infer<typeof RevokeTokenRequestSchema>
 export type FieldDefinition = z.infer<typeof FieldDefinitionSchema>
 export type ClassDefinition = z.infer<typeof ClassDefinitionSchema>
 export type DynamicEntity = z.infer<typeof DynamicEntitySchema>

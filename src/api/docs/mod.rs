@@ -14,6 +14,9 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         crate::api::admin::auth::admin_login,
         crate::api::admin::auth::admin_register,
         crate::api::admin::auth::admin_logout,
+        crate::api::admin::auth::admin_refresh_token,
+        crate::api::admin::auth::admin_revoke_token,
+        crate::api::admin::auth::admin_revoke_all_tokens,
         crate::api::health::admin_health_check,
         crate::api::admin::class_definitions::routes::list_class_definitions,
         crate::api::admin::class_definitions::routes::get_class_definition,
@@ -33,6 +36,9 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
             crate::api::admin::auth::AdminRegisterRequest,
             crate::api::admin::auth::AdminRegisterResponse,
             crate::api::admin::auth::EmptyRequest,
+            crate::api::admin::auth::RefreshTokenRequest,
+            crate::api::admin::auth::RefreshTokenResponse,
+            crate::api::admin::auth::RevokeTokenRequest,
             crate::api::admin::class_definitions::models::PaginationQuery,
             crate::api::admin::class_definitions::models::PathUuid,
             crate::api::admin::class_definitions::models::ClassDefinitionSchema,
@@ -73,7 +79,8 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         )
     ),
     servers(
-        (url = "http://rdatacore.docker", description = "Local development server")
+        (url = "http://rdatacore.docker", description = "Local development server from image"),
+        (url = "http://localhost:8888", description = "Local development server from local build")
     )
 )]
 struct AdminApiDoc;
@@ -243,7 +250,8 @@ impl Modify for JsonValueSchemaAddon {
         )
     ),
     servers(
-        (url = "http://rdatacore.docker", description = "Local development server")
+        (url = "http://rdatacore.docker", description = "Local development server from image"),
+        (url = "http://localhost:8888", description = "Local development server from local build")
     )
 )]
 struct PublicApiDoc;

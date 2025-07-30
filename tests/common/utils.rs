@@ -182,7 +182,7 @@ pub async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
     let email = format!("admin_{}@example.test", unique_id);
 
     sqlx::query(
-        "INSERT INTO admin_users (uuid, path, username, email, password_hash, created_at, created_by, published) 
+        "INSERT INTO admin_users (uuid, path, username, email, password_hash, created_at, created_by, published)
          VALUES ($1, '/users', $2, $3, $4, NOW(), $5, true)"
     )
         .bind(admin_uuid)
@@ -201,7 +201,7 @@ pub async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
     let key_hash = ApiKey::hash_api_key(&api_key).map_err(|e| Error::Unknown(e.to_string()))?;
 
     sqlx::query(
-        "INSERT INTO api_keys (uuid, user_uuid, name, key_hash, is_active, created_at, created_by, published) 
+        "INSERT INTO api_keys (uuid, user_uuid, name, key_hash, is_active, created_at, created_by, published)
          VALUES ($1, $2, $3, $4, true, NOW(), $5, true)"
     )
         .bind(key_uuid)
@@ -298,11 +298,12 @@ pub async fn fast_clear_test_db(pool: &PgPool) -> Result<()> {
     tables.push("entities_registry".to_string());
     tables.push("admin_users".to_string());
     tables.push("api_keys".to_string());
+    tables.push("refresh_tokens".to_string());
 
     // Also find all entity_* tables
     let entity_tables = sqlx::query(
-        "SELECT tablename FROM pg_catalog.pg_tables 
-         WHERE schemaname = 'public' 
+        "SELECT tablename FROM pg_catalog.pg_tables
+         WHERE schemaname = 'public'
          AND tablename LIKE 'entity_%'",
     )
     .map(|row: sqlx::postgres::PgRow| row.get::<String, _>(0))
@@ -364,9 +365,9 @@ pub async fn clear_test_db(pool: &PgPool) -> Result<()> {
 
     // Get all tables except migration table
     let tables = sqlx::query(
-        "SELECT tablename FROM pg_catalog.pg_tables 
-         WHERE schemaname = 'public' 
-         AND tablename != 'schema_migrations' 
+        "SELECT tablename FROM pg_catalog.pg_tables
+         WHERE schemaname = 'public'
+         AND tablename != 'schema_migrations'
          AND tablename != '_sqlx_migrations'",
     )
     .map(|row: sqlx::postgres::PgRow| row.get::<String, _>(0))
@@ -395,6 +396,15 @@ pub async fn clear_test_db(pool: &PgPool) -> Result<()> {
     tx.commit().await?;
 
     info!("Test database cleared successfully");
+    Ok(())
+}
+
+/// Clear only refresh tokens table
+#[allow(dead_code)]
+pub async fn clear_refresh_tokens(pool: &PgPool) -> Result<()> {
+    sqlx::query!("DELETE FROM refresh_tokens")
+        .execute(pool)
+        .await?;
     Ok(())
 }
 
@@ -431,12 +441,12 @@ pub async fn create_test_admin_user(pool: &PgPool) -> Result<Uuid> {
 
     // Create a new admin user
     debug!("Creating test admin user: {}", username);
-    sqlx::query("INSERT INTO admin_users (uuid, username, email, password_hash, first_name, last_name, is_active, created_at, updated_at, created_by) 
+    sqlx::query("INSERT INTO admin_users (uuid, username, email, password_hash, first_name, last_name, is_active, created_at, updated_at, created_by)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $1)")
         .bind(uuid)
         .bind(&username)
         .bind(&email)
-        .bind("dummy_hash")  // Not secure, but fine for tests
+        .bind("$argon2id$v=19$m=19456,t=2,p=1$AyU4SymrYGzpmYfqDSbugg$AhzMvJ1bOxrv2WQ1ks3PRFXGezp966kjJwkoUdJbFY4")  // Hash of "adminadmin"
         .bind("Test")
         .bind("User")
         .bind(true)
@@ -450,6 +460,15 @@ pub async fn create_test_admin_user(pool: &PgPool) -> Result<Uuid> {
 
     debug!("Created test admin user with UUID: {}", uuid);
     Ok(uuid)
+}
+
+/// Get the username for the test admin user
+#[allow(dead_code)]
+pub fn get_test_user_username() -> String {
+    // Generate a consistent username for tests
+    // This should match the pattern used in create_test_admin_user
+    let uuid = Uuid::now_v7();
+    format!("test_admin_{}", uuid.simple())
 }
 
 /// Create a class definition from a JSON file

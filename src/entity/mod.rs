@@ -2,6 +2,7 @@ mod abstract_entity;
 pub mod admin_user;
 mod notification;
 mod permission_scheme;
+pub mod refresh_token;
 mod version;
 mod workflow;
 // mod workflow_definition;

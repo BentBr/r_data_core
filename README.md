@@ -117,6 +117,10 @@ cargo test --lib -p r_data_core
 # All tests, including integration tests in tests/ directory
 # We have to set the threads to 1 in order to not have tests running concurrently doing the same things (like altering tables)
 RUST_LOG=warning cargo test -- --test-threads=1
+
+# If you did not yet prepare the test database before, run:
+export DATABASE_URL="postgres://postgres:postgres@pg-test.rdatacore.docker:5433/rdata_test"
+cargo sqlx migrate run
 ```
 
 Hint:
@@ -294,7 +298,7 @@ Swagger:
 - admin swagger field definitions / contraints
 - tests
 - caching
-
+- crons + refresh token deletion
 
 
 fixes:

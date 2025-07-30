@@ -5,11 +5,17 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 use validator::{Validate, ValidationError};
 
-use crate::api::jwt::{generate_jwt, verify_jwt, AuthUserClaims};
+use crate::api::jwt::{
+    generate_access_token, verify_jwt, AuthUserClaims, ACCESS_TOKEN_EXPIRY_SECONDS,
+    REFRESH_TOKEN_EXPIRY_SECONDS,
+};
 use crate::api::response::ApiResponse;
 use crate::api::ApiState;
 use crate::entity::admin_user::repository::AdminUserRepository;
 use crate::entity::admin_user::repository_trait::AdminUserRepositoryTrait;
+use crate::entity::refresh_token::{
+    RefreshToken, RefreshTokenRepository, RefreshTokenRepositoryTrait,
+};
 use std::sync::Arc;
 use utoipa::ToSchema;
 
@@ -17,8 +23,40 @@ use utoipa::ToSchema;
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct EmptyRequest {}
 
+/// Refresh token request body
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+pub struct RefreshTokenRequest {
+    /// Refresh token
+    pub refresh_token: String,
+}
+
+/// Refresh token response body
+#[derive(Debug, Serialize, ToSchema)]
+pub struct RefreshTokenResponse {
+    /// New access token
+    pub token: String,
+
+    /// New refresh token
+    pub refresh_token: String,
+
+    /// Access token expiration (RFC3339 timestamp)
+    #[serde(with = "time::serde::rfc3339")]
+    pub expires_at: OffsetDateTime,
+
+    /// Refresh token expiration (RFC3339 timestamp)
+    #[serde(with = "time::serde::rfc3339")]
+    pub refresh_expires_at: OffsetDateTime,
+}
+
+/// Revoke token request body
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+pub struct RevokeTokenRequest {
+    /// Refresh token to revoke
+    pub refresh_token: String,
+}
+
 /// Admin login request body
-#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[derive(Debug, Deserialize, Serialize, ToSchema, Validate)]
 pub struct AdminLoginRequest {
     /// Username or email
     #[validate(length(min = 3, message = "Username must be at least 3 characters"))]
@@ -32,8 +70,11 @@ pub struct AdminLoginRequest {
 /// Admin login response body
 #[derive(Debug, Serialize, ToSchema)]
 pub struct AdminLoginResponse {
-    /// JWT token
-    pub token: String,
+    /// JWT access token
+    pub access_token: String,
+
+    /// Refresh token
+    pub refresh_token: String,
 
     /// User UUID
     pub user_uuid: String,
@@ -44,9 +85,13 @@ pub struct AdminLoginResponse {
     /// User role
     pub role: String,
 
-    /// Token expiration (RFC3339 timestamp)
+    /// Access token expiration (RFC3339 timestamp)
     #[serde(with = "time::serde::rfc3339")]
-    pub expires_at: OffsetDateTime,
+    pub access_expires_at: OffsetDateTime,
+
+    /// Refresh token expiration (RFC3339 timestamp)
+    #[serde(with = "time::serde::rfc3339")]
+    pub refresh_expires_at: OffsetDateTime,
 }
 
 /// Validate email format
@@ -286,27 +331,64 @@ pub async fn admin_login(
         log::error!("Failed to update last login: {:?}", e);
     }
 
-    // Generate JWT token (30 day expiration for admin)
-    let token = match generate_jwt(&user, &data.jwt_secret, 2592000) {
+    // Generate short-lived access token (30 minutes)
+    let access_token = match generate_access_token(&user, &data.jwt_secret) {
         Ok(token) => token,
         Err(e) => {
-            log::error!("Failed to generate JWT: {:?}", e);
+            log::error!("Failed to generate access token: {:?}", e);
             return ApiResponse::internal_error("Authentication failed");
         }
     };
 
-    // Calculate expiration time
-    let expires_at = OffsetDateTime::now_utc()
-        .checked_add(Duration::seconds(2592000))
+    // Generate refresh token
+    let refresh_token = RefreshToken::generate_token();
+    let refresh_token_hash = match RefreshToken::hash_token(&refresh_token) {
+        Ok(hash) => hash,
+        Err(e) => {
+            log::error!("Failed to hash refresh token: {:?}", e);
+            return ApiResponse::internal_error("Authentication failed");
+        }
+    };
+
+    // Calculate expiration times
+    let access_expires_at = OffsetDateTime::now_utc()
+        .checked_add(Duration::seconds(ACCESS_TOKEN_EXPIRY_SECONDS as i64)) // 30 minutes
         .unwrap_or(OffsetDateTime::now_utc());
+
+    let refresh_expires_at = OffsetDateTime::now_utc()
+        .checked_add(Duration::seconds(REFRESH_TOKEN_EXPIRY_SECONDS as i64))
+        .unwrap_or(OffsetDateTime::now_utc());
+
+    // Store refresh token in database
+    let refresh_repo = RefreshTokenRepository::new(data.db_pool.clone());
+    let device_info = Some(serde_json::json!({
+        "user_agent": "login",
+        "login_time": OffsetDateTime::now_utc()
+    }));
+
+    if let Err(e) = refresh_repo
+        .create(
+            user.uuid,
+            refresh_token_hash,
+            refresh_expires_at,
+            device_info,
+            // IP address would be extracted from request in real implementation
+        )
+        .await
+    {
+        log::error!("Failed to store refresh token: {:?}", e);
+        return ApiResponse::internal_error("Authentication failed");
+    }
 
     // Build response
     let response = AdminLoginResponse {
-        token,
+        access_token,
+        refresh_token,
         user_uuid: user.uuid.to_string(),
         username: user.username,
         role: format!("{:?}", user.role),
-        expires_at,
+        access_expires_at,
+        refresh_expires_at,
     };
 
     ApiResponse::ok(response)
@@ -467,4 +549,236 @@ pub async fn admin_logout(
     // Acknowledge the logout
     log::debug!("Sending logout successful response");
     ApiResponse::message("Logout successful")
+}
+
+/// Refresh access token endpoint
+#[utoipa::path(
+    post,
+    path = "/admin/api/v1/auth/refresh",
+    tag = "admin-auth",
+    request_body = RefreshTokenRequest,
+    responses(
+        (status = 200, description = "Token refreshed successfully", body = RefreshTokenResponse),
+        (status = 400, description = "Invalid request format"),
+        (status = 401, description = "Invalid or expired refresh token"),
+        (status = 500, description = "Internal server error")
+    )
+)]
+#[post("/auth/refresh")]
+pub async fn admin_refresh_token(
+    data: web::Data<ApiState>,
+    request: web::Json<RefreshTokenRequest>,
+) -> impl Responder {
+    let refresh_repo = RefreshTokenRepository::new(data.db_pool.clone());
+    let admin_repo = AdminUserRepository::new(data.db_pool.clone().into());
+
+    // Hash the provided refresh token
+    let token_hash = match RefreshToken::hash_token(&request.refresh_token) {
+        Ok(hash) => hash,
+        Err(e) => {
+            log::error!("Failed to hash refresh token: {:?}", e);
+            return ApiResponse::unauthorized("Invalid refresh token");
+        }
+    };
+
+    // Find the refresh token in database
+    let refresh_token = match refresh_repo.find_by_token_hash(&token_hash).await {
+        Ok(Some(token)) => token,
+        Ok(None) => {
+            log::warn!("Refresh token not found");
+            return ApiResponse::unauthorized("Invalid refresh token");
+        }
+        Err(e) => {
+            log::error!("Database error finding refresh token: {:?}", e);
+            return ApiResponse::internal_error("Authentication failed");
+        }
+    };
+
+    // Check if token is valid
+    if !refresh_token.is_valid() {
+        log::warn!("Refresh token is expired or revoked");
+        return ApiResponse::unauthorized("Refresh token expired or revoked");
+    }
+
+    // Get the user
+    let user = match admin_repo.find_by_uuid(&refresh_token.user_id).await {
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            log::error!("User not found for refresh token");
+            return ApiResponse::unauthorized("Invalid refresh token");
+        }
+        Err(e) => {
+            log::error!("Database error finding user: {:?}", e);
+            return ApiResponse::internal_error("Authentication failed");
+        }
+    };
+
+    // Check if user is still active
+    if !user.is_active {
+        log::warn!(
+            "Attempt to refresh token for inactive user: {}",
+            user.username
+        );
+        return ApiResponse::unauthorized("Account not active");
+    }
+
+    // Generate new access token
+    let new_access_token = match generate_access_token(&user, &data.jwt_secret) {
+        Ok(token) => token,
+        Err(e) => {
+            log::error!("Failed to generate new access token: {:?}", e);
+            return ApiResponse::internal_error("Token refresh failed");
+        }
+    };
+
+    // Generate new refresh token
+    let new_refresh_token_string = RefreshToken::generate_token();
+    let new_refresh_token_hash = match RefreshToken::hash_token(&new_refresh_token_string) {
+        Ok(hash) => hash,
+        Err(e) => {
+            log::error!("Failed to hash new refresh token: {:?}", e);
+            return ApiResponse::internal_error("Token refresh failed");
+        }
+    };
+
+    // Calculate expiration times
+    let access_expires_at = OffsetDateTime::now_utc()
+        .checked_add(Duration::seconds(1800)) // 30 minutes
+        .unwrap_or(OffsetDateTime::now_utc());
+
+    let refresh_expires_at = OffsetDateTime::now_utc()
+        .checked_add(Duration::seconds(REFRESH_TOKEN_EXPIRY_SECONDS as i64))
+        .unwrap_or(OffsetDateTime::now_utc());
+
+    // Update the old refresh token as used
+    if let Err(e) = refresh_repo.update_last_used(refresh_token.id).await {
+        log::error!("Failed to update refresh token last used: {:?}", e);
+    }
+
+    // Create new refresh token in database
+    let device_info = refresh_token.device_info.clone();
+    if let Err(e) = refresh_repo
+        .create(
+            user.uuid,
+            new_refresh_token_hash,
+            refresh_expires_at,
+            device_info,
+        )
+        .await
+    {
+        log::error!("Failed to store new refresh token: {:?}", e);
+        return ApiResponse::internal_error("Token refresh failed");
+    }
+
+    // Revoke the old refresh token
+    if let Err(e) = refresh_repo.revoke_by_id(refresh_token.id).await {
+        log::error!("Failed to revoke old refresh token: {:?}", e);
+        // Continue anyway since new token was created
+    }
+
+    // Build response
+    let response = RefreshTokenResponse {
+        token: new_access_token,
+        refresh_token: new_refresh_token_string,
+        expires_at: access_expires_at,
+        refresh_expires_at,
+    };
+
+    ApiResponse::ok(response)
+}
+
+/// Revoke refresh token endpoint
+#[utoipa::path(
+    post,
+    path = "/admin/api/v1/auth/revoke",
+    tag = "admin-auth",
+    request_body = RevokeTokenRequest,
+    responses(
+        (status = 200, description = "Token revoked successfully"),
+        (status = 400, description = "Invalid request format"),
+        (status = 401, description = "Invalid refresh token"),
+        (status = 500, description = "Internal server error")
+    )
+)]
+#[post("/auth/revoke")]
+pub async fn admin_revoke_token(
+    data: web::Data<ApiState>,
+    request: web::Json<RevokeTokenRequest>,
+) -> impl Responder {
+    let refresh_repo = RefreshTokenRepository::new(data.db_pool.clone());
+
+    // Hash the provided refresh token
+    let token_hash = match RefreshToken::hash_token(&request.refresh_token) {
+        Ok(hash) => hash,
+        Err(e) => {
+            log::error!("Failed to hash refresh token for revocation: {:?}", e);
+            return ApiResponse::bad_request("Invalid token format");
+        }
+    };
+
+    // Revoke the refresh token
+    match refresh_repo.revoke_by_token_hash(&token_hash).await {
+        Ok(_) => {
+            log::info!("Refresh token revoked successfully");
+            ApiResponse::ok("Token revoked successfully")
+        }
+        Err(e) => {
+            log::error!("Failed to revoke refresh token: {:?}", e);
+            ApiResponse::internal_error("Token revocation failed")
+        }
+    }
+}
+
+/// Revoke all refresh tokens for current user endpoint
+#[utoipa::path(
+    post,
+    path = "/admin/api/v1/auth/revoke-all",
+    tag = "admin-auth",
+    responses(
+        (status = 200, description = "All tokens revoked successfully"),
+        (status = 401, description = "Authentication required"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt" = [])
+    )
+)]
+#[post("/auth/revoke-all")]
+pub async fn admin_revoke_all_tokens(
+    data: web::Data<ApiState>,
+    req: HttpRequest,
+) -> impl Responder {
+    // Extract user claims from JWT
+    let extensions = req.extensions();
+    let claims = match extensions.get::<AuthUserClaims>() {
+        Some(claims) => claims,
+        None => {
+            return ApiResponse::unauthorized("Authentication required");
+        }
+    };
+
+    let user_uuid = match Uuid::parse_str(&claims.sub) {
+        Ok(uuid) => uuid,
+        Err(_) => {
+            return ApiResponse::unauthorized("Invalid user ID in token");
+        }
+    };
+
+    let refresh_repo = RefreshTokenRepository::new(data.db_pool.clone());
+
+    // Revoke all refresh tokens for the user
+    match refresh_repo.revoke_all_for_user(user_uuid).await {
+        Ok(count) => {
+            log::info!("Revoked {} refresh tokens for user {}", count, claims.name);
+            ApiResponse::ok(format!("Revoked {} active sessions", count))
+        }
+        Err(e) => {
+            log::error!(
+                "Failed to revoke all tokens for user {}: {:?}",
+                claims.name,
+                e
+            );
+            ApiResponse::internal_error("Failed to revoke tokens")
+        }
+    }
 }
