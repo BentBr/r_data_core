@@ -24,11 +24,16 @@ class TypedHttpClient {
         schema: z.ZodType<ApiResponse<T>>,
         options: RequestInit = {},
     ): Promise<T> {
-        // TODO: Add auth token when auth store is ready
+        // Get auth token from localStorage (auth store will handle this)
+        const authToken = localStorage.getItem('auth_token')
+        
         const config: RequestInit = {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
+                ...(authToken && {
+                    Authorization: `Bearer ${authToken}`
+                }),
                 ...options.headers,
             },
         }
@@ -42,10 +47,21 @@ class TypedHttpClient {
 
             if (!response.ok) {
                 if (response.status === 401) {
-                    // TODO: Handle logout when auth store is ready
+                    // Handle unauthorized - clear auth and redirect to login
+                    localStorage.removeItem('auth_token')
+                    if (window.location.pathname !== '/login') {
+                        window.location.href = '/login'
+                    }
                     throw new Error('Authentication required')
                 }
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+                
+                // Try to extract error message from response
+                try {
+                    const errorData = await response.json()
+                    throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
+                } catch {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+                }
             }
 
             const rawData = await response.json()

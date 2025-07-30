@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const routes: RouteRecordRaw[] = [
     {
@@ -58,14 +59,33 @@ const router = createRouter({
 // Navigation guard for authentication
 router.beforeEach(async (to, _from, next) => {
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+    const authStore = useAuthStore()
 
     if (requiresAuth) {
-        // TODO: Check authentication status
-        // For now, allow all routes
-        next()
-    } else {
-        next()
+        // Check if user is authenticated
+        if (!authStore.isAuthenticated) {
+            // Redirect to login with return URL
+            next({
+                name: 'Login',
+                query: { redirect: to.fullPath }
+            })
+            return
+        }
+
+        // Check if token is expired
+        if (authStore.isTokenExpired) {
+            // Token is expired, logout and redirect to login
+            authStore.logout()
+            next({
+                name: 'Login',
+                query: { redirect: to.fullPath }
+            })
+            return
+        }
     }
+
+    // If route doesn't require auth OR user is authenticated, proceed
+    next()
 })
 
 export default router
