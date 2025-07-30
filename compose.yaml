@@ -116,6 +116,18 @@ services:
         environment:
             - VIRTUAL_HOST=.admin.rdatacore.docker
             - MAIN_SERVICE=node
+            # Frontend Environment Variables
+            - VITE_API_BASE_URL=http://rdatacore.docker
+            - VITE_ADMIN_BASE_URL=http://admin.rdatacore.docker
+            - VITE_DEV_MODE=true
+            - VITE_ENABLE_API_LOGGING=true
+            - VITE_TOKEN_REFRESH_BUFFER=5
+            - VITE_DEFAULT_PAGE_SIZE=20
+            - VITE_MAX_PAGE_SIZE=100
+            - VITE_ENABLE_API_KEY_MANAGEMENT=true
+            - VITE_ENABLE_USER_MANAGEMENT=true
+            - VITE_ENABLE_SYSTEM_METRICS=true
+            - VITE_ENABLE_PRODUCTION_SOURCEMAPS=false
 
 volumes:
     postgres_data:

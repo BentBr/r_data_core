@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 
 import App from './App.vue'
 import router from './router'
+import { checkEnvironmentVariables, env } from './env-check'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
@@ -45,6 +46,11 @@ const vuetify = createVuetify({
         defaultSet: 'mdi',
     },
 })
+
+// Check environment variables in development
+if (env.isDevelopment) {
+    checkEnvironmentVariables()
+}
 
 const app = createApp(App)
 
