@@ -40,4 +40,4 @@ export const features = {
     apiKeyManagement: import.meta.env.VITE_ENABLE_API_KEY_MANAGEMENT !== 'false',
     userManagement: import.meta.env.VITE_ENABLE_USER_MANAGEMENT !== 'false',
     systemMetrics: import.meta.env.VITE_ENABLE_SYSTEM_METRICS !== 'false',
-} 
+}

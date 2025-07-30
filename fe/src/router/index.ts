@@ -54,7 +54,7 @@ const routes: RouteRecordRaw[] = [
         path: '/:pathMatch(.*)*',
         name: 'NotFound',
         redirect: '/dashboard',
-    }
+    },
 ]
 
 const router = createRouter({
@@ -73,7 +73,7 @@ router.beforeEach(async (to, _from, next) => {
             // Redirect to login with return URL
             next({
                 name: 'Login',
-                query: { redirect: to.fullPath }
+                query: { redirect: to.fullPath },
             })
             return
         }
@@ -84,7 +84,7 @@ router.beforeEach(async (to, _from, next) => {
             authStore.logout()
             next({
                 name: 'Login',
-                query: { redirect: to.fullPath }
+                query: { redirect: to.fullPath },
             })
             return
         }

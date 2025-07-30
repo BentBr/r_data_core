@@ -14,7 +14,7 @@ export interface ApiResponse<T> {
         }
         request_id: string
         timestamp: string
-        custom?: any
+        custom?: Record<string, unknown>
     }
 }
 
@@ -51,15 +51,15 @@ export interface FieldDefinition {
     display_name: string
     field_type: string
     is_required: boolean
-    constraints?: Record<string, any>
-    ui_options?: Record<string, any>
+    constraints?: Record<string, unknown>
+    ui_options?: Record<string, unknown>
 }
 
 // Entity types
 export interface DynamicEntity {
     uuid: string
     entity_type: string
-    data: Record<string, any>
+    data: Record<string, unknown>
     created_at: string
     updated_at: string
 }

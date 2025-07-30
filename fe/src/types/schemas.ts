@@ -2,24 +2,24 @@ import { z } from 'zod'
 
 // Base schemas for common patterns - handle both traditional UUID and UUIDv7 formats
 const UuidSchema = z.string().refine(
-    (val) => {
+    val => {
         // UUID format: 8-4-4-4-12 hexadecimal (covers UUID v1-v7)
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
         return uuidRegex.test(val)
     },
     {
-        message: "Invalid UUID format",
+        message: 'Invalid UUID format',
     }
 )
 // More flexible timestamp schema to handle backend nanosecond precision
 const TimestampSchema = z.string().refine(
-    (val) => {
+    val => {
         // Allow ISO 8601 format with varying precision
         const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?$/
         return isoRegex.test(val) && !isNaN(Date.parse(val))
     },
     {
-        message: "Invalid timestamp format, expected ISO 8601",
+        message: 'Invalid timestamp format, expected ISO 8601',
     }
 )
 
@@ -163,4 +163,4 @@ export type ApiKeyCreatedResponse = z.infer<typeof ApiKeyCreatedResponseSchema>
 export type User = z.infer<typeof UserSchema>
 
 // Additional exports for base schemas
-export { UuidSchema, TimestampSchema } 
+export { UuidSchema, TimestampSchema }

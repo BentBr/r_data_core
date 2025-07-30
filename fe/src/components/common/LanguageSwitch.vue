@@ -7,19 +7,27 @@
                 v-bind="props"
                 :title="t('general.language.switch')"
             >
-                <component :is="getCurrentFlagComponent()" :width="20" :height="15" />
+                <component
+                    :is="getCurrentFlagComponent()"
+                    :width="20"
+                    :height="15"
+                />
             </v-btn>
         </template>
         <v-list min-width="120">
             <v-list-item
                 v-for="lang in availableLanguages"
                 :key="lang"
-                @click="setLanguage(lang)"
                 :class="{ 'v-list-item--active': currentLanguage === lang }"
                 class="px-4 py-2"
+                @click="setLanguage(lang)"
             >
                 <template v-slot:prepend>
-                    <component :is="getFlagComponent(lang)" :width="24" :height="18" />
+                    <component
+                        :is="getFlagComponent(lang)"
+                        :width="24"
+                        :height="18"
+                    />
                 </template>
             </v-list-item>
         </v-list>
@@ -35,8 +43,8 @@
 
     const getFlagComponent = (lang: string) => {
         const flags = {
-            'en': UkFlag,
-            'de': GermanFlag
+            en: UkFlag,
+            de: GermanFlag,
         }
         return flags[lang as keyof typeof flags] || UkFlag
     }
@@ -51,7 +59,7 @@
         cursor: pointer;
         min-height: 48px;
     }
-    
+
     .v-list-item--active {
         background-color: rgba(var(--v-theme-primary), 0.1);
     }

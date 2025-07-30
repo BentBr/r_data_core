@@ -1,15 +1,13 @@
-import {defineConfig} from 'vite'
+import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import {fileURLToPath, URL} from 'node:url'
+import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
-    plugins: [
-        vue(),
-    ],
+    plugins: [vue()],
     resolve: {
         alias: {
-            '@': fileURLToPath(new URL('./src', import.meta.url))
-        }
+            '@': fileURLToPath(new URL('./src', import.meta.url)),
+        },
     },
     server: {
         port: 80,
@@ -21,14 +19,14 @@ export default defineConfig({
             '/api/v1': {
                 target: 'http://rdatacore.docker',
                 changeOrigin: true,
-                secure: false
+                secure: false,
             },
             '/admin/api/v1': {
                 target: 'http://rdatacore.docker',
                 changeOrigin: true,
-                secure: false
-            }
-        }
+                secure: false,
+            },
+        },
     },
     // Configure for SPA routing in production
     preview: {
@@ -37,6 +35,6 @@ export default defineConfig({
     },
     build: {
         target: 'esnext',
-        sourcemap: true
-    }
+        sourcemap: true,
+    },
 })

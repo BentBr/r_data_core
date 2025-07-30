@@ -7,7 +7,7 @@
 </template>
 
 <script setup lang="ts">
-    import { computed, onMounted } from 'vue'
+    import { computed } from 'vue'
     import { useRoute } from 'vue-router'
     import MainLayout from '@/layouts/MainLayout.vue'
     import LoginLayout from '@/layouts/LoginLayout.vue'

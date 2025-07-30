@@ -16,14 +16,23 @@
                         <v-icon>mdi-account</v-icon>
                     </v-avatar>
                     <div class="d-none d-sm-flex flex-column align-start">
-                        <span class="text-body-2 font-weight-medium">{{ authStore.user?.username }}</span>
-                        <span class="text-caption text-medium-emphasis">{{ authStore.user?.role }}</span>
+                        <span class="text-body-2 font-weight-medium">{{
+                            authStore.user?.username
+                        }}</span>
+                        <span class="text-caption text-medium-emphasis">{{
+                            authStore.user?.role
+                        }}</span>
                     </div>
-                    <v-icon size="small" class="ml-2">mdi-chevron-down</v-icon>
+                    <v-icon
+                        size="small"
+                        class="ml-2"
+                    >
+                        mdi-chevron-down
+                    </v-icon>
                 </div>
             </v-btn>
         </template>
-        
+
         <v-list min-width="200">
             <!-- User Info Header -->
             <v-list-item class="px-4 py-3">
@@ -42,21 +51,23 @@
                     {{ authStore.user?.role }}
                 </v-list-item-subtitle>
             </v-list-item>
-            
+
             <v-divider />
-            
+
             <!-- Profile Option -->
             <v-list-item
-                @click="goToProfile"
                 :disabled="true"
+                @click="goToProfile"
             >
                 <template v-slot:prepend>
                     <v-icon>mdi-account-edit</v-icon>
                 </template>
                 <v-list-item-title>{{ t('general.user.profile') }}</v-list-item-title>
-                <v-list-item-subtitle>{{ t('general.user.profile_subtitle') }}</v-list-item-subtitle>
+                <v-list-item-subtitle>{{
+                    t('general.user.profile_subtitle')
+                }}</v-list-item-subtitle>
             </v-list-item>
-            
+
             <!-- Theme Selection -->
             <v-list-item>
                 <template v-slot:prepend>
@@ -67,20 +78,20 @@
                     <v-chip
                         size="small"
                         variant="outlined"
-                        @click="toggleTheme"
                         class="cursor-pointer"
+                        @click="toggleTheme"
                     >
                         {{ getThemeDisplayName() }}
                     </v-chip>
                 </template>
             </v-list-item>
-            
+
             <v-divider />
-            
+
             <!-- Logout Option -->
             <v-list-item
-                @click="handleLogout"
                 class="text-error"
+                @click="handleLogout"
             >
                 <template v-slot:prepend>
                     <v-icon color="error">mdi-logout</v-icon>
@@ -132,7 +143,7 @@
     .cursor-pointer {
         cursor: pointer;
     }
-    
+
     .v-list-item.text-error .v-list-item-title {
         color: rgb(var(--v-theme-error));
     }

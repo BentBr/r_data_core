@@ -3,12 +3,12 @@ import { ref, computed, readonly } from 'vue'
 import { typedHttpClient } from '@/api/typed-client'
 import { env } from '@/env-check'
 import { useTranslations } from '@/composables/useTranslations'
-import type { LoginRequest, LoginResponse, User } from '@/types/schemas'
+import type { LoginRequest, User } from '@/types/schemas'
 
 export const useAuthStore = defineStore('auth', () => {
     // Translation system
     const { translateError } = useTranslations()
-    
+
     // State
     const token = ref<string | null>(localStorage.getItem('auth_token'))
     const user = ref<User | null>(null)
@@ -19,14 +19,16 @@ export const useAuthStore = defineStore('auth', () => {
     // Getters
     const isAuthenticated = computed(() => !!token.value && !!user.value)
     const isTokenExpired = computed(() => {
-        if (!token.value) return true
-        
+        if (!token.value) {
+            return true
+        }
+
         try {
             const payload = JSON.parse(atob(token.value.split('.')[1]))
             const exp = payload.exp * 1000 // Convert to milliseconds
             const now = Date.now()
             const bufferTime = env.tokenRefreshBuffer * 60 * 1000 // Convert minutes to milliseconds
-            
+
             return exp - bufferTime <= now
         } catch {
             return true
@@ -40,7 +42,7 @@ export const useAuthStore = defineStore('auth', () => {
 
         try {
             const response = await typedHttpClient.login(credentials)
-            
+
             // Store token and user info
             token.value = response.token
             user.value = {
@@ -58,29 +60,29 @@ export const useAuthStore = defineStore('auth', () => {
 
             // Store token in localStorage
             localStorage.setItem('auth_token', response.token)
-            
+
             // Set up automatic token refresh
             setupTokenRefresh(response.expires_at)
-            
+
             if (env.enableApiLogging) {
                 console.log('[Auth] Login successful:', {
                     username: response.username,
                     role: response.role,
-                    expires_at: response.expires_at
+                    expires_at: response.expires_at,
                 })
             }
         } catch (err) {
             const rawErrorMessage = err instanceof Error ? err.message : 'Login failed'
             const translatedErrorMessage = translateError(rawErrorMessage)
             error.value = translatedErrorMessage
-            
+
             if (env.enableApiLogging) {
                 console.error('[Auth] Login failed:', {
                     rawError: rawErrorMessage,
-                    translatedError: translatedErrorMessage
+                    translatedError: translatedErrorMessage,
                 })
             }
-            
+
             throw new Error(translatedErrorMessage)
         } finally {
             isLoading.value = false
@@ -92,16 +94,16 @@ export const useAuthStore = defineStore('auth', () => {
         token.value = null
         user.value = null
         error.value = null
-        
+
         // Clear localStorage
         localStorage.removeItem('auth_token')
-        
+
         // Clear refresh timer
         if (refreshTimer.value) {
             clearTimeout(refreshTimer.value)
             refreshTimer.value = null
         }
-        
+
         if (env.enableApiLogging) {
             console.log('[Auth] Logout completed')
         }
@@ -121,9 +123,11 @@ export const useAuthStore = defineStore('auth', () => {
             refreshTimer.value = window.setTimeout(() => {
                 refreshToken()
             }, refreshTime)
-            
+
             if (env.enableApiLogging) {
-                console.log(`[Auth] Token refresh scheduled in ${Math.round(refreshTime / 1000)} seconds`)
+                console.log(
+                    `[Auth] Token refresh scheduled in ${Math.round(refreshTime / 1000)} seconds`
+                )
             }
         } else {
             // Token is already expired or about to expire
@@ -144,7 +148,7 @@ export const useAuthStore = defineStore('auth', () => {
             // For now, we'll just check if the token is still valid
             // In a real implementation, you would call a refresh endpoint:
             // const response = await typedHttpClient.refreshToken()
-            
+
             if (env.enableApiLogging) {
                 console.log('[Auth] Token refresh not yet implemented in backend')
             }
@@ -161,7 +165,7 @@ export const useAuthStore = defineStore('auth', () => {
             // We have a token but no user data, try to restore from token
             try {
                 const payload = JSON.parse(atob(token.value.split('.')[1]))
-                
+
                 if (payload.exp * 1000 > Date.now()) {
                     // Token is still valid, restore basic user info
                     user.value = {
@@ -175,7 +179,7 @@ export const useAuthStore = defineStore('auth', () => {
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString(),
                     }
-                    
+
                     // Set up token refresh
                     setupTokenRefresh(new Date(payload.exp * 1000).toISOString())
                 } else {
@@ -205,11 +209,11 @@ export const useAuthStore = defineStore('auth', () => {
         user: readonly(user),
         isLoading: readonly(isLoading),
         error: readonly(error),
-        
+
         // Getters
         isAuthenticated,
         isTokenExpired,
-        
+
         // Actions
         login,
         logout,

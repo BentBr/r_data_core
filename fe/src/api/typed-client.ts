@@ -22,17 +22,17 @@ class TypedHttpClient {
     async request<T>(
         endpoint: string,
         schema: z.ZodType<ApiResponse<T>>,
-        options: RequestInit = {},
+        options: RequestInit = {}
     ): Promise<T> {
         // Get auth token from localStorage (auth store will handle this)
         const authToken = localStorage.getItem('auth_token')
-        
+
         const config: RequestInit = {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
                 ...(authToken && {
-                    Authorization: `Bearer ${authToken}`
+                    Authorization: `Bearer ${authToken}`,
                 }),
                 ...options.headers,
             },
@@ -54,7 +54,7 @@ class TypedHttpClient {
                     }
                     throw new Error('Authentication required')
                 }
-                
+
                 // Try to extract error message from response
                 try {
                     const errorData = await response.json()
@@ -66,14 +66,17 @@ class TypedHttpClient {
                             endpoint,
                         })
                     }
-                    
+
                     // Handle backend API response format
                     if (errorData.status === 'Error' && errorData.message) {
                         throw new Error(errorData.message)
                     }
-                    
+
                     // Handle other error formats
-                    const errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`
+                    const errorMessage =
+                        errorData.message ||
+                        errorData.error ||
+                        `HTTP ${response.status}: ${response.statusText}`
                     throw new Error(errorMessage)
                 } catch (parseError) {
                     if (this.enableLogging) {
@@ -86,7 +89,7 @@ class TypedHttpClient {
             const rawData = await response.json()
 
             if (this.enableLogging && this.devMode) {
-                console.log(`[API] Response:`, rawData)
+                console.log('[API] Response:', rawData)
             }
 
             // Runtime validation with Zod
@@ -141,14 +144,14 @@ class TypedHttpClient {
         const pageSize = limit ?? this.getDefaultPageSize()
         return this.request(
             `/admin/api/v1/class-definitions?limit=${pageSize}&offset=${offset}`,
-            ApiResponseSchema(z.array(ClassDefinitionSchema)),
+            ApiResponseSchema(z.array(ClassDefinitionSchema))
         )
     }
 
     async getClassDefinition(uuid: string): Promise<ClassDefinition> {
         return this.request(
             `/admin/api/v1/class-definitions/${uuid}`,
-            ApiResponseSchema(ClassDefinitionSchema),
+            ApiResponseSchema(ClassDefinitionSchema)
         )
     }
 
@@ -159,13 +162,13 @@ class TypedHttpClient {
             {
                 method: 'POST',
                 body: JSON.stringify(data),
-            },
+            }
         )
     }
 
     async updateClassDefinition(
         uuid: string,
-        data: Partial<ClassDefinition>,
+        data: Partial<ClassDefinition>
     ): Promise<{ uuid: string }> {
         return this.request(
             `/admin/api/v1/class-definitions/${uuid}`,
@@ -173,7 +176,7 @@ class TypedHttpClient {
             {
                 method: 'PUT',
                 body: JSON.stringify(data),
-            },
+            }
         )
     }
 
@@ -183,7 +186,7 @@ class TypedHttpClient {
             ApiResponseSchema(z.object({ message: z.string() })),
             {
                 method: 'DELETE',
-            },
+            }
         )
     }
 
@@ -191,29 +194,25 @@ class TypedHttpClient {
         const pageSize = limit ?? this.getDefaultPageSize()
         return this.request(
             `/admin/api/v1/api-keys?limit=${pageSize}&offset=${offset}`,
-            ApiResponseSchema(z.array(ApiKeySchema)),
+            ApiResponseSchema(z.array(ApiKeySchema))
         )
     }
 
     async login(credentials: LoginRequest): Promise<LoginResponse> {
-        return this.request(
-            '/admin/api/v1/auth/login',
-            ApiResponseSchema(LoginResponseSchema),
-            {
-                method: 'POST',
-                body: JSON.stringify(credentials),
-            },
-        )
+        return this.request('/admin/api/v1/auth/login', ApiResponseSchema(LoginResponseSchema), {
+            method: 'POST',
+            body: JSON.stringify(credentials),
+        })
     }
 
     async getUsers(limit?: number, offset = 0): Promise<User[]> {
         const pageSize = limit ?? this.getDefaultPageSize()
         return this.request(
             `/admin/api/v1/users?limit=${pageSize}&offset=${offset}`,
-            ApiResponseSchema(z.array(UserSchema)),
+            ApiResponseSchema(z.array(UserSchema))
         )
     }
 }
 
 export const typedHttpClient = new TypedHttpClient()
-export type { TypedHttpClient } 
+export type { TypedHttpClient }

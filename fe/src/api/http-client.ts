@@ -13,7 +13,7 @@ interface ApiResponse<T> {
         }
         request_id: string
         timestamp: string
-        custom?: any
+        custom?: Record<string, unknown>
     }
 }
 
@@ -59,14 +59,14 @@ class HttpClient {
         return this.request<T>(endpoint, { method: 'GET' })
     }
 
-    post<T>(endpoint: string, data?: any) {
+    post<T>(endpoint: string, data?: unknown) {
         return this.request<T>(endpoint, {
             method: 'POST',
             body: JSON.stringify(data),
         })
     }
 
-    put<T>(endpoint: string, data?: any) {
+    put<T>(endpoint: string, data?: unknown) {
         return this.request<T>(endpoint, {
             method: 'PUT',
             body: JSON.stringify(data),

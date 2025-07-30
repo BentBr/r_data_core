@@ -3,14 +3,20 @@ import prettier from 'eslint-plugin-prettier'
 import recommended from '@eslint/js'
 import prettierConfig from 'eslint-config-prettier'
 import vueParser from 'vue-eslint-parser'
+import typescriptParser from '@typescript-eslint/parser'
+import typescriptPlugin from '@typescript-eslint/eslint-plugin'
 
 export default [
     {
-        files: ['*.js', '*.vue', 'src/**/*.{js,vue}'],
+        files: ['*.js', '*.vue', '*.ts', 'src/**/*.{js,vue,ts}'],
         languageOptions: {
             parser: vueParser,
-            ecmaVersion: 'latest',
-            sourceType: 'module',
+            parserOptions: {
+                parser: typescriptParser,
+                ecmaVersion: 'latest',
+                sourceType: 'module',
+                extraFileExtensions: ['.vue'],
+            },
             globals: {
                 browser: true,
                 es2021: true,
@@ -21,10 +27,14 @@ export default [
             vue,
             prettier,
             recommended,
+            '@typescript-eslint': typescriptPlugin,
         },
         rules: {
             // ESLint recommended rules
             ...recommended.rules,
+
+            // TypeScript ESLint recommended rules
+            ...typescriptPlugin.configs.recommended.rules,
 
             // Prettier plugin recommended rules
             ...prettierConfig.rules,
@@ -56,6 +66,18 @@ export default [
             eqeqeq: ['error', 'smart'],
             quotes: ['error', 'single'],
             semi: ['error', 'never'],
+
+            // TypeScript-specific rules for best practices
+            '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+            '@typescript-eslint/explicit-function-return-type': 'off',
+            '@typescript-eslint/explicit-module-boundary-types': 'off',
+            '@typescript-eslint/no-explicit-any': 'warn',
+            '@typescript-eslint/no-inferrable-types': 'error',
+
+            // Disable conflicting ESLint rules in favor of TypeScript equivalents
+            'no-unused-vars': 'off',
+            'no-undef': 'off', // TypeScript compiler handles this
+            'prefer-const': 'error', // Use the base ESLint rule instead
             'prettier/prettier': [
                 'error',
                 {
