@@ -1,107 +1,123 @@
 services:
-  postgres:
-    build:
-      context: ./.docker/postgres
-      dockerfile: Dockerfile
-    container_name: rdata_postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: rdata
-      VIRTUAL_HOST: .pg.rdatacore.docker
-    ports:
-      - '5432:5432'
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-    networks:
-      default:
-        aliases:
-          - pg.rdatacore.docker
+    postgres:
+        build:
+            context: ./.docker/postgres
+            dockerfile: Dockerfile
+        container_name: rdata_postgres
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: rdata
+            VIRTUAL_HOST: .pg.rdatacore.docker
+        ports:
+            - '5432:5432'
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: [ 'CMD-SHELL', 'pg_isready -U postgres' ]
+            interval: 5s
+            timeout: 5s
+            retries: 10
+        restart: unless-stopped
+        networks:
+            default:
+                aliases:
+                    - pg.rdatacore.docker
 
-  postgres_test:
-    build:
-      context: ./.docker/postgres
-      dockerfile: Dockerfile
-    container_name: rdata_postgres_test
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: rdata_test
-      VIRTUAL_HOST: .pg-test.rdatacore.docker
-    ports:
-      - '5433:5432'
-    volumes:
-      - postgres_test_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-    networks:
-      default:
-        aliases:
-          - pg-test.rdatacore.docker
+    postgres_test:
+        build:
+            context: ./.docker/postgres
+            dockerfile: Dockerfile
+        container_name: rdata_postgres_test
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: rdata_test
+            VIRTUAL_HOST: .pg-test.rdatacore.docker
+        ports:
+            - '5433:5432'
+        volumes:
+            - postgres_test_data:/var/lib/postgresql/data
+        healthcheck:
+            test: [ 'CMD-SHELL', 'pg_isready -U postgres' ]
+            interval: 5s
+            timeout: 5s
+            retries: 10
+        restart: unless-stopped
+        networks:
+            default:
+                aliases:
+                    - pg-test.rdatacore.docker
 
-  redis:
-    image: redis:7-alpine
-    container_name: rdata_redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      default:
-        aliases:
-          - redis.rdatacore.docker
-    environment:
-      VIRTUAL_HOST: .redis.rdatacore.docker
+    redis:
+        image: redis:7-alpine
+        container_name: rdata_redis
+        ports:
+            - "6379:6379"
+        volumes:
+            - redis_data:/data
+        healthcheck:
+            test: [ "CMD", "redis-cli", "ping" ]
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        restart: unless-stopped
+        networks:
+            default:
+                aliases:
+                    - redis.rdatacore.docker
+        environment:
+            VIRTUAL_HOST: .redis.rdatacore.docker
 
-  app:
-    build:
-      context: .
-      dockerfile: ./.docker/app/Dockerfile_local
-    container_name: rdata_app
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/rdata
-      REDIS_URL: redis://redis:6379
-      SERVER_HOST: 0.0.0.0
-      API_PORT: 80
-      RUST_LOG: debug
-      LOG_LEVEL: info
-      API_ENABLE_DOCS: true
-      VIRTUAL_HOST: .rdatacore.docker
-      MAIN_SERVICE: app
-      JWT_SECRET: development_secret_key
-      JWT_EXPIRATION: 86400
-    ports:
-      - '80'
-    restart: unless-stopped
-    extra_hosts:
-      - pg.rdatacore.docker:host-gateway
-    networks:
-      default:
-        aliases:
-          - rdatacore.docker
+    app:
+        build:
+            context: .
+            dockerfile: ./.docker/app/Dockerfile_local
+        container_name: rdata_app
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        environment:
+            DATABASE_URL: postgres://postgres:postgres@postgres:5432/rdata
+            REDIS_URL: redis://redis:6379
+            SERVER_HOST: 0.0.0.0
+            API_PORT: 80
+            RUST_LOG: debug
+            LOG_LEVEL: info
+            API_ENABLE_DOCS: true
+            VIRTUAL_HOST: .rdatacore.docker
+            MAIN_SERVICE: app
+            JWT_SECRET: development_secret_key
+            JWT_EXPIRATION: 86400
+        ports:
+            - '80'
+        restart: unless-stopped
+        extra_hosts:
+            - pg.rdatacore.docker:host-gateway
+        networks:
+            default:
+                aliases:
+                    - rdatacore.docker
+
+    node:
+        image: node:22-alpine
+        command: sh -c "cd /var/www/html/ && npm install && npm run dev && tail -f /dev/null" # preventing it from stopping again
+        volumes:
+            - ./fe:/var/www/html
+        working_dir: /var/www/html/
+        ports:
+            - '80'
+        networks:
+            default:
+                aliases:
+                    - admin.rdatacore.docker
+        environment:
+            - VIRTUAL_HOST=.admin.rdatacore.docker
+            - MAIN_SERVICE=node
 
 volumes:
-  postgres_data:
-  postgres_test_data:
-  redis_data:
+    postgres_data:
+    postgres_test_data:
+    redis_data:

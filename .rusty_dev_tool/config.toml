@@ -15,6 +15,9 @@ no_docker_compose = true
         "alias" = "clippy"
         "execution" = "cargo clippy -- -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery"
         "description" = "Runs clippy with all lints enabled"
-
+    [commands.lint]
+        "alias" = "lint"
+        "execution" = "docker compose exec node npm run lint"
+        "description" = "Runs ESLint (with prettier) and fixes it's findings"
 # Mandatory node
 [environments]
