@@ -9,6 +9,12 @@ import {
     ApiResponseSchema,
     type ClassDefinition,
     ClassDefinitionSchema,
+    type CreateApiKeyRequest,
+    CreateApiKeyRequestSchema,
+    type ApiKeyCreatedResponse,
+    ApiKeyCreatedResponseSchema,
+    type ReassignApiKeyRequest,
+    ReassignApiKeyRequestSchema,
     type LoginRequest,
     type LoginResponse,
     LoginResponseSchema,
@@ -274,6 +280,38 @@ class TypedHttpClient {
         return this.request(
             `/admin/api/v1/api-keys?limit=${pageSize}&offset=${offset}`,
             ApiResponseSchema(z.array(ApiKeySchema))
+        )
+    }
+
+    async createApiKey(data: CreateApiKeyRequest): Promise<ApiKeyCreatedResponse> {
+        return this.request(
+            '/admin/api/v1/api-keys',
+            ApiResponseSchema(ApiKeyCreatedResponseSchema),
+            {
+                method: 'POST',
+                body: JSON.stringify(data),
+            }
+        )
+    }
+
+    async revokeApiKey(uuid: string): Promise<{ message: string }> {
+        return this.request(
+            `/admin/api/v1/api-keys/${uuid}`,
+            ApiResponseSchema(z.object({ message: z.string() })),
+            {
+                method: 'DELETE',
+            }
+        )
+    }
+
+    async reassignApiKey(uuid: string, data: ReassignApiKeyRequest): Promise<{ message: string }> {
+        return this.request(
+            `/admin/api/v1/api-keys/${uuid}/reassign`,
+            ApiResponseSchema(z.object({ message: z.string() })),
+            {
+                method: 'PUT',
+                body: JSON.stringify(data),
+            }
         )
     }
 

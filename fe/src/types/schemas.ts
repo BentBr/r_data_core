@@ -139,6 +139,14 @@ export const ApiKeyCreatedResponseSchema = ApiKeySchema.extend({
     api_key: z.string(),
 })
 
+export const ReassignApiKeyRequestSchema = z.object({
+    user_uuid: UuidSchema,
+})
+
+export const ReassignApiKeyResponseSchema = z.object({
+    message: z.string(),
+})
+
 // User schema
 export const UserSchema = z.object({
     uuid: UuidSchema,
@@ -148,6 +156,7 @@ export const UserSchema = z.object({
     last_name: z.string(),
     role: z.string(),
     is_active: z.boolean(),
+    is_admin: z.boolean(),
     created_at: TimestampSchema,
     updated_at: TimestampSchema,
 })
@@ -175,6 +184,8 @@ export const LogoutRequestSchema = z.object({
 export type RefreshTokenRequest = z.infer<typeof RefreshTokenRequestSchema>
 export type RefreshTokenResponse = z.infer<typeof RefreshTokenResponseSchema>
 export type LogoutRequest = z.infer<typeof LogoutRequestSchema>
+export type ReassignApiKeyRequest = z.infer<typeof ReassignApiKeyRequestSchema>
+export type ReassignApiKeyResponse = z.infer<typeof ReassignApiKeyResponseSchema>
 export type FieldDefinition = z.infer<typeof FieldDefinitionSchema>
 export type ClassDefinition = z.infer<typeof ClassDefinitionSchema>
 export type DynamicEntity = z.infer<typeof DynamicEntitySchema>

@@ -134,8 +134,18 @@
     }
 
     const handleLogout = async () => {
-        await authStore.logout()
+        // Clear auth state immediately to prevent API calls
+        authStore.clearAuthState()
+
+        // Redirect immediately
         router.push('/login')
+
+        // Then handle the full logout process
+        try {
+            await authStore.logout()
+        } catch (err) {
+            console.error('Logout failed:', err)
+        }
     }
 </script>
 

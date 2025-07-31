@@ -63,19 +63,35 @@ const router = createRouter({
 })
 
 // Navigation guard for authentication
-router.beforeEach(async (to, _from, next) => {
+router.beforeEach(async (to, from, next) => {
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
     const authStore = useAuthStore()
 
+    // If going to login page, allow it
+    if (to.name === 'Login') {
+        next()
+        return
+    }
+
     if (requiresAuth) {
-        // First, try to check auth status (this will attempt token refresh if needed)
+        // Check if user is authenticated first
+        if (!authStore.isAuthenticated) {
+            // Immediately redirect to login
+            next({
+                name: 'Login',
+                query: { redirect: to.fullPath },
+            })
+            return
+        }
+
+        // If authenticated, try to check auth status (this will attempt token refresh if needed)
         try {
             await authStore.checkAuthStatus()
         } catch (err) {
             console.error('[Router] Auth check failed:', err)
         }
 
-        // Check if user is authenticated after potential refresh
+        // Check again after potential refresh
         if (!authStore.isAuthenticated) {
             // Redirect to login with return URL
             next({
@@ -97,7 +113,7 @@ router.beforeEach(async (to, _from, next) => {
         }
     }
 
-    // If route doesn't require auth OR user is authenticated, proceed
+    // If the route doesn't require auth OR user is authenticated, proceed
     next()
 })
 

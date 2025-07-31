@@ -95,6 +95,26 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    const clearAuthState = (): void => {
+        // Clear state immediately to prevent API calls
+        access_token.value = null
+        user.value = null
+        error.value = null
+
+        // Clear refresh token from secure cookie
+        deleteRefreshToken()
+
+        // Clear refresh timer
+        if (refreshTimer.value) {
+            clearTimeout(refreshTimer.value)
+            refreshTimer.value = null
+        }
+
+        if (env.enableApiLogging) {
+            console.log('[Auth] Auth state cleared immediately')
+        }
+    }
+
     const logout = async (): Promise<void> => {
         const refreshToken = getRefreshToken()
 
@@ -392,5 +412,6 @@ export const useAuthStore = defineStore('auth', () => {
         refreshTokens,
         checkAuthStatus,
         clearError,
+        clearAuthState,
     }
 })

@@ -54,7 +54,9 @@
 
     // Create a unique key for the layout to ensure proper transitions
     const layoutKey = computed(() => {
-        return `${route.name}-${authStore.isAuthenticated}`
+        // Use route path instead of name to be more specific
+        // This prevents re-mounting when auth state changes but allows proper layout switching
+        return route.path
     })
 </script>
 
