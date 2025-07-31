@@ -13,8 +13,6 @@ import {
     type LoginResponse,
     LoginResponseSchema,
     type LogoutRequest,
-    type LogoutResponse,
-    LogoutResponseSchema,
     type RefreshTokenRequest,
     type RefreshTokenResponse,
     RefreshTokenResponseSchema,
@@ -174,7 +172,7 @@ class TypedHttpClient {
         }
     }
 
-    private validateResponse<T>(rawData: any, schema: z.ZodType<ApiResponse<T>>): T {
+    private validateResponse<T>(rawData: unknown, schema: z.ZodType<ApiResponse<T>>): T {
         if (this.enableLogging && this.devMode) {
             console.log('[API] Response:', rawData)
         }
@@ -305,15 +303,16 @@ class TypedHttpClient {
         )
     }
 
-    async logout(logoutRequest: LogoutRequest): Promise<LogoutResponse> {
-        return await this.request(
+    async logout(logoutRequest: LogoutRequest): Promise<{ message: string }> {
+        const result = await this.request(
             '/admin/api/v1/auth/logout',
-            ApiResponseSchema(LogoutResponseSchema),
+            ApiResponseSchema(z.null()),
             {
                 method: 'POST',
                 body: JSON.stringify(logoutRequest),
             }
         )
+        return result as unknown as { message: string }
     }
 
     async revokeAllTokens(): Promise<{ message: string }> {

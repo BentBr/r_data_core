@@ -29,20 +29,6 @@
                     router
                 />
             </v-list>
-
-            <!-- Footer Actions -->
-            <template v-slot:append>
-                <div class="pa-2">
-                    <v-btn
-                        block
-                        variant="outlined"
-                        prepend-icon="mdi-logout"
-                        @click="handleLogout"
-                    >
-                        {{ t('navigation.logout') }}
-                    </v-btn>
-                </div>
-            </template>
         </v-navigation-drawer>
 
         <!-- App Bar -->
@@ -68,20 +54,30 @@
 
         <!-- Main Content -->
         <v-main>
-            <router-view />
+            <router-view v-slot="{ Component, route }">
+                <transition
+                    name="fade"
+                    mode="out-in"
+                    appear
+                >
+                    <component
+                        :is="Component"
+                        :key="route.fullPath"
+                    />
+                </transition>
+            </router-view>
         </v-main>
     </div>
 </template>
 
 <script setup lang="ts">
     import { ref, computed, onMounted } from 'vue'
-    import { useRouter, useRoute } from 'vue-router'
+    import { useRoute } from 'vue-router'
     import { useAuthStore } from '@/stores/auth'
     import { useTranslations } from '@/composables/useTranslations'
     import LanguageSwitch from '@/components/common/LanguageSwitch.vue'
     import UserProfileMenu from '@/components/common/UserProfileMenu.vue'
 
-    const router = useRouter()
     const route = useRoute()
     const authStore = useAuthStore()
     const { t } = useTranslations()
@@ -132,12 +128,6 @@
         return currentItem?.title || 'R Data Core'
     })
 
-    // Logout handler
-    const handleLogout = async () => {
-        await authStore.logout()
-        router.push('/login')
-    }
-
     // Initialize
     onMounted(() => {
         // You could add any initialization logic here
@@ -152,5 +142,29 @@
 
     .v-navigation-drawer {
         transition: width 0.3s ease;
+    }
+
+    /* Smooth fade transitions for page content */
+    .fade-enter-active,
+    .fade-leave-active {
+        transition: opacity 0.8s ease-in-out;
+        position: relative;
+    }
+
+    .fade-enter-from,
+    .fade-leave-to {
+        opacity: 0;
+    }
+
+    .fade-enter-to,
+    .fade-leave-from {
+        opacity: 1;
+    }
+
+    /* Ensure the transition container has proper positioning */
+    .fade-enter-active > *,
+    .fade-leave-active > * {
+        position: relative;
+        width: 100%;
     }
 </style>

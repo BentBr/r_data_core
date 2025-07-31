@@ -5,15 +5,23 @@
             :key="layoutKey"
         >
             <router-view v-slot="{ Component, route }">
+                <!-- Only apply transition for login layout since MainLayout has its own -->
                 <transition
+                    v-if="route.name === 'Login'"
                     name="fade"
                     mode="out-in"
+                    appear
                 >
                     <component
                         :is="Component"
-                        :key="route.path"
+                        :key="route.fullPath"
                     />
                 </transition>
+                <component
+                    :is="Component"
+                    v-else
+                    :key="route.fullPath"
+                />
             </router-view>
         </component>
     </v-app>
@@ -51,10 +59,11 @@
 </script>
 
 <style scoped>
-    /* Smooth fade transitions for router view only */
+    /* Smooth fade transitions for login page only */
     .fade-enter-active,
     .fade-leave-active {
-        transition: opacity 0.5s ease;
+        transition: opacity 0.8s ease-in-out;
+        position: relative;
     }
 
     .fade-enter-from,
@@ -65,5 +74,12 @@
     .fade-enter-to,
     .fade-leave-from {
         opacity: 1;
+    }
+
+    /* Ensure the transition container has proper positioning */
+    .fade-enter-active > *,
+    .fade-leave-active > * {
+        position: relative;
+        width: 100%;
     }
 </style>

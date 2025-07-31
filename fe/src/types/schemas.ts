@@ -172,17 +172,9 @@ export const LogoutRequestSchema = z.object({
     refresh_token: z.string(),
 })
 
-export const LogoutResponseSchema = z.object({
-    status: z.enum(['Success', 'Error']),
-    message: z.string(),
-    data: z.null(),
-    meta: z.null().optional(),
-})
-
 export type RefreshTokenRequest = z.infer<typeof RefreshTokenRequestSchema>
 export type RefreshTokenResponse = z.infer<typeof RefreshTokenResponseSchema>
 export type LogoutRequest = z.infer<typeof LogoutRequestSchema>
-export type LogoutResponse = z.infer<typeof LogoutResponseSchema>
 export type FieldDefinition = z.infer<typeof FieldDefinitionSchema>
 export type ClassDefinition = z.infer<typeof ClassDefinitionSchema>
 export type DynamicEntity = z.infer<typeof DynamicEntitySchema>
