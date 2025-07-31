@@ -305,7 +305,7 @@ mod tests {
         let creator_id = Uuid::now_v7();
         let now = OffsetDateTime::now_utc();
 
-        let mut field_definitions = vec![
+        let field_definitions = vec![
             FieldDefinition {
                 name: "name".to_string(),
                 display_name: "Name".to_string(),

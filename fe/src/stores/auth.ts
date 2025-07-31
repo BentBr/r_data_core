@@ -3,17 +3,17 @@ import { ref, computed, readonly } from 'vue'
 import { typedHttpClient } from '@/api/typed-client'
 import { env } from '@/env-check'
 import { useTranslations } from '@/composables/useTranslations'
+import { getRefreshToken, setRefreshToken, deleteRefreshToken } from '@/utils/cookies'
 import type { LoginRequest, User } from '@/types/schemas'
 
 export const useAuthStore = defineStore('auth', () => {
     // Translation system
     const { translateError } = useTranslations()
 
-    // State
-    const access_token = ref<string | null>(localStorage.getItem('auth_token'))
-    const refreshToken = ref<string | null>(localStorage.getItem('refresh_token'))
+    // State - access token only in memory, refresh token in secure cookie
+    const access_token = ref<string | null>(null)
     const user = ref<User | null>(null)
-    const refreshTimer = ref<number | null>(null)
+    const refreshTimer = ref<ReturnType<typeof setTimeout> | null>(null)
     const isLoading = ref(false)
     const error = ref<string | null>(null)
 
@@ -46,7 +46,13 @@ export const useAuthStore = defineStore('auth', () => {
 
             // Store tokens and user info
             access_token.value = response.access_token
-            refreshToken.value = response.refresh_token
+
+            // Store refresh token in secure cookie
+            const refreshExpiresAt = new Date(
+                response.refresh_expires_at || Date.now() + 30 * 24 * 60 * 60 * 1000
+            )
+            setRefreshToken(response.refresh_token, refreshExpiresAt)
+
             user.value = {
                 uuid: response.user_uuid,
                 username: response.username,
@@ -59,10 +65,6 @@ export const useAuthStore = defineStore('auth', () => {
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
             }
-
-            // Store tokens in localStorage
-            localStorage.setItem('auth_token', response.access_token)
-            localStorage.setItem('refresh_token', response.refresh_token)
 
             // Set up automatic token refresh
             setupTokenRefresh(response.access_expires_at)
@@ -92,16 +94,37 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    const logout = (): void => {
+    const logout = async (): Promise<void> => {
+        const refreshToken = getRefreshToken()
+
+        // First, try to revoke the refresh token on the backend via logout endpoint
+        if (refreshToken) {
+            try {
+                if (env.enableApiLogging) {
+                    console.log('[Auth] Logging out and revoking refresh token on backend...')
+                }
+
+                // Call the logout endpoint which will revoke the refresh token
+                await typedHttpClient.logout({ refresh_token: refreshToken })
+
+                if (env.enableApiLogging) {
+                    console.log('[Auth] Logout successful, refresh token revoked')
+                }
+            } catch (err) {
+                // Don't fail logout if backend call fails, just log it
+                if (env.enableApiLogging) {
+                    console.error('[Auth] Failed to logout on backend:', err)
+                }
+            }
+        }
+
         // Clear state
         access_token.value = null
-        refreshToken.value = null
         user.value = null
         error.value = null
 
-        // Clear localStorage
-        localStorage.removeItem('auth_token')
-        localStorage.removeItem('refresh_token')
+        // Clear refresh token from secure cookie
+        deleteRefreshToken()
 
         // Clear refresh timer
         if (refreshTimer.value) {
@@ -119,19 +142,25 @@ export const useAuthStore = defineStore('auth', () => {
             clearTimeout(refreshTimer.value)
         }
 
-        const expirationTime = new Date(expiresAt).getTime()
-        const now = Date.now()
+        const expiresAtDate = new Date(expiresAt)
+        const now = new Date()
+        const timeUntilExpiry = expiresAtDate.getTime() - now.getTime()
         const bufferTime = env.tokenRefreshBuffer * 60 * 1000 // Convert minutes to milliseconds
-        const refreshTime = expirationTime - now - bufferTime
 
-        if (refreshTime > 0) {
-            refreshTimer.value = window.setTimeout(() => {
-                refreshTokens()
+        if (timeUntilExpiry > bufferTime) {
+            // Set up refresh timer
+            const refreshTime = timeUntilExpiry - bufferTime
+            refreshTimer.value = setTimeout(async () => {
+                if (env.enableApiLogging) {
+                    console.log('[Auth] Token refresh timer triggered')
+                }
+                await refreshTokens()
             }, refreshTime)
 
             if (env.enableApiLogging) {
                 console.log(
-                    `[Auth] Token refresh scheduled in ${Math.round(refreshTime / 1000)} seconds`
+                    '[Auth] Token refresh scheduled for:',
+                    new Date(Date.now() + refreshTime)
                 )
             }
         } else {
@@ -139,16 +168,21 @@ export const useAuthStore = defineStore('auth', () => {
             if (env.enableApiLogging) {
                 console.warn('[Auth] Token is expired or about to expire, logging out')
             }
-            logout()
+            logout().catch(err => {
+                if (env.enableApiLogging) {
+                    console.error('[Auth] Logout failed during token refresh setup:', err)
+                }
+            })
         }
     }
 
     const refreshTokens = async (): Promise<void> => {
-        if (!refreshToken.value) {
+        const refreshToken = getRefreshToken()
+        if (!refreshToken) {
             if (env.enableApiLogging) {
                 console.warn('[Auth] No refresh token available')
             }
-            logout()
+            await logout()
             return
         }
 
@@ -158,16 +192,40 @@ export const useAuthStore = defineStore('auth', () => {
             }
 
             const response = await typedHttpClient.refreshToken({
-                refresh_token: refreshToken.value,
+                refresh_token: refreshToken,
             })
 
             // Update tokens
             access_token.value = response.access_token
-            refreshToken.value = response.refresh_token
 
-            // Store new tokens in localStorage
-            localStorage.setItem('auth_token', response.access_token)
-            localStorage.setItem('refresh_token', response.refresh_token)
+            // Update refresh token in secure cookie
+            const refreshExpiresAt = new Date(
+                response.refresh_expires_at || Date.now() + 30 * 24 * 60 * 60 * 1000
+            )
+            setRefreshToken(response.refresh_token, refreshExpiresAt)
+
+            // Restore user data from the new access token
+            try {
+                const payload = JSON.parse(atob(response.access_token.split('.')[1]))
+                user.value = {
+                    uuid: payload.sub || '',
+                    username: payload.username || '',
+                    role: payload.role || '',
+                    email: '',
+                    first_name: '',
+                    last_name: '',
+                    is_active: true,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                }
+            } catch (err) {
+                if (env.enableApiLogging) {
+                    console.error('[Auth] Failed to parse user data from token:', err)
+                }
+                // If we can't parse the token, we should logout
+                await logout()
+                return
+            }
 
             // Set up next refresh
             setupTokenRefresh(response.access_expires_at)
@@ -179,11 +237,46 @@ export const useAuthStore = defineStore('auth', () => {
             if (env.enableApiLogging) {
                 console.error('[Auth] Token refresh failed:', err)
             }
-            logout()
+            await logout()
         }
     }
 
-    const checkAuthStatus = (): void => {
+    const checkAuthStatus = async (): Promise<void> => {
+        // Check if we have a refresh token but no access token
+        const refreshToken = getRefreshToken()
+
+        if (env.enableApiLogging) {
+            console.log('[Auth] checkAuthStatus called:', {
+                hasAccessToken: !!access_token.value,
+                hasRefreshToken: !!refreshToken,
+                hasUser: !!user.value,
+                isAuthenticated: isAuthenticated.value,
+                isTokenExpired: isTokenExpired.value,
+            })
+        }
+
+        if (!access_token.value && refreshToken) {
+            // Try to refresh the token automatically
+            if (env.enableApiLogging) {
+                console.log(
+                    '[Auth] No access token but refresh token exists, attempting automatic refresh'
+                )
+            }
+            try {
+                await refreshTokens()
+                if (env.enableApiLogging) {
+                    console.log('[Auth] Automatic refresh successful')
+                }
+                return
+            } catch (err) {
+                if (env.enableApiLogging) {
+                    console.error('[Auth] Automatic refresh failed:', err)
+                }
+                // Don't logout here, let the user try to login manually
+                return
+            }
+        }
+
         if (access_token.value && !user.value) {
             // We have a token but no user data, try to restore from token
             try {
@@ -205,17 +298,54 @@ export const useAuthStore = defineStore('auth', () => {
 
                     // Set up token refresh
                     setupTokenRefresh(new Date(payload.exp * 1000).toISOString())
+
+                    if (env.enableApiLogging) {
+                        console.log('[Auth] User restored from token')
+                    }
                 } else {
-                    // Token is expired
-                    logout()
+                    // Token is expired, try to refresh
+                    if (refreshToken) {
+                        try {
+                            await refreshTokens()
+                        } catch (err) {
+                            if (env.enableApiLogging) {
+                                console.error('[Auth] Token refresh failed:', err)
+                            }
+                            await logout()
+                        }
+                    } else {
+                        await logout()
+                    }
                 }
             } catch {
-                // Invalid token
-                logout()
+                // Invalid token, try to refresh if we have refresh token
+                if (refreshToken) {
+                    try {
+                        await refreshTokens()
+                    } catch (err) {
+                        if (env.enableApiLogging) {
+                            console.error('[Auth] Token refresh failed:', err)
+                        }
+                        await logout()
+                    }
+                } else {
+                    await logout()
+                }
             }
         } else if (access_token.value && isTokenExpired.value) {
-            // Token is expired, logout
-            logout()
+            // Token is expired, try to refresh
+            if (refreshToken) {
+                try {
+                    await refreshTokens()
+                } catch (err) {
+                    if (env.enableApiLogging) {
+                        console.error('[Auth] Token refresh failed:', err)
+                    }
+                    await logout()
+                }
+            } else {
+                await logout()
+            }
         }
     }
 
@@ -224,7 +354,13 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     // Initialize auth status on store creation
-    checkAuthStatus()
+    // Note: We can't await in the store initialization, so we'll call it without await
+    // The router guard will handle the async auth check
+    checkAuthStatus().catch(err => {
+        if (env.enableApiLogging) {
+            console.error('[Auth] Initial auth check failed:', err)
+        }
+    })
 
     return {
         // State

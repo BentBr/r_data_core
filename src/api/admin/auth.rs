@@ -34,23 +34,23 @@ pub struct RefreshTokenRequest {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct RefreshTokenResponse {
     /// New access token
-    pub token: String,
+    pub access_token: String,
 
     /// New refresh token
     pub refresh_token: String,
 
     /// Access token expiration (RFC3339 timestamp)
     #[serde(with = "time::serde::rfc3339")]
-    pub expires_at: OffsetDateTime,
+    pub access_expires_at: OffsetDateTime,
 
     /// Refresh token expiration (RFC3339 timestamp)
     #[serde(with = "time::serde::rfc3339")]
     pub refresh_expires_at: OffsetDateTime,
 }
 
-/// Revoke token request body
-#[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct RevokeTokenRequest {
+/// Request to logout with refresh token
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct LogoutRequest {
     /// Refresh token to revoke
     pub refresh_token: String,
 }
@@ -529,26 +529,41 @@ pub async fn admin_register(
     post,
     path = "/admin/api/v1/auth/logout",
     tag = "admin-auth",
+    request_body = LogoutRequest,
     responses(
         (status = 200, description = "Logout successful"),
         (status = 400, description = "Invalid request format"),
-        (status = 401, description = "Unauthorized, invalid or missing token"),
+        (status = 401, description = "Invalid refresh token"),
         (status = 500, description = "Internal server error")
-    ),
-    security(
-        ("jwt" = [])
     )
 )]
 #[post("/auth/logout")]
 pub async fn admin_logout(
-    _body: web::Json<EmptyRequest>,
-    auth: auth_enum::RequiredAuth,
+    data: web::Data<ApiState>,
+    request: web::Json<LogoutRequest>,
 ) -> impl Responder {
-    log::debug!("Logout successful for user: {}", auth.0.name);
+    let refresh_repo = RefreshTokenRepository::new(data.db_pool.clone());
 
-    // Acknowledge the logout
-    log::debug!("Sending logout successful response");
-    ApiResponse::message("Logout successful")
+    // Hash the provided refresh token
+    let token_hash = match RefreshToken::hash_token(&request.refresh_token) {
+        Ok(hash) => hash,
+        Err(e) => {
+            log::error!("Failed to hash refresh token for logout: {:?}", e);
+            return ApiResponse::bad_request("Invalid token format");
+        }
+    };
+
+    // Revoke the refresh token
+    match refresh_repo.revoke_by_token_hash(&token_hash).await {
+        Ok(_) => {
+            log::info!("User logged out successfully, refresh token revoked");
+            ApiResponse::message("Logout successful")
+        }
+        Err(e) => {
+            log::error!("Failed to revoke refresh token during logout: {:?}", e);
+            ApiResponse::internal_error("Logout failed")
+        }
+    }
 }
 
 /// Refresh access token endpoint
@@ -643,7 +658,7 @@ pub async fn admin_refresh_token(
 
     // Calculate expiration times
     let access_expires_at = OffsetDateTime::now_utc()
-        .checked_add(Duration::seconds(1800)) // 30 minutes
+        .checked_add(Duration::seconds(ACCESS_TOKEN_EXPIRY_SECONDS as i64)) // 30 minutes
         .unwrap_or(OffsetDateTime::now_utc());
 
     let refresh_expires_at = OffsetDateTime::now_utc()
@@ -678,55 +693,13 @@ pub async fn admin_refresh_token(
 
     // Build response
     let response = RefreshTokenResponse {
-        token: new_access_token,
+        access_token: new_access_token,
         refresh_token: new_refresh_token_string,
-        expires_at: access_expires_at,
+        access_expires_at,
         refresh_expires_at,
     };
 
     ApiResponse::ok(response)
-}
-
-/// Revoke refresh token endpoint
-#[utoipa::path(
-    post,
-    path = "/admin/api/v1/auth/revoke",
-    tag = "admin-auth",
-    request_body = RevokeTokenRequest,
-    responses(
-        (status = 200, description = "Token revoked successfully"),
-        (status = 400, description = "Invalid request format"),
-        (status = 401, description = "Invalid refresh token"),
-        (status = 500, description = "Internal server error")
-    )
-)]
-#[post("/auth/revoke")]
-pub async fn admin_revoke_token(
-    data: web::Data<ApiState>,
-    request: web::Json<RevokeTokenRequest>,
-) -> impl Responder {
-    let refresh_repo = RefreshTokenRepository::new(data.db_pool.clone());
-
-    // Hash the provided refresh token
-    let token_hash = match RefreshToken::hash_token(&request.refresh_token) {
-        Ok(hash) => hash,
-        Err(e) => {
-            log::error!("Failed to hash refresh token for revocation: {:?}", e);
-            return ApiResponse::bad_request("Invalid token format");
-        }
-    };
-
-    // Revoke the refresh token
-    match refresh_repo.revoke_by_token_hash(&token_hash).await {
-        Ok(_) => {
-            log::info!("Refresh token revoked successfully");
-            ApiResponse::ok("Token revoked successfully")
-        }
-        Err(e) => {
-            log::error!("Failed to revoke refresh token: {:?}", e);
-            ApiResponse::internal_error("Token revocation failed")
-        }
-    }
 }
 
 /// Revoke all refresh tokens for current user endpoint

@@ -168,14 +168,13 @@ export const RefreshTokenResponseSchema = z.object({
     access_expires_at: TimestampSchema,
     refresh_expires_at: TimestampSchema,
 })
-
-export const RevokeTokenRequestSchema = z.object({
-    refresh_token: z.string(),
+export const LogoutResponseSchema = z.object({
+    message: z.string(),
 })
 
 export type RefreshTokenRequest = z.infer<typeof RefreshTokenRequestSchema>
 export type RefreshTokenResponse = z.infer<typeof RefreshTokenResponseSchema>
-export type RevokeTokenRequest = z.infer<typeof RevokeTokenRequestSchema>
+export type LogoutResponse = z.infer<typeof LogoutResponseSchema>
 export type FieldDefinition = z.infer<typeof FieldDefinitionSchema>
 export type ClassDefinition = z.infer<typeof ClassDefinitionSchema>
 export type DynamicEntity = z.infer<typeof DynamicEntitySchema>

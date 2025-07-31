@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import { env } from '@/env-check'
+import { useAuthStore } from '@/stores/auth'
+import { getRefreshToken } from '@/utils/cookies'
 import {
     ApiResponseSchema,
     ClassDefinitionSchema,
@@ -7,6 +9,7 @@ import {
     UserSchema,
     LoginResponseSchema,
     RefreshTokenResponseSchema,
+    LogoutResponseSchema,
     type ApiResponse,
     type ClassDefinition,
     type ApiKey,
@@ -15,6 +18,8 @@ import {
     type LoginRequest,
     type RefreshTokenRequest,
     type RefreshTokenResponse,
+    type LogoutRequest,
+    type LogoutResponse,
 } from '@/types/schemas'
 
 class TypedHttpClient {
@@ -27,8 +32,31 @@ class TypedHttpClient {
         schema: z.ZodType<ApiResponse<T>>,
         options: RequestInit = {}
     ): Promise<T> {
-        // Get auth token from localStorage (auth store will handle this)
-        const authToken = localStorage.getItem('auth_token')
+        // Get auth token from auth store
+        const authStore = useAuthStore()
+        let authToken = authStore.token
+
+        // If no token in store but refresh token exists, try to refresh
+        if (!authToken) {
+            const refreshToken = getRefreshToken()
+            if (refreshToken && !endpoint.includes('/auth/refresh')) {
+                if (this.enableLogging) {
+                    console.log(
+                        '[API] No access token but refresh token exists, attempting refresh'
+                    )
+                }
+                try {
+                    // Trigger refresh through auth store
+                    await authStore.refreshTokens()
+                    authToken = authStore.token
+                } catch (refreshError) {
+                    if (this.enableLogging) {
+                        console.error('[API] Automatic token refresh failed:', refreshError)
+                    }
+                    // Don't logout here, let the 401 handler deal with it
+                }
+            }
+        }
 
         const config: RequestInit = {
             ...options,
@@ -51,33 +79,35 @@ class TypedHttpClient {
             if (!response.ok) {
                 if (response.status === 401) {
                     // Handle unauthorized - try refresh first, then clear auth
-                    const refreshToken = localStorage.getItem('refresh_token')
+                    const refreshToken = getRefreshToken()
                     if (refreshToken && !endpoint.includes('/auth/refresh')) {
                         // Try to refresh the token once
                         try {
-                            const refreshResponse = await this.refreshToken({
-                                refresh_token: refreshToken,
-                            })
-
-                            // Update stored tokens
-                            localStorage.setItem('auth_token', refreshResponse.access_token)
-                            localStorage.setItem('refresh_token', refreshResponse.refresh_token)
-
-                            // Retry the original request with new token
-                            const retryConfig = {
-                                ...config,
-                                headers: {
-                                    ...config.headers,
-                                    Authorization: `Bearer ${refreshResponse.access_token}`,
-                                },
+                            if (this.enableLogging) {
+                                console.log('[API] 401 received, attempting token refresh')
                             }
-                            const retryResponse = await fetch(
-                                `${this.baseURL}${endpoint}`,
-                                retryConfig
-                            )
 
-                            if (retryResponse.ok) {
-                                return await retryResponse.json()
+                            // Trigger refresh through auth store
+                            await authStore.refreshTokens()
+                            const newToken = authStore.token
+
+                            if (newToken) {
+                                // Retry the original request with new token
+                                const retryConfig = {
+                                    ...config,
+                                    headers: {
+                                        ...config.headers,
+                                        Authorization: `Bearer ${newToken}`,
+                                    },
+                                }
+                                const retryResponse = await fetch(
+                                    `${this.baseURL}${endpoint}`,
+                                    retryConfig
+                                )
+
+                                if (retryResponse.ok) {
+                                    return await retryResponse.json()
+                                }
                             }
                         } catch (refreshError) {
                             if (this.enableLogging) {
@@ -87,11 +117,7 @@ class TypedHttpClient {
                     }
 
                     // Clear auth and redirect to login
-                    localStorage.removeItem('auth_token')
-                    localStorage.removeItem('refresh_token')
-                    if (window.location.pathname !== '/login') {
-                        window.location.href = '/login'
-                    }
+                    await authStore.logout()
                     throw new Error('Authentication required')
                 }
 
@@ -264,15 +290,11 @@ class TypedHttpClient {
         )
     }
 
-    async revokeToken(revokeTokenRequest: { refresh_token: string }): Promise<{ message: string }> {
-        return this.request(
-            '/admin/api/v1/auth/revoke',
-            ApiResponseSchema(z.object({ message: z.string() })),
-            {
-                method: 'POST',
-                body: JSON.stringify(revokeTokenRequest),
-            }
-        )
+    async logout(logoutRequest: LogoutRequest): Promise<LogoutResponse> {
+        return this.request('/admin/api/v1/auth/logout', ApiResponseSchema(LogoutResponseSchema), {
+            method: 'POST',
+            body: JSON.stringify(logoutRequest),
+        })
     }
 
     async revokeAllTokens(): Promise<{ message: string }> {

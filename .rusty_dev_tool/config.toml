@@ -11,6 +11,10 @@ no_docker_compose = true
         "alias" = "test-unit"
         "execution" = "RUST_LOG=warning cargo test --lib -p r_data_core && RUST_LOG=warning cargo test --test hash_passwords"
         "description" = "Runs all unit tests"
+    [commands.test-fe]
+        "alias" = "test-fe"
+        "execution" = "docker compose exec node npm run test"
+        "description" = "Runs jest for FE testing"
     [commands.clippy]
         "alias" = "clippy"
         "execution" = "cargo clippy -- -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery"

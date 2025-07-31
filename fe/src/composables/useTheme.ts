@@ -40,7 +40,7 @@ export function useTheme() {
 
     // Update Vuetify theme
     const updateVuetifyTheme = () => {
-        vuetifyTheme.global.name.value = currentTheme.value
+        vuetifyTheme.change(currentTheme.value)
     }
 
     // Set theme preference

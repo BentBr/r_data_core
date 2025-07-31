@@ -29,6 +29,12 @@
     /* Vue support */
     "types": ["vue/ref-macros", "vite/client"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
+  "include": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "src/**/*.vue",
+      "node_modules/@types/jest/index.d.ts",
+      "node_modules/@types/node/globals.d.ts"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
-} 
+}

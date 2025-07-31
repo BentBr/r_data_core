@@ -625,7 +625,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_entity_missing_required_field() -> Result<()> {
-        let mut repo = MockDynamicEntityRepo::new();
+        let repo = MockDynamicEntityRepo::new();
         let mut class_repo = MockClassDefinitionRepo::new();
 
         // Setup mock class definition repository

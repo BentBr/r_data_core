@@ -68,7 +68,17 @@ router.beforeEach(async (to, _from, next) => {
     const authStore = useAuthStore()
 
     if (requiresAuth) {
-        // Check if user is authenticated
+        // Give the store a moment to initialize
+        await new Promise(resolve => setTimeout(resolve, 10))
+
+        // First, try to check auth status (this will attempt token refresh if needed)
+        try {
+            await authStore.checkAuthStatus()
+        } catch (err) {
+            console.error('[Router] Auth check failed:', err)
+        }
+
+        // Check if user is authenticated after potential refresh
         if (!authStore.isAuthenticated) {
             // Redirect to login with return URL
             next({
@@ -78,10 +88,10 @@ router.beforeEach(async (to, _from, next) => {
             return
         }
 
-        // Check if token is expired
+        // Check if token is expired after potential refresh
         if (authStore.isTokenExpired) {
             // Token is expired, logout and redirect to login
-            authStore.logout()
+            await authStore.logout()
             next({
                 name: 'Login',
                 query: { redirect: to.fullPath },
