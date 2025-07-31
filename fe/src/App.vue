@@ -1,7 +1,20 @@
 <template>
     <v-app>
-        <component :is="layoutComponent">
-            <router-view />
+        <component
+            :is="layoutComponent"
+            :key="layoutKey"
+        >
+            <router-view v-slot="{ Component, route }">
+                <transition
+                    name="fade"
+                    mode="out-in"
+                >
+                    <component
+                        :is="Component"
+                        :key="route.path"
+                    />
+                </transition>
+            </router-view>
         </component>
     </v-app>
 </template>
@@ -30,8 +43,27 @@
         // All other authenticated pages use the main layout
         return MainLayout
     })
+
+    // Create a unique key for the layout to ensure proper transitions
+    const layoutKey = computed(() => {
+        return `${route.name}-${authStore.isAuthenticated}`
+    })
 </script>
 
 <style scoped>
-    /* App-specific styles */
+    /* Smooth fade transitions for router view only */
+    .fade-enter-active,
+    .fade-leave-active {
+        transition: opacity 0.5s ease;
+    }
+
+    .fade-enter-from,
+    .fade-leave-to {
+        opacity: 0;
+    }
+
+    .fade-enter-to,
+    .fade-leave-from {
+        opacity: 1;
+    }
 </style>

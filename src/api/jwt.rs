@@ -8,7 +8,7 @@ use crate::error::{Error, Result};
 use utoipa::ToSchema;
 
 // Token expiry constants
-pub const ACCESS_TOKEN_EXPIRY_SECONDS: u64 = 400; // 30 minutes
+pub const ACCESS_TOKEN_EXPIRY_SECONDS: u64 = 1800; // 30 minutes
 pub const REFRESH_TOKEN_EXPIRY_SECONDS: u64 = 2592000; // 30 days
 
 /// Claims for authentication

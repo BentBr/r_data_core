@@ -3,29 +3,30 @@ import { env } from '@/env-check'
 import { useAuthStore } from '@/stores/auth'
 import { getRefreshToken } from '@/utils/cookies'
 import {
-    ApiResponseSchema,
-    ClassDefinitionSchema,
-    ApiKeySchema,
-    UserSchema,
-    LoginResponseSchema,
-    RefreshTokenResponseSchema,
-    LogoutResponseSchema,
-    type ApiResponse,
-    type ClassDefinition,
     type ApiKey,
-    type User,
-    type LoginResponse,
+    ApiKeySchema,
+    type ApiResponse,
+    ApiResponseSchema,
+    type ClassDefinition,
+    ClassDefinitionSchema,
     type LoginRequest,
-    type RefreshTokenRequest,
-    type RefreshTokenResponse,
+    type LoginResponse,
+    LoginResponseSchema,
     type LogoutRequest,
     type LogoutResponse,
+    LogoutResponseSchema,
+    type RefreshTokenRequest,
+    type RefreshTokenResponse,
+    RefreshTokenResponseSchema,
+    type User,
+    UserSchema,
 } from '@/types/schemas'
 
 class TypedHttpClient {
     private baseURL = env.apiBaseUrl
     private enableLogging = env.enableApiLogging
     private devMode = env.devMode
+    private isRefreshing = false // Flag to prevent concurrent refresh attempts
 
     async request<T>(
         endpoint: string,
@@ -39,13 +40,14 @@ class TypedHttpClient {
         // If no token in store but refresh token exists, try to refresh
         if (!authToken) {
             const refreshToken = getRefreshToken()
-            if (refreshToken && !endpoint.includes('/auth/refresh')) {
+            if (refreshToken && !endpoint.includes('/auth/refresh') && !this.isRefreshing) {
                 if (this.enableLogging) {
                     console.log(
                         '[API] No access token but refresh token exists, attempting refresh'
                     )
                 }
                 try {
+                    this.isRefreshing = true
                     // Trigger refresh through auth store
                     await authStore.refreshTokens()
                     authToken = authStore.token
@@ -54,6 +56,8 @@ class TypedHttpClient {
                         console.error('[API] Automatic token refresh failed:', refreshError)
                     }
                     // Don't logout here, let the 401 handler deal with it
+                } finally {
+                    this.isRefreshing = false
                 }
             }
         }
@@ -80,13 +84,14 @@ class TypedHttpClient {
                 if (response.status === 401) {
                     // Handle unauthorized - try refresh first, then clear auth
                     const refreshToken = getRefreshToken()
-                    if (refreshToken && !endpoint.includes('/auth/refresh')) {
+                    if (refreshToken && !endpoint.includes('/auth/refresh') && !this.isRefreshing) {
                         // Try to refresh the token once
                         try {
                             if (this.enableLogging) {
                                 console.log('[API] 401 received, attempting token refresh')
                             }
 
+                            this.isRefreshing = true
                             // Trigger refresh through auth store
                             await authStore.refreshTokens()
                             const newToken = authStore.token
@@ -106,13 +111,16 @@ class TypedHttpClient {
                                 )
 
                                 if (retryResponse.ok) {
-                                    return await retryResponse.json()
+                                    const retryData = await retryResponse.json()
+                                    return this.validateResponse(retryData, schema)
                                 }
                             }
                         } catch (refreshError) {
                             if (this.enableLogging) {
                                 console.error('[API] Token refresh failed:', refreshError)
                             }
+                        } finally {
+                            this.isRefreshing = false
                         }
                     }
 
@@ -153,42 +161,7 @@ class TypedHttpClient {
             }
 
             const rawData = await response.json()
-
-            if (this.enableLogging && this.devMode) {
-                console.log('[API] Response:', rawData)
-            }
-
-            // Runtime validation with Zod
-            let validatedResponse
-            try {
-                validatedResponse = schema.parse(rawData)
-            } catch (validationError) {
-                if (validationError instanceof z.ZodError) {
-                    if (this.enableLogging) {
-                        console.error('[API] Response validation failed:', {
-                            rawData,
-                            validationIssues: validationError.issues,
-                            endpoint,
-                        })
-                    }
-                    // Create a more user-friendly error message
-                    const firstIssue = validationError.issues[0]
-                    const fieldPath = firstIssue?.path?.join('.') || 'unknown field'
-                    const message = firstIssue?.message || 'Invalid format'
-                    throw new Error(`Response validation failed: ${message} (${fieldPath})`)
-                }
-                throw validationError
-            }
-
-            if (validatedResponse.status === 'Error') {
-                throw new Error(validatedResponse.message)
-            }
-
-            if (!validatedResponse.data) {
-                throw new Error('No data in successful response')
-            }
-
-            return validatedResponse.data
+            return this.validateResponse(rawData, schema)
         } catch (error) {
             if (this.enableLogging) {
                 console.error('[API] Error:', {
@@ -199,6 +172,48 @@ class TypedHttpClient {
             }
             throw error
         }
+    }
+
+    private validateResponse<T>(rawData: any, schema: z.ZodType<ApiResponse<T>>): T {
+        if (this.enableLogging && this.devMode) {
+            console.log('[API] Response:', rawData)
+        }
+
+        // Runtime validation with Zod
+        let validatedResponse
+        try {
+            validatedResponse = schema.parse(rawData)
+        } catch (validationError) {
+            if (validationError instanceof z.ZodError) {
+                if (this.enableLogging) {
+                    console.error('[API] Response validation failed:', {
+                        rawData,
+                        validationIssues: validationError.issues,
+                    })
+                }
+                // Create a more user-friendly error message
+                const firstIssue = validationError.issues[0]
+                const fieldPath = firstIssue?.path?.join('.') || 'unknown field'
+                const message = firstIssue?.message || 'Invalid format'
+                throw new Error(`Response validation failed: ${message} (${fieldPath})`)
+            }
+            throw validationError
+        }
+
+        if (validatedResponse.status === 'Error') {
+            throw new Error(validatedResponse.message)
+        }
+
+        // For responses with null data (like logout), return the message
+        if (validatedResponse.data === null || validatedResponse.data === undefined) {
+            return { message: validatedResponse.message } as T
+        }
+
+        if (!validatedResponse.data) {
+            throw new Error('No data in successful response')
+        }
+
+        return validatedResponse.data
     }
 
     // Type-safe API methods with runtime validation
@@ -291,10 +306,14 @@ class TypedHttpClient {
     }
 
     async logout(logoutRequest: LogoutRequest): Promise<LogoutResponse> {
-        return this.request('/admin/api/v1/auth/logout', ApiResponseSchema(LogoutResponseSchema), {
-            method: 'POST',
-            body: JSON.stringify(logoutRequest),
-        })
+        return await this.request(
+            '/admin/api/v1/auth/logout',
+            ApiResponseSchema(LogoutResponseSchema),
+            {
+                method: 'POST',
+                body: JSON.stringify(logoutRequest),
+            }
+        )
     }
 
     async revokeAllTokens(): Promise<{ message: string }> {

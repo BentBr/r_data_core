@@ -16,6 +16,7 @@ export const useAuthStore = defineStore('auth', () => {
     const refreshTimer = ref<ReturnType<typeof setTimeout> | null>(null)
     const isLoading = ref(false)
     const error = ref<string | null>(null)
+    const isRefreshing = ref(false) // Flag to prevent concurrent refresh attempts
 
     // Getters
     const isAuthenticated = computed(() => !!access_token.value && !!user.value)
@@ -177,6 +178,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     const refreshTokens = async (): Promise<void> => {
+        // Prevent concurrent refresh attempts
+        if (isRefreshing.value) {
+            if (env.enableApiLogging) {
+                console.log('[Auth] Refresh already in progress, skipping')
+            }
+            return
+        }
+
         const refreshToken = getRefreshToken()
         if (!refreshToken) {
             if (env.enableApiLogging) {
@@ -185,6 +194,8 @@ export const useAuthStore = defineStore('auth', () => {
             await logout()
             return
         }
+
+        isRefreshing.value = true
 
         try {
             if (env.enableApiLogging) {
@@ -238,6 +249,8 @@ export const useAuthStore = defineStore('auth', () => {
                 console.error('[Auth] Token refresh failed:', err)
             }
             await logout()
+        } finally {
+            isRefreshing.value = false
         }
     }
 

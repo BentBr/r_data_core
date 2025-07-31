@@ -68,9 +68,6 @@ router.beforeEach(async (to, _from, next) => {
     const authStore = useAuthStore()
 
     if (requiresAuth) {
-        // Give the store a moment to initialize
-        await new Promise(resolve => setTimeout(resolve, 10))
-
         // First, try to check auth status (this will attempt token refresh if needed)
         try {
             await authStore.checkAuthStatus()
