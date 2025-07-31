@@ -85,6 +85,9 @@ pub struct ApiKeyCreatedResponse {
     pub user_uuid: Uuid,
     /// Whether the key is published
     pub published: bool,
+    /// When the API key was last used
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub last_used_at: Option<OffsetDateTime>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -219,6 +222,7 @@ pub async fn create_api_key(
                     created_by: key.created_by,
                     user_uuid: key.user_uuid,
                     published: key.published,
+                    last_used_at: key.last_used_at
                 };
                 ApiResponse::<ApiKeyCreatedResponse>::created(response)
             }
