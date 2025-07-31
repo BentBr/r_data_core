@@ -24,16 +24,19 @@ const TimestampSchema = z.string().refine(
 )
 
 // Nullable timestamp schema for fields that can be null
-const NullableTimestampSchema = z.string().refine(
-    val => {
-        // Allow ISO 8601 format with varying precision
-        const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?$/
-        return isoRegex.test(val) && !isNaN(Date.parse(val))
-    },
-    {
-        message: 'Invalid timestamp format, expected ISO 8601',
-    }
-).nullable()
+const NullableTimestampSchema = z
+    .string()
+    .refine(
+        val => {
+            // Allow ISO 8601 format with varying precision
+            const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?$/
+            return isoRegex.test(val) && !isNaN(Date.parse(val))
+        },
+        {
+            message: 'Invalid timestamp format, expected ISO 8601',
+        }
+    )
+    .nullable()
 
 // API Response wrapper schema
 export const ApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>

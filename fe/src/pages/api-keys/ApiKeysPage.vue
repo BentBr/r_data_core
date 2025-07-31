@@ -16,7 +16,7 @@
                             prepend-icon="mdi-key-plus"
                             @click="showCreateDialog = true"
                         >
-                            Create New Key
+                            {{ t('api_keys.create.button') }}
                         </v-btn>
                     </v-card-title>
 
@@ -52,9 +52,22 @@
                             :headers="tableHeaders"
                             :items="apiKeys"
                             :loading="loading"
-                            :items-per-page="10"
+                            :items-per-page="itemsPerPage"
+                            :page="currentPage"
                             class="elevation-1"
                             responsive
+                            :items-per-page-options="[10, 25, 50, 100, 500]"
+                            :items-per-page-text="t('table.items_per_page')"
+                            :next-page-text="t('table.next')"
+                            :prev-page-text="t('table.previous')"
+                            :first-page-text="t('table.first')"
+                            :last-page-text="t('table.last')"
+                            :page-text="t('table.page')"
+                            :of-text="t('table.of')"
+                            :no-data-text="t('table.no_data')"
+                            :loading-text="t('table.loading')"
+                            @update:page="handlePageChange"
+                            @update:items-per-page="handleItemsPerPageChange"
                         >
                             <!-- Name Column -->
                             <template #item.name="{ item }">
@@ -171,14 +184,6 @@
                                         @click="viewKey(item)"
                                     />
                                     <v-btn
-                                        icon="mdi-pencil"
-                                        variant="text"
-                                        size="small"
-                                        color="warning"
-                                        :disabled="!item.is_active"
-                                        @click="editKey(item)"
-                                    />
-                                    <v-btn
                                         icon="mdi-delete"
                                         variant="text"
                                         size="small"
@@ -198,32 +203,35 @@
         <v-dialog
             v-model="showCreateDialog"
             max-width="500px"
+            @after-enter="focusNameField"
         >
             <v-card>
-                <v-card-title>Create New API Key</v-card-title>
+                <v-card-title>{{ t('api_keys.create.title') }}</v-card-title>
                 <v-card-text>
                     <v-form
                         ref="createForm"
                         v-model="createFormValid"
                     >
                         <v-text-field
+                            ref="nameField"
                             v-model="createForm.name"
-                            label="Key Name"
-                            :rules="[v => !!v || 'Name is required']"
+                            :label="t('api_keys.create.name_label')"
+                            :rules="[v => !!v || t('api_keys.create.name_required')]"
                             required
+                            @input="validateForm"
                         />
                         <v-textarea
                             v-model="createForm.description"
-                            label="Description (Optional)"
+                            :label="t('api_keys.create.description_label')"
                             rows="3"
                         />
                         <v-text-field
                             v-model.number="createForm.expires_in_days"
-                            label="Expires in Days (Optional)"
+                            :label="t('api_keys.create.expires_label')"
                             type="number"
                             min="1"
                             max="3650"
-                            hint="Leave empty for no expiration"
+                            :hint="t('api_keys.create.expires_hint')"
                         />
                     </v-form>
                 </v-card-text>
@@ -234,7 +242,7 @@
                         variant="text"
                         @click="showCreateDialog = false"
                     >
-                        Cancel
+                        {{ t('common.cancel') }}
                     </v-btn>
                     <v-btn
                         color="primary"
@@ -242,7 +250,7 @@
                         :disabled="!createFormValid"
                         @click="createApiKey"
                     >
-                        Create
+                        {{ t('api_keys.create.button') }}
                     </v-btn>
                 </v-card-actions>
             </v-card>
@@ -254,7 +262,7 @@
             max-width="600px"
         >
             <v-card>
-                <v-card-title>API Key Details</v-card-title>
+                <v-card-title>{{ t('api_keys.view.title') }}</v-card-title>
                 <v-card-text>
                     <div v-if="selectedKey">
                         <v-list>
@@ -262,14 +270,16 @@
                                 <template #prepend>
                                     <v-icon icon="mdi-key" />
                                 </template>
-                                <v-list-item-title>Name</v-list-item-title>
+                                <v-list-item-title>{{ t('api_keys.view.name') }}</v-list-item-title>
                                 <v-list-item-subtitle>{{ selectedKey.name }}</v-list-item-subtitle>
                             </v-list-item>
                             <v-list-item v-if="selectedKey.description">
                                 <template #prepend>
                                     <v-icon icon="mdi-text" />
                                 </template>
-                                <v-list-item-title>Description</v-list-item-title>
+                                <v-list-item-title>{{
+                                    t('api_keys.view.description')
+                                }}</v-list-item-title>
                                 <v-list-item-subtitle>{{
                                     selectedKey.description
                                 }}</v-list-item-subtitle>
@@ -278,7 +288,9 @@
                                 <template #prepend>
                                     <v-icon icon="mdi-calendar" />
                                 </template>
-                                <v-list-item-title>Created</v-list-item-title>
+                                <v-list-item-title>{{
+                                    t('api_keys.view.created')
+                                }}</v-list-item-title>
                                 <v-list-item-subtitle>{{
                                     formatDate(selectedKey.created_at)
                                 }}</v-list-item-subtitle>
@@ -287,7 +299,9 @@
                                 <template #prepend>
                                     <v-icon icon="mdi-calendar-clock" />
                                 </template>
-                                <v-list-item-title>Expires</v-list-item-title>
+                                <v-list-item-title>{{
+                                    t('api_keys.view.expires')
+                                }}</v-list-item-title>
                                 <v-list-item-subtitle>{{
                                     formatDate(selectedKey.expires_at)
                                 }}</v-list-item-subtitle>
@@ -296,7 +310,9 @@
                                 <template #prepend>
                                     <v-icon icon="mdi-clock" />
                                 </template>
-                                <v-list-item-title>Last Used</v-list-item-title>
+                                <v-list-item-title>{{
+                                    t('api_keys.view.last_used')
+                                }}</v-list-item-title>
                                 <v-list-item-subtitle>{{
                                     formatDate(selectedKey.last_used_at)
                                 }}</v-list-item-subtitle>
@@ -310,7 +326,65 @@
                         color="primary"
                         @click="showViewDialog = false"
                     >
-                        Close
+                        {{ t('common.close') }}
+                    </v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
+        <!-- Created API Key Dialog -->
+        <v-dialog
+            v-model="showCreatedKeyDialog"
+            max-width="600px"
+            persistent
+        >
+            <v-card>
+                <v-card-title class="d-flex align-center">
+                    <v-icon
+                        icon="mdi-check-circle"
+                        color="success"
+                        class="mr-2"
+                    />
+                    {{ t('api_keys.created.title') }}
+                </v-card-title>
+                <v-card-text>
+                    <v-alert
+                        type="warning"
+                        variant="tonal"
+                        class="mb-4"
+                    >
+                        {{ t('api_keys.created.warning') }}
+                    </v-alert>
+
+                    <v-text-field
+                        id="apiKey"
+                        :model-value="createdApiKey"
+                        :label="t('api_keys.created.key_label')"
+                        readonly
+                        variant="outlined"
+                        class="mb-4"
+                    >
+                        <template #append>
+                            <v-btn
+                                icon="mdi-content-copy"
+                                variant="text"
+                                size="small"
+                                @click="copyApiKey"
+                            />
+                        </template>
+                    </v-text-field>
+
+                    <p class="text-body-2 text-medium-emphasis">
+                        {{ t('api_keys.created.description') }}
+                    </p>
+                </v-card-text>
+                <v-card-actions>
+                    <v-spacer />
+                    <v-btn
+                        color="primary"
+                        @click="closeCreatedKeyDialog"
+                    >
+                        {{ t('common.close') }}
                     </v-btn>
                 </v-card-actions>
             </v-card>
@@ -322,10 +396,9 @@
             max-width="400px"
         >
             <v-card>
-                <v-card-title>Confirm Revoke</v-card-title>
+                <v-card-title>{{ t('api_keys.revoke.title') }}</v-card-title>
                 <v-card-text>
-                    Are you sure you want to revoke the API key "{{ keyToRevoke?.name }}"? This
-                    action cannot be undone.
+                    {{ t('api_keys.revoke.message', { name: keyToRevoke?.name }) }}
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer />
@@ -334,14 +407,14 @@
                         variant="text"
                         @click="showRevokeDialog = false"
                     >
-                        Cancel
+                        {{ t('common.cancel') }}
                     </v-btn>
                     <v-btn
                         color="error"
                         :loading="revoking"
                         @click="revokeApiKey"
                     >
-                        Revoke
+                        {{ t('api_keys.revoke.button') }}
                     </v-btn>
                 </v-card-actions>
             </v-card>
@@ -368,20 +441,27 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, computed, onMounted, onUnmounted } from 'vue'
+    import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
     import { useAuthStore } from '@/stores/auth'
     import { typedHttpClient } from '@/api/typed-client'
     import type { ApiKey, CreateApiKeyRequest } from '@/types/schemas'
+    import { useTranslations } from '@/composables/useTranslations'
 
     const authStore = useAuthStore()
+    const { t } = useTranslations()
 
     // Reactive state
     const loading = ref(false)
     const error = ref('')
     const apiKeys = ref<ApiKey[]>([])
     const showCreateDialog = ref(false)
+
+    // Pagination state
+    const currentPage = ref(1)
+    const itemsPerPage = ref(10)
     const showViewDialog = ref(false)
     const showRevokeDialog = ref(false)
+    const showCreatedKeyDialog = ref(false)
     const showSuccessSnackbar = ref(false)
     const showErrorSnackbar = ref(false)
     const successMessage = ref('')
@@ -390,6 +470,7 @@
     const revoking = ref(false)
     const selectedKey = ref<ApiKey | null>(null)
     const keyToRevoke = ref<ApiKey | null>(null)
+    const createdApiKey = ref('')
     const createFormValid = ref(false)
     const createForm = ref<CreateApiKeyRequest>({
         name: '',
@@ -400,6 +481,9 @@
     // Component lifecycle flag
     const isComponentMounted = ref(false)
 
+    // Refs for form validation
+    const nameField = ref<HTMLInputElement | null>(null)
+
     // Computed properties
     const isAdmin = computed(() => {
         return authStore.user?.is_admin || false
@@ -407,27 +491,35 @@
 
     const tableHeaders = computed(() => {
         const headers = [
-            { title: 'Name', key: 'name', sortable: true },
-            { title: 'Description', key: 'description', sortable: false },
-            { title: 'Status', key: 'is_active', sortable: true },
-            { title: 'Created', key: 'created_at', sortable: true },
-            { title: 'Expires', key: 'expires_at', sortable: true },
-            { title: 'Last Used', key: 'last_used_at', sortable: true },
+            { title: t('api_keys.table.name'), key: 'name', sortable: true },
+            { title: t('api_keys.table.description'), key: 'description', sortable: false },
+            { title: t('api_keys.table.status'), key: 'is_active', sortable: true },
+            { title: t('api_keys.table.created'), key: 'created_at', sortable: true },
+            { title: t('api_keys.table.expires'), key: 'expires_at', sortable: true },
+            { title: t('api_keys.table.last_used'), key: 'last_used_at', sortable: true },
         ]
 
         // Add admin-only columns
         if (isAdmin.value) {
-            headers.splice(3, 0, { title: 'User ID', key: 'user_uuid', sortable: false })
-            headers.splice(4, 0, { title: 'Created By', key: 'created_by', sortable: false })
+            headers.splice(3, 0, {
+                title: t('api_keys.table.user_id'),
+                key: 'user_uuid',
+                sortable: false,
+            })
+            headers.splice(4, 0, {
+                title: t('api_keys.table.created_by'),
+                key: 'created_by',
+                sortable: false,
+            })
         }
 
-        headers.push({ title: 'Actions', key: 'actions', sortable: false })
+        headers.push({ title: t('api_keys.table.actions'), key: 'actions', sortable: false })
 
         return headers
     })
 
     // Methods
-    const loadApiKeys = async () => {
+    const loadApiKeys = async (page = 1, itemsPerPage = 10) => {
         // Don't load if component is not mounted or user is not authenticated
         if (!isComponentMounted.value || !authStore.isAuthenticated) {
             return
@@ -437,12 +529,28 @@
         error.value = ''
 
         try {
-            apiKeys.value = await typedHttpClient.getApiKeys()
+            console.log(`Loading API keys: page=${page}, itemsPerPage=${itemsPerPage}`)
+            apiKeys.value = await typedHttpClient.getApiKeys(page, itemsPerPage)
+            console.log(`Loaded ${apiKeys.value.length} API keys`)
         } catch (err) {
+            console.error('Failed to load API keys:', err)
             error.value = err instanceof Error ? err.message : 'Failed to load API keys'
         } finally {
             loading.value = false
         }
+    }
+
+    const handlePageChange = (page: number) => {
+        console.log('Page changed to:', page)
+        currentPage.value = page
+        loadApiKeys(currentPage.value, itemsPerPage.value)
+    }
+
+    const handleItemsPerPageChange = (newItemsPerPage: number) => {
+        console.log('Items per page changed to:', newItemsPerPage)
+        currentPage.value = 1 // Reset to first page when changing items per page
+        itemsPerPage.value = newItemsPerPage
+        loadApiKeys(currentPage.value, itemsPerPage.value)
     }
 
     const createApiKey = async () => {
@@ -462,9 +570,9 @@
 
             const result = await typedHttpClient.createApiKey(requestData)
 
-            // Show the API key to the user (only shown once)
-            showSuccessSnackbar.value = true
-            successMessage.value = `API key created successfully! Key: ${result.api_key}`
+            // Show the API key in the dedicated dialog
+            createdApiKey.value = result.api_key
+            showCreatedKeyDialog.value = true
 
             // Reset form and close dialog
             createForm.value = { name: '', description: '', expires_in_days: undefined }
@@ -474,7 +582,7 @@
             await loadApiKeys()
         } catch (err) {
             showErrorSnackbar.value = true
-            errorMessage.value = err instanceof Error ? err.message : 'Failed to create API key'
+            errorMessage.value = err instanceof Error ? err.message : t('api_keys.create.error')
         } finally {
             creating.value = false
         }
@@ -483,11 +591,6 @@
     const viewKey = (key: ApiKey) => {
         selectedKey.value = key
         showViewDialog.value = true
-    }
-
-    const editKey = (key: ApiKey) => {
-        // TODO: Implement edit functionality
-        console.log('Edit key:', key)
     }
 
     const confirmRevoke = (key: ApiKey) => {
@@ -506,7 +609,7 @@
             await typedHttpClient.revokeApiKey(keyToRevoke.value.uuid)
 
             showSuccessSnackbar.value = true
-            successMessage.value = 'API key revoked successfully'
+            successMessage.value = t('api_keys.revoke.success')
 
             showRevokeDialog.value = false
             keyToRevoke.value = null
@@ -515,20 +618,73 @@
             await loadApiKeys()
         } catch (err) {
             showErrorSnackbar.value = true
-            errorMessage.value = err instanceof Error ? err.message : 'Failed to revoke API key'
+            errorMessage.value = err instanceof Error ? err.message : t('api_keys.revoke.error')
         } finally {
             revoking.value = false
         }
     }
 
-    const formatDate = (dateString: string) => {
+    const formatDate = (dateString: string | null): string => {
+        if (!dateString) {
+            return 'Never'
+        }
         return new Date(dateString).toLocaleString()
+    }
+
+    const validateForm = () => {
+        createFormValid.value = !!createForm.value.name.trim()
+    }
+
+    const focusNameField = () => {
+        // Use nextTick to ensure the field is rendered
+        nextTick(() => {
+            if (nameField.value) {
+                nameField.value.focus()
+            }
+        })
+    }
+
+    const copyApiKey = () => {
+        const apiKey = createdApiKey.value
+
+        // Modern approach
+        if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard
+                .writeText(apiKey)
+                .then(() => {
+                    console.log('API key copied to clipboard via modern method:', apiKey)
+                    showSuccessSnackbar.value = true
+                    successMessage.value = t('api_keys.created.copied')
+                })
+                .catch(err => {
+                    console.error('Failed to copy API key:', err)
+                })
+        } else {
+            // Fallback method (old browsers / JS) - based on masteringjs.io tutorial
+            const input = document.querySelector('#apiKey')
+            input.select()
+            input.setSelectionRange(0, 99999)
+            try {
+                document.execCommand('copy')
+                console.log('API key copied to clipboard via old method:', apiKey)
+                showSuccessSnackbar.value = true
+                successMessage.value = t('api_keys.created.copied')
+            } catch (err) {
+                console.error('Failed to copy API key:', err)
+            }
+            document.body.removeChild(textArea)
+        }
+    }
+
+    const closeCreatedKeyDialog = () => {
+        showCreatedKeyDialog.value = false
+        createdApiKey.value = ''
     }
 
     // Lifecycle
     onMounted(() => {
         isComponentMounted.value = true
-        loadApiKeys()
+        loadApiKeys(currentPage.value, itemsPerPage.value)
     })
 
     onUnmounted(() => {

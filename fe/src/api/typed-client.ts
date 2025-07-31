@@ -275,10 +275,10 @@ class TypedHttpClient {
         )
     }
 
-    async getApiKeys(limit?: number, offset = 0): Promise<ApiKey[]> {
-        const pageSize = limit ?? this.getDefaultPageSize()
+    async getApiKeys(page = 1, itemsPerPage = 10): Promise<ApiKey[]> {
+        const offset = (page - 1) * itemsPerPage
         return this.request(
-            `/admin/api/v1/api-keys?limit=${pageSize}&offset=${offset}`,
+            `/admin/api/v1/api-keys?limit=${itemsPerPage}&offset=${offset}`,
             ApiResponseSchema(z.array(ApiKeySchema))
         )
     }

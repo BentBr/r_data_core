@@ -31,6 +31,67 @@
     "system": "System",
     "logout": "Logout"
   },
+  "api_keys": {
+    "create": {
+      "button": "Create New Key",
+      "title": "Create New API Key",
+      "name_label": "Key Name",
+      "name_required": "Name is required",
+      "description_label": "Description (Optional)",
+      "expires_label": "Expires in Days (Optional)",
+      "expires_hint": "Leave empty for no expiration",
+      "error": "Failed to create API key"
+    },
+    "created": {
+      "title": "API Key Created",
+      "warning": "You cannot retrieve this key afterwards. Please copy it now!",
+      "key_label": "API Key",
+      "description": "Store this key securely. It will not be shown again.",
+      "copied": "API key copied to clipboard!",
+      "copy_failed": "Failed to copy API key to clipboard."
+    },
+    "view": {
+      "title": "API Key Details",
+      "name": "Name",
+      "description": "Description",
+      "created": "Created",
+      "expires": "Expires",
+      "last_used": "Last Used"
+    },
+    "revoke": {
+      "title": "Confirm Revoke",
+      "message": "Are you sure you want to revoke the API key \"{name}\"? This action cannot be undone.",
+      "button": "Revoke",
+      "success": "API key revoked successfully",
+      "error": "Failed to revoke API key"
+    },
+    "table": {
+      "name": "Name",
+      "description": "Description",
+      "status": "Status",
+      "created": "Created",
+      "expires": "Expires",
+      "last_used": "Last Used",
+      "user_id": "User ID",
+      "created_by": "Created By",
+      "actions": "Actions"
+    }
+  },
+  "table": {
+    "items_per_page": "Items per page",
+    "next": "Next",
+    "previous": "Previous",
+    "first": "First",
+    "last": "Last",
+    "page": "Page",
+    "of": "of",
+    "no_data": "No data available",
+    "loading": "Loading..."
+  },
+  "common": {
+    "cancel": "Cancel",
+    "close": "Close"
+  },
   "general": {
     "errors": {
       "unknown": "An unknown error occurred",

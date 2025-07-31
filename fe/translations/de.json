@@ -31,6 +31,67 @@
     "system": "System",
     "logout": "Abmelden"
   },
+  "api_keys": {
+    "create": {
+      "button": "Neuen Schlüssel erstellen",
+      "title": "Neuen API-Schlüssel erstellen",
+      "name_label": "Schlüsselname",
+      "name_required": "Name ist erforderlich",
+      "description_label": "Beschreibung (Optional)",
+      "expires_label": "Ablauf in Tagen (Optional)",
+      "expires_hint": "Leer lassen für kein Ablaufdatum",
+      "error": "API-Schlüssel konnte nicht erstellt werden"
+    },
+    "created": {
+      "title": "API-Schlüssel erstellt",
+      "warning": "Sie können diesen Schlüssel später nicht mehr abrufen. Bitte kopieren Sie ihn jetzt!",
+      "key_label": "API-Schlüssel",
+      "description": "Bewahren Sie diesen Schlüssel sicher auf. Er wird nicht mehr angezeigt.",
+      "copied": "API-Schlüssel in Zwischenablage kopiert!",
+      "copy_failed": "API-Schlüssel konnte nicht in Zwischenablage kopiert werden."
+    },
+    "view": {
+      "title": "API-Schlüssel Details",
+      "name": "Name",
+      "description": "Beschreibung",
+      "created": "Erstellt",
+      "expires": "Ablauf",
+      "last_used": "Zuletzt verwendet"
+    },
+    "revoke": {
+      "title": "Widerruf bestätigen",
+      "message": "Sind Sie sicher, dass Sie den API-Schlüssel \"{name}\" widerrufen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "button": "Widerrufen",
+      "success": "API-Schlüssel erfolgreich widerrufen",
+      "error": "API-Schlüssel konnte nicht widerrufen werden"
+    },
+    "table": {
+      "name": "Name",
+      "description": "Beschreibung",
+      "status": "Status",
+      "created": "Erstellt",
+      "expires": "Ablauf",
+      "last_used": "Zuletzt verwendet",
+      "user_id": "Benutzer-ID",
+      "created_by": "Erstellt von",
+      "actions": "Aktionen"
+    }
+  },
+  "table": {
+    "items_per_page": "Einträge pro Seite",
+    "next": "Weiter",
+    "previous": "Zurück",
+    "first": "Erste",
+    "last": "Letzte",
+    "page": "Seite",
+    "of": "von",
+    "no_data": "Keine Daten verfügbar",
+    "loading": "Lädt..."
+  },
+  "common": {
+    "cancel": "Abbrechen",
+    "close": "Schließen"
+  },
   "general": {
     "errors": {
       "unknown": "Ein unbekannter Fehler ist aufgetreten",
