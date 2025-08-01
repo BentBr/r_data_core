@@ -38,29 +38,22 @@ const NullableTimestampSchema = z
     )
     .nullable()
 
-// API Response wrapper schema
+// Generic API Response wrapper schema
 export const ApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
     z.object({
         status: z.enum(['Success', 'Error']),
         message: z.string(),
-        data: dataSchema.optional(),
-        meta: z
-            .object({
-                pagination: z
-                    .object({
-                        total: z.number(),
-                        page: z.number(),
-                        per_page: z.number(),
-                        total_pages: z.number(),
-                        has_previous: z.boolean(),
-                        has_next: z.boolean(),
-                    })
-                    .optional(),
-                request_id: UuidSchema.optional(),
-                timestamp: TimestampSchema.optional(),
-                custom: z.any().optional(),
-            })
-            .nullish(), // Allow null, undefined, or the object
+        data: dataSchema.optional().nullable(),
+        meta: MetaSchema.nullish(), // Allow null, undefined, or the object
+    })
+
+// Paginated API Response wrapper schema
+export const PaginatedApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+    z.object({
+        status: z.enum(['Success', 'Error']),
+        message: z.string(),
+        data: dataSchema,
+        meta: MetaSchema,
     })
 
 // Auth schemas
@@ -130,7 +123,7 @@ export const DynamicEntitySchema = z.object({
     updated_at: TimestampSchema,
 })
 
-// API Key schemas
+// API Key schema
 export const ApiKeySchema = z.object({
     uuid: UuidSchema,
     name: z.string(),
@@ -142,6 +135,24 @@ export const ApiKeySchema = z.object({
     created_by: UuidSchema,
     user_uuid: UuidSchema,
     published: z.boolean(),
+})
+
+// Pagination schema
+export const PaginationSchema = z.object({
+    total: z.number(),
+    page: z.number(),
+    per_page: z.number(),
+    total_pages: z.number(),
+    has_previous: z.boolean(),
+    has_next: z.boolean(),
+})
+
+// Meta schema that includes pagination and other metadata
+export const MetaSchema = z.object({
+    pagination: PaginationSchema.optional(),
+    request_id: UuidSchema.optional(),
+    timestamp: TimestampSchema.optional(),
+    custom: z.unknown().optional(),
 })
 
 export const CreateApiKeyRequestSchema = z.object({

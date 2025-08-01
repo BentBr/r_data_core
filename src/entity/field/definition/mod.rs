@@ -1,11 +1,11 @@
-use serde::{Deserialize, Serialize};
+use serde::{Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 
 use super::options::FieldValidation;
 use super::types::FieldType;
 use super::ui::UiSettings;
-use crate::error::{Error, Result};
+use crate::error::{Result};
 
 // Module re-exports
 mod constraints;
@@ -14,9 +14,6 @@ mod serialization;
 mod validation;
 
 pub use constraints::*;
-pub use schema::*;
-pub use serialization::*;
-pub use validation::*;
 
 /// Definition of a field in a class
 #[derive(Debug, Clone, Serialize)]

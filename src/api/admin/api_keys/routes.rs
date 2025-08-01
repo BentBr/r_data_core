@@ -1,7 +1,6 @@
-use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
+use actix_web::{delete, get, post, put, web, Responder};
 use log::error;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -102,11 +101,11 @@ pub struct ReassignApiKeyRequest {
     path = "/admin/api/v1/api-keys",
     tag = "api-keys",
     params(
-        ("limit" = Option<i64>, Query, description = "Maximum number of items to return (default: 100)"),
-        ("offset" = Option<i64>, Query, description = "Number of items to skip (default: 0)")
+        ("page" = Option<i64>, Query, description = "Page number (1-based, default: 1)"),
+        ("per_page" = Option<i64>, Query, description = "Number of items per page (default: 20, max: 100)")
     ),
     responses(
-        (status = 200, description = "List of API keys", body = Vec<ApiKeyResponse>),
+        (status = 200, description = "List of API keys with pagination", body = Vec<ApiKeyResponse>),
         (status = 401, description = "Unauthorized"),
         (status = 500, description = "Internal server error")
     ),
@@ -123,15 +122,20 @@ pub async fn list_api_keys(
     let pool = Arc::new(state.db_pool.clone());
     let user_uuid = Uuid::parse_str(&auth.0.sub).expect("Invalid UUID in auth token");
 
-    // Default limit to 100, offset to 0
-    let limit = query.limit.unwrap_or(100);
-    let offset = query.offset.unwrap_or(0);
+    let page = query.get_page(1);
+    let per_page = query.get_per_page(20, 100);
+    let offset = query.get_offset(0);
 
     let repo = ApiKeyRepository::new(pool);
-    let api_keys = repo.list_by_user(user_uuid, limit, offset).await;
+    
+    // Get both the API keys and the total count
+    let (api_keys_result, count_result) = tokio::join!(
+        repo.list_by_user(user_uuid, per_page, offset),
+        repo.count_by_user(user_uuid)
+    );
 
-    match api_keys {
-        Ok(rows) => {
+    match (api_keys_result, count_result) {
+        (Ok(rows), Ok(total)) => {
             let api_keys: Vec<ApiKeyResponse> = rows
                 .iter()
                 .map(|row| ApiKeyResponse {
@@ -148,11 +152,15 @@ pub async fn list_api_keys(
                 })
                 .collect();
 
-            ApiResponse::ok(api_keys)
+            ApiResponse::ok_paginated(api_keys, total, page, per_page)
         }
-        Err(e) => {
+        (Err(e), _) => {
             error!("Failed to list API keys: {}", e);
             ApiResponse::<()>::internal_error("Failed to retrieve API keys")
+        }
+        (_, Err(e)) => {
+            error!("Failed to count API keys: {}", e);
+            ApiResponse::<()>::internal_error("Failed to count API keys")
         }
     }
 }

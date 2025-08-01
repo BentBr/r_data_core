@@ -63,8 +63,23 @@ export function useTranslations() {
         return translations.en || {}
     })
 
-    // Translate function
-    const t = (key: string, fallback?: string): string => {
+    // Translate function with optional parameters
+    const t = (
+        key: string,
+        params?: Record<string, string> | string,
+        fallback?: string
+    ): string => {
+        // Handle the case where params is actually a fallback string
+        let actualParams: Record<string, string> | undefined
+        let actualFallback: string | undefined
+
+        if (typeof params === 'string') {
+            actualFallback = params
+        } else {
+            actualParams = params
+            actualFallback = fallback
+        }
+
         // Try current language first
         let translation = getNestedProperty(currentTranslations.value, key)
 
@@ -74,7 +89,16 @@ export function useTranslations() {
         }
 
         // Return fallback text or key if no translation found
-        return translation || fallback || key
+        let result = translation || actualFallback || key
+
+        // Replace placeholders if parameters are provided
+        if (actualParams && typeof result === 'string') {
+            Object.entries(actualParams).forEach(([placeholder, value]) => {
+                result = result.replace(`{${placeholder}}`, value)
+            })
+        }
+
+        return result
     }
 
     // Translate error messages specifically

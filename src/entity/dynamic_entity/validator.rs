@@ -417,7 +417,7 @@ impl DynamicEntityValidator {
     }
 
     /// Validate JSON fields
-    fn validate_json(ctx: &ValidationContext) -> Result<()> {
+    fn validate_json(_: &ValidationContext) -> Result<()> {
         // For JSON fields, we accept any valid JSON
         // No additional validation needed as Value is already valid JSON
         Ok(())
@@ -509,7 +509,7 @@ pub fn validate_entity(entity: &Value, class_def: &ClassDefinition) -> Result<()
     // Validate fields that are present
     for (field_name, value) in field_data {
         if let Some(field_def) = class_def.get_field(field_name) {
-            let ctx = ValidationContext::with_field_name(field_def, value, field_name);
+            let _ = ValidationContext::with_field_name(field_def, value, field_name);
             if let Err(e) = DynamicEntityValidator::validate_field(field_def, value) {
                 validation_errors.push(e.to_string());
             }

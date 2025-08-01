@@ -661,4 +661,58 @@ mod tests {
         utils::clear_test_db(&pool).await?;
         Ok(())
     }
+
+    /// Test API key pagination functionality
+    #[tokio::test]
+    #[serial]
+    async fn test_api_key_pagination() -> Result<()> {
+        let pool = utils::setup_test_db().await;
+        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+
+        // Create multiple API keys
+        for i in 1..=25 {
+            repo.create_new_api_key(
+                &format!("Key {}", i),
+                &format!("Description {}", i),
+                user_uuid,
+                30,
+            )
+            .await?;
+        }
+
+        // Test pagination with page=1, per_page=10
+        let (keys_page1, total) = tokio::join!(
+            repo.list_by_user(user_uuid, 10, 0),
+            repo.count_by_user(user_uuid)
+        );
+
+        let keys_page1 = keys_page1?;
+        let total = total?;
+
+        assert_eq!(keys_page1.len(), 10);
+        assert_eq!(total, 25);
+
+        // Test pagination with page=2, per_page=10
+        let keys_page2 = repo.list_by_user(user_uuid, 10, 10).await?;
+        assert_eq!(keys_page2.len(), 10);
+
+        // Test pagination with page=3, per_page=10
+        let keys_page3 = repo.list_by_user(user_uuid, 10, 20).await?;
+        assert_eq!(keys_page3.len(), 5); // Should be 5 remaining keys
+
+        // Test pagination with page=4, per_page=10
+        let keys_page4 = repo.list_by_user(user_uuid, 10, 30).await?;
+        assert_eq!(keys_page4.len(), 0); // Should be no keys
+
+        // Test different per_page values
+        let keys_page1_20 = repo.list_by_user(user_uuid, 20, 0).await?;
+        assert_eq!(keys_page1_20.len(), 20);
+
+        let keys_page2_20 = repo.list_by_user(user_uuid, 20, 20).await?;
+        assert_eq!(keys_page2_20.len(), 5);
+
+        utils::clear_test_db(&pool).await?;
+        Ok(())
+    }
 }

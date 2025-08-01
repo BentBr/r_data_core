@@ -1,7 +1,6 @@
-use crate::error::{Error, Result};
+use crate::error::{Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use sqlx::postgres::PgPool;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

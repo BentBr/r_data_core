@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use std::collections::HashMap;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::api::admin::class_definitions::repository::ClassDefinitionRepository;
@@ -9,9 +8,8 @@ use crate::entity::class::repository_trait::ClassDefinitionRepositoryTrait;
 use crate::entity::dynamic_entity::entity::DynamicEntity;
 use crate::entity::dynamic_entity::repository::DynamicEntityRepository;
 use crate::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
-use crate::error::{Error, Result};
+use crate::error::{Result};
 use serde_json::Value as JsonValue;
-use std::sync::Arc;
 
 /// Repository adapter for ClassDefinitionRepository
 pub struct ClassDefinitionRepositoryAdapter {

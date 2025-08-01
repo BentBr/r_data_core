@@ -136,6 +136,7 @@ mod tests {
             ) -> Result<(Uuid, String)>;
             async fn update_last_used(&self, uuid: Uuid) -> Result<()>;
             async fn reassign(&self, uuid: Uuid, new_user_uuid: Uuid) -> Result<()>;
+            async fn count_by_user(&self, user_uuid: Uuid) -> Result<i64>;
         }
     }
 

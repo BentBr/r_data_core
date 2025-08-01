@@ -20,6 +20,9 @@ pub trait ApiKeyRepositoryTrait: Send + Sync {
     /// List all API keys for a user
     async fn list_by_user(&self, user_uuid: Uuid, limit: i64, offset: i64) -> Result<Vec<ApiKey>>;
 
+    /// Count API keys for a user
+    async fn count_by_user(&self, user_uuid: Uuid) -> Result<i64>;
+
     /// Revoke an API key (set is_active to false)
     async fn revoke(&self, uuid: Uuid) -> Result<()>;
 

@@ -1,5 +1,3 @@
-use serde_json::Value;
-
 use crate::entity::field::definition::FieldDefinition;
 use crate::entity::field::types::FieldType;
 

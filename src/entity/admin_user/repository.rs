@@ -323,6 +323,26 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         Ok(api_keys)
     }
 
+    /// Count API keys for a user
+    async fn count_by_user(&self, user_uuid: Uuid) -> Result<i64> {
+        let count = sqlx::query_scalar::<_, i64>(
+            r#"
+            SELECT COUNT(*)
+            FROM api_keys
+            WHERE user_uuid = $1
+            "#,
+        )
+        .bind(user_uuid)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error counting API keys for user: {:?}", e);
+            Error::Database(e)
+        })?;
+
+        Ok(count)
+    }
+
     /// Revoke an API key (set is_active to false)
     async fn revoke(&self, uuid: Uuid) -> Result<()> {
         sqlx::query!(

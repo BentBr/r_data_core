@@ -21,51 +21,18 @@
                     </v-card-title>
 
                     <v-card-text>
-                        <!-- Loading State -->
-                        <v-row v-if="loading">
-                            <v-col
-                                cols="12"
-                                class="text-center"
-                            >
-                                <v-progress-circular
-                                    indeterminate
-                                    color="primary"
-                                    size="64"
-                                />
-                                <div class="mt-4">Loading API keys...</div>
-                            </v-col>
-                        </v-row>
-
-                        <!-- Error State -->
-                        <v-alert
-                            v-else-if="error"
-                            type="error"
-                            variant="tonal"
-                            class="mb-4"
-                        >
-                            {{ error }}
-                        </v-alert>
-
-                        <!-- API Keys Table -->
-                        <v-data-table
-                            v-else
-                            :headers="tableHeaders"
+                        <PaginatedDataTable
                             :items="apiKeys"
+                            :headers="tableHeaders"
                             :loading="loading"
+                            :error="error"
+                            loading-text="Loading API keys..."
+                            :current-page="currentPage"
                             :items-per-page="itemsPerPage"
-                            :page="currentPage"
-                            class="elevation-1"
-                            responsive
-                            :items-per-page-options="[10, 25, 50, 100, 500]"
-                            :items-per-page-text="t('table.items_per_page')"
-                            :next-page-text="t('table.next')"
-                            :prev-page-text="t('table.previous')"
-                            :first-page-text="t('table.first')"
-                            :last-page-text="t('table.last')"
-                            :page-text="t('table.page')"
-                            :of-text="t('table.of')"
-                            :no-data-text="t('table.no_data')"
-                            :loading-text="t('table.loading')"
+                            :total-items="totalItems"
+                            :total-pages="totalPages"
+                            :has-next="paginationMeta?.has_next"
+                            :has-previous="paginationMeta?.has_previous"
                             @update:page="handlePageChange"
                             @update:items-per-page="handleItemsPerPageChange"
                         >
@@ -193,7 +160,7 @@
                                     />
                                 </div>
                             </template>
-                        </v-data-table>
+                        </PaginatedDataTable>
                     </v-card-text>
                 </v-card>
             </v-col>
@@ -398,7 +365,7 @@
             <v-card>
                 <v-card-title>{{ t('api_keys.revoke.title') }}</v-card-title>
                 <v-card-text>
-                    {{ t('api_keys.revoke.message', { name: keyToRevoke?.name }) }}
+                    {{ t('api_keys.revoke.message', { name: keyToRevoke?.name || 'Unknown' }) }}
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer />
@@ -446,6 +413,8 @@
     import { typedHttpClient } from '@/api/typed-client'
     import type { ApiKey, CreateApiKeyRequest } from '@/types/schemas'
     import { useTranslations } from '@/composables/useTranslations'
+    import { usePagination } from '@/composables/usePagination'
+    import PaginatedDataTable from '@/components/tables/PaginatedDataTable.vue'
 
     const authStore = useAuthStore()
     const { t } = useTranslations()
@@ -456,9 +425,20 @@
     const apiKeys = ref<ApiKey[]>([])
     const showCreateDialog = ref(false)
 
-    // Pagination state
-    const currentPage = ref(1)
-    const itemsPerPage = ref(10)
+    // Pagination state with persistence
+    const { state: paginationState, setPage, setItemsPerPage } = usePagination('api-keys', 10)
+    const currentPage = ref(paginationState.page)
+    const itemsPerPage = ref(paginationState.itemsPerPage)
+    const totalItems = ref(0)
+    const totalPages = ref(1)
+    const paginationMeta = ref<{
+        total: number
+        page: number
+        per_page: number
+        total_pages: number
+        has_previous: boolean
+        has_next: boolean
+    } | null>(null)
     const showViewDialog = ref(false)
     const showRevokeDialog = ref(false)
     const showCreatedKeyDialog = ref(false)
@@ -530,8 +510,17 @@
 
         try {
             console.log(`Loading API keys: page=${page}, itemsPerPage=${itemsPerPage}`)
-            apiKeys.value = await typedHttpClient.getApiKeys(page, itemsPerPage)
-            console.log(`Loaded ${apiKeys.value.length} API keys`)
+            const response = await typedHttpClient.getApiKeys(page, itemsPerPage)
+            apiKeys.value = response.data
+            if (response.meta?.pagination) {
+                totalItems.value = response.meta.pagination.total
+                totalPages.value = response.meta.pagination.total_pages
+                paginationMeta.value = response.meta.pagination
+            } else {
+                totalItems.value = apiKeys.value.length
+                totalPages.value = 1
+                paginationMeta.value = null
+            }
         } catch (err) {
             console.error('Failed to load API keys:', err)
             error.value = err instanceof Error ? err.message : 'Failed to load API keys'
@@ -543,13 +532,14 @@
     const handlePageChange = (page: number) => {
         console.log('Page changed to:', page)
         currentPage.value = page
+        setPage(page)
         loadApiKeys(currentPage.value, itemsPerPage.value)
     }
 
     const handleItemsPerPageChange = (newItemsPerPage: number) => {
         console.log('Items per page changed to:', newItemsPerPage)
-        currentPage.value = 1 // Reset to first page when changing items per page
         itemsPerPage.value = newItemsPerPage
+        setItemsPerPage(newItemsPerPage)
         loadApiKeys(currentPage.value, itemsPerPage.value)
     }
 

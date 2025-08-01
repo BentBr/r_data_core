@@ -1,8 +1,9 @@
 use actix_web::{http::StatusCode, HttpResponse, ResponseError};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use time::OffsetDateTime;
 use uuid::Uuid;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum Status {
@@ -103,7 +104,7 @@ where
         let meta = ResponseMeta {
             pagination: Some(pagination),
             request_id: Some(Uuid::now_v7()),
-            timestamp: Some(time::OffsetDateTime::now_utc().to_string()),
+            timestamp: Some(OffsetDateTime::now_utc().format(&Rfc3339).unwrap()),
             custom: None,
         };
 
@@ -137,7 +138,7 @@ where
         let meta = meta.unwrap_or_else(|| ResponseMeta {
             pagination: None,
             request_id: Some(Uuid::now_v7()),
-            timestamp: Some(time::OffsetDateTime::now_utc().to_string()),
+            timestamp: Some(OffsetDateTime::now_utc().format(&Rfc3339).unwrap()),
             custom: Some(custom),
         });
 
