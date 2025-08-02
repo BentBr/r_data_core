@@ -10,6 +10,9 @@ pub trait EntityDefinitionRepositoryTrait: Send + Sync {
     /// List all entity definitions with pagination
     async fn list(&self, limit: i64, offset: i64) -> Result<Vec<EntityDefinition>>;
 
+    /// Count all entity definitions
+    async fn count(&self) -> Result<i64>;
+
     /// Get an entity definition by UUID
     async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<EntityDefinition>>;
 

@@ -10,6 +10,8 @@ import {
     ApiResponseSchema,
     type EntityDefinition,
     EntityDefinitionSchema,
+    type CreateEntityDefinitionRequest,
+    type UpdateEntityDefinitionRequest,
     type CreateApiKeyRequest,
     type ApiKeyCreatedResponse,
     ApiKeyCreatedResponseSchema,
@@ -443,12 +445,31 @@ class TypedHttpClient {
         return env.defaultPageSize
     }
 
-    async getEntityDefinitions(limit?: number, offset = 0): Promise<EntityDefinition[]> {
+    async getEntityDefinitions(
+        limit?: number,
+        offset = 0
+    ): Promise<{
+        data: EntityDefinition[]
+        meta?: {
+            pagination?: {
+                total: number
+                page: number
+                per_page: number
+                total_pages: number
+                has_previous: boolean
+                has_next: boolean
+            }
+            request_id?: string
+            timestamp?: string
+            custom?: unknown
+        }
+    }> {
         const pageSize = limit ?? this.getDefaultPageSize()
-        return this.request(
+        const response = await this.paginatedRequest(
             `/admin/api/v1/entity-definitions?limit=${pageSize}&offset=${offset}`,
-            ApiResponseSchema(z.array(EntityDefinitionSchema))
+            PaginatedApiResponseSchema(z.array(EntityDefinitionSchema))
         )
+        return response
     }
 
     async getEntityDefinition(uuid: string): Promise<EntityDefinition> {
@@ -458,7 +479,7 @@ class TypedHttpClient {
         )
     }
 
-    async createEntityDefinition(data: Partial<EntityDefinition>): Promise<{ uuid: string }> {
+    async createEntityDefinition(data: CreateEntityDefinitionRequest): Promise<{ uuid: string }> {
         return this.request(
             '/admin/api/v1/entity-definitions',
             ApiResponseSchema(z.object({ uuid: z.string().uuid() })),
@@ -471,7 +492,7 @@ class TypedHttpClient {
 
     async updateEntityDefinition(
         uuid: string,
-        data: Partial<EntityDefinition>
+        data: UpdateEntityDefinitionRequest
     ): Promise<{ uuid: string }> {
         return this.request(
             `/admin/api/v1/entity-definitions/${uuid}`,
@@ -491,6 +512,17 @@ class TypedHttpClient {
                 method: 'DELETE',
             }
         )
+    }
+
+    async applyEntityDefinitionSchema(uuid?: string): Promise<{ message: string }> {
+        const endpoint = uuid
+            ? '/admin/api/v1/entity-definitions/apply-schema'
+            : '/admin/api/v1/entity-definitions/apply-schema'
+
+        return this.request(endpoint, ApiResponseSchema(z.object({ message: z.string() })), {
+            method: 'POST',
+            body: JSON.stringify({ uuid }),
+        })
     }
 
     async getApiKeys(

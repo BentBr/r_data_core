@@ -74,7 +74,7 @@ export const LoginResponseSchema = z.object({
 
 // Field Definition schema
 export const FieldDefinitionSchema = z.object({
-    field_name: z.string(),
+    name: z.string(),
     display_name: z.string(),
     field_type: z.enum([
         'String',
@@ -95,23 +95,31 @@ export const FieldDefinitionSchema = z.object({
         'Image',
         'File',
     ]),
-    is_required: z.boolean(),
-    constraints: z.record(z.string(), z.any()).optional(),
-    ui_options: z.record(z.string(), z.any()).optional(),
+    description: z.string().optional(),
+    required: z.boolean(),
+    indexed: z.boolean(),
+    filterable: z.boolean(),
+    default_value: z.any().optional(),
+    constraints: z.any().optional(),
+    ui_settings: z.any().optional(),
 })
 
 // Entity Definition schema
 export const EntityDefinitionSchema = z.object({
-    uuid: UuidSchema,
+    uuid: UuidSchema.optional(),
     entity_type: z.string(),
     display_name: z.string(),
     description: z.string().optional(),
-    field_definitions: z.array(FieldDefinitionSchema),
-    created_at: TimestampSchema,
-    updated_at: TimestampSchema,
-    created_by: UuidSchema,
+    group_name: z.string().optional(),
+    allow_children: z.boolean(),
+    icon: z.string().optional(),
+    fields: z.array(FieldDefinitionSchema),
+    published: z.boolean().optional(),
+    created_at: TimestampSchema.optional(),
+    updated_at: TimestampSchema.optional(),
+    created_by: UuidSchema.optional(),
     updated_by: UuidSchema.optional(),
-    version: z.number().int().positive(),
+    version: z.number().int().positive().optional(),
 })
 
 // Dynamic Entity schema
@@ -159,6 +167,28 @@ export const CreateApiKeyRequestSchema = z.object({
     name: z.string().min(1),
     description: z.string().optional(),
     expires_in_days: z.number().int().positive().optional(),
+})
+
+export const CreateEntityDefinitionRequestSchema = EntityDefinitionSchema.pick({
+    entity_type: true,
+    display_name: true,
+    description: true,
+    group_name: true,
+    allow_children: true,
+    icon: true,
+    fields: true,
+    published: true,
+})
+
+export const UpdateEntityDefinitionRequestSchema = EntityDefinitionSchema.pick({
+    entity_type: true,
+    display_name: true,
+    description: true,
+    group_name: true,
+    allow_children: true,
+    icon: true,
+    fields: true,
+    published: true,
 })
 
 export const ApiKeyCreatedResponseSchema = ApiKeySchema.extend({
@@ -218,6 +248,8 @@ export type DynamicEntity = z.infer<typeof DynamicEntitySchema>
 export type ApiKey = z.infer<typeof ApiKeySchema>
 export type CreateApiKeyRequest = z.infer<typeof CreateApiKeyRequestSchema>
 export type ApiKeyCreatedResponse = z.infer<typeof ApiKeyCreatedResponseSchema>
+export type CreateEntityDefinitionRequest = z.infer<typeof CreateEntityDefinitionRequestSchema>
+export type UpdateEntityDefinitionRequest = z.infer<typeof UpdateEntityDefinitionRequestSchema>
 export type User = z.infer<typeof UserSchema>
 
 // Additional exports for base schemas

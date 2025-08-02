@@ -77,6 +77,73 @@
       "actions": "Actions"
     }
   },
+  "entity_definitions": {
+    "create": {
+      "button": "Create New Definition",
+      "title": "Create New Entity Definition",
+      "entity_type_label": "Entity Type",
+      "entity_type_required": "Entity type is required",
+      "entity_type_hint": "Must be unique, alphanumeric with underscores, no spaces",
+      "display_name_label": "Display Name",
+      "display_name_required": "Display name is required",
+      "description_label": "Description (Optional)",
+      "group_name_label": "Group Name (Optional)",
+      "allow_children_label": "Allow Children",
+      "icon_label": "Icon (Optional)",
+      "published_label": "Published",
+      "error": "Failed to create entity definition"
+    },
+    "edit": {
+      "title": "Edit Entity Definition",
+      "save": "Save Changes",
+      "cancel": "Cancel",
+      "error": "Failed to update entity definition"
+    },
+    "delete": {
+      "title": "Confirm Delete",
+      "message": "Are you sure you want to delete the entity definition \"{name}\"? This action cannot be undone.",
+      "button": "Delete",
+      "success": "Entity definition deleted successfully",
+      "error": "Failed to delete entity definition"
+    },
+    "fields": {
+      "title": "Fields",
+      "add_field": "Add Field",
+      "field_name": "Field Name",
+      "display_name": "Display Name",
+      "field_type": "Field Type",
+      "required": "Required",
+      "indexed": "Indexed",
+      "filterable": "Filterable",
+      "description": "Description",
+      "default_value": "Default Value",
+      "constraints": "Constraints",
+      "ui_settings": "UI Settings",
+      "remove_field": "Remove Field"
+    },
+    "table": {
+      "entity_type": "Entity Type",
+      "display_name": "Display Name",
+      "description": "Description",
+      "group_name": "Group",
+      "fields_count": "Fields",
+      "published": "Published",
+      "created": "Created",
+      "updated": "Updated",
+      "version": "Version",
+      "actions": "Actions"
+    },
+    "details": {
+      "title": "Entity Definition Details",
+      "meta_info": "Meta Information",
+      "fields": "Fields",
+      "apply_schema": "Apply Schema",
+      "schema_applied": "Schema applied successfully",
+      "schema_error": "Failed to apply schema",
+      "select_entity": "Select an entity definition to view details",
+      "select_entity_description": "Choose an entity definition from the tree view to see its properties and fields."
+    }
+  },
   "table": {
     "items_per_page": "Items per page",
     "next": "Next",

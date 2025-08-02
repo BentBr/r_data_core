@@ -30,6 +30,11 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepositoryAdapter {
         self.inner.list(limit, offset).await
     }
 
+    async fn count(&self) -> Result<i64> {
+        log::debug!("EntityDefinitionRepositoryAdapter::count called");
+        self.inner.count().await
+    }
+
     async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<EntityDefinition>> {
         log::debug!(
             "EntityDefinitionRepositoryAdapter::get_by_uuid called with uuid: {}",

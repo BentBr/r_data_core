@@ -6,9 +6,10 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::models::ApplySchemaRequest;
-use super::models::PaginationQuery;
 use super::models::PathUuid;
 use crate::api::ApiState;
+use crate::api::models::PaginationQuery;
+use crate::api::response::ApiResponse;
 use crate::entity::EntityDefinition;
 
 /// List entity definitions
@@ -35,26 +36,35 @@ async fn list_entity_definitions(
     query: web::Query<PaginationQuery>,
     _: auth_enum::RequiredAuth,
 ) -> impl Responder {
-    let limit = query.limit.unwrap_or(20);
-    let offset = query.offset.unwrap_or(0);
+    let per_page = query.get_per_page(20, 100);
+    let offset = query.get_offset(0);
+    let page = query.get_page(1);
+    let limit = per_page;
 
-    match data
-        .entity_definition_service
-        .list_entity_definitions(limit, offset)
-        .await
-    {
-        Ok(definitions) => {
+    // Get both the entity definitions and the total count
+    let (definitions_result, count_result) = tokio::join!(
+        data.entity_definition_service.list_entity_definitions(limit, offset),
+        data.entity_definition_service.count_entity_definitions()
+    );
+
+    match (definitions_result, count_result) {
+        (Ok(definitions), Ok(total)) => {
             // Convert to schema models
             let schema_definitions = definitions
                 .iter()
                 .map(|def| def.to_schema_model())
                 .collect::<Vec<_>>();
 
-            HttpResponse::Ok().json(schema_definitions)
+            ApiResponse::ok_paginated(schema_definitions, total, page, per_page)
         }
-        Err(e) => HttpResponse::InternalServerError().json(json!({
-            "error": format!("Failed to list entity definitions: {}", e)
-        })),
+        (Err(e), _) => {
+            error!("Failed to list entity definitions: {}", e);
+            ApiResponse::<()>::internal_error("Failed to retrieve entity definitions")
+        }
+        (_, Err(e)) => {
+            error!("Failed to count entity definitions: {}", e);
+            ApiResponse::<()>::internal_error("Failed to count entity definitions")
+        }
     }
 }
 
@@ -90,14 +100,13 @@ async fn get_entity_definition(
         Ok(definition) => {
             // Convert to schema model
             let schema_definition = definition.to_schema_model();
-            HttpResponse::Ok().json(schema_definition)
+            ApiResponse::ok(schema_definition)
         }
-        Err(crate::error::Error::NotFound(_)) => HttpResponse::NotFound().json(json!({
-            "error": "Entity definition not found"
-        })),
-        Err(e) => HttpResponse::InternalServerError().json(json!({
-            "error": format!("Failed to retrieve entity definition: {}", e)
-        })),
+        Err(crate::error::Error::NotFound(_)) => ApiResponse::<()>::not_found("Entity definition"),
+        Err(e) => {
+            error!("Failed to retrieve entity definition: {}", e);
+            ApiResponse::<()>::internal_error("Failed to retrieve entity definition")
+        }
     }
 }
 
@@ -185,9 +194,7 @@ async fn create_entity_definition(
 
     // Validate entity definition
     if let Err(e) = entity_def.validate() {
-        return HttpResponse::UnprocessableEntity().json(json!({
-            "error": format!("Validation failed: {}", e),
-        }));
+        return ApiResponse::<()>::unprocessable_entity(&format!("Validation failed: {}", e));
     }
 
     // Create the entity definition using the service
@@ -203,16 +210,14 @@ async fn create_entity_definition(
                 entity_def.entity_type
             );
 
-            HttpResponse::Created().json(json!({
+            ApiResponse::<serde_json::Value>::created(json!({
                 "uuid": uuid,
                 "message": "Class definition created successfully"
             }))
         }
         Err(crate::error::Error::Validation(msg)) => {
             error!("Validation error when creating entity definition: {}", msg);
-            HttpResponse::UnprocessableEntity().json(json!({
-                "error": msg
-            }))
+            ApiResponse::<()>::unprocessable_entity(&msg)
         }
         Err(e) => {
             // Log the full error details
@@ -225,10 +230,7 @@ async fn create_entity_definition(
             debug!("Class definition details: {:#?}", entity_def);
             debug!("Error details: {:#?}", e);
 
-            HttpResponse::InternalServerError().json(json!({
-                "error": format!("Failed to create entity definition: {}", e),
-                "details": format!("{:?}", e)
-            }))
+            ApiResponse::<()>::internal_error(&format!("Failed to create entity definition: {}", e))
         }
     }
 }
@@ -319,16 +321,15 @@ async fn update_entity_definition(
         .update_entity_definition(&path.uuid, &updated_def)
         .await
     {
-        Ok(_) => HttpResponse::Ok().json(json!({
+        Ok(_) => ApiResponse::ok(json!({
             "message": "Class definition updated successfully",
             "uuid": path.uuid
         })),
-        Err(crate::error::Error::Validation(msg)) => HttpResponse::BadRequest().json(json!({
-            "error": msg
-        })),
-        Err(e) => HttpResponse::InternalServerError().json(json!({
-            "error": format!("Failed to update entity definition: {}", e)
-        })),
+        Err(crate::error::Error::Validation(msg)) => ApiResponse::<()>::bad_request(&msg),
+        Err(e) => {
+            error!("Failed to update entity definition: {}", e);
+            ApiResponse::<()>::internal_error(&format!("Failed to update entity definition: {}", e))
+        }
     }
 }
 
@@ -362,18 +363,15 @@ async fn delete_entity_definition(
         .delete_entity_definition(&path.uuid)
         .await
     {
-        Ok(_) => HttpResponse::Ok().json(json!({
+        Ok(_) => ApiResponse::ok(json!({
             "message": "Class definition deleted successfully"
         })),
-        Err(crate::error::Error::NotFound(_)) => HttpResponse::NotFound().json(json!({
-            "error": "Class definition not found"
-        })),
-        Err(crate::error::Error::Validation(msg)) => HttpResponse::BadRequest().json(json!({
-            "error": msg
-        })),
-        Err(e) => HttpResponse::InternalServerError().json(json!({
-            "error": format!("Failed to delete entity definition: {}", e)
-        })),
+        Err(crate::error::Error::NotFound(_)) => ApiResponse::<()>::not_found("Entity definition"),
+        Err(crate::error::Error::Validation(msg)) => ApiResponse::<()>::bad_request(&msg),
+        Err(e) => {
+            error!("Failed to delete entity definition: {}", e);
+            ApiResponse::<()>::internal_error(&format!("Failed to delete entity definition: {}", e))
+        }
     }
 }
 
@@ -410,25 +408,22 @@ async fn apply_entity_definition_schema(
             if uuid_option.is_some() {
                 // If a specific UUID was provided
                 if failed.is_empty() {
-                    HttpResponse::Ok().json(json!({
+                    ApiResponse::ok(json!({
                         "message": "Database schema applied successfully",
                         "uuid": uuid_option.unwrap()
                     }))
                 } else {
-                    let (entity_type, uuid, error) = &failed[0];
-                    HttpResponse::InternalServerError().json(json!({
-                        "error": format!("Failed to apply schema for {}: {}", entity_type, error),
-                        "uuid": uuid
-                    }))
+                    let (entity_type, _uuid, error) = &failed[0];
+                    ApiResponse::<()>::internal_error(&format!("Failed to apply schema for {}: {}", entity_type, error))
                 }
             } else {
                 // If applying schema for all definitions
                 if failed.is_empty() {
-                    HttpResponse::Ok().json(json!({
+                    ApiResponse::ok(json!({
                         "message": format!("Applied schema for {} entity definitions", success_count)
                     }))
                 } else {
-                    HttpResponse::PartialContent().json(json!({
+                    ApiResponse::ok(json!({
                         "message": format!("Applied schema for {} entity definitions, {} failed", success_count, failed.len()),
                         "successful": success_count,
                         "failed": failed
@@ -436,12 +431,11 @@ async fn apply_entity_definition_schema(
                 }
             }
         }
-        Err(crate::error::Error::NotFound(_)) => HttpResponse::NotFound().json(json!({
-            "error": format!("Class definition with UUID {} not found", uuid_option.unwrap())
-        })),
-        Err(e) => HttpResponse::InternalServerError().json(json!({
-            "error": format!("Failed to apply schema: {}", e)
-        })),
+        Err(crate::error::Error::NotFound(_)) => ApiResponse::<()>::not_found("Entity definition"),
+        Err(e) => {
+            error!("Failed to apply schema: {}", e);
+            ApiResponse::<()>::internal_error(&format!("Failed to apply schema: {}", e))
+        }
     }
 }
 

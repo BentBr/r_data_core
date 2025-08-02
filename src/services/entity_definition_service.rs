@@ -31,6 +31,11 @@ impl EntityDefinitionService {
         self.repository.list(limit, offset).await
     }
 
+    /// Count entity definitions
+    pub async fn count_entity_definitions(&self) -> Result<i64> {
+        self.repository.count().await
+    }
+
     /// Get an entity definition by UUID
     pub async fn get_entity_definition(&self, uuid: &Uuid) -> Result<EntityDefinition> {
         let definition = self.repository.get_by_uuid(uuid).await?;
@@ -286,6 +291,7 @@ mod tests {
         #[async_trait]
         impl EntityDefinitionRepositoryTrait for EntityDefinitionRepo {
             async fn list(&self, limit: i64, offset: i64) -> Result<Vec<EntityDefinition>>;
+            async fn count(&self) -> Result<i64>;
             async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<EntityDefinition>>;
             async fn get_by_entity_type(&self, entity_type: &str) -> Result<Option<EntityDefinition>>;
             async fn create(&self, definition: &EntityDefinition) -> Result<Uuid>;

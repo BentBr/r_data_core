@@ -77,6 +77,73 @@
       "actions": "Aktionen"
     }
   },
+  "entity_definitions": {
+    "create": {
+      "button": "Neue Definition erstellen",
+      "title": "Neue Entitätsdefinition erstellen",
+      "entity_type_label": "Entitätstyp",
+      "entity_type_required": "Entitätstyp ist erforderlich",
+      "entity_type_hint": "Muss eindeutig sein, alphanumerisch mit Unterstrichen, keine Leerzeichen",
+      "display_name_label": "Anzeigename",
+      "display_name_required": "Anzeigename ist erforderlich",
+      "description_label": "Beschreibung (Optional)",
+      "group_name_label": "Gruppenname (Optional)",
+      "allow_children_label": "Kinder erlauben",
+      "icon_label": "Symbol (Optional)",
+      "published_label": "Veröffentlicht",
+      "error": "Entitätsdefinition konnte nicht erstellt werden"
+    },
+    "edit": {
+      "title": "Entitätsdefinition bearbeiten",
+      "save": "Änderungen speichern",
+      "cancel": "Abbrechen",
+      "error": "Entitätsdefinition konnte nicht aktualisiert werden"
+    },
+    "delete": {
+      "title": "Löschen bestätigen",
+      "message": "Sind Sie sicher, dass Sie die Entitätsdefinition \"{name}\" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "button": "Löschen",
+      "success": "Entitätsdefinition erfolgreich gelöscht",
+      "error": "Entitätsdefinition konnte nicht gelöscht werden"
+    },
+    "fields": {
+      "title": "Felder",
+      "add_field": "Feld hinzufügen",
+      "field_name": "Feldname",
+      "display_name": "Anzeigename",
+      "field_type": "Feldtyp",
+      "required": "Erforderlich",
+      "indexed": "Indiziert",
+      "filterable": "Filterbar",
+      "description": "Beschreibung",
+      "default_value": "Standardwert",
+      "constraints": "Einschränkungen",
+      "ui_settings": "UI-Einstellungen",
+      "remove_field": "Feld entfernen"
+    },
+    "table": {
+      "entity_type": "Entitätstyp",
+      "display_name": "Anzeigename",
+      "description": "Beschreibung",
+      "group_name": "Gruppe",
+      "fields_count": "Felder",
+      "published": "Veröffentlicht",
+      "created": "Erstellt",
+      "updated": "Aktualisiert",
+      "version": "Version",
+      "actions": "Aktionen"
+    },
+    "details": {
+      "title": "Entitätsdefinition Details",
+      "meta_info": "Meta-Informationen",
+      "fields": "Felder",
+      "apply_schema": "Schema anwenden",
+      "schema_applied": "Schema erfolgreich angewendet",
+      "schema_error": "Schema konnte nicht angewendet werden",
+      "select_entity": "Wählen Sie eine Entitätsdefinition aus, um Details anzuzeigen",
+      "select_entity_description": "Wählen Sie eine Entitätsdefinition aus der Baumansicht aus, um ihre Eigenschaften und Felder zu sehen."
+    }
+  },
   "table": {
     "items_per_page": "Einträge pro Seite",
     "next": "Weiter",

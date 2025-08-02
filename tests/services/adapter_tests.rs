@@ -19,6 +19,7 @@ mockall::mock! {
     #[async_trait]
     impl EntityDefinitionRepositoryTrait for EntityDefRepository {
         async fn list(&self, limit: i64, offset: i64) -> Result<Vec<EntityDefinition>>;
+        async fn count(&self) -> Result<i64>;
         async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<EntityDefinition>>;
         async fn get_by_entity_type(&self, entity_type: &str) -> Result<Option<EntityDefinition>>;
         async fn create(&self, definition: &EntityDefinition) -> Result<Uuid>;

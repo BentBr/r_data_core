@@ -169,6 +169,13 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
             .await
     }
 
+    async fn count(&self) -> Result<i64> {
+        self.db_pool
+            .repository_with_table::<EntityDefinition>("entity_definitions")
+            .count(None)
+            .await
+    }
+
     /// Get a entity definition by UUID
     async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<EntityDefinition>> {
         // Use custom query with explicit type casting
