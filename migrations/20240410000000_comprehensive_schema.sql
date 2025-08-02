@@ -2,7 +2,7 @@
 -- All TIMESTAMPTZ fields are interacted with using time::OffsetDateTime in application code
 -- Note: This migration assumes PostgreSQL 13+ with uuid-ossp extension
 
--- Enable UUID extension and v7 function 
+-- Enable UUID extension and v7 function
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create a function to automatically update the updated_at column
@@ -52,8 +52,8 @@ CREATE TABLE IF NOT EXISTS entities_versions (
 
 CREATE INDEX IF NOT EXISTS idx_entities_versions_entity_uuid ON entities_versions(entity_uuid);
 
--- Class Definitions Table
-CREATE TABLE IF NOT EXISTS class_definitions (
+-- Entity Definitions Table
+CREATE TABLE IF NOT EXISTS entity_definitions (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
     entity_type VARCHAR(100) NOT NULL UNIQUE,
     display_name VARCHAR(255) NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS class_definitions (
     version INTEGER NOT NULL DEFAULT 1
 );
 
-CREATE INDEX IF NOT EXISTS idx_class_definitions_uuid ON class_definitions(uuid);
+CREATE INDEX IF NOT EXISTS idx_entity_definitions_uuid ON entity_definitions(uuid);
 
 -- Create a logging function that can be used to debug UUID issues
 CREATE OR REPLACE FUNCTION log_uuid_debug(uuid_val UUID)
@@ -87,7 +87,7 @@ RETURNS VOID AS $$
 DECLARE
     table_name TEXT;
     view_name TEXT;
-    class_def RECORD;
+    entity_def RECORD;
     field_record RECORD;
     column_record RECORD;
     field_names TEXT[] := ARRAY[]::TEXT[];
@@ -108,45 +108,45 @@ BEGIN
     -- Set the table and view names
     table_name := 'entity_' || lower(entity_type_param);
     view_name := table_name || '_view';
-    
-    -- Get the class definition for this entity type
-    SELECT * INTO class_def FROM class_definitions WHERE entity_type = entity_type_param;
-    
+
+    -- Get the entity definition for this entity type
+    SELECT * INTO entity_def FROM entity_definitions WHERE entity_type = entity_type_param;
+
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'No class definition found for entity type %', entity_type_param;
+        RAISE EXCEPTION 'No entity definition found for entity type %', entity_type_param;
     END IF;
-    
+
     -- Check if view exists before attempting to drop it
     EXECUTE format('
         SELECT EXISTS (
             SELECT FROM information_schema.views
-            WHERE table_schema = ''public'' 
+            WHERE table_schema = ''public''
             AND table_name = %L
         )', view_name) INTO view_exists;
-    
+
     -- Drop the view if it exists - do this first to avoid dependency issues
     IF view_exists THEN
         EXECUTE format('DROP VIEW IF EXISTS %I CASCADE', view_name);
         RAISE NOTICE 'Dropped existing view %', view_name;
     END IF;
-    
+
     -- Extract field names now to avoid issues later
     FOR field_record IN
-        SELECT jsonb_array_elements(class_def.field_definitions) AS field
+        SELECT jsonb_array_elements(entity_def.field_definitions) AS field
     LOOP
         field_name := lower(field_record.field->>'name');
         field_names := array_append(field_names, field_name);
     END LOOP;
-    
-    RAISE NOTICE 'Field names from class definition: %', field_names;
-    
+
+    RAISE NOTICE 'Field names from entity definition: %', field_names;
+
     -- Create the table if it doesn't exist
     EXECUTE format('
         CREATE TABLE IF NOT EXISTS %I (
             uuid UUID PRIMARY KEY REFERENCES entities_registry(uuid) ON DELETE CASCADE
         )',
         table_name);
-    
+
     -- Get existing columns
     FOR column_record IN
         EXECUTE format('
@@ -159,29 +159,29 @@ BEGIN
         -- Check if this column exists in the field definitions
         column_name := lower(column_record.column_name);
         IF column_name <> ALL(field_names) AND column_name NOT IN ('created_at', 'updated_at', 'created_by', 'updated_by', 'published', 'version', 'path') THEN
-            drop_sql := format('ALTER TABLE %I DROP COLUMN IF EXISTS %I', 
+            drop_sql := format('ALTER TABLE %I DROP COLUMN IF EXISTS %I',
                               table_name, column_name);
             RAISE NOTICE 'Dropping column: %', drop_sql;
             EXECUTE drop_sql;
         END IF;
     END LOOP;
-    
+
     -- Add columns from field definitions
     FOREACH field_name IN ARRAY field_names
     LOOP
         -- Find matching field record
         SELECT field FROM (
-            SELECT jsonb_array_elements(class_def.field_definitions) AS field
+            SELECT jsonb_array_elements(entity_def.field_definitions) AS field
         ) AS fields
         WHERE lower(field->>'name') = field_name
         INTO field_record;
-        
+
         IF field_record IS NULL THEN
             CONTINUE;  -- Skip if not found
         END IF;
-        
+
         field_type := field_record.field->>'field_type';
-        
+
         -- Map field types to SQL types
         CASE field_type
             WHEN 'String' THEN sql_type := 'VARCHAR(255)';
@@ -204,17 +204,17 @@ BEGIN
             WHEN 'File' THEN sql_type := 'VARCHAR(255)';
             ELSE sql_type := 'TEXT';
         END CASE;
-        
+
         -- Check if column exists first to handle type changes appropriately
         EXECUTE format('
             SELECT EXISTS (
                 SELECT FROM information_schema.columns
-                WHERE table_schema = ''public'' 
+                WHERE table_schema = ''public''
                 AND table_name = %L
                 AND column_name = %L
             )
         ', table_name, field_name) INTO col_exists;
-        
+
         IF col_exists THEN
             -- For existing columns that need type changes, handle with data preservation
             BEGIN
@@ -226,75 +226,75 @@ BEGIN
                 BEGIN
                     EXECUTE format('
                         SELECT data_type FROM information_schema.columns
-                        WHERE table_schema = ''public'' 
+                        WHERE table_schema = ''public''
                         AND table_name = %L
                         AND column_name = %L
                     ', table_name, field_name) INTO current_type;
-                    
+
                     -- If type needs to change, try to do it safely
                     IF current_type IS DISTINCT FROM sql_type THEN
                         -- Try direct type cast first
                         BEGIN
-                            alter_sql := format('ALTER TABLE %I ALTER COLUMN %I TYPE %s', 
+                            alter_sql := format('ALTER TABLE %I ALTER COLUMN %I TYPE %s',
                                               table_name, field_name, sql_type);
                             EXECUTE alter_sql;
-                            RAISE NOTICE 'Safely changed column % type from % to % with ALTER COLUMN', 
+                            RAISE NOTICE 'Safely changed column % type from % to % with ALTER COLUMN',
                                       field_name, current_type, sql_type;
                         EXCEPTION WHEN OTHERS THEN
                             -- If direct cast fails, use temporary column approach
                             RAISE NOTICE 'Direct type conversion failed: %', SQLERRM;
-                            
+
                             -- Create a temporary column with new type
                             temp_col_name := field_name || '_new';
-                            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', 
+                            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s',
                                           table_name, temp_col_name, sql_type);
-                            
+
                             -- Try to copy data with explicit cast
                             BEGIN
-                                EXECUTE format('UPDATE %I SET %I = %I::%s', 
+                                EXECUTE format('UPDATE %I SET %I = %I::%s',
                                               table_name, temp_col_name, field_name, sql_type);
-                                
+
                                 -- Drop old column
-                                EXECUTE format('ALTER TABLE %I DROP COLUMN %I', 
+                                EXECUTE format('ALTER TABLE %I DROP COLUMN %I',
                                               table_name, field_name);
-                                
+
                                 -- Rename temp column to original name
-                                EXECUTE format('ALTER TABLE %I RENAME COLUMN %I TO %I', 
+                                EXECUTE format('ALTER TABLE %I RENAME COLUMN %I TO %I',
                                               table_name, temp_col_name, field_name);
-                                
-                                RAISE NOTICE 'Changed column % type from % to % using temporary column with data preserved', 
+
+                                RAISE NOTICE 'Changed column % type from % to % using temporary column with data preserved',
                                           field_name, current_type, sql_type;
                             EXCEPTION WHEN OTHERS THEN
                                 -- If casting fails, try without casting
                                 RAISE NOTICE 'Cast conversion failed: %', SQLERRM;
                                 BEGIN
                                     -- For some compatible types, we can try without explicit cast
-                                    EXECUTE format('UPDATE %I SET %I = %I', 
+                                    EXECUTE format('UPDATE %I SET %I = %I',
                                                   table_name, temp_col_name, field_name);
-                                    
+
                                     -- Drop old column
-                                    EXECUTE format('ALTER TABLE %I DROP COLUMN %I', 
+                                    EXECUTE format('ALTER TABLE %I DROP COLUMN %I',
                                                   table_name, field_name);
-                                    
+
                                     -- Rename temp column to original name
-                                    EXECUTE format('ALTER TABLE %I RENAME COLUMN %I TO %I', 
+                                    EXECUTE format('ALTER TABLE %I RENAME COLUMN %I TO %I',
                                                   table_name, temp_col_name, field_name);
-                                    
-                                    RAISE NOTICE 'Changed column % type from % to % using temporary column with basic conversion', 
+
+                                    RAISE NOTICE 'Changed column % type from % to % using temporary column with basic conversion',
                                               field_name, current_type, sql_type;
                                 EXCEPTION WHEN OTHERS THEN
                                     -- If all attempts fail, drop the temporary column and use traditional approach
                                     RAISE NOTICE 'All conversion attempts failed: %', SQLERRM;
-                                    EXECUTE format('ALTER TABLE %I DROP COLUMN IF EXISTS %I', 
+                                    EXECUTE format('ALTER TABLE %I DROP COLUMN IF EXISTS %I',
                                                   table_name, temp_col_name);
-                                    
+
                                     -- Last resort: replace column (data will be lost)
-                                    EXECUTE format('ALTER TABLE %I DROP COLUMN %I', 
+                                    EXECUTE format('ALTER TABLE %I DROP COLUMN %I',
                                                   table_name, field_name);
-                                    EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', 
+                                    EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s',
                                                   table_name, field_name, sql_type);
-                                    
-                                    RAISE NOTICE 'Unable to preserve data. Changed column % type from % to % with data loss', 
+
+                                    RAISE NOTICE 'Unable to preserve data. Changed column % type from % to % with data loss',
                                               field_name, current_type, sql_type;
                                 END;
                             END;
@@ -310,13 +310,13 @@ BEGIN
             RAISE NOTICE 'Added new column % with type %', field_name, sql_type;
         END IF;
     END LOOP;
-    
+
     -- Now build field lists for views and triggers
     entity_field_list := '';
     entity_field_values := '';
     entity_update_list := '';
     entity_field_separator := '';
-    
+
     -- Get columns from entity table, excluding uuid
     FOR column_record IN
         EXECUTE format('
@@ -328,20 +328,20 @@ BEGIN
         ', table_name)
     LOOP
         column_name := column_record.column_name;
-        
+
         -- For view column list
         IF entity_field_list <> '' THEN
             entity_field_list := entity_field_list || ', ';
         END IF;
         entity_field_list := entity_field_list || column_name;
-        
+
         -- For update list
         IF entity_update_list <> '' THEN
             entity_update_list := entity_update_list || ', ';
         END IF;
         entity_update_list := entity_update_list || column_name || ' = NEW.' || column_name;
     END LOOP;
-    
+
     -- Create view joining entity registry
     DECLARE
         view_query TEXT;
@@ -352,23 +352,23 @@ BEGIN
         IF entity_field_list <> '' THEN
             column_list := ', e.' || replace(entity_field_list, ', ', ', e.');
         END IF;
-        
+
         registry_join := 'SELECT r.uuid, r.path, r.created_at, r.updated_at, ' ||
-                          'r.created_by, r.updated_by, r.published, r.version' || 
+                          'r.created_by, r.updated_by, r.published, r.version' ||
                           column_list ||
                           ' FROM entities_registry r ' ||
                           'LEFT JOIN ' || table_name || ' e ON r.uuid = e.uuid ' ||
                           'WHERE r.entity_type = ''' || entity_type_param || '''';
-                        
+
         view_query := 'CREATE VIEW ' || view_name || ' AS ' || registry_join;
-        
+
         RAISE NOTICE 'Creating view with: %', view_query;
         EXECUTE view_query;
-        
+
         -- Grant permissions
         EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON %I TO PUBLIC', view_name);
     END;
-    
+
     -- Create INSTEAD OF INSERT trigger - simple version
     trigger_name := view_name || '_insert_trigger';
     trigger_sql := '
@@ -381,23 +381,23 @@ BEGIN
             IF NEW.uuid IS NULL THEN
                 NEW.uuid := uuid_generate_v7();
             END IF;
-            
+
             -- Set default values if not provided
             IF NEW.path IS NULL THEN
                 NEW.path := ''/' || lower(entity_type_param) || '/'';
             END IF;
-            
+
             IF NEW.created_at IS NULL THEN
                 NEW.created_at := NOW();
             END IF;
-            
+
             IF NEW.updated_at IS NULL THEN
                 NEW.updated_at := NOW();
             END IF;
-            
+
             -- Insert into entities_registry
             INSERT INTO entities_registry (
-                uuid, entity_type, path, created_at, updated_at, 
+                uuid, entity_type, path, created_at, updated_at,
                 created_by, updated_by, published, version
             )
             VALUES (
@@ -405,46 +405,46 @@ BEGIN
                 NEW.created_by, NEW.updated_by, COALESCE(NEW.published, false), COALESCE(NEW.version, 1)
             )
             RETURNING uuid INTO new_uuid;';
-            
+
     -- Add entity-specific insert if needed
     IF entity_field_list <> '' THEN
         trigger_sql := trigger_sql || '
-            
+
             -- Insert into entity table with fields
             INSERT INTO ' || table_name || ' (uuid, ' || entity_field_list || ')
             VALUES (new_uuid';
-            
+
         -- Add each field as a separate value
-        FOR column_name IN 
+        FOR column_name IN
             SELECT unnest(string_to_array(entity_field_list, ', '))
         LOOP
             trigger_sql := trigger_sql || ', NEW.' || trim(column_name);
         END LOOP;
-        
+
         trigger_sql := trigger_sql || ');';
     ELSE
         trigger_sql := trigger_sql || '
-            
+
             -- Insert into entity table (UUID only)
             INSERT INTO ' || table_name || ' (uuid)
             VALUES (new_uuid);';
     END IF;
-    
+
     -- Finish the trigger function
     trigger_sql := trigger_sql || '
-            
+
             RETURN NEW;
         END;
         $BODY$ LANGUAGE plpgsql;';
-    
+
     -- Create the function and trigger
     EXECUTE trigger_sql;
-    
+
     EXECUTE 'DROP TRIGGER IF EXISTS ' || trigger_name || ' ON ' || view_name || ';';
-    EXECUTE 'CREATE TRIGGER ' || trigger_name || ' 
+    EXECUTE 'CREATE TRIGGER ' || trigger_name || '
              INSTEAD OF INSERT ON ' || view_name || '
              FOR EACH ROW EXECUTE FUNCTION ' || trigger_name || '();';
-    
+
     -- Create INSTEAD OF UPDATE trigger - simple version
     trigger_name := view_name || '_update_trigger';
     trigger_sql := '
@@ -459,32 +459,32 @@ BEGIN
                 published = NEW.published,
                 version = NEW.version
             WHERE uuid = NEW.uuid;';
-            
+
     -- Add entity-specific update if we have fields
     IF entity_update_list <> '' THEN
         trigger_sql := trigger_sql || '
-            
+
             -- Update entity table
             UPDATE ' || table_name || '
             SET ' || entity_update_list || '
             WHERE uuid = NEW.uuid;';
     END IF;
-    
+
     -- Finish the trigger function
     trigger_sql := trigger_sql || '
-            
+
             RETURN NEW;
         END;
         $BODY$ LANGUAGE plpgsql;';
-    
+
     -- Create the function and trigger
     EXECUTE trigger_sql;
-    
+
     EXECUTE 'DROP TRIGGER IF EXISTS ' || trigger_name || ' ON ' || view_name || ';';
-    EXECUTE 'CREATE TRIGGER ' || trigger_name || ' 
+    EXECUTE 'CREATE TRIGGER ' || trigger_name || '
              INSTEAD OF UPDATE ON ' || view_name || '
              FOR EACH ROW EXECUTE FUNCTION ' || trigger_name || '();';
-    
+
     -- Create INSTEAD OF DELETE trigger - simple version
     trigger_name := view_name || '_delete_trigger';
     EXECUTE '
@@ -494,16 +494,16 @@ BEGIN
             -- Delete from entities_registry (will cascade to entity table)
             DELETE FROM entities_registry
             WHERE uuid = OLD.uuid;
-            
+
             RETURN OLD;
         END;
         $BODY$ LANGUAGE plpgsql;';
-        
+
     EXECUTE 'DROP TRIGGER IF EXISTS ' || trigger_name || ' ON ' || view_name || ';';
-    EXECUTE 'CREATE TRIGGER ' || trigger_name || ' 
+    EXECUTE 'CREATE TRIGGER ' || trigger_name || '
              INSTEAD OF DELETE ON ' || view_name || '
              FOR EACH ROW EXECUTE FUNCTION ' || trigger_name || '();';
-    
+
     RAISE NOTICE 'Successfully created/updated entity table and view for %', entity_type_param;
 END;
 $$ LANGUAGE plpgsql;
@@ -639,7 +639,7 @@ CREATE INDEX IF NOT EXISTS idx_workflows_definition_uuid ON workflows(definition
 CREATE INDEX IF NOT EXISTS idx_workflows_entity_uuid ON workflows(entity_uuid);
 CREATE INDEX IF NOT EXISTS idx_workflows_status ON workflows(status);
 
--- Create a trigger to update entity views when class definitions change
+-- Create a trigger to update entity views when entity definitions change
 CREATE OR REPLACE FUNCTION entity_view_on_class_change()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -649,19 +649,19 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Set up the trigger
-DROP TRIGGER IF EXISTS trigger_create_entity_view ON class_definitions;
+DROP TRIGGER IF EXISTS trigger_create_entity_view ON entity_definitions;
 CREATE TRIGGER trigger_create_entity_view
-AFTER INSERT OR UPDATE ON class_definitions
+AFTER INSERT OR UPDATE ON entity_definitions
 FOR EACH ROW
 EXECUTE FUNCTION entity_view_on_class_change();
 
--- Create entity tables and views for existing class definitions
+-- Create entity tables and views for existing entity definitions
 DO $$
 DECLARE
     r RECORD;
 BEGIN
-    FOR r IN SELECT entity_type FROM class_definitions
+    FOR r IN SELECT entity_type FROM entity_definitions
     LOOP
         PERFORM create_entity_table_and_view(r.entity_type);
     END LOOP;
-END $$; 
+END $$;

@@ -2,15 +2,15 @@ use actix_web;
 use dotenv;
 use lazy_static::lazy_static;
 use log::{debug, info, warn};
-use r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository;
-use r_data_core::entity::class::definition::ClassDefinition;
-use r_data_core::entity::class::repository_trait::ClassDefinitionRepositoryTrait;
+use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
 use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
 use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
+use r_data_core::entity::entity_definition::definition::EntityDefinition;
+use r_data_core::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use r_data_core::entity::field::ui::UiSettings;
 use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core::error::{Error, Result};
-use r_data_core::services::{ClassDefinitionService, DynamicEntityService};
+use r_data_core::services::{DynamicEntityService, EntityDefinitionService};
 use serde_json::json;
 use sqlx::{postgres::PgPoolOptions, PgPool, Row};
 use std::collections::HashMap;
@@ -48,20 +48,20 @@ pub fn random_string(prefix: &str) -> String {
     format!("{}_{}", prefix, Uuid::now_v7())
 }
 
-/// Create a test class definition
+/// Create a test entity definition
 #[allow(dead_code)]
-pub async fn create_test_class_definition(pool: &PgPool, entity_type: &str) -> Result<Uuid> {
+pub async fn create_test_entity_definition(pool: &PgPool, entity_type: &str) -> Result<Uuid> {
     // Acquire a lock for database operations
     let _guard = GLOBAL_TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
 
-    // Create a simple class definition for testing
-    let mut class_def = ClassDefinition::default();
-    class_def.entity_type = entity_type.to_string();
-    class_def.display_name = format!("{} Class", entity_type);
-    class_def.description = Some(format!("Test description for {}", entity_type));
-    class_def.published = true;
+    // Create a simple entity definition for testing
+    let mut entity_def = EntityDefinition::default();
+    entity_def.entity_type = entity_type.to_string();
+    entity_def.display_name = format!("{} Class", entity_type);
+    entity_def.description = Some(format!("Test description for {}", entity_type));
+    entity_def.published = true;
 
-    // Add fields to the class definition
+    // Add fields to the entity definition
     let mut fields = Vec::new();
 
     // Name field
@@ -96,18 +96,18 @@ pub async fn create_test_class_definition(pool: &PgPool, entity_type: &str) -> R
     };
     fields.push(email_field);
 
-    class_def.fields = fields;
+    entity_def.fields = fields;
 
     // Set created_by
     let created_by = Uuid::now_v7();
-    class_def.created_by = created_by;
+    entity_def.created_by = created_by;
 
-    // Use the repository trait to create the class definition
-    let repository = ClassDefinitionRepository::new(pool.clone());
-    let service = ClassDefinitionService::new(Arc::new(repository));
+    // Use the repository trait to create the entity definition
+    let repository = EntityDefinitionRepository::new(pool.clone());
+    let service = EntityDefinitionService::new(Arc::new(repository));
 
-    // Create the class definition and wait for the service to finish
-    let uuid = service.create_class_definition(&class_def).await?;
+    // Create the entity definition and wait for the service to finish
+    let uuid = service.create_entity_definition(&entity_def).await?;
 
     // Wait a moment for the view creation (the service should trigger this)
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -143,17 +143,17 @@ pub async fn create_test_entity(
     field_data.insert("version".to_string(), json!(1));
     field_data.insert("published".to_string(), json!(true));
 
-    // First get the class definition for this entity type
-    let class_repo = ClassDefinitionRepository::new(pool.clone());
-    let class_service = ClassDefinitionService::new(Arc::new(class_repo));
-    let class_def = class_service
-        .get_class_definition_by_entity_type(entity_type)
+    // First get the entity definition for this entity type
+    let class_repo = EntityDefinitionRepository::new(pool.clone());
+    let class_service = EntityDefinitionService::new(Arc::new(class_repo));
+    let entity_def = class_service
+        .get_entity_definition_by_entity_type(entity_type)
         .await?;
 
     let entity = DynamicEntity {
         entity_type: entity_type.to_string(),
         field_data,
-        definition: Arc::new(class_def),
+        definition: Arc::new(entity_def),
     };
 
     // Create the entity
@@ -294,7 +294,7 @@ pub async fn fast_clear_test_db(pool: &PgPool) -> Result<()> {
     // Get the main entity tables
     let mut tables = Vec::new();
 
-    // Clear these key tables but NOT class_definitions to avoid race conditions
+    // Clear these key tables but NOT entity_definitions to avoid race conditions
     tables.push("entities_registry".to_string());
     tables.push("admin_users".to_string());
     tables.push("api_keys".to_string());
@@ -337,12 +337,12 @@ pub async fn fast_clear_test_db(pool: &PgPool) -> Result<()> {
     Ok(())
 }
 
-/// Clear class definitions separately when needed
+/// Clear entity definitions separately when needed
 #[allow(dead_code)]
-pub async fn clear_class_definitions(pool: &PgPool) -> Result<()> {
-    debug!("Clearing class definitions");
+pub async fn clear_entity_definitions(pool: &PgPool) -> Result<()> {
+    debug!("Clearing entity definitions");
 
-    sqlx::query("TRUNCATE TABLE class_definitions CASCADE")
+    sqlx::query("TRUNCATE TABLE entity_definitions CASCADE")
         .execute(pool)
         .await?;
 
@@ -471,9 +471,9 @@ pub fn get_test_user_username() -> String {
     format!("test_admin_{}", uuid.simple())
 }
 
-/// Create a class definition from a JSON file
+/// Create a entity definition from a JSON file
 #[allow(dead_code)]
-pub async fn create_class_definition_from_json(pool: &PgPool, json_path: &str) -> Result<Uuid> {
+pub async fn create_entity_definition_from_json(pool: &PgPool, json_path: &str) -> Result<Uuid> {
     // Acquire a lock for database operations
     let _guard = GLOBAL_TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
 
@@ -481,31 +481,31 @@ pub async fn create_class_definition_from_json(pool: &PgPool, json_path: &str) -
     let json_content = std::fs::read_to_string(json_path)
         .map_err(|e| Error::Unknown(format!("Failed to read JSON file {}: {}", json_path, e)))?;
 
-    // Parse the JSON into a ClassDefinition
-    let mut class_def: ClassDefinition = serde_json::from_str(&json_content)
+    // Parse the JSON into a EntityDefinition
+    let mut entity_def: EntityDefinition = serde_json::from_str(&json_content)
         .map_err(|e| Error::Unknown(format!("Failed to parse JSON file {}: {}", json_path, e)))?;
 
     // Make the entity type unique to avoid test conflicts
-    let unique_entity_type = unique_entity_type(&class_def.entity_type);
-    class_def.entity_type = unique_entity_type;
+    let unique_entity_type = unique_entity_type(&entity_def.entity_type);
+    entity_def.entity_type = unique_entity_type;
 
     // Make sure we have a creator
-    if class_def.created_by == Uuid::nil() {
-        class_def.created_by = Uuid::now_v7();
+    if entity_def.created_by == Uuid::nil() {
+        entity_def.created_by = Uuid::now_v7();
     }
 
     // Set created_at and updated_at if not present
-    if class_def.created_at == OffsetDateTime::UNIX_EPOCH {
-        class_def.created_at = OffsetDateTime::now_utc();
+    if entity_def.created_at == OffsetDateTime::UNIX_EPOCH {
+        entity_def.created_at = OffsetDateTime::now_utc();
     }
-    if class_def.updated_at == OffsetDateTime::UNIX_EPOCH {
-        class_def.updated_at = OffsetDateTime::now_utc();
+    if entity_def.updated_at == OffsetDateTime::UNIX_EPOCH {
+        entity_def.updated_at = OffsetDateTime::now_utc();
     }
 
-    // Create the class definition using the service
-    let repository = ClassDefinitionRepository::new(pool.clone());
-    let service = ClassDefinitionService::new(Arc::new(repository));
-    let uuid = service.create_class_definition(&class_def).await?;
+    // Create the entity definition using the service
+    let repository = EntityDefinitionRepository::new(pool.clone());
+    let service = EntityDefinitionService::new(Arc::new(repository));
+    let uuid = service.create_entity_definition(&entity_def).await?;
 
     // The view creation should be handled by the service, but we'll add a small delay
     // to ensure all database operations complete

@@ -180,7 +180,7 @@ pub struct UiSettingsSchema {
     pub input_type: Option<String>,
 }
 
-/// Field types available for class definitions
+/// Field types available for entity definitions
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub enum FieldTypeSchema {
     /// Short text field (varchar in database)
@@ -246,11 +246,11 @@ pub struct FieldDefinitionSchema {
     pub ui_settings: UiSettingsSchema,
 }
 
-/// Schema for class definitions in OpenAPI docs
+/// Schema for entity definitions in OpenAPI docs
 /// Used to define entity types with their fields and metadata
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-#[schema(title = "ClassDefinitionSchema")]
-pub struct ClassDefinitionSchema {
+#[schema(title = "EntityDefinitionSchema")]
+pub struct EntityDefinitionSchema {
     /// Unique identifier (automatically generated if not provided)
     pub uuid: Option<Uuid>,
     /// Entity type name (must be unique, alphanumeric with underscores, no spaces)
@@ -277,22 +277,22 @@ pub struct ClassDefinitionSchema {
     pub updated_at: Option<String>,
 }
 
-/// Response for listing class definitions
+/// Response for listing entity definitions
 #[derive(Debug, Serialize, ToSchema)]
-#[schema(title = "ClassDefinitionListResponse")]
-pub struct ClassDefinitionListResponse {
-    /// List of class definitions
-    pub items: Vec<ClassDefinitionSchema>,
+#[schema(title = "EntityDefinitionListResponse")]
+pub struct EntityDefinitionListResponse {
+    /// List of entity definitions
+    pub items: Vec<EntityDefinitionSchema>,
     /// Total number of items
     pub total: i64,
 }
 
 /// Model for apply-schema request
-/// Used to generate and apply SQL schema for a specific class definition or all definitions
+/// Used to generate and apply SQL schema for a specific entity definition or all definitions
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct ApplySchemaRequest {
-    /// Optional UUID of specific class definition to apply schema for
-    /// If not provided, schemas for all published class definitions will be applied
+    /// Optional UUID of specific entity definition to apply schema for
+    /// If not provided, schemas for all published entity definitions will be applied
     #[serde(default)]
     pub uuid: Option<Uuid>,
 }

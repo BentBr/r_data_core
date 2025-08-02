@@ -1,7 +1,7 @@
 # Frontend Implementation Plan for R Data Core Admin Interface
 
 ## Overview
-You have a sophisticated dynamic entity management system with JWT authentication, class definitions, API keys, and a comprehensive REST API. The admin interface needs to manage all these features effectively.
+You have a sophisticated dynamic entity management system with JWT authentication, entity definitions, API keys, and a comprehensive REST API. The admin interface needs to manage all these features effectively.
 
 ## Recommended Tech Stack
 
@@ -31,7 +31,7 @@ fe/
 │   ├── api/                    # API layer
 │   │   ├── http-client.ts      # Custom fetch wrapper
 │   │   ├── auth.ts
-│   │   ├── class-definitions.ts
+│   │   ├── entity-definitions.ts
 │   │   ├── api-keys.ts
 │   │   ├── entities.ts
 │   │   └── index.ts
@@ -44,7 +44,7 @@ fe/
 │   ├── pages/                  # Page components
 │   │   ├── auth/
 │   │   ├── dashboard/
-│   │   ├── class-definitions/
+│   │   ├── entity-definitions/
 │   │   ├── entities/
 │   │   ├── api-keys/
 │   │   ├── permissions/
@@ -76,7 +76,7 @@ fe/
 - **Charts** for data visualization
 
 ### 3. Class Definitions Management
-- **CRUD Interface** for class definitions
+- **CRUD Interface** for entity definitions
 - **Dynamic Form Builder** for field definitions
 - **Field Type Selector** with validation rules
 - **Schema Preview** with JSON viewer
@@ -84,12 +84,12 @@ fe/
 - **Field constraints** management
 
 ### 4. Dynamic Entity Management
-- **Dynamic Tables** based on class definitions
+- **Dynamic Tables** based on entity definitions
 - **CRUD Operations** with dynamic forms
 - **Advanced Filtering** and search
 - **Bulk operations**
 - **Export/Import** functionality
-- **Field validation** based on class definition
+- **Field validation** based on entity definition
 
 ### 5. API Key Management
 - **Key generation** with customizable expiration
@@ -166,7 +166,7 @@ We chose to build a custom Vuetify 3 template rather than using existing templat
    - Apply schema functionality
 
 2. **Dynamic Entity Interface**
-   - Dynamic tables based on class definitions
+   - Dynamic tables based on entity definitions
    - Dynamic forms with field validation
    - CRUD operations with backend integration
 

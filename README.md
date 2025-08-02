@@ -17,7 +17,7 @@ A robust backend for flexible data management with dynamic entity system, workfl
 
 The project uses a dynamic entity model with the following key tables:
 
-- `class_definitions`: Defines entity types with their field definitions
+- `entity_definitions`: Defines entity types with their field definitions
 - `entities_registry`: Stores all entities with their field data in a JSONB column
 - `entity_versions`: Tracks changes to entities for versioning
 - `entity_registry`: Registry of entity types (metadata)
@@ -217,7 +217,7 @@ A **Class Definition** is a schema that defines the structure of an entity type.
 - Metadata about the entity type (description, display name, etc.)
 - Schema information for database representation
 
-When a class definition is created or updated, the system automatically generates the necessary database tables and columns to store entities of that type.
+When a entity definition is created or updated, the system automatically generates the necessary database tables and columns to store entities of that type.
 
 You can find example json files in [example files](./.json_examples)
 
@@ -232,9 +232,9 @@ Each **Field Definition** within a class specifies:
 
 #### Dynamic Entities
 
-A **Dynamic Entity** is an actual data object that follows the structure defined by a class definition. Entities can be created, updated, queried, and deleted through the API. Each entity instance includes:
+A **Dynamic Entity** is an actual data object that follows the structure defined by a entity definition. Entities can be created, updated, queried, and deleted through the API. Each entity instance includes:
 - Standard system fields (UUID, creation timestamp, etc.)
-- The custom fields defined in its class definition
+- The custom fields defined in its entity definition
 - Metadata and relationship information
 
 ### Supported Field Types
@@ -251,13 +251,13 @@ The system supports a rich set of field types:
 
 ### API Endpoints
 
-All class definition endpoints are secured with JWT authentication and require admin privileges:
+All entity definition endpoints are secured with JWT authentication and require admin privileges:
 
-- `GET /admin/api/v1/class-definitions` - List all class definitions
-- `GET /admin/api/v1/class-definitions/{uuid}` - Get a specific class definition
-- `POST /admin/api/v1/class-definitions` - Create a new class definition 
-- `PUT /admin/api/v1/class-definitions/{uuid}` - Update an existing class definition
-- `DELETE /admin/api/v1/class-definitions/{uuid}` - Delete a class definition
+- `GET /admin/api/v1/entity-definitions` - List all entity definitions
+- `GET /admin/api/v1/entity-definitions/{uuid}` - Get a specific entity definition
+- `POST /admin/api/v1/entity-definitions` - Create a new entity definition 
+- `PUT /admin/api/v1/entity-definitions/{uuid}` - Update an existing entity definition
+- `DELETE /admin/api/v1/entity-definitions/{uuid}` - Delete a entity definition
 
 Entity data can be manipulated through the public API endpoints (documentation pending).
 
@@ -272,7 +272,7 @@ Swagger:
 - ~~fix swagger~~
 - add routes
   - ~~auth~~
-  - ~~class-definitions~~
+  - ~~entity-definitions~~
   - workflows
     - export
       - json, xml, csv
@@ -308,4 +308,4 @@ fixes:
 - further refactoring
 - tests (unit and integration) for dynamic entities (more)
 - getting all entity types with fields and validations
-- filter entities (by field and value) (validate against class-definition)
+- filter entities (by field and value) (validate against entity-definition)

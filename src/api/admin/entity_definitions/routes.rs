@@ -9,19 +9,19 @@ use super::models::ApplySchemaRequest;
 use super::models::PaginationQuery;
 use super::models::PathUuid;
 use crate::api::ApiState;
-use crate::entity::ClassDefinition;
+use crate::entity::EntityDefinition;
 
-/// List class definitions
+/// List entity definitions
 #[utoipa::path(
     get,
-    path = "/admin/api/v1/class-definitions",
-    tag = "class-definitions",
+    path = "/admin/api/v1/entity-definitions",
+    tag = "entity-definitions",
     params(
         ("limit" = Option<i64>, Query, description = "Maximum number of items to return"),
         ("offset" = Option<i64>, Query, description = "Number of items to skip")
     ),
     responses(
-        (status = 200, description = "List of class definitions", body = Vec<ClassDefinitionSchema>),
+        (status = 200, description = "List of entity definitions", body = Vec<EntityDefinitionSchema>),
         (status = 401, description = "Unauthorized"),
         (status = 500, description = "Internal server error")
     ),
@@ -30,7 +30,7 @@ use crate::entity::ClassDefinition;
     )
 )]
 #[get("")]
-async fn list_class_definitions(
+async fn list_entity_definitions(
     data: web::Data<ApiState>,
     query: web::Query<PaginationQuery>,
     _: auth_enum::RequiredAuth,
@@ -39,8 +39,8 @@ async fn list_class_definitions(
     let offset = query.offset.unwrap_or(0);
 
     match data
-        .class_definition_service
-        .list_class_definitions(limit, offset)
+        .entity_definition_service
+        .list_entity_definitions(limit, offset)
         .await
     {
         Ok(definitions) => {
@@ -53,23 +53,23 @@ async fn list_class_definitions(
             HttpResponse::Ok().json(schema_definitions)
         }
         Err(e) => HttpResponse::InternalServerError().json(json!({
-            "error": format!("Failed to list class definitions: {}", e)
+            "error": format!("Failed to list entity definitions: {}", e)
         })),
     }
 }
 
-/// Get a class definition by UUID
+/// Get an entity definition by UUID
 #[utoipa::path(
     get,
-    path = "/admin/api/v1/class-definitions/{uuid}",
-    tag = "class-definitions",
+    path = "/admin/api/v1/entity-definitions/{uuid}",
+    tag = "entity-definitions",
     params(
-        ("uuid" = Uuid, Path, description = "Class definition UUID")
+        ("uuid" = Uuid, Path, description = "Entity definition UUID")
     ),
     responses(
-        (status = 200, description = "Class definition found", body = ClassDefinitionSchema),
+        (status = 200, description = "Entity definition found", body = EntityDefinitionSchema),
         (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Class definition not found"),
+        (status = 404, description = "Entity definition not found"),
         (status = 500, description = "Internal server error")
     ),
     security(
@@ -77,14 +77,14 @@ async fn list_class_definitions(
     )
 )]
 #[get("/{uuid}")]
-async fn get_class_definition(
+async fn get_entity_definition(
     data: web::Data<ApiState>,
     path: web::Path<PathUuid>,
     _: auth_enum::RequiredAuth,
 ) -> impl Responder {
     match data
-        .class_definition_service
-        .get_class_definition(&path.uuid)
+        .entity_definition_service
+        .get_entity_definition(&path.uuid)
         .await
     {
         Ok(definition) => {
@@ -93,20 +93,20 @@ async fn get_class_definition(
             HttpResponse::Ok().json(schema_definition)
         }
         Err(crate::error::Error::NotFound(_)) => HttpResponse::NotFound().json(json!({
-            "error": "Class definition not found"
+            "error": "Entity definition not found"
         })),
         Err(e) => HttpResponse::InternalServerError().json(json!({
-            "error": format!("Failed to retrieve class definition: {}", e)
+            "error": format!("Failed to retrieve entity definition: {}", e)
         })),
     }
 }
 
-/// Create a new class definition
+/// Create a new entity definition
 #[utoipa::path(
     post,
-    path = "/admin/api/v1/class-definitions",
-    tag = "class-definitions",
-    request_body = ClassDefinitionSchema,
+    path = "/admin/api/v1/entity-definitions",
+    tag = "entity-definitions",
+    request_body = EntityDefinitionSchema,
     responses(
         (status = 201, description = "Class definition created successfully"),
         (status = 400, description = "Invalid input data"),
@@ -119,9 +119,9 @@ async fn get_class_definition(
     )
 )]
 #[post("")]
-async fn create_class_definition(
+async fn create_entity_definition(
     data: web::Data<ApiState>,
-    definition: web::Json<ClassDefinition>,
+    definition: web::Json<EntityDefinition>,
     auth: auth_enum::RequiredAuth,
 ) -> impl Responder {
     // Get authentication info from the RequiredAuth extractor
@@ -143,64 +143,64 @@ async fn create_class_definition(
     };
 
     // Extract definition and prepare for validation
-    let mut class_def = definition.into_inner();
+    let mut entity_def = definition.into_inner();
 
     // Generate a new UUID if one wasn't provided
-    if class_def.uuid == Uuid::nil() {
-        class_def.uuid = Uuid::now_v7();
+    if entity_def.uuid == Uuid::nil() {
+        entity_def.uuid = Uuid::now_v7();
     }
 
     // Log UUIDs for debugging
-    debug!("Class Definition UUID: {}", class_def.uuid);
+    debug!("Class Definition UUID: {}", entity_def.uuid);
     debug!("Creator UUID (from token): {}", creator_uuid);
 
     // Set server-controlled fields
     let now = OffsetDateTime::now_utc();
-    class_def.created_at = now;
-    class_def.updated_at = now;
-    class_def.created_by = creator_uuid;
-    class_def.updated_by = Some(creator_uuid);
-    class_def.version = 1;
+    entity_def.created_at = now;
+    entity_def.updated_at = now;
+    entity_def.created_by = creator_uuid;
+    entity_def.updated_by = Some(creator_uuid);
+    entity_def.version = 1;
 
     // Ensure schema is properly initialized with entity_type
-    if class_def.schema.properties.get("entity_type").is_none() {
-        let mut properties = class_def.schema.properties.clone();
+    if entity_def.schema.properties.get("entity_type").is_none() {
+        let mut properties = entity_def.schema.properties.clone();
         properties.insert(
             "entity_type".to_string(),
-            serde_json::Value::String(class_def.entity_type.clone()),
+            serde_json::Value::String(entity_def.entity_type.clone()),
         );
-        class_def.schema = crate::entity::class::schema::Schema::new(properties);
+        entity_def.schema = crate::entity::entity_definition::schema::Schema::new(properties);
         debug!(
             "Schema initialized with entity_type: {}",
-            class_def.entity_type
+            entity_def.entity_type
         );
     }
 
     // Log again after setting
     debug!(
         "Created_by after setting: {} (type: {})",
-        class_def.created_by,
-        std::any::type_name_of_val(&class_def.created_by)
+        entity_def.created_by,
+        std::any::type_name_of_val(&entity_def.created_by)
     );
 
-    // Validate class definition
-    if let Err(e) = class_def.validate() {
+    // Validate entity definition
+    if let Err(e) = entity_def.validate() {
         return HttpResponse::UnprocessableEntity().json(json!({
             "error": format!("Validation failed: {}", e),
         }));
     }
 
-    // Create the class definition using the service
+    // Create the entity definition using the service
     match data
-        .class_definition_service
-        .create_class_definition(&class_def)
+        .entity_definition_service
+        .create_entity_definition(&entity_def)
         .await
     {
         Ok(uuid) => {
             // Class definition created successfully
             info!(
-                "Created class definition for entity type: {}",
-                class_def.entity_type
+                "Created entity definition for entity type: {}",
+                entity_def.entity_type
             );
 
             HttpResponse::Created().json(json!({
@@ -209,7 +209,7 @@ async fn create_class_definition(
             }))
         }
         Err(crate::error::Error::Validation(msg)) => {
-            error!("Validation error when creating class definition: {}", msg);
+            error!("Validation error when creating entity definition: {}", msg);
             HttpResponse::UnprocessableEntity().json(json!({
                 "error": msg
             }))
@@ -217,31 +217,31 @@ async fn create_class_definition(
         Err(e) => {
             // Log the full error details
             error!(
-                "Failed to create class definition for {}: {:?}",
-                class_def.entity_type, e
+                "Failed to create entity definition for {}: {:?}",
+                entity_def.entity_type, e
             );
 
             // Add more detailed logging for diagnosis
-            debug!("Class definition details: {:#?}", class_def);
+            debug!("Class definition details: {:#?}", entity_def);
             debug!("Error details: {:#?}", e);
 
             HttpResponse::InternalServerError().json(json!({
-                "error": format!("Failed to create class definition: {}", e),
+                "error": format!("Failed to create entity definition: {}", e),
                 "details": format!("{:?}", e)
             }))
         }
     }
 }
 
-/// Update a class definition
+/// Update a entity definition
 #[utoipa::path(
     put,
-    path = "/admin/api/v1/class-definitions/{uuid}",
-    tag = "class-definitions",
+    path = "/admin/api/v1/entity-definitions/{uuid}",
+    tag = "entity-definitions",
     params(
         ("uuid" = Uuid, Path, description = "Class definition UUID")
     ),
-    request_body = ClassDefinitionSchema,
+    request_body = EntityDefinitionSchema,
     responses(
         (status = 200, description = "Class definition updated successfully"),
         (status = 400, description = "Invalid input data"),
@@ -255,10 +255,10 @@ async fn create_class_definition(
     )
 )]
 #[put("/{uuid}")]
-async fn update_class_definition(
+async fn update_entity_definition(
     data: web::Data<ApiState>,
     path: web::Path<PathUuid>,
-    definition: web::Json<ClassDefinition>,
+    definition: web::Json<EntityDefinition>,
     auth: auth_enum::RequiredAuth,
 ) -> impl Responder {
     // Get authentication info from the RequiredAuth extractor
@@ -278,8 +278,8 @@ async fn update_class_definition(
 
     // First, get the existing definition to preserve system fields
     let existing_def = match data
-        .class_definition_service
-        .get_class_definition(&path.uuid)
+        .entity_definition_service
+        .get_entity_definition(&path.uuid)
         .await
     {
         Ok(def) => def,
@@ -290,7 +290,7 @@ async fn update_class_definition(
         }
         Err(e) => {
             return HttpResponse::InternalServerError().json(json!({
-                "error": format!("Failed to retrieve class definition: {}", e)
+                "error": format!("Failed to retrieve entity definition: {}", e)
             }));
         }
     };
@@ -313,10 +313,10 @@ async fn update_class_definition(
         }));
     }
 
-    // Update the class definition
+    // Update the entity definition
     match data
-        .class_definition_service
-        .update_class_definition(&path.uuid, &updated_def)
+        .entity_definition_service
+        .update_entity_definition(&path.uuid, &updated_def)
         .await
     {
         Ok(_) => HttpResponse::Ok().json(json!({
@@ -327,22 +327,22 @@ async fn update_class_definition(
             "error": msg
         })),
         Err(e) => HttpResponse::InternalServerError().json(json!({
-            "error": format!("Failed to update class definition: {}", e)
+            "error": format!("Failed to update entity definition: {}", e)
         })),
     }
 }
 
-/// Delete a class definition
+/// Delete a entity definition
 #[utoipa::path(
     delete,
-    path = "/admin/api/v1/class-definitions/{uuid}",
-    tag = "class-definitions",
+    path = "/admin/api/v1/entity-definitions/{uuid}",
+    tag = "entity-definitions",
     params(
         ("uuid" = Uuid, Path, description = "Class definition UUID")
     ),
     responses(
         (status = 200, description = "Class definition deleted successfully"),
-        (status = 400, description = "Cannot delete class definition with existing entities"),
+        (status = 400, description = "Cannot delete entity definition with existing entities"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Class definition not found"),
         (status = 500, description = "Internal server error")
@@ -352,14 +352,14 @@ async fn update_class_definition(
     )
 )]
 #[delete("/{uuid}")]
-async fn delete_class_definition(
+async fn delete_entity_definition(
     data: web::Data<ApiState>,
     path: web::Path<PathUuid>,
     _: auth_enum::RequiredAuth,
 ) -> impl Responder {
     match data
-        .class_definition_service
-        .delete_class_definition(&path.uuid)
+        .entity_definition_service
+        .delete_entity_definition(&path.uuid)
         .await
     {
         Ok(_) => HttpResponse::Ok().json(json!({
@@ -372,17 +372,17 @@ async fn delete_class_definition(
             "error": msg
         })),
         Err(e) => HttpResponse::InternalServerError().json(json!({
-            "error": format!("Failed to delete class definition: {}", e)
+            "error": format!("Failed to delete entity definition: {}", e)
         })),
     }
 }
 
-/// Apply database schema for class definitions
+/// Apply database schema for entity definitions
 #[utoipa::path(
     post,
-    path = "/admin/api/v1/class-definitions/apply-schema",
-    tag = "class-definitions",
-    request_body(content = ApplySchemaRequest, description = "Optional class definition UUID. If not provided, applies schema for all class definitions"),
+    path = "/admin/api/v1/entity-definitions/apply-schema",
+    tag = "entity-definitions",
+    request_body(content = ApplySchemaRequest, description = "Optional entity definition UUID. If not provided, applies schema for all entity definitions"),
     responses(
         (status = 200, description = "Database schema applied successfully"),
         (status = 401, description = "Unauthorized"),
@@ -394,7 +394,7 @@ async fn delete_class_definition(
     )
 )]
 #[post("/apply-schema")]
-async fn apply_class_definition_schema(
+async fn apply_entity_definition_schema(
     data: web::Data<ApiState>,
     body: web::Json<ApplySchemaRequest>,
     _: auth_enum::RequiredAuth,
@@ -402,7 +402,7 @@ async fn apply_class_definition_schema(
     let uuid_option = body.uuid.as_ref();
 
     match data
-        .class_definition_service
+        .entity_definition_service
         .apply_schema(uuid_option)
         .await
     {
@@ -425,11 +425,11 @@ async fn apply_class_definition_schema(
                 // If applying schema for all definitions
                 if failed.is_empty() {
                     HttpResponse::Ok().json(json!({
-                        "message": format!("Applied schema for {} class definitions", success_count)
+                        "message": format!("Applied schema for {} entity definitions", success_count)
                     }))
                 } else {
                     HttpResponse::PartialContent().json(json!({
-                        "message": format!("Applied schema for {} class definitions, {} failed", success_count, failed.len()),
+                        "message": format!("Applied schema for {} entity definitions, {} failed", success_count, failed.len()),
                         "successful": success_count,
                         "failed": failed
                     }))
@@ -445,12 +445,12 @@ async fn apply_class_definition_schema(
     }
 }
 
-/// Register routes for class definitions
+/// Register routes for entity definitions
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(list_class_definitions)
-        .service(get_class_definition)
-        .service(create_class_definition)
-        .service(update_class_definition)
-        .service(delete_class_definition)
-        .service(apply_class_definition_schema);
+    cfg.service(list_entity_definitions)
+        .service(get_entity_definition)
+        .service(create_entity_definition)
+        .service(update_entity_definition)
+        .service(delete_entity_definition)
+        .service(apply_entity_definition_schema);
 }

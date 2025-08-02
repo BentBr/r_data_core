@@ -2,52 +2,52 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::api::admin::class_definitions::repository::ClassDefinitionRepository;
-use crate::entity::class::definition::ClassDefinition;
-use crate::entity::class::repository_trait::ClassDefinitionRepositoryTrait;
+use crate::api::admin::entity_definitions::repository::EntityDefinitionRepository;
 use crate::entity::dynamic_entity::entity::DynamicEntity;
 use crate::entity::dynamic_entity::repository::DynamicEntityRepository;
 use crate::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
-use crate::error::{Result};
+use crate::entity::entity_definition::definition::EntityDefinition;
+use crate::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
+use crate::error::Result;
 use serde_json::Value as JsonValue;
 
-/// Repository adapter for ClassDefinitionRepository
-pub struct ClassDefinitionRepositoryAdapter {
-    inner: ClassDefinitionRepository,
+/// Repository adapter for EntityDefinitionRepository
+pub struct EntityDefinitionRepositoryAdapter {
+    inner: EntityDefinitionRepository,
 }
 
-impl ClassDefinitionRepositoryAdapter {
+impl EntityDefinitionRepositoryAdapter {
     /// Create a new adapter that wraps the repository implementation
-    pub fn new(repository: ClassDefinitionRepository) -> Self {
+    pub fn new(repository: EntityDefinitionRepository) -> Self {
         Self { inner: repository }
     }
 }
 
 #[async_trait]
-impl ClassDefinitionRepositoryTrait for ClassDefinitionRepositoryAdapter {
-    async fn list(&self, limit: i64, offset: i64) -> Result<Vec<ClassDefinition>> {
-        log::debug!("ClassDefinitionRepositoryAdapter::list called");
+impl EntityDefinitionRepositoryTrait for EntityDefinitionRepositoryAdapter {
+    async fn list(&self, limit: i64, offset: i64) -> Result<Vec<EntityDefinition>> {
+        log::debug!("EntityDefinitionRepositoryAdapter::list called");
         self.inner.list(limit, offset).await
     }
 
-    async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<ClassDefinition>> {
+    async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<EntityDefinition>> {
         log::debug!(
-            "ClassDefinitionRepositoryAdapter::get_by_uuid called with uuid: {}",
+            "EntityDefinitionRepositoryAdapter::get_by_uuid called with uuid: {}",
             uuid
         );
         self.inner.get_by_uuid(uuid).await
     }
 
-    async fn get_by_entity_type(&self, entity_type: &str) -> Result<Option<ClassDefinition>> {
+    async fn get_by_entity_type(&self, entity_type: &str) -> Result<Option<EntityDefinition>> {
         log::debug!(
-            "ClassDefinitionRepositoryAdapter::get_by_entity_type called with entity_type: {}",
+            "EntityDefinitionRepositoryAdapter::get_by_entity_type called with entity_type: {}",
             entity_type
         );
         self.inner.get_by_entity_type(entity_type).await
     }
 
-    async fn create(&self, definition: &ClassDefinition) -> Result<Uuid> {
-        log::debug!("ClassDefinitionRepositoryAdapter::create called");
+    async fn create(&self, definition: &EntityDefinition) -> Result<Uuid> {
+        log::debug!("EntityDefinitionRepositoryAdapter::create called");
         log::debug!("Definition entity_type: {}", definition.entity_type);
         log::debug!("Definition display_name: {}", definition.display_name);
         log::debug!(
@@ -62,17 +62,17 @@ impl ClassDefinitionRepositoryTrait for ClassDefinitionRepositoryAdapter {
         let result = self.inner.create(definition).await;
 
         if let Err(ref e) = result {
-            log::error!("Error creating class definition in adapter: {:?}", e);
+            log::error!("Error creating entity definition in adapter: {:?}", e);
         } else {
-            log::debug!("Class definition created successfully in adapter");
+            log::debug!("Entity definition created successfully in adapter");
         }
 
         result
     }
 
-    async fn update(&self, uuid: &Uuid, definition: &ClassDefinition) -> Result<()> {
+    async fn update(&self, uuid: &Uuid, definition: &EntityDefinition) -> Result<()> {
         log::debug!(
-            "ClassDefinitionRepositoryAdapter::update called with uuid: {}",
+            "EntityDefinitionRepositoryAdapter::update called with uuid: {}",
             uuid
         );
         self.inner.update(uuid, definition).await
@@ -80,32 +80,32 @@ impl ClassDefinitionRepositoryTrait for ClassDefinitionRepositoryAdapter {
 
     async fn delete(&self, uuid: &Uuid) -> Result<()> {
         log::debug!(
-            "ClassDefinitionRepositoryAdapter::delete called with uuid: {}",
+            "EntityDefinitionRepositoryAdapter::delete called with uuid: {}",
             uuid
         );
         self.inner.delete(uuid).await
     }
 
     async fn apply_schema(&self, schema_sql: &str) -> Result<()> {
-        log::debug!("ClassDefinitionRepositoryAdapter::apply_schema called");
+        log::debug!("EntityDefinitionRepositoryAdapter::apply_schema called");
         self.inner.apply_schema(schema_sql).await
     }
 
-    async fn update_entity_view_for_class_definition(
+    async fn update_entity_view_for_entity_definition(
         &self,
-        class_definition: &ClassDefinition,
+        entity_definition: &EntityDefinition,
     ) -> Result<()> {
         log::debug!(
-            "ClassDefinitionRepositoryAdapter::update_entity_view_for_class_definition called"
+            "EntityDefinitionRepositoryAdapter::update_entity_view_for_entity_definition called"
         );
         self.inner
-            .update_entity_view_for_class_definition(class_definition)
+            .update_entity_view_for_entity_definition(entity_definition)
             .await
     }
 
     async fn check_view_exists(&self, view_name: &str) -> Result<bool> {
         log::debug!(
-            "ClassDefinitionRepositoryAdapter::check_view_exists called with view_name: {}",
+            "EntityDefinitionRepositoryAdapter::check_view_exists called with view_name: {}",
             view_name
         );
         self.inner.check_view_exists(view_name).await
@@ -115,20 +115,20 @@ impl ClassDefinitionRepositoryTrait for ClassDefinitionRepositoryAdapter {
         &self,
         view_name: &str,
     ) -> Result<HashMap<String, String>> {
-        log::debug!("ClassDefinitionRepositoryAdapter::get_view_columns_with_types called with view_name: {}", view_name);
+        log::debug!("EntityDefinitionRepositoryAdapter::get_view_columns_with_types called with view_name: {}", view_name);
         self.inner.get_view_columns_with_types(view_name).await
     }
 
     async fn count_view_records(&self, view_name: &str) -> Result<i64> {
         log::debug!(
-            "ClassDefinitionRepositoryAdapter::count_view_records called with view_name: {}",
+            "EntityDefinitionRepositoryAdapter::count_view_records called with view_name: {}",
             view_name
         );
         self.inner.count_view_records(view_name).await
     }
 
     async fn cleanup_unused_entity_view(&self) -> Result<()> {
-        log::debug!("ClassDefinitionRepositoryAdapter::cleanup_unused_entity_view called");
+        log::debug!("EntityDefinitionRepositoryAdapter::cleanup_unused_entity_view called");
         self.inner.cleanup_unused_entity_view().await
     }
 }

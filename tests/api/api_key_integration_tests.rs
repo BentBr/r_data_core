@@ -11,7 +11,7 @@ use r_data_core::{
     config::CacheConfig,
     entity::admin_user::{AdminUserRepository, ApiKey, ApiKeyRepository, ApiKeyRepositoryTrait},
     error::{Error, Result},
-    services::{AdminUserService, ApiKeyService, ClassDefinitionService},
+    services::{AdminUserService, ApiKeyService, EntityDefinitionService},
 };
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -34,8 +34,8 @@ mod tests {
         // Create test app
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(
-            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+        let entity_def_repo = Arc::new(
+            r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
                 pool.clone(),
             ),
         );
@@ -54,7 +54,7 @@ mod tests {
                     cache_manager: Arc::new(CacheManager::new(cache_config)),
                     api_key_service: ApiKeyService::from_repository(api_key_repo),
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    class_definition_service: ClassDefinitionService::new(class_def_repo),
+                    entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                     dynamic_entity_service: None,
                 }))
                 .service(web::resource("/api/admin/api-keys").route(web::post().to(
@@ -107,8 +107,8 @@ mod tests {
         // Create test app
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(
-            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+        let entity_def_repo = Arc::new(
+            r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
                 pool.clone(),
             ),
         );
@@ -131,7 +131,7 @@ mod tests {
                     cache_manager: Arc::new(CacheManager::new(cache_config)),
                     api_key_service: ApiKeyService::from_repository(api_key_repo),
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    class_definition_service: ClassDefinitionService::new(class_def_repo),
+                    entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                     dynamic_entity_service: None,
                 }))
                 .service(
@@ -193,8 +193,8 @@ mod tests {
         // Create test app
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(
-            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+        let entity_def_repo = Arc::new(
+            r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
                 pool.clone(),
             ),
         );
@@ -217,7 +217,7 @@ mod tests {
                     cache_manager: Arc::new(CacheManager::new(cache_config)),
                     api_key_service: ApiKeyService::from_repository(api_key_repo),
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    class_definition_service: ClassDefinitionService::new(class_def_repo),
+                    entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                     dynamic_entity_service: None,
                 }))
                 .service(
@@ -298,8 +298,8 @@ mod tests {
         // Create test app
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(
-            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+        let entity_def_repo = Arc::new(
+            r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
                 pool.clone(),
             ),
         );
@@ -319,7 +319,7 @@ mod tests {
                         cache_manager: Arc::new(CacheManager::new(cache_config)),
                         api_key_service: ApiKeyService::from_repository(api_key_repo),
                         admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                        class_definition_service: ClassDefinitionService::new(class_def_repo),
+                        entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                         dynamic_entity_service: None,
                     }))
                     .service(web::resource("/protected").wrap(ApiAuth::new()).route(
@@ -378,8 +378,8 @@ mod tests {
         // Create test app
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(
-            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+        let entity_def_repo = Arc::new(
+            r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
                 pool.clone(),
             ),
         );
@@ -399,7 +399,7 @@ mod tests {
                         cache_manager: Arc::new(CacheManager::new(cache_config)),
                         api_key_service: ApiKeyService::from_repository(api_key_repo),
                         admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                        class_definition_service: ClassDefinitionService::new(class_def_repo),
+                        entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                         dynamic_entity_service: None,
                     }))
                     .service(web::resource("/protected").wrap(ApiAuth::new()).route(
@@ -465,8 +465,8 @@ mod tests {
         // Create test app
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(
-            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+        let entity_def_repo = Arc::new(
+            r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
                 pool.clone(),
             ),
         );
@@ -486,7 +486,7 @@ mod tests {
                         cache_manager: Arc::new(CacheManager::new(cache_config)),
                         api_key_service: ApiKeyService::from_repository(api_key_repo),
                         admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                        class_definition_service: ClassDefinitionService::new(class_def_repo),
+                        entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                         dynamic_entity_service: None,
                     }))
                     .service(web::resource("/protected").wrap(ApiAuth::new()).route(
@@ -600,8 +600,8 @@ mod tests {
         // Create test app
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let class_def_repo = Arc::new(
-            r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository::new(
+        let entity_def_repo = Arc::new(
+            r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
                 pool.clone(),
             ),
         );
@@ -621,7 +621,7 @@ mod tests {
                         cache_manager: Arc::new(CacheManager::new(cache_config)),
                         api_key_service: ApiKeyService::from_repository(api_key_repo),
                         admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                        class_definition_service: ClassDefinitionService::new(class_def_repo),
+                        entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                         dynamic_entity_service: None,
                     }))
                     .service(web::resource("/protected").wrap(ApiAuth::new()).route(

@@ -1,8 +1,8 @@
 use clap::{App, Arg};
 use log::{error, info};
-use r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository;
+use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
 use r_data_core::config::AppConfig;
-use r_data_core::entity::class::repository_trait::ClassDefinitionRepositoryTrait;
+use r_data_core::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use r_data_core::error::{Error, Result};
 use sqlx::postgres::PgPoolOptions;
 use std::process;
@@ -16,13 +16,13 @@ async fn run() -> Result<()> {
     let matches = App::new("Apply Schema")
         .version("1.0")
         .author("R Data Core")
-        .about("Applies database schemas for class definitions")
+        .about("Applies database schemas for entity definitions")
         .arg(
             Arg::with_name("uuid")
                 .long("uuid")
                 .short('u')
                 .value_name("UUID")
-                .help("UUID of the class definition to apply schema for. If not provided, all class definitions will be processed.")
+                .help("UUID of the entity definition to apply schema for. If not provided, all entity definitions will be processed.")
                 .takes_value(true),
         )
         .arg(
@@ -64,22 +64,22 @@ async fn run() -> Result<()> {
         }
     };
 
-    let repository = ClassDefinitionRepository::new(db_pool);
+    let repository = EntityDefinitionRepository::new(db_pool);
 
-    // Determine if we're operating on a single class definition or all of them
+    // Determine if we're operating on a single entity definition or all of them
     let uuid_str = matches.value_of("uuid");
     let verbose = matches.is_present("verbose");
 
     if let Some(uuid_str) = uuid_str {
-        // Apply schema for a specific class definition
+        // Apply schema for a specific entity definition
         match Uuid::parse_str(uuid_str) {
             Ok(uuid) => {
-                println!("Applying schema for class definition with UUID: {}", uuid);
+                println!("Applying schema for entity definition with UUID: {}", uuid);
 
                 match repository.get_by_uuid(&uuid).await {
                     Ok(Some(definition)) => {
                         println!(
-                            "Found class definition: {} ({})",
+                            "Found entity definition: {} ({})",
                             definition.entity_type, definition.display_name
                         );
 
@@ -109,13 +109,13 @@ async fn run() -> Result<()> {
                     Ok(None) => {
                         eprintln!("❌ Class definition with UUID {} not found", uuid);
                         return Err(Error::NotFound(format!(
-                            "ClassDefinition with UUID {}",
+                            "EntityDefinition with UUID {}",
                             uuid
                         )));
                     }
                     Err(e) => {
                         eprintln!(
-                            "❌ Error fetching class definition with UUID {}: {}",
+                            "❌ Error fetching entity definition with UUID {}: {}",
                             uuid, e
                         );
                         return Err(e);
@@ -128,17 +128,17 @@ async fn run() -> Result<()> {
             }
         }
     } else {
-        // Apply schema for all class definitions
-        println!("Applying schema for all class definitions...");
+        // Apply schema for all entity definitions
+        println!("Applying schema for all entity definitions...");
 
         match repository.list(1000, 0).await {
             Ok(definitions) => {
                 if definitions.is_empty() {
-                    println!("No class definitions found.");
+                    println!("No entity definitions found.");
                     return Ok(());
                 }
 
-                println!("Found {} class definitions", definitions.len());
+                println!("Found {} entity definitions", definitions.len());
 
                 let mut success_count = 0;
                 let mut failure_count = 0;
@@ -185,7 +185,7 @@ async fn run() -> Result<()> {
                 }
             }
             Err(e) => {
-                eprintln!("❌ Failed to list class definitions: {}", e);
+                eprintln!("❌ Failed to list entity definitions: {}", e);
                 return Err(e);
             }
         }

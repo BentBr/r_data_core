@@ -96,9 +96,9 @@
             path: '/dashboard',
         },
         {
-            title: t('navigation.class_definitions'),
+            title: t('navigation.entity_definitions'),
             icon: 'mdi-file-tree',
-            path: '/class-definitions',
+            path: '/entity-definitions',
         },
         {
             title: t('navigation.entities'),

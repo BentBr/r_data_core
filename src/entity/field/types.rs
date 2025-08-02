@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// Field types supported in class definitions
+/// Field types supported in entity definitions
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum FieldType {
     // String types with UI variants

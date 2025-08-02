@@ -14,9 +14,9 @@ BEFORE UPDATE ON entities_registry
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
 
-DROP TRIGGER IF EXISTS set_timestamp ON class_definitions;
+DROP TRIGGER IF EXISTS set_timestamp ON entity_definitions;
 CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON class_definitions
+BEFORE UPDATE ON entity_definitions
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
 

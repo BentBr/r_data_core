@@ -32,8 +32,8 @@ export interface LoginResponse {
     expires_at: string
 }
 
-// Class Definition types
-export interface ClassDefinition {
+// Entity Definition types
+export interface EntityDefinition {
     uuid: string
     entity_type: string
     display_name: string

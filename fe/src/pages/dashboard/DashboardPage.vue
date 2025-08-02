@@ -21,8 +21,8 @@
                                     variant="tonal"
                                 >
                                     <v-card-text>
-                                        <div class="text-h6">Class Definitions</div>
-                                        <div class="text-h3">{{ metrics.classDefinitions }}</div>
+                                        <div class="text-h6">Entity Definitions</div>
+                                        <div class="text-h3">{{ metrics.entityDefinitions }}</div>
                                     </v-card-text>
                                 </v-card>
                             </v-col>
@@ -77,9 +77,9 @@
                                     variant="outlined"
                                     block
                                     prepend-icon="mdi-plus"
-                                    @click="$router.push('/class-definitions')"
+                                    @click="$router.push('/entity-definitions')"
                                 >
-                                    New Class Definition
+                                    New Entity Definition
                                 </v-btn>
                             </v-col>
                             <v-col
@@ -140,7 +140,7 @@
 
     // Mock data for now
     const metrics = ref({
-        classDefinitions: 0,
+        entityDefinitions: 0,
         entities: 0,
         apiKeys: 0,
     })
@@ -149,7 +149,7 @@
     onMounted(async () => {
         // Mock data
         metrics.value = {
-            classDefinitions: 12,
+            entityDefinitions: 12,
             entities: 1542,
             apiKeys: 8,
         }

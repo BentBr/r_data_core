@@ -21,20 +21,20 @@ mod workflow;
 // mod versioning;
 // mod notification;
 
-use crate::api::admin::class_definitions::repository::ClassDefinitionRepository;
+use crate::api::admin::entity_definitions::repository::EntityDefinitionRepository;
 use crate::api::{ApiResponse, ApiState};
 use crate::cache::CacheManager;
 use crate::config::AppConfig;
 use crate::entity::admin_user::{AdminUserRepository, ApiKeyRepository};
 use crate::entity::dynamic_entity::repository::DynamicEntityRepository;
 use crate::services::adapters::{
-    AdminUserRepositoryAdapter, ClassDefinitionRepositoryAdapter, DynamicEntityRepositoryAdapter,
+    AdminUserRepositoryAdapter, DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter,
 };
 use crate::services::AdminUserService;
 use crate::services::ApiKeyRepositoryAdapter;
 use crate::services::ApiKeyService;
-use crate::services::ClassDefinitionService;
 use crate::services::DynamicEntityService;
+use crate::services::EntityDefinitionService;
 
 // 404 handler function
 async fn default_404_handler() -> impl actix_web::Responder {
@@ -112,7 +112,7 @@ async fn main() -> std::io::Result<()> {
     let pool_arc = Arc::new(pool.clone());
     let api_key_repository = ApiKeyRepository::new(pool_arc.clone());
     let admin_user_repository = AdminUserRepository::new(pool_arc.clone());
-    let class_definition_repository = ClassDefinitionRepository::new(pool.clone());
+    let entity_definition_repository = EntityDefinitionRepository::new(pool.clone());
     let dynamic_entity_repository = DynamicEntityRepository::new(pool.clone());
 
     // Initialize services with adapters
@@ -123,17 +123,18 @@ async fn main() -> std::io::Result<()> {
     let admin_user_adapter = AdminUserRepositoryAdapter::new(admin_user_repository);
     let admin_user_service = AdminUserService::new(Arc::new(admin_user_adapter));
 
-    // Use the adapter for ClassDefinitionRepository
-    let class_definition_adapter =
-        ClassDefinitionRepositoryAdapter::new(class_definition_repository);
-    let class_definition_service = ClassDefinitionService::new(Arc::new(class_definition_adapter));
+    // Use the adapter for EntityDefinitionRepository
+    let entity_definition_adapter =
+        EntityDefinitionRepositoryAdapter::new(entity_definition_repository);
+    let entity_definition_service =
+        EntityDefinitionService::new(Arc::new(entity_definition_adapter));
 
     // Initialize dynamic entity service
     let dynamic_entity_adapter =
         DynamicEntityRepositoryAdapter::from_repository(dynamic_entity_repository);
     let dynamic_entity_service = DynamicEntityService::new(
         Arc::new(dynamic_entity_adapter),
-        Arc::new(class_definition_service.clone()),
+        Arc::new(entity_definition_service.clone()),
     );
 
     // Shared application state
@@ -143,7 +144,7 @@ async fn main() -> std::io::Result<()> {
         cache_manager: cache_manager.clone(),
         api_key_service,
         admin_user_service,
-        class_definition_service,
+        entity_definition_service,
         dynamic_entity_service: Some(Arc::new(dynamic_entity_service)),
     });
 

@@ -17,12 +17,12 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         crate::api::admin::auth::admin_refresh_token,
         crate::api::admin::auth::admin_revoke_all_tokens,
         crate::api::health::admin_health_check,
-        crate::api::admin::class_definitions::routes::list_class_definitions,
-        crate::api::admin::class_definitions::routes::get_class_definition,
-        crate::api::admin::class_definitions::routes::create_class_definition,
-        crate::api::admin::class_definitions::routes::update_class_definition,
-        crate::api::admin::class_definitions::routes::delete_class_definition,
-        crate::api::admin::class_definitions::routes::apply_class_definition_schema,
+        crate::api::admin::entity_definitions::routes::list_entity_definitions,
+        crate::api::admin::entity_definitions::routes::get_entity_definition,
+        crate::api::admin::entity_definitions::routes::create_entity_definition,
+        crate::api::admin::entity_definitions::routes::update_entity_definition,
+        crate::api::admin::entity_definitions::routes::delete_entity_definition,
+        crate::api::admin::entity_definitions::routes::apply_entity_definition_schema,
         crate::api::admin::api_keys::routes::create_api_key,
         crate::api::admin::api_keys::routes::list_api_keys,
         crate::api::admin::api_keys::routes::revoke_api_key
@@ -38,23 +38,23 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
             crate::api::admin::auth::RefreshTokenRequest,
             crate::api::admin::auth::RefreshTokenResponse,
             crate::api::admin::auth::LogoutRequest,
-            crate::api::admin::class_definitions::models::PaginationQuery,
-            crate::api::admin::class_definitions::models::PathUuid,
-            crate::api::admin::class_definitions::models::ClassDefinitionSchema,
-            crate::api::admin::class_definitions::models::FieldDefinitionSchema,
-            crate::api::admin::class_definitions::models::FieldTypeSchema,
-            crate::api::admin::class_definitions::models::UiSettingsSchema,
-            crate::api::admin::class_definitions::models::OptionsSourceSchema,
-            crate::api::admin::class_definitions::models::SelectOptionSchema,
-            crate::api::admin::class_definitions::models::ClassDefinitionListResponse,
-            crate::api::admin::class_definitions::models::ApplySchemaRequest,
-            crate::api::admin::class_definitions::models::FieldConstraints,
-            crate::api::admin::class_definitions::models::StringConstraints,
-            crate::api::admin::class_definitions::models::NumericConstraints,
-            crate::api::admin::class_definitions::models::DateTimeConstraints,
-            crate::api::admin::class_definitions::models::SelectConstraints,
-            crate::api::admin::class_definitions::models::RelationConstraints,
-            crate::api::admin::class_definitions::models::SchemaConstraints,
+            crate::api::admin::entity_definitions::models::PaginationQuery,
+            crate::api::admin::entity_definitions::models::PathUuid,
+            crate::api::admin::entity_definitions::models::EntityDefinitionSchema,
+            crate::api::admin::entity_definitions::models::FieldDefinitionSchema,
+            crate::api::admin::entity_definitions::models::FieldTypeSchema,
+            crate::api::admin::entity_definitions::models::UiSettingsSchema,
+            crate::api::admin::entity_definitions::models::OptionsSourceSchema,
+            crate::api::admin::entity_definitions::models::SelectOptionSchema,
+            crate::api::admin::entity_definitions::models::EntityDefinitionListResponse,
+            crate::api::admin::entity_definitions::models::ApplySchemaRequest,
+            crate::api::admin::entity_definitions::models::FieldConstraints,
+            crate::api::admin::entity_definitions::models::StringConstraints,
+            crate::api::admin::entity_definitions::models::NumericConstraints,
+            crate::api::admin::entity_definitions::models::DateTimeConstraints,
+            crate::api::admin::entity_definitions::models::SelectConstraints,
+            crate::api::admin::entity_definitions::models::RelationConstraints,
+            crate::api::admin::entity_definitions::models::SchemaConstraints,
             crate::api::admin::api_keys::routes::CreateApiKeyRequest,
             crate::api::admin::api_keys::routes::ApiKeyResponse,
             crate::api::admin::api_keys::routes::ApiKeyCreatedResponse
@@ -65,7 +65,7 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         (name = "admin-auth", description = "Admin authentication endpoints"),
         (name = "admin-health", description = "Admin health check endpoints"),
         (name = "admin", description = "Administrative endpoints for managing system resources"),
-        (name = "class-definitions", description = "Endpoints for managing entity type definitions and structure"),
+        (name = "entity-definitions", description = "Endpoints for managing entity type definitions and structure"),
         (name = "api-keys", description = "Endpoints for managing API keys")
     ),
     info(
@@ -170,7 +170,7 @@ impl Modify for ModelSchemaAddon {
 
             // First collect the keys that need to be renamed
             for key in components.schemas.keys() {
-                if key.contains("crate.api.admin.class_definitions.models.") {
+                if key.contains("crate.api.admin.entity_definitions.models.") {
                     let new_key = key.split('.').last().unwrap_or(key).to_string();
                     schemas_to_rename.push((key.clone(), new_key));
                 }

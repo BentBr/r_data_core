@@ -4,7 +4,7 @@ use time::{macros::format_description, Date, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::entity::field::{FieldDefinition, FieldType};
-use crate::entity::ClassDefinition;
+use crate::entity::EntityDefinition;
 use crate::error::{Error, Result};
 
 // Create a ValidationContext struct to encapsulate common validation parameters
@@ -480,17 +480,17 @@ pub fn validate_field(field_def: &Value, value: &Value, field_name: &str) -> Res
     }
 }
 
-pub fn validate_entity(entity: &Value, class_def: &ClassDefinition) -> Result<()> {
+pub fn validate_entity(entity: &Value, entity_def: &EntityDefinition) -> Result<()> {
     let mut validation_errors = Vec::new();
     let entity_type = entity
         .get("entity_type")
         .and_then(|v| v.as_str())
         .ok_or_else(|| Error::Validation("Entity must have an entity_type field".to_string()))?;
 
-    if entity_type != class_def.entity_type {
+    if entity_type != entity_def.entity_type {
         return Err(Error::Validation(format!(
-            "Entity type '{}' does not match class definition type '{}'",
-            entity_type, class_def.entity_type
+            "Entity type '{}' does not match entity definition type '{}'",
+            entity_type, entity_def.entity_type
         )));
     }
 
@@ -500,7 +500,7 @@ pub fn validate_entity(entity: &Value, class_def: &ClassDefinition) -> Result<()
         .ok_or_else(|| Error::Validation("Entity must have a field_data object".to_string()))?;
 
     // Check required fields
-    for field_def in &class_def.fields {
+    for field_def in &entity_def.fields {
         if field_def.required && !field_data.contains_key(&field_def.name) {
             validation_errors.push(format!("Required field '{}' is missing", field_def.name));
         }
@@ -508,7 +508,7 @@ pub fn validate_entity(entity: &Value, class_def: &ClassDefinition) -> Result<()
 
     // Validate fields that are present
     for (field_name, value) in field_data {
-        if let Some(field_def) = class_def.get_field(field_name) {
+        if let Some(field_def) = entity_def.get_field(field_name) {
             let _ = ValidationContext::with_field_name(field_def, value, field_name);
             if let Err(e) = DynamicEntityValidator::validate_field(field_def, value) {
                 validation_errors.push(e.to_string());

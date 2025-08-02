@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT column_name\n            FROM information_schema.columns\n            WHERE table_schema = 'public'\n            AND table_name = 'entities_registry'\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "column_name",
+        "type_info": "Name"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "bd10ee18fee573ecdb4041820518f470861ee02ede34976e6a7bcf100cf1a493"
+}

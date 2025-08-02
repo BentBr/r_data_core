@@ -119,7 +119,7 @@ Each component should include tests for these common edge cases:
 Based on the refactoring strategy document, our immediate focus areas are:
 
 1. **Dynamic Entity Service**
-   - ✅ Entity validation against class definitions
+   - ✅ Entity validation against entity definitions
    - ✅ Field type validation and constraints
    - ✅ Required field validation
    - ⬜ Pattern validation for string fields
@@ -207,7 +207,7 @@ Examples:
 ### Phase 1: Complete Service Layer Tests (Current Focus)
 
 - ✅ Unit tests for dynamic entity service methods
-- ✅ Unit tests for class definition service
+- ✅ Unit tests for entity definition service
 - ✅ Unit tests for API key service
 - ✅ Unit tests for admin user service
 - ✅ Unit tests for authentication service components

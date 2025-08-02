@@ -1,7 +1,7 @@
 use crate::common::utils::clear_test_db;
-use crate::repositories::{get_class_definition_repository_with_pool, TestRepository};
-use r_data_core::entity::class::definition::ClassDefinition;
-use r_data_core::entity::class::repository_trait::ClassDefinitionRepositoryTrait;
+use crate::repositories::{get_entity_definition_repository_with_pool, TestRepository};
+use r_data_core::entity::entity_definition::definition::EntityDefinition;
+use r_data_core::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use r_data_core::entity::field::types::FieldType;
 use r_data_core::entity::field::ui::UiSettings;
 use r_data_core::entity::field::FieldDefinition;
@@ -11,12 +11,12 @@ use uuid::Uuid;
 
 #[tokio::test]
 #[serial]
-async fn test_create_and_get_class_definition() {
+async fn test_create_and_get_entity_definition() {
     // Get test repository and clear database first
     let TestRepository {
         repository,
         db_pool,
-    } = get_class_definition_repository_with_pool().await;
+    } = get_entity_definition_repository_with_pool().await;
     clear_test_db(&db_pool)
         .await
         .expect("Failed to clear database");
@@ -24,7 +24,7 @@ async fn test_create_and_get_class_definition() {
     // Create test definition
     let creator_id = Uuid::now_v7();
 
-    let test_def = ClassDefinition::new(
+    let test_def = EntityDefinition::new(
         "testentity".to_string(),
         "Test Entity".to_string(),
         Some("Test entity for repository tests".to_string()),
@@ -92,11 +92,11 @@ async fn test_create_and_get_class_definition() {
 
 #[tokio::test]
 #[serial]
-async fn test_list_class_definitions() {
+async fn test_list_entity_definitions() {
     let TestRepository {
         repository,
         db_pool,
-    } = get_class_definition_repository_with_pool().await;
+    } = get_entity_definition_repository_with_pool().await;
     clear_test_db(&db_pool)
         .await
         .expect("Failed to clear database");
@@ -107,7 +107,7 @@ async fn test_list_class_definitions() {
 
     for i in 1..=3 {
         let entity_type = format!("testlist{}", i);
-        let definition = ClassDefinition::new(
+        let definition = EntityDefinition::new(
             entity_type.clone(),
             format!("Test List {}", i),
             Some(format!("Test definition {}", i)),
@@ -157,18 +157,18 @@ async fn test_list_class_definitions() {
 
 #[tokio::test]
 #[serial]
-async fn test_update_class_definition() {
+async fn test_update_entity_definition() {
     let TestRepository {
         repository,
         db_pool,
-    } = get_class_definition_repository_with_pool().await;
+    } = get_entity_definition_repository_with_pool().await;
     clear_test_db(&db_pool)
         .await
         .expect("Failed to clear database");
 
     // Create a test definition
     let creator_id = Uuid::now_v7();
-    let definition = ClassDefinition::new(
+    let definition = EntityDefinition::new(
         "testupdate".to_string(),
         "Original Title".to_string(),
         Some("Original description".to_string()),
@@ -250,18 +250,18 @@ async fn test_update_class_definition() {
 
 #[tokio::test]
 #[serial]
-async fn test_delete_class_definition() {
+async fn test_delete_entity_definition() {
     let TestRepository {
         repository,
         db_pool,
-    } = get_class_definition_repository_with_pool().await;
+    } = get_entity_definition_repository_with_pool().await;
     clear_test_db(&db_pool)
         .await
         .expect("Failed to clear database");
 
     // Create a test definition
     let creator_id = Uuid::now_v7();
-    let definition = ClassDefinition::new(
+    let definition = EntityDefinition::new(
         "testdelete".to_string(),
         "Test Delete".to_string(),
         None,
@@ -313,14 +313,14 @@ async fn test_table_operations() {
     let TestRepository {
         repository,
         db_pool,
-    } = get_class_definition_repository_with_pool().await;
+    } = get_entity_definition_repository_with_pool().await;
     clear_test_db(&db_pool)
         .await
         .expect("Failed to clear database");
 
     // Create a test definition
     let creator_id = Uuid::now_v7();
-    let definition = ClassDefinition::new(
+    let definition = EntityDefinition::new(
         "testtable".to_string(),
         "Test Table".to_string(),
         None,
@@ -422,11 +422,11 @@ async fn test_table_operations() {
 
 #[tokio::test]
 #[serial]
-async fn test_create_class_definition_from_json_examples() {
+async fn test_create_entity_definition_from_json_examples() {
     let TestRepository {
         repository,
         db_pool,
-    } = get_class_definition_repository_with_pool().await;
+    } = get_entity_definition_repository_with_pool().await;
     clear_test_db(&db_pool)
         .await
         .expect("Failed to clear database");
@@ -434,13 +434,13 @@ async fn test_create_class_definition_from_json_examples() {
     let creator_id = Uuid::now_v7();
 
     // Load JSON examples
-    let product_json = std::fs::read_to_string(".json_examples/product_class_definition.json")
+    let product_json = std::fs::read_to_string(".json_examples/product_entity_definition.json")
         .expect("Failed to read product JSON example");
 
-    let user_json = std::fs::read_to_string(".json_examples/user_class_definition.json")
+    let user_json = std::fs::read_to_string(".json_examples/user_entity_definition.json")
         .expect("Failed to read user JSON example");
 
-    let order_json = std::fs::read_to_string(".json_examples/order_class_definition.json")
+    let order_json = std::fs::read_to_string(".json_examples/order_entity_definition.json")
         .expect("Failed to read order JSON example");
 
     let examples = vec![product_json, user_json, order_json];
@@ -448,8 +448,8 @@ async fn test_create_class_definition_from_json_examples() {
     let mut created_uuids = Vec::new();
 
     for (i, json_str) in examples.iter().enumerate() {
-        // Parse JSON to ClassDefinition
-        let mut definition: ClassDefinition = serde_json::from_str(&json_str).expect(&format!(
+        // Parse JSON to EntityDefinition
+        let mut definition: EntityDefinition = serde_json::from_str(&json_str).expect(&format!(
             "Failed to parse {} JSON example",
             example_names[i]
         ));
@@ -461,12 +461,12 @@ async fn test_create_class_definition_from_json_examples() {
         // Convert entity_type to lowercase to avoid case sensitivity issues
         definition.entity_type = definition.entity_type.to_lowercase();
 
-        // Create the class definition in the repository
+        // Create the entity definition in the repository
         let uuid = match repository.create(&definition).await {
             Ok(id) => id,
             Err(e) => {
                 eprintln!(
-                    "Failed to create {} class definition: {}",
+                    "Failed to create {} entity definition: {}",
                     example_names[i], e
                 );
                 continue;

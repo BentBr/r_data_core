@@ -17,8 +17,8 @@ pub use crate::api::response::ApiResponse;
 use crate::cache::CacheManager;
 use crate::services::AdminUserService;
 use crate::services::ApiKeyService;
-use crate::services::ClassDefinitionService;
 use crate::services::DynamicEntityService;
+use crate::services::EntityDefinitionService;
 
 /// Shared application state
 pub struct ApiState {
@@ -37,8 +37,8 @@ pub struct ApiState {
     /// Admin User service
     pub admin_user_service: AdminUserService,
 
-    /// Class Definition service
-    pub class_definition_service: ClassDefinitionService,
+    /// Entity Definition service
+    pub entity_definition_service: EntityDefinitionService,
 
     /// Dynamic Entity service
     pub dynamic_entity_service: Option<Arc<DynamicEntityService>>,

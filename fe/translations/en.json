@@ -24,7 +24,7 @@
   },
   "navigation": {
     "dashboard": "Dashboard",
-    "class_definitions": "Class Definitions", 
+    "entity_definitions": "Entity Definitions", 
     "entities": "Entities",
     "api_keys": "API Keys",
     "permissions": "Permissions",

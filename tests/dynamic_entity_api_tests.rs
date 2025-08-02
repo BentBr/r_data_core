@@ -1,14 +1,14 @@
 use actix_web::test;
 use log::warn;
-use r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository;
-use r_data_core::entity::class::definition::ClassDefinition;
+use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
 use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
 use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
 use r_data_core::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
+use r_data_core::entity::entity_definition::definition::EntityDefinition;
 use r_data_core::entity::field::ui::UiSettings;
 use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core::error::{Error, Result};
-use r_data_core::services::{ClassDefinitionService, DynamicEntityService};
+use r_data_core::services::{DynamicEntityService, EntityDefinitionService};
 use serde_json::json;
 use sqlx::{PgPool, Row};
 use std::collections::HashMap;
@@ -42,13 +42,13 @@ mod dynamic_entity_tests {
         common::utils::unique_entity_type(base)
     }
 
-    // Helper to create a test class definition
-    async fn create_test_class_definition(
+    // Helper to create a test entity definition
+    async fn create_test_entity_definition(
         db_pool: &PgPool,
         entity_type: &str,
-    ) -> Result<(Uuid, ClassDefinition)> {
-        // Create a simple class definition for testing
-        let mut class_def = ClassDefinition::new(
+    ) -> Result<(Uuid, EntityDefinition)> {
+        // Create a simple entity definition for testing
+        let mut entity_def = EntityDefinition::new(
             entity_type.to_string(),
             format!("Test {}", entity_type),
             Some(format!("Test {} description", entity_type)),
@@ -59,7 +59,7 @@ mod dynamic_entity_tests {
             Uuid::now_v7(),
         );
 
-        class_def.published = true; // Ensure the class is published
+        entity_def.published = true; // Ensure the class is published
 
         // Add some fields
         let name_field = FieldDefinition {
@@ -135,40 +135,42 @@ mod dynamic_entity_tests {
             constraints: HashMap::new(),
         };
 
-        // Add fields to the class definition
-        class_def.fields = vec![name_field, email_field, age_field, active_field];
+        // Add fields to the entity definition
+        entity_def.fields = vec![name_field, email_field, age_field, active_field];
 
         // Save to a database using the service
-        let class_definition_repository = ClassDefinitionRepository::new(db_pool.clone());
-        let class_definition_service =
-            ClassDefinitionService::new(Arc::new(class_definition_repository));
-        let uuid = class_definition_service
-            .create_class_definition(&class_def)
+        let entity_definition_repository = EntityDefinitionRepository::new(db_pool.clone());
+        let entity_definition_service =
+            EntityDefinitionService::new(Arc::new(entity_definition_repository));
+        let uuid = entity_definition_service
+            .create_entity_definition(&entity_def)
             .await?;
 
         // Wait a moment for the service to create the necessary database objects
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
-        // Verify the class definition was created successfully
-        let created_def = class_definition_service.get_class_definition(&uuid).await?;
+        // Verify the entity definition was created successfully
+        let created_def = entity_definition_service
+            .get_entity_definition(&uuid)
+            .await?;
         assert_eq!(
             created_def.entity_type, entity_type,
             "Class definition entity type mismatch"
         );
 
-        Ok((uuid, class_def))
+        Ok((uuid, entity_def))
     }
 
-    // Helper to create a test dynamic entity with the associated class definition
+    // Helper to create a test dynamic entity with the associated entity definition
     fn create_test_entity(
         entity_type: &str,
-        class_def: Arc<ClassDefinition>,
+        entity_def: Arc<EntityDefinition>,
         uuid: Option<Uuid>,
     ) -> DynamicEntity {
         let mut entity = DynamicEntity {
             entity_type: entity_type.to_string(),
             field_data: HashMap::new(),
-            definition: class_def,
+            definition: entity_def,
         };
 
         // Add field data
@@ -219,47 +221,48 @@ mod dynamic_entity_tests {
         )
     }
 
-    /// Create a test class definition from a JSON file with a unique entity type
-    async fn create_test_class_definition_from_json(
+    /// Create a test entity definition from a JSON file with a unique entity type
+    async fn create_test_entity_definition_from_json(
         pool: &PgPool,
         json_path: &str,
-    ) -> Result<(String, ClassDefinition, Uuid)> {
+    ) -> Result<(String, EntityDefinition, Uuid)> {
         // Read the JSON file
         let json_content = std::fs::read_to_string(json_path).map_err(|e| {
             Error::Unknown(format!("Failed to read JSON file {}: {}", json_path, e))
         })?;
 
-        // Parse the JSON into a ClassDefinition
-        let mut class_def: ClassDefinition = serde_json::from_str(&json_content).map_err(|e| {
-            Error::Unknown(format!("Failed to parse JSON file {}: {}", json_path, e))
-        })?;
+        // Parse the JSON into a EntityDefinition
+        let mut entity_def: EntityDefinition =
+            serde_json::from_str(&json_content).map_err(|e| {
+                Error::Unknown(format!("Failed to parse JSON file {}: {}", json_path, e))
+            })?;
 
         // Make the entity type unique to avoid test conflicts
-        let unique_entity_type = unique_entity_type(&class_def.entity_type);
-        class_def.entity_type = unique_entity_type.clone();
+        let unique_entity_type = unique_entity_type(&entity_def.entity_type);
+        entity_def.entity_type = unique_entity_type.clone();
 
-        // Ensure the class definition is published
-        class_def.published = true;
+        // Ensure the entity definition is published
+        entity_def.published = true;
 
         // Make sure we have a creator
-        if class_def.created_by == Uuid::nil() {
-            class_def.created_by = Uuid::now_v7();
+        if entity_def.created_by == Uuid::nil() {
+            entity_def.created_by = Uuid::now_v7();
         }
 
-        // Create the class definition using the service
-        let class_definition_repository = ClassDefinitionRepository::new(pool.clone());
-        let class_definition_service =
-            ClassDefinitionService::new(Arc::new(class_definition_repository));
-        let uuid = class_definition_service
-            .create_class_definition(&class_def)
+        // Create the entity definition using the service
+        let entity_definition_repository = EntityDefinitionRepository::new(pool.clone());
+        let entity_definition_service =
+            EntityDefinitionService::new(Arc::new(entity_definition_repository));
+        let uuid = entity_definition_service
+            .create_entity_definition(&entity_def)
             .await?;
 
         // Wait a moment for the service to create the necessary database objects
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
-        // Verify the class definition was saved as published with a direct database query
+        // Verify the entity definition was saved as published with a direct database query
         let published = sqlx::query_scalar::<_, bool>(
-            "SELECT published FROM class_definitions WHERE uuid = $1",
+            "SELECT published FROM entity_definitions WHERE uuid = $1",
         )
         .bind(uuid)
         .fetch_one(pool)
@@ -268,7 +271,7 @@ mod dynamic_entity_tests {
 
         if !published {
             // If not published, update it directly
-            sqlx::query("UPDATE class_definitions SET published = true WHERE uuid = $1")
+            sqlx::query("UPDATE entity_definitions SET published = true WHERE uuid = $1")
                 .bind(uuid)
                 .execute(pool)
                 .await
@@ -278,12 +281,12 @@ mod dynamic_entity_tests {
             tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
         }
 
-        // Get the updated class definition
-        let saved_class_def = class_definition_service
-            .get_class_definition_by_entity_type(&unique_entity_type)
+        // Get the updated entity definition
+        let saved_entity_def = entity_definition_service
+            .get_entity_definition_by_entity_type(&unique_entity_type)
             .await?;
 
-        Ok((unique_entity_type, saved_class_def, uuid))
+        Ok((unique_entity_type, saved_entity_def, uuid))
     }
 
     // Helper to ensure an entity is published
@@ -318,17 +321,17 @@ mod dynamic_entity_tests {
         // Create a unique entity type for this test
         let entity_type = unique_entity_type("user");
 
-        // Create class definition and get its content
-        let (_, class_def) = create_test_class_definition(&pool, &entity_type).await?;
+        // Create entity definition and get its content
+        let (_, entity_def) = create_test_entity_definition(&pool, &entity_type).await?;
 
         // Create repository and service
         let repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
-        let class_definition_repository = Arc::new(ClassDefinitionRepository::new(pool.clone()));
-        let class_service = ClassDefinitionService::new(class_definition_repository);
+        let entity_definition_repository = Arc::new(EntityDefinitionRepository::new(pool.clone()));
+        let class_service = EntityDefinitionService::new(entity_definition_repository);
         let service = DynamicEntityService::new(repository.clone(), Arc::new(class_service));
 
-        // Create entity with the class definition
-        let test_entity = create_test_entity(&entity_type, Arc::new(class_def), None);
+        // Create entity with the entity definition
+        let test_entity = create_test_entity(&entity_type, Arc::new(entity_def), None);
         let test_uuid = get_entity_uuid(&test_entity).unwrap();
 
         // Create the entity using the service
@@ -371,10 +374,10 @@ mod dynamic_entity_tests {
         // Setup test database
         let pool = common::utils::setup_test_db().await;
 
-        // Create a class definition from the JSON example with a unique entity type
-        let (entity_type, class_def, _) = create_test_class_definition_from_json(
+        // Create a entity definition from the JSON example with a unique entity type
+        let (entity_type, entity_def, _) = create_test_entity_definition_from_json(
             &pool,
-            ".json_examples/user_class_definition.json",
+            ".json_examples/user_entity_definition.json",
         )
         .await?;
 
@@ -382,8 +385,8 @@ mod dynamic_entity_tests {
 
         // Create dynamic entity service
         let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
-        let repository = Arc::new(ClassDefinitionRepository::new(pool.clone()));
-        let class_service = ClassDefinitionService::new(repository);
+        let repository = Arc::new(EntityDefinitionRepository::new(pool.clone()));
+        let class_service = EntityDefinitionService::new(repository);
         let dynamic_entity_service =
             DynamicEntityService::new(dynamic_entity_repository.clone(), Arc::new(class_service));
 
@@ -393,7 +396,7 @@ mod dynamic_entity_tests {
             let mut entity = DynamicEntity {
                 entity_type: entity_type.clone(),
                 field_data: HashMap::new(),
-                definition: Arc::new(class_def.clone()),
+                definition: Arc::new(entity_def.clone()),
             };
 
             let uuid = Uuid::now_v7();
@@ -504,17 +507,17 @@ mod dynamic_entity_tests {
         // Setup test database
         let pool = common::utils::setup_test_db().await;
 
-        // Create a class definition from the JSON example with a unique entity type
-        let (entity_type, class_def, _) = create_test_class_definition_from_json(
+        // Create a entity definition from the JSON example with a unique entity type
+        let (entity_type, entity_def, _) = create_test_entity_definition_from_json(
             &pool,
-            ".json_examples/user_class_definition.json",
+            ".json_examples/user_entity_definition.json",
         )
         .await?;
 
         // Create dynamic entity service
         let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
-        let repository = Arc::new(ClassDefinitionRepository::new(pool.clone()));
-        let class_service = ClassDefinitionService::new(repository);
+        let repository = Arc::new(EntityDefinitionRepository::new(pool.clone()));
+        let class_service = EntityDefinitionService::new(repository);
         let dynamic_entity_service =
             DynamicEntityService::new(dynamic_entity_repository.clone(), Arc::new(class_service));
 
@@ -523,7 +526,7 @@ mod dynamic_entity_tests {
             let mut entity = DynamicEntity {
                 entity_type: entity_type.clone(),
                 field_data: HashMap::new(),
-                definition: Arc::new(class_def.clone()),
+                definition: Arc::new(entity_def.clone()),
             };
 
             let uuid = Uuid::now_v7();
@@ -609,7 +612,7 @@ mod dynamic_entity_tests {
         let mut entity = DynamicEntity {
             entity_type: "test".to_string(),
             field_data: HashMap::new(),
-            definition: Arc::new(ClassDefinition::default()),
+            definition: Arc::new(EntityDefinition::default()),
         };
 
         // Add a UUID field
@@ -638,10 +641,10 @@ mod dynamic_entity_tests {
         // Setup test database
         let pool = common::utils::setup_test_db().await;
 
-        // Create a class definition from the JSON example with a unique entity type
-        let (entity_type, class_def, _) = create_test_class_definition_from_json(
+        // Create a entity definition from the JSON example with a unique entity type
+        let (entity_type, entity_def, _) = create_test_entity_definition_from_json(
             &pool,
-            ".json_examples/user_class_definition.json",
+            ".json_examples/user_entity_definition.json",
         )
         .await?;
 
@@ -649,8 +652,8 @@ mod dynamic_entity_tests {
 
         // Create repositories and services for this test
         let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
-        let repository = Arc::new(ClassDefinitionRepository::new(pool.clone()));
-        let class_service = ClassDefinitionService::new(repository);
+        let repository = Arc::new(EntityDefinitionRepository::new(pool.clone()));
+        let class_service = EntityDefinitionService::new(repository);
         let dynamic_entity_service =
             DynamicEntityService::new(dynamic_entity_repository.clone(), Arc::new(class_service));
 
@@ -659,7 +662,7 @@ mod dynamic_entity_tests {
             let mut entity = DynamicEntity {
                 entity_type: entity_type.clone(),
                 field_data: HashMap::new(),
-                definition: Arc::new(class_def.clone()),
+                definition: Arc::new(entity_def.clone()),
             };
 
             let uuid = Uuid::now_v7();
@@ -735,10 +738,10 @@ mod dynamic_entity_tests {
         // Setup test database
         let pool = common::utils::setup_test_db().await;
 
-        // Create a class definition from the JSON example with a unique entity type
-        let (entity_type, class_def, _) = create_test_class_definition_from_json(
+        // Create a entity definition from the JSON example with a unique entity type
+        let (entity_type, entity_def, _) = create_test_entity_definition_from_json(
             &pool,
-            ".json_examples/user_class_definition.json",
+            ".json_examples/user_entity_definition.json",
         )
         .await?;
 
@@ -746,8 +749,8 @@ mod dynamic_entity_tests {
 
         // Create dynamic entity service
         let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
-        let repository = Arc::new(ClassDefinitionRepository::new(pool.clone()));
-        let class_service = ClassDefinitionService::new(repository);
+        let repository = Arc::new(EntityDefinitionRepository::new(pool.clone()));
+        let class_service = EntityDefinitionService::new(repository);
         let dynamic_entity_service =
             DynamicEntityService::new(dynamic_entity_repository, Arc::new(class_service));
 
@@ -757,7 +760,7 @@ mod dynamic_entity_tests {
             let mut entity = DynamicEntity {
                 entity_type: entity_type.clone(),
                 field_data: HashMap::new(),
-                definition: Arc::new(class_def.clone()),
+                definition: Arc::new(entity_def.clone()),
             };
 
             let uuid = Uuid::now_v7();
@@ -842,16 +845,16 @@ mod dynamic_entity_tests {
         // Set up the test database
         let pool = common::utils::setup_test_db().await;
 
-        // Create a simple class definition
+        // Create a simple entity definition
         let entity_type = format!("test_entity_{}", Uuid::now_v7().simple());
 
-        // Create a simple class definition
-        let mut class_def = ClassDefinition::default();
-        class_def.entity_type = entity_type.clone();
-        class_def.display_name = format!("Test {}", entity_type);
-        class_def.description = Some("Test entity".to_string());
-        class_def.created_by = Uuid::now_v7();
-        class_def.published = true;
+        // Create a simple entity definition
+        let mut entity_def = EntityDefinition::default();
+        entity_def.entity_type = entity_type.clone();
+        entity_def.display_name = format!("Test {}", entity_type);
+        entity_def.description = Some("Test entity".to_string());
+        entity_def.created_by = Uuid::now_v7();
+        entity_def.published = true;
 
         // Create a simple field definition
         let mut fields = Vec::new();
@@ -861,24 +864,24 @@ mod dynamic_entity_tests {
             r_data_core::entity::field::types::FieldType::String,
         );
         fields.push(field);
-        class_def.fields = fields;
+        entity_def.fields = fields;
 
-        // Create class definition in the database
-        let class_repo = ClassDefinitionRepository::new(pool.clone());
-        let class_service = ClassDefinitionService::new(Arc::new(class_repo));
-        let class_uuid = class_service.create_class_definition(&class_def).await?;
+        // Create entity definition in the database
+        let class_repo = EntityDefinitionRepository::new(pool.clone());
+        let class_service = EntityDefinitionService::new(Arc::new(class_repo));
+        let entity_uuid = class_service.create_entity_definition(&entity_def).await?;
 
         // Wait for database operations to complete
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
-        // Get the class definition
-        let class_def = class_service.get_class_definition(&class_uuid).await?;
+        // Get the entity definition
+        let entity_def = class_service.get_entity_definition(&entity_uuid).await?;
 
         // Create a dynamic entity
         let mut entity = DynamicEntity {
             entity_type: entity_type.clone(),
             field_data: HashMap::new(),
-            definition: Arc::new(class_def),
+            definition: Arc::new(entity_def),
         };
 
         // Set entity fields

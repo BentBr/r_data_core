@@ -1,5 +1,5 @@
 warning: unused import: `time::OffsetDateTime`
- --> src/services/class_definition_service.rs:6:5
+ --> src/services/entity_definition_service.rs:6:5
   |
 6 | use time::OffsetDateTime;
   |     ^^^^^^^^^^^^^^^^^^^^
@@ -66,17 +66,17 @@ warning: unused variable: `uuid`
 299 |     async fn create_version_snapshot(&self, uuid: &Uuid, _entity: &T) -> Result<()> {
     |                                             ^^^^ help: if this is intentional, prefix it with an underscore: `_uuid`
 
-warning: unused variable: `class_def`
+warning: unused variable: `entity_def`
   --> src/entity/dynamic_entity/repository.rs:28:13
    |
-28 |         let class_def = sqlx::query("SELECT * FROM class_definitions WHERE entity_type = $1")
-   |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_class_def`
+28 |         let entity_def = sqlx::query("SELECT * FROM entity_definitions WHERE entity_type = $1")
+   |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_entity_def`
 
-warning: unused variable: `class_def`
+warning: unused variable: `entity_def`
    --> src/entity/dynamic_entity/repository.rs:227:13
     |
-227 |         let class_def = sqlx::query("SELECT * FROM class_definitions WHERE entity_type = $1")
-    |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_class_def`
+227 |         let entity_def = sqlx::query("SELECT * FROM entity_definitions WHERE entity_type = $1")
+    |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_entity_def`
 
 warning: this function depends on never type fallback being `()`
   --> src/cache/redis.rs:47:1
@@ -355,7 +355,7 @@ warning: function `validate_field` is never used
 warning: function `validate_entity` is never used
    --> src/entity/dynamic_entity/validator.rs:561:8
     |
-561 | pub fn validate_entity(entity: &Value, class_def: &ClassDefinition) -> Result<()> {
+561 | pub fn validate_entity(entity: &Value, entity_def: &EntityDefinition) -> Result<()> {
     |        ^^^^^^^^^^^^^^^
 
 warning: method `handle_constraint` is never used
@@ -478,10 +478,10 @@ warning: unused imports: `AdminUserRepositoryTrait`, `ApiKeyRepositoryTrait`, an
 7 | pub use repository_trait::{is_key_valid, AdminUserRepositoryTrait, ApiKeyRepositoryTrait};
   |                            ^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^
 
-warning: unused import: `repository_trait::ClassDefinitionRepositoryTrait`
+warning: unused import: `repository_trait::EntityDefinitionRepositoryTrait`
  --> src/entity/class/mod.rs:6:9
   |
-6 | pub use repository_trait::ClassDefinitionRepositoryTrait;
+6 | pub use repository_trait::EntityDefinitionRepositoryTrait;
   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: field `cache_manager` is never read
@@ -510,7 +510,7 @@ warning: function `validate_email` is never used
    |    ^^^^^^^^^^^^^^
 
 warning: function `register_routes` is never used
- --> src/api/admin/class_definitions/mod.rs:7:8
+ --> src/api/admin/entity_definitions/mod.rs:7:8
   |
 7 | pub fn register_routes(cfg: &mut web::ServiceConfig) {
   |        ^^^^^^^^^^^^^^^
@@ -795,7 +795,7 @@ warning: methods `get_field`, `set_field`, `get_all_fields`, and `validate` are 
    |        ^^^^^^^^^
 28 |     fn get_all_fields(&self) -> HashMap<String, serde_json::Value>;
    |        ^^^^^^^^^^^^^^
-29 |     fn validate(&self, class_def: &ClassDefinition) -> Result<()>;
+29 |     fn validate(&self, entity_def: &EntityDefinition) -> Result<()>;
    |        ^^^^^^^^
 
 warning: methods `full_path`, `increment_version`, and `create_version_snapshot` are never used
@@ -903,7 +903,7 @@ warning: associated items `new` and `deserialize` are never used
 warning: multiple methods are never used
    --> src/entity/class/definition.rs:196:12
     |
-150 | impl ClassDefinition {
+150 | impl EntityDefinition {
     | -------------------- methods in this implementation
 ...
 196 |     pub fn get_field(&self, name: &str) -> Option<&FieldDefinition> {
@@ -930,7 +930,7 @@ warning: multiple methods are never used
 warning: methods `apply_schema` and `cleanup_unused_entity_tables` are never used
   --> src/entity/class/repository_trait.rs:29:14
    |
-9  | pub trait ClassDefinitionRepositoryTrait: Send + Sync {
+9  | pub trait EntityDefinitionRepositoryTrait: Send + Sync {
    |           ------------------------------ methods in this trait
 ...
 29 |     async fn apply_schema(&self, schema_sql: &str) -> Result<()>;
@@ -961,7 +961,7 @@ warning: field `definition` is never read
 116 | pub struct DynamicEntity {
     |            ------------- field in this struct
 ...
-125 |     pub definition: Arc<ClassDefinition>,
+125 |     pub definition: Arc<EntityDefinition>,
     |         ^^^^^^^^^^
     |
     = note: `DynamicEntity` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
@@ -972,7 +972,7 @@ warning: multiple associated items are never used
 128 | impl DynamicEntity {
     | ------------------ associated items in this implementation
 129 |     /// Create a new dynamic entity
-130 |     pub fn new(entity_type: String, definition: Arc<ClassDefinition>) -> Self {
+130 |     pub fn new(entity_type: String, definition: Arc<EntityDefinition>) -> Self {
     |            ^^^
 ...
 174 |     pub fn get<T: FromValue>(&self, field: &str) -> Result<T> {
@@ -1052,7 +1052,7 @@ warning: trait `WorkflowManager` is never used
 warning: variable does not need to be mutable
   --> src/bin/test_schema_update.rs:62:9
    |
-62 |     let mut test_class = ClassDefinition {
+62 |     let mut test_class = EntityDefinition {
    |         ----^^^^^^^^^^
    |         |
    |         help: remove this `mut`
@@ -1139,7 +1139,7 @@ warning: `r_data_core` (test "mod") generated 2 warnings (run `cargo fix --test 
 warning: `r_data_core` (bin "test_schema_update" test) generated 2 warnings (2 duplicates)
 warning: `r_data_core` (bin "test_dynamic_entity" test) generated 7 warnings (7 duplicates)
 warning: unused import: `eq`
-   --> src/services/class_definition_service.rs:183:36
+   --> src/services/entity_definition_service.rs:183:36
     |
 183 |     use mockall::predicate::{self, eq};
     |                                    ^^
@@ -1147,7 +1147,7 @@ warning: unused import: `eq`
     = note: `#[warn(unused_imports)]` on by default
 
 warning: unused variable: `now`
-   --> src/services/class_definition_service.rs:208:13
+   --> src/services/entity_definition_service.rs:208:13
     |
 208 |         let now = OffsetDateTime::now_utc();
     |             ^^^ help: if this is intentional, prefix it with an underscore: `_now`

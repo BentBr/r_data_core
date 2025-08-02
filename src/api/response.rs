@@ -1,9 +1,9 @@
 use actix_web::{http::StatusCode, HttpResponse, ResponseError};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use uuid::Uuid;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum Status {

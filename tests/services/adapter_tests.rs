@@ -6,25 +6,26 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use r_data_core::{
-    entity::class::definition::ClassDefinition,
-    entity::class::repository_trait::ClassDefinitionRepositoryTrait, entity::class::schema::Schema,
-    entity::field::definition::FieldDefinition, entity::field::types::FieldType, error::Result,
+    entity::entity_definition::definition::EntityDefinition,
+    entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait,
+    entity::entity_definition::schema::Schema, entity::field::definition::FieldDefinition,
+    entity::field::types::FieldType, error::Result,
 };
 
 // Create a trait-based mock for testing
 mockall::mock! {
-    pub ClassDefRepository { }
+    pub EntityDefRepository { }
 
     #[async_trait]
-    impl ClassDefinitionRepositoryTrait for ClassDefRepository {
-        async fn list(&self, limit: i64, offset: i64) -> Result<Vec<ClassDefinition>>;
-        async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<ClassDefinition>>;
-        async fn get_by_entity_type(&self, entity_type: &str) -> Result<Option<ClassDefinition>>;
-        async fn create(&self, definition: &ClassDefinition) -> Result<Uuid>;
-        async fn update(&self, uuid: &Uuid, definition: &ClassDefinition) -> Result<()>;
+    impl EntityDefinitionRepositoryTrait for EntityDefRepository {
+        async fn list(&self, limit: i64, offset: i64) -> Result<Vec<EntityDefinition>>;
+        async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<EntityDefinition>>;
+        async fn get_by_entity_type(&self, entity_type: &str) -> Result<Option<EntityDefinition>>;
+        async fn create(&self, definition: &EntityDefinition) -> Result<Uuid>;
+        async fn update(&self, uuid: &Uuid, definition: &EntityDefinition) -> Result<()>;
         async fn delete(&self, uuid: &Uuid) -> Result<()>;
         async fn apply_schema(&self, schema_sql: &str) -> Result<()>;
-        async fn update_entity_view_for_class_definition(&self, class_definition: &ClassDefinition) -> Result<()>;
+        async fn update_entity_view_for_entity_definition(&self, entity_definition: &EntityDefinition) -> Result<()>;
         async fn check_view_exists(&self, view_name: &str) -> Result<bool>;
         async fn get_view_columns_with_types(&self, view_name: &str) -> Result<HashMap<String, String>>;
         async fn count_view_records(&self, view_name: &str) -> Result<i64>;
@@ -32,9 +33,9 @@ mockall::mock! {
     }
 }
 
-// Helper function to create a test class definition
-fn create_test_class_definition() -> ClassDefinition {
-    ClassDefinition {
+// Helper function to create a test entity definition
+fn create_test_entity_definition() -> EntityDefinition {
+    EntityDefinition {
         uuid: Uuid::now_v7(),
         entity_type: "test_entity".to_string(),
         display_name: "Test Entity".to_string(),
@@ -83,8 +84,8 @@ fn create_test_class_definition() -> ClassDefinition {
 #[tokio::test]
 async fn test_trait_list_delegates_correctly() -> Result<()> {
     // Arrange
-    let mut mock = MockClassDefRepository::new();
-    let expected_definitions = vec![create_test_class_definition()];
+    let mut mock = MockEntityDefRepository::new();
+    let expected_definitions = vec![create_test_entity_definition()];
 
     // Setup expectations
     mock.expect_list()
@@ -92,7 +93,7 @@ async fn test_trait_list_delegates_correctly() -> Result<()> {
         .returning(move |_, _| Ok(expected_definitions.clone()));
 
     // Use the mock as a trait object
-    let repo: Arc<dyn ClassDefinitionRepositoryTrait> = Arc::new(mock);
+    let repo: Arc<dyn EntityDefinitionRepositoryTrait> = Arc::new(mock);
 
     // Act
     let result = repo.list(10, 0).await?;
@@ -107,9 +108,9 @@ async fn test_trait_list_delegates_correctly() -> Result<()> {
 #[tokio::test]
 async fn test_trait_get_by_uuid_delegates_correctly() -> Result<()> {
     // Arrange
-    let mut mock = MockClassDefRepository::new();
+    let mut mock = MockEntityDefRepository::new();
     let test_uuid = Uuid::now_v7();
-    let test_definition = create_test_class_definition();
+    let test_definition = create_test_entity_definition();
 
     // Setup expectations - use a matcher function that captures by value
     mock.expect_get_by_uuid()
@@ -117,7 +118,7 @@ async fn test_trait_get_by_uuid_delegates_correctly() -> Result<()> {
         .return_once(move |_| Ok(Some(test_definition)));
 
     // Use the mock as a trait object
-    let repo: Arc<dyn ClassDefinitionRepositoryTrait> = Arc::new(mock);
+    let repo: Arc<dyn EntityDefinitionRepositoryTrait> = Arc::new(mock);
 
     // Act
     let result = repo.get_by_uuid(&test_uuid).await?;
@@ -133,17 +134,17 @@ async fn test_trait_get_by_uuid_delegates_correctly() -> Result<()> {
 #[tokio::test]
 async fn test_trait_create_delegates_correctly() -> Result<()> {
     // Arrange
-    let mut mock = MockClassDefRepository::new();
-    let test_definition = create_test_class_definition();
+    let mut mock = MockEntityDefRepository::new();
+    let test_definition = create_test_entity_definition();
     let expected_uuid = test_definition.uuid;
 
     // Setup expectations
     mock.expect_create()
-        .withf(|def: &ClassDefinition| def.entity_type == "test_entity")
+        .withf(|def: &EntityDefinition| def.entity_type == "test_entity")
         .return_once(move |_| Ok(expected_uuid));
 
     // Use the mock as a trait object
-    let repo: Arc<dyn ClassDefinitionRepositoryTrait> = Arc::new(mock);
+    let repo: Arc<dyn EntityDefinitionRepositoryTrait> = Arc::new(mock);
 
     // Act
     let result = repo.create(&test_definition).await?;
@@ -157,19 +158,19 @@ async fn test_trait_create_delegates_correctly() -> Result<()> {
 #[tokio::test]
 async fn test_trait_update_delegates_correctly() -> Result<()> {
     // Arrange
-    let mut mock = MockClassDefRepository::new();
-    let test_definition = create_test_class_definition();
+    let mut mock = MockEntityDefRepository::new();
+    let test_definition = create_test_entity_definition();
     let test_uuid = test_definition.uuid;
 
     // Setup expectations
     mock.expect_update()
-        .withf(move |uuid: &Uuid, def: &ClassDefinition| {
+        .withf(move |uuid: &Uuid, def: &EntityDefinition| {
             *uuid == test_uuid && def.entity_type == "test_entity"
         })
         .return_once(|_, _| Ok(()));
 
     // Use the mock as a trait object
-    let repo: Arc<dyn ClassDefinitionRepositoryTrait> = Arc::new(mock);
+    let repo: Arc<dyn EntityDefinitionRepositoryTrait> = Arc::new(mock);
 
     // Act
     let result = repo.update(&test_uuid, &test_definition).await;
@@ -183,7 +184,7 @@ async fn test_trait_update_delegates_correctly() -> Result<()> {
 #[tokio::test]
 async fn test_trait_delete_delegates_correctly() -> Result<()> {
     // Arrange
-    let mut mock = MockClassDefRepository::new();
+    let mut mock = MockEntityDefRepository::new();
     let test_uuid = Uuid::now_v7();
 
     // Setup expectations - use a matcher function that captures by value
@@ -192,7 +193,7 @@ async fn test_trait_delete_delegates_correctly() -> Result<()> {
         .return_once(|_| Ok(()));
 
     // Use the mock as a trait object
-    let repo: Arc<dyn ClassDefinitionRepositoryTrait> = Arc::new(mock);
+    let repo: Arc<dyn EntityDefinitionRepositoryTrait> = Arc::new(mock);
 
     // Act
     let result = repo.delete(&test_uuid).await;
@@ -206,7 +207,7 @@ async fn test_trait_delete_delegates_correctly() -> Result<()> {
 #[tokio::test]
 async fn test_trait_check_view_exists_delegates_correctly() -> Result<()> {
     // Arrange
-    let mut mock = MockClassDefRepository::new();
+    let mut mock = MockEntityDefRepository::new();
     let view_name = "test_view";
 
     // Setup expectations
@@ -215,7 +216,7 @@ async fn test_trait_check_view_exists_delegates_correctly() -> Result<()> {
         .return_once(|_| Ok(true));
 
     // Use the mock as a trait object
-    let repo: Arc<dyn ClassDefinitionRepositoryTrait> = Arc::new(mock);
+    let repo: Arc<dyn EntityDefinitionRepositoryTrait> = Arc::new(mock);
 
     // Act
     let result = repo.check_view_exists(view_name).await?;
@@ -229,7 +230,7 @@ async fn test_trait_check_view_exists_delegates_correctly() -> Result<()> {
 #[tokio::test]
 async fn test_trait_apply_schema_delegates_correctly() -> Result<()> {
     // Arrange
-    let mut mock = MockClassDefRepository::new();
+    let mut mock = MockEntityDefRepository::new();
     let schema_sql = "CREATE TABLE test (id UUID PRIMARY KEY);";
 
     // Setup expectations
@@ -238,7 +239,7 @@ async fn test_trait_apply_schema_delegates_correctly() -> Result<()> {
         .return_once(|_| Ok(()));
 
     // Use the mock as a trait object
-    let repo: Arc<dyn ClassDefinitionRepositoryTrait> = Arc::new(mock);
+    let repo: Arc<dyn EntityDefinitionRepositoryTrait> = Arc::new(mock);
 
     // Act
     let result = repo.apply_schema(schema_sql).await;

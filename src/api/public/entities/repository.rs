@@ -14,9 +14,9 @@ impl EntityRepository {
     pub async fn list_available_entities(&self) -> Result<Vec<EntityTypeInfo>> {
         let rows = sqlx::query!(
             r#"
-            SELECT entity_type as name, display_name, description, 
-                   uuid as class_definition_uuid
-            FROM class_definitions
+            SELECT entity_type as name, display_name, description,
+                   uuid as entity_definition_uuid
+            FROM entity_definitions
             WHERE published = true
             "#,
         )
@@ -34,8 +34,8 @@ impl EntityRepository {
             // Count fields for each entity
             let field_count: i64 = match sqlx::query_scalar!(
                 r#"
-                SELECT COUNT(*) as count 
-                FROM class_definitions 
+                SELECT COUNT(*) as count
+                FROM entity_definitions
                 WHERE entity_type = $1
                 "#,
                 row.name
@@ -68,8 +68,8 @@ async fn get_entity_count(pool: &PgPool, entity_type: &str) -> Result<i64> {
     let table_exists: bool = sqlx::query_scalar!(
         r#"
         SELECT EXISTS (
-            SELECT FROM information_schema.tables 
-            WHERE table_schema = 'public' 
+            SELECT FROM information_schema.tables
+            WHERE table_schema = 'public'
             AND table_name = $1
         ) as "exists!"
         "#,

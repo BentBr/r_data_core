@@ -28,12 +28,12 @@ src/
 import { typedHttpClient } from '@/api/typed-client'
 
 // ✅ Fully type-safe with runtime validation
-const classDefinitions = await typedHttpClient.getClassDefinitions()
-//    ^? ClassDefinition[] - TypeScript knows the exact type
+const entityDefinitions = await typedHttpClient.getEntityDefinitions()
+//    ^? EntityDefinition[] - TypeScript knows the exact type
 
 // ✅ Runtime validation catches backend changes
 try {
-  const definition = await typedHttpClient.getClassDefinition(uuid)
+  const definition = await typedHttpClient.getEntityDefinition(uuid)
 } catch (error) {
   // Will catch both HTTP errors AND schema mismatches
   console.error('API call failed:', error.message)
@@ -53,7 +53,7 @@ try {
 
 ```typescript
 // schemas.ts
-export const ClassDefinitionSchema = z.object({
+export const EntityDefinitionSchema = z.object({
     uuid: z.string().uuid(),
     entity_type: z.string(),
     display_name: z.string(),
@@ -63,7 +63,7 @@ export const ClassDefinitionSchema = z.object({
 })
 
 // TypeScript type inferred automatically
-export type ClassDefinition = z.infer<typeof ClassDefinitionSchema>
+export type EntityDefinition = z.infer<typeof EntityDefinitionSchema>
 ```
 
 ## 🚀 **Option 2: OpenAPI Code Generation (Future)**
@@ -111,7 +111,7 @@ use typescript_rs::TypeScript;
 #[derive(Serialize, Deserialize, TypeScript)]
 #[serde(rename_all = "camelCase")]
 #[typescript(export, export_to = "../fe/src/types/generated/")]
-pub struct ClassDefinition {
+pub struct EntityDefinition {
     pub uuid: Uuid,
     pub entity_type: String,
     pub display_name: String,
@@ -164,17 +164,17 @@ cargo test  # Generates TypeScript files
 ```vue
 <script setup lang="ts">
 import { typedHttpClient } from '@/api/typed-client'
-import type { ClassDefinition } from '@/types/schemas'
+import type { EntityDefinition } from '@/types/schemas'
 
 // ✅ Full type safety + runtime validation
-const classDefinitions = ref<ClassDefinition[]>([])
+const entityDefinitions = ref<EntityDefinition[]>([])
 
 onMounted(async () => {
   try {
-    classDefinitions.value = await typedHttpClient.getClassDefinitions()
+    entityDefinitions.value = await typedHttpClient.getEntityDefinitions()
   } catch (error) {
     // Handles both network and validation errors
-    console.error('Failed to load class definitions:', error)
+    console.error('Failed to load entity definitions:', error)
   }
 })
 </script>
@@ -182,12 +182,12 @@ onMounted(async () => {
 
 ### **In Stores (Pinia)**
 ```typescript
-export const useClassDefinitionStore = defineStore('classDefinitions', () => {
-  const definitions = ref<ClassDefinition[]>([])
+export const useEntityDefinitionStore = defineStore('entityDefinitions', () => {
+  const definitions = ref<EntityDefinition[]>([])
   
   const fetchDefinitions = async () => {
     // ✅ Automatic validation and type inference
-    definitions.value = await typedHttpClient.getClassDefinitions()
+    definitions.value = await typedHttpClient.getEntityDefinitions()
   }
   
   return { definitions, fetchDefinitions }

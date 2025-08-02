@@ -1,6 +1,6 @@
 pub mod api_keys;
 pub mod auth;
-pub mod class_definitions;
+pub mod entity_definitions;
 pub mod permissions;
 pub mod system;
 pub mod workflows;
@@ -18,8 +18,8 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
             .service(auth::admin_revoke_all_tokens)
             // Module routes
             .service(
-                web::scope("/class-definitions")
-                    .configure(class_definitions::routes::register_routes),
+                web::scope("/entity-definitions")
+                    .configure(entity_definitions::routes::register_routes),
             )
             .service(web::scope("/workflows").configure(workflows::routes::register_routes))
             .service(web::scope("/api-keys").configure(api_keys::routes::register_routes))

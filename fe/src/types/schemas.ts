@@ -100,8 +100,8 @@ export const FieldDefinitionSchema = z.object({
     ui_options: z.record(z.string(), z.any()).optional(),
 })
 
-// Class Definition schema
-export const ClassDefinitionSchema = z.object({
+// Entity Definition schema
+export const EntityDefinitionSchema = z.object({
     uuid: UuidSchema,
     entity_type: z.string(),
     display_name: z.string(),
@@ -213,7 +213,7 @@ export type LogoutRequest = z.infer<typeof LogoutRequestSchema>
 export type ReassignApiKeyRequest = z.infer<typeof ReassignApiKeyRequestSchema>
 export type ReassignApiKeyResponse = z.infer<typeof ReassignApiKeyResponseSchema>
 export type FieldDefinition = z.infer<typeof FieldDefinitionSchema>
-export type ClassDefinition = z.infer<typeof ClassDefinitionSchema>
+export type EntityDefinition = z.infer<typeof EntityDefinitionSchema>
 export type DynamicEntity = z.infer<typeof DynamicEntitySchema>
 export type ApiKey = z.infer<typeof ApiKeySchema>
 export type CreateApiKeyRequest = z.infer<typeof CreateApiKeyRequestSchema>

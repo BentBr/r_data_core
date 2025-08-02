@@ -127,7 +127,7 @@ pub async fn list_api_keys(
     let offset = query.get_offset(0);
 
     let repo = ApiKeyRepository::new(pool);
-    
+
     // Get both the API keys and the total count
     let (api_keys_result, count_result) = tokio::join!(
         repo.list_by_user(user_uuid, per_page, offset),
@@ -230,7 +230,7 @@ pub async fn create_api_key(
                     created_by: key.created_by,
                     user_uuid: key.user_uuid,
                     published: key.published,
-                    last_used_at: key.last_used_at
+                    last_used_at: key.last_used_at,
                 };
                 ApiResponse::<ApiKeyCreatedResponse>::created(response)
             }

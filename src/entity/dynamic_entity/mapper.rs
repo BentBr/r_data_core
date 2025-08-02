@@ -6,8 +6,8 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::entity::class::definition::ClassDefinition;
 use crate::entity::dynamic_entity::entity::DynamicEntity;
+use crate::entity::entity_definition::definition::EntityDefinition;
 
 /// Extract field data from a database row based on column types
 pub fn extract_field_data(row: &PgRow) -> HashMap<String, JsonValue> {
@@ -202,17 +202,17 @@ pub fn extract_field_data(row: &PgRow) -> HashMap<String, JsonValue> {
 pub fn create_entity(
     entity_type: String,
     field_data: HashMap<String, JsonValue>,
-    class_def: ClassDefinition,
+    entity_def: EntityDefinition,
 ) -> DynamicEntity {
-    DynamicEntity::from_data(entity_type, field_data, Arc::new(class_def))
+    DynamicEntity::from_data(entity_type, field_data, Arc::new(entity_def))
 }
 
 /// Map a database row to a DynamicEntity
 pub fn map_row_to_entity(
     row: &PgRow,
     entity_type: &str,
-    class_def: &ClassDefinition,
+    entity_def: &EntityDefinition,
 ) -> DynamicEntity {
     let field_data = extract_field_data(row);
-    create_entity(entity_type.to_string(), field_data, class_def.clone())
+    create_entity(entity_type.to_string(), field_data, entity_def.clone())
 }

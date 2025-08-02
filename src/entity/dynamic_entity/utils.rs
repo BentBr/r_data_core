@@ -1,18 +1,21 @@
-use crate::entity::class::definition::ClassDefinition;
 use crate::entity::field::FieldDefinition;
+use crate::entity::EntityDefinition;
 use crate::error::{Error, Result};
 use serde_json::{self, Value as JsonValue};
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
-/// Get a class definition by entity type
-pub async fn get_class_definition(db_pool: &PgPool, entity_type: &str) -> Result<ClassDefinition> {
-    let class_def = sqlx::query(
+/// Get a entity definition by entity type
+pub async fn get_entity_definition(
+    db_pool: &PgPool,
+    entity_type: &str,
+) -> Result<EntityDefinition> {
+    let entity_def = sqlx::query(
         r#"
-        SELECT entity_type, display_name, description, 
+        SELECT entity_type, display_name, description,
                group_name, allow_children, icon, created_by,
                field_definitions
-        FROM class_definitions 
+        FROM entity_definitions
         WHERE entity_type = $1
         "#,
     )
@@ -21,14 +24,14 @@ pub async fn get_class_definition(db_pool: &PgPool, entity_type: &str) -> Result
     .await
     .map_err(Error::Database)?;
 
-    // If the class definition doesn't exist, return NotFound error
-    if let Some(row) = class_def {
-        // Parse the class definition from the row
+    // If the entity definition doesn't exist, return NotFound error
+    if let Some(row) = entity_def {
+        // Parse the entity definition from the row
         let fields: Vec<FieldDefinition> =
             serde_json::from_value(row.try_get("field_definitions").map_err(Error::Database)?)
                 .map_err(Error::Serialization)?;
 
-        Ok(ClassDefinition::new(
+        Ok(EntityDefinition::new(
             row.try_get("entity_type").map_err(Error::Database)?,
             row.try_get("display_name").map_err(Error::Database)?,
             row.try_get("description").map_err(Error::Database)?,
@@ -59,7 +62,7 @@ pub fn get_table_name(entity_type: &str) -> String {
 /// Build a dynamic WHERE clause from filters
 pub fn build_where_clause(
     filters: &std::collections::HashMap<String, JsonValue>,
-    class_def: &ClassDefinition,
+    entity_def: &EntityDefinition,
 ) -> (String, Vec<String>) {
     let mut where_clauses = Vec::new();
     let mut params = Vec::new();
@@ -67,7 +70,7 @@ pub fn build_where_clause(
 
     // Add filters based on field types
     for (field_name, value) in filters {
-        if let Some(field_def) = class_def.get_field(field_name) {
+        if let Some(field_def) = entity_def.get_field(field_name) {
             match field_def.field_type {
                 crate::entity::field::types::FieldType::String => {
                     where_clauses.push(format!("{} = ${}", field_name, param_idx));

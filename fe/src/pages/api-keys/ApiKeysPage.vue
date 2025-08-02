@@ -642,7 +642,6 @@
             navigator.clipboard
                 .writeText(apiKey)
                 .then(() => {
-                    console.log('API key copied to clipboard via modern method:', apiKey)
                     showSuccessSnackbar.value = true
                     successMessage.value = t('api_keys.created.copied')
                 })
@@ -651,18 +650,18 @@
                 })
         } else {
             // Fallback method (old browsers / JS) - based on masteringjs.io tutorial
-            const input = document.querySelector('#apiKey')
-            input.select()
-            input.setSelectionRange(0, 99999)
-            try {
-                document.execCommand('copy')
-                console.log('API key copied to clipboard via old method:', apiKey)
-                showSuccessSnackbar.value = true
-                successMessage.value = t('api_keys.created.copied')
-            } catch (err) {
-                console.error('Failed to copy API key:', err)
+            const input = document.querySelector('#apiKey') as HTMLInputElement
+            if (input) {
+                input.select()
+                input.setSelectionRange(0, 99999)
+                try {
+                    document.execCommand('copy')
+                    showSuccessSnackbar.value = true
+                    successMessage.value = t('api_keys.created.copied')
+                } catch (err) {
+                    console.error('Failed to copy API key:', err)
+                }
             }
-            document.body.removeChild(textArea)
         }
     }
 

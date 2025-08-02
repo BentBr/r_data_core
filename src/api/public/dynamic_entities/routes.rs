@@ -50,19 +50,19 @@ pub struct EntityResponse {
     pub entity_type: String,
 }
 
-/// Helper to validate requested fields against class definition
+/// Helper to validate requested fields against entity definition
 async fn validate_requested_fields(
     data: &web::Data<ApiState>,
     entity_type: &str,
     fields: &Option<Vec<String>>,
 ) -> Result<(), HttpResponse> {
     if let Some(fields) = fields {
-        let class_def_service = &data.class_definition_service;
-        match class_def_service
-            .get_class_definition_by_entity_type(entity_type)
+        let entity_def_service = &data.entity_definition_service;
+        match entity_def_service
+            .get_entity_definition_by_entity_type(entity_type)
             .await
         {
-            Ok(class_def) => {
+            Ok(entity_def) => {
                 // Always include these system fields
                 let system_fields = [
                     "uuid",
@@ -80,7 +80,7 @@ async fn validate_requested_fields(
                     .iter()
                     .filter(|field| {
                         !system_fields.contains(&field.as_str())
-                            && class_def.get_field(field).is_none()
+                            && entity_def.get_field(field).is_none()
                     })
                     .cloned()
                     .collect();
@@ -218,14 +218,14 @@ async fn create_entity(
     };
 
     if let Some(service) = &data.dynamic_entity_service {
-        // First, we need to find the class definition to create the entity
-        let class_def_service = &data.class_definition_service;
-        match class_def_service
-            .get_class_definition_by_entity_type(&entity_type)
+        // First, we need to find the entity definition to create the entity
+        let entity_def_service = &data.entity_definition_service;
+        match entity_def_service
+            .get_entity_definition_by_entity_type(&entity_type)
             .await
         {
-            Ok(class_def) => {
-                if !class_def.published {
+            Ok(entity_def) => {
+                if !entity_def.published {
                     return ApiResponse::<()>::not_found(&format!(
                         "Entity type {} not found or not published",
                         entity_type
@@ -242,7 +242,7 @@ async fn create_entity(
                 let dynamic_entity = DynamicEntity {
                     entity_type: entity_type.clone(),
                     field_data,
-                    definition: std::sync::Arc::new(class_def),
+                    definition: std::sync::Arc::new(entity_def),
                 };
 
                 match service.create_entity(&dynamic_entity).await {

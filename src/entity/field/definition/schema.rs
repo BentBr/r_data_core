@@ -5,8 +5,8 @@ impl FieldDefinition {
     /// Convert to API schema model with properly typed constraints
     pub fn to_schema_model(
         &self,
-    ) -> crate::api::admin::class_definitions::models::FieldDefinitionSchema {
-        use crate::api::admin::class_definitions::models::{
+    ) -> crate::api::admin::entity_definitions::models::FieldDefinitionSchema {
+        use crate::api::admin::entity_definitions::models::{
             DateTimeConstraints, FieldConstraints, FieldDefinitionSchema, FieldTypeSchema,
             NumericConstraints, RelationConstraints, SchemaConstraints, SelectConstraints,
             StringConstraints, UiSettingsSchema,

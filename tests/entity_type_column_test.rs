@@ -1,18 +1,18 @@
 use actix_web::{test, web, App};
-use r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository;
+use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
 use r_data_core::api::{configure_app, ApiState};
 use r_data_core::cache::CacheManager;
 use r_data_core::config::CacheConfig;
 use r_data_core::entity::admin_user::repository::{AdminUserRepository, ApiKeyRepository};
-use r_data_core::entity::class::definition::ClassDefinition;
-use r_data_core::entity::class::repository_trait::ClassDefinitionRepositoryTrait;
 use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
 use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
+use r_data_core::entity::entity_definition::definition::EntityDefinition;
+use r_data_core::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use r_data_core::entity::field::ui::UiSettings;
 use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core::error::{Error, Result};
 use r_data_core::services::{
-    AdminUserService, ApiKeyService, ClassDefinitionService, DynamicEntityService,
+    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
 };
 use serde_json::json;
 use sqlx::PgPool;
@@ -30,7 +30,7 @@ async fn clear_test_db(pool: &PgPool) -> Result<()> {
     let tables = [
         "api_keys",
         "admin_users",
-        "class_definitions",
+        "entity_definitions",
         "entities_registry",
     ];
 
@@ -44,16 +44,16 @@ async fn clear_test_db(pool: &PgPool) -> Result<()> {
     Ok(())
 }
 
-/// Create a test class definition
-async fn create_test_class_definition(pool: &PgPool, entity_type: &str) -> Result<Uuid> {
-    // Create a simple class definition for testing
-    let mut class_def = ClassDefinition::default();
-    class_def.entity_type = entity_type.to_string();
-    class_def.display_name = format!("{} Class", entity_type);
-    class_def.description = Some(format!("Test description for {}", entity_type));
-    class_def.published = true;
+/// Create a test entity definition
+async fn create_test_entity_definition(pool: &PgPool, entity_type: &str) -> Result<Uuid> {
+    // Create a simple entity definition for testing
+    let mut entity_def = EntityDefinition::default();
+    entity_def.entity_type = entity_type.to_string();
+    entity_def.display_name = format!("{} Class", entity_type);
+    entity_def.description = Some(format!("Test description for {}", entity_type));
+    entity_def.published = true;
 
-    // Add fields to the class definition
+    // Add fields to the entity definition
     let mut fields = Vec::new();
 
     // Name field
@@ -88,15 +88,15 @@ async fn create_test_class_definition(pool: &PgPool, entity_type: &str) -> Resul
     };
     fields.push(email_field);
 
-    class_def.fields = fields;
+    entity_def.fields = fields;
 
     // Set created_by
     let created_by = Uuid::now_v7();
-    class_def.created_by = created_by;
+    entity_def.created_by = created_by;
 
-    // Use the repository trait to create the class definition
-    let repository = ClassDefinitionRepository::new(pool.clone());
-    let uuid = repository.create(&class_def).await?;
+    // Use the repository trait to create the entity definition
+    let repository = EntityDefinitionRepository::new(pool.clone());
+    let uuid = repository.create(&entity_def).await?;
 
     // Trigger the view creation
     let trigger_sql = format!("SELECT create_entity_table_and_view('{}')", entity_type);
@@ -138,7 +138,7 @@ async fn create_test_entity(
     let entity = DynamicEntity {
         entity_type: entity_type.to_string(),
         field_data,
-        definition: Arc::new(ClassDefinition::default()),
+        definition: Arc::new(EntityDefinition::default()),
     };
 
     let repository = DynamicEntityRepository::new(pool.clone());
@@ -154,7 +154,7 @@ async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
     let created_by = Uuid::now_v7();
 
     sqlx::query(
-        "INSERT INTO admin_users (uuid, path, username, email, password_hash, created_at, created_by, published) 
+        "INSERT INTO admin_users (uuid, path, username, email, password_hash, created_at, created_by, published)
          VALUES ($1, '/users', $2, $3, $4, NOW(), $5, true)"
     )
     .bind(admin_uuid)
@@ -173,7 +173,7 @@ async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
     let key_hash = use_api_key_hash_or_fallback(&api_key);
 
     sqlx::query(
-        "INSERT INTO api_keys (uuid, user_uuid, name, key_hash, is_active, created_at, created_by, published) 
+        "INSERT INTO api_keys (uuid, user_uuid, name, key_hash, is_active, created_at, created_by, published)
          VALUES ($1, $2, $3, $4, true, NOW(), $5, true)"
     )
     .bind(key_uuid)
@@ -227,13 +227,13 @@ async fn create_test_app(
     let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.clone())));
     let admin_user_service = AdminUserService::new(admin_user_repository);
 
-    let class_definition_repository = Arc::new(ClassDefinitionRepository::new(pool.clone()));
-    let class_definition_service = ClassDefinitionService::new(class_definition_repository);
+    let entity_definition_repository = Arc::new(EntityDefinitionRepository::new(pool.clone()));
+    let entity_definition_service = EntityDefinitionService::new(entity_definition_repository);
 
     let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
     let dynamic_entity_service = Arc::new(DynamicEntityService::new(
         dynamic_entity_repository,
-        Arc::new(class_definition_service.clone()),
+        Arc::new(entity_definition_service.clone()),
     ));
 
     // Create app state
@@ -243,7 +243,7 @@ async fn create_test_app(
         cache_manager,
         api_key_service,
         admin_user_service,
-        class_definition_service,
+        entity_definition_service,
         dynamic_entity_service: Some(dynamic_entity_service),
     });
 
@@ -258,8 +258,8 @@ async fn test_fixed_entity_type_column_issue() -> Result<()> {
 
     clear_test_db(&pool).await?;
 
-    // Create a class definition for the user entity
-    let _user_def = create_test_class_definition(&pool, "user").await?;
+    // Create a entity definition for the user entity
+    let _user_def = create_test_entity_definition(&pool, "user").await?;
 
     // Create test users
     for i in 1..=3 {

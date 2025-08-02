@@ -8,12 +8,12 @@
                             icon="mdi-file-tree"
                             class="mr-3"
                         />
-                        Class Definitions
+                        Entity Definitions
                     </v-card-title>
                     <v-card-text>
-                        <p>Manage your class definitions here. This is where you can:</p>
+                        <p>Manage your entity definitions here. This is where you can:</p>
                         <ul>
-                            <li>Create new class definitions</li>
+                            <li>Create new entity definitions</li>
                             <li>Edit existing definitions</li>
                             <li>Apply schema changes</li>
                             <li>View field definitions and constraints</li>
@@ -23,7 +23,7 @@
                             class="mt-4"
                         >
                             <v-icon>mdi-plus</v-icon>
-                            New Class Definition
+                            New Entity Definition
                         </v-btn>
                     </v-card-text>
                 </v-card>
@@ -33,5 +33,5 @@
 </template>
 
 <script setup lang="ts">
-    // Class definitions page logic will be implemented here
+    // Entity definitions page logic will be implemented here
 </script>

@@ -1,5 +1,5 @@
 use actix_web::{test, web, App};
-use r_data_core::api::admin::class_definitions::repository::ClassDefinitionRepository;
+use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
 use r_data_core::api::{configure_app, ApiState};
 use r_data_core::cache::CacheManager;
 use r_data_core::config::CacheConfig;
@@ -7,7 +7,7 @@ use r_data_core::entity::admin_user::repository::{AdminUserRepository, ApiKeyRep
 use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
 use r_data_core::error::Result;
 use r_data_core::services::{
-    AdminUserService, ApiKeyService, ClassDefinitionService, DynamicEntityService,
+    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
 };
 use std::sync::Arc;
 
@@ -38,8 +38,8 @@ mod dynamic_entity_api_tests {
         };
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
-        // Create user class definition
-        let user_def_uuid = common::utils::create_test_class_definition(&pool, "user").await?;
+        // Create user entity definition
+        let user_def_uuid = common::utils::create_test_entity_definition(&pool, "user").await?;
 
         // Create test users
         for i in 1..=5 {
@@ -63,13 +63,13 @@ mod dynamic_entity_api_tests {
         let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.clone())));
         let admin_user_service = AdminUserService::new(admin_user_repository);
 
-        let class_definition_repository = Arc::new(ClassDefinitionRepository::new(pool.clone()));
-        let class_definition_service = ClassDefinitionService::new(class_definition_repository);
+        let entity_definition_repository = Arc::new(EntityDefinitionRepository::new(pool.clone()));
+        let entity_definition_service = EntityDefinitionService::new(entity_definition_repository);
 
         let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
         let dynamic_entity_service = Arc::new(DynamicEntityService::new(
             dynamic_entity_repository,
-            Arc::new(class_definition_service.clone()),
+            Arc::new(entity_definition_service.clone()),
         ));
 
         // Create app state
@@ -79,7 +79,7 @@ mod dynamic_entity_api_tests {
             cache_manager,
             api_key_service,
             admin_user_service,
-            class_definition_service,
+            entity_definition_service,
             dynamic_entity_service: Some(dynamic_entity_service),
         });
 

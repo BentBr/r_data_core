@@ -8,8 +8,8 @@ mod workflow;
 // mod workflow_definition;
 // mod workflow_task;
 
-pub mod class;
 pub mod dynamic_entity;
+pub mod entity_definition;
 pub mod field;
 
 pub use abstract_entity::AbstractRDataEntity;
@@ -17,7 +17,7 @@ pub use admin_user::AdminUser;
 pub use dynamic_entity::DynamicEntity;
 pub use version::VersionedData;
 //pub use value;
-pub use class::ClassDefinition;
+pub use entity_definition::EntityDefinition;
 
 use crate::error::Result;
 use std::collections::HashMap;
@@ -27,5 +27,5 @@ pub trait DynamicFields {
     fn get_field(&self, name: &str) -> Option<serde_json::Value>;
     fn set_field(&mut self, name: &str, value: serde_json::Value) -> Result<()>;
     fn get_all_fields(&self) -> HashMap<String, serde_json::Value>;
-    fn validate(&self, class_def: &ClassDefinition) -> Result<()>;
+    fn validate(&self, entity_def: &EntityDefinition) -> Result<()>;
 }

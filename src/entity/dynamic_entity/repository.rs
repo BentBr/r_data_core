@@ -25,10 +25,10 @@ impl DynamicEntityRepository {
 
     /// Create a new dynamic entity
     pub async fn create(&self, entity: &DynamicEntity) -> Result<()> {
-        // Get the class definition to validate against
-        let _class_def = utils::get_class_definition(&self.pool, &entity.entity_type).await?;
+        // Get the entity definition to validate against
+        let _entity_def = utils::get_entity_definition(&self.pool, &entity.entity_type).await?;
 
-        // Validate the entity against the class definition
+        // Validate the entity against the entity definition
         entity.validate()?;
 
         // Extract UUID from the entity
@@ -199,7 +199,7 @@ impl DynamicEntityRepository {
 
     /// Update an existing dynamic entity
     pub async fn update(&self, entity: &DynamicEntity) -> Result<()> {
-        // Validate the entity against the class definition
+        // Validate the entity against the entity definition
         entity.validate()?;
 
         // Extract UUID from the entity
@@ -236,12 +236,12 @@ impl DynamicEntityRepository {
         let update_registry_query = if registry_fields.is_empty() {
             // Update the timestamp and version
             String::from(
-                "UPDATE entities_registry SET updated_at = NOW(), version = version + 1 
+                "UPDATE entities_registry SET updated_at = NOW(), version = version + 1
                 WHERE uuid = $1 AND entity_type = $2",
             )
         } else {
             format!(
-                "UPDATE entities_registry SET {}, updated_at = NOW(), version = version + 1 
+                "UPDATE entities_registry SET {}, updated_at = NOW(), version = version + 1
                     WHERE uuid = $4 AND entity_type = $5",
                 registry_fields.join(", ")
             )
@@ -475,8 +475,8 @@ impl DynamicEntityRepository {
 
         debug!("Executing filter query: {}", query);
 
-        // Get the class definition for mapping
-        let class_def = utils::get_class_definition(&self.pool, entity_type).await?;
+        // Get the entity definition for mapping
+        let entity_def = utils::get_entity_definition(&self.pool, entity_type).await?;
 
         // Prepare and execute the query with proper parameter binding
         let mut sql = sqlx::query(&query);
@@ -518,7 +518,7 @@ impl DynamicEntityRepository {
         // Map rows to DynamicEntity objects
         let mut entities = Vec::new();
         for row in rows {
-            let entity = mapper::map_row_to_entity(&row, entity_type, &class_def);
+            let entity = mapper::map_row_to_entity(&row, entity_type, &entity_def);
             entities.push(entity);
         }
 
@@ -582,8 +582,8 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
     ) -> Result<Option<DynamicEntity>> {
         debug!("Getting entity of type {} with UUID {}", entity_type, uuid);
 
-        // Get the class definition to understand entity structure
-        let class_def = utils::get_class_definition(&self.pool, entity_type).await?;
+        // Get the entity definition to understand entity structure
+        let entity_def = utils::get_entity_definition(&self.pool, entity_type).await?;
 
         // Get the view name
         let view_name = utils::get_view_name(entity_type);
@@ -631,7 +631,7 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
 
         if let Some(row) = row {
             // Map the row to a DynamicEntity
-            let entity = mapper::map_row_to_entity(&row, entity_type, &class_def);
+            let entity = mapper::map_row_to_entity(&row, entity_type, &entity_def);
             Ok(Some(entity))
         } else {
             Ok(None)
@@ -647,8 +647,8 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
     ) -> Result<Vec<DynamicEntity>> {
         debug!("Getting all entities of type {}", entity_type);
 
-        // Get the class definition to understand entity structure
-        let class_def = utils::get_class_definition(&self.pool, entity_type).await?;
+        // Get the entity definition to understand entity structure
+        let entity_def = utils::get_entity_definition(&self.pool, entity_type).await?;
 
         // Get the view name
         let view_name = utils::get_view_name(entity_type);
@@ -702,7 +702,7 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
         // Convert rows to DynamicEntity objects
         let entities = rows
             .iter()
-            .map(|row| mapper::map_row_to_entity(row, entity_type, &class_def))
+            .map(|row| mapper::map_row_to_entity(row, entity_type, &entity_def))
             .collect();
 
         Ok(entities)

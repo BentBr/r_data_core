@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT \n                uuid, entity_type, display_name, description, group_name, \n                allow_children, icon, field_definitions as \"field_definitions: serde_json::Value\",\n                created_at, updated_at, \n                created_by as \"created_by: Uuid\", updated_by,\n                published, version\n            FROM class_definitions\n            WHERE uuid = $1\n            ",
+  "query": "\n            SELECT\n                uuid, entity_type, display_name, description, group_name,\n                allow_children, icon, field_definitions as \"field_definitions: serde_json::Value\",\n                created_at, updated_at,\n                created_by as \"created_by: Uuid\", updated_by,\n                published, version\n            FROM entity_definitions\n            WHERE uuid = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -96,5 +96,5 @@
       false
     ]
   },
-  "hash": "dac3f254ab6df24a881cc1a66b8d51d93d0a4d7a295ae3f9504334a7373d54f7"
+  "hash": "54b30306440f0197373990416c5c327544d7b20571c47eaa879c29074f543aeb"
 }

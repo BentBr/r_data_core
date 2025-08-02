@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT entity_type as name, display_name, description, \n                   uuid as class_definition_uuid\n            FROM class_definitions\n            WHERE published = true\n            ",
+  "query": "\n            SELECT entity_type as name, display_name, description,\n                   uuid as entity_definition_uuid\n            FROM entity_definitions\n            WHERE published = true\n            ",
   "describe": {
     "columns": [
       {
@@ -20,7 +20,7 @@
       },
       {
         "ordinal": 3,
-        "name": "class_definition_uuid",
+        "name": "entity_definition_uuid",
         "type_info": "Uuid"
       }
     ],
@@ -34,5 +34,5 @@
       false
     ]
   },
-  "hash": "fb90492a88e521b9a7ddde9f186dda4fe2ddcdcdca3c76dc7846477730eb1e65"
+  "hash": "da5bd58b5883d788b68463b8dcf9d7759a3168ed97d3aa5576b6c511266a51bb"
 }

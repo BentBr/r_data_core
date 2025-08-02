@@ -52,7 +52,7 @@ We've implemented several key phases of the refactoring strategy:
 
 ### File Structure Improvements
 1. ⬜ Continue splitting large files:
-   - `src/services/class_definition_service.rs` (772 lines)
+   - `src/services/entity_definition_service.rs` (772 lines)
    - `src/entity/dynamic_entity/repository.rs` (683 lines)
    - `src/entity/dynamic_entity/validator.rs` (542 lines)
    - `src/api/admin/auth.rs` (470 lines)
@@ -191,21 +191,21 @@ To handle the implementation of repository traits for existing repository implem
 Example:
 ```rust
 // In services/adapters.rs
-pub struct ClassDefinitionRepositoryAdapter {
-    inner: ClassDefinitionRepository
+pub struct EntityDefinitionRepositoryAdapter {
+    inner: EntityDefinitionRepository
 }
 
 #[async_trait]
-impl ClassDefinitionRepositoryTrait for ClassDefinitionRepositoryAdapter {
-    async fn list(&self, limit: i64, offset: i64) -> Result<Vec<ClassDefinition>> {
+impl EntityDefinitionRepositoryTrait for EntityDefinitionRepositoryAdapter {
+    async fn list(&self, limit: i64, offset: i64) -> Result<Vec<EntityDefinition>> {
         self.inner.list(limit, offset).await
     }
     // Other methods delegated to inner repository
 }
 
 // In main.rs - clean usage
-let adapter = ClassDefinitionRepositoryAdapter::new(repository);
-let service = ClassDefinitionService::new(Arc::new(adapter));
+let adapter = EntityDefinitionRepositoryAdapter::new(repository);
+let service = EntityDefinitionService::new(Arc::new(adapter));
 ```
 
 This pattern keeps the codebase clean and maintainable as more repositories and services are added. 

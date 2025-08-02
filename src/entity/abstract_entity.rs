@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::class::ClassDefinition;
+use super::entity_definition::EntityDefinition;
 use super::DynamicFields;
 use super::VersionedData;
 use crate::error::{Error, Result};
@@ -119,9 +119,9 @@ impl DynamicFields for AbstractRDataEntity {
         self.custom_fields.clone()
     }
 
-    fn validate(&self, class_def: &ClassDefinition) -> Result<()> {
+    fn validate(&self, entity_def: &EntityDefinition) -> Result<()> {
         // Basic validation - ensure all required fields are present
-        if let Some(properties) = class_def.schema.properties.get("properties") {
+        if let Some(properties) = entity_def.schema.properties.get("properties") {
             if let Some(props) = properties.as_object() {
                 for (field_name, field_def) in props {
                     if let Some(required) = field_def.get("required") {

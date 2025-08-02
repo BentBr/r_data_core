@@ -7,7 +7,7 @@ use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::entity::class::definition::ClassDefinition;
+use crate::entity::entity_definition::definition::EntityDefinition;
 use crate::entity::field::FieldDefinition;
 use crate::entity::DynamicFields;
 use crate::error::{Error, Result};
@@ -112,7 +112,7 @@ impl ToValue for JsonValue {
     }
 }
 
-/// A dynamic entity that can have any fields defined by its class definition
+/// A dynamic entity that can have any fields defined by its entity definition
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct DynamicEntity {
     /// The type of the entity
@@ -121,15 +121,15 @@ pub struct DynamicEntity {
     /// The field data for this entity
     pub field_data: HashMap<String, JsonValue>,
 
-    /// The class definition for this entity type
+    /// The entity definition for this entity type
     #[serde(skip)]
     #[schema(skip)]
-    pub definition: Arc<ClassDefinition>,
+    pub definition: Arc<EntityDefinition>,
 }
 
 impl DynamicEntity {
     /// Create a new dynamic entity
-    pub fn new(entity_type: String, definition: Arc<ClassDefinition>) -> Self {
+    pub fn new(entity_type: String, definition: Arc<EntityDefinition>) -> Self {
         let mut field_data = HashMap::new();
 
         // Initialize system fields
@@ -163,7 +163,7 @@ impl DynamicEntity {
     pub fn from_data(
         entity_type: String,
         field_data: HashMap<String, JsonValue>,
-        definition: Arc<ClassDefinition>,
+        definition: Arc<EntityDefinition>,
     ) -> Self {
         Self {
             entity_type,
@@ -185,7 +185,7 @@ impl DynamicEntity {
     pub fn set<T: ToValue>(&mut self, field: &str, value: T) -> Result<()> {
         let entity_value = value.to_value()?;
 
-        // Check if field is defined in class definition
+        // Check if field is defined in entity definition
         if let Some(field_def) = self.definition.get_field(field) {
             // Validate field value against definition
             if let Err(e) = field_def.validate_value(&entity_value) {
@@ -218,7 +218,7 @@ impl DynamicEntity {
         Ok(())
     }
 
-    /// Validate the entity against its class definition
+    /// Validate the entity against its entity definition
     pub fn validate(&self) -> Result<()> {
         for field in &self.definition.fields {
             if field.required && !self.field_data.contains_key(&field.name) {
@@ -289,9 +289,9 @@ impl DynamicFields for DynamicEntity {
         self.field_data.clone()
     }
 
-    fn validate(&self, class_def: &ClassDefinition) -> Result<()> {
+    fn validate(&self, entity_def: &EntityDefinition) -> Result<()> {
         // Basic validation - ensure all required fields are present
-        for field in &class_def.fields {
+        for field in &entity_def.fields {
             if field.required && !self.field_data.contains_key(&field.name) {
                 return Err(Error::Validation(format!(
                     "Required field '{}' is missing",
@@ -314,7 +314,7 @@ impl Default for DynamicEntity {
         Self {
             entity_type: String::new(),
             field_data: HashMap::new(),
-            definition: Arc::new(ClassDefinition::default()),
+            definition: Arc::new(EntityDefinition::default()),
         }
     }
 }

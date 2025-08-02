@@ -1,5 +1,5 @@
-use r_data_core::entity::class::definition::ClassDefinition;
 use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
+use r_data_core::entity::entity_definition::definition::EntityDefinition;
 use r_data_core::error::{Error, Result};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -29,10 +29,10 @@ mod validation_tests {
             .map_err(|e| Error::Validation(format!("Failed to parse {}: {}", path, e)))
     }
 
-    /// Create a class definition from JSON
-    fn create_class_definition_from_json(json_data: Value) -> Result<ClassDefinition> {
+    /// Create a entity definition from JSON
+    fn create_entity_definition_from_json(json_data: Value) -> Result<EntityDefinition> {
         serde_json::from_value(json_data).map_err(|e| {
-            Error::Validation(format!("Failed to deserialize class definition: {}", e))
+            Error::Validation(format!("Failed to deserialize entity definition: {}", e))
         })
     }
 
@@ -40,16 +40,16 @@ mod validation_tests {
     fn create_test_entity(
         entity_type: &str,
         data: HashMap<String, Value>,
-        class_def: ClassDefinition,
+        entity_def: EntityDefinition,
     ) -> DynamicEntity {
-        DynamicEntity::from_data(entity_type.to_string(), data, Arc::new(class_def))
+        DynamicEntity::from_data(entity_type.to_string(), data, Arc::new(entity_def))
     }
 
     #[test]
     fn test_pattern_validation_email() -> Result<()> {
-        // Load user class definition which has email pattern validation
-        let json_data = load_json_example("user_class_definition.json")?;
-        let class_def = create_class_definition_from_json(json_data)?;
+        // Load user entity definition which has email pattern validation
+        let json_data = load_json_example("user_entity_definition.json")?;
+        let entity_def = create_entity_definition_from_json(json_data)?;
 
         // Test valid email
         let mut valid_data = HashMap::new();
@@ -61,7 +61,7 @@ mod validation_tests {
         valid_data.insert("status".to_string(), json!("active"));
         valid_data.insert("newsletter_opt_in".to_string(), json!(true));
 
-        let valid_entity = create_test_entity("user", valid_data, class_def.clone());
+        let valid_entity = create_test_entity("user", valid_data, entity_def.clone());
         let result = valid_entity.validate();
         assert!(
             result.is_ok(),
@@ -89,7 +89,7 @@ mod validation_tests {
             invalid_data.insert("status".to_string(), json!("active"));
             invalid_data.insert("newsletter_opt_in".to_string(), json!(true));
 
-            let invalid_entity = create_test_entity("user", invalid_data, class_def.clone());
+            let invalid_entity = create_test_entity("user", invalid_data, entity_def.clone());
             let result = invalid_entity.validate();
             assert!(
                 result.is_err(),
@@ -103,9 +103,9 @@ mod validation_tests {
 
     #[test]
     fn test_pattern_validation_sku() -> Result<()> {
-        // Load product class definition which has SKU pattern validation
-        let json_data = load_json_example("product_class_definition.json")?;
-        let class_def = create_class_definition_from_json(json_data)?;
+        // Load product entity definition which has SKU pattern validation
+        let json_data = load_json_example("product_entity_definition.json")?;
+        let entity_def = create_entity_definition_from_json(json_data)?;
 
         // Test valid SKU patterns
         let valid_skus = vec![
@@ -137,7 +137,7 @@ mod validation_tests {
                 json!("Test product description"),
             );
 
-            let valid_entity = create_test_entity("product", valid_data, class_def.clone());
+            let valid_entity = create_test_entity("product", valid_data, entity_def.clone());
             let result = valid_entity.validate();
             assert!(
                 result.is_ok(),
@@ -179,7 +179,7 @@ mod validation_tests {
                 json!("Test product description"),
             );
 
-            let invalid_entity = create_test_entity("product", invalid_data, class_def.clone());
+            let invalid_entity = create_test_entity("product", invalid_data, entity_def.clone());
             let result = invalid_entity.validate();
             assert!(
                 result.is_err(),
@@ -193,9 +193,9 @@ mod validation_tests {
 
     #[test]
     fn test_range_validation_numeric() -> Result<()> {
-        // Load product class definition which has numeric range validation
-        let json_data = load_json_example("product_class_definition.json")?;
-        let class_def = create_class_definition_from_json(json_data)?;
+        // Load product entity definition which has numeric range validation
+        let json_data = load_json_example("product_entity_definition.json")?;
+        let entity_def = create_entity_definition_from_json(json_data)?;
 
         // Test valid numeric ranges
         let valid_prices = vec![0.0, 10.99, 100.50, 999.99, 1000.0];
@@ -222,7 +222,7 @@ mod validation_tests {
                 json!("Test product description"),
             );
 
-            let valid_entity = create_test_entity("product", valid_data, class_def.clone());
+            let valid_entity = create_test_entity("product", valid_data, entity_def.clone());
             let result = valid_entity.validate();
             assert!(
                 result.is_ok(),
@@ -253,7 +253,7 @@ mod validation_tests {
                 json!("Test product description"),
             );
 
-            let valid_entity = create_test_entity("product", valid_data, class_def.clone());
+            let valid_entity = create_test_entity("product", valid_data, entity_def.clone());
             let result = valid_entity.validate();
             assert!(
                 result.is_ok(),
@@ -288,7 +288,7 @@ mod validation_tests {
                 json!("Test product description"),
             );
 
-            let invalid_entity = create_test_entity("product", invalid_data, class_def.clone());
+            let invalid_entity = create_test_entity("product", invalid_data, entity_def.clone());
             let result = invalid_entity.validate();
             assert!(
                 result.is_err(),
@@ -318,7 +318,7 @@ mod validation_tests {
                 json!("Test product description"),
             );
 
-            let invalid_entity = create_test_entity("product", invalid_data, class_def.clone());
+            let invalid_entity = create_test_entity("product", invalid_data, entity_def.clone());
             let result = invalid_entity.validate();
             assert!(
                 result.is_err(),
@@ -332,9 +332,9 @@ mod validation_tests {
 
     #[test]
     fn test_enum_validation() -> Result<()> {
-        // Load product class definition which has enum validation
-        let json_data = load_json_example("product_class_definition.json")?;
-        let class_def = create_class_definition_from_json(json_data)?;
+        // Load product entity definition which has enum validation
+        let json_data = load_json_example("product_entity_definition.json")?;
+        let entity_def = create_entity_definition_from_json(json_data)?;
 
         // Test valid enum values
         let valid_tax_categories = vec!["standard", "reduced", "zero", "exempt"];
@@ -360,7 +360,7 @@ mod validation_tests {
                 json!("Test product description"),
             );
 
-            let valid_entity = create_test_entity("product", valid_data, class_def.clone());
+            let valid_entity = create_test_entity("product", valid_data, entity_def.clone());
             let result = valid_entity.validate();
             assert!(
                 result.is_ok(),
@@ -394,7 +394,7 @@ mod validation_tests {
                 json!("Test product description"),
             );
 
-            let invalid_entity = create_test_entity("product", invalid_data, class_def.clone());
+            let invalid_entity = create_test_entity("product", invalid_data, entity_def.clone());
             let result = invalid_entity.validate();
             assert!(
                 result.is_err(),
@@ -408,9 +408,9 @@ mod validation_tests {
 
     #[test]
     fn test_edge_cases_empty_strings() -> Result<()> {
-        // Load user class definition
-        let json_data = load_json_example("user_class_definition.json")?;
-        let class_def = create_class_definition_from_json(json_data)?;
+        // Load user entity definition
+        let json_data = load_json_example("user_entity_definition.json")?;
+        let entity_def = create_entity_definition_from_json(json_data)?;
 
         // Test empty strings for required fields
         let mut invalid_data = HashMap::new();
@@ -422,7 +422,7 @@ mod validation_tests {
         invalid_data.insert("status".to_string(), json!("active"));
         invalid_data.insert("newsletter_opt_in".to_string(), json!(true));
 
-        let invalid_entity = create_test_entity("user", invalid_data, class_def.clone());
+        let invalid_entity = create_test_entity("user", invalid_data, entity_def.clone());
         let result = invalid_entity.validate();
         assert!(result.is_err(), "Empty email should fail validation");
 
@@ -437,7 +437,7 @@ mod validation_tests {
         valid_data.insert("newsletter_opt_in".to_string(), json!(true));
         valid_data.insert("phone".to_string(), json!("")); // Optional field
 
-        let valid_entity = create_test_entity("user", valid_data, class_def.clone());
+        let valid_entity = create_test_entity("user", valid_data, entity_def.clone());
         let result = valid_entity.validate();
         assert!(
             result.is_ok(),
@@ -449,9 +449,9 @@ mod validation_tests {
 
     #[test]
     fn test_edge_cases_null_values() -> Result<()> {
-        // Load user class definition
-        let json_data = load_json_example("user_class_definition.json")?;
-        let class_def = create_class_definition_from_json(json_data)?;
+        // Load user entity definition
+        let json_data = load_json_example("user_entity_definition.json")?;
+        let entity_def = create_entity_definition_from_json(json_data)?;
 
         // Test null values for required fields
         let mut invalid_data = HashMap::new();
@@ -463,7 +463,7 @@ mod validation_tests {
         invalid_data.insert("status".to_string(), json!("active"));
         invalid_data.insert("newsletter_opt_in".to_string(), json!(true));
 
-        let invalid_entity = create_test_entity("user", invalid_data, class_def.clone());
+        let invalid_entity = create_test_entity("user", invalid_data, entity_def.clone());
         let result = invalid_entity.validate();
         assert!(
             result.is_err(),
@@ -481,7 +481,7 @@ mod validation_tests {
         valid_data.insert("newsletter_opt_in".to_string(), json!(true));
         valid_data.insert("phone".to_string(), Value::Null); // Optional field
 
-        let valid_entity = create_test_entity("user", valid_data, class_def.clone());
+        let valid_entity = create_test_entity("user", valid_data, entity_def.clone());
         let result = valid_entity.validate();
         assert!(result.is_ok(), "Null optional field should pass validation");
 
@@ -490,16 +490,16 @@ mod validation_tests {
 
     #[test]
     fn test_edge_cases_missing_required_fields() -> Result<()> {
-        // Load user class definition
-        let json_data = load_json_example("user_class_definition.json")?;
-        let class_def = create_class_definition_from_json(json_data)?;
+        // Load user entity definition
+        let json_data = load_json_example("user_entity_definition.json")?;
+        let entity_def = create_entity_definition_from_json(json_data)?;
 
         // Test missing required fields
         let mut invalid_data = HashMap::new();
         // Missing email, username, first_name, last_name, role, status
         invalid_data.insert("phone".to_string(), json!("1234567890"));
 
-        let invalid_entity = create_test_entity("user", invalid_data, class_def.clone());
+        let invalid_entity = create_test_entity("user", invalid_data, entity_def.clone());
         let result = invalid_entity.validate();
         assert!(
             result.is_err(),
@@ -513,7 +513,7 @@ mod validation_tests {
         partial_data.insert("first_name".to_string(), json!("John"));
         // Missing last_name, role, status, newsletter_opt_in (all required)
 
-        let partial_entity = create_test_entity("user", partial_data.clone(), class_def.clone());
+        let partial_entity = create_test_entity("user", partial_data.clone(), entity_def.clone());
         let result = partial_entity.validate();
         assert!(
             result.is_err(),
@@ -525,9 +525,9 @@ mod validation_tests {
 
     #[test]
     fn test_comprehensive_validation_scenarios() -> Result<()> {
-        // Load product class definition for comprehensive testing
-        let json_data = load_json_example("product_class_definition.json")?;
-        let class_def = create_class_definition_from_json(json_data)?;
+        // Load product entity definition for comprehensive testing
+        let json_data = load_json_example("product_entity_definition.json")?;
+        let entity_def = create_entity_definition_from_json(json_data)?;
 
         // Test comprehensive valid product
         let mut valid_data = HashMap::new();
@@ -553,7 +553,7 @@ mod validation_tests {
             json!("Valid product description"),
         );
 
-        let valid_entity = create_test_entity("product", valid_data, class_def.clone());
+        let valid_entity = create_test_entity("product", valid_data, entity_def.clone());
         let result = valid_entity.validate();
         assert!(
             result.is_ok(),
@@ -582,7 +582,7 @@ mod validation_tests {
             json!("Invalid product description"),
         );
 
-        let invalid_entity = create_test_entity("product", invalid_data, class_def.clone());
+        let invalid_entity = create_test_entity("product", invalid_data, entity_def.clone());
         let result = invalid_entity.validate();
         assert!(
             result.is_err(),

@@ -6,9 +6,9 @@ use mockall::predicate;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use r_data_core::entity::class::definition::ClassDefinition;
 use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
 use r_data_core::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
+use r_data_core::entity::entity_definition::definition::EntityDefinition;
 use r_data_core::entity::field::ui::UiSettings;
 use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core::error::{Error, Result};
@@ -56,14 +56,14 @@ mockall::mock! {
     }
 }
 
-// Create a mockable ClassDefinitionService
+// Create a mockable EntityDefinitionService
 #[derive(Clone)]
-struct MockClassDefinitionService {
+struct MockEntityDefinitionService {
     entity_type_exists: bool,
     entity_type_published: bool,
 }
 
-impl MockClassDefinitionService {
+impl MockEntityDefinitionService {
     fn new(entity_type_exists: bool, entity_type_published: bool) -> Self {
         Self {
             entity_type_exists,
@@ -71,10 +71,10 @@ impl MockClassDefinitionService {
         }
     }
 
-    async fn get_class_definition_by_entity_type(
+    async fn get_entity_definition_by_entity_type(
         &self,
         entity_type: &str,
-    ) -> Result<ClassDefinition> {
+    ) -> Result<EntityDefinition> {
         if !self.entity_type_exists {
             return Err(Error::NotFound(format!(
                 "Class definition for entity type '{}' not found",
@@ -82,7 +82,7 @@ impl MockClassDefinitionService {
             )));
         }
 
-        let mut definition = ClassDefinition::default();
+        let mut definition = EntityDefinition::default();
         definition.entity_type = entity_type.to_string();
         definition.published = self.entity_type_published;
 
@@ -168,12 +168,12 @@ impl MockClassDefinitionService {
         Ok(definition)
     }
 
-    async fn _get_class_definition(&self, _uuid: &Uuid) -> Result<ClassDefinition> {
+    async fn _get_entity_definition(&self, _uuid: &Uuid) -> Result<EntityDefinition> {
         if !self.entity_type_exists {
             return Err(Error::NotFound("Class definition not found".to_string()));
         }
 
-        let mut definition = ClassDefinition::default();
+        let mut definition = EntityDefinition::default();
         definition.entity_type = "test_entity".to_string();
         definition.published = self.entity_type_published;
 
@@ -183,7 +183,7 @@ impl MockClassDefinitionService {
 
 fn create_test_entity(entity_type: &str, with_required_field: bool) -> DynamicEntity {
     let uuid = Uuid::nil();
-    let definition = Arc::new(ClassDefinition::default());
+    let definition = Arc::new(EntityDefinition::default());
 
     // Create the entity with a valid definition
     let mut entity = DynamicEntity {
@@ -208,14 +208,14 @@ fn create_test_entity(entity_type: &str, with_required_field: bool) -> DynamicEn
 // Create a mocked service for testing
 struct TestService {
     repository: MockDynamicEntityRepositoryTrait,
-    class_service: MockClassDefinitionService,
+    class_service: MockEntityDefinitionService,
 }
 
 impl TestService {
     fn new(entity_type_exists: bool, entity_type_published: bool) -> Self {
         Self {
             repository: MockDynamicEntityRepositoryTrait::new(),
-            class_service: MockClassDefinitionService::new(
+            class_service: MockEntityDefinitionService::new(
                 entity_type_exists,
                 entity_type_published,
             ),
@@ -230,12 +230,12 @@ impl TestService {
         exclusive_fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>> {
         // First check if the entity type exists and is published
-        let class_def = self
+        let entity_def = self
             .class_service
-            .get_class_definition_by_entity_type(entity_type)
+            .get_entity_definition_by_entity_type(entity_type)
             .await?;
 
-        if !class_def.published {
+        if !entity_def.published {
             return Err(Error::NotFound(format!(
                 "Entity type '{}' not found or not published",
                 entity_type
@@ -249,12 +249,12 @@ impl TestService {
 
     async fn create_entity(&self, entity: &DynamicEntity) -> Result<()> {
         // Check if the entity type is published
-        let class_def = self
+        let entity_def = self
             .class_service
-            .get_class_definition_by_entity_type(&entity.entity_type)
+            .get_entity_definition_by_entity_type(&entity.entity_type)
             .await?;
 
-        if !class_def.published {
+        if !entity_def.published {
             return Err(Error::NotFound(format!(
                 "Entity type '{}' not found or not published",
                 entity.entity_type
@@ -262,7 +262,7 @@ impl TestService {
         }
 
         // Very basic validation - check for required fields
-        for field in &class_def.fields {
+        for field in &entity_def.fields {
             if field.required && !entity.field_data.contains_key(&field.name) {
                 return Err(Error::Validation(format!(
                     "Required field '{}' is missing",

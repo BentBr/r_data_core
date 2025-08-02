@@ -8,8 +8,8 @@ import {
     PaginatedApiResponseSchema,
     type ApiResponse,
     ApiResponseSchema,
-    type ClassDefinition,
-    ClassDefinitionSchema,
+    type EntityDefinition,
+    EntityDefinitionSchema,
     type CreateApiKeyRequest,
     type ApiKeyCreatedResponse,
     ApiKeyCreatedResponseSchema,
@@ -443,24 +443,24 @@ class TypedHttpClient {
         return env.defaultPageSize
     }
 
-    async getClassDefinitions(limit?: number, offset = 0): Promise<ClassDefinition[]> {
+    async getEntityDefinitions(limit?: number, offset = 0): Promise<EntityDefinition[]> {
         const pageSize = limit ?? this.getDefaultPageSize()
         return this.request(
-            `/admin/api/v1/class-definitions?limit=${pageSize}&offset=${offset}`,
-            ApiResponseSchema(z.array(ClassDefinitionSchema))
+            `/admin/api/v1/entity-definitions?limit=${pageSize}&offset=${offset}`,
+            ApiResponseSchema(z.array(EntityDefinitionSchema))
         )
     }
 
-    async getClassDefinition(uuid: string): Promise<ClassDefinition> {
+    async getEntityDefinition(uuid: string): Promise<EntityDefinition> {
         return this.request(
-            `/admin/api/v1/class-definitions/${uuid}`,
-            ApiResponseSchema(ClassDefinitionSchema)
+            `/admin/api/v1/entity-definitions/${uuid}`,
+            ApiResponseSchema(EntityDefinitionSchema)
         )
     }
 
-    async createClassDefinition(data: Partial<ClassDefinition>): Promise<{ uuid: string }> {
+    async createEntityDefinition(data: Partial<EntityDefinition>): Promise<{ uuid: string }> {
         return this.request(
-            '/admin/api/v1/class-definitions',
+            '/admin/api/v1/entity-definitions',
             ApiResponseSchema(z.object({ uuid: z.string().uuid() })),
             {
                 method: 'POST',
@@ -469,12 +469,12 @@ class TypedHttpClient {
         )
     }
 
-    async updateClassDefinition(
+    async updateEntityDefinition(
         uuid: string,
-        data: Partial<ClassDefinition>
+        data: Partial<EntityDefinition>
     ): Promise<{ uuid: string }> {
         return this.request(
-            `/admin/api/v1/class-definitions/${uuid}`,
+            `/admin/api/v1/entity-definitions/${uuid}`,
             ApiResponseSchema(z.object({ uuid: z.string().uuid() })),
             {
                 method: 'PUT',
@@ -483,9 +483,9 @@ class TypedHttpClient {
         )
     }
 
-    async deleteClassDefinition(uuid: string): Promise<{ message: string }> {
+    async deleteEntityDefinition(uuid: string): Promise<{ message: string }> {
         return this.request(
-            `/admin/api/v1/class-definitions/${uuid}`,
+            `/admin/api/v1/entity-definitions/${uuid}`,
             ApiResponseSchema(z.object({ message: z.string() })),
             {
                 method: 'DELETE',

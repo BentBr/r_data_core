@@ -20,9 +20,9 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
     },
     {
-        path: '/class-definitions',
-        name: 'ClassDefinitions',
-        component: () => import('@/pages/class-definitions/ClassDefinitionsPage.vue'),
+        path: '/entity-definitions',
+        name: 'EntityDefinitions',
+        component: () => import('@/pages/entity-definitions/EntityDefinitionsPage.vue'),
         meta: { requiresAuth: true },
     },
     {

@@ -5,16 +5,17 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use r_data_core::{
-    entity::class::definition::ClassDefinition, entity::class::schema::Schema,
     entity::dynamic_entity::entity::DynamicEntity,
     entity::dynamic_entity::repository::DynamicEntityRepository,
     entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait,
-    entity::field::definition::FieldDefinition, entity::field::types::FieldType, error::Result,
+    entity::entity_definition::definition::EntityDefinition,
+    entity::entity_definition::schema::Schema, entity::field::definition::FieldDefinition,
+    entity::field::types::FieldType, error::Result,
 };
 
-// Helper function to create a test class definition for dynamic entities
-fn create_test_class_definition() -> ClassDefinition {
-    ClassDefinition {
+// Helper function to create a test entity definition for dynamic entities
+fn create_test_entity_definition() -> EntityDefinition {
+    EntityDefinition {
         uuid: Uuid::now_v7(),
         entity_type: "test_entity".to_string(),
         display_name: "Test Entity".to_string(),
@@ -61,16 +62,16 @@ fn create_test_class_definition() -> ClassDefinition {
 }
 
 // Helper function to create a test dynamic entity
-fn create_test_dynamic_entity(class_definition: &ClassDefinition) -> DynamicEntity {
+fn create_test_dynamic_entity(entity_definition: &EntityDefinition) -> DynamicEntity {
     let mut field_data = HashMap::new();
     field_data.insert("name".to_string(), json!("John Doe"));
     field_data.insert("age".to_string(), json!(30));
     field_data.insert("uuid".to_string(), json!(Uuid::now_v7().to_string()));
 
     DynamicEntity {
-        entity_type: class_definition.entity_type.clone(),
+        entity_type: entity_definition.entity_type.clone(),
         field_data,
-        definition: Arc::new(class_definition.clone()),
+        definition: Arc::new(entity_definition.clone()),
     }
 }
 
@@ -85,11 +86,11 @@ async fn test_dynamic_entity_crud() -> Result<()> {
     let pool = common::setup_test_db().await;
     let repo: Box<dyn DynamicEntityRepositoryTrait> = Box::new(DynamicEntityRepository::new(pool));
 
-    // Create a test class definition
-    let class_def = create_test_class_definition();
+    // Create a test entity definition
+    let entity_def = create_test_entity_definition();
 
     // Create a test entity
-    let entity = create_test_dynamic_entity(&class_def);
+    let entity = create_test_dynamic_entity(&entity_def);
 
     // Test create
     repo.create(&entity).await?;
@@ -137,19 +138,19 @@ async fn test_list_entities_by_type() -> Result<()> {
     let pool = common::setup_test_db().await;
     let repo: Box<dyn DynamicEntityRepositoryTrait> = Box::new(DynamicEntityRepository::new(pool));
 
-    // Create a test class definition
-    let class_def = create_test_class_definition();
+    // Create a test entity definition
+    let entity_def = create_test_entity_definition();
 
     // Create multiple test entities
-    let entity1 = create_test_dynamic_entity(&class_def);
-    let entity2 = create_test_dynamic_entity(&class_def);
+    let entity1 = create_test_dynamic_entity(&entity_def);
+    let entity2 = create_test_dynamic_entity(&entity_def);
 
     // Create the entities
     repo.create(&entity1).await?;
     repo.create(&entity2).await?;
 
     // Test list by type
-    let entities = repo.get_all_by_type(&class_def.entity_type).await?;
+    let entities = repo.get_all_by_type(&entity_def.entity_type).await?;
     assert_eq!(entities.len(), 2);
     */
 
@@ -170,21 +171,21 @@ async fn test_list_entities_by_parent() -> Result<()> {
     let pool = common::setup_test_db().await;
     let repo: Box<dyn DynamicEntityRepositoryTrait> = Box::new(DynamicEntityRepository::new(pool));
 
-    // Create a test class definition
-    let class_def = create_test_class_definition();
+    // Create a test entity definition
+    let entity_def = create_test_entity_definition();
 
     // Create a parent entity
-    let parent = create_test_dynamic_entity(&class_def);
+    let parent = create_test_dynamic_entity(&entity_def);
     repo.create(&parent).await?;
 
     // Get parent UUID from field data
     let parent_uuid = parent.get::<Uuid>("uuid")?;
 
     // Create child entities and set parent reference in field data
-    let mut child1 = create_test_dynamic_entity(&class_def);
+    let mut child1 = create_test_dynamic_entity(&entity_def);
     child1.set("parent_uuid", parent_uuid.to_string())?;
 
-    let mut child2 = create_test_dynamic_entity(&class_def);
+    let mut child2 = create_test_dynamic_entity(&entity_def);
     child2.set("parent_uuid", parent_uuid.to_string())?;
 
     repo.create(&child1).await?;
@@ -192,7 +193,7 @@ async fn test_list_entities_by_parent() -> Result<()> {
 
     // Test filter by parent - using filter_entities method
     let filters = HashMap::from([("parent_uuid".to_string(), json!(parent_uuid.to_string()))]);
-    let children = repo.filter_entities(&class_def.entity_type, &filters, 10, 0).await?;
+    let children = repo.filter_entities(&entity_def.entity_type, &filters, 10, 0).await?;
     assert_eq!(children.len(), 2);
     */
 
@@ -213,19 +214,19 @@ async fn test_filter_entities() -> Result<()> {
     let pool = common::setup_test_db().await;
     let repo: Box<dyn DynamicEntityRepositoryTrait> = Box::new(DynamicEntityRepository::new(pool));
 
-    // Create a test class definition
-    let class_def = create_test_class_definition();
+    // Create a test entity definition
+    let entity_def = create_test_entity_definition();
 
     // Create test entities with different field values
-    let mut entity1 = create_test_dynamic_entity(&class_def);
+    let mut entity1 = create_test_dynamic_entity(&entity_def);
     entity1.set("name", "Alice".to_string())?;
     entity1.set("age", 25)?;
 
-    let mut entity2 = create_test_dynamic_entity(&class_def);
+    let mut entity2 = create_test_dynamic_entity(&entity_def);
     entity2.set("name", "Bob".to_string())?;
     entity2.set("age", 30)?;
 
-    let mut entity3 = create_test_dynamic_entity(&class_def);
+    let mut entity3 = create_test_dynamic_entity(&entity_def);
     entity3.set("name", "Charlie".to_string())?;
     entity3.set("age", 35)?;
 
@@ -235,7 +236,7 @@ async fn test_filter_entities() -> Result<()> {
 
     // Test filtering with the filter_entities method
     let filters = HashMap::from([("age".to_string(), json!(30))]);
-    let filtered = repo.filter_entities(&class_def.entity_type, &filters, 10, 0).await?;
+    let filtered = repo.filter_entities(&entity_def.entity_type, &filters, 10, 0).await?;
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].get::<String>("name")?, "Bob");
     */
@@ -257,8 +258,8 @@ async fn test_query_entities() -> Result<()> {
     let pool = common::setup_test_db().await;
     let repo: Box<dyn DynamicEntityRepositoryTrait> = Box::new(DynamicEntityRepository::new(pool));
 
-    // Create a test class definition with multiple fields
-    let class_def = create_test_class_definition();
+    // Create a test entity definition with multiple fields
+    let entity_def = create_test_entity_definition();
 
     // Create several test entities with varying field values
     // This would test more complex query operations using filter_entities
@@ -281,18 +282,18 @@ async fn test_count_entities() -> Result<()> {
     let pool = common::setup_test_db().await;
     let repo: Box<dyn DynamicEntityRepositoryTrait> = Box::new(DynamicEntityRepository::new(pool));
 
-    // Create a test class definition
-    let class_def = create_test_class_definition();
+    // Create a test entity definition
+    let entity_def = create_test_entity_definition();
 
     // Create multiple test entities
     for i in 0..5 {
-        let mut entity = create_test_dynamic_entity(&class_def);
+        let mut entity = create_test_dynamic_entity(&entity_def);
         entity.set("name", format!("Test Entity {}", i))?;
         repo.create(&entity).await?;
     }
 
     // Test count function
-    let count = repo.count_entities(&class_def.entity_type).await?;
+    let count = repo.count_entities(&entity_def.entity_type).await?;
     assert_eq!(count, 5);
     */
 

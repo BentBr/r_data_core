@@ -13,7 +13,7 @@
                     <v-card-text>
                         <p>Manage your dynamic entities here. Features include:</p>
                         <ul>
-                            <li>View all entities by class definition</li>
+                            <li>View all entities by entity definition</li>
                             <li>Create, edit, and delete entities</li>
                             <li>Advanced filtering and search</li>
                             <li>Bulk operations</li>

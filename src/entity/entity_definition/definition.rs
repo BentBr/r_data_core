@@ -39,10 +39,10 @@ mod datetime_serde {
     }
 }
 
-/// A class definition that describes the structure of an entity type
+/// An entity definition that describes the structure of an entity type
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
-pub struct ClassDefinition {
+pub struct EntityDefinition {
     /// Unique identifier for this entity type definition
     #[serde(default = "generate_uuid")]
     pub uuid: Uuid,
@@ -79,7 +79,7 @@ pub struct ClassDefinition {
     pub version: i32,
 }
 
-impl Default for ClassDefinition {
+impl Default for EntityDefinition {
     fn default() -> Self {
         let now = OffsetDateTime::now_utc();
         Self {
@@ -112,8 +112,8 @@ fn default_version() -> i32 {
     1
 }
 
-// Implement FromRow for ClassDefinition
-impl<'r> FromRow<'r, PgRow> for ClassDefinition {
+// Implement FromRow for EntityDefinition
+impl<'r> FromRow<'r, PgRow> for EntityDefinition {
     fn from_row(row: &'r PgRow) -> std::result::Result<Self, sqlx::Error> {
         let fields: Vec<FieldDefinition> =
             serde_json::from_value(row.try_get("field_definitions")?)
@@ -127,7 +127,7 @@ impl<'r> FromRow<'r, PgRow> for ClassDefinition {
         );
         let schema = Schema::new(properties);
 
-        Ok(ClassDefinition {
+        Ok(EntityDefinition {
             uuid: row.try_get("uuid")?,
             entity_type: row.try_get("entity_type")?,
             display_name: row.try_get("display_name")?,
@@ -147,7 +147,7 @@ impl<'r> FromRow<'r, PgRow> for ClassDefinition {
     }
 }
 
-impl ClassDefinition {
+impl EntityDefinition {
     /// Create a new entity type definition
     pub fn new(
         entity_type: String,
@@ -168,7 +168,7 @@ impl ClassDefinition {
             JsonValue::String(entity_type.clone()),
         );
 
-        ClassDefinition {
+        EntityDefinition {
             uuid: Uuid::now_v7(),
             entity_type,
             display_name,
@@ -416,12 +416,12 @@ impl ClassDefinition {
         sql
     }
 
-    /// Returns the properly formatted table name for this class definition
+    /// Returns the properly formatted table name for this entity definition
     pub fn table_name(&self) -> String {
         self.entity_type.to_lowercase()
     }
 
-    /// Generate SQL schema for this class definition
+    /// Generate SQL schema for this entity definition
     /// This is an alias for generate_schema_sql to maintain compatibility
     pub fn generate_sql_schema(&self) -> String {
         self.generate_schema_sql()
@@ -430,10 +430,10 @@ impl ClassDefinition {
     /// Convert to API schema model
     pub fn to_schema_model(
         &self,
-    ) -> crate::api::admin::class_definitions::models::ClassDefinitionSchema {
-        use crate::api::admin::class_definitions::models::ClassDefinitionSchema;
+    ) -> crate::api::admin::entity_definitions::models::EntityDefinitionSchema {
+        use crate::api::admin::entity_definitions::models::EntityDefinitionSchema;
 
-        ClassDefinitionSchema {
+        EntityDefinitionSchema {
             uuid: Some(self.uuid),
             entity_type: self.entity_type.clone(),
             display_name: self.display_name.clone(),
