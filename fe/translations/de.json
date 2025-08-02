@@ -89,7 +89,8 @@
       "description_label": "Beschreibung (Optional)",
       "group_name_label": "Gruppenname (Optional)",
       "allow_children_label": "Kinder erlauben",
-      "icon_label": "Symbol (Optional)",
+      "icon_label": "Symbol",
+      "icon_hint": "Wählen Sie ein Symbol für diese Entitätsdefinition",
       "published_label": "Veröffentlicht",
       "error": "Entitätsdefinition konnte nicht erstellt werden"
     },
@@ -140,6 +141,9 @@
       "apply_schema": "Schema anwenden",
       "schema_applied": "Schema erfolgreich angewendet",
       "schema_error": "Schema konnte nicht angewendet werden",
+      "apply_changes": "Änderungen anwenden",
+      "changes_saved": "Änderungen erfolgreich gespeichert",
+      "save_error": "Änderungen konnten nicht gespeichert werden",
       "select_entity": "Wählen Sie eine Entitätsdefinition aus, um Details anzuzeigen",
       "select_entity_description": "Wählen Sie eine Entitätsdefinition aus der Baumansicht aus, um ihre Eigenschaften und Felder zu sehen."
     }

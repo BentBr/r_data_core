@@ -7,9 +7,9 @@ use uuid::Uuid;
 
 use super::models::ApplySchemaRequest;
 use super::models::PathUuid;
-use crate::api::ApiState;
 use crate::api::models::PaginationQuery;
 use crate::api::response::ApiResponse;
+use crate::api::ApiState;
 use crate::entity::EntityDefinition;
 
 /// List entity definitions
@@ -43,7 +43,8 @@ async fn list_entity_definitions(
 
     // Get both the entity definitions and the total count
     let (definitions_result, count_result) = tokio::join!(
-        data.entity_definition_service.list_entity_definitions(limit, offset),
+        data.entity_definition_service
+            .list_entity_definitions(limit, offset),
         data.entity_definition_service.count_entity_definitions()
     );
 
@@ -414,7 +415,10 @@ async fn apply_entity_definition_schema(
                     }))
                 } else {
                     let (entity_type, _uuid, error) = &failed[0];
-                    ApiResponse::<()>::internal_error(&format!("Failed to apply schema for {}: {}", entity_type, error))
+                    ApiResponse::<()>::internal_error(&format!(
+                        "Failed to apply schema for {}: {}",
+                        entity_type, error
+                    ))
                 }
             } else {
                 // If applying schema for all definitions

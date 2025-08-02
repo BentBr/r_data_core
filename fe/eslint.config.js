@@ -43,7 +43,7 @@ export default [
             ...vue.configs['vue3-recommended'].rules,
 
             // Custom rules
-            'vue/html-indent': ['error', 4],
+            'vue/html-indent': 'off', // Let prettier handle indentation
             indent: 'off', // Prettier handles indentation
             'no-alert': 0,
             'vue/html-self-closing': [

@@ -89,7 +89,8 @@
       "description_label": "Description (Optional)",
       "group_name_label": "Group Name (Optional)",
       "allow_children_label": "Allow Children",
-      "icon_label": "Icon (Optional)",
+      "icon_label": "Icon",
+      "icon_hint": "Choose an icon for this entity definition",
       "published_label": "Published",
       "error": "Failed to create entity definition"
     },
@@ -140,6 +141,9 @@
       "apply_schema": "Apply Schema",
       "schema_applied": "Schema applied successfully",
       "schema_error": "Failed to apply schema",
+      "apply_changes": "Apply Changes",
+      "changes_saved": "Changes saved successfully",
+      "save_error": "Failed to save changes",
       "select_entity": "Select an entity definition to view details",
       "select_entity_description": "Choose an entity definition from the tree view to see its properties and fields."
     }

@@ -469,10 +469,22 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
 
     /// Apply schema SQL to database
     async fn apply_schema(&self, schema_sql: &str) -> Result<()> {
-        sqlx::query(schema_sql)
-            .execute(&self.db_pool)
-            .await
-            .map_err(Error::Database)?;
+        // Split the SQL into individual statements and execute each one separately
+        let statements: Vec<&str> = schema_sql
+            .split(';')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        for statement in statements {
+            if !statement.trim().is_empty() {
+                log::debug!("Executing SQL statement: {}", statement);
+                sqlx::query(statement)
+                    .execute(&self.db_pool)
+                    .await
+                    .map_err(Error::Database)?;
+            }
+        }
         Ok(())
     }
 
@@ -481,49 +493,25 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
         &self,
         entity_definition: &EntityDefinition,
     ) -> Result<()> {
-        // This handles creating tables, adding and dropping columns, and updating views
-        let sql = format!("SELECT create_entity_table_and_view($1)");
-
         log::info!(
             "Updating entity table and view for entity type: {}",
             entity_definition.entity_type
         );
 
-        // Add transaction to ensure atomicity
-        let mut tx = self.db_pool.begin().await.map_err(Error::Database)?;
+        // Generate the complete schema SQL including indexes
+        let schema_sql = entity_definition.generate_schema_sql();
 
-        let result = sqlx::query(&sql)
-            .bind(&entity_definition.entity_type)
-            .execute(&mut *tx)
-            .await;
+        log::debug!("Generated schema SQL: {}", schema_sql);
 
-        match result {
-            Ok(_) => {
-                log::info!(
-                    "Successfully created/updated table and view for entity type {}",
-                    entity_definition.entity_type
-                );
+        // Apply the schema using the Rust-generated SQL
+        self.apply_schema(&schema_sql).await?;
 
-                // Commit the transaction only if successful
-                tx.commit().await.map_err(|e| {
-                    log::error!("Failed to commit transaction: {}", e);
-                    Error::Database(e)
-                })?;
+        log::info!(
+            "Successfully created/updated table and view for entity type {}",
+            entity_definition.entity_type
+        );
 
-                Ok(())
-            }
-            Err(e) => {
-                // If an error occurs, the transaction will be rolled back automatically
-                log::error!(
-                    "Failed to create/update table and view for entity type {}: {}",
-                    entity_definition.entity_type,
-                    e
-                );
-
-                // Provide more context in the error message
-                Err(Error::Database(e))
-            }
-        }
+        Ok(())
     }
 
     /// Cleanup unused entity tables

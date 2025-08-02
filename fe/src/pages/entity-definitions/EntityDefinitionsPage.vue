@@ -34,12 +34,14 @@
                                     </v-card-title>
                                     <v-card-text class="pa-0">
                                         <v-treeview
-                                            v-model="selectedItems"
+                                            v-model="expandedGroups"
                                             :items="treeItems"
                                             :loading="loading"
-                                            item-key="uuid"
+                                            item-key="id"
                                             activatable
                                             hoverable
+                                            open-on-click
+                                            :expand-on-click="false"
                                             @update:active="handleTreeSelection"
                                         >
                                             <template #prepend="{ item }">
@@ -47,6 +49,20 @@
                                                     :icon="item.icon || 'mdi-file-document'"
                                                     :color="item.published ? 'success' : 'grey'"
                                                 />
+                                            </template>
+                                            <template #title="{ item }">
+                                                <div
+                                                    class="d-flex align-center justify-space-between w-100 cursor-pointer"
+                                                    @click="handleItemClick(item)"
+                                                >
+                                                    <span>{{ item.title }}</span>
+                                                    <span
+                                                        v-if="item.entity_type !== 'group'"
+                                                        class="text-caption text-grey"
+                                                    >
+                                                        {{ item.entity_type }}
+                                                    </span>
+                                                </div>
                                             </template>
                                         </v-treeview>
                                     </v-card-text>
@@ -83,23 +99,14 @@
                                             >
                                                 Edit
                                             </v-btn>
-                                            <v-btn
-                                                color="success"
-                                                variant="outlined"
-                                                prepend-icon="mdi-database"
-                                                :loading="applyingSchema"
-                                                class="mr-2"
-                                                @click="applySchema"
-                                            >
-                                                {{ t('entity_definitions.details.apply_schema') }}
-                                            </v-btn>
+
                                             <v-btn
                                                 color="error"
                                                 variant="outlined"
                                                 prepend-icon="mdi-delete"
                                                 @click="showDeleteDialog = true"
                                             >
-                                                Delete
+                                                {{ t('entity_definitions.delete.button') }}
                                             </v-btn>
                                         </div>
                                     </v-card-title>
@@ -125,7 +132,7 @@
                                                                     <v-icon icon="mdi-tag" />
                                                                 </template>
                                                                 <v-list-item-title
-                                                                >Entity Type</v-list-item-title
+                                                                    >Entity Type</v-list-item-title
                                                                 >
                                                                 <v-list-item-subtitle>{{
                                                                     selectedDefinition.entity_type
@@ -136,7 +143,7 @@
                                                                     <v-icon icon="mdi-text" />
                                                                 </template>
                                                                 <v-list-item-title
-                                                                >Display Name</v-list-item-title
+                                                                    >Display Name</v-list-item-title
                                                                 >
                                                                 <v-list-item-subtitle>{{
                                                                     selectedDefinition.display_name
@@ -153,7 +160,7 @@
                                                                     />
                                                                 </template>
                                                                 <v-list-item-title
-                                                                >Description</v-list-item-title
+                                                                    >Description</v-list-item-title
                                                                 >
                                                                 <v-list-item-subtitle>{{
                                                                     selectedDefinition.description
@@ -166,7 +173,7 @@
                                                                     <v-icon icon="mdi-folder" />
                                                                 </template>
                                                                 <v-list-item-title
-                                                                >Group</v-list-item-title
+                                                                    >Group</v-list-item-title
                                                                 >
                                                                 <v-list-item-subtitle>{{
                                                                     selectedDefinition.group_name
@@ -181,7 +188,7 @@
                                                                     <v-icon icon="mdi-calendar" />
                                                                 </template>
                                                                 <v-list-item-title
-                                                                >Created</v-list-item-title
+                                                                    >Created</v-list-item-title
                                                                 >
                                                                 <v-list-item-subtitle>{{
                                                                     formatDate(
@@ -196,7 +203,7 @@
                                                                     />
                                                                 </template>
                                                                 <v-list-item-title
-                                                                >Updated</v-list-item-title
+                                                                    >Updated</v-list-item-title
                                                                 >
                                                                 <v-list-item-subtitle>{{
                                                                     formatDate(
@@ -257,91 +264,119 @@
                                                                 t('entity_definitions.fields.title')
                                                             }}
                                                         </h3>
-                                                        <v-btn
-                                                            color="primary"
-                                                            prepend-icon="mdi-plus"
-                                                            @click="addField"
-                                                        >
-                                                            {{
-                                                                t(
-                                                                    'entity_definitions.fields.add_field'
-                                                                )
-                                                            }}
-                                                        </v-btn>
+                                                        <div class="d-flex">
+                                                            <v-btn
+                                                                v-if="hasUnsavedChanges"
+                                                                color="success"
+                                                                variant="outlined"
+                                                                prepend-icon="mdi-content-save"
+                                                                :loading="savingChanges"
+                                                                class="mr-2"
+                                                                @click="saveChanges"
+                                                            >
+                                                                {{
+                                                                    t(
+                                                                        'entity_definitions.details.apply_changes'
+                                                                    )
+                                                                }}
+                                                            </v-btn>
+                                                            <v-btn
+                                                                color="primary"
+                                                                prepend-icon="mdi-plus"
+                                                                @click="addField"
+                                                            >
+                                                                {{
+                                                                    t(
+                                                                        'entity_definitions.fields.add_field'
+                                                                    )
+                                                                }}
+                                                            </v-btn>
+                                                        </div>
                                                     </div>
 
-                                                    <v-data-table
-                                                        :headers="fieldHeaders"
-                                                        :items="selectedDefinition.fields"
+                                                    <v-treeview
+                                                        :items="fieldTreeItems"
                                                         :loading="loading"
+                                                        item-key="name"
+                                                        activatable
+                                                        hoverable
                                                         class="elevation-1"
                                                     >
-                                                        <template #item.field_type="{ item }">
-                                                            <v-chip
+                                                        <template #prepend="{ item }">
+                                                            <v-icon
+                                                                :icon="
+                                                                    getFieldIcon(item.field_type)
+                                                                "
+                                                                :color="
+                                                                    getFieldColor(item.field_type)
+                                                                "
                                                                 size="small"
-                                                                color="primary"
+                                                            />
+                                                        </template>
+                                                        <template #title="{ item }">
+                                                            <div
+                                                                class="d-flex align-center justify-space-between w-100"
                                                             >
-                                                                {{ item.field_type }}
-                                                            </v-chip>
+                                                                <div>
+                                                                    <div class="font-weight-medium">
+                                                                        {{ item.display_name }}
+                                                                    </div>
+                                                                    <div
+                                                                        class="text-caption text-grey"
+                                                                    >
+                                                                        {{ item.name }}
+                                                                    </div>
+                                                                </div>
+                                                                <div class="d-flex align-center">
+                                                                    <v-chip
+                                                                        size="x-small"
+                                                                        color="primary"
+                                                                        class="mr-2"
+                                                                    >
+                                                                        {{ item.field_type }}
+                                                                    </v-chip>
+                                                                    <v-icon
+                                                                        v-if="item.required"
+                                                                        icon="mdi-check-circle"
+                                                                        color="success"
+                                                                        size="small"
+                                                                        class="mr-1"
+                                                                    />
+                                                                    <v-icon
+                                                                        v-if="item.indexed"
+                                                                        icon="mdi-database"
+                                                                        color="info"
+                                                                        size="small"
+                                                                        class="mr-1"
+                                                                    />
+                                                                    <v-icon
+                                                                        v-if="item.filterable"
+                                                                        icon="mdi-filter"
+                                                                        color="warning"
+                                                                        size="small"
+                                                                        class="mr-1"
+                                                                    />
+                                                                    <v-btn
+                                                                        icon="mdi-pencil"
+                                                                        size="x-small"
+                                                                        variant="text"
+                                                                        @click.stop="
+                                                                            editField(item)
+                                                                        "
+                                                                    />
+                                                                    <v-btn
+                                                                        icon="mdi-delete"
+                                                                        size="x-small"
+                                                                        variant="text"
+                                                                        color="error"
+                                                                        @click.stop="
+                                                                            removeField(item)
+                                                                        "
+                                                                    />
+                                                                </div>
+                                                            </div>
                                                         </template>
-                                                        <template #item.required="{ item }">
-                                                            <v-icon
-                                                                :icon="
-                                                                    item.required
-                                                                        ? 'mdi-check'
-                                                                        : 'mdi-close'
-                                                                "
-                                                                :color="
-                                                                    item.required
-                                                                        ? 'success'
-                                                                        : 'grey'
-                                                                "
-                                                            />
-                                                        </template>
-                                                        <template #item.indexed="{ item }">
-                                                            <v-icon
-                                                                :icon="
-                                                                    item.indexed
-                                                                        ? 'mdi-check'
-                                                                        : 'mdi-close'
-                                                                "
-                                                                :color="
-                                                                    item.indexed
-                                                                        ? 'success'
-                                                                        : 'grey'
-                                                                "
-                                                            />
-                                                        </template>
-                                                        <template #item.filterable="{ item }">
-                                                            <v-icon
-                                                                :icon="
-                                                                    item.filterable
-                                                                        ? 'mdi-check'
-                                                                        : 'mdi-close'
-                                                                "
-                                                                :color="
-                                                                    item.filterable
-                                                                        ? 'success'
-                                                                        : 'grey'
-                                                                "
-                                                            />
-                                                        </template>
-                                                        <template #item.actions="{ item }">
-                                                            <v-btn
-                                                                icon="mdi-pencil"
-                                                                size="small"
-                                                                variant="text"
-                                                                @click="editField(item)"
-                                                            />
-                                                            <v-btn
-                                                                icon="mdi-delete"
-                                                                size="small"
-                                                                variant="text"
-                                                                color="error"
-                                                                @click="removeField(item)"
-                                                            />
-                                                        </template>
-                                                    </v-data-table>
+                                                    </v-treeview>
                                                 </div>
                                             </v-window-item>
                                         </v-window>
@@ -359,12 +394,16 @@
                                             color="grey"
                                             class="mb-4"
                                         />
-                                                                                 <h3 class="text-h6 text-grey">
-                                             {{ t('entity_definitions.details.select_entity') }}
-                                         </h3>
-                                         <p class="text-body-2 text-grey">
-                                             {{ t('entity_definitions.details.select_entity_description') }}
-                                         </p>
+                                        <h3 class="text-h6 text-grey">
+                                            {{ t('entity_definitions.details.select_entity') }}
+                                        </h3>
+                                        <p class="text-body-2 text-grey">
+                                            {{
+                                                t(
+                                                    'entity_definitions.details.select_entity_description'
+                                                )
+                                            }}
+                                        </p>
                                     </v-card-text>
                                 </v-card>
                             </v-col>
@@ -432,7 +471,7 @@
                                 />
                             </v-col>
                             <v-col cols="6">
-                                <v-text-field
+                                <IconPicker
                                     v-model="createForm.icon"
                                     :label="t('entity_definitions.create.icon_label')"
                                 />
@@ -534,7 +573,7 @@
                                 />
                             </v-col>
                             <v-col cols="6">
-                                <v-text-field
+                                <IconPicker
                                     v-model="editForm.icon"
                                     :label="t('entity_definitions.create.icon_label')"
                                 />
@@ -638,6 +677,13 @@
             </v-card>
         </v-dialog>
 
+        <!-- Field Editor Dialog -->
+        <FieldEditor
+            v-model="showFieldEditor"
+            :field="editingField"
+            @save="handleFieldSave"
+        />
+
         <!-- Delete Confirmation Dialog -->
         <v-dialog
             v-model="showDeleteDialog"
@@ -703,6 +749,8 @@
         FieldDefinition,
     } from '@/types/schemas'
     import { useTranslations } from '@/composables/useTranslations'
+    import IconPicker from '@/components/common/IconPicker.vue'
+    import FieldEditor from '@/components/forms/FieldEditor.vue'
 
     const authStore = useAuthStore()
     const { t } = useTranslations()
@@ -713,17 +761,21 @@
     const entityDefinitions = ref<EntityDefinition[]>([])
     const selectedDefinition = ref<EntityDefinition | null>(null)
     const selectedItems = ref<string[]>([])
+    const expandedGroups = ref<string[]>([])
     const activeTab = ref('meta')
-    const applyingSchema = ref(false)
+    const savingChanges = ref(false)
+    const originalDefinition = ref<EntityDefinition | null>(null)
 
     // Dialog states
     const showCreateDialog = ref(false)
     const showEditDialog = ref(false)
     const showDeleteDialog = ref(false)
+    const showFieldEditor = ref(false)
     const showSuccessSnackbar = ref(false)
     const showErrorSnackbar = ref(false)
     const successMessage = ref('')
     const errorMessage = ref('')
+    const editingField = ref<FieldDefinition | undefined>(undefined)
 
     // Form states
     const creating = ref(false)
@@ -765,14 +817,171 @@
 
     // Computed properties
     const treeItems = computed(() => {
-        return entityDefinitions.value.map(def => ({
+        // Group entity definitions by group_name
+        const grouped = entityDefinitions.value.reduce(
+            (acc, def) => {
+                if (!def.group_name) {
+                    return acc
+                } // Skip definitions without group
+                if (!acc[def.group_name]) {
+                    acc[def.group_name] = []
+                }
+                acc[def.group_name].push(def)
+                return acc
+            },
+            {} as Record<string, EntityDefinition[]>
+        )
+
+        // Get entity definitions without groups
+        const ungrouped = entityDefinitions.value.filter(def => !def.group_name)
+
+        // Convert to tree structure following Vuetify's format
+        const groupItems = Object.entries(grouped).map(
+            ([groupName, definitions]: [string, EntityDefinition[]]) => ({
+                id: `group-${groupName}`,
+                title: groupName,
+                entity_type: 'group',
+                icon: 'mdi-folder',
+                published: false,
+                children: definitions.map(def => ({
+                    id: def.uuid,
+                    title: def.display_name,
+                    uuid: def.uuid,
+                    display_name: def.display_name,
+                    entity_type: def.entity_type,
+                    icon: def.icon || 'mdi-file-document',
+                    published: def.published,
+                })),
+            })
+        )
+
+        // Add ungrouped items as top-level items
+        const ungroupedItems = ungrouped.map(def => ({
+            id: def.uuid || '',
+            title: def.display_name,
             uuid: def.uuid,
             display_name: def.display_name,
             entity_type: def.entity_type,
             icon: def.icon || 'mdi-file-document',
             published: def.published,
-            children: [],
         }))
+
+        return [...groupItems, ...ungroupedItems]
+    })
+
+    const fieldTreeItems = computed(() => {
+        if (!selectedDefinition.value) {
+            return []
+        }
+        return selectedDefinition.value.fields.map(field => ({
+            ...field,
+        }))
+    })
+
+    const getFieldIcon = (fieldType: string) => {
+        const iconMap: Record<string, string> = {
+            String: 'mdi-text',
+            Text: 'mdi-text-box',
+            Wysiwyg: 'mdi-text-box-outline',
+            Integer: 'mdi-numeric',
+            Float: 'mdi-numeric-1-box',
+            Boolean: 'mdi-checkbox-marked',
+            Date: 'mdi-calendar',
+            DateTime: 'mdi-calendar-clock',
+            Object: 'mdi-cube',
+            Array: 'mdi-format-list-bulleted',
+            UUID: 'mdi-identifier',
+            ManyToOne: 'mdi-link',
+            ManyToMany: 'mdi-link-variant',
+            Select: 'mdi-format-list-checks',
+            MultiSelect: 'mdi-format-list-numbered',
+            Image: 'mdi-image',
+            File: 'mdi-file',
+        }
+        return iconMap[fieldType] || 'mdi-text'
+    }
+
+    const getFieldColor = (fieldType: string) => {
+        const colorMap: Record<string, string> = {
+            String: 'primary',
+            Text: 'primary',
+            Wysiwyg: 'primary',
+            Integer: 'success',
+            Float: 'success',
+            Boolean: 'warning',
+            Date: 'info',
+            DateTime: 'info',
+            Object: 'purple',
+            Array: 'orange',
+            UUID: 'grey',
+            ManyToOne: 'blue',
+            ManyToMany: 'blue',
+            Select: 'green',
+            MultiSelect: 'green',
+            Image: 'pink',
+            File: 'brown',
+        }
+        return colorMap[fieldType] || 'primary'
+    }
+
+    const hasUnsavedChanges = computed(() => {
+        if (!selectedDefinition.value || !originalDefinition.value) {
+            return false
+        }
+
+        // Simple field count comparison
+        if (selectedDefinition.value.fields.length !== originalDefinition.value.fields.length) {
+            return true
+        }
+
+        // Create maps for field comparison
+        const currentFieldsMap = new Map<string, FieldDefinition>(
+            selectedDefinition.value.fields.map(field => [field.name, field])
+        )
+        const originalFieldsMap = new Map<string, FieldDefinition>(
+            originalDefinition.value.fields.map(field => [field.name, field])
+        )
+
+        // Check for added/removed fields
+        const currentFieldNames = Array.from(currentFieldsMap.keys())
+        const originalFieldNames = Array.from(originalFieldsMap.keys())
+
+        // Check if any fields were added or removed
+        for (const fieldName of currentFieldNames) {
+            if (!originalFieldsMap.has(fieldName)) {
+                return true // New field added
+            }
+        }
+
+        for (const fieldName of originalFieldNames) {
+            if (!currentFieldsMap.has(fieldName)) {
+                return true // Field removed
+            }
+        }
+
+        // Check if any existing fields were modified
+        for (const fieldName of currentFieldNames) {
+            const currentField = currentFieldsMap.get(fieldName)!
+            const originalField = originalFieldsMap.get(fieldName)!
+
+            if (
+                currentField.name !== originalField.name ||
+                currentField.display_name !== originalField.display_name ||
+                currentField.field_type !== originalField.field_type ||
+                currentField.required !== originalField.required ||
+                currentField.indexed !== originalField.indexed ||
+                currentField.filterable !== originalField.filterable ||
+                currentField.description !== originalField.description ||
+                JSON.stringify(currentField.constraints) !==
+                    JSON.stringify(originalField.constraints) ||
+                JSON.stringify(currentField.ui_settings) !==
+                    JSON.stringify(originalField.ui_settings)
+            ) {
+                return true
+            }
+        }
+
+        return false
     })
 
     const fieldHeaders = computed(() => [
@@ -807,6 +1016,14 @@
     ])
 
     // Methods
+    const sanitizeFields = (fields: FieldDefinition[]) => {
+        return fields.map(field => ({
+            ...field,
+            constraints: field.constraints || {},
+            ui_settings: field.ui_settings || {},
+        }))
+    }
+
     const loadEntityDefinitions = async () => {
         if (!isComponentMounted.value || !authStore.isAuthenticated) {
             return
@@ -817,7 +1034,11 @@
 
         try {
             const response = await typedHttpClient.getEntityDefinitions()
-            entityDefinitions.value = response.data || []
+            // Sanitize fields to ensure constraints and ui_settings are always objects
+            entityDefinitions.value = (response.data || []).map(definition => ({
+                ...definition,
+                fields: sanitizeFields(definition.fields),
+            }))
         } catch (err) {
             console.error('Failed to load entity definitions:', err)
             error.value = err instanceof Error ? err.message : 'Failed to load entity definitions'
@@ -828,17 +1049,98 @@
     }
 
     const handleTreeSelection = (items: string[]) => {
-        console.log('Tree selection changed:', items)
         if (items.length > 0) {
-            const selectedUuid = items[0]
-            console.log('Selected UUID:', selectedUuid)
-            const definition = entityDefinitions.value.find(d => d.uuid === selectedUuid)
-            console.log('Found definition:', definition)
-            if (definition) {
-                selectedDefinition.value = definition
+            const selectedId = items[0]
+            // Check if it's a group or actual entity definition
+            if (selectedId.startsWith('group-')) {
+                // It's a group, expand/collapse it
+                if (expandedGroups.value.includes(selectedId)) {
+                    expandedGroups.value = expandedGroups.value.filter(id => id !== selectedId)
+                } else {
+                    expandedGroups.value.push(selectedId)
+                }
+            } else {
+                // It's an entity definition, select it
+                const definition = entityDefinitions.value.find(d => d.uuid === selectedId)
+                if (definition) {
+                    selectedDefinition.value = definition
+                    // Deep copy the definition including fields with sanitization
+                    originalDefinition.value = {
+                        ...definition,
+                        fields: sanitizeFields(definition.fields.map(field => ({ ...field }))),
+                    }
+                    selectedItems.value = [selectedId]
+                }
             }
         } else {
             selectedDefinition.value = null
+        }
+    }
+
+    const handleItemClick = (item: {
+        id: string
+        title: string
+        entity_type: string
+        uuid?: string
+    }) => {
+        if (item.entity_type === 'group') {
+            // For groups, toggle expansion
+            const groupId = item.id
+            if (expandedGroups.value.includes(groupId)) {
+                expandedGroups.value = expandedGroups.value.filter(id => id !== groupId)
+            } else {
+                expandedGroups.value.push(groupId)
+            }
+        } else {
+            // For entity definitions, select them
+            const definition = entityDefinitions.value.find(d => d.uuid === item.uuid)
+            if (definition) {
+                selectedDefinition.value = definition
+                // Deep copy the definition including fields with sanitization
+                originalDefinition.value = {
+                    ...definition,
+                    fields: sanitizeFields(definition.fields.map(field => ({ ...field }))),
+                }
+                selectedItems.value = [item.uuid!]
+            }
+        }
+    }
+
+    const saveChanges = async () => {
+        if (!selectedDefinition.value || !originalDefinition.value) {
+            return
+        }
+
+        savingChanges.value = true
+
+        try {
+            await typedHttpClient.updateEntityDefinition(selectedDefinition.value.uuid!, {
+                entity_type: selectedDefinition.value.entity_type,
+                display_name: selectedDefinition.value.display_name,
+                description: selectedDefinition.value.description,
+                group_name: selectedDefinition.value.group_name,
+                allow_children: selectedDefinition.value.allow_children,
+                icon: selectedDefinition.value.icon,
+                fields: selectedDefinition.value.fields,
+                published: selectedDefinition.value.published,
+            })
+
+            // Update original definition to reflect saved state
+            originalDefinition.value = {
+                ...selectedDefinition.value,
+                fields: sanitizeFields(
+                    selectedDefinition.value.fields.map(field => ({ ...field }))
+                ),
+            }
+
+            showSuccessSnackbar.value = true
+            successMessage.value = t('entity_definitions.details.changes_saved')
+        } catch (err) {
+            showErrorSnackbar.value = true
+            errorMessage.value =
+                err instanceof Error ? err.message : t('entity_definitions.details.save_error')
+        } finally {
+            savingChanges.value = false
         }
     }
 
@@ -967,62 +1269,76 @@
         }
     }
 
-    const applySchema = async () => {
-        if (!selectedDefinition.value) {
-            return
-        }
-
-        applyingSchema.value = true
-
-        try {
-            await typedHttpClient.applyEntityDefinitionSchema(selectedDefinition.value.uuid!)
-
-            showSuccessSnackbar.value = true
-            successMessage.value = t('entity_definitions.details.schema_applied')
-        } catch (err) {
-            showErrorSnackbar.value = true
-            errorMessage.value =
-                err instanceof Error ? err.message : t('entity_definitions.details.schema_error')
-        } finally {
-            applyingSchema.value = false
-        }
-    }
-
     const addField = () => {
-        // This would open a field creation dialog
-        console.log('Add field')
+        editingField.value = undefined
+        showFieldEditor.value = true
     }
 
     const editField = (field: FieldDefinition) => {
-        // This would open a field editing dialog
-        console.log('Edit field', field)
+        editingField.value = field
+        showFieldEditor.value = true
     }
 
     const removeField = (field: FieldDefinition) => {
-        // This would remove the field from the selected definition
-        console.log('Remove field', field)
+        if (selectedDefinition.value) {
+            const index = selectedDefinition.value.fields.findIndex(f => f.name === field.name)
+            if (index !== -1) {
+                selectedDefinition.value.fields.splice(index, 1)
+            }
+        }
+    }
+
+    const handleFieldSave = (field: FieldDefinition) => {
+        // Ensure constraints and ui_settings are always objects, not null
+        const sanitizedField = {
+            ...field,
+            constraints: field.constraints || {},
+            ui_settings: field.ui_settings || {},
+        }
+
+        if (showEditDialog.value) {
+            // Working with edit form
+            if (editingField.value) {
+                // Editing existing field in edit form
+                const index = editForm.value.fields.findIndex(
+                    f => f.name === editingField.value?.name
+                )
+                if (index !== -1) {
+                    editForm.value.fields[index] = sanitizedField
+                }
+            } else {
+                // Adding new field to edit form
+                editForm.value.fields.push(sanitizedField)
+            }
+        } else {
+            // Working with selected definition
+            if (editingField.value) {
+                // Editing existing field
+                const index = selectedDefinition.value?.fields.findIndex(
+                    f => f.name === editingField.value?.name
+                )
+                if (index !== -1 && index !== undefined && selectedDefinition.value) {
+                    selectedDefinition.value.fields[index] = sanitizedField
+                }
+            } else {
+                // Adding new field
+                if (selectedDefinition.value) {
+                    selectedDefinition.value.fields.push(sanitizedField)
+                }
+            }
+
+            // Don't update originalDefinition here - we want hasUnsavedChanges to detect the changes
+        }
     }
 
     const addFieldToEdit = () => {
-        // Add a new field to the edit form
-        const newField: FieldDefinition = {
-            name: '',
-            display_name: '',
-            field_type: 'String',
-            description: '',
-            required: false,
-            indexed: false,
-            filterable: false,
-            default_value: undefined,
-            constraints: undefined,
-            ui_settings: undefined,
-        }
-        editForm.value.fields.push(newField)
+        editingField.value = undefined
+        showFieldEditor.value = true
     }
 
     const editFieldInEdit = (field: FieldDefinition) => {
-        // This would open a field editing dialog for the edit form
-        console.log('Edit field in edit', field)
+        editingField.value = field
+        showFieldEditor.value = true
     }
 
     const removeFieldFromEdit = (field: FieldDefinition) => {
