@@ -3,29 +3,41 @@ import { env } from '@/env-check'
 import { useAuthStore } from '@/stores/auth'
 import { getRefreshToken } from '@/utils/cookies'
 import {
-    type ApiKey,
-    ApiKeySchema,
-    PaginatedApiResponseSchema,
-    type ApiResponse,
     ApiResponseSchema,
-    type EntityDefinition,
-    EntityDefinitionSchema,
-    type CreateEntityDefinitionRequest,
-    type UpdateEntityDefinitionRequest,
-    type CreateApiKeyRequest,
-    type ApiKeyCreatedResponse,
-    ApiKeyCreatedResponseSchema,
-    type ReassignApiKeyRequest,
-    type LoginRequest,
-    type LoginResponse,
+    PaginatedApiResponseSchema,
     LoginResponseSchema,
-    type LogoutRequest,
-    type RefreshTokenRequest,
-    type RefreshTokenResponse,
     RefreshTokenResponseSchema,
-    type User,
     UserSchema,
+    ApiKeySchema,
+    ApiKeyCreatedResponseSchema,
+    EntityDefinitionSchema,
 } from '@/types/schemas'
+
+// Import types from schemas
+import type {
+    LoginRequest,
+    LoginResponse,
+    RefreshTokenRequest,
+    RefreshTokenResponse,
+    LogoutRequest,
+    User,
+    ApiKey,
+    CreateApiKeyRequest,
+    ApiKeyCreatedResponse,
+    ReassignApiKeyRequest,
+    EntityDefinition,
+    CreateEntityDefinitionRequest,
+    UpdateEntityDefinitionRequest,
+    Meta,
+} from '@/types/schemas'
+
+// Define ApiResponse type
+type ApiResponse<T> = {
+    status: 'Success' | 'Error'
+    message: string
+    data?: T
+    meta?: Meta
+}
 
 class TypedHttpClient {
     private baseURL = env.apiBaseUrl

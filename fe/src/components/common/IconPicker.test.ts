@@ -1,5 +1,15 @@
 import { mount } from '@vue/test-utils'
+import { describe, it, expect } from 'vitest'
 import IconPicker from './IconPicker.vue'
+import { createVuetify } from 'vuetify'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
+
+// Create Vuetify instance for testing
+const vuetify = createVuetify({
+    components,
+    directives,
+})
 
 describe('IconPicker', () => {
     it('renders correctly', () => {
@@ -7,6 +17,9 @@ describe('IconPicker', () => {
             props: {
                 modelValue: '',
                 label: 'Select Icon',
+            },
+            global: {
+                plugins: [vuetify],
             },
         })
 
@@ -20,13 +33,16 @@ describe('IconPicker', () => {
                 modelValue: '',
                 label: 'Select Icon',
             },
+            global: {
+                plugins: [vuetify],
+            },
         })
 
         const iconButton = wrapper.find('.v-btn')
         await iconButton.trigger('click')
 
         expect(wrapper.emitted('update:modelValue')).toBeTruthy()
-        expect(wrapper.emitted('update:modelValue')[0]).toEqual(['mdi-file-document'])
+        expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['mdi-file-document'])
     })
 
     it('filters icons based on search query', async () => {
@@ -34,6 +50,9 @@ describe('IconPicker', () => {
             props: {
                 modelValue: '',
                 label: 'Select Icon',
+            },
+            global: {
+                plugins: [vuetify],
             },
         })
 

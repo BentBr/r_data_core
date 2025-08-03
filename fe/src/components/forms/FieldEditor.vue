@@ -3,6 +3,7 @@
         v-model="showDialog"
         max-width="800px"
         persistent
+        :retain-focus="false"
     >
         <v-card>
             <v-card-title class="text-h5 pa-4">
@@ -21,6 +22,8 @@
                         <v-col cols="6">
                             <v-text-field
                                 v-model="form.name"
+                                data-test="name"
+                                name="name"
                                 :label="t('entity_definitions.fields.field_name')"
                                 :rules="[
                                     v => !!v || t('entity_definitions.fields.field_name_required'),
@@ -35,6 +38,8 @@
                         <v-col cols="6">
                             <v-text-field
                                 v-model="form.display_name"
+                                data-test="display_name"
+                                name="display_name"
                                 :label="t('entity_definitions.fields.display_name')"
                                 :rules="[
                                     v =>
@@ -49,6 +54,8 @@
                         <v-col cols="6">
                             <v-select
                                 v-model="form.field_type"
+                                data-test="field_type"
+                                name="field_type"
                                 :items="fieldTypes"
                                 :label="t('entity_definitions.fields.field_type')"
                                 :rules="[
@@ -101,6 +108,7 @@
             <v-card-actions class="pa-4">
                 <v-spacer />
                 <v-btn
+                    data-test="cancel"
                     color="grey"
                     variant="text"
                     @click="closeDialog"
@@ -108,6 +116,7 @@
                     {{ t('common.cancel') }}
                 </v-btn>
                 <v-btn
+                    data-test="save"
                     color="primary"
                     :disabled="!formValid"
                     @click="saveField"
@@ -163,7 +172,7 @@
         'DateTime',
         'Object',
         'Array',
-        'UUID',
+        'Uuid',
         'ManyToOne',
         'ManyToMany',
         'Select',

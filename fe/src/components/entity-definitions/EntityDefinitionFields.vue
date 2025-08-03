@@ -7,6 +7,7 @@
             <div class="d-flex">
                 <v-btn
                     v-if="hasUnsavedChanges"
+                    data-test="apply"
                     color="success"
                     variant="outlined"
                     prepend-icon="mdi-content-save"
@@ -17,6 +18,7 @@
                     {{ t('entity_definitions.details.apply_changes') }}
                 </v-btn>
                 <v-btn
+                    data-test="add"
                     color="primary"
                     prepend-icon="mdi-plus"
                     @click="$emit('add-field')"
@@ -144,7 +146,7 @@
             DateTime: 'mdi-calendar-clock',
             Object: 'mdi-cube',
             Array: 'mdi-format-list-bulleted',
-            UUID: 'mdi-identifier',
+            Uuid: 'mdi-identifier',
             ManyToOne: 'mdi-link',
             ManyToMany: 'mdi-link-variant',
             Select: 'mdi-format-list-checks',
@@ -167,7 +169,7 @@
             DateTime: 'info',
             Object: 'purple',
             Array: 'orange',
-            UUID: 'grey',
+            Uuid: 'grey',
             ManyToOne: 'blue',
             ManyToMany: 'blue',
             Select: 'green',

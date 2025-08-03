@@ -14,7 +14,7 @@ no_docker_compose = true
     [commands.test-fe]
         "alias" = "test-fe"
         "execution" = "docker compose exec node npm run test"
-        "description" = "Runs jest for FE testing"
+        "description" = "Runs vitest for FE testing"
     [commands.clippy]
         "alias" = "clippy"
         "execution" = "cargo clippy -- -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery"
