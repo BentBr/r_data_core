@@ -21,21 +21,38 @@ where
 }
 
 /// Flexible pagination query parameters that support both page/per_page and limit/offset
+///
+/// This struct provides a unified pagination interface that supports two common pagination patterns:
+///
+/// 1. **Page-based pagination**: Use `page` and `per_page` parameters
+///    - `page`: Page number (1-based, default: 1)
+///    - `per_page`: Number of items per page (default: 20, max: 100)
+///
+/// 2. **Offset-based pagination**: Use `limit` and `offset` parameters
+///    - `limit`: Maximum number of items to return (default: 20, max: 100)
+///    - `offset`: Number of items to skip (default: 0)
+///
+/// All parameters are optional and have sensible defaults. You can mix and match these parameters
+/// as needed for your use case.
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct PaginationQuery {
     /// Page number (1-based) - defaults to 1
+    /// Use with `per_page` for page-based pagination
     #[serde(deserialize_with = "deserialize_optional_i64", default)]
     pub page: Option<i64>,
 
-    /// Items per page - defaults to 20
+    /// Items per page - defaults to 20, max 100
+    /// Use with `page` for page-based pagination
     #[serde(deserialize_with = "deserialize_optional_i64", default)]
     pub per_page: Option<i64>,
 
-    /// Limit (alternative to per_page) - defaults to 20
+    /// Limit (alternative to per_page) - defaults to 20, max 100
+    /// Use with `offset` for offset-based pagination
     #[serde(deserialize_with = "deserialize_optional_i64", default)]
     pub limit: Option<i64>,
 
     /// Offset (alternative to page) - defaults to 0
+    /// Use with `limit` for offset-based pagination
     #[serde(deserialize_with = "deserialize_optional_i64", default)]
     pub offset: Option<i64>,
 }
@@ -213,7 +230,11 @@ impl IncludeQuery {
     }
 }
 
-/// Comprehensive standardized query parameters
+/// Comprehensive standardized query parameters for API endpoints
+///
+/// This struct provides a unified interface for handling various query parameters
+/// including pagination, sorting, filtering, and field selection. It supports
+/// flexible pagination through the `PaginationQuery` struct.
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct StandardQuery {
     #[serde(flatten)]

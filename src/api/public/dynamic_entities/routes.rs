@@ -98,26 +98,28 @@ async fn validate_requested_fields(
     Ok(())
 }
 
-/// Handler for listing entities of a specific type
+/// List entities of a specific type with pagination and filtering
 #[utoipa::path(
     get,
     path = "/api/v1/{entity_type}",
     tag = "dynamic-entities",
     params(
-        ("entity_type" = String, Path, description = "The type of entity to list"),
-        ("page" = Option<i64>, Query, description = "Page number (1-based)"),
-        ("per_page" = Option<i64>, Query, description = "Number of items per page"),
+        ("entity_type" = String, Path, description = "Type of entity to list"),
+        ("page" = Option<i64>, Query, description = "Page number (1-based, default: 1)"),
+        ("per_page" = Option<i64>, Query, description = "Number of items per page (default: 20, max: 100)"),
+        ("limit" = Option<i64>, Query, description = "Maximum number of items to return (alternative to per_page)"),
+        ("offset" = Option<i64>, Query, description = "Number of items to skip (alternative to page-based pagination)"),
+        ("include" = Option<String>, Query, description = "Comma-separated list of related entities to include"),
         ("sort_by" = Option<String>, Query, description = "Field to sort by"),
-        ("sort_direction" = Option<String>, Query, description = "Sort direction (ASC or DESC)"),
-        ("fields" = Option<String>, Query, description = "Comma-separated list of fields to include"),
-        ("filter" = Option<String>, Query, description = "Filter expression"),
-        ("q" = Option<String>, Query, description = "Search query"),
-        ("include" = Option<String>, Query, description = "Comma-separated list of related entities to include")
+        ("sort_direction" = Option<String>, Query, description = "Sort direction (asc or desc)"),
+        ("fields" = Option<Vec<String>>, Query, description = "Fields to include in the response"),
+        ("filter" = Option<HashMap<String, Value>>, Query, description = "Filter criteria")
     ),
     responses(
-        (status = 200, description = "List of entities", body = Vec<DynamicEntityResponse>),
+        (status = 200, description = "List of entities with pagination", body = Vec<DynamicEntityResponse>),
+        (status = 400, description = "Bad request - invalid parameters"),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Entity type not found"),
-        (status = 422, description = "Invalid field requested"),
         (status = 500, description = "Internal server error")
     ),
     security(
@@ -260,19 +262,21 @@ async fn create_entity(
     }
 }
 
-/// Handler for getting a single entity by UUID
+/// Get a specific entity by UUID
 #[utoipa::path(
     get,
     path = "/api/v1/{entity_type}/{uuid}",
     tag = "dynamic-entities",
     params(
-        ("entity_type" = String, Path, description = "The type of entity to get"),
-        ("uuid" = Uuid, Path, description = "The UUID of the entity to get"),
-        ("fields" = Option<String>, Query, description = "Comma-separated list of fields to include"),
-        ("include" = Option<String>, Query, description = "Comma-separated list of related entities to include")
+        ("entity_type" = String, Path, description = "Type of entity"),
+        ("uuid" = Uuid, Path, description = "Entity UUID"),
+        ("include" = Option<String>, Query, description = "Comma-separated list of related entities to include"),
+        ("fields" = Option<Vec<String>>, Query, description = "Fields to include in the response")
     ),
     responses(
-        (status = 200, description = "Entity retrieved successfully", body = DynamicEntityResponse),
+        (status = 200, description = "Entity found", body = DynamicEntityResponse),
+        (status = 400, description = "Bad request - invalid parameters"),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Entity not found"),
         (status = 422, description = "Invalid field requested"),
         (status = 500, description = "Internal server error")

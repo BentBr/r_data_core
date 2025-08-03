@@ -30,6 +30,14 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
     components(
         schemas(
             crate::api::models::HealthData,
+            crate::api::admin::entity_definitions::models::EntityDefinitionSchema,
+            crate::api::admin::entity_definitions::models::PathUuid,
+            crate::api::admin::entity_definitions::models::ApplySchemaRequest,
+            crate::api::admin::api_keys::routes::CreateApiKeyRequest,
+            crate::api::admin::api_keys::routes::ApiKeyResponse,
+            crate::api::admin::api_keys::routes::ApiKeyCreatedResponse,
+            crate::api::admin::api_keys::routes::ReassignApiKeyRequest,
+            crate::api::query::PaginationQuery,
             crate::api::admin::auth::AdminLoginRequest,
             crate::api::admin::auth::AdminLoginResponse,
             crate::api::admin::auth::AdminRegisterRequest,
@@ -57,21 +65,22 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
             crate::api::admin::entity_definitions::models::SchemaConstraints,
             crate::api::admin::api_keys::routes::CreateApiKeyRequest,
             crate::api::admin::api_keys::routes::ApiKeyResponse,
-            crate::api::admin::api_keys::routes::ApiKeyCreatedResponse
+            crate::api::admin::api_keys::routes::ApiKeyCreatedResponse,
+            crate::api::admin::auth::EmptyRequest
         )
     ),
-    modifiers(&SecurityAddon, &UuidSchemaAddon, &DateTimeSchemaAddon, &ModelSchemaAddon),
+    modifiers(&SecurityAddon, &UuidSchemaAddon, &DateTimeSchemaAddon, &ModelSchemaAddon, &JsonValueSchemaAddon),
     tags(
-        (name = "admin-auth", description = "Admin authentication endpoints"),
         (name = "admin-health", description = "Admin health check endpoints"),
         (name = "admin", description = "Administrative endpoints for managing system resources"),
-        (name = "entity-definitions", description = "Endpoints for managing entity type definitions and structure"),
-        (name = "api-keys", description = "Endpoints for managing API keys")
+        (name = "admin-auth", description = "Admin authentication endpoints"),
+        (name = "entity-definitions", description = "Entity definition management"),
+        (name = "api-keys", description = "API key management")
     ),
     info(
         title = "R Data Core Admin API",
         version = "0.1.0",
-        description = "Administrative interface for the Master Data Management backend",
+        description = "Admin API for the Master Data Management with flexible pagination support",
         license(
             name = "MIT",
             url = "https://opensource.org/licenses/MIT"
@@ -229,6 +238,7 @@ impl Modify for JsonValueSchemaAddon {
             crate::api::public::entities::models::EntityQuery,
             crate::api::public::queries::models::AdvancedEntityQuery,
             crate::api::query::PaginationQuery,
+            crate::api::query::StandardQuery,
             crate::api::public::dynamic_entities::routes::DynamicEntityResponse,
             crate::api::public::dynamic_entities::routes::EntityResponse
         )
@@ -242,7 +252,7 @@ impl Modify for JsonValueSchemaAddon {
     info(
         title = "R Data Core Public API",
         version = "0.1.0",
-        description = "Public API for the Master Data Management",
+        description = "Public API for the Master Data Management with flexible pagination support",
         license(
             name = "MIT",
             url = "https://opensource.org/licenses/MIT"

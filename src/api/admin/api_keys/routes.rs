@@ -95,17 +95,20 @@ pub struct ReassignApiKeyRequest {
     pub user_uuid: Uuid,
 }
 
-/// List all API keys for the authenticated user
+/// List API keys for the authenticated user with pagination
 #[utoipa::path(
     get,
     path = "/admin/api/v1/api-keys",
     tag = "api-keys",
     params(
         ("page" = Option<i64>, Query, description = "Page number (1-based, default: 1)"),
-        ("per_page" = Option<i64>, Query, description = "Number of items per page (default: 20, max: 100)")
+        ("per_page" = Option<i64>, Query, description = "Number of items per page (default: 20, max: 100)"),
+        ("limit" = Option<i64>, Query, description = "Maximum number of items to return (alternative to per_page)"),
+        ("offset" = Option<i64>, Query, description = "Number of items to skip (alternative to page-based pagination)")
     ),
     responses(
         (status = 200, description = "List of API keys with pagination", body = Vec<ApiKeyResponse>),
+        (status = 400, description = "Bad request - invalid parameters"),
         (status = 401, description = "Unauthorized"),
         (status = 500, description = "Internal server error")
     ),

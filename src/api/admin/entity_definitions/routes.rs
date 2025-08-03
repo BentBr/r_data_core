@@ -12,17 +12,20 @@ use crate::api::response::ApiResponse;
 use crate::api::ApiState;
 use crate::entity::EntityDefinition;
 
-/// List entity definitions
+/// List entity definitions with pagination
 #[utoipa::path(
     get,
     path = "/admin/api/v1/entity-definitions",
     tag = "entity-definitions",
     params(
-        ("limit" = Option<i64>, Query, description = "Maximum number of items to return"),
-        ("offset" = Option<i64>, Query, description = "Number of items to skip")
+        ("page" = Option<i64>, Query, description = "Page number (1-based, default: 1)"),
+        ("per_page" = Option<i64>, Query, description = "Number of items per page (default: 20, max: 100)"),
+        ("limit" = Option<i64>, Query, description = "Maximum number of items to return (alternative to per_page)"),
+        ("offset" = Option<i64>, Query, description = "Number of items to skip (alternative to page-based pagination)")
     ),
     responses(
-        (status = 200, description = "List of entity definitions", body = Vec<EntityDefinitionSchema>),
+        (status = 200, description = "List of entity definitions with pagination", body = Vec<EntityDefinitionSchema>),
+        (status = 400, description = "Bad request - invalid parameters"),
         (status = 401, description = "Unauthorized"),
         (status = 500, description = "Internal server error")
     ),
