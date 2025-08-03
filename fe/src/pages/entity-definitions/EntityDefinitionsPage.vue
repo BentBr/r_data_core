@@ -343,15 +343,26 @@
             showSuccess('Entity definition created successfully')
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : ''
-            
-            // Handle specific 422 validation errors
-            if (errorMessage.includes('422') || errorMessage.includes('validation')) {
-                if (errorMessage.includes('field name') || errorMessage.includes('invalid characters')) {
+
+            // Handle specific 409 conflict errors
+            if (
+                errorMessage.includes('409') ||
+                errorMessage.includes('conflict') ||
+                errorMessage.includes('already exists')
+            ) {
+                showError(t('entity_definitions.errors.entity_type_exists'))
+            } else if (errorMessage.includes('422') || errorMessage.includes('validation')) {
+                if (
+                    errorMessage.includes('field name') ||
+                    errorMessage.includes('invalid characters') ||
+                    errorMessage.includes('reserved SQL keyword')
+                ) {
                     showError(t('entity_definitions.errors.invalid_characters'))
-                } else if (errorMessage.includes('field exists') || errorMessage.includes('already exists')) {
+                } else if (
+                    errorMessage.includes('field exists') ||
+                    errorMessage.includes('already exists')
+                ) {
                     showError(t('entity_definitions.errors.field_name_exists'))
-                } else if (errorMessage.includes('entity type') || errorMessage.includes('type exists')) {
-                    showError(t('entity_definitions.errors.entity_type_exists'))
                 } else {
                     showError(t('entity_definitions.errors.validation_failed'))
                 }
@@ -396,14 +407,23 @@
             showSuccess('Entity definition updated successfully')
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : ''
-            
+
             // Handle specific 422 validation errors
             if (errorMessage.includes('422') || errorMessage.includes('validation')) {
-                if (errorMessage.includes('field name') || errorMessage.includes('invalid characters')) {
+                if (
+                    errorMessage.includes('field name') ||
+                    errorMessage.includes('invalid characters')
+                ) {
                     showError(t('entity_definitions.errors.invalid_characters'))
-                } else if (errorMessage.includes('field exists') || errorMessage.includes('already exists')) {
+                } else if (
+                    errorMessage.includes('field exists') ||
+                    errorMessage.includes('already exists')
+                ) {
                     showError(t('entity_definitions.errors.field_name_exists'))
-                } else if (errorMessage.includes('entity type') || errorMessage.includes('type exists')) {
+                } else if (
+                    errorMessage.includes('entity type') ||
+                    errorMessage.includes('type exists')
+                ) {
                     showError(t('entity_definitions.errors.entity_type_exists'))
                 } else {
                     showError(t('entity_definitions.errors.validation_failed'))

@@ -100,8 +100,8 @@
         (e: 'delete'): void
         (e: 'save-changes'): void
         (e: 'add-field'): void
-        (e: 'edit-field', field: any): void
-        (e: 'remove-field', field: any): void
+        (e: 'edit-field', field: import('@/types/schemas').FieldDefinition): void
+        (e: 'remove-field', field: import('@/types/schemas').FieldDefinition): void
     }
 
     defineProps<Props>()

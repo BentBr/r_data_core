@@ -75,7 +75,33 @@ export const TableColumnSchema = z.object({
 })
 
 // Tree view schemas
-export const TreeNodeSchema: z.ZodType<any> = z.object({
+export const TreeNodeSchema: z.ZodType<{
+    id: string
+    title: string
+    icon?: string
+    color?: string
+    children?: Array<{
+        id: string
+        title: string
+        icon?: string
+        color?: string
+        children?: Array<unknown>
+        expanded?: boolean
+        selected?: boolean
+        disabled?: boolean
+        entity_type?: string
+        uuid?: string
+        display_name?: string
+        published?: boolean
+    }>
+    expanded?: boolean
+    selected?: boolean
+    disabled?: boolean
+    entity_type?: string
+    uuid?: string
+    display_name?: string
+    published?: boolean
+}> = z.object({
     id: z.string(),
     title: z.string(),
     icon: z.string().optional(),

@@ -94,13 +94,30 @@
 </template>
 
 <script setup lang="ts">
-    interface Emits {
-        (e: 'update:options', options: any): void
+    interface Props {
+        headers: Array<{ title: string; key: string; sortable?: boolean; align?: string }>
+        items: Array<Record<string, unknown>>
+        loading?: boolean
+        itemsPerPage?: number
+        page?: number
+        totalItems?: number
+        actions?: Array<{
+            icon: string
+            color?: string
+            disabled?: boolean
+            loading?: boolean
+            onClick?: (item: Record<string, unknown>) => void
+        }>
     }
 
+    interface Emits {
+        (e: 'update:options', options: Record<string, unknown>): void
+    }
+
+    defineProps<Props>()
     const emit = defineEmits<Emits>()
 
-    const handleOptionsUpdate = (options: any) => {
+    const handleOptionsUpdate = (options: Record<string, unknown>) => {
         emit('update:options', options)
     }
 

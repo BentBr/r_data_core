@@ -215,6 +215,10 @@ async fn create_entity_definition(
                 "message": "Class definition created successfully"
             }))
         }
+        Err(crate::error::Error::ClassAlreadyExists(msg)) => {
+            error!("Entity type already exists: {}", msg);
+            ApiResponse::<()>::conflict(&msg)
+        }
         Err(crate::error::Error::Validation(msg)) => {
             error!("Validation error when creating entity definition: {}", msg);
             ApiResponse::<()>::unprocessable_entity(&msg)

@@ -102,10 +102,7 @@
     import { ref, computed, watch } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import IconPicker from '@/components/common/IconPicker.vue'
-    import type {
-        EntityDefinition,
-        UpdateEntityDefinitionRequest,
-    } from '@/types/schemas'
+    import type { EntityDefinition, UpdateEntityDefinitionRequest } from '@/types/schemas'
 
     interface Props {
         modelValue: boolean

@@ -6,7 +6,11 @@
     >
         <v-card>
             <v-card-title class="text-h5 pa-4">
-                {{ isEditing ? t('entity_definitions.fields.edit_field') : t('entity_definitions.fields.add_field') }}
+                {{
+                    isEditing
+                        ? t('entity_definitions.fields.edit_field')
+                        : t('entity_definitions.fields.add_field')
+                }}
             </v-card-title>
             <v-card-text>
                 <v-form
@@ -32,7 +36,10 @@
                             <v-text-field
                                 v-model="form.display_name"
                                 :label="t('entity_definitions.fields.display_name')"
-                                :rules="[v => !!v || t('entity_definitions.fields.display_name_required')]"
+                                :rules="[
+                                    v =>
+                                        !!v || t('entity_definitions.fields.display_name_required'),
+                                ]"
                                 required
                             />
                         </v-col>
@@ -44,7 +51,9 @@
                                 v-model="form.field_type"
                                 :items="fieldTypes"
                                 :label="t('entity_definitions.fields.field_type')"
-                                :rules="[v => !!v || t('entity_definitions.fields.field_type_required')]"
+                                :rules="[
+                                    v => !!v || t('entity_definitions.fields.field_type_required'),
+                                ]"
                                 required
                             />
                         </v-col>
@@ -81,7 +90,9 @@
                         <v-col cols="12">
                             <v-text-field
                                 v-model="form.default_value"
-                                :label="t('entity_definitions.fields.default_value') + ' (Optional)'"
+                                :label="
+                                    t('entity_definitions.fields.default_value') + ' (Optional)'
+                                "
                             />
                         </v-col>
                     </v-row>
@@ -101,7 +112,11 @@
                     :disabled="!formValid"
                     @click="saveField"
                 >
-                    {{ isEditing ? t('entity_definitions.fields.update') : t('entity_definitions.fields.add') }}
+                    {{
+                        isEditing
+                            ? t('entity_definitions.fields.update')
+                            : t('entity_definitions.fields.add')
+                    }}
                 </v-btn>
             </v-card-actions>
         </v-card>
@@ -190,26 +205,30 @@
     }
 
     // Watch for field changes to populate form when editing
-    watch(() => props.field, (newField) => {
-        if (newField) {
-            // Editing existing field - populate form with field data
-            form.value = {
-                name: newField.name,
-                display_name: newField.display_name,
-                field_type: newField.field_type,
-                description: newField.description || '',
-                required: newField.required,
-                indexed: newField.indexed,
-                filterable: newField.filterable,
-                default_value: newField.default_value,
-                constraints: newField.constraints || {},
-                ui_settings: newField.ui_settings || {},
+    watch(
+        () => props.field,
+        newField => {
+            if (newField) {
+                // Editing existing field - populate form with field data
+                form.value = {
+                    name: newField.name,
+                    display_name: newField.display_name,
+                    field_type: newField.field_type,
+                    description: newField.description || '',
+                    required: newField.required,
+                    indexed: newField.indexed,
+                    filterable: newField.filterable,
+                    default_value: newField.default_value,
+                    constraints: newField.constraints || {},
+                    ui_settings: newField.ui_settings || {},
+                }
+            } else {
+                // Adding new field - reset form
+                resetForm()
             }
-        } else {
-            // Adding new field - reset form
-            resetForm()
-        }
-    }, { immediate: true })
+        },
+        { immediate: true }
+    )
 
     const closeDialog = () => {
         showDialog.value = false
