@@ -94,5 +94,212 @@ mod dynamic_entity_api_tests {
         Ok(app)
     }
 
-    // The tests will be written here
+    #[actix_web::test]
+    async fn test_query_parameter_deserialization_fix() {
+        let app = setup_test_app().await.expect("Failed to setup test app");
+
+        // Test cases for the query parameter deserialization fix
+        let test_cases = vec![
+            // Basic pagination parameters
+            ("/api/v1/user?page=1&per_page=10", "Basic pagination"),
+            ("/api/v1/user?page=2&per_page=20", "Page 2 with per_page"),
+            ("/api/v1/user?page=1", "Only page parameter"),
+            ("/api/v1/user?per_page=50", "Only per_page parameter"),
+            // Include parameter combinations
+            (
+                "/api/v1/user?page=1&per_page=10&include=children",
+                "With include parameter",
+            ),
+            (
+                "/api/v1/user?include=children&page=1&per_page=1000",
+                "Include with large per_page",
+            ),
+            (
+                "/api/v1/user?include=children,parent&page=2&per_page=5",
+                "Multiple includes",
+            ),
+            // Edge cases
+            (
+                "/api/v1/user?page=0&per_page=1",
+                "Page 0 (should be clamped to 1)",
+            ),
+            (
+                "/api/v1/user?page=1&per_page=0",
+                "Per_page 0 (should be clamped to 1)",
+            ),
+            (
+                "/api/v1/user?page=999999&per_page=999999",
+                "Very large numbers",
+            ),
+            // String values that should be parsed as integers
+            (
+                "/api/v1/user?page=1&per_page=1000&include=children",
+                "String numbers to i64",
+            ),
+            (
+                "/api/v1/user?page=2&per_page=50",
+                "Another string to i64 test",
+            ),
+        ];
+
+        for (url, description) in test_cases {
+            println!("Testing: {}", description);
+
+            let req = test::TestRequest::get()
+                .uri(url)
+                .insert_header(("Authorization", "Bearer test_token"))
+                .to_request();
+
+            let resp = test::call_service(&app, req).await;
+
+            // The important thing is that we don't get a 400 Bad Request with deserialization error
+            // We expect either 401 (unauthorized) or 200 (success) but NOT 400 with deserialization error
+            let status = resp.status();
+
+            if status.is_client_error() {
+                let body = test::read_body(resp).await;
+                let body_str = String::from_utf8_lossy(&body);
+
+                // Check that we're not getting the deserialization error
+                assert!(
+                    !body_str.contains("invalid type: string")
+                        && !body_str.contains("expected i64"),
+                    "Query deserialization error occurred for {}: {} - Body: {}",
+                    description,
+                    url,
+                    body_str
+                );
+
+                // If it's a 400, it should be for a different reason (like invalid entity type)
+                if status.as_u16() == 400 {
+                    println!("Got 400 for {}: {}", description, body_str);
+                }
+            }
+
+            println!("✓ {} - Status: {}", description, status);
+        }
+    }
+
+    #[actix_web::test]
+    async fn test_pagination_query_parameters() {
+        let app = setup_test_app().await.expect("Failed to setup test app");
+
+        // Test the specific case that was failing before the fix
+        let req = test::TestRequest::get()
+            .uri("/api/v1/user?page=1&per_page=1000&include=children")
+            .insert_header(("Authorization", "Bearer test_token"))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        let status = resp.status();
+
+        // Should not be a 400 Bad Request with deserialization error
+        if status.is_client_error() {
+            let body = test::read_body(resp).await;
+            let body_str = String::from_utf8_lossy(&body);
+
+            assert!(
+                !body_str.contains("invalid type: string") && !body_str.contains("expected i64"),
+                "Query deserialization error still occurring: {}",
+                body_str
+            );
+        }
+
+        println!(
+            "✓ Pagination query parameters test passed - Status: {}",
+            status
+        );
+    }
+
+    #[actix_web::test]
+    async fn test_various_string_to_integer_conversions() {
+        let app = setup_test_app().await.expect("Failed to setup test app");
+
+        // Test various string representations of numbers
+        let test_urls = vec![
+            "/api/v1/user?page=1&per_page=10",
+            "/api/v1/user?page=2&per_page=20",
+            "/api/v1/user?page=100&per_page=1000",
+            "/api/v1/user?page=0&per_page=0", // Should be clamped
+            "/api/v1/user?page=999999&per_page=999999", // Very large numbers
+        ];
+
+        for url in test_urls {
+            let req = test::TestRequest::get()
+                .uri(url)
+                .insert_header(("Authorization", "Bearer test_token"))
+                .to_request();
+
+            let resp = test::call_service(&app, req).await;
+            let status = resp.status();
+
+            if status.is_client_error() {
+                let body = test::read_body(resp).await;
+                let body_str = String::from_utf8_lossy(&body);
+
+                // Ensure no deserialization errors
+                assert!(
+                    !body_str.contains("invalid type: string")
+                        && !body_str.contains("expected i64"),
+                    "String to integer conversion failed for {}: {}",
+                    url,
+                    body_str
+                );
+            }
+
+            println!("✓ String to integer conversion test passed for {}", url);
+        }
+    }
+
+    #[actix_web::test]
+    async fn test_include_parameter_with_pagination() {
+        let app = setup_test_app().await.expect("Failed to setup test app");
+
+        // Test include parameter combinations with pagination
+        let test_cases = vec![
+            (
+                "/api/v1/user?include=children&page=1&per_page=10",
+                "Include children",
+            ),
+            (
+                "/api/v1/user?include=parent&page=2&per_page=20",
+                "Include parent",
+            ),
+            (
+                "/api/v1/user?include=children,parent&page=1&per_page=50",
+                "Multiple includes",
+            ),
+            (
+                "/api/v1/user?page=1&per_page=1000&include=children",
+                "Original failing case",
+            ),
+        ];
+
+        for (url, description) in test_cases {
+            let req = test::TestRequest::get()
+                .uri(url)
+                .insert_header(("Authorization", "Bearer test_token"))
+                .to_request();
+
+            let resp = test::call_service(&app, req).await;
+            let status = resp.status();
+
+            if status.is_client_error() {
+                let body = test::read_body(resp).await;
+                let body_str = String::from_utf8_lossy(&body);
+
+                // Check for deserialization errors
+                assert!(
+                    !body_str.contains("invalid type: string")
+                        && !body_str.contains("expected i64"),
+                    "Include parameter test failed for {}: {} - Body: {}",
+                    description,
+                    url,
+                    body_str
+                );
+            }
+
+            println!("✓ Include parameter test passed for {}", description);
+        }
+    }
 }

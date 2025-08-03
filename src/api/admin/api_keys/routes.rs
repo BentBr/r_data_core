@@ -122,14 +122,15 @@ pub async fn list_api_keys(
     let pool = Arc::new(state.db_pool.clone());
     let user_uuid = Uuid::parse_str(&auth.0.sub).expect("Invalid UUID in auth token");
 
-    let (per_page, offset) = query.to_limit_offset(1, 20, 100);
+    let (limit, offset) = query.to_limit_offset(20, 100);
     let page = query.get_page(1);
+    let per_page = query.get_per_page(20, 100);
 
     let repo = ApiKeyRepository::new(pool);
 
     // Get both the API keys and the total count
     let (api_keys_result, count_result) = tokio::join!(
-        repo.list_by_user(user_uuid, per_page, offset),
+        repo.list_by_user(user_uuid, limit, offset),
         repo.count_by_user(user_uuid)
     );
 

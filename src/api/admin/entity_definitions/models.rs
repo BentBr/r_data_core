@@ -3,15 +3,8 @@ use serde_json::Value;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-/// Query parameters for paginated API endpoints
-/// Used to control the number of items returned and pagination offset
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct PaginationQuery {
-    /// Maximum number of items to return (defaults to system default if not specified)
-    pub limit: Option<i64>,
-    /// Number of items to skip (for pagination)
-    pub offset: Option<i64>,
-}
+// Re-export PaginationQuery from the main query module
+pub use crate::api::query::PaginationQuery;
 
 /// Path parameter for endpoints that accept a UUID in the URL
 #[derive(Debug, Deserialize, ToSchema)]

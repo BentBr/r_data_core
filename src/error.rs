@@ -33,6 +33,9 @@ pub enum Error {
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 
+    #[error("Deserialization error: {0}")]
+    Deserialization(String),
+
     #[error("Not found: {0}")]
     NotFound(String),
 
@@ -161,6 +164,17 @@ mod tests {
         assert_eq!(
             error.to_string(),
             "Authentication error: Invalid credentials"
+        );
+    }
+
+    #[test]
+    fn test_deserialization_error_message() {
+        let error =
+            Error::Deserialization("invalid type: string \"abc\", expected i64".to_string());
+
+        assert_eq!(
+            error.to_string(),
+            "Deserialization error: invalid type: string \"abc\", expected i64"
         );
     }
 

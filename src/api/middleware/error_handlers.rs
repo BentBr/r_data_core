@@ -7,6 +7,7 @@ use actix_web::{
 };
 
 use crate::api::response::ApiResponse;
+use crate::error::Error;
 
 pub struct AppErrorHandlers;
 
@@ -30,6 +31,11 @@ impl AppErrorHandlers {
 
         log::debug!("Error handler called for status {}: {}", status, error);
 
+        // Check if this is a deserialization error - be more flexible with the detection
+        let is_deserialization_error = error.contains("invalid type: string")
+            || error.contains("expected i64")
+            || error.contains("Query deserialize error");
+
         // Create a new response using ApiResponse
         let new_response = match status {
             StatusCode::UNAUTHORIZED => ApiResponse::<()>::unauthorized(&error),
@@ -37,6 +43,16 @@ impl AppErrorHandlers {
                 ApiResponse::<()>::forbidden("You don't have permission to access this resource")
             }
             StatusCode::NOT_FOUND => ApiResponse::<()>::not_found("API resource not found"),
+            StatusCode::BAD_REQUEST if is_deserialization_error => {
+                // Handle deserialization errors specifically
+                let deserialization_error = Error::Deserialization(error.clone());
+                let response = ApiResponse::<()>::error_with_meta(
+                    &deserialization_error.to_string(),
+                    "DESERIALIZATION_ERROR",
+                    None,
+                );
+                HttpResponse::build(StatusCode::BAD_REQUEST).json(response)
+            }
             status_code if status_code.is_client_error() => ApiResponse::<()>::bad_request(&error),
             status_code if status_code.is_server_error() => {
                 // Log server errors

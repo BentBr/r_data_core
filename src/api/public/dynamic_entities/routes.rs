@@ -132,7 +132,7 @@ async fn list_entities(
     _: CombinedRequiredAuth,
 ) -> HttpResponse {
     let entity_type = path.into_inner();
-    let (limit, offset) = query.pagination.to_limit_offset(1, 20, 100);
+    let (limit, offset) = query.pagination.to_limit_offset(20, 100);
     let fields = query.fields.get_fields();
     let sort_by = query.sorting.sort_by.clone();
     let sort_direction = Some(query.sorting.get_sort_direction());

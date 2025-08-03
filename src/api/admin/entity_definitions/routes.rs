@@ -36,9 +36,9 @@ async fn list_entity_definitions(
     query: web::Query<PaginationQuery>,
     _: auth_enum::RequiredAuth,
 ) -> impl Responder {
-    let (per_page, offset) = query.to_limit_offset(1, 20, 100);
+    let (limit, offset) = query.to_limit_offset(20, 100);
     let page = query.get_page(1);
-    let limit = per_page;
+    let per_page = query.get_per_page(20, 100);
 
     // Get both the entity definitions and the total count
     let (definitions_result, count_result) = tokio::join!(
