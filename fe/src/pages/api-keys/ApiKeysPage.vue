@@ -166,264 +166,71 @@
             </v-col>
         </v-row>
 
-        <!-- Create API Key Dialog -->
-        <v-dialog
+        <!-- Dialogs -->
+        <ApiKeyCreateDialog
             v-model="showCreateDialog"
-            max-width="500px"
-            @after-enter="focusNameField"
-        >
-            <v-card>
-                <v-card-title>{{ t('api_keys.create.title') }}</v-card-title>
-                <v-card-text>
-                    <v-form
-                        ref="createForm"
-                        v-model="createFormValid"
-                    >
-                        <v-text-field
-                            ref="nameField"
-                            v-model="createForm.name"
-                            :label="t('api_keys.create.name_label')"
-                            :rules="[v => !!v || t('api_keys.create.name_required')]"
-                            required
-                            @input="validateForm"
-                        />
-                        <v-textarea
-                            v-model="createForm.description"
-                            :label="t('api_keys.create.description_label')"
-                            rows="3"
-                        />
-                        <v-text-field
-                            v-model.number="createForm.expires_in_days"
-                            :label="t('api_keys.create.expires_label')"
-                            type="number"
-                            min="1"
-                            max="3650"
-                            :hint="t('api_keys.create.expires_hint')"
-                        />
-                    </v-form>
-                </v-card-text>
-                <v-card-actions>
-                    <v-spacer />
-                    <v-btn
-                        color="grey"
-                        variant="text"
-                        @click="showCreateDialog = false"
-                    >
-                        {{ t('common.cancel') }}
-                    </v-btn>
-                    <v-btn
-                        color="primary"
-                        :loading="creating"
-                        :disabled="!createFormValid"
-                        @click="createApiKey"
-                    >
-                        {{ t('api_keys.create.button') }}
-                    </v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+            :loading="creating"
+            @create="createApiKey"
+        />
 
-        <!-- View API Key Dialog -->
-        <v-dialog
+        <ApiKeyViewDialog
             v-model="showViewDialog"
-            max-width="600px"
-        >
-            <v-card>
-                <v-card-title>{{ t('api_keys.view.title') }}</v-card-title>
-                <v-card-text>
-                    <div v-if="selectedKey">
-                        <v-list>
-                            <v-list-item>
-                                <template #prepend>
-                                    <v-icon icon="mdi-key" />
-                                </template>
-                                <v-list-item-title>{{ t('api_keys.view.name') }}</v-list-item-title>
-                                <v-list-item-subtitle>{{ selectedKey.name }}</v-list-item-subtitle>
-                            </v-list-item>
-                            <v-list-item v-if="selectedKey.description">
-                                <template #prepend>
-                                    <v-icon icon="mdi-text" />
-                                </template>
-                                <v-list-item-title>{{
-                                    t('api_keys.view.description')
-                                }}</v-list-item-title>
-                                <v-list-item-subtitle>{{
-                                    selectedKey.description
-                                }}</v-list-item-subtitle>
-                            </v-list-item>
-                            <v-list-item>
-                                <template #prepend>
-                                    <v-icon icon="mdi-calendar" />
-                                </template>
-                                <v-list-item-title>{{
-                                    t('api_keys.view.created')
-                                }}</v-list-item-title>
-                                <v-list-item-subtitle>{{
-                                    formatDate(selectedKey.created_at)
-                                }}</v-list-item-subtitle>
-                            </v-list-item>
-                            <v-list-item v-if="selectedKey.expires_at">
-                                <template #prepend>
-                                    <v-icon icon="mdi-calendar-clock" />
-                                </template>
-                                <v-list-item-title>{{
-                                    t('api_keys.view.expires')
-                                }}</v-list-item-title>
-                                <v-list-item-subtitle>{{
-                                    formatDate(selectedKey.expires_at)
-                                }}</v-list-item-subtitle>
-                            </v-list-item>
-                            <v-list-item v-if="selectedKey.last_used_at">
-                                <template #prepend>
-                                    <v-icon icon="mdi-clock" />
-                                </template>
-                                <v-list-item-title>{{
-                                    t('api_keys.view.last_used')
-                                }}</v-list-item-title>
-                                <v-list-item-subtitle>{{
-                                    formatDate(selectedKey.last_used_at)
-                                }}</v-list-item-subtitle>
-                            </v-list-item>
-                        </v-list>
-                    </div>
-                </v-card-text>
-                <v-card-actions>
-                    <v-spacer />
-                    <v-btn
-                        color="primary"
-                        @click="showViewDialog = false"
-                    >
-                        {{ t('common.close') }}
-                    </v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+            :api-key="selectedKey"
+        />
 
-        <!-- Created API Key Dialog -->
-        <v-dialog
+        <ApiKeyCreatedDialog
             v-model="showCreatedKeyDialog"
-            max-width="600px"
-            persistent
-        >
-            <v-card>
-                <v-card-title class="d-flex align-center">
-                    <v-icon
-                        icon="mdi-check-circle"
-                        color="success"
-                        class="mr-2"
-                    />
-                    {{ t('api_keys.created.title') }}
-                </v-card-title>
-                <v-card-text>
-                    <v-alert
-                        type="warning"
-                        variant="tonal"
-                        class="mb-4"
-                    >
-                        {{ t('api_keys.created.warning') }}
-                    </v-alert>
+            :api-key="createdApiKey"
+            @copy-success="handleCopySuccess"
+        />
 
-                    <v-text-field
-                        id="apiKey"
-                        :model-value="createdApiKey"
-                        :label="t('api_keys.created.key_label')"
-                        readonly
-                        variant="outlined"
-                        class="mb-4"
-                    >
-                        <template #append>
-                            <v-btn
-                                icon="mdi-content-copy"
-                                variant="text"
-                                size="small"
-                                @click="copyApiKey"
-                            />
-                        </template>
-                    </v-text-field>
-
-                    <p class="text-body-2 text-medium-emphasis">
-                        {{ t('api_keys.created.description') }}
-                    </p>
-                </v-card-text>
-                <v-card-actions>
-                    <v-spacer />
-                    <v-btn
-                        color="primary"
-                        @click="closeCreatedKeyDialog"
-                    >
-                        {{ t('common.close') }}
-                    </v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
-
-        <!-- Revoke Confirmation Dialog -->
-        <v-dialog
+        <!-- Use DialogManager for revoke confirmation -->
+        <DialogManager
             v-model="showRevokeDialog"
-            max-width="400px"
+            :config="revokeDialogConfig"
+            :loading="revoking"
+            @confirm="revokeApiKey"
         >
-            <v-card>
-                <v-card-title>{{ t('api_keys.revoke.title') }}</v-card-title>
-                <v-card-text>
-                    {{ t('api_keys.revoke.message', { name: keyToRevoke?.name || 'Unknown' }) }}
-                </v-card-text>
-                <v-card-actions>
-                    <v-spacer />
-                    <v-btn
-                        color="grey"
-                        variant="text"
-                        @click="showRevokeDialog = false"
-                    >
-                        {{ t('common.cancel') }}
-                    </v-btn>
-                    <v-btn
-                        color="error"
-                        :loading="revoking"
-                        @click="revokeApiKey"
-                    >
-                        {{ t('api_keys.revoke.button') }}
-                    </v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+            <p>{{ t('api_keys.revoke.message', { name: keyToRevoke?.name || 'Unknown' }) }}</p>
+        </DialogManager>
 
-        <!-- Success Snackbar -->
-        <v-snackbar
-            v-model="showSuccessSnackbar"
-            color="success"
-            timeout="3000"
-        >
-            {{ successMessage }}
-        </v-snackbar>
-
-        <!-- Error Snackbar -->
-        <v-snackbar
-            v-model="showErrorSnackbar"
-            color="error"
-            timeout="5000"
-        >
-            {{ errorMessage }}
-        </v-snackbar>
+        <!-- Snackbar -->
+        <SnackbarManager :snackbar="currentSnackbar" />
     </v-container>
 </template>
 
 <script setup lang="ts">
-    import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+    import { ref, computed, onMounted, onUnmounted } from 'vue'
     import { useAuthStore } from '@/stores/auth'
     import { typedHttpClient } from '@/api/typed-client'
-    import type { ApiKey, CreateApiKeyRequest } from '@/types/schemas'
     import { useTranslations } from '@/composables/useTranslations'
+    import { useSnackbar } from '@/composables/useSnackbar'
     import { usePagination } from '@/composables/usePagination'
+    import type { ApiKey, CreateApiKeyRequest } from '@/types/schemas'
+    import ApiKeyCreateDialog from '@/components/api-keys/ApiKeyCreateDialog.vue'
+    import ApiKeyViewDialog from '@/components/api-keys/ApiKeyViewDialog.vue'
+    import ApiKeyCreatedDialog from '@/components/api-keys/ApiKeyCreatedDialog.vue'
+    import DialogManager from '@/components/common/DialogManager.vue'
+    import SnackbarManager from '@/components/common/SnackbarManager.vue'
     import PaginatedDataTable from '@/components/tables/PaginatedDataTable.vue'
 
     const authStore = useAuthStore()
     const { t } = useTranslations()
+    const { currentSnackbar, showSuccess, showError } = useSnackbar()
 
     // Reactive state
     const loading = ref(false)
     const error = ref('')
     const apiKeys = ref<ApiKey[]>([])
     const showCreateDialog = ref(false)
+    const showViewDialog = ref(false)
+    const showRevokeDialog = ref(false)
+    const showCreatedKeyDialog = ref(false)
+    const creating = ref(false)
+    const revoking = ref(false)
+    const selectedKey = ref<ApiKey | null>(null)
+    const keyToRevoke = ref<ApiKey | null>(null)
+    const createdApiKey = ref('')
 
     // Pagination state with persistence
     const { state: paginationState, setPage, setItemsPerPage } = usePagination('api-keys', 10)
@@ -439,30 +246,9 @@
         has_previous: boolean
         has_next: boolean
     } | null>(null)
-    const showViewDialog = ref(false)
-    const showRevokeDialog = ref(false)
-    const showCreatedKeyDialog = ref(false)
-    const showSuccessSnackbar = ref(false)
-    const showErrorSnackbar = ref(false)
-    const successMessage = ref('')
-    const errorMessage = ref('')
-    const creating = ref(false)
-    const revoking = ref(false)
-    const selectedKey = ref<ApiKey | null>(null)
-    const keyToRevoke = ref<ApiKey | null>(null)
-    const createdApiKey = ref('')
-    const createFormValid = ref(false)
-    const createForm = ref<CreateApiKeyRequest>({
-        name: '',
-        description: '',
-        expires_in_days: undefined,
-    })
 
     // Component lifecycle flag
     const isComponentMounted = ref(false)
-
-    // Refs for form validation
-    const nameField = ref<HTMLInputElement | null>(null)
 
     // Computed properties
     const isAdmin = computed(() => {
@@ -498,6 +284,14 @@
         return headers
     })
 
+    // Dialog config for DialogManager
+    const revokeDialogConfig = computed(() => ({
+        title: t('api_keys.revoke.title'),
+        confirmText: t('api_keys.revoke.button'),
+        cancelText: t('common.cancel'),
+        maxWidth: '400px',
+    }))
+
     // Methods
     const loadApiKeys = async (page = 1, itemsPerPage = 10) => {
         // Don't load if component is not mounted or user is not authenticated
@@ -524,55 +318,55 @@
         } catch (err) {
             console.error('Failed to load API keys:', err)
             error.value = err instanceof Error ? err.message : 'Failed to load API keys'
+            // Don't clear items on error to maintain layout
         } finally {
             loading.value = false
         }
     }
 
-    const handlePageChange = (page: number) => {
+    const handlePageChange = async (page: number) => {
         console.log('Page changed to:', page)
         currentPage.value = page
         setPage(page)
-        loadApiKeys(currentPage.value, itemsPerPage.value)
+        await loadApiKeys(currentPage.value, itemsPerPage.value)
     }
 
-    const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    const handleItemsPerPageChange = async (newItemsPerPage: number) => {
         console.log('Items per page changed to:', newItemsPerPage)
         itemsPerPage.value = newItemsPerPage
         setItemsPerPage(newItemsPerPage)
-        loadApiKeys(currentPage.value, itemsPerPage.value)
+        // Reset to first page when changing items per page
+        currentPage.value = 1
+        setPage(1)
+        await loadApiKeys(1, newItemsPerPage)
     }
 
-    const createApiKey = async () => {
-        if (!createFormValid.value) {
-            return
-        }
-
+    const createApiKey = async (requestData: CreateApiKeyRequest) => {
         creating.value = true
 
         try {
-            // Create a clean object without circular references
-            const requestData: CreateApiKeyRequest = {
-                name: createForm.value.name,
-                description: createForm.value.description || undefined,
-                expires_in_days: createForm.value.expires_in_days || undefined,
-            }
-
             const result = await typedHttpClient.createApiKey(requestData)
 
             // Show the API key in the dedicated dialog
             createdApiKey.value = result.api_key
             showCreatedKeyDialog.value = true
 
-            // Reset form and close dialog
-            createForm.value = { name: '', description: '', expires_in_days: undefined }
+            // Close create dialog
             showCreateDialog.value = false
 
             // Reload the list
             await loadApiKeys()
         } catch (err) {
-            showErrorSnackbar.value = true
-            errorMessage.value = err instanceof Error ? err.message : t('api_keys.create.error')
+            // Handle specific error cases
+            if (err instanceof Error) {
+                if (err.message.includes('409') || err.message.includes('conflict')) {
+                    showError(t('api_keys.create.error_name_exists'))
+                } else {
+                    showError(err.message || t('api_keys.create.error'))
+                }
+            } else {
+                showError(t('api_keys.create.error'))
+            }
         } finally {
             creating.value = false
         }
@@ -598,8 +392,7 @@
         try {
             await typedHttpClient.revokeApiKey(keyToRevoke.value.uuid)
 
-            showSuccessSnackbar.value = true
-            successMessage.value = t('api_keys.revoke.success')
+            showSuccess(t('api_keys.revoke.success'))
 
             showRevokeDialog.value = false
             keyToRevoke.value = null
@@ -607,11 +400,14 @@
             // Reload the list
             await loadApiKeys()
         } catch (err) {
-            showErrorSnackbar.value = true
-            errorMessage.value = err instanceof Error ? err.message : t('api_keys.revoke.error')
+            showError(err instanceof Error ? err.message : t('api_keys.revoke.error'))
         } finally {
             revoking.value = false
         }
+    }
+
+    const handleCopySuccess = () => {
+        showSuccess(t('api_keys.created.copied'))
     }
 
     const formatDate = (dateString: string | null): string => {
@@ -619,55 +415,6 @@
             return 'Never'
         }
         return new Date(dateString).toLocaleString()
-    }
-
-    const validateForm = () => {
-        createFormValid.value = !!createForm.value.name.trim()
-    }
-
-    const focusNameField = () => {
-        // Use nextTick to ensure the field is rendered
-        nextTick(() => {
-            if (nameField.value) {
-                nameField.value.focus()
-            }
-        })
-    }
-
-    const copyApiKey = () => {
-        const apiKey = createdApiKey.value
-
-        // Modern approach
-        if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard
-                .writeText(apiKey)
-                .then(() => {
-                    showSuccessSnackbar.value = true
-                    successMessage.value = t('api_keys.created.copied')
-                })
-                .catch(err => {
-                    console.error('Failed to copy API key:', err)
-                })
-        } else {
-            // Fallback method (old browsers / JS) - based on masteringjs.io tutorial
-            const input = document.querySelector('#apiKey') as HTMLInputElement
-            if (input) {
-                input.select()
-                input.setSelectionRange(0, 99999)
-                try {
-                    document.execCommand('copy')
-                    showSuccessSnackbar.value = true
-                    successMessage.value = t('api_keys.created.copied')
-                } catch (err) {
-                    console.error('Failed to copy API key:', err)
-                }
-            }
-        }
-    }
-
-    const closeCreatedKeyDialog = () => {
-        showCreatedKeyDialog.value = false
-        createdApiKey.value = ''
     }
 
     // Lifecycle
@@ -680,3 +427,16 @@
         isComponentMounted.value = false
     })
 </script>
+
+<style scoped>
+    /* Ensure stable layout to prevent scrollbar shifts */
+    .v-container {
+        min-height: calc(100vh - 64px - 32px); /* Account for app bar and padding */
+        overflow-x: hidden;
+    }
+
+    /* Ensure table container has stable dimensions */
+    .v-card {
+        min-height: 400px;
+    }
+</style>

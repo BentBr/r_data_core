@@ -1,24 +1,17 @@
-use actix_web::{
-    http::{header, StatusCode},
-    test, web, App, HttpMessage, HttpRequest, HttpResponse,
-};
+use actix_web::{http::StatusCode, test, web, App, HttpMessage, HttpRequest, HttpResponse};
 use r_data_core::{
     api::{
-        auth::extract_and_validate_api_key,
         jwt::AuthUserClaims,
         middleware::{ApiAuth, ApiKeyInfo},
         ApiState,
     },
     cache::CacheManager,
     config::CacheConfig,
-    entity::admin_user::{AdminUserRepository, ApiKey, ApiKeyRepository, ApiKeyRepositoryTrait},
-    error::{Error, Result},
+    entity::admin_user::{AdminUserRepository, ApiKeyRepository, ApiKeyRepositoryTrait},
+    error::Result,
     services::{AdminUserService, ApiKeyService, EntityDefinitionService},
 };
-use sqlx::PgPool;
 use std::sync::Arc;
-use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
 
 #[cfg(test)]
 mod tests {

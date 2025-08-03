@@ -1,19 +1,12 @@
 <template>
     <div>
-        <!-- Loading State -->
-        <v-row v-if="loading">
-            <v-col
-                cols="12"
-                class="text-center"
-            >
-                <v-progress-circular
-                    indeterminate
-                    color="primary"
-                    size="64"
-                />
-                <div class="mt-4">{{ loadingText }}</div>
-            </v-col>
-        </v-row>
+        <!-- Skeleton loader for initial load -->
+        <div v-if="loading && items.length === 0">
+            <v-skeleton-loader
+                type="table"
+                class="elevation-1"
+            />
+        </div>
 
         <!-- Error State -->
         <v-alert
@@ -21,11 +14,12 @@
             type="error"
             variant="tonal"
             class="mb-4"
+            closable
         >
             {{ error }}
         </v-alert>
 
-        <!-- Data Table -->
+        <!-- Data Table with skeleton rows during loading -->
         <v-data-table-server
             v-else
             v-model:options="tableOptions"

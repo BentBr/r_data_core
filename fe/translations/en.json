@@ -40,7 +40,8 @@
       "description_label": "Description (Optional)",
       "expires_label": "Expires in Days (Optional)",
       "expires_hint": "Leave empty for no expiration",
-      "error": "Failed to create API key"
+      "error": "Failed to create API key",
+      "error_name_exists": "An API key with this name already exists"
     },
     "created": {
       "title": "API Key Created",
@@ -92,7 +93,8 @@
       "icon_label": "Icon",
       "icon_hint": "Choose an icon for this entity definition",
       "published_label": "Published",
-      "error": "Failed to create entity definition"
+      "error": "Failed to create entity definition",
+      "create_button": "Create"
     },
     "edit": {
       "title": "Edit Entity Definition",
@@ -107,9 +109,22 @@
       "success": "Entity definition deleted successfully",
       "error": "Failed to delete entity definition"
     },
+    "meta_info": {
+      "entity_type": "Entity Type",
+      "display_name": "Display Name",
+      "description": "Description",
+      "group": "Group",
+      "created": "Created",
+      "updated": "Updated",
+      "version": "Version",
+      "status": "Status",
+      "published": "Published",
+      "draft": "Draft"
+    },
     "fields": {
       "title": "Fields",
       "add_field": "Add Field",
+      "edit_field": "Edit Field",
       "field_name": "Field Name",
       "display_name": "Display Name",
       "field_type": "Field Type",
@@ -120,7 +135,13 @@
       "default_value": "Default Value",
       "constraints": "Constraints",
       "ui_settings": "UI Settings",
-      "remove_field": "Remove Field"
+      "remove_field": "Remove Field",
+      "field_name_required": "Field name is required",
+      "field_name_invalid": "Field name must be alphanumeric with underscores only",
+      "display_name_required": "Display name is required",
+      "field_type_required": "Field type is required",
+      "update": "Update",
+      "add": "Add"
     },
     "table": {
       "entity_type": "Entity Type",
@@ -146,6 +167,12 @@
       "save_error": "Failed to save changes",
       "select_entity": "Select an entity definition to view details",
       "select_entity_description": "Choose an entity definition from the tree view to see its properties and fields."
+    },
+    "errors": {
+      "validation_failed": "Validation failed",
+      "invalid_characters": "Invalid characters used in field name",
+      "field_name_exists": "A field with this name already exists",
+      "entity_type_exists": "An entity definition with this type already exists"
     }
   },
   "table": {

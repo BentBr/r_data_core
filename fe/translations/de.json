@@ -40,7 +40,8 @@
       "description_label": "Beschreibung (Optional)",
       "expires_label": "Ablauf in Tagen (Optional)",
       "expires_hint": "Leer lassen für kein Ablaufdatum",
-      "error": "API-Schlüssel konnte nicht erstellt werden"
+      "error": "API-Schlüssel konnte nicht erstellt werden",
+      "error_name_exists": "Ein API-Schlüssel mit diesem Namen existiert bereits"
     },
     "created": {
       "title": "API-Schlüssel erstellt",
@@ -92,7 +93,8 @@
       "icon_label": "Symbol",
       "icon_hint": "Wählen Sie ein Symbol für diese Entitätsdefinition",
       "published_label": "Veröffentlicht",
-      "error": "Entitätsdefinition konnte nicht erstellt werden"
+      "error": "Entitätsdefinition konnte nicht erstellt werden",
+      "create_button": "Erstellen"
     },
     "edit": {
       "title": "Entitätsdefinition bearbeiten",
@@ -107,9 +109,22 @@
       "success": "Entitätsdefinition erfolgreich gelöscht",
       "error": "Entitätsdefinition konnte nicht gelöscht werden"
     },
+    "meta_info": {
+      "entity_type": "Entitätstyp",
+      "display_name": "Anzeigename",
+      "description": "Beschreibung",
+      "group": "Gruppe",
+      "created": "Erstellt",
+      "updated": "Aktualisiert",
+      "version": "Version",
+      "status": "Status",
+      "published": "Veröffentlicht",
+      "draft": "Entwurf"
+    },
     "fields": {
       "title": "Felder",
       "add_field": "Feld hinzufügen",
+      "edit_field": "Feld bearbeiten",
       "field_name": "Feldname",
       "display_name": "Anzeigename",
       "field_type": "Feldtyp",
@@ -120,7 +135,13 @@
       "default_value": "Standardwert",
       "constraints": "Einschränkungen",
       "ui_settings": "UI-Einstellungen",
-      "remove_field": "Feld entfernen"
+      "remove_field": "Feld entfernen",
+      "field_name_required": "Feldname ist erforderlich",
+      "field_name_invalid": "Feldname muss alphanumerisch mit Unterstrichen sein",
+      "display_name_required": "Anzeigename ist erforderlich",
+      "field_type_required": "Feldtyp ist erforderlich",
+      "update": "Aktualisieren",
+      "add": "Hinzufügen"
     },
     "table": {
       "entity_type": "Entitätstyp",
@@ -145,7 +166,13 @@
       "changes_saved": "Änderungen erfolgreich gespeichert",
       "save_error": "Änderungen konnten nicht gespeichert werden",
       "select_entity": "Wählen Sie eine Entitätsdefinition aus, um Details anzuzeigen",
-      "select_entity_description": "Wählen Sie eine Entitätsdefinition aus der Baumansicht aus, um ihre Eigenschaften und Felder zu sehen."
+      "select_entity_description": "Wählen Sie eine Entitätsdefinition aus der Baumansicht, um ihre Eigenschaften und Felder zu sehen."
+    },
+    "errors": {
+      "validation_failed": "Validierung fehlgeschlagen",
+      "invalid_characters": "Ungültige Zeichen im Feldnamen verwendet",
+      "field_name_exists": "Ein Feld mit diesem Namen existiert bereits",
+      "entity_type_exists": "Eine Entitätsdefinition mit diesem Typ existiert bereits"
     }
   },
   "table": {

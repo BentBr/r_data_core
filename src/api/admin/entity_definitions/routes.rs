@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use super::models::ApplySchemaRequest;
 use super::models::PathUuid;
-use crate::api::models::PaginationQuery;
+use crate::api::query::PaginationQuery;
 use crate::api::response::ApiResponse;
 use crate::api::ApiState;
 use crate::entity::EntityDefinition;
@@ -36,8 +36,7 @@ async fn list_entity_definitions(
     query: web::Query<PaginationQuery>,
     _: auth_enum::RequiredAuth,
 ) -> impl Responder {
-    let per_page = query.get_per_page(20, 100);
-    let offset = query.get_offset(0);
+    let (per_page, offset) = query.to_limit_offset(1, 20, 100);
     let page = query.get_page(1);
     let limit = per_page;
 

@@ -2,6 +2,7 @@ use actix_web::{
     http::{header, StatusCode},
     test, web, App, HttpMessage, HttpRequest, HttpResponse,
 };
+use jsonwebtoken::{encode, EncodingKey, Header};
 use r_data_core::{
     api::{
         middleware::{ApiAuth, ApiKeyInfo},
@@ -9,83 +10,53 @@ use r_data_core::{
     },
     cache::CacheManager,
     config::CacheConfig,
-    entity::admin_user::{AdminUserRepository, ApiKey, ApiKeyRepository, ApiKeyRepositoryTrait},
-    error::{Error, Result},
+    entity::admin_user::{AdminUserRepository, ApiKeyRepository, ApiKeyRepositoryTrait},
+    error::Result,
     services::{AdminUserService, ApiKeyService, EntityDefinitionService},
 };
-use sqlx::PgPool;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
+
+#[derive(Debug, Serialize, Deserialize)]
+struct AuthUserClaims {
+    sub: String,    // User UUID as string
+    name: String,   // Username
+    email: String,  // Email
+    is_admin: bool, // Admin flag
+    role: String,   // User role
+    exp: usize,     // Expiration timestamp
+    iat: usize,     // Issued at timestamp
+}
+
+fn create_test_jwt_token(user_uuid: &Uuid, secret: &str) -> String {
+    let now = OffsetDateTime::now_utc();
+    let exp = now + Duration::hours(1);
+
+    let claims = AuthUserClaims {
+        sub: user_uuid.to_string(),
+        name: "test_user".to_string(),
+        email: "test@example.com".to_string(),
+        is_admin: true,
+        role: "Admin".to_string(),
+        exp: exp.unix_timestamp() as usize,
+        iat: now.unix_timestamp() as usize,
+    };
+
+    encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(secret.as_ref()),
+    )
+    .expect("Failed to create JWT token")
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::common::utils;
     use serial_test::serial;
-
-    /// Test creating API key through the API
-    #[tokio::test]
-    #[serial]
-    async fn test_create_api_key_integration() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
-
-        // Create test app
-        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let entity_def_repo = Arc::new(
-            r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
-                pool.clone(),
-            ),
-        );
-
-        let cache_config = CacheConfig {
-            enabled: true,
-            ttl: 3600,
-            max_size: 1000,
-        };
-
-        let app = test::init_service(
-            App::new()
-                .app_data(web::Data::new(ApiState {
-                    db_pool: pool.clone(),
-                    jwt_secret: "test_secret".to_string(),
-                    cache_manager: Arc::new(CacheManager::new(cache_config)),
-                    api_key_service: ApiKeyService::from_repository(api_key_repo),
-                    admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    entity_definition_service: EntityDefinitionService::new(entity_def_repo),
-                    dynamic_entity_service: None,
-                }))
-                .service(web::resource("/api/admin/api-keys").route(web::post().to(
-                    move |req: HttpRequest| async move {
-                        // Simulate API key creation endpoint
-                        HttpResponse::Ok().json(serde_json::json!({
-                            "status": "success",
-                            "message": "API key created"
-                        }))
-                    },
-                ))),
-        )
-        .await;
-
-        // Test API key creation
-        let req = test::TestRequest::post()
-            .uri("/api/admin/api-keys")
-            .insert_header((header::CONTENT_TYPE, "application/json"))
-            .set_json(serde_json::json!({
-                "name": "Test API Key",
-                "description": "Test description",
-                "expires_in_days": 30
-            }))
-            .to_request();
-
-        let resp = test::call_service(&app, req).await;
-        assert_eq!(resp.status(), StatusCode::OK);
-
-        utils::clear_test_db(&pool).await?;
-        Ok(())
-    }
 
     /// Test listing API keys through the API
     #[tokio::test]
@@ -711,6 +682,182 @@ mod tests {
 
         let keys_page2_20 = repo.list_by_user(user_uuid, 20, 20).await?;
         assert_eq!(keys_page2_20.len(), 5);
+
+        utils::clear_test_db(&pool).await?;
+        Ok(())
+    }
+
+    /// Test HTTP API pagination functionality for API keys
+    #[tokio::test]
+    #[serial]
+    async fn test_api_key_http_pagination() -> Result<()> {
+        let pool = utils::setup_test_db().await;
+        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+
+        // Create multiple API keys
+        for i in 1..=25 {
+            repo.create_new_api_key(
+                &format!("Key {}", i),
+                &format!("Description {}", i),
+                user_uuid,
+                30,
+            )
+            .await?;
+        }
+
+        // Create test app with actual API routes
+        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+        let entity_def_repo = Arc::new(
+            r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
+                pool.clone(),
+            ),
+        );
+
+        let cache_config = CacheConfig {
+            enabled: true,
+            ttl: 3600,
+            max_size: 1000,
+        };
+
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(ApiState {
+                    db_pool: pool.clone(),
+                    jwt_secret: "test_secret".to_string(),
+                    cache_manager: Arc::new(CacheManager::new(cache_config)),
+                    api_key_service: ApiKeyService::from_repository(api_key_repo),
+                    admin_user_service: AdminUserService::from_repository(admin_user_repo),
+                    entity_definition_service: EntityDefinitionService::new(entity_def_repo),
+                    dynamic_entity_service: None,
+                }))
+                .service(
+                    web::scope("/admin/api/v1").service(
+                        web::scope("/api-keys")
+                            .configure(r_data_core::api::admin::api_keys::routes::register_routes),
+                    ),
+                ),
+        )
+        .await;
+
+        // Create a JWT token for authentication
+        let token = create_test_jwt_token(&user_uuid, "test_secret");
+
+        // Test page 1 with 10 items per page using JWT authentication
+        let req = test::TestRequest::get()
+            .uri("/admin/api/v1/api-keys?page=1&per_page=10")
+            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        assert_eq!(body["status"], "Success");
+
+        let data = body["data"].as_array().unwrap();
+        assert_eq!(data.len(), 10);
+
+        let meta = body["meta"]["pagination"].as_object().unwrap();
+        assert_eq!(meta["page"], 1);
+        assert_eq!(meta["per_page"], 10);
+        assert_eq!(meta["total"], 25);
+        assert_eq!(meta["total_pages"], 3);
+        assert_eq!(meta["has_previous"], false);
+        assert_eq!(meta["has_next"], true);
+
+        // Test page 2 with 10 items per page
+        let req = test::TestRequest::get()
+            .uri("/admin/api/v1/api-keys?page=2&per_page=10")
+            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        assert_eq!(body["status"], "Success");
+
+        let data = body["data"].as_array().unwrap();
+        assert_eq!(data.len(), 10);
+
+        let meta = body["meta"]["pagination"].as_object().unwrap();
+        assert_eq!(meta["page"], 2);
+        assert_eq!(meta["per_page"], 10);
+        assert_eq!(meta["total"], 25);
+        assert_eq!(meta["total_pages"], 3);
+        assert_eq!(meta["has_previous"], true);
+        assert_eq!(meta["has_next"], true);
+
+        // Test page 3 with 10 items per page (should have 5 items)
+        let req = test::TestRequest::get()
+            .uri("/admin/api/v1/api-keys?page=3&per_page=10")
+            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        assert_eq!(body["status"], "Success");
+
+        let data = body["data"].as_array().unwrap();
+        assert_eq!(data.len(), 5);
+
+        let meta = body["meta"]["pagination"].as_object().unwrap();
+        assert_eq!(meta["page"], 3);
+        assert_eq!(meta["per_page"], 10);
+        assert_eq!(meta["total"], 25);
+        assert_eq!(meta["total_pages"], 3);
+        assert_eq!(meta["has_previous"], true);
+        assert_eq!(meta["has_next"], false);
+
+        // Test page 4 with 10 items per page (should have 0 items)
+        let req = test::TestRequest::get()
+            .uri("/admin/api/v1/api-keys?page=4&per_page=10")
+            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        assert_eq!(body["status"], "Success");
+
+        let data = body["data"].as_array().unwrap();
+        assert_eq!(data.len(), 0);
+
+        let meta = body["meta"]["pagination"].as_object().unwrap();
+        assert_eq!(meta["page"], 4);
+        assert_eq!(meta["per_page"], 10);
+        assert_eq!(meta["total"], 25);
+        assert_eq!(meta["total_pages"], 3);
+        assert_eq!(meta["has_previous"], true);
+        assert_eq!(meta["has_next"], false);
+
+        // Test different per_page value
+        let req = test::TestRequest::get()
+            .uri("/admin/api/v1/api-keys?page=1&per_page=20")
+            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        assert_eq!(body["status"], "Success");
+
+        let data = body["data"].as_array().unwrap();
+        assert_eq!(data.len(), 20);
+
+        let meta = body["meta"]["pagination"].as_object().unwrap();
+        assert_eq!(meta["page"], 1);
+        assert_eq!(meta["per_page"], 20);
+        assert_eq!(meta["total"], 25);
+        assert_eq!(meta["total_pages"], 2);
+        assert_eq!(meta["has_previous"], false);
+        assert_eq!(meta["has_next"], true);
 
         utils::clear_test_db(&pool).await?;
         Ok(())

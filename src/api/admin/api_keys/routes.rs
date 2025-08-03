@@ -6,7 +6,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::api::auth::auth_enum;
-use crate::api::models::PaginationQuery;
+use crate::api::query::PaginationQuery;
 use crate::api::response::ApiResponse;
 use crate::api::ApiState;
 use crate::entity::admin_user::repository::ApiKeyRepository;
@@ -122,9 +122,8 @@ pub async fn list_api_keys(
     let pool = Arc::new(state.db_pool.clone());
     let user_uuid = Uuid::parse_str(&auth.0.sub).expect("Invalid UUID in auth token");
 
+    let (per_page, offset) = query.to_limit_offset(1, 20, 100);
     let page = query.get_page(1);
-    let per_page = query.get_per_page(20, 100);
-    let offset = query.get_offset(0);
 
     let repo = ApiKeyRepository::new(pool);
 
