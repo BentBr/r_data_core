@@ -6,6 +6,7 @@ import { config } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
+import type { ComponentMountingOptions } from '@vue/test-utils'
 
 // -----------------------------------------------------------------------------
 // Vuetify
@@ -17,7 +18,7 @@ config.global.stubs = {
 }
 
 import { mount } from '@vue/test-utils'
-export const mountX = (component: any, options: any = {}) =>
+export const mountX = (component: unknown, options: ComponentMountingOptions<unknown> = {}) =>
     mount(component, {
         ...options,
         global: { ...(options.global || {}), plugins: [vuetify] },
@@ -37,7 +38,8 @@ class ResizeObserver {
     unobserve() {}
     disconnect() {}
 }
-;(global as any).ResizeObserver = ResizeObserver
+;(global as typeof globalThis & { ResizeObserver: typeof ResizeObserver }).ResizeObserver =
+    ResizeObserver
 
 // translations helper
 // -----------------------------------------------------------------------------

@@ -222,7 +222,10 @@ describe('EntityDefinitionFields', () => {
         })
 
         const editButtons = wrapper.findAll('button')
-        const editButton = editButtons.find((btn: any) => btn.attributes('icon') === 'mdi-pencil')
+        const editButton = editButtons.find(
+            (btn: { attributes: (attr: string) => string }) =>
+                btn.attributes('icon') === 'mdi-pencil'
+        )
 
         if (editButton) {
             await editButton.trigger('click')
@@ -244,7 +247,8 @@ describe('EntityDefinitionFields', () => {
 
         const deleteButtons = wrapper.findAll('button')
         const deleteButton = deleteButtons.find(
-            (btn: any) => btn.attributes('icon') === 'mdi-delete'
+            (btn: { attributes: (attr: string) => string }) =>
+                btn.attributes('icon') === 'mdi-delete'
         )
 
         if (deleteButton) {
