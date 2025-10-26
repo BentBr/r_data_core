@@ -125,6 +125,15 @@ async fn create_test_entity(
     field_data.insert("uuid".to_string(), json!(uuid.to_string()));
     field_data.insert("name".to_string(), json!(name));
     field_data.insert("email".to_string(), json!(email));
+    field_data.insert("path".to_string(), json!("/"));
+    field_data.insert(
+        "key".to_string(),
+        json!(format!(
+            "{}-{}",
+            name.to_lowercase().replace(' ', "-"),
+            uuid.simple()
+        )),
+    );
     field_data.insert("created_by".to_string(), json!(created_by.to_string()));
     field_data.insert(
         "created_at".to_string(),

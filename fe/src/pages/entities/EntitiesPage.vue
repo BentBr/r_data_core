@@ -3,36 +3,362 @@
         <v-row>
             <v-col cols="12">
                 <v-card>
-                    <v-card-title class="text-h4 pa-4">
-                        <v-icon
-                            icon="mdi-database"
-                            class="mr-3"
-                        />
-                        Dynamic Entities
+                    <v-card-title class="d-flex align-center justify-space-between pa-4">
+                        <div class="d-flex align-center">
+                            <v-icon
+                                icon="mdi-database"
+                                class="mr-3"
+                            />
+                            <span class="text-h4">{{ t('navigation.entities') }}</span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <v-btn
+                                color="secondary"
+                                variant="outlined"
+                                prepend-icon="mdi-refresh"
+                                :loading="loading"
+                                @click="loadEntities"
+                            >
+                                {{ t('common.refresh') }}
+                            </v-btn>
+                            <v-btn
+                                color="primary"
+                                prepend-icon="mdi-plus"
+                                @click="showCreateDialog = true"
+                            >
+                                {{ t('entities.create.button') }}
+                            </v-btn>
+                        </div>
                     </v-card-title>
+
                     <v-card-text>
-                        <p>Manage your dynamic entities here. Features include:</p>
-                        <ul>
-                            <li>View all entities by entity definition</li>
-                            <li>Create, edit, and delete entities</li>
-                            <li>Advanced filtering and search</li>
-                            <li>Bulk operations</li>
-                            <li>Import/Export functionality</li>
-                        </ul>
-                        <v-btn
-                            color="success"
-                            class="mt-4"
-                        >
-                            <v-icon>mdi-database-plus</v-icon>
-                            Create Entity
-                        </v-btn>
+                        <v-row>
+                            <!-- Tree View -->
+                            <v-col cols="4">
+                                <EntityTree
+                                    :root-path="'/'"
+                                    :loading="loading"
+                                    :expanded-items="expandedItems"
+                                    :refresh-key="treeRefreshKey"
+                                    :entity-definitions="entityDefinitions"
+                                    @update:expanded-items="updateExpandedItems"
+                                    @item-click="handleItemClick"
+                                    @selection-change="handleTreeSelection"
+                                />
+                            </v-col>
+
+                            <!-- Details Panel -->
+                            <v-col cols="8">
+                                <EntityDetails
+                                    :entity="selectedEntity"
+                                    :entity-definition="selectedEntityDefinition"
+                                    @edit="editEntity"
+                                    @delete="showDeleteDialog = true"
+                                />
+                            </v-col>
+                        </v-row>
                     </v-card-text>
                 </v-card>
             </v-col>
         </v-row>
+
+        <!-- Dialogs -->
+        <EntityCreateDialog
+            ref="createDialogRef"
+            v-model="showCreateDialog"
+            :entity-definitions="entityDefinitions"
+            :loading="creating"
+            :default-parent="selectedEntity"
+            @create="createEntity"
+        />
+
+        <EntityEditDialog
+            v-model="showEditDialog"
+            :entity="selectedEntity"
+            :entity-definition="selectedEntityDefinition"
+            :loading="updating"
+            @update="updateEntity"
+        />
+
+        <DialogManager
+            v-model="showDeleteDialog"
+            :config="deleteDialogConfig"
+            :loading="deleting"
+            @confirm="deleteEntity"
+        />
+
+        <!-- Snackbar -->
+        <SnackbarManager :snackbar="currentSnackbar" />
     </v-container>
 </template>
 
 <script setup lang="ts">
-    // Entities page logic will be implemented here
+    import { ref, computed, onMounted, onUnmounted } from 'vue'
+    import { useAuthStore } from '@/stores/auth'
+    import { typedHttpClient, ValidationError } from '@/api/typed-client'
+    import { useTranslations } from '@/composables/useTranslations'
+    import { useSnackbar } from '@/composables/useSnackbar'
+    import type {
+        DynamicEntity,
+        EntityDefinition,
+        CreateEntityRequest,
+        UpdateEntityRequest,
+        TreeNode,
+    } from '@/types/schemas'
+    import EntityTree from '@/components/entities/EntityTree.vue'
+    import EntityDetails from '@/components/entities/EntityDetails.vue'
+    import EntityCreateDialog from '@/components/entities/EntityCreateDialog.vue'
+    import EntityEditDialog from '@/components/entities/EntityEditDialog.vue'
+    import DialogManager from '@/components/common/DialogManager.vue'
+    import SnackbarManager from '@/components/common/SnackbarManager.vue'
+
+    const authStore = useAuthStore()
+    const { t } = useTranslations()
+    const { currentSnackbar, showSuccess, showError } = useSnackbar()
+
+    // Reactive state
+    const loading = ref(false)
+    const entities = ref<DynamicEntity[]>([])
+    const entityDefinitions = ref<EntityDefinition[]>([])
+    const selectedEntity = ref<DynamicEntity | null>(null)
+    const selectedItems = ref<string[]>([])
+    const expandedItems = ref<string[]>([])
+    const treeRefreshKey = ref(0)
+    const error = ref('')
+
+    // Dialog states
+    const showCreateDialog = ref(false)
+    const showEditDialog = ref(false)
+    const showDeleteDialog = ref(false)
+
+    // Form states
+    const creating = ref(false)
+    const updating = ref(false)
+    const deleting = ref(false)
+
+    // Component lifecycle flag
+    const isComponentMounted = ref(false)
+    
+    // Dialog refs
+    const createDialogRef = ref<any>(null)
+
+    // Computed properties
+    const selectedEntityUuid = computed(() => selectedEntity.value?.field_data?.uuid || '')
+    
+    const selectedEntityDefinition = computed(() => {
+        if (!selectedEntity.value) {
+            return null
+        }
+        return (
+            entityDefinitions.value.find(
+                def => def.entity_type === selectedEntity.value?.entity_type
+            ) || null
+        )
+    })
+
+    const deleteDialogConfig = computed(() => ({
+        title: t('entities.delete.title'),
+        message: t('entities.delete.message'),
+        maxWidth: '500px',
+        persistent: false,
+    }))
+
+    // Methods
+    const loadEntityDefinitions = async () => {
+        if (!isComponentMounted.value || !authStore.isAuthenticated) {
+            return
+        }
+
+        try {
+            const response = await typedHttpClient.getEntityDefinitions()
+            entityDefinitions.value = response.data || []
+        } catch (err) {
+            console.error('Failed to load entity definitions:', err)
+            error.value = err instanceof Error ? err.message : 'Failed to load entity definitions'
+        }
+    }
+
+    const loadEntities = async () => {
+        if (!isComponentMounted.value || !authStore.isAuthenticated) {
+            return
+        }
+        loading.value = true
+        error.value = ''
+        try {
+            // Trigger tree reload via refresh key; entity list is now lazy path-based
+            // Only increment if this is not the initial load
+            treeRefreshKey.value++
+        } finally {
+            loading.value = false
+        }
+    }
+
+    const updateExpandedItems = (items: string[]) => {
+        expandedItems.value = items
+    }
+
+    const handleTreeSelection = (items: string[]) => {
+        selectedItems.value = items
+    }
+
+    const handleItemClick = async (item: TreeNode) => {
+        if (item.uuid && item.entity_type) {
+            try {
+                loading.value = true
+                const entity = await typedHttpClient.getEntity(item.entity_type, item.uuid)
+                selectedEntity.value = entity
+                selectedItems.value = [item.uuid]
+            } catch (err) {
+                console.error('Failed to load entity details:', err)
+                showError(err instanceof Error ? err.message : t('general.errors.unknown'))
+            } finally {
+                loading.value = false
+            }
+        }
+    }
+
+    const createEntity = async (data: CreateEntityRequest) => {
+        creating.value = true
+
+        try {
+            await typedHttpClient.createEntity(data.entity_type, data)
+            showCreateDialog.value = false
+
+            // Reload the entities
+            await loadEntities()
+
+            showSuccess('Entity created successfully')
+        } catch (err) {
+            
+            // Handle structured validation errors
+            if (err instanceof ValidationError) {
+                // Convert violations to a field error map
+                const fieldErrors: Record<string, string> = {}
+                for (const violation of err.violations) {
+                    fieldErrors[violation.field] = violation.message
+                }
+                
+                // Set field errors on the dialog - keep dialog open
+                if (createDialogRef.value) {
+                    createDialogRef.value.setFieldErrors(fieldErrors)
+                }
+                
+                // Show general error message
+                showError(err.message)
+            } else if (err instanceof Error) {
+                const errorMessage = err.message
+                
+                // Check if it's a validation error from the backend
+                // Backend returns errors like "Validation error: field_name is required" 
+                // or "Unknown fields found: fieldname"
+                if (errorMessage.includes('Validation') || errorMessage.includes('Validation failed') || errorMessage.includes('Unknown fields')) {
+                    showError(errorMessage)
+                } else {
+                    showError(errorMessage || t('entities.create.error'))
+                }
+            } else {
+                showError(t('entities.create.error'))
+            }
+        } finally {
+            creating.value = false
+        }
+    }
+
+    const editEntity = () => {
+        showEditDialog.value = true
+    }
+
+    const updateEntity = async (data: UpdateEntityRequest) => {
+        if (!selectedEntity.value) {
+            return
+        }
+
+        updating.value = true
+
+        try {
+            await typedHttpClient.updateEntity(
+                selectedEntity.value.entity_type,
+                selectedEntityUuid.value,
+                data
+            )
+
+            // Update the selected entity
+            selectedEntity.value = {
+                ...selectedEntity.value,
+                ...data,
+            } as DynamicEntity
+
+            // Update the list
+            const index = entities.value.findIndex(e => e.field_data?.uuid === selectedEntityUuid.value)
+            if (index !== -1 && selectedEntity.value) {
+                entities.value[index] = selectedEntity.value
+            }
+
+            showEditDialog.value = false
+
+            showSuccess('Entity updated successfully')
+        } catch (err) {
+            showError(err instanceof Error ? err.message : t('entities.edit.error'))
+        } finally {
+            updating.value = false
+        }
+    }
+
+    const deleteEntity = async () => {
+        if (!selectedEntity.value) {
+            return
+        }
+
+        deleting.value = true
+
+        try {
+            await typedHttpClient.deleteEntity(
+                selectedEntity.value.entity_type,
+                selectedEntityUuid.value
+            )
+
+            // Remove from list
+            entities.value = entities.value.filter(e => e.field_data?.uuid !== selectedEntityUuid.value)
+            selectedEntity.value = null
+            selectedItems.value = []
+
+            showDeleteDialog.value = false
+
+            showSuccess(t('entities.delete.success'))
+        } catch (err) {
+            showError(err instanceof Error ? err.message : t('entities.delete.error'))
+        } finally {
+            deleting.value = false
+        }
+    }
+
+    // Lifecycle
+    onMounted(async () => {
+        if (isComponentMounted.value) return
+        isComponentMounted.value = true
+        await loadEntityDefinitions()
+        // Don't call loadEntities() here - EntityTree will load via refreshKey watcher with immediate:true
+    })
+
+    onUnmounted(() => {
+        isComponentMounted.value = false
+    })
 </script>
+
+<style scoped>
+    /* Ensure stable layout to prevent scrollbar shifts */
+    .v-container {
+        min-height: calc(100vh - 64px - 32px); /* Account for app bar and padding */
+        overflow-x: hidden;
+    }
+
+    /* Ensure card containers have stable dimensions */
+    .v-card {
+        min-height: 400px;
+    }
+
+    /* Ensure tree and details panels have stable heights */
+    .v-col {
+        min-height: 500px;
+    }
+</style>

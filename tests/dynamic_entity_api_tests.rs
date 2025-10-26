@@ -206,9 +206,12 @@ mod dynamic_entity_tests {
             .field_data
             .insert("published".to_string(), json!(true));
         entity.field_data.insert("version".to_string(), json!(1));
-        entity
-            .field_data
-            .insert("path".to_string(), json!(format!("/{}/", entity_type)));
+        // Registry fields required by repository
+        entity.field_data.insert("path".to_string(), json!("/"));
+        entity.field_data.insert(
+            "key".to_string(),
+            json!(format!("{}-{}", entity_type, entity_uuid.simple())),
+        );
 
         entity
     }
@@ -402,7 +405,7 @@ mod dynamic_entity_tests {
             let uuid = Uuid::now_v7();
             let created_by = Uuid::now_v7();
 
-            // Use fields from the JSON definition
+            // Use fields from the JSON definition + required registry fields
             entity
                 .field_data
                 .insert("uuid".to_string(), json!(uuid.to_string()));
@@ -444,6 +447,11 @@ mod dynamic_entity_tests {
                 .field_data
                 .insert("published".to_string(), json!(true));
             entity.field_data.insert("version".to_string(), json!(1));
+            entity.field_data.insert("path".to_string(), json!("/"));
+            entity.field_data.insert(
+                "key".to_string(),
+                json!(format!("{}-{}", entity_type, uuid.simple())),
+            );
 
             // Insert using the service
             dynamic_entity_service.create_entity(&entity).await?;
@@ -558,6 +566,11 @@ mod dynamic_entity_tests {
             entity
                 .field_data
                 .insert("created_by".to_string(), json!(created_by.to_string()));
+            entity.field_data.insert("path".to_string(), json!("/"));
+            entity.field_data.insert(
+                "key".to_string(),
+                json!(format!("{}-{}", entity_type, uuid.simple())),
+            );
 
             // Create the entity
             dynamic_entity_service.create_entity(&entity).await?;
@@ -694,6 +707,11 @@ mod dynamic_entity_tests {
             entity
                 .field_data
                 .insert("created_by".to_string(), json!(created_by.to_string()));
+            entity.field_data.insert("path".to_string(), json!("/"));
+            entity.field_data.insert(
+                "key".to_string(),
+                json!(format!("{}-{}", entity_type, uuid.simple())),
+            );
 
             // Create the entity
             dynamic_entity_service.create_entity(&entity).await?;
@@ -804,6 +822,11 @@ mod dynamic_entity_tests {
                 .field_data
                 .insert("published".to_string(), json!(true));
             entity.field_data.insert("version".to_string(), json!(1));
+            entity.field_data.insert("path".to_string(), json!("/"));
+            entity.field_data.insert(
+                "key".to_string(),
+                json!(format!("{}-{}", entity_type, uuid.simple())),
+            );
 
             // Insert using the service
             dynamic_entity_service.create_entity(&entity).await?;
@@ -907,6 +930,11 @@ mod dynamic_entity_tests {
             .field_data
             .insert("published".to_string(), json!(true));
         entity.field_data.insert("version".to_string(), json!(1));
+        entity.field_data.insert("path".to_string(), json!("/"));
+        entity.field_data.insert(
+            "key".to_string(),
+            json!(format!("{}-{}", entity_type, uuid.simple())),
+        );
 
         // Create a repository and service for dynamic entities
         let entity_repo = Arc::new(DynamicEntityRepository::new(pool.clone()));

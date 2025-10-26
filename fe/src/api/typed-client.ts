@@ -11,6 +11,11 @@ import {
     ApiKeySchema,
     ApiKeyCreatedResponseSchema,
     EntityDefinitionSchema,
+    DynamicEntitySchema,
+    // CreateEntityRequestSchema,
+    // UpdateEntityRequestSchema,
+    EntityResponseSchema,
+    ValidationErrorResponseSchema,
 } from '@/types/schemas'
 
 // Import types from schemas
@@ -28,8 +33,26 @@ import type {
     EntityDefinition,
     CreateEntityDefinitionRequest,
     UpdateEntityDefinitionRequest,
+    DynamicEntity,
+    CreateEntityRequest,
+    UpdateEntityRequest,
+    EntityResponse,
     Meta,
 } from '@/types/schemas'
+
+// Custom error class for validation errors
+export class ValidationError extends Error {
+    violations: Array<{ field: string; message: string; code?: string }>
+
+    constructor(
+        message: string,
+        violations: Array<{ field: string; message: string; code?: string }>
+    ) {
+        super(message)
+        this.name = 'ValidationError'
+        this.violations = violations
+    }
+}
 
 // Define ApiResponse type
 type ApiResponse<T> = {
@@ -158,6 +181,24 @@ class TypedHttpClient {
                         })
                     }
 
+                    // Handle validation errors (422) with structured violations
+                    if (response.status === 422 && errorData.violations) {
+                        try {
+                            const validationError = ValidationErrorResponseSchema.parse(errorData)
+                            throw new ValidationError(validationError.message, validationError.violations)
+                        } catch (parseError) {
+                            // Re-throw ValidationError as-is
+                            if (parseError instanceof ValidationError) {
+                                throw parseError
+                            }
+                            // If parsing fails, log and treat as regular error
+                            if (this.enableLogging) {
+                                console.error('[API] Failed to parse validation error:', parseError)
+                            }
+                            throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
+                        }
+                    }
+
                     // Handle backend API response format
                     if (errorData.status === 'Error' && errorData.message) {
                         throw new Error(errorData.message)
@@ -170,6 +211,11 @@ class TypedHttpClient {
                         `HTTP ${response.status}: ${response.statusText}`
                     throw new Error(errorMessage)
                 } catch (parseError) {
+                    // Re-throw validation errors as-is silently
+                    if (parseError instanceof ValidationError) {
+                        throw parseError
+                    }
+                    // Only log non-validation errors
                     if (this.enableLogging) {
                         console.error('[API] Failed to parse error response:', parseError)
                     }
@@ -180,12 +226,15 @@ class TypedHttpClient {
             const rawData = await response.json()
             return this.validateResponse(rawData, schema)
         } catch (error) {
-            if (this.enableLogging) {
-                console.error('[API] Error:', {
-                    error: error instanceof Error ? error.message : error,
-                    endpoint,
-                    stack: error instanceof Error ? error.stack : undefined,
-                })
+            // Don't log validation errors to console as they're expected behavior
+            if (!(error instanceof ValidationError)) {
+                if (this.enableLogging) {
+                    console.error('[API] Error:', {
+                        error: error instanceof Error ? error.message : error,
+                        endpoint,
+                        stack: error instanceof Error ? error.stack : undefined,
+                    })
+                }
             }
             throw error
         }
@@ -361,6 +410,21 @@ class TypedHttpClient {
                         })
                     }
 
+                    // Handle validation errors (422) with structured violations
+                    if (response.status === 422 && errorData.violations) {
+                        try {
+                            const validationError = ValidationErrorResponseSchema.parse(errorData)
+                            throw new ValidationError(validationError.message, validationError.violations)
+                        } catch (parseError) {
+                            // Re-throw ValidationError as-is
+                            if (parseError instanceof ValidationError) {
+                                throw parseError
+                            }
+                            // If parsing fails, treat as regular error
+                            throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
+                        }
+                    }
+
                     // Handle backend API response format
                     if (errorData.status === 'Error' && errorData.message) {
                         throw new Error(errorData.message)
@@ -373,6 +437,11 @@ class TypedHttpClient {
                         `HTTP ${response.status}: ${response.statusText}`
                     throw new Error(errorMessage)
                 } catch (parseError) {
+                    // Re-throw validation errors as-is silently
+                    if (parseError instanceof ValidationError) {
+                        throw parseError
+                    }
+                    // Only log non-validation errors
                     if (this.enableLogging) {
                         console.error('[API] Failed to parse error response:', parseError)
                     }
@@ -383,12 +452,15 @@ class TypedHttpClient {
             const rawData = await response.json()
             return this.validatePaginatedResponse(rawData, schema)
         } catch (error) {
-            if (this.enableLogging) {
-                console.error('[API] Error:', {
-                    error: error instanceof Error ? error.message : error,
-                    endpoint,
-                    stack: error instanceof Error ? error.stack : undefined,
-                })
+            // Don't log validation errors to console as they're expected behavior
+            if (!(error instanceof ValidationError)) {
+                if (this.enableLogging) {
+                    console.error('[API] Error:', {
+                        error: error instanceof Error ? error.message : error,
+                        endpoint,
+                        stack: error instanceof Error ? error.stack : undefined,
+                    })
+                }
             }
             throw error
         }
@@ -640,6 +712,127 @@ class TypedHttpClient {
             {
                 method: 'POST',
                 body: JSON.stringify({}),
+            }
+        )
+    }
+
+    // Entity methods
+    async getEntities(
+        entityType: string,
+        page = 1,
+        itemsPerPage = 10,
+        include?: string
+    ): Promise<{
+        data: DynamicEntity[]
+        meta?: {
+            pagination?: {
+                total: number
+                page: number
+                per_page: number
+                total_pages: number
+                has_previous: boolean
+                has_next: boolean
+            }
+            request_id?: string
+            timestamp?: string
+            custom?: unknown
+        }
+    }> {
+        const includeParam = include ? `&include=${include}` : ''
+        const response = await this.paginatedRequest(
+            `/api/v1/${entityType}?page=${page}&per_page=${itemsPerPage}${includeParam}`,
+            PaginatedApiResponseSchema(z.array(DynamicEntitySchema))
+        )
+        return response
+    }
+
+    // Browse by virtual path (folders first, then files)
+    async browseByPath(
+        path: string,
+        limit = this.getDefaultPageSize(),
+        offset = 0
+    ): Promise<{
+        data: Array<{
+            kind: 'folder' | 'file'
+            name: string
+            path: string
+            entity_uuid?: string
+            entity_type?: string
+            has_children?: boolean
+        }>
+        meta?: {
+            pagination?: {
+                total: number
+                page: number
+                per_page: number
+                total_pages: number
+                has_previous: boolean
+                has_next: boolean
+            }
+            request_id?: string
+            timestamp?: string
+            custom?: unknown
+        }
+    }> {
+        const encoded = encodeURIComponent(path)
+        const response = await this.paginatedRequest(
+            `/api/v1/entities/by-path?path=${encoded}&limit=${limit}&offset=${offset}`,
+            PaginatedApiResponseSchema(
+                z.array(
+                    z.object({
+                        kind: z.enum(['folder', 'file']),
+                        name: z.string(),
+                        path: z.string(),
+                        entity_uuid: z.string().uuid().optional(),
+                        entity_type: z.string().optional(),
+                        has_children: z.boolean().optional(),
+                    })
+                )
+            )
+        )
+        return response
+    }
+
+    async getEntity(entityType: string, uuid: string): Promise<DynamicEntity> {
+        return this.request(`/api/v1/${entityType}/${uuid}`, ApiResponseSchema(DynamicEntitySchema))
+    }
+
+    async createEntity(entityType: string, data: CreateEntityRequest): Promise<EntityResponse> {
+        const body: Record<string, unknown> = { ...data.data }
+        if (data.parent_uuid !== undefined && data.parent_uuid !== null) {
+            body.parent_uuid = data.parent_uuid
+        }
+        return this.request(`/api/v1/${entityType}`, ApiResponseSchema(EntityResponseSchema), {
+            method: 'POST',
+            body: JSON.stringify(body),
+        })
+    }
+
+    async updateEntity(
+        entityType: string,
+        uuid: string,
+        data: UpdateEntityRequest
+    ): Promise<EntityResponse> {
+        const body: Record<string, unknown> = { ...data.data }
+        if (data.parent_uuid !== undefined) {
+            body.parent_uuid = data.parent_uuid
+        }
+        return this.request(
+            `/api/v1/${entityType}/${uuid}`,
+            ApiResponseSchema(EntityResponseSchema),
+            {
+                method: 'PUT',
+                body: JSON.stringify(body),
+            }
+        )
+    }
+
+    async deleteEntity(entityType: string, uuid: string): Promise<{ message: string }> {
+        return this.request(
+            `/api/v1/${entityType}/${uuid}`,
+            ApiResponseSchema(z.object({ message: z.string() })),
+            {
+                method: 'DELETE',
             }
         )
     }

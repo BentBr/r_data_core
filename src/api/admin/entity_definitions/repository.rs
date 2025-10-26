@@ -506,6 +506,15 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
         // Apply the schema using the Rust-generated SQL
         self.apply_schema(&schema_sql).await?;
 
+        // Clear the prepared statement cache to avoid "cached plan must not change result type" errors
+        // This is necessary because the view structure may have changed.
+        // DISCARD PLANS clears all cached plans for the current session
+        log::debug!("Clearing prepared statement cache after view update");
+        sqlx::query("DISCARD PLANS")
+            .execute(&self.db_pool)
+            .await
+            .map_err(Error::Database)?;
+
         log::info!(
             "Successfully created/updated table and view for entity type {}",
             entity_definition.entity_type

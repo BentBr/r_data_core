@@ -1,6 +1,8 @@
-use super::models::EntityTypeInfo;
+use super::models::{BrowseKind, BrowseNode, EntityTypeInfo};
 use crate::error::Result;
 use sqlx::PgPool;
+use std::collections::{HashMap, HashSet};
+use uuid::Uuid;
 
 pub struct EntityRepository {
     db_pool: PgPool,
@@ -58,6 +60,183 @@ impl EntityRepository {
         }
 
         Ok(result)
+    }
+
+    /// Browse the registry by virtual path. Returns folders (first) and files directly under the path.
+    pub async fn browse_by_path(
+        &self,
+        raw_path: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<(Vec<BrowseNode>, i64)> {
+        // Normalize input path
+        let mut prefix = raw_path.to_string();
+        if prefix.is_empty() {
+            prefix = "/".to_string();
+        }
+        if !prefix.starts_with('/') {
+            prefix = format!("/{}", prefix);
+        }
+        if prefix.len() > 1 {
+            prefix = prefix.trim_end_matches('/').to_string();
+        }
+
+        // Query all paths at or below prefix (single round-trip)
+        #[derive(sqlx::FromRow)]
+        struct RowRec {
+            uuid: Uuid,
+            entity_type: String,
+            path: String,
+            entity_key: String,
+        }
+
+        let rows: Vec<RowRec> = if prefix == "/" {
+            sqlx::query_as::<_, RowRec>(
+                r#"SELECT uuid, entity_type, path, entity_key FROM entities_registry WHERE path = '/' OR path LIKE '/%'"#,
+            )
+            .fetch_all(&self.db_pool)
+            .await?
+        } else {
+            sqlx::query_as::<_, RowRec>(
+                r#"SELECT uuid, entity_type, path, entity_key FROM entities_registry WHERE path = $1 OR path LIKE $1 || '/%'"#,
+            )
+            .bind(&prefix)
+            .fetch_all(&self.db_pool)
+            .await?
+        };
+
+        // Map of exact paths to entity info
+        let mut exact: HashMap<String, (Uuid, String)> = HashMap::new();
+        for r in &rows {
+            exact.insert(r.path.clone(), (r.uuid, r.entity_type.clone()));
+        }
+
+        // Build first-level folders and files
+        let base_len = if prefix == "/" { 1 } else { prefix.len() + 1 };
+        let mut folder_map: HashMap<String, BrowseNode> = HashMap::new();
+        let mut files: Vec<BrowseNode> = Vec::new();
+        let mut has_children: HashSet<String> = HashSet::new();
+
+        for r in rows {
+            let p = r.path;
+            
+            // For root browsing (prefix="/"), entities with path="/" should be shown as files
+            if prefix == "/" && p == "/" {
+                let (entity_uuid, entity_type) = exact
+                    .get(&p)
+                    .cloned()
+                    .map(|(u, t)| (Some(u), Some(t)))
+                    .unwrap_or((None, None));
+                // Extract name from entity_key stored in registry
+                let entity_key = r.entity_key.clone();
+                files.push(BrowseNode {
+                    kind: BrowseKind::File,
+                    name: entity_key,
+                    path: p,
+                    entity_uuid,
+                    entity_type,
+                    has_children: Some(false),
+                });
+                continue;
+            }
+            
+            // Skip the exact prefix path (we're browsing its contents, not the path itself)
+            if p == prefix {
+                continue;
+            }
+            
+            // Skip paths that are too short
+            if p.len() <= base_len {
+                continue;
+            }
+            
+            let remainder = &p[base_len..];
+            if let Some(pos) = remainder.find('/') {
+                // First-level folder
+                let seg = &remainder[..pos];
+                let folder_path = if prefix == "/" {
+                    format!("/{}", seg)
+                } else {
+                    format!("{}/{}", prefix, seg)
+                };
+                let (entity_uuid, entity_type) = exact
+                    .get(&folder_path)
+                    .cloned()
+                    .map(|(u, t)| (Some(u), Some(t)))
+                    .unwrap_or((None, None));
+                has_children.insert(folder_path.clone());
+                folder_map.entry(seg.to_string()).or_insert(BrowseNode {
+                    kind: BrowseKind::Folder,
+                    name: seg.to_string(),
+                    path: folder_path,
+                    entity_uuid,
+                    entity_type,
+                    has_children: Some(true),
+                });
+            } else {
+                // Direct file under prefix
+                let name = remainder.to_string();
+                let (entity_uuid, entity_type) = exact
+                    .get(&p)
+                    .cloned()
+                    .map(|(u, t)| (Some(u), Some(t)))
+                    .unwrap_or((None, None));
+                // If a folder with this path exists (because there are deeper children), prefer folder
+                let folder_exists = {
+                    let folder_path = p.clone();
+                    exact
+                        .keys()
+                        .any(|k| k.starts_with(&(folder_path.clone() + "/")))
+                };
+                if folder_exists {
+                    // Update folder info if present in map; otherwise create it
+                    let seg = name.clone();
+                    let folder_entry = folder_map.entry(seg.clone()).or_insert(BrowseNode {
+                        kind: BrowseKind::Folder,
+                        name: seg,
+                        path: p.clone(),
+                        entity_uuid: None,
+                        entity_type: None,
+                        has_children: Some(true),
+                    });
+                    if folder_entry.entity_uuid.is_none() {
+                        folder_entry.entity_uuid = entity_uuid;
+                    }
+                    if folder_entry.entity_type.is_none() {
+                        folder_entry.entity_type = entity_type;
+                    }
+                } else {
+                    files.push(BrowseNode {
+                        kind: BrowseKind::File,
+                        name,
+                        path: p,
+                        entity_uuid,
+                        entity_type,
+                        has_children: Some(false),
+                    });
+                }
+            }
+        }
+
+        // Sort folders and files alphabetically by name (case-insensitive)
+        let mut folders: Vec<BrowseNode> = folder_map.into_values().collect();
+        folders.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+        files.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+
+        let mut all = Vec::new();
+        all.extend(folders);
+        all.extend(files);
+
+        let total = all.len() as i64;
+        let start = offset.max(0) as usize;
+        let end = (offset + limit).max(0) as usize;
+        let page = if start >= all.len() {
+            vec![]
+        } else {
+            all[start..all.len().min(end)].to_vec()
+        };
+
+        Ok((page, total))
     }
 }
 

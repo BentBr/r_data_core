@@ -119,8 +119,7 @@ cargo test --lib -p r_data_core
 RUST_LOG=warning cargo test -- --test-threads=1
 
 # If you did not yet prepare the test database before, run:
-export DATABASE_URL="postgres://postgres:postgres@pg-test.rdatacore.docker:5433/rdata_test"
-cargo sqlx migrate run
+DATABASE_URL="postgres://postgres:postgres@pg-test.rdatacore.docker:5433/rdata_test" cargo sqlx migrate run
 ```
 
 Hint:

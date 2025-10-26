@@ -480,8 +480,35 @@ pub fn validate_field(field_def: &Value, value: &Value, field_name: &str) -> Res
     }
 }
 
+/// Represents a field-specific validation error
+#[derive(Debug, Clone)]
+pub struct FieldViolation {
+    pub field: String,
+    pub message: String,
+}
+
 pub fn validate_entity(entity: &Value, entity_def: &EntityDefinition) -> Result<()> {
-    let mut validation_errors = Vec::new();
+    let violations = validate_entity_with_violations(entity, entity_def)?;
+    if !violations.is_empty() {
+        return Err(Error::Validation(format!(
+            "Validation failed with the following errors: {}",
+            violations
+                .iter()
+                .map(|v| format!("Field '{}': {}", v.field, v.message))
+                .collect::<Vec<_>>()
+                .join("; ")
+        )));
+    }
+
+    Ok(())
+}
+
+/// Validate entity and return structured violations
+pub fn validate_entity_with_violations(
+    entity: &Value,
+    entity_def: &EntityDefinition,
+) -> Result<Vec<FieldViolation>> {
+    let mut violations = Vec::new();
     let entity_type = entity
         .get("entity_type")
         .and_then(|v| v.as_str())
@@ -502,7 +529,10 @@ pub fn validate_entity(entity: &Value, entity_def: &EntityDefinition) -> Result<
     // Check required fields
     for field_def in &entity_def.fields {
         if field_def.required && !field_data.contains_key(&field_def.name) {
-            validation_errors.push(format!("Required field '{}' is missing", field_def.name));
+            violations.push(FieldViolation {
+                field: field_def.name.clone(),
+                message: "This field is required".to_string(),
+            });
         }
     }
 
@@ -511,12 +541,16 @@ pub fn validate_entity(entity: &Value, entity_def: &EntityDefinition) -> Result<
         if let Some(field_def) = entity_def.get_field(field_name) {
             let _ = ValidationContext::with_field_name(field_def, value, field_name);
             if let Err(e) = DynamicEntityValidator::validate_field(field_def, value) {
-                validation_errors.push(e.to_string());
+                violations.push(FieldViolation {
+                    field: field_name.clone(),
+                    message: e.to_string(),
+                });
             }
         } else {
             // Skip system fields
             let system_fields = [
                 "uuid",
+                "key",  // Entity key is a required system field
                 "path",
                 "created_at",
                 "updated_at",
@@ -524,19 +558,16 @@ pub fn validate_entity(entity: &Value, entity_def: &EntityDefinition) -> Result<
                 "updated_by",
                 "published",
                 "version",
+                "parent_uuid",  // Parent entity reference
             ];
             if !system_fields.contains(&field_name.as_str()) {
-                validation_errors.push(format!("Unknown field '{}'", field_name));
+                violations.push(FieldViolation {
+                    field: field_name.clone(),
+                    message: "This field is not defined in the entity definition".to_string(),
+                });
             }
         }
     }
 
-    if !validation_errors.is_empty() {
-        return Err(Error::Validation(format!(
-            "Validation failed with the following errors: {}",
-            validation_errors.join("; ")
-        )));
-    }
-
-    Ok(())
+    Ok(violations)
 }

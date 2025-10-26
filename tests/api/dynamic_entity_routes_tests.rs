@@ -41,16 +41,43 @@ mod dynamic_entity_api_tests {
         // Create user entity definition
         let user_def_uuid = common::utils::create_test_entity_definition(&pool, "user").await?;
 
-        // Create test users
-        for i in 1..=5 {
-            common::utils::create_test_entity(
+        // Create test users with paths to exercise folder browsing
+        for i in 1..=3 {
+            let uuid = common::utils::create_test_entity(
                 &pool,
                 "user",
-                &format!("Test User {}", i),
-                &format!("user{}@example.com", i),
+                &format!("Root User {}", i),
+                &format!("root{}@example.com", i),
             )
             .await?;
+            // Update path in entities_registry to root
+            sqlx::query("UPDATE entities_registry SET path = '/', entity_key = $2 WHERE uuid = $1")
+                .bind(uuid)
+                .bind(format!("root-{}", i))
+                .execute(&pool)
+                .await
+                .unwrap();
         }
+
+        // Add users under /team and /team/dev
+        let u1 =
+            common::utils::create_test_entity(&pool, "user", "Alice", "alice@example.com").await?;
+        sqlx::query(
+            "UPDATE entities_registry SET path = '/team', entity_key = 'alice' WHERE uuid = $1",
+        )
+        .bind(u1)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let u2 = common::utils::create_test_entity(&pool, "user", "Bob", "bob@example.com").await?;
+        sqlx::query(
+            "UPDATE entities_registry SET path = '/team/dev', entity_key = 'bob' WHERE uuid = $1",
+        )
+        .bind(u2)
+        .execute(&pool)
+        .await
+        .unwrap();
 
         // Create an API key
         let api_key = "test_api_key_12345";
@@ -249,6 +276,68 @@ mod dynamic_entity_api_tests {
 
             println!("✓ String to integer conversion test passed for {}", url);
         }
+    }
+
+    #[actix_web::test]
+    async fn test_browse_by_path_endpoint() {
+        let app = setup_test_app().await.expect("Failed to setup test app");
+
+        // Browse root
+        let req = test::TestRequest::get()
+            .uri("/api/v1/entities/by-path?path=/&limit=50")
+            .insert_header(("X-API-Key", "test_api_key_12345"))
+            .to_request();
+        let resp = test::call_service(&app, req).await;
+        assert!(resp.status().is_success());
+        let body = test::read_body(resp).await;
+        let s = String::from_utf8_lossy(&body);
+        assert!(s.contains("\"status\":\"Success\""));
+        // Expect to see folder 'team' in the result and some files
+        assert!(s.contains("\"kind\":\"folder\""));
+
+        // Browse /team should show folder 'dev' and maybe a file
+        let req2 = test::TestRequest::get()
+            .uri("/api/v1/entities/by-path?path=/team&limit=50")
+            .insert_header(("X-API-Key", "test_api_key_12345"))
+            .to_request();
+        let resp2 = test::call_service(&app, req2).await;
+        assert!(resp2.status().is_success());
+        let body2 = test::read_body(resp2).await;
+        let s2 = String::from_utf8_lossy(&body2);
+        assert!(s2.contains("\"name\":\"dev\""));
+    }
+
+    #[actix_web::test]
+    async fn test_unique_key_per_path_conflict() {
+        let app = setup_test_app().await.expect("Failed to setup test app");
+
+        // Create one entity under /projects with key "alpha"
+        let req1 = test::TestRequest::post()
+            .uri("/api/v1/user")
+            .insert_header(("X-API-Key", "test_api_key_12345"))
+            .set_json(serde_json::json!({
+                "name": "Proj Owner",
+                "email": "owner@example.com",
+                "path": "/projects",
+                "key": "alpha"
+            }))
+            .to_request();
+        let resp1 = test::call_service(&app, req1).await;
+        assert!(resp1.status().is_success());
+
+        // Try to create another with same key in same path -> expect 409
+        let req2 = test::TestRequest::post()
+            .uri("/api/v1/user")
+            .insert_header(("X-API-Key", "test_api_key_12345"))
+            .set_json(serde_json::json!({
+                "name": "Dup",
+                "email": "dup@example.com",
+                "path": "/projects",
+                "key": "alpha"
+            }))
+            .to_request();
+        let resp2 = test::call_service(&app, req2).await;
+        assert_eq!(resp2.status().as_u16(), 409);
     }
 
     #[actix_web::test]

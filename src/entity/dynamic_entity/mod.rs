@@ -10,4 +10,4 @@ pub mod validator;
 pub use entity::{DynamicEntity, FromValue, ToValue};
 pub use repository::DynamicEntityRepository;
 pub use repository_trait::DynamicEntityRepositoryTrait;
-pub use validator::validate_entity;
+pub use validator::{validate_entity, validate_entity_with_violations, FieldViolation};

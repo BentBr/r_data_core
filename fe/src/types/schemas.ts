@@ -39,6 +39,18 @@ const NullableTimestampSchema = z
     )
     .nullable()
 
+// Validation error schemas (Symfony-style)
+export const ValidationViolationSchema = z.object({
+    field: z.string(),
+    message: z.string(),
+    code: z.string().optional(),
+})
+
+export const ValidationErrorResponseSchema = z.object({
+    message: z.string(),
+    violations: z.array(ValidationViolationSchema),
+})
+
 // Common schemas for reusable components
 export const PaginationSchema = z.object({
     total: z.number(),
@@ -231,12 +243,27 @@ export const EntityDefinitionSchema = z.object({
 })
 
 // Dynamic Entity schema
+// Backend returns: { entity_type, field_data: { uuid, path, etc., ...customFields } }
 export const DynamicEntitySchema = z.object({
-    uuid: UuidSchema,
+    entity_type: z.string(),
+    field_data: z.record(z.string(), z.any()),
+})
+
+// Entity request/response schemas
+export const CreateEntityRequestSchema = z.object({
     entity_type: z.string(),
     data: z.record(z.string(), z.any()),
-    created_at: TimestampSchema,
-    updated_at: TimestampSchema,
+    parent_uuid: UuidSchema.optional().nullable(),
+})
+
+export const UpdateEntityRequestSchema = z.object({
+    data: z.record(z.string(), z.any()),
+    parent_uuid: UuidSchema.optional().nullable(),
+})
+
+export const EntityResponseSchema = z.object({
+    uuid: UuidSchema,
+    entity_type: z.string(),
 })
 
 // API Key schema
@@ -335,6 +362,9 @@ export type ReassignApiKeyResponse = z.infer<typeof ReassignApiKeyResponseSchema
 export type FieldDefinition = z.infer<typeof FieldDefinitionSchema>
 export type EntityDefinition = z.infer<typeof EntityDefinitionSchema>
 export type DynamicEntity = z.infer<typeof DynamicEntitySchema>
+export type CreateEntityRequest = z.infer<typeof CreateEntityRequestSchema>
+export type UpdateEntityRequest = z.infer<typeof UpdateEntityRequestSchema>
+export type EntityResponse = z.infer<typeof EntityResponseSchema>
 export type ApiKey = z.infer<typeof ApiKeySchema>
 export type CreateApiKeyRequest = z.infer<typeof CreateApiKeyRequestSchema>
 export type ApiKeyCreatedResponse = z.infer<typeof ApiKeyCreatedResponseSchema>

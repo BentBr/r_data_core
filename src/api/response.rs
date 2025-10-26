@@ -5,6 +5,27 @@ use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+/// Individual validation violation for Symfony-style errors
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ValidationViolation {
+    /// The field that has the validation error
+    pub field: String,
+    /// The error message for this field
+    pub message: String,
+    /// Optional error code (e.g., "NOT_BLANK", "NOT_NULL")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
+}
+
+/// Validation error response in Symfony format
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ValidationErrorResponse {
+    /// Overall error message
+    pub message: String,
+    /// List of validation violations
+    pub violations: Vec<ValidationViolation>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum Status {
     Success,
@@ -325,6 +346,18 @@ impl ApiResponse<()> {
             }),
         };
         response.to_http_response(StatusCode::UNPROCESSABLE_ENTITY)
+    }
+
+    /// Create a validation error response with field-specific violations (Symfony-style)
+    pub fn unprocessable_entity_with_violations(
+        message: &str,
+        violations: Vec<ValidationViolation>,
+    ) -> HttpResponse {
+        let validation_response = ValidationErrorResponse {
+            message: message.to_string(),
+            violations,
+        };
+        HttpResponse::build(StatusCode::UNPROCESSABLE_ENTITY).json(validation_response)
     }
 }
 

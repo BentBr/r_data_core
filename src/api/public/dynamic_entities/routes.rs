@@ -9,9 +9,10 @@ use uuid::Uuid;
 use crate::api::auth::auth_enum::CombinedRequiredAuth;
 use crate::api::middleware::ApiKeyInfo;
 use crate::api::query::StandardQuery;
-use crate::api::response::ApiResponse;
+use crate::api::response::{ApiResponse, ValidationViolation};
 use crate::api::ApiState;
 use crate::entity::dynamic_entity::entity::DynamicEntity;
+use crate::entity::dynamic_entity::{validate_entity_with_violations, FieldViolation};
 use crate::error::Error;
 
 /// Register routes for dynamic entities
@@ -139,8 +140,10 @@ async fn list_entities(
     let sort_by = query.sorting.sort_by.clone();
     let sort_direction = Some(query.sorting.get_sort_direction());
 
-    // Handle filters - we'll need to adjust the service to handle the new filter format
-    let filter = query.filter.parse_filter();
+    // Handle filters and also accept a "path" query param for folder-style browsing
+    let mut filter = query.filter.parse_filter();
+    // Also honor a "folder" shorthand via sorting.sort_by when set to "path" or explicit path in query.q with prefix "path:"
+    // Prefer JSON filter {"path": "/..."} from clients.
     let search_query = query.filter.q.clone();
 
     // Validate requested fields
@@ -241,6 +244,33 @@ async fn create_entity(
                 field_data.insert("created_by".to_string(), json!(user_uuid.to_string()));
                 field_data.insert("updated_by".to_string(), json!(user_uuid.to_string()));
 
+                // Validate entity before creation
+                let entity_json = json!({
+                    "entity_type": entity_type,
+                    "field_data": field_data
+                });
+                
+                let validation_result = validate_entity_with_violations(&entity_json, &entity_def);
+                match validation_result {
+                    Ok(ref violations) if !violations.is_empty() => {
+                        // Convert to Symfony-style violations
+                        let violations: Vec<ValidationViolation> = violations
+                            .iter()
+                            .map(|v| ValidationViolation {
+                                field: v.field.clone(),
+                                message: v.message.clone(),
+                                code: Some("INVALID".to_string()),
+                            })
+                            .collect();
+                        return ApiResponse::unprocessable_entity_with_violations(
+                            "Validation failed",
+                            violations,
+                        );
+                    }
+                    Err(e) => return handle_entity_error(e, &entity_type),
+                    _ => {} // Validation passed
+                }
+
                 let dynamic_entity = DynamicEntity {
                     entity_type: entity_type.clone(),
                     field_data,
@@ -252,7 +282,15 @@ async fn create_entity(
                         let response_data = EntityResponse { uuid, entity_type };
                         ApiResponse::<EntityResponse>::created(response_data)
                     }
-                    Err(e) => handle_entity_error(e, &entity_type),
+                    Err(e) => {
+                        // Map unique violation to 409
+                        if let Error::ValidationFailed(msg) = &e {
+                            if msg.contains("same key") {
+                                return ApiResponse::<()>::conflict(msg);
+                            }
+                        }
+                        handle_entity_error(e, &entity_type)
+                    }
                 }
             }
             Err(e) => handle_entity_error(e, &entity_type),
@@ -397,7 +435,14 @@ async fn update_entity(
                         let response_data = EntityResponse { uuid, entity_type };
                         ApiResponse::ok(response_data)
                     }
-                    Err(e) => handle_entity_error(e, &entity_type),
+                    Err(e) => {
+                        if let Error::ValidationFailed(msg) = &e {
+                            if msg.contains("same key") {
+                                return ApiResponse::<()>::conflict(msg);
+                            }
+                        }
+                        handle_entity_error(e, &entity_type)
+                    }
                 }
             }
             Ok(None) => ApiResponse::<()>::not_found(&format!(

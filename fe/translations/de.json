@@ -78,6 +78,69 @@
       "actions": "Aktionen"
     }
   },
+  "entities": {
+    "create": {
+      "key_label": "Schlüssel",
+      "key_required": "Schlüssel ist erforderlich",
+      "path_label": "Pfad",
+      "published_label": "Veröffentlicht",
+      "published_hint": "Diese Entität öffentlich verfügbar machen",
+      "button": "Neue Entität erstellen",
+      "title": "Neue Entität erstellen",
+      "entity_type_label": "Entitätstyp",
+      "entity_type_required": "Entitätstyp ist erforderlich",
+      "data_label": "Entitätsdaten",
+      "data_required": "Entitätsdaten sind erforderlich",
+      "parent_label": "Übergeordnete Entität (Optional)",
+      "error": "Entität konnte nicht erstellt werden",
+      "create_button": "Erstellen"
+    },
+    "edit": {
+      "title": "Entität bearbeiten",
+      "error": "Entität konnte nicht aktualisiert werden"
+    },
+    "delete": {
+      "title": "Löschen bestätigen",
+      "message": "Sind Sie sicher, dass Sie diese Entität löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "button": "Löschen",
+      "success": "Entität erfolgreich gelöscht",
+      "error": "Entität konnte nicht gelöscht werden"
+    },
+    "details": {
+      "title": "Entitätsdetails",
+      "select_entity": "Wählen Sie eine Entität aus, um Details anzuzeigen",
+      "basic_info": "Grundinformationen",
+      "relationships": "Beziehungen",
+      "uuid": "UUID",
+      "entity_type": "Entitätstyp",
+      "created_at": "Erstellt am",
+      "updated_at": "Aktualisiert am",
+      "path": "Pfad",
+      "parent": "Übergeordnet",
+      "children": "Kinder",
+      "data": "Daten",
+      "raw_data": "Rohe Daten",
+      "formatted_data": "Formatierte Daten",
+      "no_children": "Keine Kinder",
+      "no_parent": "Kein übergeordnetes Element",
+      "child_count": "Kinder"
+    },
+    "tree": {
+      "title": "Entitätsbaum",
+      "loading": "Entitäten werden geladen...",
+      "no_entities": "Keine Entitäten gefunden",
+      "expand_all": "Alle erweitern",
+      "collapse_all": "Alle reduzieren"
+    },
+    "table": {
+      "uuid": "UUID",
+      "entity_type": "Entitätstyp",
+      "created_at": "Erstellt am",
+      "updated_at": "Aktualisiert am",
+      "path": "Pfad",
+      "actions": "Aktionen"
+    }
+  },
   "entity_definitions": {
     "create": {
       "button": "Neue Definition erstellen",
@@ -188,7 +251,13 @@
   },
   "common": {
     "cancel": "Abbrechen",
-    "close": "Schließen"
+    "close": "Schließen",
+    "refresh": "Aktualisieren",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "yes": "Ja",
+    "no": "Nein",
+    "empty": "Leer"
   },
   "general": {
     "errors": {

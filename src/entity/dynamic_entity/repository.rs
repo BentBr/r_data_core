@@ -35,12 +35,20 @@ impl DynamicEntityRepository {
         let uuid = utils::extract_uuid_from_entity_field_data(&entity.field_data, "uuid")
             .ok_or_else(|| Error::Validation("Entity is missing a valid UUID".to_string()))?;
 
-        // Extract the path or generate a default one
+        // Extract the path (default root) and mandatory key
         let path = entity
             .field_data
             .get("path")
             .and_then(|v| v.as_str().map(|s| s.to_string()))
-            .unwrap_or_else(|| format!("/{}/{}", entity.entity_type.to_lowercase(), uuid));
+            .unwrap_or_else(|| "/".to_string());
+
+        let key = entity
+            .field_data
+            .get("key")
+            .and_then(|v| v.as_str())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| Error::Validation("Missing required field 'key'".to_string()))?;
 
         // Start a transaction
         let mut tx = self.pool.begin().await?;
@@ -48,9 +56,9 @@ impl DynamicEntityRepository {
         // First, insert into entities_registry
         let registry_query = "
             INSERT INTO entities_registry
-                (uuid, entity_type, path, created_at, updated_at, created_by, updated_by, published, version)
+                (uuid, entity_type, path, entity_key, created_at, updated_at, created_by, updated_by, published, version)
             VALUES
-                ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         ";
 
         // Extract metadata fields or use defaults
@@ -92,10 +100,11 @@ impl DynamicEntityRepository {
             .and_then(|v| v.as_i64())
             .unwrap_or(1);
 
-        sqlx::query(registry_query)
+        let result = sqlx::query(registry_query)
             .bind(uuid)
             .bind(&entity.entity_type)
             .bind(path)
+            .bind(&key)
             .bind(created_at)
             .bind(updated_at)
             .bind(created_by)
@@ -103,7 +112,20 @@ impl DynamicEntityRepository {
             .bind(published)
             .bind(version)
             .execute(&mut *tx)
-            .await?;
+            .await;
+
+        // Map unique violations on (path,key) to a conflict error
+        if let Err(e) = result {
+            if let sqlx::Error::Database(db_err) = &e {
+                // Postgres unique_violation code
+                if db_err.code().as_deref() == Some("23505") {
+                    return Err(Error::ValidationFailed(
+                        "An entity with the same key already exists in this path".to_string(),
+                    ));
+                }
+            }
+            return Err(Error::Database(e));
+        }
 
         // Then, insert custom fields into the entity-specific table
         let table_name = utils::get_table_name(&entity.entity_type);
@@ -219,8 +241,19 @@ impl DynamicEntityRepository {
             registry_values.push(path.to_string());
         }
 
+        // Include optional key update
+        if let Some(key) = entity.field_data.get("key").and_then(|v| v.as_str()) {
+            let pos = registry_values.len() + 1;
+            let clause = format!("entity_key = ${}", pos);
+            registry_fields.push(Box::leak(clause.into_boxed_str()));
+            registry_values.push(key.to_string());
+        }
+
         if let Some(published) = entity.field_data.get("published").and_then(|v| v.as_bool()) {
-            registry_fields.push("published = $2");
+            // Next positional param
+            let pos = registry_values.len() + 1;
+            let clause = format!("published = ${}", pos);
+            registry_fields.push(Box::leak(clause.into_boxed_str()));
             registry_values.push(published.to_string());
         }
 
@@ -228,7 +261,9 @@ impl DynamicEntityRepository {
             utils::extract_uuid_from_entity_field_data(&entity.field_data, "updated_by");
 
         if let Some(item) = updated_by {
-            registry_fields.push("updated_by = $3");
+            let pos = registry_values.len() + 1;
+            let clause = format!("updated_by = ${}", pos);
+            registry_fields.push(Box::leak(clause.into_boxed_str()));
             registry_values.push(item.to_string());
         }
 
@@ -240,10 +275,15 @@ impl DynamicEntityRepository {
                 WHERE uuid = $1 AND entity_type = $2",
             )
         } else {
+            // uuid and entity_type come after the set clause params
+            let uuid_pos = registry_values.len() + 1;
+            let etype_pos = registry_values.len() + 2;
             format!(
                 "UPDATE entities_registry SET {}, updated_at = NOW(), version = version + 1
-                    WHERE uuid = $4 AND entity_type = $5",
-                registry_fields.join(", ")
+                    WHERE uuid = ${} AND entity_type = ${}",
+                registry_fields.join(", "),
+                uuid_pos,
+                etype_pos
             )
         };
 
@@ -258,8 +298,18 @@ impl DynamicEntityRepository {
         // Always bind UUID and entity_type
         registry_query = registry_query.bind(uuid).bind(&entity.entity_type);
 
-        // Execute the registry update
-        registry_query.execute(&mut *tx).await?;
+        // Execute the registry update and map unique violations
+        let res = registry_query.execute(&mut *tx).await;
+        if let Err(e) = res {
+            if let sqlx::Error::Database(db_err) = &e {
+                if db_err.code().as_deref() == Some("23505") {
+                    return Err(Error::ValidationFailed(
+                        "An entity with the same key already exists in this path".to_string(),
+                    ));
+                }
+            }
+            return Err(Error::Database(e));
+        }
 
         // 2. Update entity-specific table
         let table_name = utils::get_table_name(&entity.entity_type);
@@ -396,6 +446,29 @@ impl DynamicEntityRepository {
                 for (field, value) in filter_map {
                     if !is_first {
                         query.push_str(" AND ");
+                    }
+
+                    // Special handling for path-based filters
+                    if field == "path_prefix" {
+                        // Items under the given prefix (recursive)
+                        query.push_str(&format!("path LIKE ${} || '/%'", param_index));
+                        bind_values.push(
+                            value
+                                .as_str()
+                                .unwrap_or("")
+                                .trim_end_matches('/')
+                                .to_string(),
+                        );
+                        param_index += 1;
+                        is_first = false;
+                        continue;
+                    } else if field == "path_equals" || field == "path" {
+                        // Exact path match
+                        query.push_str(&format!("path = ${}", param_index));
+                        bind_values.push(value.as_str().unwrap_or("").to_string());
+                        param_index += 1;
+                        is_first = false;
+                        continue;
                     }
 
                     match value {

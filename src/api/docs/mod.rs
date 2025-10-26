@@ -224,6 +224,7 @@ impl Modify for JsonValueSchemaAddon {
     paths(
         crate::api::health::public_health_check,
         crate::api::public::entities::routes::list_available_entities,
+        crate::api::public::entities::routes::list_by_path,
         crate::api::public::queries::routes::query_entities,
         crate::api::public::dynamic_entities::routes::list_entities,
         crate::api::public::dynamic_entities::routes::create_entity,
@@ -236,6 +237,8 @@ impl Modify for JsonValueSchemaAddon {
             crate::api::models::HealthData,
             crate::api::public::entities::models::EntityTypeInfo,
             crate::api::public::entities::models::EntityQuery,
+            crate::api::public::entities::models::BrowseKind,
+            crate::api::public::entities::models::BrowseNode,
             crate::api::public::queries::models::AdvancedEntityQuery,
             crate::api::query::PaginationQuery,
             crate::api::query::StandardQuery,

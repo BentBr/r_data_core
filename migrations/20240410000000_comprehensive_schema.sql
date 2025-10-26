@@ -19,17 +19,20 @@ CREATE TABLE IF NOT EXISTS entities_registry (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
     entity_type VARCHAR(100) NOT NULL,
     path VARCHAR(255) NOT NULL,
+    entity_key VARCHAR(255) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_by UUID NOT NULL,
     updated_by UUID,
     published BOOLEAN NOT NULL DEFAULT FALSE,
-    version INTEGER NOT NULL DEFAULT 1
+    version INTEGER NOT NULL DEFAULT 1,
+    UNIQUE (path, entity_key)
 );
 
 -- Create index on entity_type for faster lookups
 CREATE INDEX IF NOT EXISTS idx_entities_registry_entity_type ON entities_registry(entity_type);
 CREATE INDEX IF NOT EXISTS idx_entities_registry_path ON entities_registry(path);
+CREATE INDEX IF NOT EXISTS idx_entities_registry_key ON entities_registry(entity_key);
 
 -- Add auto-update trigger for entity_registry
 DROP TRIGGER IF EXISTS set_timestamp_entities_registry ON entities_registry;
@@ -353,7 +356,7 @@ BEGIN
             column_list := ', e.' || replace(entity_field_list, ', ', ', e.');
         END IF;
 
-        registry_join := 'SELECT r.uuid, r.path, r.created_at, r.updated_at, ' ||
+        registry_join := 'SELECT r.uuid, r.path, r.entity_key, r.created_at, r.updated_at, ' ||
                           'r.created_by, r.updated_by, r.published, r.version' ||
                           column_list ||
                           ' FROM entities_registry r ' ||
@@ -384,8 +387,10 @@ BEGIN
 
             -- Set default values if not provided
             IF NEW.path IS NULL THEN
-                NEW.path := ''/' || lower(entity_type_param) || '/'';
+                NEW.path := ''/'';
             END IF;
+
+            -- entity_key is NOT NULL on table; rely on constraint instead of manual check
 
             IF NEW.created_at IS NULL THEN
                 NEW.created_at := NOW();
@@ -397,11 +402,11 @@ BEGIN
 
             -- Insert into entities_registry
             INSERT INTO entities_registry (
-                uuid, entity_type, path, created_at, updated_at,
+                uuid, entity_type, path, entity_key, created_at, updated_at,
                 created_by, updated_by, published, version
             )
             VALUES (
-                NEW.uuid, ''' || entity_type_param || ''', NEW.path, NEW.created_at, NEW.updated_at,
+                NEW.uuid, ''' || entity_type_param || ''', NEW.path, NEW.entity_key, NEW.created_at, NEW.updated_at,
                 NEW.created_by, NEW.updated_by, COALESCE(NEW.published, false), COALESCE(NEW.version, 1)
             )
             RETURNING uuid INTO new_uuid;';
@@ -454,6 +459,7 @@ BEGIN
             -- Update entities_registry
             UPDATE entities_registry
             SET path = NEW.path,
+                entity_key = NEW.entity_key,
                 updated_at = COALESCE(NEW.updated_at, NOW()),
                 updated_by = NEW.updated_by,
                 published = NEW.published,

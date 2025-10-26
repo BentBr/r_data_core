@@ -179,6 +179,7 @@ impl DynamicEntityService {
         let reserved_fields = [
             "uuid",
             "path",
+            "key",
             "created_at",
             "updated_at",
             "created_by",
@@ -276,10 +277,28 @@ impl DynamicEntityService {
         // Build filter conditions from the structured filter
         let mut filter_conditions = HashMap::new();
 
-        if let Some(filter_value) = filter {
+        if let Some(ref filter_value) = filter {
             if let Some(obj) = filter_value.as_object() {
                 for (key, value) in obj {
                     filter_conditions.insert(key.clone(), value.clone());
+                }
+            }
+        }
+
+        // Normalize folder listing semantics for path-based browsing
+        // Support: { path: "/" } or { path: "/myFolder" } to mean: list items directly under that folder
+        // Transform into SQL-friendly conditions using special keys handled in repository:
+        // - path_equals for exact folder entity
+        // - path_prefix for recursive children under folder
+        if let Some(value_obj) = &filter {
+            if let Some(obj) = value_obj.as_object() {
+                if let Some(path_val) = obj.get("path").and_then(|v| v.as_str()) {
+                    let normalized = if path_val.is_empty() { "/" } else { path_val };
+                    // Remove original generic path if present
+                    filter_conditions.remove("path");
+                    // Add explicit path filters; FE can decide which to use, for now include prefix
+                    filter_conditions
+                        .insert("path_prefix".to_string(), serde_json::json!(normalized));
                 }
             }
         }
