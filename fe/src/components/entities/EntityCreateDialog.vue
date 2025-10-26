@@ -33,10 +33,10 @@
 
                     <!-- Key (mandatory) -->
                     <v-text-field
-                        v-model="formData.data.key"
+                        v-model="formData.data.entity_key"
                         :label="t('entities.create.key_label')"
                         :rules="[(v: any) => !!v || t('entities.create.key_required')]"
-                        :error-messages="fieldErrors.key ? [fieldErrors.key] : []"
+                        :error-messages="fieldErrors.entity_key ? [fieldErrors.entity_key] : []"
                         required
                         class="mb-4"
                     />
@@ -220,7 +220,7 @@
         // Reset form data when entity type changes
         formData.value.data = {}
         // Keep key and path fields visible
-        formData.value.data.key = ''
+        formData.value.data.entity_key = ''
         formData.value.data.path = '/'
         formData.value.data.published = false
 

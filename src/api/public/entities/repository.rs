@@ -105,10 +105,12 @@ impl EntityRepository {
             .await?
         };
 
-        // Map of exact paths to entity info
+        // Map of exact paths + entity_key to entity info
+        // Use path + entity_key as the key to handle multiple entities at the same path
         let mut exact: HashMap<String, (Uuid, String)> = HashMap::new();
         for r in &rows {
-            exact.insert(r.path.clone(), (r.uuid, r.entity_type.clone()));
+            let key = format!("{}::{}", r.path, r.entity_key);
+            exact.insert(key, (r.uuid, r.entity_type.clone()));
         }
 
         // Build first-level folders and files
@@ -122,13 +124,14 @@ impl EntityRepository {
             
             // For root browsing (prefix="/"), entities with path="/" should be shown as files
             if prefix == "/" && p == "/" {
+                // Extract name from entity_key stored in registry
+                let entity_key = r.entity_key.clone();
+                let exact_key = format!("{}::{}", p, entity_key);
                 let (entity_uuid, entity_type) = exact
-                    .get(&p)
+                    .get(&exact_key)
                     .cloned()
                     .map(|(u, t)| (Some(u), Some(t)))
                     .unwrap_or((None, None));
-                // Extract name from entity_key stored in registry
-                let entity_key = r.entity_key.clone();
                 files.push(BrowseNode {
                     kind: BrowseKind::File,
                     name: entity_key,
@@ -176,8 +179,10 @@ impl EntityRepository {
             } else {
                 // Direct file under prefix
                 let name = remainder.to_string();
+                // Need to get entity_key from the row data to build the exact key
+                let exact_key = format!("{}::{}", p, r.entity_key);
                 let (entity_uuid, entity_type) = exact
-                    .get(&p)
+                    .get(&exact_key)
                     .cloned()
                     .map(|(u, t)| (Some(u), Some(t)))
                     .unwrap_or((None, None));
@@ -186,7 +191,12 @@ impl EntityRepository {
                     let folder_path = p.clone();
                     exact
                         .keys()
-                        .any(|k| k.starts_with(&(folder_path.clone() + "/")))
+                        .any(|k| {
+                            // Extract path from key (format is "path::entity_key")
+                            k.split("::").next()
+                                .map(|path| path.starts_with(&(folder_path.clone() + "/")))
+                                .unwrap_or(false)
+                        })
                 };
                 if folder_exists {
                     // Update folder info if present in map; otherwise create it

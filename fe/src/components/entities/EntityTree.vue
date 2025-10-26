@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-    import { onMounted, ref, watch } from 'vue'
+    import { computed, onMounted, ref, watch } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import { typedHttpClient } from '@/api/typed-client'
     import type { TreeNode, EntityDefinition } from '@/types/schemas'
@@ -128,11 +128,8 @@
             } else {
                 // Get icon from entity definition if available
                 let icon = 'mdi-database' // default
-                if (node.entity_type && props.entityDefinitions.length > 0) {
-                    const entityDef = props.entityDefinitions.find(def => def.entity_type === node.entity_type)
-                    if (entityDef?.icon) {
-                        icon = entityDef.icon
-                    }
+                if (node.entity_type && iconMap.value.has(node.entity_type)) {
+                    icon = iconMap.value.get(node.entity_type) || icon
                 }
                 
                 files.push({
@@ -196,6 +193,17 @@
         emit('item-click', item)
     }
 
+    // Icon lookup map - computed to create a map of entity_type -> icon
+    const iconMap = computed(() => {
+        const map = new Map<string, string>()
+        for (const def of props.entityDefinitions) {
+            if (def.icon) {
+                map.set(def.entity_type, def.icon)
+            }
+        }
+        return map
+    })
+
     // initial load and refresh handling
     // Note: loadPath is triggered by the refreshKey watcher, not onMounted
     // This prevents duplicate API calls when the parent component increments refreshKey on mount
@@ -220,6 +228,20 @@
             loadPath(props.rootPath)
         },
         { immediate: true }
+    )
+
+    // Watch for entityDefinitions changes to update icons
+    watch(
+        () => props.entityDefinitions,
+        () => {
+            // When entity definitions load, rebuild the tree to get correct icons
+            if (treeItems.value.length > 0 && props.rootPath) {
+                loadedPaths.value.clear()
+                treeItems.value = []
+                loadPath(props.rootPath)
+            }
+        },
+        { deep: true }
     )
 </script>
 

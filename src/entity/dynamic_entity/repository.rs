@@ -44,11 +44,11 @@ impl DynamicEntityRepository {
 
         let key = entity
             .field_data
-            .get("key")
+            .get("entity_key")
             .and_then(|v| v.as_str())
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
-            .ok_or_else(|| Error::Validation("Missing required field 'key'".to_string()))?;
+            .ok_or_else(|| Error::Validation("Missing required field 'entity_key'".to_string()))?;
 
         // Start a transaction
         let mut tx = self.pool.begin().await?;
@@ -232,71 +232,88 @@ impl DynamicEntityRepository {
         let mut tx = self.pool.begin().await?;
 
         // 1. Update entities_registry table
-        let mut registry_fields = Vec::new();
-        let mut registry_values = Vec::new();
+        // Collect update fields with their proper types
+        let mut update_clauses = Vec::new();
+        let mut param_index = 1;
+        let mut path_param: Option<String> = None;
+        let mut entity_key_param: Option<String> = None;
+        let mut published_param: Option<bool> = None;
+        let mut updated_by_param: Option<uuid::Uuid> = None;
 
-        // Extract metadata fields for update
+        // Extract metadata fields for update with proper types
         if let Some(path) = entity.field_data.get("path").and_then(|v| v.as_str()) {
-            registry_fields.push("path = $1");
-            registry_values.push(path.to_string());
+            update_clauses.push(format!("path = ${}", param_index));
+            path_param = Some(path.to_string());
+            param_index += 1;
         }
 
         // Include optional key update
-        if let Some(key) = entity.field_data.get("key").and_then(|v| v.as_str()) {
-            let pos = registry_values.len() + 1;
-            let clause = format!("entity_key = ${}", pos);
-            registry_fields.push(Box::leak(clause.into_boxed_str()));
-            registry_values.push(key.to_string());
+        if let Some(entity_key) = entity.field_data.get("entity_key").and_then(|v| v.as_str()) {
+            update_clauses.push(format!("entity_key = ${}", param_index));
+            entity_key_param = Some(entity_key.to_string());
+            param_index += 1;
         }
 
         if let Some(published) = entity.field_data.get("published").and_then(|v| v.as_bool()) {
-            // Next positional param
-            let pos = registry_values.len() + 1;
-            let clause = format!("published = ${}", pos);
-            registry_fields.push(Box::leak(clause.into_boxed_str()));
-            registry_values.push(published.to_string());
+            update_clauses.push(format!("published = ${}", param_index));
+            published_param = Some(published);
+            param_index += 1;
         }
 
         let updated_by =
             utils::extract_uuid_from_entity_field_data(&entity.field_data, "updated_by");
 
         if let Some(item) = updated_by {
-            let pos = registry_values.len() + 1;
-            let clause = format!("updated_by = ${}", pos);
-            registry_fields.push(Box::leak(clause.into_boxed_str()));
-            registry_values.push(item.to_string());
+            update_clauses.push(format!("updated_by = ${}", param_index));
+            updated_by_param = Some(item);
+            param_index += 1;
         }
 
+        // Get the current entity_type from the registry to avoid stale WHERE clauses
+        let current_entity_type = sqlx::query_scalar::<_, Option<String>>(
+            "SELECT entity_type FROM entities_registry WHERE uuid = $1"
+        )
+        .bind(uuid)
+        .fetch_one(&mut *tx)
+        .await?;
+
         // Always update timestamp and increment version
-        let update_registry_query = if registry_fields.is_empty() {
+        let update_registry_query = if update_clauses.is_empty() {
             // Update the timestamp and version
             String::from(
                 "UPDATE entities_registry SET updated_at = NOW(), version = version + 1
-                WHERE uuid = $1 AND entity_type = $2",
+                WHERE uuid = $1",
             )
         } else {
-            // uuid and entity_type come after the set clause params
-            let uuid_pos = registry_values.len() + 1;
-            let etype_pos = registry_values.len() + 2;
+            // uuid comes after the set clause params
+            let uuid_pos = param_index;
             format!(
                 "UPDATE entities_registry SET {}, updated_at = NOW(), version = version + 1
-                    WHERE uuid = ${} AND entity_type = ${}",
-                registry_fields.join(", "),
-                uuid_pos,
-                etype_pos
+                    WHERE uuid = ${}",
+                update_clauses.join(", "),
+                uuid_pos
             )
         };
 
         // Create a query builder
         let mut registry_query = sqlx::query(&update_registry_query);
 
-        // Bind values for the set clauses
-        for value in &registry_values {
-            registry_query = registry_query.bind(value);
+        // Bind values for the set clauses with proper types (in parameter order)
+        if let Some(path) = path_param {
+            registry_query = registry_query.bind(path);
+        }
+        if let Some(entity_key) = entity_key_param {
+            registry_query = registry_query.bind(entity_key);
+        }
+        if let Some(published) = published_param {
+            registry_query = registry_query.bind(published);
+        }
+        if let Some(updated_by) = updated_by_param {
+            registry_query = registry_query.bind(updated_by);
         }
 
-        // Always bind UUID and entity_type
-        registry_query = registry_query.bind(uuid).bind(&entity.entity_type);
+        // Always bind UUID
+        registry_query = registry_query.bind(uuid);
 
         // Execute the registry update and map unique violations
         let res = registry_query.execute(&mut *tx).await;
@@ -312,7 +329,14 @@ impl DynamicEntityRepository {
         }
 
         // 2. Update entity-specific table
-        let table_name = utils::get_table_name(&entity.entity_type);
+        // Use current_entity_type from the registry, not entity.entity_type
+        // This ensures we're updating the correct table even if entity was created as different type
+        let current_table_name = if let Some(ref current_type) = current_entity_type {
+            utils::get_table_name(current_type)
+        } else {
+            return Err(Error::Database(sqlx::Error::RowNotFound));
+        };
+        let table_name = current_table_name;
 
         // Get column names for this table
         let columns_result = sqlx::query(
@@ -346,8 +370,10 @@ impl DynamicEntityRepository {
             "version",
         ];
 
-        // Build SET clauses for entity-specific fields
+        // Build SET clauses for entity-specific fields with proper parameterization
         let mut set_clauses = Vec::new();
+        let mut entity_params: Vec<(i32, JsonValue)> = Vec::new();
+        let mut param_index = 1;
 
         for (key, value) in &entity.field_data {
             if registry_fields.contains(&key.as_str()) || key == "uuid" {
@@ -355,35 +381,47 @@ impl DynamicEntityRepository {
             }
 
             if valid_columns.contains(&key.to_lowercase()) {
-                // Format the value appropriately based on its type
-                let value_str = match value {
-                    JsonValue::String(s) => format!("'{}'", s.replace("'", "''")),
-                    JsonValue::Number(n) => n.to_string(),
-                    JsonValue::Bool(b) => {
-                        if *b {
-                            "TRUE".to_string()
-                        } else {
-                            "FALSE".to_string()
-                        }
-                    }
-                    JsonValue::Null => "NULL".to_string(),
-                    _ => format!("'{}'", value.to_string().replace("'", "''")), // For complex types
-                };
-
-                set_clauses.push(format!("{} = {}", key, value_str));
+                set_clauses.push(format!("{} = ${}", key, param_index));
+                entity_params.push((param_index, value.clone()));
+                param_index += 1;
             }
         }
 
         // Execute the entity update if we have SET clauses
         if !set_clauses.is_empty() {
+            // The UUID is the last parameter
+            let uuid_pos = param_index;
             let update_entity_query = format!(
-                "UPDATE {} SET {} WHERE uuid = '{}'",
+                "UPDATE {} SET {} WHERE uuid = ${}",
                 table_name,
                 set_clauses.join(", "),
-                uuid
+                uuid_pos
             );
 
-            sqlx::query(&update_entity_query).execute(&mut *tx).await?;
+            let mut entity_query = sqlx::query(&update_entity_query);
+
+            // Bind entity-specific field values with proper types
+            for (_, json_value) in &entity_params {
+                if let Some(bool_val) = json_value.as_bool() {
+                    entity_query = entity_query.bind(bool_val);
+                } else if let Some(s) = json_value.as_str() {
+                    entity_query = entity_query.bind(s);
+                } else if let Some(n) = json_value.as_i64() {
+                    entity_query = entity_query.bind(n);
+                } else if let Some(n) = json_value.as_f64() {
+                    entity_query = entity_query.bind(n);
+                } else if json_value.is_null() {
+                    entity_query = entity_query.bind(None::<String>);
+                } else {
+                    // Fallback: bind as JSON string representation
+                    entity_query = entity_query.bind(json_value.to_string());
+                }
+            }
+
+            // Always bind UUID
+            entity_query = entity_query.bind(uuid);
+
+            entity_query.execute(&mut *tx).await?;
         }
 
         // Commit the transaction

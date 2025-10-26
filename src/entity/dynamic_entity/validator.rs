@@ -550,7 +550,7 @@ pub fn validate_entity_with_violations(
             // Skip system fields
             let system_fields = [
                 "uuid",
-                "key",  // Entity key is a required system field
+                "entity_key",
                 "path",
                 "created_at",
                 "updated_at",

@@ -179,7 +179,8 @@ impl DynamicEntityService {
         let reserved_fields = [
             "uuid",
             "path",
-            "key",
+            "parent_uuid",
+            "entity_key",
             "created_at",
             "updated_at",
             "created_by",
