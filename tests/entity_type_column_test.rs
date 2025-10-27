@@ -127,7 +127,7 @@ async fn create_test_entity(
     field_data.insert("email".to_string(), json!(email));
     field_data.insert("path".to_string(), json!("/"));
     field_data.insert(
-        "key".to_string(),
+        "entity_key".to_string(),
         json!(format!(
             "{}-{}",
             name.to_lowercase().replace(' ', "-"),

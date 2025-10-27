@@ -319,7 +319,7 @@ mod dynamic_entity_api_tests {
                 "name": "Proj Owner",
                 "email": "owner@example.com",
                 "path": "/projects",
-                "key": "alpha"
+                "entity_key": "alpha"
             }))
             .to_request();
         let resp1 = test::call_service(&app, req1).await;
@@ -333,7 +333,7 @@ mod dynamic_entity_api_tests {
                 "name": "Dup",
                 "email": "dup@example.com",
                 "path": "/projects",
-                "key": "alpha"
+                "entity_key": "alpha"
             }))
             .to_request();
         let resp2 = test::call_service(&app, req2).await;

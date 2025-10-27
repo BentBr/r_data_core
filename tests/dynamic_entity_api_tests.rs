@@ -1,6 +1,8 @@
 use actix_web::test;
 use log::warn;
 use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
+use r_data_core::api::public::entities::models::{BrowseKind, BrowseNode};
+use r_data_core::api::public::entities::repository::EntityRepository;
 use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
 use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
 use r_data_core::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
@@ -209,7 +211,7 @@ mod dynamic_entity_tests {
         // Registry fields required by repository
         entity.field_data.insert("path".to_string(), json!("/"));
         entity.field_data.insert(
-            "key".to_string(),
+            "entity_key".to_string(),
             json!(format!("{}-{}", entity_type, entity_uuid.simple())),
         );
 
@@ -449,7 +451,7 @@ mod dynamic_entity_tests {
             entity.field_data.insert("version".to_string(), json!(1));
             entity.field_data.insert("path".to_string(), json!("/"));
             entity.field_data.insert(
-                "key".to_string(),
+                "entity_key".to_string(),
                 json!(format!("{}-{}", entity_type, uuid.simple())),
             );
 
@@ -568,7 +570,7 @@ mod dynamic_entity_tests {
                 .insert("created_by".to_string(), json!(created_by.to_string()));
             entity.field_data.insert("path".to_string(), json!("/"));
             entity.field_data.insert(
-                "key".to_string(),
+                "entity_key".to_string(),
                 json!(format!("{}-{}", entity_type, uuid.simple())),
             );
 
@@ -709,7 +711,7 @@ mod dynamic_entity_tests {
                 .insert("created_by".to_string(), json!(created_by.to_string()));
             entity.field_data.insert("path".to_string(), json!("/"));
             entity.field_data.insert(
-                "key".to_string(),
+                "entity_key".to_string(),
                 json!(format!("{}-{}", entity_type, uuid.simple())),
             );
 
@@ -824,7 +826,7 @@ mod dynamic_entity_tests {
             entity.field_data.insert("version".to_string(), json!(1));
             entity.field_data.insert("path".to_string(), json!("/"));
             entity.field_data.insert(
-                "key".to_string(),
+                "entity_key".to_string(),
                 json!(format!("{}-{}", entity_type, uuid.simple())),
             );
 
@@ -932,7 +934,7 @@ mod dynamic_entity_tests {
         entity.field_data.insert("version".to_string(), json!(1));
         entity.field_data.insert("path".to_string(), json!("/"));
         entity.field_data.insert(
-            "key".to_string(),
+            "entity_key".to_string(),
             json!(format!("{}-{}", entity_type, uuid.simple())),
         );
 
@@ -958,6 +960,231 @@ mod dynamic_entity_tests {
             "Name should match"
         );
 
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_parent_child_entity_relationships() -> Result<()> {
+        // Setup for this test
+        test_setup();
+        
+        // Setup test database
+        let pool = common::utils::setup_test_db().await;
+        
+        // Create a simple entity definition
+        let entity_type = unique_entity_type("test_file");
+        
+        let mut entity_def = EntityDefinition::default();
+        entity_def.entity_type = entity_type.clone();
+        entity_def.display_name = format!("Test {}", entity_type);
+        entity_def.description = Some("Test entity".to_string());
+        entity_def.created_by = Uuid::now_v7();
+        entity_def.published = true;
+        
+        let field = r_data_core::entity::field::FieldDefinition::new(
+            "name".to_string(),
+            "Name".to_string(),
+            r_data_core::entity::field::types::FieldType::String,
+        );
+        entity_def.fields = vec![field];
+        
+        // Create entity definition in the database
+        let class_repo = EntityDefinitionRepository::new(pool.clone());
+        let class_service = EntityDefinitionService::new(Arc::new(class_repo));
+        let entity_def_uuid = class_service.create_entity_definition(&entity_def).await?;
+        
+        // Wait for database operations to complete
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+        
+        // Get the entity definition
+        let entity_def = class_service.get_entity_definition(&entity_def_uuid).await?;
+        
+        // Create repository and service
+        let entity_repo = Arc::new(DynamicEntityRepository::new(pool.clone()));
+        let dynamic_service = DynamicEntityService::new(entity_repo, Arc::new(class_service));
+        
+        // Create first entity at "/" with key "test"
+        let parent_uuid = Uuid::now_v7();
+        let mut parent_entity = DynamicEntity {
+            entity_type: entity_type.clone(),
+            field_data: HashMap::new(),
+            definition: Arc::new(entity_def.clone()),
+        };
+        
+        parent_entity.field_data.insert("uuid".to_string(), json!(parent_uuid.to_string()));
+        parent_entity.field_data.insert("name".to_string(), json!("Parent Test"));
+        parent_entity.field_data.insert("path".to_string(), json!("/"));
+        parent_entity.field_data.insert("entity_key".to_string(), json!("test"));
+        parent_entity.field_data.insert("created_by".to_string(), json!(Uuid::now_v7().to_string()));
+        parent_entity.field_data.insert("published".to_string(), json!(true));
+        parent_entity.field_data.insert("version".to_string(), json!(1));
+        
+        dynamic_service.create_entity(&parent_entity).await?;
+        
+        // Create second entity at "/test" with another key
+        let child_uuid = Uuid::now_v7();
+        let mut child_entity = DynamicEntity {
+            entity_type: entity_type.clone(),
+            field_data: HashMap::new(),
+            definition: Arc::new(entity_def),
+        };
+        
+        child_entity.field_data.insert("uuid".to_string(), json!(child_uuid.to_string()));
+        child_entity.field_data.insert("name".to_string(), json!("Child Test"));
+        child_entity.field_data.insert("path".to_string(), json!("/test"));
+        child_entity.field_data.insert("entity_key".to_string(), json!("child"));
+        child_entity.field_data.insert("parent_uuid".to_string(), json!(parent_uuid.to_string()));
+        child_entity.field_data.insert("created_by".to_string(), json!(Uuid::now_v7().to_string()));
+        child_entity.field_data.insert("published".to_string(), json!(true));
+        child_entity.field_data.insert("version".to_string(), json!(1));
+        
+        dynamic_service.create_entity(&child_entity).await?;
+        
+        // Wait for database to be updated
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        
+        // Test 1: Child entity must have the first one as parent (parent_uuid)
+        let registry_row = sqlx::query!(
+            "SELECT parent_uuid FROM entities_registry WHERE uuid = $1",
+            child_uuid
+        )
+        .fetch_one(&pool)
+        .await?;
+        
+        assert_eq!(
+            registry_row.parent_uuid,
+            Some(parent_uuid),
+            "Child entity must have parent_uuid set to parent entity UUID"
+        );
+        
+        // Test 2: Query entities at "/" - should return parent entity with has_children=true
+        let pub_repo = EntityRepository::new(pool.clone());
+        let (items, total) = pub_repo.browse_by_path("/", 100, 0).await?;
+        
+        let parent_item = items.iter().find(|item| item.name == "test");
+        assert!(parent_item.is_some(), "Should find parent entity at /");
+        
+        let parent_node = parent_item.unwrap();
+        assert_eq!(parent_node.kind, BrowseKind::File);
+        assert!(parent_node.has_children.unwrap_or(false), "Parent should have has_children=true");
+        
+        // Test 3: Query entities at "/test" - should return child entity with no children
+        let (child_items, _) = pub_repo.browse_by_path("/test", 100, 0).await?;
+        
+        let child_node = child_items.iter().find(|item| item.name == "child");
+        assert!(child_node.is_some(), "Should find child entity at /test");
+        
+        let child_file = child_node.unwrap();
+        assert_eq!(child_file.kind, BrowseKind::File);
+        assert!(!child_file.has_children.unwrap_or(true), "Child should have has_children=false");
+        
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_folder_file_path_hierarchy() -> Result<()> {
+        // Setup for this test
+        test_setup();
+        
+        // Setup test database
+        let pool = common::utils::setup_test_db().await;
+        
+        // Create a simple entity definition
+        let entity_type = unique_entity_type("test_file");
+        
+        let mut entity_def = EntityDefinition::default();
+        entity_def.entity_type = entity_type.clone();
+        entity_def.display_name = format!("Test {}", entity_type);
+        entity_def.description = Some("Test entity".to_string());
+        entity_def.created_by = Uuid::now_v7();
+        entity_def.published = true;
+        
+        let field = r_data_core::entity::field::FieldDefinition::new(
+            "name".to_string(),
+            "Name".to_string(),
+            r_data_core::entity::field::types::FieldType::String,
+        );
+        entity_def.fields = vec![field];
+        
+        // Create entity definition in the database
+        let class_repo = EntityDefinitionRepository::new(pool.clone());
+        let class_service = EntityDefinitionService::new(Arc::new(class_repo));
+        let entity_def_uuid = class_service.create_entity_definition(&entity_def).await?;
+        
+        // Wait for database operations to complete
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+        
+        // Get the entity definition
+        let entity_def = class_service.get_entity_definition(&entity_def_uuid).await?;
+        
+        // Create repository and service
+        let entity_repo = Arc::new(DynamicEntityRepository::new(pool.clone()));
+        let dynamic_service = DynamicEntityService::new(entity_repo, Arc::new(class_service));
+        
+        // Create folder entity at "/some-folder" with key "some-folder" 
+        // This should be auto-detected as a folder because other entities will have it as prefix
+        let folder_uuid = Uuid::now_v7();
+        let mut folder_entity = DynamicEntity {
+            entity_type: entity_type.clone(),
+            field_data: HashMap::new(),
+            definition: Arc::new(entity_def.clone()),
+        };
+        
+        folder_entity.field_data.insert("uuid".to_string(), json!(folder_uuid.to_string()));
+        folder_entity.field_data.insert("name".to_string(), json!("Folder Name"));
+        folder_entity.field_data.insert("path".to_string(), json!("/"));
+        folder_entity.field_data.insert("entity_key".to_string(), json!("some-folder"));
+        folder_entity.field_data.insert("created_by".to_string(), json!(Uuid::now_v7().to_string()));
+        folder_entity.field_data.insert("published".to_string(), json!(true));
+        folder_entity.field_data.insert("version".to_string(), json!(1));
+        
+        dynamic_service.create_entity(&folder_entity).await?;
+        
+        // Create file entity inside the folder at "/some-folder" with key "test-file"
+        let file_uuid = Uuid::now_v7();
+        let mut file_entity = DynamicEntity {
+            entity_type: entity_type.clone(),
+            field_data: HashMap::new(),
+            definition: Arc::new(entity_def),
+        };
+        
+        file_entity.field_data.insert("uuid".to_string(), json!(file_uuid.to_string()));
+        file_entity.field_data.insert("name".to_string(), json!("Test File"));
+        file_entity.field_data.insert("path".to_string(), json!("/some-folder"));
+        file_entity.field_data.insert("entity_key".to_string(), json!("test-file"));
+        file_entity.field_data.insert("parent_uuid".to_string(), json!(folder_uuid.to_string()));
+        file_entity.field_data.insert("created_by".to_string(), json!(Uuid::now_v7().to_string()));
+        file_entity.field_data.insert("published".to_string(), json!(true));
+        file_entity.field_data.insert("version".to_string(), json!(1));
+        
+        dynamic_service.create_entity(&file_entity).await?;
+        
+        // Wait for database to be updated
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        
+        // Test 1: Get-by-path "/" must return "some-folder" as type folder with has_children=true
+        let pub_repo = EntityRepository::new(pool.clone());
+        let (root_items, _) = pub_repo.browse_by_path("/", 100, 0).await?;
+        
+        let folder_node = root_items.iter().find(|item| item.name == "some-folder");
+        assert!(folder_node.is_some(), "Should find some-folder at root");
+        
+        let folder = folder_node.unwrap();
+        // Entity at "/" should be treated as a File, not as a Folder
+        // The folder is detected by the presence of entities under "/some-folder"
+        assert_eq!(folder.kind, BrowseKind::File);
+        assert!(folder.has_children.unwrap_or(false), "Parent should have has_children=true");
+        
+        // Test 2: Get-by-path "/some-folder" must return "test-file" as type file and no children
+        let (folder_items, _) = pub_repo.browse_by_path("/some-folder", 100, 0).await?;
+        
+        let file_node = folder_items.iter().find(|item| item.name == "test-file");
+        assert!(file_node.is_some(), "Should find test-file in folder");
+        
+        let file = file_node.unwrap();
+        assert_eq!(file.kind, BrowseKind::File);
+        assert!(!file.has_children.unwrap_or(true), "File should have has_children=false");
+        
         Ok(())
     }
 }

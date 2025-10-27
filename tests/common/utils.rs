@@ -135,7 +135,7 @@ pub async fn create_test_entity(
     field_data.insert("email".to_string(), json!(email));
     // Provide required registry fields for tests
     field_data.insert(
-        "key".to_string(),
+        "entity_key".to_string(),
         json!(format!(
             "{}-{}",
             name.to_lowercase().replace(' ', "-"),
