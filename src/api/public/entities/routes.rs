@@ -1,12 +1,15 @@
-use actix_web::{get, web, HttpResponse, Responder};
+use actix_web::{get, post, web, HttpResponse, Responder};
 use serde::Deserialize;
 use serde_json::json;
+use utoipa::ToSchema;
+use uuid::Uuid;
 
 use super::models::BrowseNode;
 use super::repository::EntityRepository;
 use crate::api::auth::auth_enum::CombinedRequiredAuth;
 use crate::api::response::ApiResponse;
 use crate::api::ApiState;
+use crate::entity::dynamic_entity::repository::DynamicEntityRepository;
 
 /// List all available entity types
 #[utoipa::path(
@@ -41,10 +44,8 @@ async fn list_available_entities(
 /// Register entity routes
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(list_available_entities);
-
-    // Additional routes would be added here
-    // For full implementation, create_entity, update_entity, delete_entity, etc.
     cfg.service(list_by_path);
+    cfg.service(query_entities);
 }
 
 #[derive(Debug, Deserialize)]
@@ -101,6 +102,79 @@ async fn list_by_path(
             (offset / limit) as i64 + 1,
             limit,
         ),
+        Err(e) => HttpResponse::InternalServerError().json(json!({
+            "status": "Error",
+            "message": format!("Server error: {}", e),
+        })),
+    }
+}
+
+/// Request body for querying entities
+#[derive(Debug, Deserialize, ToSchema)]
+struct EntityQueryRequest {
+    /// Entity type to query
+    entity_type: String,
+    /// Filter by parent UUID
+    parent_uuid: Option<Uuid>,
+    /// Filter by exact path
+    path: Option<String>,
+    /// Maximum number of results (default: 20, max: 100)
+    limit: Option<i64>,
+    /// Number of results to skip (default: 0)
+    offset: Option<i64>,
+}
+
+/// Query entities by parent or path
+#[utoipa::path(
+    post,
+    path = "/api/v1/entities/query",
+    tag = "public",
+    request_body(
+        description = "Query parameters for filtering entities",
+        content_type = "application/json",
+        content = EntityQueryRequest
+    ),
+    responses(
+        (status = 200, description = "List of entities matching the query", body = Vec<DynamicEntityResponse>),
+        (status = 401, description = "Unauthorized - No valid authentication provided"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt" = []),
+        ("apiKey" = [])
+    )
+)]
+#[post("/entities/query")]
+async fn query_entities(
+    data: web::Data<ApiState>,
+    body: web::Json<EntityQueryRequest>,
+    _: CombinedRequiredAuth,
+) -> impl Responder {
+    let repository = DynamicEntityRepository::new(data.db_pool.clone());
+    
+    let limit = body.limit.unwrap_or(20).clamp(1, 100);
+    let offset = body.offset.unwrap_or(0).max(0);
+
+    match repository
+        .query_by_parent_and_path(
+            &body.entity_type,
+            body.parent_uuid,
+            body.path.as_deref(),
+            limit,
+            offset,
+        )
+        .await
+    {
+        Ok(entities) => {
+            // Convert DynamicEntity to DynamicEntityResponse
+            use crate::api::public::dynamic_entities::routes::DynamicEntityResponse;
+            let responses: Vec<DynamicEntityResponse> = entities
+                .into_iter()
+                .map(DynamicEntityResponse::from)
+                .collect();
+            
+            ApiResponse::ok(responses)
+        }
         Err(e) => HttpResponse::InternalServerError().json(json!({
             "status": "Error",
             "message": format!("Server error: {}", e),

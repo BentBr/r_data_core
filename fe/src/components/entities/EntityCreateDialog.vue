@@ -160,7 +160,7 @@
     const formData = ref<CreateEntityRequest>({
         entity_type: '',
         data: {
-            key: '',
+            entity_key: '',
             path: '/',
             published: false,
         },
@@ -201,17 +201,6 @@
         get: () => formData.value.parent_uuid || null,
         set: (value: string | null) => {
             formData.value.parent_uuid = value
-            
-            // If parent is selected, update path automatically
-            // If parent is cleared, reset path
-            if (value) {
-                // TODO: Fetch parent entity and set path to parent.path + '/' + parent.key
-                // For now, just log that parent was selected
-                console.log('Parent selected:', value)
-            } else {
-                // Clear parent means user can edit path manually
-                console.log('Parent cleared')
-            }
         }
     })
 
@@ -324,11 +313,11 @@
         formData.value = {
             entity_type: '',
             data: {
-                key: '',
+                entity_key: '',
                 path: '/',
                 published: false,
             },
-            parent_uuid: undefined,
+            parent_uuid: null,
         }
     }
 
@@ -356,10 +345,63 @@
         }
     })
     
-    // Watch defaultParent prop - if provided, prefill parent_uuid
-    watch(() => props.defaultParent, (newParent) => {
-        if (newParent && dialogVisible.value) {
+    // Watch defaultParent prop - if provided, prefill parent_uuid and path
+    watch(() => props.defaultParent, async (newParent) => {
+        // Only prefill if dialog is open AND entity_type is already selected
+        if (newParent && dialogVisible.value && formData.value.entity_type) {
             formData.value.parent_uuid = newParent.field_data?.uuid || null
+            
+            // Also update the path based on parent
+            const parentPath = newParent.field_data?.path as string | undefined
+            const parentKey = newParent.field_data?.entity_key as string | undefined
+            
+            if (parentPath && parentKey) {
+                // Set path to parent.path + '/' + parent.entity_key
+                formData.value.data.path = parentPath.endsWith('/')
+                    ? `${parentPath}${parentKey}`
+                    : `${parentPath}/${parentKey}`
+            }
         }
-    }, { immediate: true })
+    })
+    
+    // Watch for when dialog opens to potentially set default parent if already selected
+    watch(dialogVisible, async (visible) => {
+        if (visible && props.defaultParent && formData.value.entity_type) {
+            formData.value.parent_uuid = props.defaultParent.field_data?.uuid || null
+            
+            const parentPath = props.defaultParent.field_data?.path as string | undefined
+            const parentKey = props.defaultParent.field_data?.entity_key as string | undefined
+            
+            if (parentPath && parentKey) {
+                formData.value.data.path = parentPath.endsWith('/')
+                    ? `${parentPath}${parentKey}`
+                    : `${parentPath}/${parentKey}`
+            }
+        }
+    })
+    
+    // Watch parent_uuid changes to update path
+    watch(() => formData.value.parent_uuid, async (newParentUuid) => {
+        if (newParentUuid && formData.value.entity_type) {
+            try {
+                // Fetch parent entity to get its path and entity_key
+                const parentEntity = await typedHttpClient.getEntity(
+                    formData.value.entity_type,
+                    newParentUuid
+                )
+                
+                const parentPath = parentEntity.field_data?.path as string | undefined
+                const parentKey = parentEntity.field_data?.entity_key as string | undefined
+                
+                if (parentPath && parentKey) {
+                    // Set path to parent.path + '/' + parent.entity_key
+                    formData.value.data.path = parentPath.endsWith('/')
+                        ? `${parentPath}${parentKey}`
+                        : `${parentPath}/${parentKey}`
+                }
+            } catch (error) {
+                console.error('Error fetching parent entity:', error)
+            }
+        }
+    })
 </script>

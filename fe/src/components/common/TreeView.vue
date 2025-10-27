@@ -1,12 +1,14 @@
 <template>
     <v-treeview
-        v-model="expandedItems"
+        v-model:opened="expandedItems"
         :items="items"
         :loading="loading"
-        item-key="id"
+        item-title="title"
+        item-value="id"
+        item-children="children"
         activatable
         hoverable
-        open-on-click
+        :open-on-click="false"
         :expand-on-click="false"
         @update:active="handleSelection"
     >
@@ -58,6 +60,20 @@
     const emit = defineEmits<Emits>()
 
     const expandedItems = ref<string[]>(props.expandedItems)
+    const syncingFromProps = ref(false)
+
+    // Keep local opened state in sync with parent-provided expandedItems
+    watch(
+        () => props.expandedItems,
+        v => {
+            syncingFromProps.value = true
+            expandedItems.value = v
+            // microtask flag reset to avoid re-emit loop
+            queueMicrotask(() => {
+                syncingFromProps.value = false
+            })
+        }
+    )
 
     watch(expandedItems, newValue => {
         emit('update:expandedItems', newValue)

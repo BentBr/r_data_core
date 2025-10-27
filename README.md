@@ -282,12 +282,15 @@ Swagger:
       - webhooks
     - manipulate data
   - versions
-  - entities
-    - crud
+  - ~~entities~~
+    - ~~crud~~
   - permissions
 - update readme
 - add options for custom tables (like bricks)
+- ~~have a tree view for entities~~
+  - have easy-creation of children
 - test admin routes
+- connect dashboard data to backend
 - check entities and respective columns - we need proper creation and not everything serialized.
 - check env vars
 - clippy
@@ -298,13 +301,14 @@ Swagger:
 - tests
 - caching
 - crons + refresh token deletion
+- load/performance test binary
 
 
 fixes:
 - setting all fields for dynamic entities
 - testing validations (+ tests)
 - auth tests for all api routes
-- further refactoring
+- further refactoring (FE / BE independently)
 - tests (unit and integration) for dynamic entities (more)
 - getting all entity types with fields and validations
 - filter entities (by field and value) (validate against entity-definition)

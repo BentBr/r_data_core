@@ -54,7 +54,7 @@
                 :items="treeItems"
                 :loading="loading"
                 :expanded-items="expandedItems"
-                @update:expanded-items="$emit('update:expandedItems', $event)"
+                @update:expanded-items="handleExpandedItemsChange"
                 @item-click="handleItemClickProxy"
                 @selection-change="$emit('selection-change', $event)"
             />
@@ -123,7 +123,9 @@
                     id: toFolderId(node.path),
                     title: node.name,
                     icon: 'mdi-folder',
-                    children: [],
+                    // Only add children array if has_children is true (so arrow shows)
+                    children: node.has_children ? [] : undefined,
+                    path: node.path,
                 })
             } else {
                 // Get icon from entity definition if available
@@ -138,6 +140,9 @@
                     icon,
                     entity_type: node.entity_type,
                     uuid: node.entity_uuid,
+                    path: node.path,
+                    // Only add children array if has_children is true (so arrow shows)
+                    children: node.has_children ? [] : undefined,
                 })
             }
         }
@@ -181,16 +186,62 @@
 
     // helper placeholder for potential deep expansion logic in the future
 
+    async function handleExpandedItemsChange(newExpandedItems: string[]) {
+        // Find newly expanded items that don't have loaded children yet
+        const newlyExpanded = newExpandedItems.filter(id => !props.expandedItems?.includes(id))
+        
+        for (const expandedId of newlyExpanded) {
+            const node = findNodeById(treeItems.value, expandedId)
+            if (node && Array.isArray(node.children) && node.children.length === 0) {
+                await loadChildrenForNode(node)
+            }
+        }
+        
+        emit('update:expandedItems', newExpandedItems)
+    }
+    
+    function findNodeById(items: TreeNode[], id: string): TreeNode | null {
+        for (const item of items) {
+            if (item.id === id) {
+                return item
+            }
+            if (item.children && Array.isArray(item.children)) {
+                const found = findNodeById(item.children as TreeNode[], id)
+                if (found) {
+                    return found
+                }
+            }
+        }
+        return null
+    }
+    
     async function handleItemClickProxy(item: TreeNode) {
-        // Folder node
+        // Regular click on item (not for expansion) - expansion is handled by handleExpandedItemsChange
+        emit('item-click', item)
+    }
+    
+    async function loadChildrenForNode(item: TreeNode) {
+        // Determine the path to load based on node type
+        let targetPath: string
+        
         if (item.id.startsWith('folder:')) {
-            const folderPath = item.id.replace('folder:', '')
-            await loadPath(folderPath, item)
-            // Expand this folder after loading
-            emit('update:expandedItems', [...new Set([...(props.expandedItems || []), item.id])])
+            // It's a folder, use the folder path
+            targetPath = item.id.replace('folder:', '')
+        } else if (item.path) {
+            // It's an entity file, load children from its path
+            targetPath = item.path
+        } else {
             return
         }
-        emit('item-click', item)
+        
+        try {
+            const { data } = await typedHttpClient.browseByPath(targetPath, 100, 0)
+            const nodes = buildNodesForPath(targetPath, data)
+            // Update the item's children
+            item.children = nodes
+        } catch (error) {
+            console.error('Error loading children for node:', error)
+        }
     }
 
     // Icon lookup map - computed to create a map of entity_type -> icon
@@ -203,6 +254,20 @@
         }
         return map
     })
+
+    function updateIconsInTree(items: TreeNode[]) {
+        for (const item of items) {
+            if (item.entity_type) {
+                const icon = iconMap.value.get(item.entity_type)
+                if (icon) {
+                    item.icon = icon
+                }
+            }
+            if (item.children && Array.isArray(item.children)) {
+                updateIconsInTree(item.children as TreeNode[])
+            }
+        }
+    }
 
     // initial load and refresh handling
     // Note: loadPath is triggered by the refreshKey watcher, not onMounted
@@ -230,15 +295,12 @@
         { immediate: true }
     )
 
-    // Watch for entityDefinitions changes to update icons
+    // Watch for entityDefinitions changes and update icons in-place (no extra API calls)
     watch(
         () => props.entityDefinitions,
         () => {
-            // When entity definitions load, rebuild the tree to get correct icons
-            if (treeItems.value.length > 0 && props.rootPath) {
-                loadedPaths.value.clear()
-                treeItems.value = []
-                loadPath(props.rootPath)
+            if (treeItems.value.length > 0) {
+                updateIconsInTree(treeItems.value)
             }
         },
         { deep: true }

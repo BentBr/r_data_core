@@ -224,8 +224,8 @@
             await typedHttpClient.createEntity(data.entity_type, data)
             showCreateDialog.value = false
 
-            // Reload the entities
-            await loadEntities()
+            // Refresh the tree to show the new entity
+            treeRefreshKey.value += 1
 
             showSuccess('Entity created successfully')
         } catch (err) {

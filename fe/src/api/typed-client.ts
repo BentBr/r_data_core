@@ -783,14 +783,41 @@ class TypedHttpClient {
                         kind: z.enum(['folder', 'file']),
                         name: z.string(),
                         path: z.string(),
-                        entity_uuid: z.string().uuid().optional(),
-                        entity_type: z.string().optional(),
-                        has_children: z.boolean().optional(),
+                        entity_uuid: z.string().uuid().nullable().optional(),
+                        entity_type: z.string().nullable().optional(),
+                        has_children: z.boolean().nullable().optional(),
                     })
                 )
             )
         )
         return response
+    }
+
+    // Query entities by parent or path
+    async queryEntities(
+        entityType: string,
+        options: {
+            parentUuid?: string
+            path?: string
+            limit?: number
+            offset?: number
+        }
+    ): Promise<DynamicEntity[]> {
+        const { parentUuid, path, limit = 20, offset = 0 } = options
+        return this.request(
+            '/api/v1/entities/query',
+            ApiResponseSchema(z.array(DynamicEntitySchema)),
+            {
+                method: 'POST',
+                body: JSON.stringify({
+                    entity_type: entityType,
+                    parent_uuid: parentUuid,
+                    path: path,
+                    limit: limit,
+                    offset: offset,
+                }),
+            }
+        )
     }
 
     async getEntity(entityType: string, uuid: string): Promise<DynamicEntity> {

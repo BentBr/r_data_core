@@ -127,6 +127,8 @@ export const TreeNodeSchema: z.ZodType<{
     uuid: z.string().optional(),
     display_name: z.string().optional(),
     published: z.boolean().optional(),
+    hasChildren: z.boolean().optional(),
+    path: z.string().optional(),
 })
 
 // Snackbar schemas

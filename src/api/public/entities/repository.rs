@@ -82,7 +82,7 @@ impl EntityRepository {
         }
 
         // Query all paths at or below prefix (single round-trip)
-        #[derive(sqlx::FromRow)]
+        #[derive(sqlx::FromRow, Clone)]
         struct RowRec {
             uuid: Uuid,
             entity_type: String,
@@ -118,114 +118,71 @@ impl EntityRepository {
         let mut folder_map: HashMap<String, BrowseNode> = HashMap::new();
         let mut files: Vec<BrowseNode> = Vec::new();
         let mut has_children: HashSet<String> = HashSet::new();
+        
+        // Track names of files that live directly under the requested prefix
+        let mut file_names: HashSet<String> = HashSet::new();
 
-        for r in rows {
-            let p = r.path;
-            
-            // For root browsing (prefix="/"), entities with path="/" should be shown as files
-            if prefix == "/" && p == "/" {
-                // Extract name from entity_key stored in registry
+        // First pass: add files whose row.path equals the requested prefix
+        for r in &rows {
+            let p = r.path.as_str();
+            if p == prefix {
                 let entity_key = r.entity_key.clone();
-                let exact_key = format!("{}::{}", p, entity_key);
+                let exact_key = format!("{}::{}", p, &entity_key);
                 let (entity_uuid, entity_type) = exact
                     .get(&exact_key)
                     .cloned()
                     .map(|(u, t)| (Some(u), Some(t)))
                     .unwrap_or((None, None));
+
+                // Child folder path for this file (so FE can lazy-load its children by path)
+                let child_path = if p == "/" {
+                    format!("/{}", entity_key)
+                } else {
+                    format!("{}/{}", p, entity_key)
+                };
+
                 files.push(BrowseNode {
                     kind: BrowseKind::File,
-                    name: entity_key,
-                    path: p,
+                    name: entity_key.clone(),
+                    path: child_path,
                     entity_uuid,
                     entity_type,
                     has_children: Some(false),
                 });
-                continue;
+
+                file_names.insert(entity_key);
             }
-            
-            // Skip the exact prefix path (we're browsing its contents, not the path itself)
-            if p == prefix {
-                continue;
-            }
-            
-            // Skip paths that are too short
-            if p.len() <= base_len {
-                continue;
-            }
-            
+        }
+
+        // Second pass: add first-level folders (unique segment after prefix),
+        // but skip folders whose name matches an existing file at this level
+        for r in &rows {
+            let p = r.path.as_str();
+            if p == prefix { continue; }
+
+            // Ensure this path is deeper than the prefix
+            if p.len() <= base_len { continue; }
+
             let remainder = &p[base_len..];
-            if let Some(pos) = remainder.find('/') {
-                // First-level folder
-                let seg = &remainder[..pos];
-                let folder_path = if prefix == "/" {
-                    format!("/{}", seg)
-                } else {
-                    format!("{}/{}", prefix, seg)
-                };
-                let (entity_uuid, entity_type) = exact
-                    .get(&folder_path)
-                    .cloned()
-                    .map(|(u, t)| (Some(u), Some(t)))
-                    .unwrap_or((None, None));
-                has_children.insert(folder_path.clone());
-                folder_map.entry(seg.to_string()).or_insert(BrowseNode {
-                    kind: BrowseKind::Folder,
-                    name: seg.to_string(),
-                    path: folder_path,
-                    entity_uuid,
-                    entity_type,
-                    has_children: Some(true),
-                });
+            let seg = match remainder.split('/').next() { Some(s) if !s.is_empty() => s, _ => continue };
+
+            if file_names.contains(seg) { continue; }
+
+            let folder_path = if prefix == "/" {
+                format!("/{}", seg)
             } else {
-                // Direct file under prefix
-                let name = remainder.to_string();
-                // Need to get entity_key from the row data to build the exact key
-                let exact_key = format!("{}::{}", p, r.entity_key);
-                let (entity_uuid, entity_type) = exact
-                    .get(&exact_key)
-                    .cloned()
-                    .map(|(u, t)| (Some(u), Some(t)))
-                    .unwrap_or((None, None));
-                // If a folder with this path exists (because there are deeper children), prefer folder
-                let folder_exists = {
-                    let folder_path = p.clone();
-                    exact
-                        .keys()
-                        .any(|k| {
-                            // Extract path from key (format is "path::entity_key")
-                            k.split("::").next()
-                                .map(|path| path.starts_with(&(folder_path.clone() + "/")))
-                                .unwrap_or(false)
-                        })
-                };
-                if folder_exists {
-                    // Update folder info if present in map; otherwise create it
-                    let seg = name.clone();
-                    let folder_entry = folder_map.entry(seg.clone()).or_insert(BrowseNode {
-                        kind: BrowseKind::Folder,
-                        name: seg,
-                        path: p.clone(),
-                        entity_uuid: None,
-                        entity_type: None,
-                        has_children: Some(true),
-                    });
-                    if folder_entry.entity_uuid.is_none() {
-                        folder_entry.entity_uuid = entity_uuid;
-                    }
-                    if folder_entry.entity_type.is_none() {
-                        folder_entry.entity_type = entity_type;
-                    }
-                } else {
-                    files.push(BrowseNode {
-                        kind: BrowseKind::File,
-                        name,
-                        path: p,
-                        entity_uuid,
-                        entity_type,
-                        has_children: Some(false),
-                    });
-                }
-            }
+                format!("{}/{}", prefix, seg)
+            };
+
+            has_children.insert(folder_path.clone());
+            folder_map.entry(seg.to_string()).or_insert(BrowseNode {
+                kind: BrowseKind::Folder,
+                name: seg.to_string(),
+                path: folder_path,
+                entity_uuid: None,
+                entity_type: None,
+                has_children: Some(true),
+            });
         }
 
         // Sort folders and files alphabetically by name (case-insensitive)
@@ -236,6 +193,40 @@ impl EntityRepository {
         let mut all = Vec::new();
         all.extend(folders);
         all.extend(files);
+
+        // Check for children on files (entities with parent_uuid)
+        for node in &mut all {
+            if let Some(uuid) = node.entity_uuid {
+                if let Some(true) = node.has_children {
+                    // Already marked as having children
+                    continue;
+                }
+                // Check if this entity has children by querying for entities with this as parent
+                let has_children_result = sqlx::query_scalar::<_, bool>(
+                    "SELECT EXISTS(SELECT 1 FROM entities_registry WHERE parent_uuid = $1 LIMIT 1)"
+                )
+                .bind(uuid)
+                .fetch_one(&self.db_pool)
+                .await;
+
+                if let Ok(has) = has_children_result {
+                    node.has_children = Some(has);
+                }
+            } else if node.kind == BrowseKind::Folder {
+                // For folders (virtual), check if there are entities at this path or below
+                let path = &node.path;
+                let has_children_result = sqlx::query_scalar::<_, bool>(
+                    "SELECT EXISTS(SELECT 1 FROM entities_registry WHERE path = $1 OR path LIKE $1 || '/%' LIMIT 1)"
+                )
+                .bind(path)
+                .fetch_one(&self.db_pool)
+                .await;
+
+                if let Ok(has) = has_children_result {
+                    node.has_children = Some(has);
+                }
+            }
+        }
 
         let total = all.len() as i64;
         let start = offset.max(0) as usize;

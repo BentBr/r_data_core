@@ -177,18 +177,7 @@
                     {{ t('entities.details.data') }}
                 </v-card-title>
                 <v-card-text class="pa-3">
-                    <v-expansion-panels variant="accordion">
-                        <v-expansion-panel>
-                            <v-expansion-panel-title>
-                                {{ t('entities.details.raw_data') }}
-                            </v-expansion-panel-title>
-                            <v-expansion-panel-text>
-                                <pre class="text-body-2 bg-grey-lighten-4 pa-3 rounded">{{
-                                    JSON.stringify(entity.field_data, null, 2)
-                                }}</pre>
-                            </v-expansion-panel-text>
-                        </v-expansion-panel>
-
+                    <v-expansion-panels variant="accordion" :model-value="entityDefinition ? [0, 1] : [0]">
                         <v-expansion-panel v-if="entityDefinition">
                             <v-expansion-panel-title>
                                 {{ t('entities.details.formatted_data') }}
@@ -218,6 +207,17 @@
                                         </v-list-item-subtitle>
                                     </v-list-item>
                                 </v-list>
+                            </v-expansion-panel-text>
+                        </v-expansion-panel>
+
+                        <v-expansion-panel>
+                            <v-expansion-panel-title>
+                                {{ t('entities.details.raw_data') }}
+                            </v-expansion-panel-title>
+                            <v-expansion-panel-text>
+                                <pre class="text-body-2 bg-grey-lighten-4 pa-3 rounded">{{
+                                    JSON.stringify(entity.field_data, null, 2)
+                                }}</pre>
                             </v-expansion-panel-text>
                         </v-expansion-panel>
                     </v-expansion-panels>
