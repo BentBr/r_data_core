@@ -89,7 +89,7 @@ export function useTranslations() {
         }
 
         // Return fallback text or key if no translation found
-        let result = translation || actualFallback || key
+        let result = translation ?? actualFallback ?? key
 
         // Replace placeholders if parameters are provided
         if (actualParams && typeof result === 'string') {
@@ -164,4 +164,4 @@ export function useTranslations() {
 
 // Initialize translations on module load
 const translationInstance = useTranslations()
-translationInstance.initTranslations()
+void translationInstance.initTranslations()

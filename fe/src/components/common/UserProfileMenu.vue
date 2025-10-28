@@ -138,7 +138,7 @@
         authStore.clearAuthState()
 
         // Redirect immediately
-        router.push('/login')
+        void router.push('/login')
 
         // Then handle the full logout process
         try {

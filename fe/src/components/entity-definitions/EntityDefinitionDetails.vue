@@ -6,7 +6,7 @@
         <v-card-title class="d-flex align-center justify-space-between pa-4">
             <div class="d-flex align-center">
                 <v-icon
-                    :icon="definition.icon || 'mdi-file-document'"
+                    :icon="definition.icon ?? 'mdi-file-document'"
                     class="mr-3"
                 />
                 <span class="text-h5">{{ definition.display_name }}</span>

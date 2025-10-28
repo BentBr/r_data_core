@@ -19,7 +19,7 @@
                                 :label="t('entity_definitions.create.entity_type_label')"
                                 :hint="t('entity_definitions.create.entity_type_hint')"
                                 :rules="[
-                                    v => !!v || t('entity_definitions.create.entity_type_required'),
+                                    v => !!v ?? t('entity_definitions.create.entity_type_required'),
                                 ]"
                                 required
                                 readonly
@@ -31,7 +31,7 @@
                                 :label="t('entity_definitions.create.display_name_label')"
                                 :rules="[
                                     v =>
-                                        !!v || t('entity_definitions.create.display_name_required'),
+                                        !!v ?? t('entity_definitions.create.display_name_required'),
                                 ]"
                                 required
                             />
@@ -162,12 +162,12 @@
                 form.value = {
                     entity_type: newDefinition.entity_type,
                     display_name: newDefinition.display_name,
-                    description: newDefinition.description || '',
-                    group_name: newDefinition.group_name || '',
+                    description: newDefinition.description ?? '',
+                    group_name: newDefinition.group_name ?? '',
                     allow_children: newDefinition.allow_children,
-                    icon: newDefinition.icon || '',
+                    icon: newDefinition.icon ?? '',
                     fields: [...newDefinition.fields],
-                    published: newDefinition.published || false,
+                    published: newDefinition.published ?? false,
                 }
             }
         },

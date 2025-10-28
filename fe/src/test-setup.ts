@@ -21,7 +21,7 @@ import { mount } from '@vue/test-utils'
 export const mountX = (component: unknown, options: ComponentMountingOptions<unknown> = {}) =>
     mount(component, {
         ...options,
-        global: { ...(options.global || {}), plugins: [vuetify] },
+        global: { ...(options.global ?? {}), plugins: [vuetify] },
     })
 
 // -----------------------------------------------------------------------------

@@ -93,7 +93,7 @@
                     uuid: def.uuid,
                     display_name: def.display_name,
                     entity_type: def.entity_type,
-                    icon: def.icon || 'mdi-file-document',
+                    icon: def.icon ?? 'mdi-file-document',
                     published: def.published,
                 })),
             })
@@ -101,12 +101,12 @@
 
         // Add ungrouped items as top-level items
         const ungroupedItems: TreeNode[] = ungrouped.map(def => ({
-            id: def.uuid || '',
+            id: def.uuid ?? '',
             title: def.display_name,
             uuid: def.uuid,
             display_name: def.display_name,
             entity_type: def.entity_type,
-            icon: def.icon || 'mdi-file-document',
+            icon: def.icon ?? 'mdi-file-document',
             published: def.published,
         }))
 

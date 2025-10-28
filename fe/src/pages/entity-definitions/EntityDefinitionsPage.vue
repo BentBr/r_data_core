@@ -207,8 +207,8 @@
     const sanitizeFields = (fields: FieldDefinition[]) => {
         return fields.map(field => ({
             ...field,
-            constraints: field.constraints || {},
-            ui_settings: field.ui_settings || {},
+            constraints: field.constraints ?? {},
+            ui_settings: field.ui_settings ?? {},
         }))
     }
 
@@ -367,7 +367,7 @@
                     showError(t('entity_definitions.errors.validation_failed'))
                 }
             } else {
-                showError(errorMessage || t('entity_definitions.create.error'))
+                showError(errorMessage ?? t('entity_definitions.create.error'))
             }
         } finally {
             creating.value = false
@@ -429,7 +429,7 @@
                     showError(t('entity_definitions.errors.validation_failed'))
                 }
             } else {
-                showError(errorMessage || t('entity_definitions.edit.error'))
+                showError(errorMessage ?? t('entity_definitions.edit.error'))
             }
         } finally {
             updating.value = false
@@ -486,8 +486,8 @@
         // Ensure constraints and ui_settings are always objects, not null
         const sanitizedField = {
             ...field,
-            constraints: field.constraints || {},
-            ui_settings: field.ui_settings || {},
+            constraints: field.constraints ?? {},
+            ui_settings: field.ui_settings ?? {},
         }
 
         // Working with selected definition
@@ -512,7 +512,7 @@
     // Lifecycle
     onMounted(() => {
         isComponentMounted.value = true
-        loadEntityDefinitions()
+        void loadEntityDefinitions()
     })
 
     onUnmounted(() => {

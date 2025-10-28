@@ -147,10 +147,10 @@
     })
 
     const parentUuidValue = computed({
-        get: () => formData.value.parent_uuid || null,
+        get: () => formData.value.parent_uuid ?? null,
         set: (value: string | null) => {
             formData.value.parent_uuid = value
-        }
+        },
     })
 
     // Methods
@@ -158,7 +158,7 @@
         if (props.entity) {
             formData.value = {
                 data: { ...(props.entity.field_data || {}) },
-                parent_uuid: props.entity.field_data?.parent_uuid || null,
+                parent_uuid: props.entity.field_data?.parent_uuid ?? null,
             }
         }
     }
@@ -184,34 +184,35 @@
     }
 
     const getFieldRules = (field: FieldDefinition) => {
-        const rules: ((value: any) => boolean | string)[] = []
+        const rules: ((value: unknown) => boolean | string)[] = []
 
         if (field.required) {
-            rules.push((v: any) => !!v || `${field.display_name} is required`)
+            rules.push((v: unknown) => !!v || `${field.display_name} is required`)
         }
 
         if (field.constraints?.min !== undefined) {
             rules.push(
-                (v: any) =>
+                (v: unknown) =>
                     !v ||
-                    v >= field.constraints!.min! ||
+                    (typeof v === 'number' && v >= field.constraints!.min!) ||
                     `Minimum value is ${field.constraints!.min}`
             )
         }
 
         if (field.constraints?.max !== undefined) {
             rules.push(
-                (v: any) =>
+                (v: unknown) =>
                     !v ||
-                    v <= field.constraints!.max! ||
+                    (typeof v === 'number' && v <= field.constraints!.max!) ||
                     `Maximum value is ${field.constraints!.max}`
             )
         }
 
         if (field.constraints?.pattern) {
+            const pattern = field.constraints.pattern as string
             rules.push(
-                (v: any) =>
-                    !v || new RegExp(field.constraints!.pattern!).test(v) || 'Invalid format'
+                (v: unknown) =>
+                    !v || (typeof v === 'string' && new RegExp(pattern).test(v)) || 'Invalid format'
             )
         }
 

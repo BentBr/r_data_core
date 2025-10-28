@@ -66,7 +66,7 @@
     const emit = defineEmits<Emits>()
 
     const searchQuery = ref('')
-    const selectedIcon = ref(props.modelValue || '')
+    const selectedIcon = ref(props.modelValue ?? '')
 
     // Common Material Design Icons
     const commonIcons = [
@@ -245,7 +245,7 @@
     watch(
         () => props.modelValue,
         newValue => {
-            selectedIcon.value = newValue || ''
+            selectedIcon.value = newValue ?? ''
         }
     )
 </script>

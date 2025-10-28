@@ -16,7 +16,7 @@
                         ref="nameField"
                         v-model="createForm.name"
                         :label="t('api_keys.create.name_label')"
-                        :rules="[v => !!v || t('api_keys.create.name_required')]"
+                        :rules="[v => !!v ?? t('api_keys.create.name_required')]"
                         required
                         @input="validateForm"
                     />
@@ -126,8 +126,8 @@
         // Create a clean object without circular references
         const requestData: CreateApiKeyRequest = {
             name: createForm.value.name,
-            description: createForm.value.description || undefined,
-            expires_in_days: createForm.value.expires_in_days || undefined,
+            description: createForm.value.description ?? undefined,
+            expires_in_days: createForm.value.expires_in_days ?? undefined,
         }
 
         emit('create', requestData)
@@ -140,7 +140,7 @@
 
     const focusNameField = () => {
         // Use nextTick to ensure the field is rendered
-        nextTick(() => {
+        void nextTick(() => {
             if (nameField.value) {
                 nameField.value.focus()
             }

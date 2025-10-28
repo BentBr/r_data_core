@@ -21,7 +21,7 @@
                 <div>
                     <h3 class="text-h5">{{ t('entities.details.title') }}</h3>
                     <p class="text-subtitle-1 text-grey">
-                        {{ entityDefinition?.display_name || entity.entity_type }}
+                        {{ entityDefinition?.display_name ?? entity.entity_type }}
                     </p>
                 </div>
                 <div class="d-flex gap-2">
@@ -65,7 +65,9 @@
                                     <v-list-item-title>{{
                                         t('entities.details.uuid')
                                     }}</v-list-item-title>
-                                    <v-list-item-subtitle>{{ entity.field_data?.uuid || '' }}</v-list-item-subtitle>
+                                    <v-list-item-subtitle>{{
+                                        entity.field_data?.uuid ?? ''
+                                    }}</v-list-item-subtitle>
                                 </v-list-item>
                                 <v-list-item>
                                     <template #prepend>
@@ -92,7 +94,7 @@
                                         t('entities.details.created_at')
                                     }}</v-list-item-title>
                                     <v-list-item-subtitle>{{
-                                        formatDate(entity.field_data?.created_at || '')
+                                        formatDate(entity.field_data?.created_at ?? '')
                                     }}</v-list-item-subtitle>
                                 </v-list-item>
                                 <v-list-item>
@@ -106,7 +108,7 @@
                                         t('entities.details.updated_at')
                                     }}</v-list-item-title>
                                     <v-list-item-subtitle>{{
-                                        formatDate(entity.field_data?.updated_at || '')
+                                        formatDate(entity.field_data?.updated_at ?? '')
                                     }}</v-list-item-subtitle>
                                 </v-list-item>
                                 <v-list-item v-if="entity.field_data?.path">
@@ -119,7 +121,9 @@
                                     <v-list-item-title>{{
                                         t('entities.details.path')
                                     }}</v-list-item-title>
-                                    <v-list-item-subtitle>{{ entity.field_data?.path }}</v-list-item-subtitle>
+                                    <v-list-item-subtitle>{{
+                                        entity.field_data?.path
+                                    }}</v-list-item-subtitle>
                                 </v-list-item>
                             </v-list>
                         </v-card-text>
@@ -144,7 +148,10 @@
                                         t('entities.details.parent')
                                     }}</v-list-item-title>
                                     <v-list-item-subtitle>
-                                        {{ entity.field_data?.parent_uuid || t('entities.details.no_parent') }}
+                                        {{
+                                            entity.field_data?.parent_uuid ||
+                                            t('entities.details.no_parent')
+                                        }}
                                     </v-list-item-subtitle>
                                 </v-list-item>
                                 <v-list-item>
@@ -177,7 +184,10 @@
                     {{ t('entities.details.data') }}
                 </v-card-title>
                 <v-card-text class="pa-3">
-                    <v-expansion-panels variant="accordion" :model-value="entityDefinition ? [0, 1] : [0]">
+                    <v-expansion-panels
+                        variant="accordion"
+                        :model-value="entityDefinition ? [0, 1] : [0]"
+                    >
                         <v-expansion-panel v-if="entityDefinition">
                             <v-expansion-panel-title>
                                 {{ t('entities.details.formatted_data') }}
@@ -241,7 +251,7 @@
         (e: 'delete'): void
     }
 
-    const props = defineProps<Props>()
+    defineProps<Props>()
     defineEmits<Emits>()
 
     const { t } = useTranslations()
@@ -270,8 +280,8 @@
         return iconMap[fieldType] || 'mdi-text'
     }
 
-    const formatFieldValue = (value: any, fieldType: string) => {
-        if (value === null || value === undefined) {
+    const formatFieldValue = (value: unknown, fieldType: string): string => {
+        if (value === null ?? value === undefined) {
             return t('common.empty')
         }
 
@@ -280,11 +290,11 @@
                 return value ? t('common.yes') : t('common.no')
             case 'Date':
             case 'DateTime':
-                return new Date(value).toLocaleDateString()
+                return new Date(value as string).toLocaleDateString()
             case 'Time':
                 return new Date(`2000-01-01T${value}`).toLocaleTimeString()
             case 'Json':
-                return typeof value === 'object' ? JSON.stringify(value) : value
+                return typeof value === 'object' ? JSON.stringify(value) : String(value)
             default:
                 return String(value)
         }

@@ -302,6 +302,7 @@ Swagger:
 - caching
 - crons + refresh token deletion
 - load/performance test binary
+- typescript bindings
 
 
 fixes:

@@ -26,7 +26,7 @@
                                 name="name"
                                 :label="t('entity_definitions.fields.field_name')"
                                 :rules="[
-                                    v => !!v || t('entity_definitions.fields.field_name_required'),
+                                    v => !!v ?? t('entity_definitions.fields.field_name_required'),
                                     v =>
                                         /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(v) ||
                                         t('entity_definitions.fields.field_name_invalid'),
@@ -43,7 +43,7 @@
                                 :label="t('entity_definitions.fields.display_name')"
                                 :rules="[
                                     v =>
-                                        !!v || t('entity_definitions.fields.display_name_required'),
+                                        !!v ?? t('entity_definitions.fields.display_name_required'),
                                 ]"
                                 required
                             />
@@ -59,7 +59,7 @@
                                 :items="fieldTypes"
                                 :label="t('entity_definitions.fields.field_type')"
                                 :rules="[
-                                    v => !!v || t('entity_definitions.fields.field_type_required'),
+                                    v => !!v ?? t('entity_definitions.fields.field_type_required'),
                                 ]"
                                 required
                             />
@@ -223,13 +223,13 @@
                     name: newField.name,
                     display_name: newField.display_name,
                     field_type: newField.field_type,
-                    description: newField.description || '',
+                    description: newField.description ?? '',
                     required: newField.required,
                     indexed: newField.indexed,
                     filterable: newField.filterable,
                     default_value: newField.default_value,
-                    constraints: newField.constraints || {},
-                    ui_settings: newField.ui_settings || {},
+                    constraints: newField.constraints ?? {},
+                    ui_settings: newField.ui_settings ?? {},
                 }
             } else {
                 // Adding new field - reset form
@@ -252,8 +252,8 @@
         // Ensure constraints and ui_settings are always objects, not null
         const sanitizedField = {
             ...form.value,
-            constraints: form.value.constraints || {},
-            ui_settings: form.value.ui_settings || {},
+            constraints: form.value.constraints ?? {},
+            ui_settings: form.value.ui_settings ?? {},
         }
 
         emit('save', sanitizedField)
