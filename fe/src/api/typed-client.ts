@@ -460,7 +460,9 @@ class TypedHttpClient {
             const rawData = await response.json()
             return this.validatePaginatedResponse(rawData, schema)
         } catch (error) {
+
             // Don't log validation errors to console as they're expected behavior
+            // todo add validationError and catch it (don't log it)
             if (!(error instanceof ValidationError)) {
                 if (this.enableLogging) {
                     console.error('[API] Error:', {
