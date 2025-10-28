@@ -46,7 +46,7 @@
             en: UkFlag,
             de: GermanFlag,
         }
-        return flags[lang as keyof typeof flags] || UkFlag
+        return flags[lang as keyof typeof flags] ?? UkFlag
     }
 
     const getCurrentFlagComponent = () => {

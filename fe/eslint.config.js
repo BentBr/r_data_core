@@ -7,8 +7,9 @@ import typescriptParser from '@typescript-eslint/parser'
 import typescriptPlugin from '@typescript-eslint/eslint-plugin'
 
 export default [
+    // For config files and src files
     {
-        files: ['*.js', '*.vue', '*.ts', 'src/**/*.{js,vue,ts}'],
+        files: ['src/**/*.{js,vue,ts}'],
         languageOptions: {
             parser: vueParser,
             parserOptions: {
@@ -16,6 +17,8 @@ export default [
                 ecmaVersion: 'latest',
                 sourceType: 'module',
                 extraFileExtensions: ['.vue'],
+                project: ['./tsconfig.json'],
+                tsconfigRootDir: import.meta.dirname,
             },
             globals: {
                 browser: true,
@@ -73,11 +76,41 @@ export default [
             '@typescript-eslint/explicit-module-boundary-types': 'off',
             '@typescript-eslint/no-explicit-any': 'warn',
             '@typescript-eslint/no-inferrable-types': 'error',
+            '@typescript-eslint/no-misused-promises': 'error',
+            '@typescript-eslint/no-floating-promises': 'error',
+            '@typescript-eslint/prefer-nullish-coalescing': 'error',
+            '@typescript-eslint/prefer-optional-chain': 'error',
 
             // Disable conflicting ESLint rules in favor of TypeScript equivalents
             'no-unused-vars': 'off',
             'no-undef': 'off', // TypeScript compiler handles this
             'prefer-const': 'error', // Use the base ESLint rule instead
+            'prettier/prettier': [
+                'error',
+                {
+                    tabWidth: 4,
+                    singleAttributePerLine: true,
+                    vueIndentScriptAndStyle: true,
+                    bracketSameLine: false,
+                },
+            ],
+        },
+    },
+    // For config files (without type-checking)
+    {
+        files: ['*.config.{js,ts}', 'eslint.config.js'],
+        languageOptions: {
+            parser: typescriptParser,
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+        },
+        plugins: {
+            '@typescript-eslint': typescriptPlugin,
+            prettier,
+        },
+        rules: {
+            ...prettierConfig.rules,
+            '@typescript-eslint/no-explicit-any': 'warn',
             'prettier/prettier': [
                 'error',
                 {

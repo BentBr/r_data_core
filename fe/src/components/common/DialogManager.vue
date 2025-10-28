@@ -1,8 +1,8 @@
 <template>
     <v-dialog
         v-model="showDialog"
-        :max-width="dialogConfig.maxWidth || '600px'"
-        :persistent="dialogConfig.persistent || false"
+        :max-width="dialogConfig.maxWidth ?? '600px'"
+        :persistent="dialogConfig.persistent ?? false"
     >
         <v-card>
             <v-card-title class="text-h5 pa-4">

@@ -28,9 +28,9 @@ export const env = {
     adminBaseUrl: import.meta.env.VITE_ADMIN_BASE_URL,
     devMode: import.meta.env.VITE_DEV_MODE === 'true',
     enableApiLogging: import.meta.env.VITE_ENABLE_API_LOGGING === 'true',
-    defaultPageSize: parseInt(import.meta.env.VITE_DEFAULT_PAGE_SIZE || '100', 10),
-    maxPageSize: parseInt(import.meta.env.VITE_MAX_PAGE_SIZE || '100', 10),
-    tokenRefreshBuffer: parseInt(import.meta.env.VITE_TOKEN_REFRESH_BUFFER || '5', 10),
+    defaultPageSize: parseInt(import.meta.env.VITE_DEFAULT_PAGE_SIZE ?? '100', 10),
+    maxPageSize: parseInt(import.meta.env.VITE_MAX_PAGE_SIZE ?? '100', 10),
+    tokenRefreshBuffer: parseInt(import.meta.env.VITE_TOKEN_REFRESH_BUFFER ?? '5', 10),
     isProduction: import.meta.env.PROD,
     isDevelopment: import.meta.env.DEV,
 }

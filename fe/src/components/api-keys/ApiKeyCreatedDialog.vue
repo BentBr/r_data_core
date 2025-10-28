@@ -82,7 +82,7 @@
         const apiKey = props.apiKey
 
         // Modern approach
-        if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+        if (navigator?.clipboard?.writeText) {
             navigator.clipboard
                 .writeText(apiKey)
                 .then(() => {

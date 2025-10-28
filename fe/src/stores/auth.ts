@@ -171,11 +171,11 @@ export const useAuthStore = defineStore('auth', () => {
         if (timeUntilExpiry > bufferTime) {
             // Set up refresh timer
             const refreshTime = timeUntilExpiry - bufferTime
-            refreshTimer.value = setTimeout(async () => {
+            refreshTimer.value = setTimeout(() => {
                 if (env.enableApiLogging) {
                     console.log('[Auth] Token refresh timer triggered')
                 }
-                await refreshTokens()
+                void refreshTokens()
             }, refreshTime)
 
             if (env.enableApiLogging) {
@@ -239,9 +239,9 @@ export const useAuthStore = defineStore('auth', () => {
             try {
                 const payload = JSON.parse(atob(response.access_token.split('.')[1]))
                 user.value = {
-                    uuid: payload.sub || '',
-                    username: payload.username || '',
-                    role: payload.role || '',
+                    uuid: payload.sub ?? '',
+                    username: payload.username ?? '',
+                    role: payload.role ?? '',
                     email: '',
                     first_name: '',
                     last_name: '',
@@ -318,9 +318,9 @@ export const useAuthStore = defineStore('auth', () => {
                 if (payload.exp * 1000 > Date.now()) {
                     // Token is still valid, restore basic user info
                     user.value = {
-                        uuid: payload.sub || '',
-                        username: payload.username || '',
-                        role: payload.role || '',
+                        uuid: payload.sub ?? '',
+                        username: payload.username ?? '',
+                        role: payload.role ?? '',
                         email: '',
                         first_name: '',
                         last_name: '',

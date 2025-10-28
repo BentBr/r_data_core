@@ -42,9 +42,9 @@
         }
         return {
             message: props.snackbar.message,
-            color: props.snackbar.color || 'info',
-            timeout: props.snackbar.timeout || 3000,
-            persistent: props.snackbar.persistent || false,
+            color: props.snackbar.color ?? 'info',
+            timeout: props.snackbar.timeout ?? 3000,
+            persistent: props.snackbar.persistent ?? false,
         }
     })
 

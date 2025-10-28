@@ -18,6 +18,11 @@ import {
     ValidationErrorResponseSchema,
 } from '@/types/schemas'
 
+// Import ValidationError from http-client.ts
+// Eventually this file should be refactored to use the new HttpClient class
+import { ValidationError } from './http-client'
+export { ValidationError }
+
 // Import types from schemas
 import type {
     LoginRequest,
@@ -40,21 +45,11 @@ import type {
     Meta,
 } from '@/types/schemas'
 
-// Custom error class for validation errors
-export class ValidationError extends Error {
-    violations: Array<{ field: string; message: string; code?: string }>
+// Re-export HttpClient and types for future use
+export { HttpClient as TypedHttpClientBase } from './http-client'
+export type { ApiResponse } from './http-client'
 
-    constructor(
-        message: string,
-        violations: Array<{ field: string; message: string; code?: string }>
-    ) {
-        super(message)
-        this.name = 'ValidationError'
-        this.violations = violations
-    }
-}
-
-// Define ApiResponse type
+// Define ApiResponse type for backward compatibility
 type ApiResponse<T> = {
     status: 'Success' | 'Error'
     message: string
@@ -62,6 +57,7 @@ type ApiResponse<T> = {
     meta?: Meta
 }
 
+// TODO: Refactor this class to extend HttpClient
 class TypedHttpClient {
     private baseURL = env.apiBaseUrl
     private enableLogging = env.enableApiLogging
@@ -115,7 +111,7 @@ class TypedHttpClient {
 
         try {
             if (this.enableLogging) {
-                console.log(`[API] ${config.method || 'GET'} ${this.baseURL}${endpoint}`)
+                console.log(`[API] ${config.method ?? 'GET'} ${this.baseURL}${endpoint}`)
             }
 
             const response = await fetch(`${this.baseURL}${endpoint}`, config)
@@ -185,7 +181,10 @@ class TypedHttpClient {
                     if (response.status === 422 && errorData.violations) {
                         try {
                             const validationError = ValidationErrorResponseSchema.parse(errorData)
-                            throw new ValidationError(validationError.message, validationError.violations)
+                            throw new ValidationError(
+                                validationError.message,
+                                validationError.violations
+                            )
                         } catch (parseError) {
                             // Re-throw ValidationError as-is
                             if (parseError instanceof ValidationError) {
@@ -195,7 +194,10 @@ class TypedHttpClient {
                             if (this.enableLogging) {
                                 console.error('[API] Failed to parse validation error:', parseError)
                             }
-                            throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
+                            throw new Error(
+                                errorData.message ??
+                                    `HTTP ${response.status}: ${response.statusText}`
+                            )
                         }
                     }
 
@@ -206,8 +208,8 @@ class TypedHttpClient {
 
                     // Handle other error formats
                     const errorMessage =
-                        errorData.message ||
-                        errorData.error ||
+                        errorData.message ??
+                        errorData.error ??
                         `HTTP ${response.status}: ${response.statusText}`
                     throw new Error(errorMessage)
                 } catch (parseError) {
@@ -260,7 +262,7 @@ class TypedHttpClient {
                 // Create a more user-friendly error message
                 const firstIssue = validationError.issues[0]
                 const fieldPath = firstIssue?.path?.join('.') || 'unknown field'
-                const message = firstIssue?.message || 'Invalid format'
+                const message = firstIssue?.message ?? 'Invalid format'
                 throw new Error(`Response validation failed: ${message} (${fieldPath})`)
             }
             throw validationError
@@ -271,7 +273,7 @@ class TypedHttpClient {
         }
 
         // For responses with null data (like logout), return the message
-        if (validatedResponse.data === null || validatedResponse.data === undefined) {
+        if (validatedResponse.data === null ?? validatedResponse.data === undefined) {
             return { message: validatedResponse.message } as T
         }
 
@@ -344,7 +346,7 @@ class TypedHttpClient {
 
         try {
             if (this.enableLogging) {
-                console.log(`[API] ${config.method || 'GET'} ${this.baseURL}${endpoint}`)
+                console.log(`[API] ${config.method ?? 'GET'} ${this.baseURL}${endpoint}`)
             }
 
             const response = await fetch(`${this.baseURL}${endpoint}`, config)
@@ -414,14 +416,20 @@ class TypedHttpClient {
                     if (response.status === 422 && errorData.violations) {
                         try {
                             const validationError = ValidationErrorResponseSchema.parse(errorData)
-                            throw new ValidationError(validationError.message, validationError.violations)
+                            throw new ValidationError(
+                                validationError.message,
+                                validationError.violations
+                            )
                         } catch (parseError) {
                             // Re-throw ValidationError as-is
                             if (parseError instanceof ValidationError) {
                                 throw parseError
                             }
                             // If parsing fails, treat as regular error
-                            throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
+                            throw new Error(
+                                errorData.message ??
+                                    `HTTP ${response.status}: ${response.statusText}`
+                            )
                         }
                     }
 
@@ -432,8 +440,8 @@ class TypedHttpClient {
 
                     // Handle other error formats
                     const errorMessage =
-                        errorData.message ||
-                        errorData.error ||
+                        errorData.message ??
+                        errorData.error ??
                         `HTTP ${response.status}: ${response.statusText}`
                     throw new Error(errorMessage)
                 } catch (parseError) {
@@ -452,7 +460,9 @@ class TypedHttpClient {
             const rawData = await response.json()
             return this.validatePaginatedResponse(rawData, schema)
         } catch (error) {
+
             // Don't log validation errors to console as they're expected behavior
+            // todo add validationError and catch it (don't log it)
             if (!(error instanceof ValidationError)) {
                 if (this.enableLogging) {
                     console.error('[API] Error:', {
@@ -504,7 +514,7 @@ class TypedHttpClient {
                 // Create a more user-friendly error message
                 const firstIssue = validationError.issues[0]
                 const fieldPath = firstIssue?.path?.join('.') || 'unknown field'
-                const message = firstIssue?.message || 'Invalid format'
+                const message = firstIssue?.message ?? 'Invalid format'
                 throw new Error(`Response validation failed: ${message} (${fieldPath})`)
             }
             throw validationError
@@ -520,7 +530,7 @@ class TypedHttpClient {
 
         return {
             data: validatedResponse.data,
-            meta: validatedResponse.meta || undefined,
+            meta: validatedResponse.meta ?? undefined,
         }
     }
 
@@ -824,29 +834,40 @@ class TypedHttpClient {
         return this.request(`/api/v1/${entityType}/${uuid}`, ApiResponseSchema(DynamicEntitySchema))
     }
 
-    async createEntity(entityType: string, data: CreateEntityRequest): Promise<EntityResponse> {
+    async createEntity(
+        entityType: string,
+        data: CreateEntityRequest
+    ): Promise<EntityResponse | null> {
         const body: Record<string, unknown> = { ...data.data }
         if (data.parent_uuid !== undefined && data.parent_uuid !== null) {
             body.parent_uuid = data.parent_uuid
         }
-        return this.request(`/api/v1/${entityType}`, ApiResponseSchema(EntityResponseSchema), {
-            method: 'POST',
-            body: JSON.stringify(body),
-        })
+        return this.request(
+            `/api/v1/${entityType}`,
+            ApiResponseSchema(EntityResponseSchema) as z.ZodType<
+                ApiResponse<EntityResponse | null>
+            >,
+            {
+                method: 'POST',
+                body: JSON.stringify(body),
+            }
+        )
     }
 
     async updateEntity(
         entityType: string,
         uuid: string,
         data: UpdateEntityRequest
-    ): Promise<EntityResponse> {
+    ): Promise<EntityResponse | null> {
         const body: Record<string, unknown> = { ...data.data }
         if (data.parent_uuid !== undefined) {
             body.parent_uuid = data.parent_uuid
         }
         return this.request(
             `/api/v1/${entityType}/${uuid}`,
-            ApiResponseSchema(EntityResponseSchema),
+            ApiResponseSchema(EntityResponseSchema) as z.ZodType<
+                ApiResponse<EntityResponse | null>
+            >,
             {
                 method: 'PUT',
                 body: JSON.stringify(body),

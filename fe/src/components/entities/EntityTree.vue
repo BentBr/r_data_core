@@ -131,11 +131,11 @@
                 // Get icon from entity definition if available
                 let icon = 'mdi-database' // default
                 if (node.entity_type && iconMap.value.has(node.entity_type)) {
-                    icon = iconMap.value.get(node.entity_type) || icon
+                    icon = iconMap.value.get(node.entity_type) ?? icon
                 }
-                
+
                 files.push({
-                    id: node.entity_uuid || node.path,
+                    id: node.entity_uuid ?? node.path,
                     title: node.name,
                     icon,
                     entity_type: node.entity_type,
@@ -189,17 +189,17 @@
     async function handleExpandedItemsChange(newExpandedItems: string[]) {
         // Find newly expanded items that don't have loaded children yet
         const newlyExpanded = newExpandedItems.filter(id => !props.expandedItems?.includes(id))
-        
+
         for (const expandedId of newlyExpanded) {
             const node = findNodeById(treeItems.value, expandedId)
             if (node && Array.isArray(node.children) && node.children.length === 0) {
                 await loadChildrenForNode(node)
             }
         }
-        
+
         emit('update:expandedItems', newExpandedItems)
     }
-    
+
     function findNodeById(items: TreeNode[], id: string): TreeNode | null {
         for (const item of items) {
             if (item.id === id) {
@@ -214,16 +214,16 @@
         }
         return null
     }
-    
+
     async function handleItemClickProxy(item: TreeNode) {
         // Regular click on item (not for expansion) - expansion is handled by handleExpandedItemsChange
         emit('item-click', item)
     }
-    
+
     async function loadChildrenForNode(item: TreeNode) {
         // Determine the path to load based on node type
         let targetPath: string
-        
+
         if (item.id.startsWith('folder:')) {
             // It's a folder, use the folder path
             targetPath = item.id.replace('folder:', '')
@@ -233,7 +233,7 @@
         } else {
             return
         }
-        
+
         try {
             const { data } = await typedHttpClient.browseByPath(targetPath, 100, 0)
             const nodes = buildNodesForPath(targetPath, data)
@@ -281,7 +281,7 @@
         p => {
             loadedPaths.value.clear()
             treeItems.value = []
-            loadPath(p)
+            void loadPath(p)
         }
     )
 
@@ -290,7 +290,7 @@
         () => {
             loadedPaths.value.clear()
             treeItems.value = []
-            loadPath(props.rootPath)
+            void loadPath(props.rootPath)
         },
         { immediate: true }
     )

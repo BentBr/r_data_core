@@ -13,8 +13,8 @@ export function usePagination(key: string, defaultItemsPerPage = 10) {
             if (stored) {
                 const state = JSON.parse(stored)
                 return {
-                    page: state.page || 1,
-                    itemsPerPage: state.itemsPerPage || defaultItemsPerPage,
+                    page: state.page ?? 1,
+                    itemsPerPage: state.itemsPerPage ?? defaultItemsPerPage,
                 }
             }
         } catch (error) {

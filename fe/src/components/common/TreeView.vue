@@ -14,7 +14,7 @@
     >
         <template #prepend="{ item }">
             <v-icon
-                :icon="item.icon || 'mdi-file-document'"
+                :icon="item.icon ?? 'mdi-file-document'"
                 :color="getItemColor(item)"
                 size="small"
             />
@@ -91,6 +91,6 @@
         if (item.published !== undefined) {
             return item.published ? 'success' : 'grey'
         }
-        return item.color || 'primary'
+        return item.color ?? 'primary'
     }
 </script>

@@ -55,7 +55,7 @@
                             <!-- Description Column -->
                             <template #item.description="{ item }">
                                 <span class="text-body-2 text-medium-emphasis">
-                                    {{ item.description || 'No description' }}
+                                    {{ item.description ?? 'No description' }}
                                 </span>
                             </template>
 
@@ -191,7 +191,7 @@
             :loading="revoking"
             @confirm="revokeApiKey"
         >
-            <p>{{ t('api_keys.revoke.message', { name: keyToRevoke?.name || 'Unknown' }) }}</p>
+            <p>{{ t('api_keys.revoke.message', { name: keyToRevoke?.name ?? 'Unknown' }) }}</p>
         </DialogManager>
 
         <!-- Snackbar -->
@@ -252,7 +252,7 @@
 
     // Computed properties
     const isAdmin = computed(() => {
-        return authStore.user?.is_admin || false
+        return authStore.user?.is_admin ?? false
     })
 
     const tableHeaders = computed(() => {
@@ -362,7 +362,7 @@
                 if (err.message.includes('409') || err.message.includes('conflict')) {
                     showError(t('api_keys.create.error_name_exists'))
                 } else {
-                    showError(err.message || t('api_keys.create.error'))
+                    showError(err.message ?? t('api_keys.create.error'))
                 }
             } else {
                 showError(t('api_keys.create.error'))
@@ -420,7 +420,7 @@
     // Lifecycle
     onMounted(() => {
         isComponentMounted.value = true
-        loadApiKeys(currentPage.value, itemsPerPage.value)
+        void loadApiKeys(currentPage.value, itemsPerPage.value)
     })
 
     onUnmounted(() => {

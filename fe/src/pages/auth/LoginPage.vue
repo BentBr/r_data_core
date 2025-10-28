@@ -87,7 +87,7 @@
                                     size="large"
                                     color="primary"
                                     :loading="authStore.isLoading"
-                                    :disabled="!formValid || authStore.isLoading"
+                                    :disabled="!formValid"
                                     class="mb-4"
                                 >
                                     <v-icon start>mdi-login</v-icon>
@@ -168,13 +168,19 @@
 
     // Validation rules with translations
     const usernameRules = [
-        v => !!v || t('auth.login.errors.username_required'),
-        v => (v && v.length >= 3) || t('auth.login.errors.username_too_short'),
+        (v: unknown) => !!v,
+        (v: unknown) => {
+            const isValid = v && typeof v === 'string' && v.length >= 3
+            return isValid ?? t('auth.login.errors.username_too_short')
+        },
     ]
 
     const passwordRules = [
-        v => !!v || t('auth.login.errors.password_required'),
-        v => (v && v.length >= 8) || t('auth.login.errors.password_too_short'),
+        (v: unknown) => !!v,
+        (v: unknown) => {
+            const isValid = v && typeof v === 'string' && v.length >= 8
+            return isValid ?? t('auth.login.errors.password_too_short')
+        },
     ]
 
     // Methods
@@ -191,8 +197,10 @@
             await authStore.login(credentials)
 
             // Redirect to intended page or dashboard on successful login
-            const redirectTo = router.currentRoute.value.query.redirect || '/dashboard'
-            router.push(redirectTo)
+            const redirectParam = router.currentRoute.value.query.redirect
+            const redirectTo =
+                (Array.isArray(redirectParam) ? redirectParam[0] : redirectParam) ?? '/dashboard'
+            void router.push(redirectTo)
         } catch (error) {
             // Handle specific validation errors from backend
             const rawErrorMessage =
@@ -242,8 +250,10 @@
     onMounted(() => {
         // If user is already authenticated, redirect to appropriate page
         if (authStore.isAuthenticated) {
-            const redirectTo = router.currentRoute.value.query.redirect || '/dashboard'
-            router.push(redirectTo)
+            const redirectParam = router.currentRoute.value.query.redirect
+            const redirectTo =
+                (Array.isArray(redirectParam) ? redirectParam[0] : redirectParam) ?? '/dashboard'
+            void router.push(redirectTo)
         }
     })
 </script>

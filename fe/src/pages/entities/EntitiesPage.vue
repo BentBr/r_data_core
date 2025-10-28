@@ -138,13 +138,16 @@
 
     // Component lifecycle flag
     const isComponentMounted = ref(false)
-    
+
     // Dialog refs
-    const createDialogRef = ref<any>(null)
+    interface CreateDialogInstance {
+        setFieldErrors: (errors: Record<string, string>) => void
+    }
+    const createDialogRef = ref<CreateDialogInstance | null>(null)
 
     // Computed properties
-    const selectedEntityUuid = computed(() => selectedEntity.value?.field_data?.uuid || '')
-    
+    const selectedEntityUuid = computed(() => selectedEntity.value?.field_data?.uuid ?? '')
+
     const selectedEntityDefinition = computed(() => {
         if (!selectedEntity.value) {
             return null
@@ -152,7 +155,7 @@
         return (
             entityDefinitions.value.find(
                 def => def.entity_type === selectedEntity.value?.entity_type
-            ) || null
+            ) ?? null
         )
     })
 
@@ -229,7 +232,6 @@
 
             showSuccess('Entity created successfully')
         } catch (err) {
-            
             // Handle structured validation errors
             if (err instanceof ValidationError) {
                 // Convert violations to a field error map
@@ -237,24 +239,28 @@
                 for (const violation of err.violations) {
                     fieldErrors[violation.field] = violation.message
                 }
-                
+
                 // Set field errors on the dialog - keep dialog open
                 if (createDialogRef.value) {
                     createDialogRef.value.setFieldErrors(fieldErrors)
                 }
-                
+
                 // Show general error message
                 showError(err.message)
             } else if (err instanceof Error) {
                 const errorMessage = err.message
-                
+
                 // Check if it's a validation error from the backend
-                // Backend returns errors like "Validation error: field_name is required" 
+                // Backend returns errors like "Validation error: field_name is required"
                 // or "Unknown fields found: fieldname"
-                if (errorMessage.includes('Validation') || errorMessage.includes('Validation failed') || errorMessage.includes('Unknown fields')) {
+                if (
+                    errorMessage.includes('Validation') ||
+                    errorMessage.includes('Validation failed') ||
+                    errorMessage.includes('Unknown fields')
+                ) {
                     showError(errorMessage)
                 } else {
-                    showError(errorMessage || t('entities.create.error'))
+                    showError(errorMessage ?? t('entities.create.error'))
                 }
             } else {
                 showError(t('entities.create.error'))
@@ -289,7 +295,9 @@
             } as DynamicEntity
 
             // Update the list
-            const index = entities.value.findIndex(e => e.field_data?.uuid === selectedEntityUuid.value)
+            const index = entities.value.findIndex(
+                e => e.field_data?.uuid === selectedEntityUuid.value
+            )
             if (index !== -1 && selectedEntity.value) {
                 entities.value[index] = selectedEntity.value
             }
@@ -318,7 +326,9 @@
             )
 
             // Remove from list
-            entities.value = entities.value.filter(e => e.field_data?.uuid !== selectedEntityUuid.value)
+            entities.value = entities.value.filter(
+                e => e.field_data?.uuid !== selectedEntityUuid.value
+            )
             selectedEntity.value = null
             selectedItems.value = []
 
@@ -334,7 +344,9 @@
 
     // Lifecycle
     onMounted(async () => {
-        if (isComponentMounted.value) return
+        if (isComponentMounted.value) {
+            return
+        }
         isComponentMounted.value = true
         await loadEntityDefinitions()
         // Don't call loadEntities() here - EntityTree will load via refreshKey watcher with immediate:true
