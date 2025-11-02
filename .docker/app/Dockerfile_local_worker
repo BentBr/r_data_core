@@ -1,0 +1,41 @@
+FROM rust:1.88.0-slim AS builder
+
+LABEL org.opencontainers.image.title="R Data Core Worker"
+LABEL org.opencontainers.image.description="R Data Core Backend. Easy rust-backed performant MDM"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.authors="Bent Brüggemann <mail@bent-brueggemann.de>"
+LABEL org.opencontainers.image.source="https://github.com/BentBr/r_data_core"
+LABEL org.opencontainers.image.licenses="MIT"
+
+WORKDIR /usr/src/r_data_core
+
+# Copy source code and manifests
+COPY . .
+
+# Build for local development
+RUN cargo build
+
+# Final stage
+FROM debian:bookworm-slim
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the binary from builder
+COPY --from=builder /usr/src/r_data_core/target/debug/worker /usr/local/bin/
+
+# Create a non-root user
+RUN groupadd -r rdata && useradd -r -g rdata rdata
+USER rdata
+
+# Set environment variables
+ENV RUST_LOG=info
+
+# Expose the port
+EXPOSE 80
+
+# Run the binary
+CMD ["worker"]

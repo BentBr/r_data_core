@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+pub mod data;
+
 /// Basic workflow state
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WorkflowState {

@@ -104,6 +104,7 @@ mod tests {
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
                     entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                     dynamic_entity_service: None,
+                    workflow_service: crate::common::utils::make_workflow_service(&pool),
                 }))
                 .service(
                     web::resource("/api/admin/api-keys")
@@ -190,6 +191,7 @@ mod tests {
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
                     entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                     dynamic_entity_service: None,
+                    workflow_service: crate::common::utils::make_workflow_service(&pool),
                 }))
                 .service(
                     web::resource("/api/admin/api-keys/{uuid}")
@@ -292,6 +294,7 @@ mod tests {
                         admin_user_service: AdminUserService::from_repository(admin_user_repo),
                         entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                         dynamic_entity_service: None,
+                        workflow_service: crate::common::utils::make_workflow_service(&pool),
                     }))
                     .service(web::resource("/protected").wrap(ApiAuth::new()).route(
                         web::get().to(move |req: HttpRequest| async move {
@@ -372,6 +375,7 @@ mod tests {
                         admin_user_service: AdminUserService::from_repository(admin_user_repo),
                         entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                         dynamic_entity_service: None,
+                        workflow_service: crate::common::utils::make_workflow_service(&pool),
                     }))
                     .service(web::resource("/protected").wrap(ApiAuth::new()).route(
                         web::get().to(move |req: HttpRequest| async move {
@@ -459,6 +463,7 @@ mod tests {
                         admin_user_service: AdminUserService::from_repository(admin_user_repo),
                         entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                         dynamic_entity_service: None,
+                        workflow_service: crate::common::utils::make_workflow_service(&pool),
                     }))
                     .service(web::resource("/protected").wrap(ApiAuth::new()).route(
                         web::get().to(move |req: HttpRequest| async move {
@@ -594,6 +599,7 @@ mod tests {
                         admin_user_service: AdminUserService::from_repository(admin_user_repo),
                         entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                         dynamic_entity_service: None,
+                        workflow_service: crate::common::utils::make_workflow_service(&pool),
                     }))
                     .service(web::resource("/protected").wrap(ApiAuth::new()).route(
                         web::get().to(move |req: HttpRequest| async move {
@@ -731,6 +737,7 @@ mod tests {
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
                     entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                     dynamic_entity_service: None,
+                    workflow_service: crate::common::utils::make_workflow_service(&pool),
                 }))
                 .service(
                     web::scope("/admin/api/v1").service(

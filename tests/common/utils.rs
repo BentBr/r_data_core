@@ -10,7 +10,8 @@ use r_data_core::entity::entity_definition::repository_trait::EntityDefinitionRe
 use r_data_core::entity::field::ui::UiSettings;
 use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core::error::{Error, Result};
-use r_data_core::services::{DynamicEntityService, EntityDefinitionService};
+use r_data_core::services::{DynamicEntityService, EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService};
+use r_data_core::workflow::data::repository::WorkflowRepository;
 use serde_json::json;
 use sqlx::{postgres::PgPoolOptions, PgPool, Row};
 use std::collections::HashMap;
@@ -530,4 +531,11 @@ pub async fn cleanup_test_resources() -> Result<()> {
     // Final cleanup if needed
     // No shared pool to close anymore - each test has its own pool
     Ok(())
+}
+
+#[allow(dead_code)]
+pub fn make_workflow_service(pool: &PgPool) -> WorkflowService {
+    let repo = WorkflowRepository::new(pool.clone());
+    let adapter = WorkflowRepositoryAdapter::new(repo);
+    WorkflowService::new(Arc::new(adapter))
 }

@@ -111,6 +111,11 @@
             path: '/api-keys',
         },
         {
+            title: t('navigation.workflows'),
+            icon: 'mdi-timeline-clock-outline',
+            path: '/workflows',
+        },
+        {
             title: t('navigation.permissions'),
             icon: 'mdi-shield-account',
             path: '/permissions',

@@ -19,6 +19,7 @@ use crate::services::AdminUserService;
 use crate::services::ApiKeyService;
 use crate::services::DynamicEntityService;
 use crate::services::EntityDefinitionService;
+use crate::services::WorkflowService;
 
 /// Shared application state
 pub struct ApiState {
@@ -42,6 +43,9 @@ pub struct ApiState {
 
     /// Dynamic Entity service
     pub dynamic_entity_service: Option<Arc<DynamicEntityService>>,
+
+    /// Workflow service (data import/export workflows)
+    pub workflow_service: WorkflowService,
 }
 
 // 404 handler for API routes within scope

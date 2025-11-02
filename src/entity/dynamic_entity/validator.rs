@@ -558,7 +558,7 @@ pub fn validate_entity_with_violations(
                 "updated_by",
                 "published",
                 "version",
-                "parent_uuid",  // Parent entity reference
+                "parent_uuid", // Parent entity reference
             ];
             if !system_fields.contains(&field_name.as_str()) {
                 violations.push(FieldViolation {

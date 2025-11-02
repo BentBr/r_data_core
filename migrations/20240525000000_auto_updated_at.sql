@@ -44,9 +44,9 @@ BEFORE UPDATE ON notifications
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
 
-DROP TRIGGER IF EXISTS set_timestamp ON workflow_definitions;
+DROP TRIGGER IF EXISTS set_timestamp ON workflows;
 CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON workflow_definitions
+BEFORE UPDATE ON workflows
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
 
@@ -54,4 +54,4 @@ DROP TRIGGER IF EXISTS set_timestamp ON workflows;
 CREATE TRIGGER set_timestamp
 BEFORE UPDATE ON workflows
 FOR EACH ROW
-EXECUTE FUNCTION update_timestamp(); 
+EXECUTE FUNCTION update_timestamp();

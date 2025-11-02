@@ -8,6 +8,12 @@ const routes: RouteRecordRaw[] = [
         redirect: '/dashboard',
     },
     {
+        path: '/workflows',
+        name: 'Workflows',
+        component: () => import('@/pages/workflows/WorkflowsPage.vue'),
+        meta: { requiresAuth: true },
+    },
+    {
         path: '/login',
         name: 'Login',
         component: () => import('@/pages/auth/LoginPage.vue'),

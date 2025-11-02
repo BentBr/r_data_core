@@ -35,6 +35,9 @@ use crate::services::ApiKeyRepositoryAdapter;
 use crate::services::ApiKeyService;
 use crate::services::DynamicEntityService;
 use crate::services::EntityDefinitionService;
+use crate::services::WorkflowRepositoryAdapter;
+use crate::services::WorkflowService;
+use crate::workflow::data::repository::WorkflowRepository;
 
 // 404 handler function
 async fn default_404_handler() -> impl actix_web::Responder {
@@ -138,6 +141,9 @@ async fn main() -> std::io::Result<()> {
     );
 
     // Shared application state
+    let workflow_repo = WorkflowRepository::new(pool.clone());
+    let workflow_adapter = WorkflowRepositoryAdapter::new(workflow_repo);
+    let workflow_service = WorkflowService::new(Arc::new(workflow_adapter));
     let app_state = web::Data::new(ApiState {
         db_pool: pool,
         jwt_secret: config.api.jwt_secret.clone(),
@@ -146,6 +152,7 @@ async fn main() -> std::io::Result<()> {
         admin_user_service,
         entity_definition_service,
         dynamic_entity_service: Some(Arc::new(dynamic_entity_service)),
+        workflow_service,
     });
 
     let bind_address = format!("{}:{}", config.api.host, config.api.port);

@@ -249,7 +249,7 @@ async fn create_entity(
                     "entity_type": entity_type,
                     "field_data": field_data
                 });
-                
+
                 let validation_result = validate_entity_with_violations(&entity_json, &entity_def);
                 match validation_result {
                     Ok(ref violations) if !violations.is_empty() => {

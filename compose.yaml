@@ -48,10 +48,10 @@ services:
                     - pg-test.rdatacore.docker
 
     redis:
-        image: redis:7-alpine
+        image: redis:8-alpine
         container_name: rdata_redis
         ports:
-            - "6379:6379"
+            - "6379"
         volumes:
             - redis_data:/data
         healthcheck:
@@ -69,7 +69,7 @@ services:
     app:
         build:
             context: .
-            dockerfile: ./.docker/app/Dockerfile_local
+            dockerfile: ./.docker/app/Dockerfile_local_app
         container_name: rdata_app
         depends_on:
             postgres:
@@ -97,6 +97,30 @@ services:
             default:
                 aliases:
                     - rdatacore.docker
+
+    worker:
+        build:
+            context: .
+            dockerfile: ./.docker/app/Dockerfile_local_worker
+        container_name: rdata_worker
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        environment:
+            DATABASE_URL: postgres://postgres:postgres@postgres:5432/rdata
+            REDIS_URL: redis://redis:6379
+            RUST_LOG: info
+            LOG_LEVEL: info
+            VIRTUAL_HOST: .worker.rdatacore.docker
+            ## Todo: remove those here!
+            JWT_SECRET: development_secret_key
+            JWT_EXPIRATION: 86400
+        networks:
+            default:
+                aliases:
+                    - worker.rdatacore.docker
 
     node:
         image: node:22-alpine

@@ -9,7 +9,66 @@ use crate::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrai
 use crate::entity::entity_definition::definition::EntityDefinition;
 use crate::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use crate::error::Result;
+use crate::workflow::data::repository::WorkflowRepository;
 use serde_json::Value as JsonValue;
+// Workflow data repository adapter
+use crate::api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
+use crate::workflow::data::repository_trait::WorkflowRepositoryTrait as WorkflowRepositoryTraitDef;
+use crate::workflow::data::WorkflowKind;
+
+pub struct WorkflowRepositoryAdapter {
+    inner: WorkflowRepository,
+}
+
+impl WorkflowRepositoryAdapter {
+    pub fn new(inner: WorkflowRepository) -> Self {
+        Self { inner }
+    }
+}
+
+#[async_trait]
+impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
+    async fn list_all(&self) -> anyhow::Result<Vec<crate::workflow::data::Workflow>> {
+        self.inner.list_all().await
+    }
+
+    async fn list_paginated(&self, limit: i64, offset: i64) -> anyhow::Result<Vec<crate::workflow::data::Workflow>> {
+        self.inner.list_paginated(limit, offset).await
+    }
+
+    async fn count_all(&self) -> anyhow::Result<i64> {
+        self.inner.count_all().await
+    }
+
+    async fn get_by_uuid(
+        &self,
+        uuid: Uuid,
+    ) -> anyhow::Result<Option<crate::workflow::data::Workflow>> {
+        self.inner.get_by_uuid(uuid).await
+    }
+
+    async fn create(&self, req: &CreateWorkflowRequest) -> anyhow::Result<Uuid> {
+        self.inner.create(req).await
+    }
+
+    async fn update(&self, uuid: Uuid, req: &UpdateWorkflowRequest) -> anyhow::Result<()> {
+        self.inner.update(uuid, req).await
+    }
+
+    async fn delete(&self, uuid: Uuid) -> anyhow::Result<()> {
+        self.inner.delete(uuid).await
+    }
+
+    async fn list_scheduled_consumers(&self) -> anyhow::Result<Vec<(Uuid, String)>> {
+        self.inner.list_scheduled_consumers().await
+    }
+
+    async fn insert_run_queued(&self, workflow_uuid: Uuid, trigger_id: Uuid) -> anyhow::Result<()> {
+        self.inner
+            .insert_run_queued(workflow_uuid, trigger_id)
+            .await
+    }
+}
 
 /// Repository adapter for EntityDefinitionRepository
 pub struct EntityDefinitionRepositoryAdapter {

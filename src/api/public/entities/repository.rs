@@ -118,7 +118,7 @@ impl EntityRepository {
         let mut folder_map: HashMap<String, BrowseNode> = HashMap::new();
         let mut files: Vec<BrowseNode> = Vec::new();
         let mut has_children: HashSet<String> = HashSet::new();
-        
+
         // Track names of files that live directly under the requested prefix
         let mut file_names: HashSet<String> = HashSet::new();
 
@@ -158,15 +158,24 @@ impl EntityRepository {
         // but skip folders whose name matches an existing file at this level
         for r in &rows {
             let p = r.path.as_str();
-            if p == prefix { continue; }
+            if p == prefix {
+                continue;
+            }
 
             // Ensure this path is deeper than the prefix
-            if p.len() <= base_len { continue; }
+            if p.len() <= base_len {
+                continue;
+            }
 
             let remainder = &p[base_len..];
-            let seg = match remainder.split('/').next() { Some(s) if !s.is_empty() => s, _ => continue };
+            let seg = match remainder.split('/').next() {
+                Some(s) if !s.is_empty() => s,
+                _ => continue,
+            };
 
-            if file_names.contains(seg) { continue; }
+            if file_names.contains(seg) {
+                continue;
+            }
 
             let folder_path = if prefix == "/" {
                 format!("/{}", seg)
@@ -203,7 +212,7 @@ impl EntityRepository {
                 }
                 // Check if this entity has children by querying for entities with this as parent
                 let has_children_result = sqlx::query_scalar::<_, bool>(
-                    "SELECT EXISTS(SELECT 1 FROM entities_registry WHERE parent_uuid = $1 LIMIT 1)"
+                    "SELECT EXISTS(SELECT 1 FROM entities_registry WHERE parent_uuid = $1 LIMIT 1)",
                 )
                 .bind(uuid)
                 .fetch_one(&self.db_pool)

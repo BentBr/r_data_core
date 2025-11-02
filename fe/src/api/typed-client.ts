@@ -656,6 +656,54 @@ class TypedHttpClient {
         )
     }
 
+    // Workflows (Admin)
+    async listWorkflows(): Promise<Array<{ uuid: string; name: string; kind: string; enabled: boolean; schedule_cron?: string | null }>> {
+        // Use loose schema to avoid strict typing issues in legacy client
+        const data = await this.request('/admin/api/v1/workflows', ApiResponseSchema(z.any()))
+        return data as Array<{ uuid: string; name: string; kind: string; enabled: boolean; schedule_cron?: string | null }>
+    }
+
+    async runWorkflow(uuid: string): Promise<{ message: string }> {
+        const data = await this.request(
+            `/admin/api/v1/workflows/${uuid}/run`,
+            ApiResponseSchema(z.any()),
+            { method: 'POST' }
+        )
+        return data as { message: string }
+    }
+
+    async createWorkflow(data: {
+        name: string
+        description?: string | null
+        kind: 'consumer' | 'provider'
+        enabled: boolean
+        schedule_cron?: string | null
+        consumer_config?: unknown
+        provider_config?: unknown
+    }): Promise<{ uuid: string }> {
+        const Schema = z.object({ uuid: z.string().uuid() })
+        return this.request('/admin/api/v1/workflows', ApiResponseSchema(Schema), {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async getWorkflows(page = 1, itemsPerPage = 20): Promise<{
+        data: Array<{ uuid: string; name: string; kind: 'consumer' | 'provider'; enabled: boolean; schedule_cron?: string | null }>
+        meta?: { pagination?: { total: number; page: number; per_page: number; total_pages: number; has_previous: boolean; has_next: boolean } }
+    }> {
+        const Schema = z.array(
+            z.object({
+                uuid: z.string().uuid(),
+                name: z.string(),
+                kind: z.enum(['consumer', 'provider']),
+                enabled: z.boolean(),
+                schedule_cron: z.string().nullable().optional(),
+            })
+        )
+        return this.paginatedRequest(`/admin/api/v1/workflows?page=${page}&per_page=${itemsPerPage}`, PaginatedApiResponseSchema(Schema))
+    }
+
     async revokeApiKey(uuid: string): Promise<{ message: string }> {
         return this.request(
             `/admin/api/v1/api-keys/${uuid}`,

@@ -602,48 +602,89 @@ CREATE TABLE IF NOT EXISTS notifications (
 CREATE INDEX IF NOT EXISTS idx_notifications_recipient_uuid ON notifications(recipient_uuid);
 CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications(status);
 
--- Workflow Definitions Table
-CREATE TABLE IF NOT EXISTS workflow_definitions (
-    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
-    path TEXT NOT NULL DEFAULT '/workflows/definitions',
-    name VARCHAR(100) NOT NULL UNIQUE,
-    description TEXT,
-    triggers JSONB NOT NULL,
-    states JSONB NOT NULL,
-    actions JSONB NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by UUID NOT NULL,
-    updated_by UUID,
-    published BOOLEAN NOT NULL DEFAULT FALSE,
-    version INTEGER NOT NULL DEFAULT 1
-);
+-- Enums
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'workflow_kind') THEN
+CREATE TYPE workflow_kind AS ENUM ('consumer', 'provider');
+END IF;
+END $$;
 
-CREATE INDEX IF NOT EXISTS idx_workflow_definitions_name ON workflow_definitions(name);
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'workflow_run_status') THEN
+CREATE TYPE workflow_run_status AS ENUM ('queued', 'running', 'success', 'failed', 'cancelled');
+END IF;
+END $$;
 
--- Workflows Table
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'data_raw_item_status') THEN
+CREATE TYPE data_raw_item_status AS ENUM ('queued', 'processed', 'failed');
+END IF;
+END $$;
+
+-- Workflows (definitions)
 CREATE TABLE IF NOT EXISTS workflows (
-    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
-    path TEXT NOT NULL DEFAULT '/workflows',
-    definition_uuid UUID NOT NULL REFERENCES workflow_definitions(uuid) ON DELETE CASCADE,
-    entity_uuid UUID,
-    entity_type VARCHAR(100),
-    current_state VARCHAR(100) NOT NULL,
-    data JSONB NOT NULL DEFAULT '{}',
-    history JSONB NOT NULL DEFAULT '[]',
-    status VARCHAR(50) NOT NULL DEFAULT 'active',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by UUID NOT NULL,
-    updated_by UUID,
-    published BOOLEAN NOT NULL DEFAULT FALSE,
-    version INTEGER NOT NULL DEFAULT 1
+     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+     name VARCHAR(100) NOT NULL UNIQUE,
+     description TEXT,
+     kind workflow_kind NOT NULL,
+     enabled BOOLEAN NOT NULL DEFAULT TRUE,
+     schedule_cron TEXT,
+     consumer_config JSONB,
+     provider_config JSONB,
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     created_by UUID NOT NULL,
+     updated_by UUID,
+     version INTEGER NOT NULL DEFAULT 1
 );
 
-CREATE INDEX IF NOT EXISTS idx_workflows_definition_uuid ON workflows(definition_uuid);
-CREATE INDEX IF NOT EXISTS idx_workflows_entity_uuid ON workflows(entity_uuid);
-CREATE INDEX IF NOT EXISTS idx_workflows_status ON workflows(status);
+CREATE INDEX IF NOT EXISTS idx_workflows_kind ON workflows(kind);
+CREATE INDEX IF NOT EXISTS idx_workflows_enabled ON workflows(enabled);
+
+-- Auto-update trigger for updated_at
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'set_timestamp_workflows'
+    ) THEN
+CREATE TRIGGER set_timestamp_workflows
+    BEFORE UPDATE ON workflows
+    FOR EACH ROW
+    EXECUTE FUNCTION update_timestamp();
+END IF;
+END $$;
+
+-- Workflow runs
+CREATE TABLE IF NOT EXISTS workflow_runs (
+     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+     workflow_uuid UUID NOT NULL REFERENCES workflows(uuid) ON DELETE CASCADE,
+     status workflow_run_status NOT NULL DEFAULT 'queued',
+     trigger_id UUID,
+     queued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     started_at TIMESTAMPTZ,
+     finished_at TIMESTAMPTZ,
+     total_items INTEGER NOT NULL DEFAULT 0,
+     processed_items INTEGER NOT NULL DEFAULT 0,
+     failed_items INTEGER NOT NULL DEFAULT 0,
+     error TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_runs_workflow_uuid ON workflow_runs(workflow_uuid);
+CREATE INDEX IF NOT EXISTS idx_workflow_runs_status ON workflow_runs(status);
+
+-- Raw staged items per run
+CREATE TABLE IF NOT EXISTS workflow_raw_items (
+    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    workflow_run_uuid UUID NOT NULL REFERENCES workflow_runs(uuid) ON DELETE CASCADE,
+    seq_no BIGINT NOT NULL,
+    payload JSONB NOT NULL,
+    status data_raw_item_status NOT NULL DEFAULT 'queued',
+    error TEXT,
+    inserted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_raw_items_run_uuid ON workflow_raw_items(workflow_run_uuid);
+CREATE INDEX IF NOT EXISTS idx_workflow_raw_items_status ON workflow_raw_items(status);
+CREATE INDEX IF NOT EXISTS idx_workflow_raw_items_seq ON workflow_raw_items(workflow_run_uuid, seq_no);
 
 -- Create a trigger to update entity views when entity definitions change
 CREATE OR REPLACE FUNCTION entity_view_on_class_change()

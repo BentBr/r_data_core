@@ -51,7 +51,8 @@ impl DynamicEntityRepository {
             .ok_or_else(|| Error::Validation("Missing required field 'entity_key'".to_string()))?;
 
         // Resolve parent_uuid, and validate/normalize path consistency
-        let mut resolved_parent_uuid = utils::extract_uuid_from_entity_field_data(&entity.field_data, "parent_uuid");
+        let mut resolved_parent_uuid =
+            utils::extract_uuid_from_entity_field_data(&entity.field_data, "parent_uuid");
 
         // If no explicit parent given, try to infer it from the provided path by
         // checking if there exists an entity whose full path (parent.path + '/' + parent.key)
@@ -73,29 +74,28 @@ impl DynamicEntityRepository {
 
         // Validate parent/path when we have a parent (explicit or inferred)
         if let Some(parent_uuid_val) = resolved_parent_uuid {
-                // Fetch parent entity to validate path
-                let parent_result: Option<(String, String)> = sqlx::query_as(
-                    "SELECT path, entity_key FROM entities_registry WHERE uuid = $1"
-                )
-                .bind(parent_uuid_val)
-                .fetch_optional(&self.pool)
-                .await
-                .map_err(Error::Database)?;
-                
-                if let Some((parent_path, parent_key)) = parent_result {
-                    let expected_path = if parent_path.ends_with('/') {
-                        format!("{}{}", parent_path, parent_key)
-                    } else {
-                        format!("{}/{}", parent_path, parent_key)
-                    };
-                    
-                    // Normalize the path to the expected parent path
-                    if path != expected_path {
-                        path = expected_path;
-                    }
+            // Fetch parent entity to validate path
+            let parent_result: Option<(String, String)> =
+                sqlx::query_as("SELECT path, entity_key FROM entities_registry WHERE uuid = $1")
+                    .bind(parent_uuid_val)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .map_err(Error::Database)?;
+
+            if let Some((parent_path, parent_key)) = parent_result {
+                let expected_path = if parent_path.ends_with('/') {
+                    format!("{}{}", parent_path, parent_key)
                 } else {
-                    return Err(Error::Validation("Parent entity not found".to_string()));
+                    format!("{}/{}", parent_path, parent_key)
+                };
+
+                // Normalize the path to the expected parent path
+                if path != expected_path {
+                    path = expected_path;
                 }
+            } else {
+                return Err(Error::Validation("Parent entity not found".to_string()));
+            }
         }
 
         // Start a transaction
@@ -320,7 +320,7 @@ impl DynamicEntityRepository {
 
         // Get the current entity_type from the registry to avoid stale WHERE clauses
         let current_entity_type = sqlx::query_scalar::<_, Option<String>>(
-            "SELECT entity_type FROM entities_registry WHERE uuid = $1"
+            "SELECT entity_type FROM entities_registry WHERE uuid = $1",
         )
         .bind(uuid)
         .fetch_one(&mut *tx)
@@ -800,7 +800,7 @@ impl DynamicEntityRepository {
     /// Check if an entity has children
     pub async fn has_children(&self, parent_uuid: &Uuid) -> Result<bool> {
         let exists: Option<bool> = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM entities_registry WHERE parent_uuid = $1 LIMIT 1)"
+            "SELECT EXISTS(SELECT 1 FROM entities_registry WHERE parent_uuid = $1 LIMIT 1)",
         )
         .bind(parent_uuid)
         .fetch_one(&self.pool)

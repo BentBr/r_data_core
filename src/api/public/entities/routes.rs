@@ -151,7 +151,7 @@ async fn query_entities(
     _: CombinedRequiredAuth,
 ) -> impl Responder {
     let repository = DynamicEntityRepository::new(data.db_pool.clone());
-    
+
     let limit = body.limit.unwrap_or(20).clamp(1, 100);
     let offset = body.offset.unwrap_or(0).max(0);
 
@@ -172,7 +172,7 @@ async fn query_entities(
                 .into_iter()
                 .map(DynamicEntityResponse::from)
                 .collect();
-            
+
             ApiResponse::ok(responses)
         }
         Err(e) => HttpResponse::InternalServerError().json(json!({

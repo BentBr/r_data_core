@@ -25,7 +25,13 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         crate::api::admin::entity_definitions::routes::apply_entity_definition_schema,
         crate::api::admin::api_keys::routes::create_api_key,
         crate::api::admin::api_keys::routes::list_api_keys,
-        crate::api::admin::api_keys::routes::revoke_api_key
+        crate::api::admin::api_keys::routes::revoke_api_key,
+        crate::api::admin::workflows::routes::list_workflows,
+        crate::api::admin::workflows::routes::get_workflow_details,
+        crate::api::admin::workflows::routes::create_workflow,
+        crate::api::admin::workflows::routes::update_workflow,
+        crate::api::admin::workflows::routes::delete_workflow,
+        crate::api::admin::workflows::routes::run_workflow_now
     ),
     components(
         schemas(
@@ -66,7 +72,11 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
             crate::api::admin::api_keys::routes::CreateApiKeyRequest,
             crate::api::admin::api_keys::routes::ApiKeyResponse,
             crate::api::admin::api_keys::routes::ApiKeyCreatedResponse,
-            crate::api::admin::auth::EmptyRequest
+            crate::api::admin::auth::EmptyRequest,
+            crate::api::admin::workflows::models::WorkflowSummary,
+            crate::api::admin::workflows::models::CreateWorkflowRequest,
+            crate::api::admin::workflows::models::UpdateWorkflowRequest,
+            crate::api::admin::workflows::models::CreateWorkflowResponse
         )
     ),
     modifiers(&SecurityAddon, &UuidSchemaAddon, &DateTimeSchemaAddon, &ModelSchemaAddon, &JsonValueSchemaAddon),
@@ -75,7 +85,8 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         (name = "admin", description = "Administrative endpoints for managing system resources"),
         (name = "admin-auth", description = "Admin authentication endpoints"),
         (name = "entity-definitions", description = "Entity definition management"),
-        (name = "api-keys", description = "API key management")
+        (name = "api-keys", description = "API key management"),
+        (name = "workflows", description = "Workflow management")
     ),
     info(
         title = "R Data Core Admin API",

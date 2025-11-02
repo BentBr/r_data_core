@@ -27,10 +27,27 @@
     "entity_definitions": "Entity Definitions", 
     "entities": "Entities",
     "api_keys": "API Keys",
+    "workflows": "Workflows",
     "permissions": "Permissions",
     "system": "System",
     "logout": "Logout"
   },
+  "workflows": {
+    "create": {
+      "button": "Create Workflow",
+      "title": "Create Workflow",
+      "name": "Name",
+      "description": "Description",
+      "kind": "Kind",
+      "enabled": "Enabled",
+      "cron": "Schedule (cron)",
+      "consumer_config": "Consumer Config (JSON)",
+      "provider_config": "Provider Config (JSON)",
+      "create_button": "Create",
+      "json_invalid": "Invalid JSON"
+    }
+  },
+  "validation": { "required": "This field is required" },
   "api_keys": {
     "create": {
       "button": "Create New Key",

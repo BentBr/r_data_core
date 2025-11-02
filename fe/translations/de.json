@@ -27,10 +27,27 @@
     "entity_definitions": "Entitätsdefinitionen",
     "entities": "Entitäten", 
     "api_keys": "API-Schlüssel",
+    "workflows": "Workflows",
     "permissions": "Berechtigungen",
     "system": "System",
     "logout": "Abmelden"
   },
+  "workflows": {
+    "create": {
+      "button": "Workflow erstellen",
+      "title": "Workflow erstellen",
+      "name": "Name",
+      "description": "Beschreibung",
+      "kind": "Typ",
+      "enabled": "Aktiv",
+      "cron": "Zeitplan (Cron)",
+      "consumer_config": "Consumer-Konfiguration (JSON)",
+      "provider_config": "Provider-Konfiguration (JSON)",
+      "create_button": "Erstellen",
+      "json_invalid": "Ungültiges JSON"
+    }
+  },
+  "validation": { "required": "Dieses Feld ist erforderlich" },
   "api_keys": {
     "create": {
       "button": "Neuen Schlüssel erstellen",

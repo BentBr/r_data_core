@@ -57,6 +57,7 @@ mod tests {
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
                     entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                     dynamic_entity_service: None,
+                    workflow_service: utils::make_workflow_service(&pool),
                 }))
                 .service(
                     web::resource("/test")
@@ -131,6 +132,7 @@ mod tests {
                         admin_user_service: AdminUserService::from_repository(admin_user_repo),
                         entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                         dynamic_entity_service: None,
+                        workflow_service: crate::common::utils::make_workflow_service(&pool),
                     }))
                     .service(web::resource("/test").wrap(ApiAuth).to(
                         |req: HttpRequest| async move {
@@ -196,6 +198,7 @@ mod tests {
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
                     entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                     dynamic_entity_service: None,
+                    workflow_service: crate::common::utils::make_workflow_service(&pool),
                 }))
                 .service(
                     web::resource("/test")
@@ -269,6 +272,7 @@ mod tests {
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
                     entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                     dynamic_entity_service: None,
+                    workflow_service: crate::common::utils::make_workflow_service(&pool),
                 }))
                 .service(
                     web::resource("/test")
@@ -359,6 +363,7 @@ mod tests {
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
                     entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                     dynamic_entity_service: None,
+                    workflow_service: r_data_core::services::WorkflowService::new(Arc::new(r_data_core::services::WorkflowRepositoryAdapter::new(r_data_core::workflow::data::repository::WorkflowRepository::new(pool.clone())))),
                 }))
                 .service(
                     web::resource("/test")
@@ -445,6 +450,7 @@ mod tests {
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
                     entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                     dynamic_entity_service: None,
+                    workflow_service: r_data_core::services::WorkflowService::new(Arc::new(r_data_core::services::WorkflowRepositoryAdapter::new(r_data_core::workflow::data::repository::WorkflowRepository::new(pool.clone())))),
                 }))
                 .service(
                     web::resource("/test")
@@ -521,6 +527,7 @@ mod tests {
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
                     entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                     dynamic_entity_service: None,
+                    workflow_service: crate::common::utils::make_workflow_service(&pool),
                 }))
                 .service(
                     web::resource("/test")

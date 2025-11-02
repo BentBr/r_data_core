@@ -303,7 +303,7 @@ Swagger:
 - crons + refresh token deletion
 - load/performance test binary
 - typescript bindings
-
+- anyhow in the entire repo
 
 fixes:
 - setting all fields for dynamic entities
