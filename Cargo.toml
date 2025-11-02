@@ -82,6 +82,7 @@ dotenv = "0.15"
 apalis = { version = "0.7.3", default-features = false, features = ["retry"] }
 apalis-redis = "0.7.3"
 tokio-cron-scheduler = "0.15.1"
+cron = "0.12"
 
 # CSV/bytes and general error handling
 csv = "1.3"

@@ -68,6 +68,36 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
             .insert_run_queued(workflow_uuid, trigger_id)
             .await
     }
+
+    async fn list_runs_paginated(
+        &self,
+        workflow_uuid: Uuid,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<(Vec<(Uuid, String, Option<String>, Option<String>, Option<i64>, Option<i64>)>, i64)> {
+        self.inner
+            .list_runs_paginated(workflow_uuid, limit, offset)
+            .await
+    }
+
+    async fn list_run_logs_paginated(
+        &self,
+        run_uuid: Uuid,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<(Vec<(Uuid, String, String, String, Option<serde_json::Value>)>, i64)> {
+        self.inner
+            .list_run_logs_paginated(run_uuid, limit, offset)
+            .await
+    }
+
+    async fn run_exists(&self, run_uuid: Uuid) -> anyhow::Result<bool> {
+        self.inner.run_exists(run_uuid).await
+    }
+
+    async fn list_all_runs_paginated(&self, limit: i64, offset: i64) -> anyhow::Result<(Vec<(Uuid, String, Option<String>, Option<String>, Option<i64>, Option<i64>)>, i64)> {
+        self.inner.list_all_runs_paginated(limit, offset).await
+    }
 }
 
 /// Repository adapter for EntityDefinitionRepository

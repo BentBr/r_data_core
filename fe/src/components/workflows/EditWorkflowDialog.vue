@@ -1,24 +1,24 @@
 <template>
   <v-dialog v-model="model" max-width="720px">
     <v-card>
-      <v-card-title>{{ t('workflows.create.title') }}</v-card-title>
+      <v-card-title>Edit Workflow</v-card-title>
       <v-card-text>
         <v-form ref="formRef" @submit.prevent>
-          <v-text-field v-model="form.name" :label="t('workflows.create.name')" :rules="[rules.required]" />
-          <v-textarea v-model="form.description" :label="t('workflows.create.description')" rows="2" auto-grow />
+          <v-text-field v-model="form.name" label="Name" :rules="[rules.required]" />
+          <v-textarea v-model="form.description" label="Description" rows="2" auto-grow />
           <v-select
             v-model="form.kind"
-            :label="t('workflows.create.kind')"
+            label="Kind"
             :items="kinds"
             item-title="label"
             item-value="value"
           />
-          <v-switch v-model="form.enabled" :label="t('workflows.create.enabled')" inset></v-switch>
-          <v-text-field v-model="form.schedule_cron" :label="t('workflows.create.cron')" :error-messages="cronError || ''" />
+          <v-switch v-model="form.enabled" label="Enabled" inset></v-switch>
+          <v-text-field v-model="form.schedule_cron" label="Cron" :error-messages="cronError || ''" />
 
           <v-expansion-panels class="mt-2">
             <v-expansion-panel>
-              <v-expansion-panel-title>{{ t('workflows.create.config_label') }}</v-expansion-panel-title>
+              <v-expansion-panel-title>Config (JSON)</v-expansion-panel-title>
               <v-expansion-panel-text>
                 <v-textarea v-model="configJson" rows="8" auto-grow :error-messages="configError || ''" />
               </v-expansion-panel-text>
@@ -28,23 +28,21 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" @click="cancel">{{ t('common.cancel') }}</v-btn>
-        <v-btn color="primary" :loading="loading" @click="submit">{{ t('workflows.create.create_button') }}</v-btn>
+        <v-btn variant="text" @click="cancel">Cancel</v-btn>
+        <v-btn color="primary" :loading="loading" @click="submit">Save</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
-
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { typedHttpClient, ValidationError } from '@/api/typed-client'
-import { useTranslations } from '@/composables/useTranslations'
+import { computed, onMounted, ref, watch } from 'vue'
+import { typedHttpClient } from '@/api/typed-client'
+import { ValidationError } from '@/api/typed-client'
 
-const props = defineProps<{ modelValue: boolean }>()
-const emit = defineEmits<{ (e: 'update:modelValue', value: boolean): void; (e: 'created', uuid: string): void }>()
+const props = defineProps<{ modelValue: boolean; workflowUuid: string | null }>()
+const emit = defineEmits<{ (e: 'update:modelValue', value: boolean): void; (e: 'updated'): void }>()
 
-const { t } = useTranslations()
 const model = computed({ get: () => props.modelValue, set: v => emit('update:modelValue', v) })
 const loading = ref(false)
 const formRef = ref()
@@ -67,38 +65,54 @@ const configError = ref<string | null>(null)
 const cronError = ref<string | null>(null)
 
 const rules = {
-  required: (v: any) => (!!v && String(v).trim().length > 0) || t('validation.required'),
+  required: (v: any) => !!v || 'Required',
 }
 
-function parseJson(input: string): any | undefined {
-  if (!input || !input.trim()) return undefined
+watch(() => props.modelValue, (open) => {
+  if (open) void loadDetails()
+})
+
+async function loadDetails() {
+  if (!props.workflowUuid) return
+  loading.value = true
   try {
-    return JSON.parse(input)
-  } catch (e) {
-    return null
+    const data = await typedHttpClient.getWorkflow(props.workflowUuid)
+    form.value.name = data.name
+    form.value.description = data.description ?? ''
+    form.value.kind = data.kind
+    form.value.enabled = data.enabled
+    form.value.schedule_cron = data.schedule_cron ?? ''
+    configJson.value = JSON.stringify(data.config ?? {}, null, 2)
+  } finally {
+    loading.value = false
   }
 }
 
 function cancel() { model.value = false }
 
+function parseJson(input: string): any | undefined {
+  if (!input || !input.trim()) return undefined
+  try { return JSON.parse(input) } catch { return null }
+}
+
 async function submit() {
+  if (!props.workflowUuid) return
   configError.value = null
   cronError.value = null
   const parsedConfig = parseJson(configJson.value)
-  if (parsedConfig === null) { configError.value = t('workflows.create.json_invalid'); return }
+  if (parsedConfig === null) { configError.value = 'Invalid JSON'; return }
 
   loading.value = true
   try {
-    const payload = {
+    await typedHttpClient.updateWorkflow(props.workflowUuid, {
       name: form.value.name,
       description: form.value.description || null,
       kind: form.value.kind,
       enabled: form.value.enabled,
       schedule_cron: form.value.schedule_cron || null,
       config: parsedConfig ?? {},
-    }
-    const res = await typedHttpClient.createWorkflow(payload)
-    emit('created', res.uuid)
+    })
+    emit('updated')
     model.value = false
   } catch (e: any) {
     if (e instanceof ValidationError) {

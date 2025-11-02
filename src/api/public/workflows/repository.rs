@@ -7,15 +7,13 @@ pub async fn get_provider_config(
     uuid: Uuid,
 ) -> anyhow::Result<Option<serde_json::Value>> {
     let row = sqlx::query(
-        r#"SELECT provider_config FROM workflows WHERE uuid = $1 AND kind = 'provider'::data_workflow_kind AND enabled = true"#,
+        r#"SELECT config FROM workflows WHERE uuid = $1 AND kind = 'provider'::workflow_kind AND enabled = true"#,
     )
     .bind(uuid)
     .fetch_optional(pool)
     .await
-    .context("select provider_config")?;
+    .context("select provider config")?;
 
-    let cfg = row
-        .map(|r| r.get::<Option<serde_json::Value>, _>("provider_config"))
-        .flatten();
+    let cfg = row.map(|r| r.get::<serde_json::Value, _>("config"));
     Ok(cfg)
 }

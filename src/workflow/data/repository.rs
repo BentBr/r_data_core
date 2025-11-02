@@ -19,7 +19,7 @@ impl WorkflowRepository {
     pub async fn get_by_uuid(&self, uuid: Uuid) -> anyhow::Result<Option<Workflow>> {
         let row = sqlx::query(
             r#"
-            SELECT uuid, name, description, kind::text, enabled, schedule_cron, consumer_config, provider_config
+            SELECT uuid, name, description, kind::text, enabled, schedule_cron, config
             FROM workflows
             WHERE uuid = $1
             "#,
@@ -42,8 +42,7 @@ impl WorkflowRepository {
                     .unwrap_or(Some(true))
                     .unwrap_or(true),
                 schedule_cron: r.try_get(5).ok(),
-                consumer_config: r.try_get(6).ok(),
-                provider_config: r.try_get(7).ok(),
+                config: r.try_get(6).unwrap_or(serde_json::json!({})),
             };
             Ok(Some(wf))
         } else {
@@ -54,8 +53,8 @@ impl WorkflowRepository {
     pub async fn create(&self, req: &CreateWorkflowRequest) -> anyhow::Result<Uuid> {
         let row = sqlx::query(
             r#"
-            INSERT INTO workflows (name, description, kind, enabled, schedule_cron, consumer_config, provider_config, created_by)
-            VALUES ($1, $2, $3::workflow_kind, $4, $5, $6, $7, uuid_generate_v7())
+            INSERT INTO workflows (name, description, kind, enabled, schedule_cron, config, created_by)
+            VALUES ($1, $2, $3::workflow_kind, $4, $5, $6, uuid_generate_v7())
             RETURNING uuid
             "#,
         )
@@ -64,8 +63,7 @@ impl WorkflowRepository {
         .bind(req.kind.to_string())
         .bind(req.enabled)
         .bind(req.schedule_cron.as_deref())
-        .bind(req.consumer_config.as_ref())
-        .bind(req.provider_config.as_ref())
+        .bind(&req.config)
         .fetch_one(&self.pool)
         .await
         .context("insert workflows")?;
@@ -78,7 +76,7 @@ impl WorkflowRepository {
             r#"
             UPDATE workflows
             SET name = $2, description = $3, kind = $4::workflow_kind, enabled = $5,
-                schedule_cron = $6, consumer_config = $7, provider_config = $8
+                schedule_cron = $6, config = $7
             WHERE uuid = $1
             "#,
         )
@@ -88,8 +86,7 @@ impl WorkflowRepository {
         .bind(req.kind.to_string())
         .bind(req.enabled)
         .bind(req.schedule_cron.as_deref())
-        .bind(req.consumer_config.as_ref())
-        .bind(req.provider_config.as_ref())
+        .bind(&req.config)
         .execute(&self.pool)
         .await
         .context("update workflows")?;
@@ -108,7 +105,7 @@ impl WorkflowRepository {
     pub async fn list_all(&self) -> anyhow::Result<Vec<Workflow>> {
         let rows = sqlx::query(
             r#"
-            SELECT uuid, name, description, kind::text, enabled, schedule_cron, consumer_config, provider_config
+            SELECT uuid, name, description, kind::text, enabled, schedule_cron, config
             FROM workflows
             ORDER BY name
             "#,
@@ -131,8 +128,7 @@ impl WorkflowRepository {
                     .unwrap_or(Some(true))
                     .unwrap_or(true),
                 schedule_cron: r.try_get(5).ok(),
-                consumer_config: r.try_get(6).ok(),
-                provider_config: r.try_get(7).ok(),
+                config: r.try_get(6).unwrap_or(serde_json::json!({})),
             });
         }
         Ok(out)
@@ -141,7 +137,7 @@ impl WorkflowRepository {
     pub async fn list_paginated(&self, limit: i64, offset: i64) -> anyhow::Result<Vec<Workflow>> {
         let rows = sqlx::query(
             r#"
-            SELECT uuid, name, description, kind::text, enabled, schedule_cron, consumer_config, provider_config
+            SELECT uuid, name, description, kind::text, enabled, schedule_cron, config
             FROM workflows
             ORDER BY name
             LIMIT $1 OFFSET $2
@@ -164,8 +160,7 @@ impl WorkflowRepository {
                 kind,
                 enabled: r.try_get::<Option<bool>, _>(4).unwrap_or(Some(true)).unwrap_or(true),
                 schedule_cron: r.try_get(5).ok(),
-                consumer_config: r.try_get(6).ok(),
-                provider_config: r.try_get(7).ok(),
+                config: r.try_get(6).unwrap_or(serde_json::json!({})),
             });
         }
         Ok(out)
@@ -257,4 +252,143 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
     async fn delete(&self, uuid: Uuid) -> anyhow::Result<()> { self.delete(uuid).await }
     async fn list_scheduled_consumers(&self) -> anyhow::Result<Vec<(Uuid, String)>> { self.list_scheduled_consumers().await }
     async fn insert_run_queued(&self, workflow_uuid: Uuid, trigger_id: Uuid) -> anyhow::Result<()> { self.insert_run_queued(workflow_uuid, trigger_id).await }
+
+    async fn list_runs_paginated(
+        &self,
+        workflow_uuid: Uuid,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<(Vec<(Uuid, String, Option<String>, Option<String>, Option<i64>, Option<i64>)>, i64)> {
+        let runs = sqlx::query(
+            r#"
+            SELECT uuid, status::text, to_char(queued_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS queued_at,
+                   to_char(started_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS started_at,
+                   to_char(finished_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS finished_at,
+                   processed_items, failed_items
+            FROM workflow_runs
+            WHERE workflow_uuid = $1
+            ORDER BY queued_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(workflow_uuid)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await
+        .context("list runs paginated")?;
+
+        let total_row = sqlx::query("SELECT COUNT(*) AS cnt FROM workflow_runs WHERE workflow_uuid = $1")
+            .bind(workflow_uuid)
+            .fetch_one(&self.pool)
+            .await
+            .context("count runs")?;
+        let total: i64 = total_row.try_get("cnt")?;
+
+        let mut out = Vec::with_capacity(runs.len());
+        for r in runs {
+            out.push((
+                r.try_get("uuid")?,
+                r.try_get("status")?,
+                r.try_get::<Option<String>, _>("queued_at")?,
+                r.try_get::<Option<String>, _>("finished_at")?,
+                r.try_get::<Option<i64>, _>("processed_items")?,
+                r.try_get::<Option<i64>, _>("failed_items")?,
+            ));
+        }
+        Ok((out, total))
+    }
+
+    async fn list_run_logs_paginated(
+        &self,
+        run_uuid: Uuid,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<(Vec<(Uuid, String, String, String, Option<serde_json::Value>)>, i64)> {
+        let rows = sqlx::query(
+            r#"
+            SELECT uuid, to_char(ts, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS ts, level, message, meta
+            FROM workflow_run_logs
+            WHERE run_uuid = $1
+            ORDER BY ts DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(run_uuid)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await
+        .context("list run logs paginated")?;
+
+        let total_row = sqlx::query("SELECT COUNT(*) AS cnt FROM workflow_run_logs WHERE run_uuid = $1")
+            .bind(run_uuid)
+            .fetch_one(&self.pool)
+            .await
+            .context("count run logs")?;
+        let total: i64 = total_row.try_get("cnt")?;
+
+        let mut out = Vec::with_capacity(rows.len());
+        for r in rows {
+            out.push((
+                r.try_get("uuid")?,
+                r.try_get("ts")?,
+                r.try_get("level")?,
+                r.try_get("message")?,
+                r.try_get("meta").ok(),
+            ));
+        }
+        Ok((out, total))
+    }
+
+    async fn run_exists(&self, run_uuid: Uuid) -> anyhow::Result<bool> {
+        let row = sqlx::query("SELECT 1 FROM workflow_runs WHERE uuid = $1")
+            .bind(run_uuid)
+            .fetch_optional(&self.pool)
+            .await
+            .context("check run exists")?;
+        Ok(row.is_some())
+    }
+
+    async fn list_all_runs_paginated(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<(Vec<(Uuid, String, Option<String>, Option<String>, Option<i64>, Option<i64>)>, i64)> {
+        let runs = sqlx::query(
+            r#"
+            SELECT uuid, status::text,
+                   to_char(queued_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS queued_at,
+                   to_char(finished_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS finished_at,
+                   processed_items, failed_items
+            FROM workflow_runs
+            ORDER BY queued_at DESC
+            LIMIT $1 OFFSET $2
+            "#,
+        )
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await
+        .context("list all runs paginated")?;
+
+        let total_row = sqlx::query("SELECT COUNT(*) AS cnt FROM workflow_runs")
+            .fetch_one(&self.pool)
+            .await
+            .context("count all runs")?;
+        let total: i64 = total_row.try_get("cnt")?;
+
+        let mut out = Vec::with_capacity(runs.len());
+        for r in runs {
+            out.push((
+                r.try_get("uuid")?,
+                r.try_get("status")?,
+                r.try_get::<Option<String>, _>("queued_at")?,
+                r.try_get::<Option<String>, _>("finished_at")?,
+                r.try_get::<Option<i64>, _>("processed_items")?,
+                r.try_get::<Option<i64>, _>("failed_items")?,
+            ));
+        }
+        Ok((out, total))
+    }
 }

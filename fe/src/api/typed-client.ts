@@ -678,14 +678,108 @@ class TypedHttpClient {
         kind: 'consumer' | 'provider'
         enabled: boolean
         schedule_cron?: string | null
-        consumer_config?: unknown
-        provider_config?: unknown
+        config: unknown
     }): Promise<{ uuid: string }> {
         const Schema = z.object({ uuid: z.string().uuid() })
         return this.request('/admin/api/v1/workflows', ApiResponseSchema(Schema), {
             method: 'POST',
             body: JSON.stringify(data),
         })
+    }
+
+    async updateWorkflow(uuid: string, data: {
+        name: string
+        description?: string | null
+        kind: 'consumer' | 'provider'
+        enabled: boolean
+        schedule_cron?: string | null
+        config: unknown
+    }): Promise<{ message: string }> {
+        const Schema = z.object({ message: z.string() })
+        return this.request(`/admin/api/v1/workflows/${uuid}`, ApiResponseSchema(Schema), {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async getWorkflow(uuid: string): Promise<{
+        uuid: string
+        name: string
+        description?: string | null
+        kind: 'consumer' | 'provider'
+        enabled: boolean
+        schedule_cron?: string | null
+        config: unknown
+    }> {
+        const Schema = z.object({
+            uuid: z.string().uuid(),
+            name: z.string(),
+            description: z.string().nullable().optional(),
+            kind: z.enum(['consumer', 'provider']),
+            enabled: z.boolean(),
+            schedule_cron: z.string().nullable().optional(),
+            config: z.any(),
+        })
+        return this.request(`/admin/api/v1/workflows/${uuid}`, ApiResponseSchema(Schema))
+    }
+
+    async getWorkflowRuns(workflowUuid: string, page = 1, perPage = 20): Promise<{
+        data: Array<{ uuid: string; status: string; queued_at?: string | null; finished_at?: string | null; processed_items?: number | null; failed_items?: number | null }>
+        meta?: { pagination?: { total: number; page: number; per_page: number; total_pages: number; has_previous: boolean; has_next: boolean } }
+    }> {
+        const Schema = z.array(
+            z.object({
+                uuid: z.string().uuid(),
+                status: z.string(),
+                queued_at: z.string().nullable().optional(),
+                finished_at: z.string().nullable().optional(),
+                processed_items: z.number().nullable().optional(),
+                failed_items: z.number().nullable().optional(),
+            })
+        )
+        return this.paginatedRequest(
+            `/admin/api/v1/workflows/${workflowUuid}/runs?page=${page}&per_page=${perPage}`,
+            PaginatedApiResponseSchema(Schema)
+        )
+    }
+
+    async getWorkflowRunLogs(runUuid: string, page = 1, perPage = 50): Promise<{
+        data: Array<{ uuid: string; ts: string; level: string; message: string; meta?: unknown }>
+        meta?: { pagination?: { total: number; page: number; per_page: number; total_pages: number; has_previous: boolean; has_next: boolean } }
+    }> {
+        const Schema = z.array(
+            z.object({
+                uuid: z.string().uuid(),
+                ts: z.string(),
+                level: z.string(),
+                message: z.string(),
+                meta: z.any().optional(),
+            })
+        )
+        return this.paginatedRequest(
+            `/admin/api/v1/workflows/runs/${runUuid}/logs?page=${page}&per_page=${perPage}`,
+            PaginatedApiResponseSchema(Schema)
+        )
+    }
+
+    async getAllWorkflowRuns(page = 1, perPage = 20): Promise<{
+        data: Array<{ uuid: string; status: string; queued_at?: string | null; finished_at?: string | null; processed_items?: number | null; failed_items?: number | null }>
+        meta?: { pagination?: { total: number; page: number; per_page: number; total_pages: number; has_previous: boolean; has_next: boolean } }
+    }> {
+        const Schema = z.array(
+            z.object({
+                uuid: z.string().uuid(),
+                status: z.string(),
+                queued_at: z.string().nullable().optional(),
+                finished_at: z.string().nullable().optional(),
+                processed_items: z.number().nullable().optional(),
+                failed_items: z.number().nullable().optional(),
+            })
+        )
+        return this.paginatedRequest(
+            `/admin/api/v1/workflows/runs?page=${page}&per_page=${perPage}`,
+            PaginatedApiResponseSchema(Schema)
+        )
     }
 
     async getWorkflows(page = 1, itemsPerPage = 20): Promise<{

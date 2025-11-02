@@ -3,7 +3,7 @@
     "login": {
       "title": "Anmelden",
       "username": "Benutzername",
-      "password": "Passwort", 
+      "password": "Passwort",
       "submit": "Anmelden",
       "forgot_password": "Passwort vergessen?",
       "forgot_password_message": "Die Passwort-Reset-Funktion ist noch nicht implementiert.",
@@ -25,7 +25,7 @@
   "navigation": {
     "dashboard": "Dashboard",
     "entity_definitions": "Entitätsdefinitionen",
-    "entities": "Entitäten", 
+    "entities": "Entitäten",
     "api_keys": "API-Schlüssel",
     "workflows": "Workflows",
     "permissions": "Berechtigungen",
@@ -44,7 +44,8 @@
       "consumer_config": "Consumer-Konfiguration (JSON)",
       "provider_config": "Provider-Konfiguration (JSON)",
       "create_button": "Erstellen",
-      "json_invalid": "Ungültiges JSON"
+      "json_invalid": "Ungültiges JSON",
+      "config_label": "Workflow Konfiguration"
     }
   },
   "validation": { "required": "Dieses Feld ist erforderlich" },

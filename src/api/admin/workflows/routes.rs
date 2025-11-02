@@ -1,23 +1,76 @@
 use actix_web::{delete, get, post, put, web, Responder};
 use log::error;
 use uuid::Uuid;
+use std::str::FromStr;
 
 use crate::api::admin::workflows::models::{
-    CreateWorkflowRequest, CreateWorkflowResponse, UpdateWorkflowRequest, WorkflowSummary,
+    CreateWorkflowRequest, CreateWorkflowResponse, UpdateWorkflowRequest, WorkflowDetail,
+    WorkflowSummary, WorkflowRunLogDto, WorkflowRunSummary,
 };
 use crate::api::auth::auth_enum;
 use crate::api::ApiResponse;
+use crate::api::response::ValidationViolation;
 use crate::api::ApiState;
 use crate::api::query::PaginationQuery;
 
 /// Register workflow routes
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(list_workflows)
+        // Register static 'runs' routes BEFORE dynamic '/{uuid}' to avoid conflicts
+        .service(list_all_workflow_runs)
+        .service(list_workflow_run_logs)
+        .service(list_workflow_runs)
+        // Dynamic UUID routes
         .service(get_workflow_details)
         .service(create_workflow)
         .service(update_workflow)
         .service(delete_workflow)
         .service(run_workflow_now);
+}
+/// List all workflow runs across all workflows
+#[utoipa::path(
+    get,
+    path = "/admin/api/v1/workflows/runs",
+    tag = "workflows",
+    params(
+        ("page" = Option<i64>, Query, description = "Page number (1-based, default: 1)"),
+        ("per_page" = Option<i64>, Query, description = "Items per page (default: 20, max: 100)")
+    ),
+    responses((status = 200, description = "List all workflow runs (paginated)", body = [WorkflowRunSummary])),
+    security(("jwt" = []))
+)]
+#[get("/runs")]
+pub async fn list_all_workflow_runs(
+    state: web::Data<ApiState>,
+    query: web::Query<PaginationQuery>,
+    _: auth_enum::RequiredAuth,
+) -> impl Responder {
+    let (limit, offset) = query.to_limit_offset(20, 100);
+    let page = query.get_page(1);
+    let per_page = query.get_per_page(20, 100);
+
+    match state
+        .workflow_service
+        .list_all_runs_paginated(limit, offset)
+        .await
+    {
+        Ok((items, total)) => {
+            let summaries: Vec<WorkflowRunSummary> = items
+                .into_iter()
+                .map(|(uuid, status, queued_at, finished_at, processed, failed)| WorkflowRunSummary {
+                    uuid,
+                    status,
+                    queued_at,
+                    started_at: None,
+                    finished_at,
+                    processed_items: processed,
+                    failed_items: failed,
+                })
+                .collect();
+            ApiResponse::ok_paginated(summaries, total, page, per_page)
+        }
+        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to list runs: {}", e)),
+    }
 }
 
 /// List available workflows
@@ -71,7 +124,7 @@ pub async fn list_workflows(
     tag = "workflows",
     params(("uuid" = Uuid, Path, description = "Workflow UUID")),
     responses(
-        (status = 200, description = "Workflow details", body = WorkflowSummary)
+        (status = 200, description = "Workflow details", body = WorkflowDetail)
     ),
     security(
         ("jwt" = [])
@@ -86,14 +139,16 @@ pub async fn get_workflow_details(
     let uuid = path.into_inner();
     match state.workflow_service.get(uuid).await {
         Ok(Some(workflow)) => {
-            let summary = WorkflowSummary {
+            let detail = WorkflowDetail {
                 uuid: workflow.uuid,
                 name: workflow.name,
+                description: workflow.description,
                 kind: workflow.kind,
                 enabled: workflow.enabled,
                 schedule_cron: workflow.schedule_cron,
+                config: workflow.config,
             };
-            ApiResponse::ok(summary)
+            ApiResponse::ok(detail)
         }
         Ok(None) => ApiResponse::<()>::not_found("Workflow not found"),
         Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to get workflow: {}", e)),
@@ -121,6 +176,20 @@ pub async fn create_workflow(
     body: web::Json<CreateWorkflowRequest>,
     _: auth_enum::RequiredAuth,
 ) -> impl Responder {
+    // Validate cron format early to return Symfony-style 422
+    if let Some(cron_str) = &body.schedule_cron {
+        if let Err(e) = cron::Schedule::from_str(cron_str) {
+            return ApiResponse::<()>::unprocessable_entity_with_violations(
+                &format!("Invalid cron schedule: {}", e),
+                vec![ValidationViolation {
+                    field: "schedule_cron".to_string(),
+                    message: "Invalid cron expression".to_string(),
+                    code: Some("INVALID_CRON".to_string()),
+                }],
+            );
+        }
+    }
+
     let created = state.workflow_service.create(&body.0).await;
 
     match created {
@@ -163,6 +232,20 @@ pub async fn update_workflow(
     _: auth_enum::RequiredAuth,
 ) -> impl Responder {
     let uuid = path.into_inner();
+    // Validate cron format early to return Symfony-style 422
+    if let Some(cron_str) = &body.schedule_cron {
+        if let Err(e) = cron::Schedule::from_str(cron_str) {
+            return ApiResponse::<()>::unprocessable_entity_with_violations(
+                &format!("Invalid cron schedule: {}", e),
+                vec![ValidationViolation {
+                    field: "schedule_cron".to_string(),
+                    message: "Invalid cron expression".to_string(),
+                    code: Some("INVALID_CRON".to_string()),
+                }],
+            );
+        }
+    }
+
     let res = state.workflow_service.update(uuid, &body.0).await;
 
     match res {
@@ -221,5 +304,102 @@ pub async fn run_workflow_now(
         Ok(Some(_)) => ApiResponse::<()>::message("Workflow run enqueued"),
         Ok(None) => ApiResponse::<()>::not_found("Workflow"),
         Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to fetch workflow: {}", e)),
+    }
+}
+
+/// List workflow runs (history)
+#[utoipa::path(
+    get,
+    path = "/admin/api/v1/workflows/{uuid}/runs",
+    tag = "workflows",
+    params(
+        ("uuid" = Uuid, Path, description = "Workflow UUID"),
+        ("page" = Option<i64>, Query, description = "Page number (1-based, default: 1)"),
+        ("per_page" = Option<i64>, Query, description = "Items per page (default: 20, max: 100)")
+    ),
+    responses((status = 200, description = "List workflow runs (paginated)", body = [WorkflowRunSummary])),
+    security(("jwt" = []))
+)]
+#[get("/{uuid}/runs")]
+pub async fn list_workflow_runs(
+    state: web::Data<ApiState>,
+    path: web::Path<Uuid>,
+    query: web::Query<PaginationQuery>,
+    _: auth_enum::RequiredAuth,
+) -> impl Responder {
+    let workflow_uuid = path.into_inner();
+    let (limit, offset) = query.to_limit_offset(20, 100);
+    let page = query.get_page(1);
+    let per_page = query.get_per_page(20, 100);
+
+    match state
+        .workflow_service
+        .list_runs_paginated(workflow_uuid, limit, offset)
+        .await
+    {
+        Ok((items, total)) => {
+            let summaries: Vec<WorkflowRunSummary> = items
+                .into_iter()
+                .map(|(uuid, status, queued_at, finished_at, processed, failed)| WorkflowRunSummary {
+                    uuid,
+                    status,
+                    queued_at,
+                    started_at: None,
+                    finished_at,
+                    processed_items: processed,
+                    failed_items: failed,
+                })
+                .collect();
+            ApiResponse::ok_paginated(summaries, total, page, per_page)
+        }
+        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to list runs: {}", e)),
+    }
+}
+
+/// List logs for a workflow run
+#[utoipa::path(
+    get,
+    path = "/admin/api/v1/workflow-runs/{run_uuid}/logs",
+    tag = "workflows",
+    params(
+        ("run_uuid" = Uuid, Path, description = "Workflow run UUID"),
+        ("page" = Option<i64>, Query, description = "Page number (1-based, default: 1)"),
+        ("per_page" = Option<i64>, Query, description = "Items per page (default: 50, max: 200)")
+    ),
+    responses((status = 200, description = "List workflow run logs (paginated)", body = [WorkflowRunLogDto])),
+    security(("jwt" = []))
+)]
+#[get("/runs/{run_uuid}/logs")]
+pub async fn list_workflow_run_logs(
+    state: web::Data<ApiState>,
+    path: web::Path<Uuid>,
+    query: web::Query<PaginationQuery>,
+    _: auth_enum::RequiredAuth,
+) -> impl Responder {
+    let run_uuid = path.into_inner();
+    let (limit, offset) = query.to_limit_offset(50, 200);
+    let page = query.get_page(1);
+    let per_page = query.get_per_page(50, 200);
+
+    // Return 404 if run does not exist
+    match state.workflow_service.run_exists(run_uuid).await {
+        Ok(false) => return ApiResponse::<()>::not_found("Workflow run not found"),
+        Err(e) => return ApiResponse::<()>::internal_error(&format!("Failed to check run: {}", e)),
+        Ok(true) => {}
+    }
+
+    match state
+        .workflow_service
+        .list_run_logs_paginated(run_uuid, limit, offset)
+        .await
+    {
+        Ok((items, total)) => {
+            let logs: Vec<WorkflowRunLogDto> = items
+                .into_iter()
+                .map(|(uuid, ts, level, message, meta)| WorkflowRunLogDto { uuid, ts, level, message, meta })
+                .collect();
+            ApiResponse::ok_paginated(logs, total, page, per_page)
+        }
+        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to list run logs: {}", e)),
     }
 }

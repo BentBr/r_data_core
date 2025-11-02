@@ -47,23 +47,6 @@ pub enum RunStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConsumerConfig {
-    pub adapter: String,
-    pub source: serde_json::Value,
-    pub format: serde_json::Value,
-    pub target: serde_json::Value,
-    pub mapping: serde_json::Value,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProviderConfig {
-    pub adapter: String,
-    pub query: serde_json::Value,
-    pub format: serde_json::Value,
-    pub mapping: serde_json::Value,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Workflow {
     pub uuid: Uuid,
     pub name: String,
@@ -71,6 +54,5 @@ pub struct Workflow {
     pub kind: WorkflowKind,
     pub enabled: bool,
     pub schedule_cron: Option<String>,
-    pub consumer_config: Option<serde_json::Value>,
-    pub provider_config: Option<serde_json::Value>,
+    pub config: serde_json::Value,
 }
