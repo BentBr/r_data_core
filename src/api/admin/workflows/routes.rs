@@ -2,6 +2,7 @@ use actix_web::{delete, get, post, put, web, Responder};
 use log::error;
 use uuid::Uuid;
 use std::str::FromStr;
+use chrono::{Utc, DateTime};
 
 use crate::api::admin::workflows::models::{
     CreateWorkflowRequest, CreateWorkflowResponse, UpdateWorkflowRequest, WorkflowDetail,
@@ -12,12 +13,19 @@ use crate::api::ApiResponse;
 use crate::api::response::ValidationViolation;
 use crate::api::ApiState;
 use crate::api::query::PaginationQuery;
+use crate::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
+use crate::workflow::data::job_queue::JobQueue;
+use crate::workflow::data::jobs::FetchAndStageJob;
+use actix_multipart::Multipart;
+use futures_util::StreamExt;
 
 /// Register workflow routes
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(list_workflows)
         // Register static 'runs' routes BEFORE dynamic '/{uuid}' to avoid conflicts
         .service(list_all_workflow_runs)
+        .service(cron_preview)
+        .service(run_workflow_now_upload)
         .service(list_workflow_run_logs)
         .service(list_workflow_runs)
         // Dynamic UUID routes
@@ -26,6 +34,41 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
         .service(update_workflow)
         .service(delete_workflow)
         .service(run_workflow_now);
+}
+
+/// Preview next run times for a cron expression
+#[utoipa::path(
+    get,
+    path = "/admin/api/v1/workflows/cron/preview",
+    tag = "workflows",
+    params(("expr" = String, Query, description = "Cron expression")),
+    responses(
+        (status = 200, description = "Preview next run times", body = [String]),
+        (status = 422, description = "Invalid cron expression")
+    ),
+    security(("jwt" = []))
+)]
+#[get("/cron/preview")]
+pub async fn cron_preview(
+    query: web::Query<std::collections::HashMap<String, String>>,
+    _: auth_enum::RequiredAuth,
+) -> impl Responder {
+    let expr = match query.get("expr") {
+        Some(v) if !v.trim().is_empty() => v.clone(),
+        _ => return ApiResponse::<()>::unprocessable_entity("Missing expr parameter"),
+    };
+
+    match cron::Schedule::from_str(&expr) {
+        Ok(schedule) => {
+            let next: Vec<String> = schedule
+                .upcoming(Utc)
+                .take(5)
+                .map(|dt: DateTime<Utc>| dt.to_rfc3339())
+                .collect();
+            ApiResponse::ok(next)
+        }
+        Err(e) => ApiResponse::<()>::unprocessable_entity(&format!("Invalid cron: {}", e)),
+    }
 }
 /// List all workflow runs across all workflows
 #[utoipa::path(
@@ -69,7 +112,14 @@ pub async fn list_all_workflow_runs(
                 .collect();
             ApiResponse::ok_paginated(summaries, total, page, per_page)
         }
-        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to list runs: {}", e)),
+        Err(e) => {
+            error!(
+                target: "workflows",
+                "list_all_workflow_runs failed: {:#?}",
+                e
+            );
+            ApiResponse::<()>::internal_error(&format!("Failed to list runs: {}", e))
+        }
     }
 }
 
@@ -301,9 +351,90 @@ pub async fn run_workflow_now(
 ) -> impl Responder {
     let uuid = path.into_inner();
     match state.workflow_service.get(uuid).await {
-        Ok(Some(_)) => ApiResponse::<()>::message("Workflow run enqueued"),
+        Ok(Some(_)) => {
+            match state.workflow_service.enqueue_run(uuid).await {
+                Ok(run_uuid) => {
+                    let _ = ApalisRedisQueue::new()
+                        .enqueue_fetch(FetchAndStageJob { workflow_id: uuid, trigger_id: Some(run_uuid) })
+                        .await;
+                    ApiResponse::<()>::message("Workflow run enqueued")
+                }
+                Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to enqueue run: {}", e)),
+            }
+        }
         Ok(None) => ApiResponse::<()>::not_found("Workflow"),
         Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to fetch workflow: {}", e)),
+    }
+}
+
+/// Upload a file and stage raw items for a workflow run (Run Now)
+#[utoipa::path(
+    post,
+    path = "/admin/api/v1/workflows/{uuid}/run/upload",
+    tag = "workflows",
+    params(("uuid" = Uuid, Path, description = "Workflow UUID")),
+    request_body(
+        content = inline(crate::api::admin::workflows::models::WorkflowRunUpload),
+        content_type = "multipart/form-data",
+        description = "CSV file uploaded as multipart/form-data with field name 'file'"
+    ),
+    responses(
+        (status = 200, description = "Uploaded and staged", body = inline(serde_json::Value)),
+        (status = 404, description = "Workflow not found"),
+        (status = 400, description = "Bad request")
+    ),
+    security(("jwt" = []))
+)]
+#[post("/{uuid}/run/upload")]
+pub async fn run_workflow_now_upload(
+    state: web::Data<ApiState>,
+    path: web::Path<Uuid>,
+    mut payload: Multipart,
+    _: auth_enum::RequiredAuth,
+) -> impl Responder {
+    let workflow_uuid = path.into_inner();
+    // Validate workflow exists
+    match state.workflow_service.get(workflow_uuid).await {
+        Ok(Some(_)) => {}
+        Ok(None) => return ApiResponse::<()>::not_found("Workflow"),
+        Err(e) => return ApiResponse::<()>::internal_error(&format!("Failed to fetch workflow: {}", e)),
+    }
+
+    // Read multipart, find first 'file' part
+    let mut file_bytes: Vec<u8> = Vec::new();
+    while let Some(Ok(mut field)) = payload.next().await {
+        let name = field.name().to_string();
+        if name != "file" {
+            // drain non-file fields
+            while let Some(Ok(_)) = field.next().await {}
+            continue;
+        }
+        while let Some(Ok(chunk)) = field.next().await {
+            file_bytes.extend_from_slice(&chunk);
+        }
+        break;
+    }
+    if file_bytes.is_empty() {
+        return ApiResponse::<()>::bad_request("Missing file");
+    }
+
+    match state.workflow_service.run_now_upload_csv(workflow_uuid, &file_bytes).await {
+        Ok((run_uuid, staged)) => {
+            ApiResponse::<serde_json::Value>::ok(serde_json::json!({
+                "run_uuid": run_uuid,
+                "staged_items": staged
+            }))
+        }
+        Err(e) => {
+            error!(target: "workflows", "run_workflow_now_upload failed: {:#?}", e);
+            // Treat CSV parse issues as 422 to surface validation to the UI
+            let msg = e.to_string();
+            if msg.contains("CSV") || msg.contains("Failed to read") {
+                ApiResponse::<()>::unprocessable_entity(&msg)
+            } else {
+                ApiResponse::<()>::internal_error(&format!("Failed to process upload: {}", msg))
+            }
+        },
     }
 }
 
@@ -352,7 +483,10 @@ pub async fn list_workflow_runs(
                 .collect();
             ApiResponse::ok_paginated(summaries, total, page, per_page)
         }
-        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to list runs: {}", e)),
+        Err(e) => {
+            error!(target: "workflows", "list_workflow_runs failed: {:#?}", e);
+            ApiResponse::<()>::internal_error(&format!("Failed to list runs: {}", e))
+        }
     }
 }
 
@@ -400,6 +534,9 @@ pub async fn list_workflow_run_logs(
                 .collect();
             ApiResponse::ok_paginated(logs, total, page, per_page)
         }
-        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to list run logs: {}", e)),
+        Err(e) => {
+            error!(target: "workflows", "list_workflow_run_logs failed: {:#?}", e);
+            ApiResponse::<()>::internal_error(&format!("Failed to list run logs: {}", e))
+        }
     }
 }

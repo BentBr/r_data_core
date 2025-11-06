@@ -218,7 +218,7 @@ A **Class Definition** is a schema that defines the structure of an entity type.
 
 When a entity definition is created or updated, the system automatically generates the necessary database tables and columns to store entities of that type.
 
-You can find example json files in [example files](./.json_examples)
+You can find example JSON files in [example files](.example_files/json_examples)
 
 #### Fields
 
@@ -297,13 +297,14 @@ Swagger:
 - custom field type (json with predefined content - like a preferences structure...)
 - key-value-store
 - relations 1:n + n:n
-- admin swagger field definitions / contraints
+- admin swagger field definitions / constraints
 - tests
 - caching
 - crons + refresh token deletion
 - load/performance test binary
 - typescript bindings
 - anyhow in the entire repo
+- run now file upload with different file types / formats
 
 fixes:
 - setting all fields for dynamic entities

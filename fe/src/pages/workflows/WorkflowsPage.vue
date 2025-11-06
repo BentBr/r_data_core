@@ -38,6 +38,10 @@ const logsTotal = ref(0)
 const showCreate = ref(false)
 const showEdit = ref(false)
 const editingUuid = ref<string | null>(null)
+const showRunDialog = ref(false)
+const runTargetUuid = ref<string | null>(null)
+const uploadEnabled = ref(false)
+const uploadFile = ref<File | null>(null)
 const { currentSnackbar, showSuccess, showError } = useSnackbar()
 const { t } = useTranslations()
 
@@ -73,13 +77,33 @@ const loadWorkflows = async (page = 1, perPage = 20) => {
   }
 }
 
-async function runNow(uuid: string) {
+function openRunNow(uuid: string) {
+  runTargetUuid.value = uuid
+  uploadEnabled.value = false
+  uploadFile.value = null
+  showRunDialog.value = true
+}
+
+async function confirmRunNow() {
+  if (!runTargetUuid.value) return
   try {
-    await typedHttpClient.runWorkflow(uuid)
-    showSuccess('Workflow run enqueued')
+    if (uploadEnabled.value && uploadFile.value) {
+      const res = await typedHttpClient.uploadRunFile(runTargetUuid.value, uploadFile.value)
+      showSuccess(`Run enqueued (staged ${res.staged_items})`)
+    } else {
+      await typedHttpClient.runWorkflow(runTargetUuid.value)
+      showSuccess('Workflow run enqueued')
+    }
+    showRunDialog.value = false
   } catch (e) {
     showError(e instanceof Error ? e.message : 'Failed to enqueue run')
   }
+}
+
+function onFileChange(e: Event) {
+  const input = e.target as HTMLInputElement | null
+  const files = input?.files
+  uploadFile.value = files && files.length ? files[0] : null
 }
 
 function editWorkflow(uuid: string) {
@@ -188,7 +212,7 @@ async function onCreated() { await load(); showCreate.value = false }
             {{ item.schedule_cron || '—' }}
           </template>
           <template #item.actions="{ item }">
-            <v-btn size="small" variant="text" color="primary" @click="runNow(item.uuid)">Run now</v-btn>
+            <v-btn size="small" variant="text" color="primary" @click="openRunNow(item.uuid)">Run now</v-btn>
             <v-btn size="small" variant="text" color="info" @click="() => { activeTab = 'history'; selectedWorkflowUuid = item.uuid; runsPage = 1; void loadRuns(); }">History</v-btn>
             <v-btn size="small" variant="text" color="secondary" @click="editWorkflow(item.uuid)">Edit</v-btn>
           </template>
@@ -259,6 +283,25 @@ async function onCreated() { await load(); showCreate.value = false }
             <v-card-actions>
               <v-spacer />
               <v-btn variant="text" @click="showLogs = false">Close</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
+        <v-dialog v-model="showRunDialog" max-width="560px">
+          <v-card>
+            <v-card-title>Run workflow now</v-card-title>
+            <v-card-text>
+              <div class="mb-3">Confirm you want to run this workflow now. Optionally upload a CSV to process immediately.</div>
+              <v-switch v-model="uploadEnabled" label="Upload CSV for this run" inset />
+              <div v-if="uploadEnabled" class="mt-2">
+                <input type="file" accept=".csv,text/csv" @change="onFileChange" />
+                <div class="text-caption mt-1" v-if="uploadFile">Selected: {{ uploadFile.name }}</div>
+              </div>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer />
+              <v-btn variant="text" @click="showRunDialog = false">Cancel</v-btn>
+            <v-btn color="primary" :disabled="uploadEnabled && !uploadFile" @click="confirmRunNow">Run</v-btn>
             </v-card-actions>
           </v-card>
         </v-dialog>

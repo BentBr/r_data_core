@@ -6,7 +6,7 @@
 target/
 .idea/
 .vscode/
-.json_examples/
+.example_files/
 
 # Git
 .git/

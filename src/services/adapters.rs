@@ -10,6 +10,7 @@ use crate::entity::entity_definition::definition::EntityDefinition;
 use crate::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use crate::error::Result;
 use crate::workflow::data::repository::WorkflowRepository;
+use crate::workflow::data::repository_trait::WorkflowRepositoryTrait;
 use serde_json::Value as JsonValue;
 // Workflow data repository adapter
 use crate::api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
@@ -63,7 +64,7 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         self.inner.list_scheduled_consumers().await
     }
 
-    async fn insert_run_queued(&self, workflow_uuid: Uuid, trigger_id: Uuid) -> anyhow::Result<()> {
+    async fn insert_run_queued(&self, workflow_uuid: Uuid, trigger_id: Uuid) -> anyhow::Result<Uuid> {
         self.inner
             .insert_run_queued(workflow_uuid, trigger_id)
             .await
@@ -97,6 +98,22 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
 
     async fn list_all_runs_paginated(&self, limit: i64, offset: i64) -> anyhow::Result<(Vec<(Uuid, String, Option<String>, Option<String>, Option<i64>, Option<i64>)>, i64)> {
         self.inner.list_all_runs_paginated(limit, offset).await
+    }
+
+    async fn insert_run_log(&self, run_uuid: Uuid, level: &str, message: &str, meta: Option<serde_json::Value>) -> anyhow::Result<()> {
+        self.inner.insert_run_log(run_uuid, level, message, meta).await
+    }
+
+    async fn insert_raw_items(&self, workflow_uuid: Uuid, run_uuid: Uuid, payloads: Vec<serde_json::Value>) -> anyhow::Result<i64> {
+        self.inner.insert_raw_items(workflow_uuid, run_uuid, payloads).await
+    }
+
+    async fn count_raw_items_for_run(&self, run_uuid: Uuid) -> anyhow::Result<i64> {
+        self.inner.count_raw_items_for_run(run_uuid).await
+    }
+
+    async fn mark_raw_items_processed(&self, run_uuid: Uuid) -> anyhow::Result<()> {
+        self.inner.mark_raw_items_processed(run_uuid).await
     }
 }
 

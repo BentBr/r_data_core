@@ -6,14 +6,14 @@ use std::collections::HashMap;
 use std::fs;
 use std::sync::Arc;
 
-/// Test validation using JSON examples from .json_examples directory
+/// Test validation using JSON examples from .example_files/json_examples directory
 #[cfg(test)]
 mod validation_tests {
     use super::*;
 
     /// Load a JSON example file
     fn load_json_example(filename: &str) -> Result<Value> {
-        let path = format!(".json_examples/{}", filename);
+        let path = format!(".example_files/json_examples/{}", filename);
         let content = fs::read_to_string(&path)
             .map_err(|e| Error::Validation(format!("Failed to read {}: {}", path, e)))?;
         serde_json::from_str(&content)
@@ -22,7 +22,7 @@ mod validation_tests {
 
     /// Load a JSON example file from trigger_validation subfolder
     fn load_trigger_validation_example(filename: &str) -> Result<Value> {
-        let path = format!(".json_examples/trigger_validation/{}", filename);
+        let path = format!(".example_files/json_examples/trigger_validation/{}", filename);
         let content = fs::read_to_string(&path)
             .map_err(|e| Error::Validation(format!("Failed to read {}: {}", path, e)))?;
         serde_json::from_str(&content)

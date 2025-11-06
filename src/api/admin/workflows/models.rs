@@ -67,3 +67,11 @@ pub struct WorkflowRunLogDto {
     pub message: String,
     pub meta: Option<serde_json::Value>,
 }
+
+/// Multipart upload body for run-now file upload
+#[derive(Debug, Serialize, ToSchema)]
+pub struct WorkflowRunUpload {
+    /// CSV file to stage for this run
+    #[schema(value_type = String, format = Binary)]
+    pub file: String,
+}

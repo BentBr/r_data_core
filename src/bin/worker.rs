@@ -1,6 +1,7 @@
 use env_logger;
 use log::info;
 use sqlx::postgres::PgPoolOptions;
+use sqlx::Row;
 use tokio_cron_scheduler::{Job, JobScheduler};
 use uuid::Uuid;
 
@@ -9,6 +10,7 @@ use r_data_core::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 use r_data_core::workflow::data::job_queue::JobQueue;
 use r_data_core::workflow::data::jobs::FetchAndStageJob;
 use r_data_core::workflow::data::repository::WorkflowRepository;
+use r_data_core::services::{WorkflowService, WorkflowRepositoryAdapter};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -51,7 +53,16 @@ async fn main() -> anyhow::Result<()> {
                     })
                     .await;
                 let repo = WorkflowRepository::new(pool.clone());
-                let _ = repo.insert_run_queued(workflow_id, trigger_id).await;
+                if let Ok(run_uuid) = repo.insert_run_queued(workflow_id, trigger_id).await {
+                    let _ = repo
+                        .insert_run_log(
+                            run_uuid,
+                            "info",
+                            "Run enqueued by scheduler",
+                            Some(serde_json::json!({"trigger": trigger_id.to_string()})),
+                        )
+                        .await;
+                }
             })
         })?;
         scheduler.add(job).await?;
@@ -70,8 +81,27 @@ async fn main() -> anyhow::Result<()> {
             if let Ok(run_ids) = repo.list_queued_runs(50).await {
                 for run_id in run_ids {
                     let _ = repo.mark_run_running(run_id).await;
-                    // TODO: execute FetchAndStage + ProcessRawItem jobs; for now, mark success
-                    let _ = repo.mark_run_success(run_id, 0, 0).await;
+                    // Try to fetch & stage from workflow config if nothing staged yet
+                    let staged_existing = repo.count_raw_items_for_run(run_id).await.unwrap_or(0);
+                    if staged_existing == 0 {
+                        // we need the workflow uuid for this run
+                        if let Ok(Some(row)) = sqlx::query("SELECT workflow_uuid FROM workflow_runs WHERE uuid = $1")
+                            .bind(run_id)
+                            .fetch_optional(&pool)
+                            .await
+                        {
+                            if let Ok(wf_uuid) = row.try_get::<uuid::Uuid, _>("workflow_uuid") {
+                                // Use service to fetch & stage via adapters
+                                let adapter = WorkflowRepositoryAdapter::new(WorkflowRepository::new(pool.clone()));
+                                let service = WorkflowService::new(std::sync::Arc::new(adapter));
+                                let _ = service.fetch_and_stage_from_config(wf_uuid, run_id).await;
+                            }
+                        }
+                    }
+                    let processed = repo.count_raw_items_for_run(run_id).await.unwrap_or(0);
+                    let _ = repo.mark_raw_items_processed(run_id).await;
+                    let _ = repo.insert_run_log(run_id, "info", &format!("Run completed successfully (processed_items={})", processed), None).await;
+                    let _ = repo.mark_run_success(run_id, processed, 0).await;
                 }
             }
         }

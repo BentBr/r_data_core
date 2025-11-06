@@ -14,7 +14,13 @@
             item-value="value"
           />
           <v-switch v-model="form.enabled" label="Enabled" inset></v-switch>
-          <v-text-field v-model="form.schedule_cron" label="Cron" :error-messages="cronError || ''" />
+          <v-text-field v-model="form.schedule_cron" label="Cron" :error-messages="cronError || ''" @update:model-value="onCronChange" />
+          <div class="text-caption mb-2" v-if="cronHelp">
+            {{ cronHelp }}
+          </div>
+          <div class="text-caption" v-if="nextRuns.length">
+            Next: {{ nextRuns.join(', ') }}
+          </div>
 
           <v-expansion-panels class="mt-2">
             <v-expansion-panel>
@@ -63,6 +69,9 @@ const form = ref({
 const configJson = ref('')
 const configError = ref<string | null>(null)
 const cronError = ref<string | null>(null)
+const cronHelp = ref<string>('Use standard 5-field cron (min hour day month dow), e.g. "*/5 * * * *"')
+const nextRuns = ref<string[]>([])
+let cronDebounce: any = null
 
 const rules = {
   required: (v: any) => !!v || 'Required',
@@ -86,6 +95,19 @@ async function loadDetails() {
   } finally {
     loading.value = false
   }
+}
+
+async function onCronChange(value: string) {
+  cronError.value = null
+  if (cronDebounce) clearTimeout(cronDebounce)
+  if (!value || !value.trim()) { nextRuns.value = []; return }
+  cronDebounce = setTimeout(async () => {
+    try {
+      nextRuns.value = await typedHttpClient.previewCron(value)
+    } catch (e) {
+      nextRuns.value = []
+    }
+  }, 350)
 }
 
 function cancel() { model.value = false }

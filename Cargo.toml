@@ -40,6 +40,8 @@ lazy_static = "1.4"
 actix-web = "4.5"
 actix-cors = "0.7"
 actix-rt = "2.9"
+actix-multipart = "0.6"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 # Database
 sqlx = { version = "0.8.4", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }
@@ -103,5 +105,8 @@ validator = { version = "0.20.0", features = ["derive"] }
 
 # Command-line argument parsing
 clap = "3.2"
+
+# Standards
 base64 = "0.22.1"
 hex = "0.4"
+chrono = "0.4.42"

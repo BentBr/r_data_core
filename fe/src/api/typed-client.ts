@@ -723,6 +723,11 @@ class TypedHttpClient {
         return this.request(`/admin/api/v1/workflows/${uuid}`, ApiResponseSchema(Schema))
     }
 
+    async previewCron(expr: string): Promise<string[]> {
+        const Schema = z.array(z.string())
+        return this.request(`/admin/api/v1/workflows/cron/preview?expr=${encodeURIComponent(expr)}`, ApiResponseSchema(Schema))
+    }
+
     async getWorkflowRuns(workflowUuid: string, page = 1, perPage = 20): Promise<{
         data: Array<{ uuid: string; status: string; queued_at?: string | null; finished_at?: string | null; processed_items?: number | null; failed_items?: number | null }>
         meta?: { pagination?: { total: number; page: number; per_page: number; total_pages: number; has_previous: boolean; has_next: boolean } }
@@ -806,6 +811,38 @@ class TypedHttpClient {
                 method: 'DELETE',
             }
         )
+    }
+
+    async uploadRunFile(workflowUuid: string, file: File): Promise<{ run_uuid: string; staged_items: number }> {
+        const form = new FormData()
+        form.append('file', file)
+        const schema = z.object({
+            run_uuid: z.string().uuid(),
+            staged_items: z.number(),
+        })
+        // Bypass JSON content-type; handle raw fetch here due to multipart
+        const authStore = useAuthStore()
+        const res = await fetch(`${this.baseURL}/admin/api/v1/workflows/${workflowUuid}/run/upload`, {
+            method: 'POST',
+            headers: {
+                ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+            },
+            body: form,
+        })
+        if (!res.ok) {
+            // Try to extract standardized error
+            try {
+                const err = await res.json()
+                if (err?.message) throw new Error(err.message)
+            } catch {
+                // fallthrough
+            }
+            throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+        }
+        const json = await res.json()
+        const parsed = ApiResponseSchema(schema).parse(json)
+
+        return parsed.data
     }
 
     async reassignApiKey(uuid: string, data: ReassignApiKeyRequest): Promise<{ message: string }> {

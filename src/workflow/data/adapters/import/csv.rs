@@ -7,35 +7,35 @@ use serde_json::Value;
 
 pub struct CsvImportAdapter;
 
-#[async_trait]
-impl ImportAdapter for CsvImportAdapter {
-    async fn fetch_stream(
-        &self,
-        _ctx: &AdapterContext,
-        cfg: &serde_json::Value,
-    ) -> anyhow::Result<Box<dyn Stream<Item = anyhow::Result<Value>> + Unpin + Send>> {
-        // Minimal stub: expect `source.inline` with CSV content for now.
-        let inline = cfg
-            .pointer("/source/inline")
-            .and_then(|v| v.as_str())
-            .context("missing source.inline for csv import adapter stub")?
-            .to_string();
-
-        let has_header = cfg
-            .pointer("/format/has_header")
+impl CsvImportAdapter {
+    /// Parse CSV inline content into an array of JSON objects according to format config.
+    /// Supported config:
+    /// - format.has_header: bool (default: true)
+    /// - format.delimiter: string of length 1 (default: ",")
+    /// - format.quote: string of length 1 (optional)
+    pub fn parse_inline(inline: &str, format_cfg: &serde_json::Value) -> anyhow::Result<Vec<Value>> {
+        let has_header = format_cfg
+            .pointer("/has_header")
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
-        let delimiter = cfg
-            .pointer("/format/delimiter")
+        let delimiter = format_cfg
+            .pointer("/delimiter")
             .and_then(|v| v.as_str())
             .and_then(|s| s.as_bytes().first().copied())
             .unwrap_or(b',');
+        let quote = format_cfg
+            .pointer("/quote")
+            .and_then(|v| v.as_str())
+            .and_then(|s| s.as_bytes().first().copied());
 
-        let mut rdr = csv::ReaderBuilder::new()
-            .has_headers(has_header)
-            .delimiter(delimiter)
-            .from_reader(inline.as_bytes());
+        let mut builder = csv::ReaderBuilder::new();
+        builder.has_headers(has_header);
+        builder.delimiter(delimiter);
+        if let Some(q) = quote {
+            builder.quote(q);
+        }
 
+        let mut rdr = builder.from_reader(inline.as_bytes());
         let headers = if has_header {
             Some(rdr.headers()?.clone())
         } else {
@@ -64,8 +64,33 @@ impl ImportAdapter for CsvImportAdapter {
             }
             rows.push(Ok(Value::Object(obj)));
         }
+        // Convert anyhow::Result<Value> vec to Value vec preserving early errors
+        let mut out = Vec::with_capacity(rows.len());
+        for r in rows {
+            out.push(r?);
+        }
+        Ok(out)
+    }
+}
 
-        Ok(Box::new(stream::iter(rows)))
+#[async_trait]
+impl ImportAdapter for CsvImportAdapter {
+    async fn fetch_stream(
+        &self,
+        _ctx: &AdapterContext,
+        cfg: &serde_json::Value,
+    ) -> anyhow::Result<Box<dyn Stream<Item = anyhow::Result<Value>> + Unpin + Send>> {
+        // Expect `source.inline` with CSV content for now.
+        let inline = cfg
+            .pointer("/source/inline")
+            .and_then(|v| v.as_str())
+            .context("missing source.inline for csv import adapter stub")?
+            .to_string();
+
+        let format_cfg = cfg.pointer("/format").cloned().unwrap_or_else(|| serde_json::json!({}));
+        let parsed = Self::parse_inline(&inline, &format_cfg)?;
+
+        Ok(Box::new(stream::iter(parsed.into_iter().map(Ok))))
     }
 }
 

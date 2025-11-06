@@ -32,9 +32,11 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         crate::api::admin::workflows::routes::update_workflow,
         crate::api::admin::workflows::routes::delete_workflow,
         crate::api::admin::workflows::routes::run_workflow_now,
+        crate::api::admin::workflows::routes::run_workflow_now_upload,
         crate::api::admin::workflows::routes::list_workflow_runs,
         crate::api::admin::workflows::routes::list_workflow_run_logs,
-        crate::api::admin::workflows::routes::list_all_workflow_runs
+        crate::api::admin::workflows::routes::list_all_workflow_runs,
+        crate::api::admin::workflows::routes::cron_preview
     ),
     components(
         schemas(
@@ -82,7 +84,8 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
             crate::api::admin::workflows::models::CreateWorkflowResponse,
             crate::api::admin::workflows::models::WorkflowDetail,
             crate::api::admin::workflows::models::WorkflowRunSummary,
-            crate::api::admin::workflows::models::WorkflowRunLogDto
+            crate::api::admin::workflows::models::WorkflowRunLogDto,
+            crate::api::admin::workflows::models::WorkflowRunUpload
         )
     ),
     modifiers(&SecurityAddon, &UuidSchemaAddon, &DateTimeSchemaAddon, &ModelSchemaAddon, &JsonValueSchemaAddon),

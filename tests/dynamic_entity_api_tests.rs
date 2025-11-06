@@ -382,7 +382,7 @@ mod dynamic_entity_tests {
         // Create a entity definition from the JSON example with a unique entity type
         let (entity_type, entity_def, _) = create_test_entity_definition_from_json(
             &pool,
-            ".json_examples/user_entity_definition.json",
+            ".example_files/json_examples/user_entity_definition.json",
         )
         .await?;
 
@@ -520,7 +520,7 @@ mod dynamic_entity_tests {
         // Create a entity definition from the JSON example with a unique entity type
         let (entity_type, entity_def, _) = create_test_entity_definition_from_json(
             &pool,
-            ".json_examples/user_entity_definition.json",
+            ".example_files/json_examples/user_entity_definition.json",
         )
         .await?;
 
@@ -659,7 +659,7 @@ mod dynamic_entity_tests {
         // Create a entity definition from the JSON example with a unique entity type
         let (entity_type, entity_def, _) = create_test_entity_definition_from_json(
             &pool,
-            ".json_examples/user_entity_definition.json",
+            ".example_files/json_examples/user_entity_definition.json",
         )
         .await?;
 
@@ -761,7 +761,7 @@ mod dynamic_entity_tests {
         // Create a entity definition from the JSON example with a unique entity type
         let (entity_type, entity_def, _) = create_test_entity_definition_from_json(
             &pool,
-            ".json_examples/user_entity_definition.json",
+            ".example_files/json_examples/user_entity_definition.json",
         )
         .await?;
 

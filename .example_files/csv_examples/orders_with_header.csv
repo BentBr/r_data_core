@@ -1,0 +1,5 @@
+orderNumber,netPrice,lineItems
+1001,199.99,"SKU-1:2,SKU-2:1"
+1002,49.50,"SKU-3:5"
+1003,1299.00,"ITEM-A:1,ITEM-B:3,ITEM-C:2"
+1004,15.75,"ITEM-X:1"
