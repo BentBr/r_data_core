@@ -8,11 +8,11 @@ BEGIN
         -- Insert admin user with hashed password
         -- Password 'admin' is hashed using secure Argon2id parameters (m=19456,t=2,p=1)
         INSERT INTO admin_users (
-            uuid, 
+            uuid,
             path,
-            username, 
-            email, 
-            password_hash, 
+            username,
+            email,
+            password_hash,
             first_name,
             last_name,
             is_active,
@@ -22,9 +22,9 @@ BEGIN
             version,
             created_by
         ) VALUES (
-            uuid_generate_v7(),
-            '/users', 
-            'admin', 
+            uuidv7(),
+            '/users',
+            'admin',
             'admin@example.com',
             -- 'adminadmin' password with secure Argon2id parameters
             '$argon2id$v=19$m=19456,t=2,p=1$AyU4SymrYGzpmYfqDSbugg$AhzMvJ1bOxrv2WQ1ks3PRFXGezp966kjJwkoUdJbFY4',
@@ -37,10 +37,10 @@ BEGIN
             1,
             '00000000-0000-0000-0000-000000000000'
         );
-        
+
         RAISE NOTICE 'Default admin user created';
     ELSE
         RAISE NOTICE 'Admin user already exists, skipping creation';
     END IF;
 END
-$$; 
+$$;

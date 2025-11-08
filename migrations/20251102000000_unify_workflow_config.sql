@@ -26,7 +26,7 @@ END $$;
 
 -- Create table for workflow run logs
 CREATE TABLE IF NOT EXISTS workflow_run_logs (
-    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    uuid UUID PRIMARY KEY DEFAULT uuidv7(),
     run_uuid UUID NOT NULL REFERENCES workflow_runs(uuid) ON DELETE CASCADE,
     ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     level TEXT NOT NULL,

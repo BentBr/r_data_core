@@ -16,7 +16,7 @@ $$ LANGUAGE plpgsql;
 
 -- Enhanced Entity Registry Table (central metadata store for all entities)
 CREATE TABLE IF NOT EXISTS entities_registry (
-    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    uuid UUID PRIMARY KEY DEFAULT uuidv7(),
     entity_type VARCHAR(100) NOT NULL,
     path VARCHAR(255) NOT NULL,
     entity_key VARCHAR(255) NOT NULL,
@@ -43,7 +43,7 @@ EXECUTE FUNCTION update_timestamp();
 
 -- Entity Versions Table
 CREATE TABLE IF NOT EXISTS entities_versions (
-    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    uuid UUID PRIMARY KEY DEFAULT uuidv7(),
     entity_uuid UUID NOT NULL,
     version INT NOT NULL,
     data JSONB NOT NULL,
@@ -57,7 +57,7 @@ CREATE INDEX IF NOT EXISTS idx_entities_versions_entity_uuid ON entities_version
 
 -- Entity Definitions Table
 CREATE TABLE IF NOT EXISTS entity_definitions (
-    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    uuid UUID PRIMARY KEY DEFAULT uuidv7(),
     entity_type VARCHAR(100) NOT NULL UNIQUE,
     display_name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -382,7 +382,7 @@ BEGIN
         BEGIN
             -- Generate UUID if not provided
             IF NEW.uuid IS NULL THEN
-                NEW.uuid := uuid_generate_v7();
+                NEW.uuid := uuidv7();
             END IF;
 
             -- Set default values if not provided
@@ -516,7 +516,7 @@ $$ LANGUAGE plpgsql;
 
 -- Admin Users Table
 CREATE TABLE IF NOT EXISTS admin_users (
-    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    uuid UUID PRIMARY KEY DEFAULT uuidv7(),
     path TEXT NOT NULL DEFAULT '/users',
     username VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
@@ -538,7 +538,7 @@ CREATE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users(email);
 
 -- Permission Schemes Table
 CREATE TABLE IF NOT EXISTS permission_schemes (
-    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    uuid UUID PRIMARY KEY DEFAULT uuidv7(),
     path TEXT NOT NULL DEFAULT '/permissions',
     name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
@@ -555,7 +555,7 @@ CREATE INDEX IF NOT EXISTS idx_permission_schemes_name ON permission_schemes(nam
 
 -- API Keys Table
 CREATE TABLE IF NOT EXISTS api_keys (
-    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    uuid UUID PRIMARY KEY DEFAULT uuidv7(),
     path TEXT NOT NULL DEFAULT '/api-keys',
     user_uuid UUID NOT NULL REFERENCES admin_users(uuid) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
@@ -579,7 +579,7 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_key_hash ON api_keys(key_hash);
 
 -- Notifications Table
 CREATE TABLE IF NOT EXISTS notifications (
-    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    uuid UUID PRIMARY KEY DEFAULT uuidv7(),
     path TEXT NOT NULL DEFAULT '/notifications',
     notification_type VARCHAR(50) NOT NULL,
     subject TEXT NOT NULL,
@@ -623,7 +623,7 @@ END $$;
 
 -- Workflows (definitions)
 CREATE TABLE IF NOT EXISTS workflows (
-     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+     uuid UUID PRIMARY KEY DEFAULT uuidv7(),
      name VARCHAR(100) NOT NULL UNIQUE,
      description TEXT,
      kind workflow_kind NOT NULL,
@@ -655,7 +655,7 @@ END $$;
 
 -- Workflow runs
 CREATE TABLE IF NOT EXISTS workflow_runs (
-     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+     uuid UUID PRIMARY KEY DEFAULT uuidv7(),
      workflow_uuid UUID NOT NULL REFERENCES workflows(uuid) ON DELETE CASCADE,
      status workflow_run_status NOT NULL DEFAULT 'queued',
      trigger_id UUID,
@@ -673,7 +673,7 @@ CREATE INDEX IF NOT EXISTS idx_workflow_runs_status ON workflow_runs(status);
 
 -- Raw staged items per run
 CREATE TABLE IF NOT EXISTS workflow_raw_items (
-    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    uuid UUID PRIMARY KEY DEFAULT uuidv7(),
     workflow_run_uuid UUID NOT NULL REFERENCES workflow_runs(uuid) ON DELETE CASCADE,
     seq_no BIGINT NOT NULL,
     payload JSONB NOT NULL,
