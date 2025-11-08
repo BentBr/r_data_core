@@ -109,9 +109,16 @@ async fn main() -> anyhow::Result<()> {
                         .ok()
                         .and_then(|row| row.try_get::<uuid::Uuid, _>("workflow_uuid").ok());
                     if let Some(wf_uuid) = wf_uuid {
-                        let (processed, failed) = service.process_staged_items(wf_uuid, run_id).await.unwrap_or((0, 0));
-                        let _ = repo.insert_run_log(run_id, "info", &format!("Run processed (processed_items={}, failed_items={})", processed, failed), None).await;
-                        let _ = repo.mark_run_success(run_id, processed, failed).await;
+                        match service.process_staged_items(wf_uuid, run_id).await {
+                            Ok((processed, failed)) => {
+                                let _ = repo.insert_run_log(run_id, "info", &format!("Run processed (processed_items={}, failed_items={})", processed, failed), None).await;
+                                let _ = repo.mark_run_success(run_id, processed, failed).await;
+                            }
+                            Err(e) => {
+                                let _ = repo.insert_run_log(run_id, "error", &format!("Run failed: {}", e), None).await;
+                                let _ = repo.mark_run_failure(run_id, &format!("{}", e)).await;
+                            }
+                        }
                     } else {
                         let _ = repo.insert_run_log(run_id, "error", "Missing workflow_uuid for run", None).await;
                         let _ = repo.mark_run_failure(run_id, "Missing workflow_uuid").await;

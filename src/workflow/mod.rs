@@ -5,6 +5,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 pub mod data;
+pub mod dsl;
 
 /// Basic workflow state
 #[derive(Debug, Clone, Serialize, Deserialize)]

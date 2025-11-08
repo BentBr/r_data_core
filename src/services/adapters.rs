@@ -123,6 +123,14 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
     async fn set_raw_item_status(&self, item_uuid: Uuid, status: &str, error: Option<&str>) -> anyhow::Result<()> {
         self.inner.set_raw_item_status(item_uuid, status, error).await
     }
+
+    async fn mark_run_success(&self, run_uuid: Uuid, processed: i64, failed: i64) -> anyhow::Result<()> {
+        self.inner.mark_run_success(run_uuid, processed, failed).await
+    }
+
+    async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
+        self.inner.mark_run_failure(run_uuid, message).await
+    }
 }
 
 /// Repository adapter for EntityDefinitionRepository

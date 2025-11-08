@@ -17,6 +17,43 @@ impl WorkflowService {
         Self { repo }
     }
 
+    fn validate_dsl_config(cfg: &serde_json::Value) -> anyhow::Result<()> {
+        let dsl = cfg.get("dsl").ok_or_else(|| anyhow::anyhow!("Invalid workflow configuration: missing 'dsl'"))?;
+        let steps = dsl
+            .as_array()
+            .ok_or_else(|| anyhow::anyhow!("Invalid workflow configuration: 'dsl' must be an array"))?;
+        if steps.is_empty() {
+            return Err(anyhow::anyhow!(
+                "Invalid workflow configuration: 'dsl' must contain at least one step"
+            ));
+        }
+        // Minimal per-step validation
+        for (idx, step) in steps.iter().enumerate() {
+            let t = step.get("type").and_then(|v| v.as_str()).ok_or_else(|| {
+                anyhow::anyhow!(format!("Invalid DSL: step {} missing 'type'", idx))
+            })?;
+            if t != "map" {
+                return Err(anyhow::anyhow!(format!(
+                    "Invalid DSL: unsupported step type '{}' at index {}",
+                    t, idx
+                )));
+            }
+            if step.get("from").and_then(|v| v.as_str()).is_none() {
+                return Err(anyhow::anyhow!(format!(
+                    "Invalid DSL: step {} missing 'from'",
+                    idx
+                )));
+            }
+            if step.get("to").and_then(|v| v.as_str()).is_none() {
+                return Err(anyhow::anyhow!(format!(
+                    "Invalid DSL: step {} missing 'to'",
+                    idx
+                )));
+            }
+        }
+        Ok(())
+    }
+
     fn infer_input_type(cfg: &serde_json::Value) -> Option<String> {
         // Required structure: { "input": { "type": "csv" | "ndjson", "format": {...}, "source": {...} } }
         cfg.pointer("/input/type").and_then(|v| v.as_str()).map(|s| s.to_string())
@@ -44,6 +81,7 @@ impl WorkflowService {
         if let Some(expr) = &req.schedule_cron {
             Schedule::from_str(expr).map_err(|e| anyhow::anyhow!("Invalid cron schedule: {}", e))?;
         }
+        Self::validate_dsl_config(&req.config)?;
         self.repo.create(req).await
     }
 
@@ -51,6 +89,7 @@ impl WorkflowService {
         if let Some(expr) = &req.schedule_cron {
             Schedule::from_str(expr).map_err(|e| anyhow::anyhow!("Invalid cron schedule: {}", e))?;
         }
+        Self::validate_dsl_config(&req.config)?;
         self.repo.update(uuid, req).await
     }
 
@@ -216,7 +255,7 @@ impl WorkflowService {
         Ok(0)
     }
 
-    /// Process staged raw items for a run using the workflow DSL (stub: pass-through mapping)
+    /// Process staged raw items for a run using the workflow DSL
     pub async fn process_staged_items(&self, workflow_uuid: Uuid, run_uuid: Uuid) -> anyhow::Result<(i64, i64)> {
         let wf = self
             .repo
@@ -224,8 +263,34 @@ impl WorkflowService {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Workflow not found"))?;
 
-        // For now, accept no-op if dsl absent; later require config.dsl
-        let _dsl = wf.config.get("dsl").cloned().unwrap_or(serde_json::json!([]));
+        // Build DSL program from config; require presence and non-empty
+        let program = match crate::workflow::dsl::DslProgram::from_config(&wf.config) {
+            Ok(p) if !p.steps.is_empty() => p,
+            _ => {
+                let message = "Missing or empty DSL configuration; aborting run";
+                let _ = self
+                    .repo
+                    .insert_run_log(run_uuid, "error", message, None)
+                    .await;
+                // Mark all queued items as failed to prevent re-processing loops
+                let mut failed = 0_i64;
+                loop {
+                    let items = self.repo.fetch_staged_raw_items(run_uuid, 500).await?;
+                    if items.is_empty() {
+                        break;
+                    }
+                    for (item_uuid, _payload) in items {
+                        let _ = self
+                            .repo
+                            .set_raw_item_status(item_uuid, "failed", Some("Invalid or empty DSL"))
+                            .await;
+                        failed += 1;
+                    }
+                }
+                let _ = self.repo.mark_run_failure(run_uuid, message).await;
+                return Err(anyhow::anyhow!(message));
+            }
+        };
 
         let mut processed = 0_i64;
         let mut failed = 0_i64;
@@ -235,26 +300,100 @@ impl WorkflowService {
                 break;
             }
             for (item_uuid, payload) in items {
-                // TODO: apply DSL steps; for now, pass-through
-                let _transformed = payload;
-                // TODO: upsert/update entities based on DSL target
-                // Mark processed
-                if let Err(e) = self.repo.set_raw_item_status(item_uuid, "processed", None).await {
-                    let _ = self
-                        .repo
-                        .insert_run_log(
-                            run_uuid,
-                            "error",
-                            "Failed to mark item processed",
-                            Some(serde_json::json!({ "item_uuid": item_uuid, "error": e.to_string() })),
-                        )
-                        .await;
-                    failed += 1;
-                } else {
-                    processed += 1;
+                // Apply DSL steps; if it fails, mark item as error and continue
+                match program.apply(&payload) {
+                    Ok(transformed) => {
+                        // TODO: upsert/update entities based on `transformed`
+                        let _ = self
+                            .repo
+                            .insert_run_log(
+                                run_uuid,
+                                "debug",
+                                "Transformed item",
+                                Some(serde_json::json!({ "item_uuid": item_uuid, "transformed": transformed })),
+                            )
+                            .await;
+                        // Mark processed
+                        if let Err(e) = self.repo.set_raw_item_status(item_uuid, "processed", None).await {
+                            // Try to unwrap sqlx database details for better diagnostics
+                            let db_meta = extract_sqlx_meta(&e);
+                            let _ = self
+                                .repo
+                                .insert_run_log(
+                                    run_uuid,
+                                    "error",
+                                    "Failed to mark item processed",
+                                    Some(serde_json::json!({
+                                        "item_uuid": item_uuid,
+                                        "attempted_status": "processed",
+                                        "error": e.to_string(),
+                                        "db": db_meta
+                                    })),
+                                )
+                                .await;
+                            failed += 1;
+                        } else {
+                            processed += 1;
+                        }
+                    }
+                    Err(e) => {
+                        // Mark item as error to prevent reprocessing
+                        if let Err(set_err) = self.repo.set_raw_item_status(item_uuid, "failed", Some(&e.to_string())).await {
+                            let db_meta = extract_sqlx_meta(&set_err);
+                            let _ = self
+                                .repo
+                                .insert_run_log(
+                                    run_uuid,
+                                    "error",
+                                    "Failed to mark item failed",
+                                    Some(serde_json::json!({
+                                        "item_uuid": item_uuid,
+                                        "attempted_status": "failed",
+                                        "error": set_err.to_string(),
+                                        "db": db_meta
+                                    })),
+                                )
+                                .await;
+                        }
+                        let _ = self
+                            .repo
+                            .insert_run_log(
+                                run_uuid,
+                                "error",
+                                "DSL apply failed for item; item marked as error",
+                                Some(serde_json::json!({ "item_uuid": item_uuid, "error": e.to_string() })),
+                            )
+                            .await;
+                        failed += 1;
+                    }
                 }
             }
         }
         Ok((processed, failed))
     }
+}
+
+fn extract_sqlx_meta(e: &anyhow::Error) -> serde_json::Value {
+    // Walk the error chain and extract sqlx::Error::Database details if present
+    // Fall back to debug formatting of the full chain
+    let mut code: Option<String> = None;
+    let mut message: Option<String> = None;
+
+    let mut cause: Option<&(dyn std::error::Error + 'static)> = Some(e.as_ref());
+    while let Some(err) = cause {
+        if let Some(sqlx_err) = err.downcast_ref::<sqlx::Error>() {
+            if let sqlx::Error::Database(db_err) = sqlx_err {
+                code = db_err.code().map(|s| s.to_string());
+                message = Some(db_err.message().to_string());
+                break;
+            }
+        }
+        cause = err.source();
+    }
+
+    serde_json::json!({
+        "code": code,
+        "message": message,
+        "chain": format!("{:?}", e),
+    })
 }

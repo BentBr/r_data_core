@@ -16,6 +16,7 @@ import {
     // UpdateEntityRequestSchema,
     EntityResponseSchema,
     ValidationErrorResponseSchema,
+    UuidSchema,
 } from '@/types/schemas'
 
 // Import ValidationError from http-client.ts
@@ -460,7 +461,6 @@ class TypedHttpClient {
             const rawData = await response.json()
             return this.validatePaginatedResponse(rawData, schema)
         } catch (error) {
-
             // Don't log validation errors to console as they're expected behavior
             // todo add validationError and catch it (don't log it)
             if (!(error instanceof ValidationError)) {
@@ -576,7 +576,7 @@ class TypedHttpClient {
     async createEntityDefinition(data: CreateEntityDefinitionRequest): Promise<{ uuid: string }> {
         return this.request(
             '/admin/api/v1/entity-definitions',
-            ApiResponseSchema(z.object({ uuid: z.string().uuid() })),
+            ApiResponseSchema(z.object({ uuid: UuidSchema })),
             {
                 method: 'POST',
                 body: JSON.stringify(data),
@@ -590,7 +590,7 @@ class TypedHttpClient {
     ): Promise<{ uuid: string }> {
         return this.request(
             `/admin/api/v1/entity-definitions/${uuid}`,
-            ApiResponseSchema(z.object({ uuid: z.string().uuid() })),
+            ApiResponseSchema(z.object({ uuid: UuidSchema })),
             {
                 method: 'PUT',
                 body: JSON.stringify(data),
@@ -657,10 +657,24 @@ class TypedHttpClient {
     }
 
     // Workflows (Admin)
-    async listWorkflows(): Promise<Array<{ uuid: string; name: string; kind: string; enabled: boolean; schedule_cron?: string | null }>> {
+    async listWorkflows(): Promise<
+        Array<{
+            uuid: string
+            name: string
+            kind: string
+            enabled: boolean
+            schedule_cron?: string | null
+        }>
+    > {
         // Use loose schema to avoid strict typing issues in legacy client
         const data = await this.request('/admin/api/v1/workflows', ApiResponseSchema(z.any()))
-        return data as Array<{ uuid: string; name: string; kind: string; enabled: boolean; schedule_cron?: string | null }>
+        return data as Array<{
+            uuid: string
+            name: string
+            kind: string
+            enabled: boolean
+            schedule_cron?: string | null
+        }>
     }
 
     async runWorkflow(uuid: string): Promise<{ message: string }> {
@@ -680,21 +694,24 @@ class TypedHttpClient {
         schedule_cron?: string | null
         config: unknown
     }): Promise<{ uuid: string }> {
-        const Schema = z.object({ uuid: z.string().uuid() })
+        const Schema = z.object({ uuid: UuidSchema })
         return this.request('/admin/api/v1/workflows', ApiResponseSchema(Schema), {
             method: 'POST',
             body: JSON.stringify(data),
         })
     }
 
-    async updateWorkflow(uuid: string, data: {
-        name: string
-        description?: string | null
-        kind: 'consumer' | 'provider'
-        enabled: boolean
-        schedule_cron?: string | null
-        config: unknown
-    }): Promise<{ message: string }> {
+    async updateWorkflow(
+        uuid: string,
+        data: {
+            name: string
+            description?: string | null
+            kind: 'consumer' | 'provider'
+            enabled: boolean
+            schedule_cron?: string | null
+            config: unknown
+        }
+    ): Promise<{ message: string }> {
         const Schema = z.object({ message: z.string() })
         return this.request(`/admin/api/v1/workflows/${uuid}`, ApiResponseSchema(Schema), {
             method: 'PUT',
@@ -712,7 +729,7 @@ class TypedHttpClient {
         config: unknown
     }> {
         const Schema = z.object({
-            uuid: z.string().uuid(),
+            uuid: UuidSchema,
             name: z.string(),
             description: z.string().nullable().optional(),
             kind: z.enum(['consumer', 'provider']),
@@ -725,16 +742,39 @@ class TypedHttpClient {
 
     async previewCron(expr: string): Promise<string[]> {
         const Schema = z.array(z.string())
-        return this.request(`/admin/api/v1/workflows/cron/preview?expr=${encodeURIComponent(expr)}`, ApiResponseSchema(Schema))
+        return this.request(
+            `/admin/api/v1/workflows/cron/preview?expr=${encodeURIComponent(expr)}`,
+            ApiResponseSchema(Schema)
+        )
     }
 
-    async getWorkflowRuns(workflowUuid: string, page = 1, perPage = 20): Promise<{
-        data: Array<{ uuid: string; status: string; queued_at?: string | null; finished_at?: string | null; processed_items?: number | null; failed_items?: number | null }>
-        meta?: { pagination?: { total: number; page: number; per_page: number; total_pages: number; has_previous: boolean; has_next: boolean } }
+    async getWorkflowRuns(
+        workflowUuid: string,
+        page = 1,
+        perPage = 20
+    ): Promise<{
+        data: Array<{
+            uuid: string
+            status: string
+            queued_at?: string | null
+            finished_at?: string | null
+            processed_items?: number | null
+            failed_items?: number | null
+        }>
+        meta?: {
+            pagination?: {
+                total: number
+                page: number
+                per_page: number
+                total_pages: number
+                has_previous: boolean
+                has_next: boolean
+            }
+        }
     }> {
         const Schema = z.array(
             z.object({
-                uuid: z.string().uuid(),
+                uuid: UuidSchema,
                 status: z.string(),
                 queued_at: z.string().nullable().optional(),
                 finished_at: z.string().nullable().optional(),
@@ -748,13 +788,26 @@ class TypedHttpClient {
         )
     }
 
-    async getWorkflowRunLogs(runUuid: string, page = 1, perPage = 50): Promise<{
+    async getWorkflowRunLogs(
+        runUuid: string,
+        page = 1,
+        perPage = 50
+    ): Promise<{
         data: Array<{ uuid: string; ts: string; level: string; message: string; meta?: unknown }>
-        meta?: { pagination?: { total: number; page: number; per_page: number; total_pages: number; has_previous: boolean; has_next: boolean } }
+        meta?: {
+            pagination?: {
+                total: number
+                page: number
+                per_page: number
+                total_pages: number
+                has_previous: boolean
+                has_next: boolean
+            }
+        }
     }> {
         const Schema = z.array(
             z.object({
-                uuid: z.string().uuid(),
+                uuid: UuidSchema,
                 ts: z.string(),
                 level: z.string(),
                 message: z.string(),
@@ -767,13 +820,32 @@ class TypedHttpClient {
         )
     }
 
-    async getAllWorkflowRuns(page = 1, perPage = 20): Promise<{
-        data: Array<{ uuid: string; status: string; queued_at?: string | null; finished_at?: string | null; processed_items?: number | null; failed_items?: number | null }>
-        meta?: { pagination?: { total: number; page: number; per_page: number; total_pages: number; has_previous: boolean; has_next: boolean } }
+    async getAllWorkflowRuns(
+        page = 1,
+        perPage = 20
+    ): Promise<{
+        data: Array<{
+            uuid: string
+            status: string
+            queued_at?: string | null
+            finished_at?: string | null
+            processed_items?: number | null
+            failed_items?: number | null
+        }>
+        meta?: {
+            pagination?: {
+                total: number
+                page: number
+                per_page: number
+                total_pages: number
+                has_previous: boolean
+                has_next: boolean
+            }
+        }
     }> {
         const Schema = z.array(
             z.object({
-                uuid: z.string().uuid(),
+                uuid: UuidSchema,
                 status: z.string(),
                 queued_at: z.string().nullable().optional(),
                 finished_at: z.string().nullable().optional(),
@@ -787,20 +859,41 @@ class TypedHttpClient {
         )
     }
 
-    async getWorkflows(page = 1, itemsPerPage = 20): Promise<{
-        data: Array<{ uuid: string; name: string; kind: 'consumer' | 'provider'; enabled: boolean; schedule_cron?: string | null }>
-        meta?: { pagination?: { total: number; page: number; per_page: number; total_pages: number; has_previous: boolean; has_next: boolean } }
+    async getWorkflows(
+        page = 1,
+        itemsPerPage = 20
+    ): Promise<{
+        data: Array<{
+            uuid: string
+            name: string
+            kind: 'consumer' | 'provider'
+            enabled: boolean
+            schedule_cron?: string | null
+        }>
+        meta?: {
+            pagination?: {
+                total: number
+                page: number
+                per_page: number
+                total_pages: number
+                has_previous: boolean
+                has_next: boolean
+            }
+        }
     }> {
         const Schema = z.array(
             z.object({
-                uuid: z.string().uuid(),
+                uuid: UuidSchema,
                 name: z.string(),
                 kind: z.enum(['consumer', 'provider']),
                 enabled: z.boolean(),
                 schedule_cron: z.string().nullable().optional(),
             })
         )
-        return this.paginatedRequest(`/admin/api/v1/workflows?page=${page}&per_page=${itemsPerPage}`, PaginatedApiResponseSchema(Schema))
+        return this.paginatedRequest(
+            `/admin/api/v1/workflows?page=${page}&per_page=${itemsPerPage}`,
+            PaginatedApiResponseSchema(Schema)
+        )
     }
 
     async revokeApiKey(uuid: string): Promise<{ message: string }> {
@@ -813,27 +906,35 @@ class TypedHttpClient {
         )
     }
 
-    async uploadRunFile(workflowUuid: string, file: File): Promise<{ run_uuid: string; staged_items: number }> {
+    async uploadRunFile(
+        workflowUuid: string,
+        file: File
+    ): Promise<{ run_uuid: string; staged_items: number }> {
         const form = new FormData()
         form.append('file', file)
         const schema = z.object({
-            run_uuid: z.string().uuid(),
+            run_uuid: UuidSchema,
             staged_items: z.number(),
         })
         // Bypass JSON content-type; handle raw fetch here due to multipart
         const authStore = useAuthStore()
-        const res = await fetch(`${this.baseURL}/admin/api/v1/workflows/${workflowUuid}/run/upload`, {
-            method: 'POST',
-            headers: {
-                ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
-            },
-            body: form,
-        })
+        const res = await fetch(
+            `${this.baseURL}/admin/api/v1/workflows/${workflowUuid}/run/upload`,
+            {
+                method: 'POST',
+                headers: {
+                    ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+                },
+                body: form,
+            }
+        )
         if (!res.ok) {
             // Try to extract standardized error
             try {
                 const err = await res.json()
-                if (err?.message) throw new Error(err.message)
+                if (err?.message) {
+                    throw new Error(err.message)
+                }
             } catch {
                 // fallthrough
             }
@@ -972,7 +1073,7 @@ class TypedHttpClient {
                         kind: z.enum(['folder', 'file']),
                         name: z.string(),
                         path: z.string(),
-                        entity_uuid: z.string().uuid().nullable().optional(),
+                        entity_uuid: UuidSchema.nullable().optional(),
                         entity_type: z.string().nullable().optional(),
                         has_children: z.boolean().nullable().optional(),
                     })

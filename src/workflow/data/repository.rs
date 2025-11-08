@@ -241,7 +241,7 @@ impl WorkflowRepository {
     }
 
     pub async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
-        sqlx::query(r#"UPDATE workflow_runs SET status = 'failure', finished_at = NOW(), error = $2 WHERE uuid = $1"#)
+        sqlx::query(r#"UPDATE workflow_runs SET status = 'failed', finished_at = NOW(), error = $2 WHERE uuid = $1"#)
             .bind(run_uuid)
             .bind(message)
             .execute(&self.pool)
@@ -349,7 +349,7 @@ impl WorkflowRepository {
         sqlx::query(
             r#"
             UPDATE workflow_raw_items
-            SET status = $2, error = $3
+            SET status = $2::data_raw_item_status, error = $3
             WHERE uuid = $1
             "#,
         )
@@ -358,7 +358,7 @@ impl WorkflowRepository {
         .bind(error)
         .execute(&self.pool)
         .await
-        .context("set raw item status")?;
+        .context(format!("set raw item status : {status}"))?;
         Ok(())
     }
 }
@@ -536,5 +536,13 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
 
     async fn set_raw_item_status(&self, item_uuid: Uuid, status: &str, error: Option<&str>) -> anyhow::Result<()> {
         self.set_raw_item_status(item_uuid, status, error).await
+    }
+
+    async fn mark_run_success(&self, run_uuid: Uuid, processed: i64, failed: i64) -> anyhow::Result<()> {
+        self.mark_run_success(run_uuid, processed, failed).await
+    }
+
+    async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
+        self.mark_run_failure(run_uuid, message).await
     }
 }

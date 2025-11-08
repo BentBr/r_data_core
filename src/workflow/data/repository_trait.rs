@@ -25,4 +25,6 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
     async fn mark_raw_items_processed(&self, run_uuid: Uuid) -> anyhow::Result<()>;
     async fn fetch_staged_raw_items(&self, run_uuid: Uuid, limit: i64) -> anyhow::Result<Vec<(Uuid, serde_json::Value)>>;
     async fn set_raw_item_status(&self, item_uuid: Uuid, status: &str, error: Option<&str>) -> anyhow::Result<()>;
+    async fn mark_run_success(&self, run_uuid: Uuid, processed: i64, failed: i64) -> anyhow::Result<()>;
+    async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()>;
 }

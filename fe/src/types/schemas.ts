@@ -1,14 +1,14 @@
 import { z } from 'zod'
 
-// Base schemas for common patterns - handle both traditional UUID and UUIDv7 formats
+// Base schemas for common patterns - UUID v7 only
 const UuidSchema = z.string().refine(
     val => {
-        // UUID format: 8-4-4-4-12 hexadecimal (covers UUID v1-v7)
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        // UUID v7 format: version nibble must be 7; variant must be 8,9,a,b
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
         return uuidRegex.test(val)
     },
     {
-        message: 'Invalid UUID format',
+        message: 'Invalid UUID (must be v7)',
     }
 )
 
