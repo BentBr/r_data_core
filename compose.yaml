@@ -1,8 +1,6 @@
 services:
     postgres:
-        build:
-            context: ./.docker/postgres
-            dockerfile: Dockerfile
+        image: postgres:18-alpine
         container_name: rdata_postgres
         environment:
             POSTGRES_USER: postgres
@@ -24,9 +22,7 @@ services:
                     - pg.rdatacore.docker
 
     postgres_test:
-        build:
-            context: ./.docker/postgres
-            dockerfile: Dockerfile
+        image: postgres:18-alpine
         container_name: rdata_postgres_test
         environment:
             POSTGRES_USER: postgres
