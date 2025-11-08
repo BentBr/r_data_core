@@ -1,5 +1,6 @@
 pub mod api_keys;
 pub mod auth;
+pub mod dsl;
 pub mod entity_definitions;
 pub mod permissions;
 pub mod system;
@@ -22,6 +23,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
                     .configure(entity_definitions::routes::register_routes),
             )
             .service(web::scope("/workflows").configure(workflows::routes::register_routes))
+            .service(web::scope("/dsl").configure(dsl::routes::register_routes))
             .service(web::scope("/api-keys").configure(api_keys::routes::register_routes))
             .service(web::scope("/permissions").configure(permissions::routes::register_routes))
             .service(web::scope("/system").configure(system::routes::register_routes)),

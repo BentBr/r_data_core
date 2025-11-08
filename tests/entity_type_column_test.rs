@@ -11,14 +11,16 @@ use r_data_core::entity::entity_definition::repository_trait::EntityDefinitionRe
 use r_data_core::entity::field::ui::UiSettings;
 use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core::error::{Error, Result};
-use r_data_core::services::{AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, WorkflowService};
+use r_data_core::services::{
+    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, WorkflowService,
+};
+use r_data_core::workflow::data::repository::WorkflowRepository;
 use serde_json::json;
 use sqlx::PgPool;
 use std::collections::HashMap;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
-use r_data_core::workflow::data::repository::WorkflowRepository;
 
 #[path = "common/mod.rs"]
 mod common;
@@ -256,7 +258,7 @@ async fn create_test_app(
         admin_user_service,
         entity_definition_service,
         dynamic_entity_service: Some(dynamic_entity_service),
-        workflow_service
+        workflow_service,
     });
 
     // Build test app

@@ -1,0 +1,25 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "csv",
+        "uri": "http://example.com/empty.csv",
+        "mapping": {}
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "x",
+        "left": { "kind": "const", "value": 1.0 },
+        "op": "add",
+        "right": { "kind": "const", "value": 2.0 }
+      },
+      "to": {
+        "type": "json",
+        "output": "api",
+        "mapping": {}
+      }
+    }
+  ]
+}
+
+

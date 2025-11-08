@@ -1,18 +1,18 @@
 use actix_web::{delete, get, post, put, web, Responder};
+use chrono::{DateTime, Utc};
 use log::error;
-use uuid::Uuid;
 use std::str::FromStr;
-use chrono::{Utc, DateTime};
+use uuid::Uuid;
 
 use crate::api::admin::workflows::models::{
     CreateWorkflowRequest, CreateWorkflowResponse, UpdateWorkflowRequest, WorkflowDetail,
-    WorkflowSummary, WorkflowRunLogDto, WorkflowRunSummary,
+    WorkflowRunLogDto, WorkflowRunSummary, WorkflowSummary,
 };
 use crate::api::auth::auth_enum;
-use crate::api::ApiResponse;
-use crate::api::response::ValidationViolation;
-use crate::api::ApiState;
 use crate::api::query::PaginationQuery;
+use crate::api::response::ValidationViolation;
+use crate::api::ApiResponse;
+use crate::api::ApiState;
 use crate::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 use crate::workflow::data::job_queue::JobQueue;
 use crate::workflow::data::jobs::FetchAndStageJob;
@@ -100,15 +100,19 @@ pub async fn list_all_workflow_runs(
         Ok((items, total)) => {
             let summaries: Vec<WorkflowRunSummary> = items
                 .into_iter()
-                .map(|(uuid, status, queued_at, finished_at, processed, failed)| WorkflowRunSummary {
-                    uuid,
-                    status,
-                    queued_at,
-                    started_at: None,
-                    finished_at,
-                    processed_items: processed,
-                    failed_items: failed,
-                })
+                .map(
+                    |(uuid, status, queued_at, finished_at, processed, failed)| {
+                        WorkflowRunSummary {
+                            uuid,
+                            status,
+                            queued_at,
+                            started_at: None,
+                            finished_at,
+                            processed_items: processed,
+                            failed_items: failed,
+                        }
+                    },
+                )
                 .collect();
             ApiResponse::ok_paginated(summaries, total, page, per_page)
         }
@@ -258,7 +262,7 @@ pub async fn create_workflow(
             }
 
             ApiResponse::<()>::internal_error("Failed to create workflow")
-        },
+        }
     }
 }
 
@@ -351,17 +355,18 @@ pub async fn run_workflow_now(
 ) -> impl Responder {
     let uuid = path.into_inner();
     match state.workflow_service.get(uuid).await {
-        Ok(Some(_)) => {
-            match state.workflow_service.enqueue_run(uuid).await {
-                Ok(run_uuid) => {
-                    let _ = ApalisRedisQueue::new()
-                        .enqueue_fetch(FetchAndStageJob { workflow_id: uuid, trigger_id: Some(run_uuid) })
-                        .await;
-                    ApiResponse::<()>::message("Workflow run enqueued")
-                }
-                Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to enqueue run: {}", e)),
+        Ok(Some(_)) => match state.workflow_service.enqueue_run(uuid).await {
+            Ok(run_uuid) => {
+                let _ = ApalisRedisQueue::new()
+                    .enqueue_fetch(FetchAndStageJob {
+                        workflow_id: uuid,
+                        trigger_id: Some(run_uuid),
+                    })
+                    .await;
+                ApiResponse::<()>::message("Workflow run enqueued")
             }
-        }
+            Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to enqueue run: {}", e)),
+        },
         Ok(None) => ApiResponse::<()>::not_found("Workflow"),
         Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to fetch workflow: {}", e)),
     }
@@ -397,7 +402,9 @@ pub async fn run_workflow_now_upload(
     match state.workflow_service.get(workflow_uuid).await {
         Ok(Some(_)) => {}
         Ok(None) => return ApiResponse::<()>::not_found("Workflow"),
-        Err(e) => return ApiResponse::<()>::internal_error(&format!("Failed to fetch workflow: {}", e)),
+        Err(e) => {
+            return ApiResponse::<()>::internal_error(&format!("Failed to fetch workflow: {}", e))
+        }
     }
 
     // Read multipart, find first 'file' part
@@ -418,13 +425,15 @@ pub async fn run_workflow_now_upload(
         return ApiResponse::<()>::bad_request("Missing file");
     }
 
-    match state.workflow_service.run_now_upload_csv(workflow_uuid, &file_bytes).await {
-        Ok((run_uuid, staged)) => {
-            ApiResponse::<serde_json::Value>::ok(serde_json::json!({
-                "run_uuid": run_uuid,
-                "staged_items": staged
-            }))
-        }
+    match state
+        .workflow_service
+        .run_now_upload_csv(workflow_uuid, &file_bytes)
+        .await
+    {
+        Ok((run_uuid, staged)) => ApiResponse::<serde_json::Value>::ok(serde_json::json!({
+            "run_uuid": run_uuid,
+            "staged_items": staged
+        })),
         Err(e) => {
             error!(target: "workflows", "run_workflow_now_upload failed: {:#?}", e);
             // Treat CSV parse issues as 422 to surface validation to the UI
@@ -434,7 +443,7 @@ pub async fn run_workflow_now_upload(
             } else {
                 ApiResponse::<()>::internal_error(&format!("Failed to process upload: {}", msg))
             }
-        },
+        }
     }
 }
 
@@ -471,15 +480,19 @@ pub async fn list_workflow_runs(
         Ok((items, total)) => {
             let summaries: Vec<WorkflowRunSummary> = items
                 .into_iter()
-                .map(|(uuid, status, queued_at, finished_at, processed, failed)| WorkflowRunSummary {
-                    uuid,
-                    status,
-                    queued_at,
-                    started_at: None,
-                    finished_at,
-                    processed_items: processed,
-                    failed_items: failed,
-                })
+                .map(
+                    |(uuid, status, queued_at, finished_at, processed, failed)| {
+                        WorkflowRunSummary {
+                            uuid,
+                            status,
+                            queued_at,
+                            started_at: None,
+                            finished_at,
+                            processed_items: processed,
+                            failed_items: failed,
+                        }
+                    },
+                )
                 .collect();
             ApiResponse::ok_paginated(summaries, total, page, per_page)
         }
@@ -530,7 +543,13 @@ pub async fn list_workflow_run_logs(
         Ok((items, total)) => {
             let logs: Vec<WorkflowRunLogDto> = items
                 .into_iter()
-                .map(|(uuid, ts, level, message, meta)| WorkflowRunLogDto { uuid, ts, level, message, meta })
+                .map(|(uuid, ts, level, message, meta)| WorkflowRunLogDto {
+                    uuid,
+                    ts,
+                    level,
+                    message,
+                    meta,
+                })
                 .collect();
             ApiResponse::ok_paginated(logs, total, page, per_page)
         }

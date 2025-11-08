@@ -13,7 +13,10 @@ impl CsvImportAdapter {
     /// - format.has_header: bool (default: true)
     /// - format.delimiter: string of length 1 (default: ",")
     /// - format.quote: string of length 1 (optional)
-    pub fn parse_inline(inline: &str, format_cfg: &serde_json::Value) -> anyhow::Result<Vec<Value>> {
+    pub fn parse_inline(
+        inline: &str,
+        format_cfg: &serde_json::Value,
+    ) -> anyhow::Result<Vec<Value>> {
         let has_header = format_cfg
             .pointer("/has_header")
             .and_then(|v| v.as_bool())
@@ -87,7 +90,10 @@ impl ImportAdapter for CsvImportAdapter {
             .context("missing source.inline for csv import adapter stub")?
             .to_string();
 
-        let format_cfg = cfg.pointer("/format").cloned().unwrap_or_else(|| serde_json::json!({}));
+        let format_cfg = cfg
+            .pointer("/format")
+            .cloned()
+            .unwrap_or_else(|| serde_json::json!({}));
         let parsed = Self::parse_inline(&inline, &format_cfg)?;
 
         Ok(Box::new(stream::iter(parsed.into_iter().map(Ok))))

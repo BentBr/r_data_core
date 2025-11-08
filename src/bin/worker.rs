@@ -6,11 +6,11 @@ use tokio_cron_scheduler::{Job, JobScheduler};
 use uuid::Uuid;
 
 use r_data_core::config::AppConfig;
+use r_data_core::services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 use r_data_core::workflow::data::job_queue::JobQueue;
 use r_data_core::workflow::data::jobs::FetchAndStageJob;
 use r_data_core::workflow::data::repository::WorkflowRepository;
-use r_data_core::services::{WorkflowService, WorkflowRepositoryAdapter};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -85,42 +85,68 @@ async fn main() -> anyhow::Result<()> {
                     let staged_existing = repo.count_raw_items_for_run(run_id).await.unwrap_or(0);
                     if staged_existing == 0 {
                         // we need the workflow uuid for this run
-                        if let Ok(Some(row)) = sqlx::query("SELECT workflow_uuid FROM workflow_runs WHERE uuid = $1")
-                            .bind(run_id)
-                            .fetch_optional(&pool)
-                            .await
+                        if let Ok(Some(row)) =
+                            sqlx::query("SELECT workflow_uuid FROM workflow_runs WHERE uuid = $1")
+                                .bind(run_id)
+                                .fetch_optional(&pool)
+                                .await
                         {
                             if let Ok(wf_uuid) = row.try_get::<uuid::Uuid, _>("workflow_uuid") {
                                 // Use service to fetch & stage via adapters
-                                let adapter = WorkflowRepositoryAdapter::new(WorkflowRepository::new(pool.clone()));
+                                let adapter = WorkflowRepositoryAdapter::new(
+                                    WorkflowRepository::new(pool.clone()),
+                                );
                                 let service = WorkflowService::new(std::sync::Arc::new(adapter));
                                 let _ = service.fetch_and_stage_from_config(wf_uuid, run_id).await;
                             }
                         }
                     }
                     // Process staged items with DSL
-                    let adapter = r_data_core::services::WorkflowRepositoryAdapter::new(WorkflowRepository::new(pool.clone()));
-                    let service = r_data_core::services::WorkflowService::new(std::sync::Arc::new(adapter));
+                    let adapter = r_data_core::services::WorkflowRepositoryAdapter::new(
+                        WorkflowRepository::new(pool.clone()),
+                    );
+                    let service =
+                        r_data_core::services::WorkflowService::new(std::sync::Arc::new(adapter));
                     // get workflow uuid for run
-                    let wf_uuid = sqlx::query("SELECT workflow_uuid FROM workflow_runs WHERE uuid = $1")
-                        .bind(run_id)
-                        .fetch_one(&pool)
-                        .await
-                        .ok()
-                        .and_then(|row| row.try_get::<uuid::Uuid, _>("workflow_uuid").ok());
+                    let wf_uuid =
+                        sqlx::query("SELECT workflow_uuid FROM workflow_runs WHERE uuid = $1")
+                            .bind(run_id)
+                            .fetch_one(&pool)
+                            .await
+                            .ok()
+                            .and_then(|row| row.try_get::<uuid::Uuid, _>("workflow_uuid").ok());
                     if let Some(wf_uuid) = wf_uuid {
                         match service.process_staged_items(wf_uuid, run_id).await {
                             Ok((processed, failed)) => {
-                                let _ = repo.insert_run_log(run_id, "info", &format!("Run processed (processed_items={}, failed_items={})", processed, failed), None).await;
+                                let _ = repo
+                                    .insert_run_log(
+                                        run_id,
+                                        "info",
+                                        &format!(
+                                            "Run processed (processed_items={}, failed_items={})",
+                                            processed, failed
+                                        ),
+                                        None,
+                                    )
+                                    .await;
                                 let _ = repo.mark_run_success(run_id, processed, failed).await;
                             }
                             Err(e) => {
-                                let _ = repo.insert_run_log(run_id, "error", &format!("Run failed: {}", e), None).await;
+                                let _ = repo
+                                    .insert_run_log(
+                                        run_id,
+                                        "error",
+                                        &format!("Run failed: {}", e),
+                                        None,
+                                    )
+                                    .await;
                                 let _ = repo.mark_run_failure(run_id, &format!("{}", e)).await;
                             }
                         }
                     } else {
-                        let _ = repo.insert_run_log(run_id, "error", "Missing workflow_uuid for run", None).await;
+                        let _ = repo
+                            .insert_run_log(run_id, "error", "Missing workflow_uuid for run", None)
+                            .await;
                         let _ = repo.mark_run_failure(run_id, "Missing workflow_uuid").await;
                     }
                 }

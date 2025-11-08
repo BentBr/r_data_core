@@ -1,0 +1,29 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "csv",
+        "uri": "http://example.com/data.csv",
+        "mapping": {
+          "price": "price"
+        }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "price",
+        "left": { "kind": "field" },
+        "op": "add",
+        "right": { "kind": "const", "value": 5.0 }
+      },
+      "to": {
+        "type": "json",
+        "output": "api",
+        "mapping": {
+          "price": "entity.total"
+        }
+      }
+    }
+  ]
+}
+
+

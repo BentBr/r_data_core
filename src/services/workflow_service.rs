@@ -18,10 +18,12 @@ impl WorkflowService {
     }
 
     fn validate_dsl_config(cfg: &serde_json::Value) -> anyhow::Result<()> {
-        let dsl = cfg.get("dsl").ok_or_else(|| anyhow::anyhow!("Invalid workflow configuration: missing 'dsl'"))?;
-        let steps = dsl
-            .as_array()
-            .ok_or_else(|| anyhow::anyhow!("Invalid workflow configuration: 'dsl' must be an array"))?;
+        let dsl = cfg
+            .get("dsl")
+            .ok_or_else(|| anyhow::anyhow!("Invalid workflow configuration: missing 'dsl'"))?;
+        let steps = dsl.as_array().ok_or_else(|| {
+            anyhow::anyhow!("Invalid workflow configuration: 'dsl' must be an array")
+        })?;
         if steps.is_empty() {
             return Err(anyhow::anyhow!(
                 "Invalid workflow configuration: 'dsl' must contain at least one step"
@@ -56,17 +58,21 @@ impl WorkflowService {
 
     fn infer_input_type(cfg: &serde_json::Value) -> Option<String> {
         // Required structure: { "input": { "type": "csv" | "ndjson", "format": {...}, "source": {...} } }
-        cfg.pointer("/input/type").and_then(|v| v.as_str()).map(|s| s.to_string())
+        cfg.pointer("/input/type")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
     }
 
     fn csv_format_from_config(cfg: &serde_json::Value) -> serde_json::Value {
-        cfg.pointer("/input/format")
-            .cloned()
-            .unwrap_or_else(|| serde_json::json!({ "has_header": true, "delimiter": ",", "quote": "\"" }))
+        cfg.pointer("/input/format").cloned().unwrap_or_else(
+            || serde_json::json!({ "has_header": true, "delimiter": ",", "quote": "\"" }),
+        )
     }
 
     fn input_uri_from_config(cfg: &serde_json::Value) -> Option<String> {
-        cfg.pointer("/input/source/uri").and_then(|v| v.as_str()).map(|s| s.to_string())
+        cfg.pointer("/input/source/uri")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
     }
 
     pub async fn list(&self) -> anyhow::Result<Vec<Workflow>> {
@@ -79,17 +85,23 @@ impl WorkflowService {
 
     pub async fn create(&self, req: &CreateWorkflowRequest) -> anyhow::Result<Uuid> {
         if let Some(expr) = &req.schedule_cron {
-            Schedule::from_str(expr).map_err(|e| anyhow::anyhow!("Invalid cron schedule: {}", e))?;
+            Schedule::from_str(expr)
+                .map_err(|e| anyhow::anyhow!("Invalid cron schedule: {}", e))?;
         }
-        Self::validate_dsl_config(&req.config)?;
+        // Strict DSL: parse and validate
+        let program = crate::workflow::dsl::DslProgram::from_config(&req.config)?;
+        program.validate()?;
         self.repo.create(req).await
     }
 
     pub async fn update(&self, uuid: Uuid, req: &UpdateWorkflowRequest) -> anyhow::Result<()> {
         if let Some(expr) = &req.schedule_cron {
-            Schedule::from_str(expr).map_err(|e| anyhow::anyhow!("Invalid cron schedule: {}", e))?;
+            Schedule::from_str(expr)
+                .map_err(|e| anyhow::anyhow!("Invalid cron schedule: {}", e))?;
         }
-        Self::validate_dsl_config(&req.config)?;
+        // Strict DSL: parse and validate
+        let program = crate::workflow::dsl::DslProgram::from_config(&req.config)?;
+        program.validate()?;
         self.repo.update(uuid, req).await
     }
 
@@ -97,7 +109,11 @@ impl WorkflowService {
         self.repo.delete(uuid).await
     }
 
-    pub async fn list_paginated(&self, limit: i64, offset: i64) -> anyhow::Result<(Vec<Workflow>, i64)> {
+    pub async fn list_paginated(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<(Vec<Workflow>, i64)> {
         let (items, total) = tokio::try_join!(
             self.repo.list_paginated(limit, offset),
             self.repo.count_all()
@@ -110,7 +126,17 @@ impl WorkflowService {
         workflow_uuid: Uuid,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(Vec<(Uuid, String, Option<String>, Option<String>, Option<i64>, Option<i64>)>, i64)> {
+    ) -> anyhow::Result<(
+        Vec<(
+            Uuid,
+            String,
+            Option<String>,
+            Option<String>,
+            Option<i64>,
+            Option<i64>,
+        )>,
+        i64,
+    )> {
         self.repo
             .list_runs_paginated(workflow_uuid, limit, offset)
             .await
@@ -121,7 +147,10 @@ impl WorkflowService {
         run_uuid: Uuid,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(Vec<(Uuid, String, String, String, Option<serde_json::Value>)>, i64)> {
+    ) -> anyhow::Result<(
+        Vec<(Uuid, String, String, String, Option<serde_json::Value>)>,
+        i64,
+    )> {
         self.repo
             .list_run_logs_paginated(run_uuid, limit, offset)
             .await
@@ -135,23 +164,48 @@ impl WorkflowService {
         &self,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(Vec<(Uuid, String, Option<String>, Option<String>, Option<i64>, Option<i64>)>, i64)> {
+    ) -> anyhow::Result<(
+        Vec<(
+            Uuid,
+            String,
+            Option<String>,
+            Option<String>,
+            Option<i64>,
+            Option<i64>,
+        )>,
+        i64,
+    )> {
         self.repo.list_all_runs_paginated(limit, offset).await
     }
 
     pub async fn enqueue_run(&self, workflow_uuid: Uuid) -> anyhow::Result<Uuid> {
         let trigger_id = Uuid::now_v7();
-        let run_uuid = self.repo.insert_run_queued(workflow_uuid, trigger_id).await?;
+        let run_uuid = self
+            .repo
+            .insert_run_queued(workflow_uuid, trigger_id)
+            .await?;
         // Optional: write an initial log entry
         let _ = self
             .repo
-            .insert_run_log(run_uuid, "info", "Run enqueued", Some(serde_json::json!({ "trigger": trigger_id.to_string() })))
+            .insert_run_log(
+                run_uuid,
+                "info",
+                "Run enqueued",
+                Some(serde_json::json!({ "trigger": trigger_id.to_string() })),
+            )
             .await;
         Ok(run_uuid)
     }
 
-    pub async fn stage_raw_items(&self, workflow_uuid: Uuid, run_uuid: Uuid, payloads: Vec<serde_json::Value>) -> anyhow::Result<i64> {
-        self.repo.insert_raw_items(workflow_uuid, run_uuid, payloads).await
+    pub async fn stage_raw_items(
+        &self,
+        workflow_uuid: Uuid,
+        run_uuid: Uuid,
+        payloads: Vec<serde_json::Value>,
+    ) -> anyhow::Result<i64> {
+        self.repo
+            .insert_raw_items(workflow_uuid, run_uuid, payloads)
+            .await
     }
 
     /// Handle a CSV upload for a run-now execution:
@@ -159,7 +213,11 @@ impl WorkflowService {
     /// - parses CSV (expects headers)
     /// - stages rows as raw items
     /// - writes a staging log
-    pub async fn run_now_upload_csv(&self, workflow_uuid: Uuid, bytes: &[u8]) -> anyhow::Result<(Uuid, i64)> {
+    pub async fn run_now_upload_csv(
+        &self,
+        workflow_uuid: Uuid,
+        bytes: &[u8],
+    ) -> anyhow::Result<(Uuid, i64)> {
         let run_uuid = self.enqueue_run(workflow_uuid).await?;
 
         // Read workflow config for input options
@@ -173,15 +231,16 @@ impl WorkflowService {
         let payloads = match input_type.as_str() {
             "csv" => {
                 let format_cfg = Self::csv_format_from_config(&wf.config);
-                crate::workflow::data::adapters::import::csv::CsvImportAdapter::parse_inline(&inline, &format_cfg)?
+                crate::workflow::data::adapters::import::csv::CsvImportAdapter::parse_inline(
+                    &inline,
+                    &format_cfg,
+                )?
             }
-            "ndjson" => {
-                inline
-                    .lines()
-                    .filter(|l| !l.trim().is_empty())
-                    .map(|l| serde_json::from_str::<serde_json::Value>(l))
-                    .collect::<Result<Vec<_>, _>>()?
-            }
+            "ndjson" => inline
+                .lines()
+                .filter(|l| !l.trim().is_empty())
+                .map(|l| serde_json::from_str::<serde_json::Value>(l))
+                .collect::<Result<Vec<_>, _>>()?,
             other => {
                 return Err(anyhow::anyhow!(format!(
                     "Unsupported input type for upload: {}",
@@ -204,13 +263,22 @@ impl WorkflowService {
             .await?;
         let _ = self
             .repo
-            .insert_run_log(run_uuid, "info", "Upload staged", Some(serde_json::json!({ "staged_items": staged, "input_type": input_type })))
+            .insert_run_log(
+                run_uuid,
+                "info",
+                "Upload staged",
+                Some(serde_json::json!({ "staged_items": staged, "input_type": input_type })),
+            )
             .await;
         Ok((run_uuid, staged))
     }
 
     /// Fetch from configured source (URI) and stage items using the appropriate adapter (csv or ndjson)
-    pub async fn fetch_and_stage_from_config(&self, workflow_uuid: Uuid, run_uuid: Uuid) -> anyhow::Result<i64> {
+    pub async fn fetch_and_stage_from_config(
+        &self,
+        workflow_uuid: Uuid,
+        run_uuid: Uuid,
+    ) -> anyhow::Result<i64> {
         let wf = self
             .repo
             .get_by_uuid(workflow_uuid)
@@ -224,7 +292,10 @@ impl WorkflowService {
             let payloads = match input_type.as_str() {
                 "csv" => {
                     let format_cfg = Self::csv_format_from_config(&wf.config);
-                    crate::workflow::data::adapters::import::csv::CsvImportAdapter::parse_inline(&body, &format_cfg)?
+                    crate::workflow::data::adapters::import::csv::CsvImportAdapter::parse_inline(
+                        &body,
+                        &format_cfg,
+                    )?
                 }
                 "ndjson" => body
                     .lines()
@@ -238,7 +309,9 @@ impl WorkflowService {
                     )))
                 }
             };
-            let staged = self.stage_raw_items(workflow_uuid, run_uuid, payloads).await?;
+            let staged = self
+                .stage_raw_items(workflow_uuid, run_uuid, payloads)
+                .await?;
             let _ = self
                 .repo
                 .insert_run_log(
@@ -256,39 +329,34 @@ impl WorkflowService {
     }
 
     /// Process staged raw items for a run using the workflow DSL
-    pub async fn process_staged_items(&self, workflow_uuid: Uuid, run_uuid: Uuid) -> anyhow::Result<(i64, i64)> {
+    pub async fn process_staged_items(
+        &self,
+        workflow_uuid: Uuid,
+        run_uuid: Uuid,
+    ) -> anyhow::Result<(i64, i64)> {
         let wf = self
             .repo
             .get_by_uuid(workflow_uuid)
             .await?
             .ok_or_else(|| anyhow::anyhow!("Workflow not found"))?;
 
-        // Build DSL program from config; require presence and non-empty
+        // Build DSL program from config; require presence and validation
         let program = match crate::workflow::dsl::DslProgram::from_config(&wf.config) {
-            Ok(p) if !p.steps.is_empty() => p,
-            _ => {
-                let message = "Missing or empty DSL configuration; aborting run";
-                let _ = self
-                    .repo
-                    .insert_run_log(run_uuid, "error", message, None)
-                    .await;
-                // Mark all queued items as failed to prevent re-processing loops
-                let mut failed = 0_i64;
-                loop {
-                    let items = self.repo.fetch_staged_raw_items(run_uuid, 500).await?;
-                    if items.is_empty() {
-                        break;
-                    }
-                    for (item_uuid, _payload) in items {
-                        let _ = self
-                            .repo
-                            .set_raw_item_status(item_uuid, "failed", Some("Invalid or empty DSL"))
-                            .await;
-                        failed += 1;
-                    }
+            Ok(p) => {
+                if let Err(e) = p.validate() {
+                    return self
+                        .fail_entire_run_due_to_invalid_dsl(run_uuid, e.to_string())
+                        .await;
                 }
-                let _ = self.repo.mark_run_failure(run_uuid, message).await;
-                return Err(anyhow::anyhow!(message));
+                p
+            }
+            _ => {
+                return self
+                    .fail_entire_run_due_to_invalid_dsl(
+                        run_uuid,
+                        "Missing or invalid DSL configuration".to_string(),
+                    )
+                    .await;
             }
         };
 
@@ -314,7 +382,11 @@ impl WorkflowService {
                             )
                             .await;
                         // Mark processed
-                        if let Err(e) = self.repo.set_raw_item_status(item_uuid, "processed", None).await {
+                        if let Err(e) = self
+                            .repo
+                            .set_raw_item_status(item_uuid, "processed", None)
+                            .await
+                        {
                             // Try to unwrap sqlx database details for better diagnostics
                             let db_meta = extract_sqlx_meta(&e);
                             let _ = self
@@ -338,7 +410,11 @@ impl WorkflowService {
                     }
                     Err(e) => {
                         // Mark item as error to prevent reprocessing
-                        if let Err(set_err) = self.repo.set_raw_item_status(item_uuid, "failed", Some(&e.to_string())).await {
+                        if let Err(set_err) = self
+                            .repo
+                            .set_raw_item_status(item_uuid, "failed", Some(&e.to_string()))
+                            .await
+                        {
                             let db_meta = extract_sqlx_meta(&set_err);
                             let _ = self
                                 .repo
@@ -370,6 +446,32 @@ impl WorkflowService {
             }
         }
         Ok((processed, failed))
+    }
+
+    async fn fail_entire_run_due_to_invalid_dsl(
+        &self,
+        run_uuid: Uuid,
+        message: String,
+    ) -> anyhow::Result<(i64, i64)> {
+        let _ = self
+            .repo
+            .insert_run_log(run_uuid, "error", &message, None)
+            .await;
+        // Mark all queued items as failed to prevent re-processing loops
+        loop {
+            let items = self.repo.fetch_staged_raw_items(run_uuid, 500).await?;
+            if items.is_empty() {
+                break;
+            }
+            for (item_uuid, _payload) in items {
+                let _ = self
+                    .repo
+                    .set_raw_item_status(item_uuid, "failed", Some("Invalid DSL"))
+                    .await;
+            }
+        }
+        let _ = self.repo.mark_run_failure(run_uuid, &message).await;
+        Err(anyhow::anyhow!(message))
     }
 }
 

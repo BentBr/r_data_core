@@ -36,7 +36,11 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         crate::api::admin::workflows::routes::list_workflow_runs,
         crate::api::admin::workflows::routes::list_workflow_run_logs,
         crate::api::admin::workflows::routes::list_all_workflow_runs,
-        crate::api::admin::workflows::routes::cron_preview
+        crate::api::admin::workflows::routes::cron_preview,
+        crate::api::admin::dsl::routes::validate_dsl,
+        crate::api::admin::dsl::routes::list_from_options,
+        crate::api::admin::dsl::routes::list_to_options,
+        crate::api::admin::dsl::routes::list_transform_options
     ),
     components(
         schemas(
@@ -85,7 +89,12 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
             crate::api::admin::workflows::models::WorkflowDetail,
             crate::api::admin::workflows::models::WorkflowRunSummary,
             crate::api::admin::workflows::models::WorkflowRunLogDto,
-            crate::api::admin::workflows::models::WorkflowRunUpload
+            crate::api::admin::workflows::models::WorkflowRunUpload,
+            crate::api::admin::dsl::routes::DslValidateRequest,
+            crate::api::admin::dsl::routes::DslValidateResponse,
+            crate::api::admin::dsl::routes::DslFieldSpec,
+            crate::api::admin::dsl::routes::DslTypeSpec,
+            crate::api::admin::dsl::routes::DslOptionsResponse
         )
     ),
     modifiers(&SecurityAddon, &UuidSchemaAddon, &DateTimeSchemaAddon, &ModelSchemaAddon, &JsonValueSchemaAddon),
@@ -95,7 +104,8 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         (name = "admin-auth", description = "Admin authentication endpoints"),
         (name = "entity-definitions", description = "Entity definition management"),
         (name = "api-keys", description = "API key management"),
-        (name = "workflows", description = "Workflow management")
+        (name = "workflows", description = "Workflow management"),
+        (name = "DSL", description = "Workflow DSL validation and options")
     ),
     info(
         title = "R Data Core Admin API",

@@ -4,8 +4,8 @@ use actix_web::{
     Error, HttpResponse,
 };
 use futures_util::future::{ok, LocalBoxFuture, Ready};
-use uuid::Uuid;
 use log::{error, warn};
+use uuid::Uuid;
 
 use crate::api::response::{ApiResponse, ResponseMeta, Status};
 

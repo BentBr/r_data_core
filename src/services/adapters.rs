@@ -33,7 +33,11 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         self.inner.list_all().await
     }
 
-    async fn list_paginated(&self, limit: i64, offset: i64) -> anyhow::Result<Vec<crate::workflow::data::Workflow>> {
+    async fn list_paginated(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::workflow::data::Workflow>> {
         self.inner.list_paginated(limit, offset).await
     }
 
@@ -64,7 +68,11 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         self.inner.list_scheduled_consumers().await
     }
 
-    async fn insert_run_queued(&self, workflow_uuid: Uuid, trigger_id: Uuid) -> anyhow::Result<Uuid> {
+    async fn insert_run_queued(
+        &self,
+        workflow_uuid: Uuid,
+        trigger_id: Uuid,
+    ) -> anyhow::Result<Uuid> {
         self.inner
             .insert_run_queued(workflow_uuid, trigger_id)
             .await
@@ -75,7 +83,17 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         workflow_uuid: Uuid,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(Vec<(Uuid, String, Option<String>, Option<String>, Option<i64>, Option<i64>)>, i64)> {
+    ) -> anyhow::Result<(
+        Vec<(
+            Uuid,
+            String,
+            Option<String>,
+            Option<String>,
+            Option<i64>,
+            Option<i64>,
+        )>,
+        i64,
+    )> {
         self.inner
             .list_runs_paginated(workflow_uuid, limit, offset)
             .await
@@ -86,7 +104,10 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         run_uuid: Uuid,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(Vec<(Uuid, String, String, String, Option<serde_json::Value>)>, i64)> {
+    ) -> anyhow::Result<(
+        Vec<(Uuid, String, String, String, Option<serde_json::Value>)>,
+        i64,
+    )> {
         self.inner
             .list_run_logs_paginated(run_uuid, limit, offset)
             .await
@@ -96,16 +117,45 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         self.inner.run_exists(run_uuid).await
     }
 
-    async fn list_all_runs_paginated(&self, limit: i64, offset: i64) -> anyhow::Result<(Vec<(Uuid, String, Option<String>, Option<String>, Option<i64>, Option<i64>)>, i64)> {
+    async fn list_all_runs_paginated(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<(
+        Vec<(
+            Uuid,
+            String,
+            Option<String>,
+            Option<String>,
+            Option<i64>,
+            Option<i64>,
+        )>,
+        i64,
+    )> {
         self.inner.list_all_runs_paginated(limit, offset).await
     }
 
-    async fn insert_run_log(&self, run_uuid: Uuid, level: &str, message: &str, meta: Option<serde_json::Value>) -> anyhow::Result<()> {
-        self.inner.insert_run_log(run_uuid, level, message, meta).await
+    async fn insert_run_log(
+        &self,
+        run_uuid: Uuid,
+        level: &str,
+        message: &str,
+        meta: Option<serde_json::Value>,
+    ) -> anyhow::Result<()> {
+        self.inner
+            .insert_run_log(run_uuid, level, message, meta)
+            .await
     }
 
-    async fn insert_raw_items(&self, workflow_uuid: Uuid, run_uuid: Uuid, payloads: Vec<serde_json::Value>) -> anyhow::Result<i64> {
-        self.inner.insert_raw_items(workflow_uuid, run_uuid, payloads).await
+    async fn insert_raw_items(
+        &self,
+        workflow_uuid: Uuid,
+        run_uuid: Uuid,
+        payloads: Vec<serde_json::Value>,
+    ) -> anyhow::Result<i64> {
+        self.inner
+            .insert_raw_items(workflow_uuid, run_uuid, payloads)
+            .await
     }
 
     async fn count_raw_items_for_run(&self, run_uuid: Uuid) -> anyhow::Result<i64> {
@@ -116,16 +166,34 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         self.inner.mark_raw_items_processed(run_uuid).await
     }
 
-    async fn fetch_staged_raw_items(&self, run_uuid: Uuid, limit: i64) -> anyhow::Result<Vec<(Uuid, serde_json::Value)>> {
+    async fn fetch_staged_raw_items(
+        &self,
+        run_uuid: Uuid,
+        limit: i64,
+    ) -> anyhow::Result<Vec<(Uuid, serde_json::Value)>> {
         self.inner.fetch_staged_raw_items(run_uuid, limit).await
     }
 
-    async fn set_raw_item_status(&self, item_uuid: Uuid, status: &str, error: Option<&str>) -> anyhow::Result<()> {
-        self.inner.set_raw_item_status(item_uuid, status, error).await
+    async fn set_raw_item_status(
+        &self,
+        item_uuid: Uuid,
+        status: &str,
+        error: Option<&str>,
+    ) -> anyhow::Result<()> {
+        self.inner
+            .set_raw_item_status(item_uuid, status, error)
+            .await
     }
 
-    async fn mark_run_success(&self, run_uuid: Uuid, processed: i64, failed: i64) -> anyhow::Result<()> {
-        self.inner.mark_run_success(run_uuid, processed, failed).await
+    async fn mark_run_success(
+        &self,
+        run_uuid: Uuid,
+        processed: i64,
+        failed: i64,
+    ) -> anyhow::Result<()> {
+        self.inner
+            .mark_run_success(run_uuid, processed, failed)
+            .await
     }
 
     async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
