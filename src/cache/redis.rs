@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use redis::{AsyncCommands, Client};
+use redis::{aio::MultiplexedConnection, AsyncCommands, Client};
 use serde::{de::DeserializeOwned, Serialize};
 
 use super::CacheBackend;
@@ -21,7 +21,7 @@ impl RedisCache {
 
         // Test connection
         let mut conn = client
-            .get_async_connection()
+            .get_multiplexed_async_connection()
             .await
             .map_err(|e| Error::Cache(format!("Failed to get Redis connection: {}", e)))?;
 
@@ -36,9 +36,9 @@ impl RedisCache {
         })
     }
 
-    async fn get_connection(&self) -> Result<redis::aio::Connection> {
+    async fn get_connection(&self) -> Result<MultiplexedConnection> {
         self.client
-            .get_async_connection()
+            .get_multiplexed_async_connection()
             .await
             .map_err(|e| Error::Cache(format!("Failed to get Redis connection: {}", e)))
     }

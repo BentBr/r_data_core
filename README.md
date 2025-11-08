@@ -305,6 +305,15 @@ Swagger:
 - typescript bindings
 - anyhow in the entire repo
 - run now file upload with different file types / formats
+- DSL FE + be tests
+- DSL readme
+
+Check DSL:
+- map to entity
+- map to field
+- map to validation
+- map to uri / source
+- calculate (basic arithmetic)
 
 fixes:
 - setting all fields for dynamic entities

@@ -115,6 +115,14 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
     async fn mark_raw_items_processed(&self, run_uuid: Uuid) -> anyhow::Result<()> {
         self.inner.mark_raw_items_processed(run_uuid).await
     }
+
+    async fn fetch_staged_raw_items(&self, run_uuid: Uuid, limit: i64) -> anyhow::Result<Vec<(Uuid, serde_json::Value)>> {
+        self.inner.fetch_staged_raw_items(run_uuid, limit).await
+    }
+
+    async fn set_raw_item_status(&self, item_uuid: Uuid, status: &str, error: Option<&str>) -> anyhow::Result<()> {
+        self.inner.set_raw_item_status(item_uuid, status, error).await
+    }
 }
 
 /// Repository adapter for EntityDefinitionRepository

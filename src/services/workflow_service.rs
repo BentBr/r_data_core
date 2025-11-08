@@ -215,4 +215,46 @@ impl WorkflowService {
         // Nothing to fetch
         Ok(0)
     }
+
+    /// Process staged raw items for a run using the workflow DSL (stub: pass-through mapping)
+    pub async fn process_staged_items(&self, workflow_uuid: Uuid, run_uuid: Uuid) -> anyhow::Result<(i64, i64)> {
+        let wf = self
+            .repo
+            .get_by_uuid(workflow_uuid)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Workflow not found"))?;
+
+        // For now, accept no-op if dsl absent; later require config.dsl
+        let _dsl = wf.config.get("dsl").cloned().unwrap_or(serde_json::json!([]));
+
+        let mut processed = 0_i64;
+        let mut failed = 0_i64;
+        loop {
+            let items = self.repo.fetch_staged_raw_items(run_uuid, 200).await?;
+            if items.is_empty() {
+                break;
+            }
+            for (item_uuid, payload) in items {
+                // TODO: apply DSL steps; for now, pass-through
+                let _transformed = payload;
+                // TODO: upsert/update entities based on DSL target
+                // Mark processed
+                if let Err(e) = self.repo.set_raw_item_status(item_uuid, "processed", None).await {
+                    let _ = self
+                        .repo
+                        .insert_run_log(
+                            run_uuid,
+                            "error",
+                            "Failed to mark item processed",
+                            Some(serde_json::json!({ "item_uuid": item_uuid, "error": e.to_string() })),
+                        )
+                        .await;
+                    failed += 1;
+                } else {
+                    processed += 1;
+                }
+            }
+        }
+        Ok((processed, failed))
+    }
 }

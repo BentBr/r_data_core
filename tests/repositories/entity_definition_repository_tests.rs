@@ -434,13 +434,13 @@ async fn test_create_entity_definition_from_json_examples() {
     let creator_id = Uuid::now_v7();
 
     // Load JSON examples
-    let product_json = std::fs::read_to_string("../../.example_files/json_examples/product_entity_definition.json")
+    let product_json = std::fs::read_to_string(".example_files/json_examples/product_entity_definition.json")
         .expect("Failed to read product JSON example");
 
-    let user_json = std::fs::read_to_string("../../.example_files/json_examples/user_entity_definition.json")
+    let user_json = std::fs::read_to_string(".example_files/json_examples/user_entity_definition.json")
         .expect("Failed to read user JSON example");
 
-    let order_json = std::fs::read_to_string("../../.example_files/json_examples/order_entity_definition.json")
+    let order_json = std::fs::read_to_string(".example_files/json_examples/order_entity_definition.json")
         .expect("Failed to read order JSON example");
 
     let examples = vec![product_json, user_json, order_json];

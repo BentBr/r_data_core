@@ -320,6 +320,47 @@ impl WorkflowRepository {
             .context("mark raw items processed")?;
         Ok(())
     }
+
+    pub async fn fetch_staged_raw_items(&self, run_uuid: Uuid, limit: i64) -> anyhow::Result<Vec<(Uuid, serde_json::Value)>> {
+        let rows = sqlx::query(
+            r#"
+            SELECT uuid, payload
+            FROM workflow_raw_items
+            WHERE workflow_run_uuid = $1 AND status = 'queued'
+            ORDER BY seq_no ASC
+            LIMIT $2
+            "#,
+        )
+        .bind(run_uuid)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .context("fetch staged raw items")?;
+        let mut out = Vec::with_capacity(rows.len());
+        for r in rows {
+            let uuid: Uuid = r.try_get("uuid")?;
+            let payload: serde_json::Value = r.try_get("payload")?;
+            out.push((uuid, payload));
+        }
+        Ok(out)
+    }
+
+    pub async fn set_raw_item_status(&self, item_uuid: Uuid, status: &str, error: Option<&str>) -> anyhow::Result<()> {
+        sqlx::query(
+            r#"
+            UPDATE workflow_raw_items
+            SET status = $2, error = $3
+            WHERE uuid = $1
+            "#,
+        )
+        .bind(item_uuid)
+        .bind(status)
+        .bind(error)
+        .execute(&self.pool)
+        .await
+        .context("set raw item status")?;
+        Ok(())
+    }
 }
 
 #[async_trait::async_trait]
@@ -487,5 +528,13 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
 
     async fn mark_raw_items_processed(&self, run_uuid: Uuid) -> anyhow::Result<()> {
         self.mark_raw_items_processed(run_uuid).await
+    }
+
+    async fn fetch_staged_raw_items(&self, run_uuid: Uuid, limit: i64) -> anyhow::Result<Vec<(Uuid, serde_json::Value)>> {
+        self.fetch_staged_raw_items(run_uuid, limit).await
+    }
+
+    async fn set_raw_item_status(&self, item_uuid: Uuid, status: &str, error: Option<&str>) -> anyhow::Result<()> {
+        self.set_raw_item_status(item_uuid, status, error).await
     }
 }

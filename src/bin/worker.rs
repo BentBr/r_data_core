@@ -98,10 +98,24 @@ async fn main() -> anyhow::Result<()> {
                             }
                         }
                     }
-                    let processed = repo.count_raw_items_for_run(run_id).await.unwrap_or(0);
-                    let _ = repo.mark_raw_items_processed(run_id).await;
-                    let _ = repo.insert_run_log(run_id, "info", &format!("Run completed successfully (processed_items={})", processed), None).await;
-                    let _ = repo.mark_run_success(run_id, processed, 0).await;
+                    // Process staged items with DSL
+                    let adapter = r_data_core::services::WorkflowRepositoryAdapter::new(WorkflowRepository::new(pool.clone()));
+                    let service = r_data_core::services::WorkflowService::new(std::sync::Arc::new(adapter));
+                    // get workflow uuid for run
+                    let wf_uuid = sqlx::query("SELECT workflow_uuid FROM workflow_runs WHERE uuid = $1")
+                        .bind(run_id)
+                        .fetch_one(&pool)
+                        .await
+                        .ok()
+                        .and_then(|row| row.try_get::<uuid::Uuid, _>("workflow_uuid").ok());
+                    if let Some(wf_uuid) = wf_uuid {
+                        let (processed, failed) = service.process_staged_items(wf_uuid, run_id).await.unwrap_or((0, 0));
+                        let _ = repo.insert_run_log(run_id, "info", &format!("Run processed (processed_items={}, failed_items={})", processed, failed), None).await;
+                        let _ = repo.mark_run_success(run_id, processed, failed).await;
+                    } else {
+                        let _ = repo.insert_run_log(run_id, "error", "Missing workflow_uuid for run", None).await;
+                        let _ = repo.mark_run_failure(run_id, "Missing workflow_uuid").await;
+                    }
                 }
             }
         }

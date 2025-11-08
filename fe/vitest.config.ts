@@ -10,8 +10,10 @@ export default defineConfig({
         environment: 'jsdom',
         setupFiles: ['./src/test-setup.ts'],
         css: true,
-        deps: {
-            inline: ['vuetify'],
+        server: {
+            deps: {
+                inline: ['vuetify'],
+            },
         },
     },
     resolve: {
