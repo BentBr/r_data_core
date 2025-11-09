@@ -75,6 +75,7 @@
       "csv_quote": "Quote",
       "auto_map_from_uri": "Auto map from URI",
       "mapping_source_normalized": "Mapping (source -> normalized)",
+      "mapping_normalized_destination": "Mapping (normalized -> destination)",
       "source": "source",
       "normalized": "normalized",
       "add_mapping": "Add mapping",

@@ -75,6 +75,7 @@
       "csv_quote": "Anführungszeichen",
       "auto_map_from_uri": "Automatisch von URI zuordnen",
       "mapping_source_normalized": "Zuordnung (Quelle -> normalisiert)",
+      "mapping_normalized_destination": "Zuordnung (normalisiert -> Ziel)",
       "source": "quelle",
       "normalized": "normalisiert",
       "add_mapping": "Zuordnung hinzufügen",
