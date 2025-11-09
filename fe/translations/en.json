@@ -52,7 +52,14 @@
       "logs": "Logs"
     },
     "logs": { "time": "Time", "level": "Level", "message": "Message", "meta": "Meta" },
-    "actions": { "run_now": "Run now", "history": "History" },
+    "actions": { "run_now": "Run now", "history": "History", "delete": "Delete" },
+    "delete": {
+      "title": "Confirm Delete",
+      "button": "Delete",
+      "confirm_message": "Are you sure you want to delete this workflow? This action cannot be undone.",
+      "success": "Workflow deleted successfully",
+      "error": "Failed to delete workflow"
+    },
     "run": {
       "confirm_title": "Run workflow now",
       "confirm_message_simple": "Confirm you want to run this workflow now. Optionally upload a CSV to process immediately.",

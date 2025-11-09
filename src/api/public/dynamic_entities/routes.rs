@@ -466,7 +466,7 @@ async fn update_entity(
         ("uuid" = uuid::Uuid, Path, description = "The UUID of the entity to delete")
     ),
     responses(
-        (status = 204, description = "Entity deleted successfully"),
+        (status = 200, description = "Entity deleted successfully"),
         (status = 404, description = "Entity not found"),
         (status = 500, description = "Internal server error")
     ),
@@ -490,7 +490,7 @@ async fn delete_entity(
 
     if let Some(service) = &data.dynamic_entity_service {
         match service.delete_entity(&entity_type, &uuid).await {
-            Ok(_) => HttpResponse::NoContent().finish(),
+            Ok(_) => ApiResponse::<()>::message("Successfully deleted the entity"),
             Err(e) => handle_entity_error(e, &entity_type),
         }
     } else {

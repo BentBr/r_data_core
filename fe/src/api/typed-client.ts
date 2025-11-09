@@ -888,6 +888,13 @@ class TypedHttpClient {
         )
     }
 
+    async deleteWorkflow(uuid: string): Promise<{ message: string }> {
+        const Schema = z.object({ message: z.string() })
+        return this.request(`/admin/api/v1/workflows/${uuid}`, ApiResponseSchema(Schema), {
+            method: 'DELETE',
+        })
+    }
+
   // DSL endpoints (delegated)
   async getDslFromOptions() {
     const { getDslFromOptions } = await import('./clients/dsl')

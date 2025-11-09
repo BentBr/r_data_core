@@ -52,7 +52,14 @@
       "logs": "Logs"
     },
     "logs": { "time": "Zeit", "level": "Level", "message": "Nachricht", "meta": "Meta" },
-    "actions": { "run_now": "Jetzt ausführen", "history": "Historie" },
+    "actions": { "run_now": "Jetzt ausführen", "history": "Historie", "delete": "Löschen" },
+    "delete": {
+      "title": "Löschen bestätigen",
+      "button": "Löschen",
+      "confirm_message": "Sind Sie sicher, dass Sie diesen Workflow löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "success": "Workflow erfolgreich gelöscht",
+      "error": "Workflow konnte nicht gelöscht werden"
+    },
     "run": {
       "confirm_title": "Workflow jetzt ausführen",
       "confirm_message_simple": "Bestätigen Sie, dass Sie diesen Workflow jetzt ausführen möchten. Optional können Sie eine CSV-Datei hochladen, die sofort verarbeitet wird.",

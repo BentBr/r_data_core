@@ -1,5 +1,5 @@
 <script setup lang="ts">
-    import { ref, onMounted, onUnmounted } from 'vue'
+    import { ref, computed, onMounted, onUnmounted } from 'vue'
     import { typedHttpClient } from '@/api/typed-client'
     import { useTranslations } from '@/composables/useTranslations'
     import { usePagination } from '@/composables/usePagination'
@@ -7,6 +7,7 @@
     import CreateWorkflowDialog from '@/components/workflows/CreateWorkflowDialog.vue'
     import EditWorkflowDialog from '@/components/workflows/EditWorkflowDialog.vue'
     import SnackbarManager from '@/components/common/SnackbarManager.vue'
+    import DialogManager from '@/components/common/DialogManager.vue'
     import { useSnackbar } from '@/composables/useSnackbar'
 
     type WorkflowSummary = {
@@ -49,6 +50,9 @@
     const editingUuid = ref<string | null>(null)
     const showRunDialog = ref(false)
     const runTargetUuid = ref<string | null>(null)
+    const showDeleteDialog = ref(false)
+    const workflowToDelete = ref<WorkflowSummary | null>(null)
+    const deleting = ref(false)
     const uploadEnabled = ref(false)
     const uploadFile = ref<File | null>(null)
     const { currentSnackbar, showSuccess, showError } = useSnackbar()
@@ -133,6 +137,37 @@
         editingUuid.value = uuid
         showEdit.value = true
     }
+
+    function confirmDeleteWorkflow(item: WorkflowSummary) {
+        workflowToDelete.value = item
+        showDeleteDialog.value = true
+    }
+
+    async function deleteWorkflow() {
+        if (!workflowToDelete.value) {
+            return
+        }
+
+        deleting.value = true
+
+        try {
+            await typedHttpClient.deleteWorkflow(workflowToDelete.value.uuid)
+            showSuccess(t('workflows.delete.success'))
+            showDeleteDialog.value = false
+            workflowToDelete.value = null
+            await loadWorkflows(currentPage.value, itemsPerPage.value)
+        } catch (e) {
+            showError(e instanceof Error ? e.message : t('workflows.delete.error'))
+        } finally {
+            deleting.value = false
+        }
+    }
+
+    const deleteDialogConfig = computed(() => ({
+        title: t('workflows.delete.title'),
+        maxWidth: '500px',
+        persistent: false,
+    }))
 
     const handlePageChange = async (page: number) => {
         currentPage.value = page
@@ -283,6 +318,7 @@ export default {
                                 <v-btn icon="mdi-play-circle" variant="text" color="primary" :title="t('workflows.actions.run_now')" @click="openRunNow(item.uuid)" />
                                 <v-btn icon="mdi-history" variant="text" color="info" :title="t('workflows.actions.history')" @click="() => { activeTab = 'history'; selectedWorkflowUuid = item.uuid; runsPage = 1; void loadRuns(); }" />
                                 <v-btn icon="mdi-pencil" variant="text" color="secondary" :title="t('common.edit')" @click="editWorkflow(item.uuid)" />
+                                <v-btn icon="mdi-delete" variant="text" color="error" :title="t('workflows.actions.delete')" @click="confirmDeleteWorkflow(item)" />
                             </template>
                         </PaginatedDataTable>
                     </div>
@@ -459,6 +495,16 @@ export default {
             :workflow-uuid="editingUuid"
             @updated="() => void loadWorkflows(currentPage, itemsPerPage)"
         />
+        <DialogManager
+            v-model="showDeleteDialog"
+            :config="deleteDialogConfig"
+            :loading="deleting"
+            :confirm-text="t('workflows.delete.button')"
+            :cancel-text="t('common.cancel')"
+            @confirm="deleteWorkflow"
+        >
+            <p>{{ t('workflows.delete.confirm_message') }}</p>
+        </DialogManager>
         <SnackbarManager :snackbar="currentSnackbar" />
     </div>
 </template>
