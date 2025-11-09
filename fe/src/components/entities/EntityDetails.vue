@@ -208,12 +208,15 @@
                                             field.display_name
                                         }}</v-list-item-title>
                                         <v-list-item-subtitle>
-                                        {{
-                                            formatFieldValue(
-                                                resolveFieldValue(entity.field_data ?? {}, field.name),
-                                                field.field_type
-                                            )
-                                        }}
+                                            {{
+                                                formatFieldValue(
+                                                    resolveFieldValue(
+                                                        entity.field_data ?? {},
+                                                        field.name
+                                                    ),
+                                                    field.field_type
+                                                )
+                                            }}
                                         </v-list-item-subtitle>
                                     </v-list-item>
                                 </v-list>
@@ -264,18 +267,26 @@
             .join('')
 
     const resolveFieldValue = (data: Record<string, unknown>, fieldName: string): unknown => {
-        if (!data) return undefined
+        if (!data) {
+            return undefined
+        }
         // 1) exact
-        if (fieldName in data) return (data as any)[fieldName]
+        if (fieldName in data) {
+            return (data as any)[fieldName]
+        }
         // 2) case-insensitive
         const lower = fieldName.toLowerCase()
         for (const k of Object.keys(data)) {
-            if (k.toLowerCase() === lower) return (data as any)[k]
+            if (k.toLowerCase() === lower) {
+                return (data as any)[k]
+            }
         }
         // 3) token-based (firstname vs first_name vs FirstName)
         const wanted = toToken(fieldName)
         for (const k of Object.keys(data)) {
-            if (toToken(k) === wanted) return (data as any)[k]
+            if (toToken(k) === wanted) {
+                return (data as any)[k]
+            }
         }
         return undefined
     }

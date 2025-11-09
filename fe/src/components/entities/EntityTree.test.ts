@@ -157,4 +157,3 @@ describe('EntityTree', () => {
         expect(lastEmit).toEqual(expandedItems)
     })
 })
-

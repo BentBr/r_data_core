@@ -251,7 +251,7 @@
 
             // Get the path where the entity was created
             const entityPath = data.data?.path as string | undefined
-            
+
             // Determine the path to reload using the same logic as deletion:
             // - If path has multiple segments (e.g., /test/entity-name), get parent directory
             // - If path has single segment (e.g., /test), it's already the directory path
@@ -368,7 +368,7 @@
         try {
             // Get the path of the entity before deletion
             const entityPath = selectedEntity.value.field_data?.path as string | undefined
-            
+
             // The entity path might be:
             // 1. A directory path like "/test" - reload it directly
             // 2. A full entity path like "/test/entity-name" - reload parent "/test"

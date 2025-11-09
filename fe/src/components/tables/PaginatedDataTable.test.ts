@@ -6,7 +6,10 @@ describe('PaginatedDataTable', () => {
     it('renders total counter in the footer', async () => {
         const wrapper = mount(PaginatedDataTable, {
             props: {
-                items: [{ uuid: '1', name: 'A' }, { uuid: '2', name: 'B' }],
+                items: [
+                    { uuid: '1', name: 'A' },
+                    { uuid: '2', name: 'B' },
+                ],
                 headers: [{ title: 'Name', key: 'name' }],
                 loading: false,
                 error: '',
@@ -22,5 +25,3 @@ describe('PaginatedDataTable', () => {
         expect(text).toContain('42')
     })
 })
-
-

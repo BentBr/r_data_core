@@ -83,9 +83,10 @@ describe('EntitiesPage - Path Detection Logic', () => {
         // Test path detection logic directly
         const entityPath = createData.data?.path
         const segments = entityPath?.split('/').filter(s => s) || []
-        const pathToReload = segments.length > 1 
-            ? entityPath?.split('/').slice(0, -1).join('/') || '/' 
-            : entityPath || '/'
+        const pathToReload =
+            segments.length > 1
+                ? entityPath?.split('/').slice(0, -1).join('/') || '/'
+                : entityPath || '/'
 
         // Single segment should use path directly
         expect(pathToReload).toBe('/test')
@@ -109,9 +110,10 @@ describe('EntitiesPage - Path Detection Logic', () => {
         // Test path detection logic directly
         const entityPath = createData.data?.path
         const segments = entityPath?.split('/').filter(s => s) || []
-        const pathToReload = segments.length > 1 
-            ? entityPath?.split('/').slice(0, -1).join('/') || '/' 
-            : entityPath || '/'
+        const pathToReload =
+            segments.length > 1
+                ? entityPath?.split('/').slice(0, -1).join('/') || '/'
+                : entityPath || '/'
 
         // Multi-segment should get parent directory
         expect(pathToReload).toBe('/test')
@@ -135,9 +137,10 @@ describe('EntitiesPage - Path Detection Logic', () => {
         // Test path detection logic directly
         const entityPath = selectedEntity.field_data?.path as string | undefined
         const segments = entityPath?.split('/').filter(s => s) || []
-        const pathToReload = segments.length > 1 
-            ? entityPath?.split('/').slice(0, -1).join('/') || '/' 
-            : entityPath || '/'
+        const pathToReload =
+            segments.length > 1
+                ? entityPath?.split('/').slice(0, -1).join('/') || '/'
+                : entityPath || '/'
 
         // Single segment should use path directly
         expect(pathToReload).toBe('/test')
@@ -161,9 +164,10 @@ describe('EntitiesPage - Path Detection Logic', () => {
         // Test path detection logic directly
         const entityPath = selectedEntity.field_data?.path as string | undefined
         const segments = entityPath?.split('/').filter(s => s) || []
-        const pathToReload = segments.length > 1 
-            ? entityPath?.split('/').slice(0, -1).join('/') || '/' 
-            : entityPath || '/'
+        const pathToReload =
+            segments.length > 1
+                ? entityPath?.split('/').slice(0, -1).join('/') || '/'
+                : entityPath || '/'
 
         // Multi-segment should get parent directory
         expect(pathToReload).toBe('/test')
@@ -189,9 +193,10 @@ describe('EntitiesPage - Path Detection Logic', () => {
         let pathToReload = '/'
         if (entityPath && entityPath !== '/') {
             const segments = entityPath.split('/').filter(s => s)
-            pathToReload = segments.length > 1 
-                ? entityPath.split('/').slice(0, -1).join('/') || '/' 
-                : entityPath
+            pathToReload =
+                segments.length > 1
+                    ? entityPath.split('/').slice(0, -1).join('/') || '/'
+                    : entityPath
         }
 
         // Root path should remain root

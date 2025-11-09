@@ -2,7 +2,20 @@ import { z } from 'zod'
 import { env } from '@/env-check'
 import { useAuthStore } from '@/stores/auth'
 import { getRefreshToken } from '@/utils/cookies'
-import { ApiResponseSchema, PaginatedApiResponseSchema, LoginResponseSchema, RefreshTokenResponseSchema, UserSchema, ApiKeySchema, ApiKeyCreatedResponseSchema, EntityDefinitionSchema, DynamicEntitySchema, EntityResponseSchema, ValidationErrorResponseSchema, UuidSchema } from '@/types/schemas'
+import {
+    ApiResponseSchema,
+    PaginatedApiResponseSchema,
+    LoginResponseSchema,
+    RefreshTokenResponseSchema,
+    UserSchema,
+    ApiKeySchema,
+    ApiKeyCreatedResponseSchema,
+    EntityDefinitionSchema,
+    DynamicEntitySchema,
+    EntityResponseSchema,
+    ValidationErrorResponseSchema,
+    UuidSchema,
+} from '@/types/schemas'
 
 // Import ValidationError from http-client.ts
 // Eventually this file should be refactored to use the new HttpClient class
@@ -871,7 +884,6 @@ class TypedHttpClient {
                 has_next: boolean
             }
         }
-
     }> {
         const Schema = z.array(
             z.object({
@@ -895,23 +907,23 @@ class TypedHttpClient {
         })
     }
 
-  // DSL endpoints (delegated)
-  async getDslFromOptions() {
-    const { getDslFromOptions } = await import('./clients/dsl')
-    return getDslFromOptions(this)
-  }
-  async getDslToOptions() {
-    const { getDslToOptions } = await import('./clients/dsl')
-    return getDslToOptions(this)
-  }
-  async getDslTransformOptions() {
-    const { getDslTransformOptions } = await import('./clients/dsl')
-    return getDslTransformOptions(this)
-  }
-  async validateDsl(steps: unknown[]) {
-    const { validateDsl } = await import('./clients/dsl')
-    return validateDsl(this, steps)
-  }
+    // DSL endpoints (delegated)
+    async getDslFromOptions() {
+        const { getDslFromOptions } = await import('./clients/dsl')
+        return getDslFromOptions(this)
+    }
+    async getDslToOptions() {
+        const { getDslToOptions } = await import('./clients/dsl')
+        return getDslToOptions(this)
+    }
+    async getDslTransformOptions() {
+        const { getDslTransformOptions } = await import('./clients/dsl')
+        return getDslTransformOptions(this)
+    }
+    async validateDsl(steps: unknown[]) {
+        const { validateDsl } = await import('./clients/dsl')
+        return validateDsl(this, steps)
+    }
 
     async revokeApiKey(uuid: string): Promise<{ message: string }> {
         return this.request(
@@ -1183,7 +1195,9 @@ class TypedHttpClient {
     }
 
     // New: entity fields helper for DSL mapping
-    async getEntityFields(entityType: string): Promise<Array<{ name: string; type: string; required: boolean; system: boolean }>> {
+    async getEntityFields(
+        entityType: string
+    ): Promise<Array<{ name: string; type: string; required: boolean; system: boolean }>> {
         const Schema = z.array(
             z.object({
                 name: z.string(),

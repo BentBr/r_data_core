@@ -7,7 +7,9 @@ vi.mock('@/api/typed-client', () => ({
         getDslFromOptions: vi.fn().mockResolvedValue({}),
         getDslToOptions: vi.fn().mockResolvedValue({}),
         getDslTransformOptions: vi.fn().mockResolvedValue({}),
-        getEntityDefinitions: vi.fn().mockResolvedValue({ data: [], meta: { pagination: { total: 0 } } }),
+        getEntityDefinitions: vi
+            .fn()
+            .mockResolvedValue({ data: [], meta: { pagination: { total: 0 } } }),
         getEntityFields: vi.fn().mockResolvedValue([]),
     },
 }))
@@ -28,7 +30,7 @@ describe('DslConfigurator', () => {
         // add step
         await wrapper.find('button').trigger('click')
         // expect one step
-        let emitted = wrapper.emitted()['update:modelValue'] as any[]
+        const emitted = wrapper.emitted()['update:modelValue'] as any[]
         expect(emitted?.length).toBeGreaterThan(0)
         const steps = emitted[emitted.length - 1][0]
         expect(Array.isArray(steps)).toBe(true)
@@ -51,5 +53,3 @@ describe('DslConfigurator', () => {
         expect(emitted?.length).toBeGreaterThan(0)
     })
 })
-
-

@@ -238,8 +238,8 @@
 </script>
 
 <script lang="ts">
-export default {
-    // Expose for tests
-    expose: ['submit', 'steps', 'configJson', 'configError'],
-}
+    export default {
+        // Expose for tests
+        expose: ['submit', 'steps', 'configJson', 'configError'],
+    }
 </script>

@@ -58,9 +58,7 @@
             <!-- Footer: prepend total counter while keeping default footer -->
             <template #bottom="slotProps">
                 <div class="d-flex align-center justify-space-between px-4 py-2">
-                    <div class="text-caption">
-                        {{ t('table.total') }}: {{ totalItems }}
-                    </div>
+                    <div class="text-caption">{{ t('table.total') }}: {{ totalItems }}</div>
                     <v-data-table-footer v-bind="slotProps" />
                 </div>
             </template>

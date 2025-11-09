@@ -74,5 +74,3 @@ export const PaginatedApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T
         data: dataSchema,
         meta: MetaSchema,
     })
-
-

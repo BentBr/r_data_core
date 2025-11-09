@@ -171,14 +171,14 @@
      * This will find the parent node containing this path and reload its children.
      * If the path is the root, it reloads the root.
      * If the path doesn't exist yet, it reloads the parent path.
-     * 
+     *
      * @param path - The path of the entity or folder to reload. For entities, this should be
      *               the parent directory path to reload the list containing the entity.
      */
     async function reloadPath(path: string) {
         // Normalize path - remove trailing slash if present
-        let normalizedPath = path.endsWith('/') && path !== '/' ? path.slice(0, -1) : path
-        
+        const normalizedPath = path.endsWith('/') && path !== '/' ? path.slice(0, -1) : path
+
         // If it's the root path, reload the root
         if (normalizedPath === '/' || normalizedPath === '') {
             const currentExpandedItems = [...(props.expandedItems || [])]
@@ -190,16 +190,16 @@
 
         // Find the node in the tree that corresponds to this path
         const node = findNodeByPath(treeItems.value, normalizedPath)
-        
+
         if (node) {
             // Preserve expanded state
             const wasExpanded = props.expandedItems?.includes(node.id) || false
-            
+
             // Clear the path from loadedPaths so it can be reloaded
             loadedPaths.value.delete(normalizedPath)
             // Reload the node's children
             await loadChildrenForNode(node)
-            
+
             // Restore expanded state if it was expanded
             if (wasExpanded) {
                 const newExpandedItems = [...(props.expandedItems || [])]

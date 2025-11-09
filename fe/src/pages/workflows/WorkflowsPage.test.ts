@@ -11,7 +11,9 @@ vi.mock('@/api/typed-client', () => ({
         getWorkflows: (...args: any[]) => mockGetWorkflows(...args),
         runWorkflow: (...args: any[]) => mockRunWorkflow(...args),
         uploadRunFile: (...args: any[]) => mockUploadRunFile(...args),
-        getWorkflowRuns: vi.fn().mockResolvedValue({ data: [], meta: { pagination: { total: 0 } } }),
+        getWorkflowRuns: vi
+            .fn()
+            .mockResolvedValue({ data: [], meta: { pagination: { total: 0 } } }),
         getAllWorkflowRuns: vi
             .fn()
             .mockResolvedValue({ data: [], meta: { pagination: { total: 0 } } }),
@@ -84,8 +86,6 @@ describe('WorkflowsPage', () => {
         ;(wrapper.vm as any).uploadEnabled = true
         ;(wrapper.vm as any).uploadFile = null
         // Expression used in template: :disabled=\"uploadEnabled && !uploadFile\"
-        expect(((wrapper.vm as any).uploadEnabled && !(wrapper.vm as any).uploadFile)).toBe(true)
+        expect((wrapper.vm as any).uploadEnabled && !(wrapper.vm as any).uploadFile).toBe(true)
     })
 })
-
-

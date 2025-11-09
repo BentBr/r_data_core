@@ -12,7 +12,9 @@ vi.mock('@/api/typed-client', () => ({
         getDslFromOptions: vi.fn().mockResolvedValue({}),
         getDslToOptions: vi.fn().mockResolvedValue({}),
         getDslTransformOptions: vi.fn().mockResolvedValue({}),
-        getEntityDefinitions: vi.fn().mockResolvedValue({ data: [], meta: { pagination: { total: 0 } } }),
+        getEntityDefinitions: vi
+            .fn()
+            .mockResolvedValue({ data: [], meta: { pagination: { total: 0 } } }),
         getEntityFields: vi.fn().mockResolvedValue([]),
     },
     ValidationError: class ValidationError extends Error {
@@ -41,7 +43,12 @@ describe('CreateWorkflowDialog', () => {
         // Inject DSL via child configurator emit to avoid relying on expansion/textarea rendering
         const dsl = [
             {
-                from: { type: 'csv', uri: 'http://example.com/data.csv', options: { header: true }, mapping: {} },
+                from: {
+                    type: 'csv',
+                    uri: 'http://example.com/data.csv',
+                    options: { header: true },
+                    mapping: {},
+                },
                 transform: { type: 'none' },
                 to: { type: 'json', output: 'api', mapping: {} },
             },
@@ -68,5 +75,3 @@ describe('CreateWorkflowDialog', () => {
         expect((wrapper.vm as any).configError?.toLowerCase()?.includes('dsl_required')).toBe(true)
     })
 })
-
-

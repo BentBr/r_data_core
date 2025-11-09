@@ -3,15 +3,24 @@ import { ApiResponseSchema } from '@/types/schemas/base'
 import { DslOptionsResponseSchema, DslValidateRequestSchema } from '@/types/schemas/dsl'
 
 export async function getDslFromOptions(client: any) {
-    return client.request('/admin/api/v1/dsl/from/options', ApiResponseSchema(DslOptionsResponseSchema))
+    return client.request(
+        '/admin/api/v1/dsl/from/options',
+        ApiResponseSchema(DslOptionsResponseSchema)
+    )
 }
 
 export async function getDslToOptions(client: any) {
-    return client.request('/admin/api/v1/dsl/to/options', ApiResponseSchema(DslOptionsResponseSchema))
+    return client.request(
+        '/admin/api/v1/dsl/to/options',
+        ApiResponseSchema(DslOptionsResponseSchema)
+    )
 }
 
 export async function getDslTransformOptions(client: any) {
-    return client.request('/admin/api/v1/dsl/transform/options', ApiResponseSchema(DslOptionsResponseSchema))
+    return client.request(
+        '/admin/api/v1/dsl/transform/options',
+        ApiResponseSchema(DslOptionsResponseSchema)
+    )
 }
 
 export async function validateDsl(client: any, steps: unknown[]) {
@@ -22,5 +31,3 @@ export async function validateDsl(client: any, steps: unknown[]) {
         body: JSON.stringify(request),
     })
 }
-
-

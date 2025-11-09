@@ -40,7 +40,9 @@
     const runsTotal = ref(0)
     const showLogs = ref(false)
     const currentRunUuid = ref<string | null>(null)
-    const logs = ref<Array<{ uuid: string; ts: string; level: string; message: string; meta?: unknown }>>([])
+    const logs = ref<
+        Array<{ uuid: string; ts: string; level: string; message: string; meta?: unknown }>
+    >([])
     const logsLoading = ref(false)
     const logsPage = ref(1)
     const logsPerPage = ref(50)
@@ -244,19 +246,19 @@
 </script>
 
 <script lang="ts">
-export default {
-    // Expose selected internals for stable tests
-    expose: [
-        'openRunNow',
-        'confirmRunNow',
-        'uploadEnabled',
-        'uploadFile',
-        'activeTab',
-        'selectedWorkflowUuid',
-        'loadRuns',
-        'showRunDialog',
-    ],
-}
+    export default {
+        // Expose selected internals for stable tests
+        expose: [
+            'openRunNow',
+            'confirmRunNow',
+            'uploadEnabled',
+            'uploadFile',
+            'activeTab',
+            'selectedWorkflowUuid',
+            'loadRuns',
+            'showRunDialog',
+        ],
+    }
 </script>
 
 <template>
@@ -288,9 +290,18 @@ export default {
                             :headers="[
                                 { title: t('workflows.table.name') || 'Name', key: 'name' },
                                 { title: t('workflows.table.kind') || 'Kind', key: 'kind' },
-                                { title: t('workflows.table.enabled') || 'Enabled', key: 'enabled' },
-                                { title: t('workflows.table.cron') || 'Cron', key: 'schedule_cron' },
-                                { title: t('workflows.table.actions') || 'Actions', key: 'actions' },
+                                {
+                                    title: t('workflows.table.enabled') || 'Enabled',
+                                    key: 'enabled',
+                                },
+                                {
+                                    title: t('workflows.table.cron') || 'Cron',
+                                    key: 'schedule_cron',
+                                },
+                                {
+                                    title: t('workflows.table.actions') || 'Actions',
+                                    key: 'actions',
+                                },
                             ]"
                             :loading="loading"
                             :error="error"
@@ -315,10 +326,41 @@ export default {
                                 {{ item.schedule_cron || t('common.empty') }}
                             </template>
                             <template #item.actions="{ item }">
-                                <v-btn icon="mdi-play-circle" variant="text" color="primary" :title="t('workflows.actions.run_now')" @click="openRunNow(item.uuid)" />
-                                <v-btn icon="mdi-history" variant="text" color="info" :title="t('workflows.actions.history')" @click="() => { activeTab = 'history'; selectedWorkflowUuid = item.uuid; runsPage = 1; void loadRuns(); }" />
-                                <v-btn icon="mdi-pencil" variant="text" color="secondary" :title="t('common.edit')" @click="editWorkflow(item.uuid)" />
-                                <v-btn icon="mdi-delete" variant="text" color="error" :title="t('workflows.actions.delete')" @click="confirmDeleteWorkflow(item)" />
+                                <v-btn
+                                    icon="mdi-play-circle"
+                                    variant="text"
+                                    color="primary"
+                                    :title="t('workflows.actions.run_now')"
+                                    @click="openRunNow(item.uuid)"
+                                />
+                                <v-btn
+                                    icon="mdi-history"
+                                    variant="text"
+                                    color="info"
+                                    :title="t('workflows.actions.history')"
+                                    @click="
+                                        () => {
+                                            activeTab = 'history'
+                                            selectedWorkflowUuid = item.uuid
+                                            runsPage = 1
+                                            void loadRuns()
+                                        }
+                                    "
+                                />
+                                <v-btn
+                                    icon="mdi-pencil"
+                                    variant="text"
+                                    color="secondary"
+                                    :title="t('common.edit')"
+                                    @click="editWorkflow(item.uuid)"
+                                />
+                                <v-btn
+                                    icon="mdi-delete"
+                                    variant="text"
+                                    color="error"
+                                    :title="t('workflows.actions.delete')"
+                                    @click="confirmDeleteWorkflow(item)"
+                                />
                             </template>
                         </PaginatedDataTable>
                     </div>
@@ -378,7 +420,13 @@ export default {
                         "
                     >
                         <template #item.actions="{ item }">
-                            <v-btn icon="mdi-text" variant="text" color="info" :title="t('workflows.history.logs')" @click="openLogs(item.uuid)" />
+                            <v-btn
+                                icon="mdi-text"
+                                variant="text"
+                                color="info"
+                                :title="t('workflows.history.logs')"
+                                @click="openLogs(item.uuid)"
+                            />
                         </template>
                     </PaginatedDataTable>
                 </v-window-item>
@@ -421,8 +469,18 @@ export default {
                             "
                         >
                             <template #item.meta="{ item }">
-                                <pre style="white-space: pre-wrap; word-break: break-word; font-size: 12px; margin: 0;">
-{{ typeof item.meta === 'string' ? item.meta : JSON.stringify(item.meta ?? {}, null, 2) }}
+                                <pre
+                                    style="
+                                        white-space: pre-wrap;
+                                        word-break: break-word;
+                                        font-size: 12px;
+                                        margin: 0;
+                                    "
+                                    >{{
+                                        typeof item.meta === 'string'
+                                            ? item.meta
+                                            : JSON.stringify(item.meta ?? {}, null, 2)
+                                    }}
                                 </pre>
                             </template>
                         </PaginatedDataTable>

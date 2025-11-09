@@ -160,5 +160,3 @@ export type DslOptionsResponse = z.infer<typeof DslOptionsResponseSchema>
 
 // Re-export ApiResponseSchema for consumers that need it alongside DSL
 export { ApiResponseSchema }
-
-
