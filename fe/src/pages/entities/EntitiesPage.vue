@@ -36,6 +36,7 @@
                             <!-- Tree View -->
                             <v-col cols="4">
                                 <EntityTree
+                                    ref="entityTreeRef"
                                     :root-path="'/'"
                                     :loading="loading"
                                     :expanded-items="expandedItems"
@@ -145,6 +146,12 @@
     }
     const createDialogRef = ref<CreateDialogInstance | null>(null)
 
+    // EntityTree ref
+    interface EntityTreeInstance {
+        reloadPath: (path: string) => Promise<void>
+    }
+    const entityTreeRef = ref<EntityTreeInstance | null>(null)
+
     // Computed properties
     const selectedEntityUuid = computed(() => selectedEntity.value?.field_data?.uuid ?? '')
 
@@ -165,6 +172,21 @@
         maxWidth: '500px',
         persistent: false,
     }))
+
+    /**
+     * Get the parent directory path from an entity path.
+     * If the path is the root, returns '/'.
+     */
+    const getParentDirectoryPath = (path: string): string => {
+        if (!path || path === '/' || path === '') {
+            return '/'
+        }
+        // Normalize path - remove trailing slash if present
+        const normalizedPath = path.endsWith('/') ? path.slice(0, -1) : path
+        // Get parent directory
+        const parentPath = normalizedPath.split('/').slice(0, -1).join('/') || '/'
+        return parentPath
+    }
 
     // Methods
     const loadEntityDefinitions = async () => {
@@ -227,8 +249,32 @@
             await typedHttpClient.createEntity(data.entity_type, data)
             showCreateDialog.value = false
 
-            // Refresh the tree to show the new entity
-            treeRefreshKey.value += 1
+            // Get the path where the entity was created
+            const entityPath = data.data?.path as string | undefined
+            
+            // Determine the path to reload using the same logic as deletion:
+            // - If path has multiple segments (e.g., /test/entity-name), get parent directory
+            // - If path has single segment (e.g., /test), it's already the directory path
+            let pathToReload = '/'
+            if (entityPath && entityPath !== '/') {
+                const segments = entityPath.split('/').filter(s => s)
+                // If path has more than one segment, it's likely a full entity path, get parent
+                // Otherwise, it's likely a directory path, use it directly
+                if (segments.length > 1) {
+                    pathToReload = getParentDirectoryPath(entityPath)
+                } else {
+                    // Single segment, it's the directory path
+                    pathToReload = entityPath
+                }
+            }
+
+            // Reload the specific path instead of reloading the entire tree
+            if (entityTreeRef.value) {
+                await entityTreeRef.value.reloadPath(pathToReload)
+            } else {
+                // Fallback: refresh the entire tree if ref is not available
+                treeRefreshKey.value += 1
+            }
 
             showSuccess('Entity created successfully')
         } catch (err) {
@@ -320,6 +366,27 @@
         deleting.value = true
 
         try {
+            // Get the path of the entity before deletion
+            const entityPath = selectedEntity.value.field_data?.path as string | undefined
+            
+            // The entity path might be:
+            // 1. A directory path like "/test" - reload it directly
+            // 2. A full entity path like "/test/entity-name" - reload parent "/test"
+            // For now, if path exists and is not root, use it directly (it's likely the directory)
+            // If it looks like a full path (has more than one segment), get parent
+            let pathToReload = '/'
+            if (entityPath && entityPath !== '/') {
+                const segments = entityPath.split('/').filter(s => s)
+                // If path has more than one segment, it's likely a full entity path, get parent
+                // Otherwise, it's likely a directory path, use it directly
+                if (segments.length > 1) {
+                    pathToReload = getParentDirectoryPath(entityPath)
+                } else {
+                    // Single segment, it's the directory path
+                    pathToReload = entityPath
+                }
+            }
+
             await typedHttpClient.deleteEntity(
                 selectedEntity.value.entity_type,
                 selectedEntityUuid.value
@@ -333,6 +400,11 @@
             selectedItems.value = []
 
             showDeleteDialog.value = false
+
+            // Reload the path to update the tree
+            if (entityTreeRef.value) {
+                await entityTreeRef.value.reloadPath(pathToReload)
+            }
 
             showSuccess(t('entities.delete.success'))
         } catch (err) {

@@ -2,11 +2,11 @@ use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRep
 use r_data_core::api::admin::workflows::models::CreateWorkflowRequest;
 use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
 use r_data_core::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
+use r_data_core::services::adapters::EntityDefinitionRepositoryAdapter;
 use r_data_core::services::{
     DynamicEntityRepositoryAdapter, DynamicEntityService, EntityDefinitionService,
     WorkflowRepositoryAdapter, WorkflowService,
 };
-use r_data_core::services::adapters::EntityDefinitionRepositoryAdapter;
 use r_data_core::workflow::data::repository::WorkflowRepository;
 use r_data_core::workflow::data::WorkflowKind;
 use serde_json::json;
@@ -27,7 +27,8 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
 
     // Create entity definition
     let entity_type = common::utils::unique_entity_type("test_entity");
-    let _entity_def_uuid = common::utils::create_test_entity_definition(&pool, &entity_type).await?;
+    let _entity_def_uuid =
+        common::utils::create_test_entity_definition(&pool, &entity_type).await?;
 
     // Create workflow
     let wf_repo = WorkflowRepository::new(pool.clone());
@@ -91,13 +92,13 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
     let result = wf_service_with_entities
         .process_staged_items(wf_uuid, run_uuid)
         .await;
-    
+
     // Always check run logs to see what happened
     let logs = wf_service_with_entities
         .list_run_logs_paginated(run_uuid, 10, 0)
         .await?;
     eprintln!("Run logs after processing: {:?}", logs);
-    
+
     if let Err(e) = result {
         eprintln!("Workflow processing failed: {:?}", e);
         return Err(e);
@@ -106,13 +107,16 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
     // Check processed/failed counts
     let (processed, failed) = result.unwrap();
     eprintln!("Processed: {}, Failed: {}", processed, failed);
-    
+
     if processed == 0 && failed == 0 {
         // Check if items were actually staged
         let wf_repo_check = WorkflowRepository::new(pool.clone());
         let staged_count = wf_repo_check.count_raw_items_for_run(run_uuid).await?;
         eprintln!("Staged items count: {}", staged_count);
-        return Err(anyhow::anyhow!("No items were processed. Staged: {}", staged_count));
+        return Err(anyhow::anyhow!(
+            "No items were processed. Staged: {}",
+            staged_count
+        ));
     }
 
     // Wait a moment for database to sync
@@ -124,7 +128,12 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
         .get_all_by_type(&entity_type, 10, 0, None)
         .await?;
 
-    assert_eq!(entities.len(), 1, "Expected 1 entity, found {}", entities.len());
+    assert_eq!(
+        entities.len(),
+        1,
+        "Expected 1 entity, found {}",
+        entities.len()
+    );
     let entity = &entities[0];
 
     // Check created_by is set to run_uuid
@@ -146,10 +155,11 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
     assert_eq!(updated_by, run_uuid);
 
     // Verify in database directly
-    let row = sqlx::query("SELECT created_by, updated_by FROM entities_registry WHERE entity_type = $1")
-        .bind(&entity_type)
-        .fetch_one(&pool)
-        .await?;
+    let row =
+        sqlx::query("SELECT created_by, updated_by FROM entities_registry WHERE entity_type = $1")
+            .bind(&entity_type)
+            .fetch_one(&pool)
+            .await?;
     let db_created_by: Uuid = row.try_get("created_by")?;
     let db_updated_by: Option<Uuid> = row.try_get("updated_by")?;
     assert_eq!(db_created_by, run_uuid);
@@ -167,7 +177,8 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
 
     // Create entity definition
     let entity_type = common::utils::unique_entity_type("test_entity");
-    let _entity_def_uuid = common::utils::create_test_entity_definition(&pool, &entity_type).await?;
+    let _entity_def_uuid =
+        common::utils::create_test_entity_definition(&pool, &entity_type).await?;
 
     // Create an entity first
     let de_repo = DynamicEntityRepository::new(pool.clone());
@@ -240,7 +251,10 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     let de_adapter2 = DynamicEntityRepositoryAdapter::new(de_repo2);
     let wf_service_with_entities = WorkflowService::new_with_entities(
         wf_adapter_arc,
-        Arc::new(DynamicEntityService::new(Arc::new(de_adapter2), Arc::new(ed_service))),
+        Arc::new(DynamicEntityService::new(
+            Arc::new(de_adapter2),
+            Arc::new(ed_service),
+        )),
     );
 
     // Enqueue run
@@ -260,13 +274,13 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     let result = wf_service_with_entities
         .process_staged_items(wf_uuid, run_uuid)
         .await;
-    
+
     // Always check run logs to see what happened
     let logs = wf_service_with_entities
         .list_run_logs_paginated(run_uuid, 10, 0)
         .await?;
     eprintln!("Run logs after processing: {:?}", logs);
-    
+
     if let Err(e) = result {
         eprintln!("Workflow processing failed: {:?}", e);
         return Err(e);
@@ -275,13 +289,16 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     // Check processed/failed counts
     let (processed, failed) = result.unwrap();
     eprintln!("Processed: {}, Failed: {}", processed, failed);
-    
+
     if processed == 0 && failed == 0 {
         // Check if items were actually staged
         let wf_repo_check = WorkflowRepository::new(pool.clone());
         let staged_count = wf_repo_check.count_raw_items_for_run(run_uuid).await?;
         eprintln!("Staged items count: {}", staged_count);
-        return Err(anyhow::anyhow!("No items were processed. Staged: {}", staged_count));
+        return Err(anyhow::anyhow!(
+            "No items were processed. Staged: {}",
+            staged_count
+        ));
     }
 
     // Wait a moment for database to sync
@@ -289,16 +306,20 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
 
     // Verify entity was updated with run_uuid as updated_by
     let de_repo_check = DynamicEntityRepository::new(pool.clone());
-    let entity_opt: Option<r_data_core::entity::dynamic_entity::entity::DynamicEntity> = de_repo_check
-        .get_by_type(&entity_type, &entity_uuid, None)
-        .await?;
+    let entity_opt: Option<r_data_core::entity::dynamic_entity::entity::DynamicEntity> =
+        de_repo_check
+            .get_by_type(&entity_type, &entity_uuid, None)
+            .await?;
 
     assert!(entity_opt.is_some());
     let entity = entity_opt.unwrap();
 
     // Check name was updated
     assert_eq!(
-        entity.field_data.get("name").and_then(|v: &serde_json::Value| v.as_str()),
+        entity
+            .field_data
+            .get("name")
+            .and_then(|v: &serde_json::Value| v.as_str()),
         Some("Updated Name")
     );
 
@@ -332,4 +353,3 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
 
     Ok(())
 }
-

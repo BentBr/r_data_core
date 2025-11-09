@@ -7,11 +7,11 @@ use tokio_cron_scheduler::{Job, JobScheduler};
 use uuid::Uuid;
 
 use r_data_core::config::WorkerConfig;
+use r_data_core::services::adapters::EntityDefinitionRepositoryAdapter;
 use r_data_core::services::{
     worker::compute_reconcile_actions, DynamicEntityRepositoryAdapter, EntityDefinitionService,
     WorkflowRepositoryAdapter, WorkflowService,
 };
-use r_data_core::services::adapters::EntityDefinitionRepositoryAdapter;
 use r_data_core::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 use r_data_core::workflow::data::job_queue::JobQueue;
 use r_data_core::workflow::data::jobs::FetchAndStageJob;
@@ -181,8 +181,9 @@ async fn main() -> anyhow::Result<()> {
                         }
                     }
                     // Process staged items with DSL (with entity persistence)
-                    let wf_adapter =
-                        r_data_core::services::WorkflowRepositoryAdapter::new(WorkflowRepository::new(pool.clone()));
+                    let wf_adapter = r_data_core::services::WorkflowRepositoryAdapter::new(
+                        WorkflowRepository::new(pool.clone()),
+                    );
                     // Build DynamicEntity service
                     let de_repo = r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool.clone());
                     let de_adapter = DynamicEntityRepositoryAdapter::new(de_repo);

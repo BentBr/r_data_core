@@ -103,7 +103,7 @@
     }
 
     function buildNodesForPath(
-        path: string,
+        _path: string,
         payload: Array<{
             kind: 'folder' | 'file'
             name: string
@@ -164,6 +164,87 @@
             treeItems.value = nodes
         }
         loadedPaths.value.add(path)
+    }
+
+    /**
+     * Reload a specific path in the tree.
+     * This will find the parent node containing this path and reload its children.
+     * If the path is the root, it reloads the root.
+     * If the path doesn't exist yet, it reloads the parent path.
+     * 
+     * @param path - The path of the entity or folder to reload. For entities, this should be
+     *               the parent directory path to reload the list containing the entity.
+     */
+    async function reloadPath(path: string) {
+        // Normalize path - remove trailing slash if present
+        let normalizedPath = path.endsWith('/') && path !== '/' ? path.slice(0, -1) : path
+        
+        // If it's the root path, reload the root
+        if (normalizedPath === '/' || normalizedPath === '') {
+            const currentExpandedItems = [...(props.expandedItems || [])]
+            loadedPaths.value.delete('/')
+            await loadPath('/')
+            emit('update:expandedItems', currentExpandedItems)
+            return
+        }
+
+        // Find the node in the tree that corresponds to this path
+        const node = findNodeByPath(treeItems.value, normalizedPath)
+        
+        if (node) {
+            // Preserve expanded state
+            const wasExpanded = props.expandedItems?.includes(node.id) || false
+            
+            // Clear the path from loadedPaths so it can be reloaded
+            loadedPaths.value.delete(normalizedPath)
+            // Reload the node's children
+            await loadChildrenForNode(node)
+            
+            // Restore expanded state if it was expanded
+            if (wasExpanded) {
+                const newExpandedItems = [...(props.expandedItems || [])]
+                if (!newExpandedItems.includes(node.id)) {
+                    newExpandedItems.push(node.id)
+                }
+                emit('update:expandedItems', newExpandedItems)
+            }
+        } else {
+            // If node not found, try to reload the parent path recursively
+            const parentPath = normalizedPath.split('/').slice(0, -1).join('/') || '/'
+            if (parentPath !== '/' && parentPath !== '') {
+                await reloadPath(parentPath)
+            } else {
+                // Fallback: reload root
+                const currentExpandedItems = [...(props.expandedItems || [])]
+                loadedPaths.value.delete('/')
+                await loadPath('/')
+                emit('update:expandedItems', currentExpandedItems)
+            }
+        }
+    }
+
+    /**
+     * Find a node by its path in the tree
+     */
+    function findNodeByPath(items: TreeNode[], targetPath: string): TreeNode | null {
+        for (const item of items) {
+            // Check if this is a folder node with the target path
+            if (item.id.startsWith('folder:') && item.path === targetPath) {
+                return item
+            }
+            // Check if this is an entity node with the target path
+            if (item.path === targetPath) {
+                return item
+            }
+            // Recursively search children
+            if (item.children && Array.isArray(item.children)) {
+                const found = findNodeByPath(item.children as TreeNode[], targetPath)
+                if (found) {
+                    return found
+                }
+            }
+        }
+        return null
     }
 
     const expandAll = () => {
@@ -305,6 +386,11 @@
         },
         { deep: true }
     )
+
+    // Expose methods for parent component
+    defineExpose({
+        reloadPath,
+    })
 </script>
 
 <style scoped>

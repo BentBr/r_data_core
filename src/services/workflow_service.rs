@@ -16,14 +16,20 @@ pub struct WorkflowService {
 
 impl WorkflowService {
     pub fn new(repo: Arc<dyn WorkflowRepositoryTrait>) -> Self {
-        Self { repo, dynamic_entity_service: None }
+        Self {
+            repo,
+            dynamic_entity_service: None,
+        }
     }
 
     pub fn new_with_entities(
         repo: Arc<dyn WorkflowRepositoryTrait>,
         dynamic_entity_service: Arc<DynamicEntityService>,
     ) -> Self {
-        Self { repo, dynamic_entity_service: Some(dynamic_entity_service) }
+        Self {
+            repo,
+            dynamic_entity_service: Some(dynamic_entity_service),
+        }
     }
 
     fn validate_dsl_config(cfg: &serde_json::Value) -> anyhow::Result<()> {
@@ -402,12 +408,22 @@ impl WorkflowService {
                             {
                                 if let Some(de_service) = &self.dynamic_entity_service {
                                     // For update mode, merge payload into produced to ensure update_key is available
-                                    let produced_for_update = if matches!(mode, crate::workflow::dsl::EntityWriteMode::Update) {
+                                    let produced_for_update = if matches!(
+                                        mode,
+                                        crate::workflow::dsl::EntityWriteMode::Update
+                                    ) {
                                         let mut merged = produced.clone();
-                                        if let (Some(merged_obj), Some(payload_obj)) = (merged.as_object_mut(), payload.as_object()) {
+                                        if let (Some(merged_obj), Some(payload_obj)) =
+                                            (merged.as_object_mut(), payload.as_object())
+                                        {
                                             // Merge payload fields into produced (payload takes precedence for update_key)
                                             for (k, v) in payload_obj {
-                                                if k == "entity_key" || update_key.as_ref().map(|uk| k == uk).unwrap_or(false) {
+                                                if k == "entity_key"
+                                                    || update_key
+                                                        .as_ref()
+                                                        .map(|uk| k == uk)
+                                                        .unwrap_or(false)
+                                                {
                                                     merged_obj.insert(k.clone(), v.clone());
                                                 }
                                             }
@@ -416,7 +432,7 @@ impl WorkflowService {
                                     } else {
                                         produced.clone()
                                     };
-                                    
+
                                     let result = match mode {
                                         crate::workflow::dsl::EntityWriteMode::Create => {
                                             persist_entity_create(
@@ -442,8 +458,12 @@ impl WorkflowService {
                                     };
                                     if let Err(e) = result {
                                         let operation = match mode {
-                                            crate::workflow::dsl::EntityWriteMode::Create => "create",
-                                            crate::workflow::dsl::EntityWriteMode::Update => "update",
+                                            crate::workflow::dsl::EntityWriteMode::Create => {
+                                                "create"
+                                            }
+                                            crate::workflow::dsl::EntityWriteMode::Update => {
+                                                "update"
+                                            }
                                         };
                                         let _ = self
                                             .repo
@@ -599,7 +619,9 @@ async fn persist_entity_create(
 
     // Fetch entity definition from the embedded definition service
     let defs = de_service.entity_definition_service();
-    let def = defs.get_entity_definition_by_entity_type(entity_type).await?;
+    let def = defs
+        .get_entity_definition_by_entity_type(entity_type)
+        .await?;
 
     // Normalize field names to match definition:
     // exact match preferred; otherwise case-insensitive match
@@ -640,7 +662,12 @@ async fn persist_entity_create(
             } else if k == "entity_key" {
                 // allow explicit mapping of entity_key
                 normalized_field_data.insert(k, v);
-            } else if k == "uuid" || k == "created_at" || k == "updated_at" || k == "created_by" || k == "updated_by" {
+            } else if k == "uuid"
+                || k == "created_at"
+                || k == "updated_at"
+                || k == "created_by"
+                || k == "updated_by"
+            {
                 // ignore protected fields from import payload
                 continue;
             } else {
@@ -734,7 +761,9 @@ async fn persist_entity_update(
 
     // Fetch entity definition from the embedded definition service
     let defs = de_service.entity_definition_service();
-    let def = defs.get_entity_definition_by_entity_type(entity_type).await?;
+    let def = defs
+        .get_entity_definition_by_entity_type(entity_type)
+        .await?;
 
     // Normalize field names to match definition:
     // exact match preferred; otherwise case-insensitive match
@@ -800,7 +829,10 @@ async fn persist_entity_update(
     // First, try to find by UUID if present
     if let Some(serde_json::Value::String(uuid_str)) = normalized_field_data.get("uuid") {
         if let Ok(uuid) = uuid::Uuid::parse_str(uuid_str) {
-            if let Ok(Some(entity)) = de_service.get_entity_by_uuid(entity_type, &uuid, None).await {
+            if let Ok(Some(entity)) = de_service
+                .get_entity_by_uuid(entity_type, &uuid, None)
+                .await
+            {
                 existing_entity = Some(entity);
             }
         }
@@ -811,7 +843,8 @@ async fn persist_entity_update(
         let search_key = if let Some(key_field) = update_key {
             // Use the update_key field name to find the value in produced data
             // First check normalized_field_data, then check original field_data, then check produced directly
-            normalized_field_data.get(key_field)
+            normalized_field_data
+                .get(key_field)
                 .or_else(|| original_field_data.get(key_field))
                 .or_else(|| {
                     if let Some(produced_obj) = produced.as_object() {
@@ -822,7 +855,8 @@ async fn persist_entity_update(
                 })
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string())
-        } else if let Some(serde_json::Value::String(key)) = normalized_field_data.get("entity_key") {
+        } else if let Some(serde_json::Value::String(key)) = normalized_field_data.get("entity_key")
+        {
             Some(key.clone())
         } else if let Some(serde_json::Value::String(key)) = original_field_data.get("entity_key") {
             Some(key.clone())
@@ -836,7 +870,10 @@ async fn persist_entity_update(
             // Use filter_entities to find by entity_key
             let mut filters = std::collections::HashMap::new();
             filters.insert("entity_key".to_string(), serde_json::json!(key_value));
-            if let Ok(entities) = de_service.filter_entities(entity_type, 1, 0, Some(filters), None, None, None).await {
+            if let Ok(entities) = de_service
+                .filter_entities(entity_type, 1, 0, Some(filters), None, None, None)
+                .await
+            {
                 if let Some(entity) = entities.first() {
                     existing_entity = Some(entity.clone());
                 }
@@ -858,7 +895,10 @@ async fn persist_entity_update(
     }
 
     // Set updated_by to run_uuid
-    entity.field_data.insert("updated_by".to_string(), serde_json::json!(run_uuid.to_string()));
+    entity.field_data.insert(
+        "updated_by".to_string(),
+        serde_json::json!(run_uuid.to_string()),
+    );
 
     // Ensure uuid is set (should already be present from existing entity)
     if !entity.field_data.contains_key("uuid") {

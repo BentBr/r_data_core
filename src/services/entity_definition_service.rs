@@ -251,14 +251,54 @@ impl EntityDefinitionService {
 
         // System fields common to all entities
         let mut system_fields = vec![
-            ServiceEntityFieldInfo { name: "uuid".into(), field_type: "Uuid".into(), required: true, system: true },
-            ServiceEntityFieldInfo { name: "path".into(), field_type: "String".into(), required: false, system: true },
-            ServiceEntityFieldInfo { name: "created_at".into(), field_type: "DateTime".into(), required: true, system: true },
-            ServiceEntityFieldInfo { name: "updated_at".into(), field_type: "DateTime".into(), required: true, system: true },
-            ServiceEntityFieldInfo { name: "created_by".into(), field_type: "Uuid".into(), required: false, system: true },
-            ServiceEntityFieldInfo { name: "updated_by".into(), field_type: "Uuid".into(), required: false, system: true },
-            ServiceEntityFieldInfo { name: "published".into(), field_type: "Boolean".into(), required: true, system: true },
-            ServiceEntityFieldInfo { name: "version".into(), field_type: "Integer".into(), required: true, system: true },
+            ServiceEntityFieldInfo {
+                name: "uuid".into(),
+                field_type: "Uuid".into(),
+                required: true,
+                system: true,
+            },
+            ServiceEntityFieldInfo {
+                name: "path".into(),
+                field_type: "String".into(),
+                required: false,
+                system: true,
+            },
+            ServiceEntityFieldInfo {
+                name: "created_at".into(),
+                field_type: "DateTime".into(),
+                required: true,
+                system: true,
+            },
+            ServiceEntityFieldInfo {
+                name: "updated_at".into(),
+                field_type: "DateTime".into(),
+                required: true,
+                system: true,
+            },
+            ServiceEntityFieldInfo {
+                name: "created_by".into(),
+                field_type: "Uuid".into(),
+                required: false,
+                system: true,
+            },
+            ServiceEntityFieldInfo {
+                name: "updated_by".into(),
+                field_type: "Uuid".into(),
+                required: false,
+                system: true,
+            },
+            ServiceEntityFieldInfo {
+                name: "published".into(),
+                field_type: "Boolean".into(),
+                required: true,
+                system: true,
+            },
+            ServiceEntityFieldInfo {
+                name: "version".into(),
+                field_type: "Integer".into(),
+                required: true,
+                system: true,
+            },
         ];
         fields.append(&mut system_fields);
 
