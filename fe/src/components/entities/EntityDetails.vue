@@ -208,12 +208,12 @@
                                             field.display_name
                                         }}</v-list-item-title>
                                         <v-list-item-subtitle>
-                                            {{
-                                                formatFieldValue(
-                                                    entity.field_data?.[field.name],
-                                                    field.field_type
-                                                )
-                                            }}
+                                        {{
+                                            formatFieldValue(
+                                                resolveFieldValue(entity.field_data ?? {}, field.name),
+                                                field.field_type
+                                            )
+                                        }}
                                         </v-list-item-subtitle>
                                     </v-list-item>
                                 </v-list>
@@ -256,6 +256,30 @@
 
     const { t } = useTranslations()
 
+    const toToken = (s: string): string =>
+        (s || '')
+            .toLowerCase()
+            .split(/[^a-z0-9]+/g)
+            .filter(Boolean)
+            .join('')
+
+    const resolveFieldValue = (data: Record<string, unknown>, fieldName: string): unknown => {
+        if (!data) return undefined
+        // 1) exact
+        if (fieldName in data) return (data as any)[fieldName]
+        // 2) case-insensitive
+        const lower = fieldName.toLowerCase()
+        for (const k of Object.keys(data)) {
+            if (k.toLowerCase() === lower) return (data as any)[k]
+        }
+        // 3) token-based (firstname vs first_name vs FirstName)
+        const wanted = toToken(fieldName)
+        for (const k of Object.keys(data)) {
+            if (toToken(k) === wanted) return (data as any)[k]
+        }
+        return undefined
+    }
+
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleString()
     }
@@ -281,7 +305,7 @@
     }
 
     const formatFieldValue = (value: unknown, fieldType: string): string => {
-        if (value === null ?? value === undefined) {
+        if (value === null || value === undefined) {
             return t('common.empty')
         }
 

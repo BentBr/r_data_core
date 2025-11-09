@@ -304,25 +304,35 @@
         return s
     }
 
+    const emitScheduled = ref(false)
+    function scheduleEmitChange() {
+        if (emitScheduled.value) return
+        emitScheduled.value = true
+        queueMicrotask(() => {
+            // Before emitting, ensure options exist where needed
+            stepsLocal.value.forEach(s => { ensureCsvOptions(s); ensureEntityFilter(s) })
+            emit('update:modelValue', stepsLocal.value)
+            emitScheduled.value = false
+        })
+    }
     function emitChange() {
-        // Before emitting, ensure options exist where needed
-        stepsLocal.value.forEach(s => { ensureCsvOptions(s); ensureEntityFilter(s) })
-        emit('update:modelValue', stepsLocal.value)
+        scheduleEmitChange()
     }
 
     function onFromTypeChange(step: DslStep) {
         ensureCsvOptions(step)
         ensureEntityFilter(step)
-        emitChange()
+        scheduleEmitChange()
     }
 
     function onToTypeChange(step: DslStep) {
         ensureCsvOptions(step)
-        emitChange()
+        scheduleEmitChange()
     }
 
     async function onEntityDefChange(entityType: string) {
-        emitChange()
+        // do not emit immediately to avoid recursive updates during model change
+        scheduleEmitChange()
         if (!entityType) {
             entityTargetFields.value = []
             return
@@ -338,11 +348,11 @@
     function addStep() {
         stepsLocal.value.push(defaultStep())
         openPanels.value = [stepsLocal.value.length - 1]
-        emitChange()
+        scheduleEmitChange()
     }
     function removeStep(idx: number) {
         stepsLocal.value.splice(idx, 1)
-        emitChange()
+        scheduleEmitChange()
     }
 
     function getMappingPairs(mapping: Mapping) {
@@ -359,12 +369,12 @@
         }
         Object.keys(mapping).forEach(k => delete (mapping as any)[k])
         Object.assign(mapping, out)
-        emitChange()
+        scheduleEmitChange()
     }
     function addMapping(mapping: Mapping) {
         // add empty placeholder pair; will be ignored until filled
         mapping[''] = ''
-        emitChange()
+        scheduleEmitChange()
     }
     function deleteMapping(mapping: Mapping, idx: number) {
         const pairs = getMappingPairs(mapping)
@@ -374,7 +384,7 @@
         } else {
             delete mapping['']
         }
-        emitChange()
+        scheduleEmitChange()
     }
 
     function syncLeft(step: DslStep) {

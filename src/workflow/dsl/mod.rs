@@ -61,6 +61,83 @@ impl DslProgram {
         Ok(())
     }
 
+    /// Execute all steps and return produced outputs per step along with their target (`to`) definitions.
+    /// For `to.entity` with empty mapping, we return the normalized object for that step.
+    pub fn execute(&self, input: &Value) -> anyhow::Result<Vec<(ToDef, Value)>> {
+        let mut results: Vec<(ToDef, Value)> = Vec::new();
+        for step in &self.steps {
+            // Normalize
+            let mut normalized = json!({});
+            let mapping = from::mapping_of(&step.from);
+            if mapping.is_empty() {
+                // If mapping is empty, pass through all fields from input
+                if let Some(input_obj) = input.as_object() {
+                    for (k, v) in input_obj {
+                        set_nested(&mut normalized, k, v.clone());
+                    }
+                }
+            } else {
+                for (src, dst) in mapping.iter() {
+                    let v = get_nested(input, src).unwrap_or(Value::Null);
+                    set_nested(&mut normalized, dst, v);
+                }
+            }
+            // Transform
+            match &step.transform {
+                Transform::Arithmetic(ar) => {
+                    let left = eval_operand(&normalized, &ar.left);
+                    let right = eval_operand(&normalized, &ar.right);
+                    if let (Some(ln), Some(rn)) = (left, right) {
+                        let new_val = match ar.op {
+                            ArithmeticOp::Add => ln + rn,
+                            ArithmeticOp::Sub => ln - rn,
+                            ArithmeticOp::Mul => ln * rn,
+                            ArithmeticOp::Div => {
+                                if rn == 0.0 {
+                                    ln
+                                } else {
+                                    ln / rn
+                                }
+                            }
+                        };
+                        set_nested(&mut normalized, &ar.target, Value::from(new_val));
+                    }
+                }
+                Transform::Concat(ct) => {
+                    let left = eval_string_operand(&normalized, &ct.left).unwrap_or_default();
+                    let right = eval_string_operand(&normalized, &ct.right).unwrap_or_default();
+                    let sep = ct.separator.clone().unwrap_or_default();
+                    let combined = if sep.is_empty() {
+                        format!("{}{}", left, right)
+                    } else {
+                        format!("{}{}{}", left, sep, right)
+                    };
+                    set_nested(&mut normalized, &ct.target, Value::from(combined));
+                }
+                Transform::None => {
+                    // no-op
+                }
+            }
+            // Map to output
+            let mut produced = json!({});
+            match &step.to {
+                ToDef::Entity { mapping, .. } if mapping.is_empty() => {
+                    // If no mapping for entity, use normalized directly
+                    produced = normalized.clone();
+                }
+                _ => {
+                    let out_mapping = to::mapping_of(&step.to);
+                    for (src, dst) in out_mapping.iter() {
+                        let v = get_nested(&normalized, src).unwrap_or(Value::Null);
+                        set_nested(&mut produced, dst, v);
+                    }
+                }
+            }
+            results.push((step.to.clone(), produced));
+        }
+        Ok(results)
+    }
+
     /// Apply a single-step-at-a-time process:
     /// 1) normalize input using from.mapping
     /// 2) transform (arithmetic) using operands (fields or constants)

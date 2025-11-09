@@ -284,6 +284,7 @@ Swagger:
 - admin easy default password warning (admin admin) -> hint in admin if default pw is being used
 - add unique constraint to entity_definitions (FE + BE)
 - dockerfile rework (too many)
+- uuid refactoring -> all in db
 
 Check DSL:
 - map to entity
@@ -300,6 +301,8 @@ fixes:
 - tests (unit and integration) for dynamic entities (more)
 - getting all entity types with fields and validations
 - filter entities (by field and value) (validate against entity-definition)
+- fix the entire mapping in workflow view. currently it's failing in the FE
+
 
 ## License Model
 Draft of an idea

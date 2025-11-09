@@ -39,7 +39,7 @@
     const runsTotal = ref(0)
     const showLogs = ref(false)
     const currentRunUuid = ref<string | null>(null)
-    const logs = ref<Array<{ uuid: string; ts: string; level: string; message: string }>>([])
+    const logs = ref<Array<{ uuid: string; ts: string; level: string; message: string; meta?: unknown }>>([])
     const logsLoading = ref(false)
     const logsPage = ref(1)
     const logsPerPage = ref(50)
@@ -350,7 +350,7 @@ export default {
 
             <v-dialog
                 v-model="showLogs"
-                max-width="800px"
+                max-width="1200px"
             >
                 <v-card>
                     <v-card-title>{{ t('workflows.history.logs') }}</v-card-title>
@@ -361,6 +361,7 @@ export default {
                                 { title: t('workflows.logs.time'), key: 'ts' },
                                 { title: t('workflows.logs.level'), key: 'level' },
                                 { title: t('workflows.logs.message'), key: 'message' },
+                                { title: t('workflows.logs.meta'), key: 'meta' },
                             ]"
                             :loading="logsLoading"
                             :error="''"
@@ -382,7 +383,13 @@ export default {
                                     void loadLogs()
                                 }
                             "
-                        />
+                        >
+                            <template #item.meta="{ item }">
+                                <pre style="white-space: pre-wrap; word-break: break-word; font-size: 12px; margin: 0;">
+{{ typeof item.meta === 'string' ? item.meta : JSON.stringify(item.meta ?? {}, null, 2) }}
+                                </pre>
+                            </template>
+                        </PaginatedDataTable>
                     </v-card-text>
                     <v-card-actions>
                         <v-spacer />

@@ -36,6 +36,11 @@ impl DynamicEntityService {
         &self.repository
     }
 
+    /// Expose the entity definition service (needed by worker-to-entity integration)
+    pub fn entity_definition_service(&self) -> Arc<EntityDefinitionService> {
+        self.entity_definition_service.clone()
+    }
+
     // Check if the entity type exists and is published - common check for all operations
     async fn check_entity_type_exists_and_published(
         &self,

@@ -8,8 +8,10 @@ use uuid::Uuid;
 
 use r_data_core::config::WorkerConfig;
 use r_data_core::services::{
-    worker::compute_reconcile_actions, WorkflowRepositoryAdapter, WorkflowService,
+    worker::compute_reconcile_actions, DynamicEntityRepositoryAdapter, EntityDefinitionService,
+    WorkflowRepositoryAdapter, WorkflowService,
 };
+use r_data_core::services::adapters::EntityDefinitionRepositoryAdapter;
 use r_data_core::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 use r_data_core::workflow::data::job_queue::JobQueue;
 use r_data_core::workflow::data::jobs::FetchAndStageJob;
@@ -178,12 +180,23 @@ async fn main() -> anyhow::Result<()> {
                             let _ = service.fetch_and_stage_from_config(wf_uuid, run_id).await;
                         }
                     }
-                    // Process staged items with DSL
-                    let adapter = r_data_core::services::WorkflowRepositoryAdapter::new(
-                        WorkflowRepository::new(pool.clone()),
+                    // Process staged items with DSL (with entity persistence)
+                    let wf_adapter =
+                        r_data_core::services::WorkflowRepositoryAdapter::new(WorkflowRepository::new(pool.clone()));
+                    // Build DynamicEntity service
+                    let de_repo = r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool.clone());
+                    let de_adapter = DynamicEntityRepositoryAdapter::new(de_repo);
+                    let ed_repo = r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(pool.clone());
+                    let ed_adapter = EntityDefinitionRepositoryAdapter::new(ed_repo);
+                    let ed_service = EntityDefinitionService::new(std::sync::Arc::new(ed_adapter));
+                    let de_service = r_data_core::services::DynamicEntityService::new(
+                        std::sync::Arc::new(de_adapter),
+                        std::sync::Arc::new(ed_service),
                     );
-                    let service =
-                        r_data_core::services::WorkflowService::new(std::sync::Arc::new(adapter));
+                    let service = r_data_core::services::WorkflowService::new_with_entities(
+                        std::sync::Arc::new(wf_adapter),
+                        std::sync::Arc::new(de_service),
+                    );
                     // get workflow uuid for run using repository
                     if let Ok(Some(wf_uuid)) = repo.get_workflow_uuid_for_run(run_id).await {
                         match service.process_staged_items(wf_uuid, run_id).await {

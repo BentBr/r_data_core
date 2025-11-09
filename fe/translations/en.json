@@ -51,7 +51,7 @@
       "failed": "Failed",
       "logs": "Logs"
     },
-    "logs": { "time": "Time", "level": "Level", "message": "Message" },
+    "logs": { "time": "Time", "level": "Level", "message": "Message", "meta": "Meta" },
     "actions": { "run_now": "Run now", "history": "History" },
     "run": {
       "confirm_title": "Run workflow now",
