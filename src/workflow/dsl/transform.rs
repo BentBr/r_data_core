@@ -7,6 +7,10 @@ use utoipa::ToSchema;
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Transform {
     Arithmetic(ArithmeticTransform),
+    /// No-op transform (optional step)
+    None,
+    /// Concatenate two string operands (optionally with a separator) into target
+    Concat(ConcatTransform),
 }
 
 /// Arithmetic transform allows setting a target field to the result of left (op) right.
@@ -17,6 +21,18 @@ pub struct ArithmeticTransform {
     pub left: Operand,
     pub op: ArithmeticOp,
     pub right: Operand,
+}
+
+/// String concatenation transform
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ConcatTransform {
+    /// Target normalized field to set
+    pub target: String,
+    pub left: StringOperand,
+    /// Optional separator between left and right
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub separator: Option<String>,
+    pub right: StringOperand,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -47,6 +63,14 @@ pub enum Operand {
     },
 }
 
+/// String operand variant used by Concat transform
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum StringOperand {
+    Field { field: String },
+    ConstString { value: String },
+}
+
 pub(crate) fn validate_transform(idx: usize, t: &Transform, safe_field: &Regex) -> Result<()> {
     match t {
         Transform::Arithmetic(ar) => {
@@ -59,6 +83,37 @@ pub(crate) fn validate_transform(idx: usize, t: &Transform, safe_field: &Regex) 
             validate_operand(idx, "left", &ar.left, safe_field)?;
             validate_operand(idx, "right", &ar.right, safe_field)?;
         }
+        Transform::Concat(ct) => {
+            if !safe_field.is_match(&ct.target) {
+                bail!(
+                    "DSL step {}: transform.concat.target must be a safe identifier",
+                    idx
+                );
+            }
+            match &ct.left {
+                StringOperand::Field { field } => {
+                    if !safe_field.is_match(field) {
+                        bail!(
+                            "DSL step {}: transform.concat.left field path must be safe",
+                            idx
+                        );
+                    }
+                }
+                StringOperand::ConstString { .. } => {}
+            }
+            match &ct.right {
+                StringOperand::Field { field } => {
+                    if !safe_field.is_match(field) {
+                        bail!(
+                            "DSL step {}: transform.concat.right field path must be safe",
+                            idx
+                        );
+                    }
+                }
+                StringOperand::ConstString { .. } => {}
+            }
+        }
+        Transform::None => {}
     }
     Ok(())
 }

@@ -52,12 +52,12 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         self.inner.get_by_uuid(uuid).await
     }
 
-    async fn create(&self, req: &CreateWorkflowRequest) -> anyhow::Result<Uuid> {
-        self.inner.create(req).await
+    async fn create(&self, req: &CreateWorkflowRequest, created_by: Uuid) -> anyhow::Result<Uuid> {
+        self.inner.create(req, created_by).await
     }
 
-    async fn update(&self, uuid: Uuid, req: &UpdateWorkflowRequest) -> anyhow::Result<()> {
-        self.inner.update(uuid, req).await
+    async fn update(&self, uuid: Uuid, req: &UpdateWorkflowRequest, updated_by: Uuid) -> anyhow::Result<()> {
+        self.inner.update(uuid, req, updated_by).await
     }
 
     async fn delete(&self, uuid: Uuid) -> anyhow::Result<()> {
@@ -198,6 +198,12 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
 
     async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
         self.inner.mark_run_failure(run_uuid, message).await
+    }
+
+    async fn get_workflow_uuid_for_run(&self, run_uuid: Uuid) -> anyhow::Result<Option<Uuid>> {
+        self.inner
+            .get_workflow_uuid_for_run_internal(run_uuid)
+            .await
     }
 }
 

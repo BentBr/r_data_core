@@ -1,18 +1,16 @@
-use actix_web::test;
 use log::warn;
 use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
 use r_data_core::api::public::entities::models::{BrowseKind, BrowseNode};
 use r_data_core::api::public::entities::repository::EntityRepository;
 use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
 use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
-use r_data_core::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
 use r_data_core::entity::entity_definition::definition::EntityDefinition;
 use r_data_core::entity::field::ui::UiSettings;
 use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core::error::{Error, Result};
 use r_data_core::services::{DynamicEntityService, EntityDefinitionService};
 use serde_json::json;
-use sqlx::{PgPool, Row};
+use sqlx::{PgPool};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Once;
@@ -28,7 +26,7 @@ mod common;
 mod dynamic_entity_tests {
     use super::*;
 
-    // Initialize test framework once
+    // Initialize the test framework once
     static INIT: Once = Once::new();
 
     fn test_setup() {

@@ -41,6 +41,7 @@ pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> R
             if uri.trim().is_empty() {
                 bail!("DSL step {}: from.uri must not be empty", idx);
             }
+            // Allow empty mappings
             validate_mapping(idx, mapping, safe_field)?;
         }
         FromDef::Entity {
@@ -60,6 +61,7 @@ pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> R
                     idx
                 );
             }
+            // Allow empty mappings
             validate_mapping(idx, mapping, safe_field)?;
         }
     }

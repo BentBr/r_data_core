@@ -203,7 +203,7 @@
     }
 
     async function onCreated() {
-        await load()
+        await loadWorkflows(currentPage.value, itemsPerPage.value)
         showCreate.value = false
     }
 </script>
@@ -212,7 +212,7 @@
     <div class="page-wrapper">
         <div class="page">
             <div class="header">
-                <h1>Workflows</h1>
+                <h1>{{ t('navigation.workflows') }}</h1>
                 <v-spacer />
                 <v-btn
                     color="primary"
@@ -222,8 +222,8 @@
             </div>
 
             <v-tabs v-model="activeTab">
-                <v-tab value="list">List</v-tab>
-                <v-tab value="history">History</v-tab>
+                <v-tab value="list">{{ t('table.list') ?? 'List' }}</v-tab>
+                <v-tab value="history">{{ t('workflows.history.tab') ?? 'History' }}</v-tab>
             </v-tabs>
 
             <v-window
@@ -235,15 +235,15 @@
                         <PaginatedDataTable
                             :items="items"
                             :headers="[
-                                { title: 'Name', key: 'name' },
-                                { title: 'Kind', key: 'kind' },
-                                { title: 'Enabled', key: 'enabled' },
-                                { title: 'Cron', key: 'schedule_cron' },
-                                { title: 'Actions', key: 'actions' },
+                                { title: t('workflows.table.name') || 'Name', key: 'name' },
+                                { title: t('workflows.table.kind') || 'Kind', key: 'kind' },
+                                { title: t('workflows.table.enabled') || 'Enabled', key: 'enabled' },
+                                { title: t('workflows.table.cron') || 'Cron', key: 'schedule_cron' },
+                                { title: t('workflows.table.actions') || 'Actions', key: 'actions' },
                             ]"
                             :loading="loading"
                             :error="error"
-                            loading-text="Loading workflows..."
+                            :loading-text="t('table.loading')"
                             :current-page="currentPage"
                             :items-per-page="itemsPerPage"
                             :total-items="totalItems"
@@ -261,37 +261,12 @@
                                 />
                             </template>
                             <template #item.schedule_cron="{ item }">
-                                {{ item.schedule_cron || '—' }}
+                                {{ item.schedule_cron || t('common.empty') }}
                             </template>
                             <template #item.actions="{ item }">
-                                <v-btn
-                                    size="small"
-                                    variant="text"
-                                    color="primary"
-                                    @click="openRunNow(item.uuid)"
-                                    >Run now</v-btn
-                                >
-                                <v-btn
-                                    size="small"
-                                    variant="text"
-                                    color="info"
-                                    @click="
-                                        () => {
-                                            activeTab = 'history'
-                                            selectedWorkflowUuid = item.uuid
-                                            runsPage = 1
-                                            void loadRuns()
-                                        }
-                                    "
-                                    >History</v-btn
-                                >
-                                <v-btn
-                                    size="small"
-                                    variant="text"
-                                    color="secondary"
-                                    @click="editWorkflow(item.uuid)"
-                                    >Edit</v-btn
-                                >
+                                <v-btn icon="mdi-play-circle" variant="text" color="primary" :title="t('workflows.actions.run_now')" @click="openRunNow(item.uuid)" />
+                                <v-btn icon="mdi-history" variant="text" color="info" :title="t('workflows.actions.history')" @click="() => { activeTab = 'history'; selectedWorkflowUuid = item.uuid; runsPage = 1; void loadRuns(); }" />
+                                <v-btn icon="mdi-pencil" variant="text" color="secondary" :title="t('common.edit')" @click="editWorkflow(item.uuid)" />
                             </template>
                         </PaginatedDataTable>
                     </div>
@@ -305,10 +280,10 @@
                         <v-select
                             v-model="selectedWorkflowUuid"
                             :items="[
-                                { title: 'All', value: 'all' },
+                                { title: t('workflows.history.all'), value: 'all' },
                                 ...items.map(i => ({ title: i.name, value: i.uuid })),
                             ]"
-                            label="Workflow"
+                            :label="t('workflows.history.select')"
                             style="max-width: 320px"
                             @update:model-value="
                                 () => {
@@ -322,16 +297,16 @@
                     <PaginatedDataTable
                         :items="runs"
                         :headers="[
-                            { title: 'Status', key: 'status' },
-                            { title: 'Queued', key: 'queued_at' },
-                            { title: 'Finished', key: 'finished_at' },
-                            { title: 'Processed', key: 'processed_items' },
-                            { title: 'Failed', key: 'failed_items' },
-                            { title: 'Actions', key: 'actions' },
+                            { title: t('workflows.history.status'), key: 'status' },
+                            { title: t('workflows.history.queued'), key: 'queued_at' },
+                            { title: t('workflows.history.finished'), key: 'finished_at' },
+                            { title: t('workflows.history.processed'), key: 'processed_items' },
+                            { title: t('workflows.history.failed'), key: 'failed_items' },
+                            { title: t('workflows.table.actions'), key: 'actions' },
                         ]"
                         :loading="runsLoading"
                         :error="''"
-                        loading-text="Loading runs..."
+                        :loading-text="t('table.loading')"
                         :current-page="runsPage"
                         :items-per-page="runsPerPage"
                         :total-items="runsTotal"
@@ -351,13 +326,7 @@
                         "
                     >
                         <template #item.actions="{ item }">
-                            <v-btn
-                                size="small"
-                                variant="text"
-                                color="info"
-                                @click="openLogs(item.uuid)"
-                                >Logs</v-btn
-                            >
+                            <v-btn icon="mdi-text" variant="text" color="info" :title="t('workflows.history.logs')" @click="openLogs(item.uuid)" />
                         </template>
                     </PaginatedDataTable>
                 </v-window-item>
@@ -368,18 +337,18 @@
                 max-width="800px"
             >
                 <v-card>
-                    <v-card-title>Run Logs</v-card-title>
+                    <v-card-title>{{ t('workflows.history.logs') }}</v-card-title>
                     <v-card-text>
                         <PaginatedDataTable
                             :items="logs"
                             :headers="[
-                                { title: 'Time', key: 'ts' },
-                                { title: 'Level', key: 'level' },
-                                { title: 'Message', key: 'message' },
+                                { title: t('workflows.logs.time'), key: 'ts' },
+                                { title: t('workflows.logs.level'), key: 'level' },
+                                { title: t('workflows.logs.message'), key: 'message' },
                             ]"
                             :loading="logsLoading"
                             :error="''"
-                            loading-text="Loading logs..."
+                            :loading-text="t('table.loading')"
                             :current-page="logsPage"
                             :items-per-page="logsPerPage"
                             :total-items="logsTotal"
@@ -404,7 +373,7 @@
                         <v-btn
                             variant="text"
                             @click="showLogs = false"
-                            >Close</v-btn
+                            >{{ t('common.close') }}</v-btn
                         >
                     </v-card-actions>
                 </v-card>
@@ -415,15 +384,13 @@
                 max-width="560px"
             >
                 <v-card>
-                    <v-card-title>Run workflow now</v-card-title>
+                    <v-card-title>{{ t('workflows.run.confirm_title') }}</v-card-title>
                     <v-card-text>
-                        <div class="mb-3">
-                            Confirm you want to run this workflow now. Optionally upload a CSV to
-                            process immediately.
-                        </div>
+                        <div class="mb-3">{{ t('workflows.run.confirm_message_simple') }}</div>
                         <v-switch
                             v-model="uploadEnabled"
-                            label="Upload CSV for this run"
+                            :label="t('workflows.run.upload_csv_toggle')"
+                            color="success"
                             inset
                         />
                         <div
@@ -439,7 +406,7 @@
                                 v-if="uploadFile"
                                 class="text-caption mt-1"
                             >
-                                Selected: {{ uploadFile.name }}
+                                {{ t('workflows.run.selected_file') }}: {{ uploadFile.name }}
                             </div>
                         </div>
                     </v-card-text>
@@ -448,13 +415,13 @@
                         <v-btn
                             variant="text"
                             @click="showRunDialog = false"
-                            >Cancel</v-btn
+                            >{{ t('common.cancel') }}</v-btn
                         >
                         <v-btn
                             color="primary"
                             :disabled="uploadEnabled && !uploadFile"
                             @click="confirmRunNow"
-                            >Run</v-btn
+                            >{{ t('workflows.run.run_button') }}</v-btn
                         >
                     </v-card-actions>
                 </v-card>

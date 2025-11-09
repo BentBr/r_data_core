@@ -242,7 +242,7 @@ export class HttpClient {
         }
 
         // For responses with null data (like logout), return the message
-        if (validatedResponse.data === null ?? validatedResponse.data === undefined) {
+        if (validatedResponse.data === null) {
             return { message: validatedResponse.message } as T
         }
 

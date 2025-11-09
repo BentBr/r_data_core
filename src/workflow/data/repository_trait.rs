@@ -10,8 +10,8 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
     async fn list_paginated(&self, limit: i64, offset: i64) -> anyhow::Result<Vec<Workflow>>;
     async fn count_all(&self) -> anyhow::Result<i64>;
     async fn get_by_uuid(&self, uuid: Uuid) -> anyhow::Result<Option<Workflow>>;
-    async fn create(&self, req: &CreateWorkflowRequest) -> anyhow::Result<Uuid>;
-    async fn update(&self, uuid: Uuid, req: &UpdateWorkflowRequest) -> anyhow::Result<()>;
+    async fn create(&self, req: &CreateWorkflowRequest, created_by: Uuid) -> anyhow::Result<Uuid>;
+    async fn update(&self, uuid: Uuid, req: &UpdateWorkflowRequest, updated_by: Uuid) -> anyhow::Result<()>;
     async fn delete(&self, uuid: Uuid) -> anyhow::Result<()>;
     async fn list_scheduled_consumers(&self) -> anyhow::Result<Vec<(Uuid, String)>>;
     async fn insert_run_queued(
@@ -93,4 +93,5 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
         failed: i64,
     ) -> anyhow::Result<()>;
     async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()>;
+    async fn get_workflow_uuid_for_run(&self, run_uuid: Uuid) -> anyhow::Result<Option<Uuid>>;
 }

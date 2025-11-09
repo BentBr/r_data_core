@@ -21,17 +21,30 @@ async fn run_now_creates_queued_run_and_worker_marks_success() {
     let adapter = WorkflowRepositoryAdapter::new(repo);
     let service = WorkflowService::new(Arc::new(adapter));
 
-    // Create a provider workflow (enabled, no cron)
+    // Resolve creator (admin user)
+    let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
+        .fetch_one(&pool)
+        .await
+        .expect("fetch admin user");
+
+    // Create a consumer workflow (enabled, no cron) with minimal valid DSL config
     let req = CreateWorkflowRequest {
         name: format!("test-wf-{}", Uuid::now_v7()),
         description: Some("test".into()),
         kind: WorkflowKind::Consumer,
         enabled: true,
         schedule_cron: None,
-        consumer_config: None,
-        provider_config: None,
+        config: serde_json::json!({
+            "steps": [
+                {
+                    "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} },
+                    "transform": { "type": "none" },
+                    "to": { "type": "json", "output": "api", "mapping": {} }
+                }
+            ]
+        }),
     };
-    let wf_uuid = service.create(&req).await.expect("create workflow");
+    let wf_uuid = service.create(&req, creator_uuid).await.expect("create workflow");
 
     // Simulate run enqueue
     let repo_core = WorkflowRepository::new(pool.clone());

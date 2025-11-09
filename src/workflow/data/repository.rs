@@ -16,6 +16,10 @@ impl WorkflowRepository {
         Self { pool }
     }
 
+    pub async fn get_workflow_uuid_for_run(&self, run_uuid: Uuid) -> anyhow::Result<Option<Uuid>> {
+        self.get_workflow_uuid_for_run_internal(run_uuid).await
+    }
+
     pub async fn get_by_uuid(&self, uuid: Uuid) -> anyhow::Result<Option<Workflow>> {
         let row = sqlx::query(
             r#"
@@ -50,11 +54,11 @@ impl WorkflowRepository {
         }
     }
 
-    pub async fn create(&self, req: &CreateWorkflowRequest) -> anyhow::Result<Uuid> {
+    pub async fn create(&self, req: &CreateWorkflowRequest, created_by: Uuid) -> anyhow::Result<Uuid> {
         let row = sqlx::query(
             r#"
             INSERT INTO workflows (name, description, kind, enabled, schedule_cron, config, created_by)
-            VALUES ($1, $2, $3::workflow_kind, $4, $5, $6, uuid_generate_v7())
+            VALUES ($1, $2, $3::workflow_kind, $4, $5, $6, $7)
             RETURNING uuid
             "#,
         )
@@ -64,6 +68,7 @@ impl WorkflowRepository {
         .bind(req.enabled)
         .bind(req.schedule_cron.as_deref())
         .bind(&req.config)
+        .bind(created_by)
         .fetch_one(&self.pool)
         .await
         .context("insert workflows")?;
@@ -71,12 +76,12 @@ impl WorkflowRepository {
         Ok(row.try_get("uuid")?)
     }
 
-    pub async fn update(&self, uuid: Uuid, req: &UpdateWorkflowRequest) -> anyhow::Result<()> {
+    pub async fn update(&self, uuid: Uuid, req: &UpdateWorkflowRequest, updated_by: Uuid) -> anyhow::Result<()> {
         sqlx::query(
             r#"
             UPDATE workflows
             SET name = $2, description = $3, kind = $4::workflow_kind, enabled = $5,
-                schedule_cron = $6, config = $7
+                schedule_cron = $6, config = $7, updated_by = $8
             WHERE uuid = $1
             "#,
         )
@@ -87,6 +92,7 @@ impl WorkflowRepository {
         .bind(req.enabled)
         .bind(req.schedule_cron.as_deref())
         .bind(&req.config)
+        .bind(updated_by)
         .execute(&self.pool)
         .await
         .context("update workflows")?;
@@ -380,6 +386,18 @@ impl WorkflowRepository {
         .context(format!("set raw item status : {status}"))?;
         Ok(())
     }
+
+    pub async fn get_workflow_uuid_for_run_internal(
+        &self,
+        run_uuid: Uuid,
+    ) -> anyhow::Result<Option<Uuid>> {
+        let row = sqlx::query("SELECT workflow_uuid FROM workflow_runs WHERE uuid = $1")
+            .bind(run_uuid)
+            .fetch_optional(&self.pool)
+            .await
+            .context("get workflow_uuid for run")?;
+        Ok(row.and_then(|r| r.try_get::<Uuid, _>("workflow_uuid").ok()))
+    }
 }
 
 #[async_trait::async_trait]
@@ -396,11 +414,11 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
     async fn get_by_uuid(&self, uuid: Uuid) -> anyhow::Result<Option<Workflow>> {
         self.get_by_uuid(uuid).await
     }
-    async fn create(&self, req: &CreateWorkflowRequest) -> anyhow::Result<Uuid> {
-        self.create(req).await
+    async fn create(&self, req: &CreateWorkflowRequest, created_by: Uuid) -> anyhow::Result<Uuid> {
+        self.create(req, created_by).await
     }
-    async fn update(&self, uuid: Uuid, req: &UpdateWorkflowRequest) -> anyhow::Result<()> {
-        self.update(uuid, req).await
+    async fn update(&self, uuid: Uuid, req: &UpdateWorkflowRequest, updated_by: Uuid) -> anyhow::Result<()> {
+        self.update(uuid, req, updated_by).await
     }
     async fn delete(&self, uuid: Uuid) -> anyhow::Result<()> {
         self.delete(uuid).await
@@ -636,5 +654,9 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
 
     async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
         self.mark_run_failure(run_uuid, message).await
+    }
+
+    async fn get_workflow_uuid_for_run(&self, run_uuid: Uuid) -> anyhow::Result<Option<Uuid>> {
+        self.get_workflow_uuid_for_run_internal(run_uuid).await
     }
 }

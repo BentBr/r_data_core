@@ -228,7 +228,7 @@ pub async fn get_workflow_details(
 pub async fn create_workflow(
     state: web::Data<ApiState>,
     body: web::Json<CreateWorkflowRequest>,
-    _: auth_enum::RequiredAuth,
+    auth: auth_enum::RequiredAuth,
 ) -> impl Responder {
     // Validate cron format early to return Symfony-style 422
     if let Some(cron_str) = &body.schedule_cron {
@@ -244,7 +244,16 @@ pub async fn create_workflow(
         }
     }
 
-    let created = state.workflow_service.create(&body.0).await;
+    // Determine creator from required auth (JWT)
+    let created_by = match auth.user_uuid() {
+        Some(u) => u,
+        None => return ApiResponse::<()>::internal_error("No authentication claims found"),
+    };
+
+    let created = state
+        .workflow_service
+        .create(&body.0, created_by)
+        .await;
 
     match created {
         Ok(uuid) => ApiResponse::<CreateWorkflowResponse>::created(CreateWorkflowResponse { uuid }),
@@ -283,9 +292,13 @@ pub async fn update_workflow(
     state: web::Data<ApiState>,
     path: web::Path<Uuid>,
     body: web::Json<UpdateWorkflowRequest>,
-    _: auth_enum::RequiredAuth,
+    auth: auth_enum::RequiredAuth,
 ) -> impl Responder {
     let uuid = path.into_inner();
+    let updated_by = match auth.user_uuid() {
+        Some(u) => u,
+        None => return ApiResponse::<()>::internal_error("No authentication claims found"),
+    };
     // Validate cron format early to return Symfony-style 422
     if let Some(cron_str) = &body.schedule_cron {
         if let Err(e) = cron::Schedule::from_str(cron_str) {
@@ -300,7 +313,10 @@ pub async fn update_workflow(
         }
     }
 
-    let res = state.workflow_service.update(uuid, &body.0).await;
+    let res = state
+        .workflow_service
+        .update(uuid, &body.0, updated_by)
+        .await;
 
     match res {
         Ok(_) => ApiResponse::<()>::message("Updated"),

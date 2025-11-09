@@ -31,6 +31,7 @@
                     <v-switch
                         v-model="form.enabled"
                         :label="t('workflows.create.enabled')"
+                        color="success"
                         inset
                     ></v-switch>
                     <v-text-field
@@ -58,6 +59,9 @@
                                 t('workflows.create.config_label')
                             }}</v-expansion-panel-title>
                             <v-expansion-panel-text>
+                                <div class="mb-4">
+                                    <DslConfigurator v-model="steps" />
+                                </div>
                                 <v-textarea
                                     v-model="configJson"
                                     rows="8"
@@ -91,6 +95,7 @@
     import { computed, ref, watch } from 'vue'
     import { typedHttpClient, ValidationError } from '@/api/typed-client'
     import { useTranslations } from '@/composables/useTranslations'
+    import DslConfigurator from './DslConfigurator.vue'
 
     const props = defineProps<{ modelValue: boolean }>()
     const emit = defineEmits<{
@@ -118,6 +123,7 @@
 
     const configJson = ref('')
     const configError = ref<string | null>(null)
+    const steps = ref<any[]>([])
     const cronError = ref<string | null>(null)
     const cronHelp = ref<string>(
         'Use standard 5-field cron (min hour day month dow), e.g. "*/5 * * * *"'
@@ -165,9 +171,29 @@
     async function submit() {
         configError.value = null
         cronError.value = null
+        if (steps.value && steps.value.length > 0) {
+            configJson.value = JSON.stringify({ steps: steps.value }, null, 2)
+        }
         const parsedConfig = parseJson(configJson.value)
         if (parsedConfig === null) {
             configError.value = t('workflows.create.json_invalid')
+            return
+        }
+        // Strict DSL presence and validation against BE
+        try {
+            const steps = Array.isArray(parsedConfig?.steps) ? parsedConfig.steps : null
+            if (!steps || steps.length === 0) {
+                configError.value = t('workflows.create.dsl_required')
+                return
+            }
+            await typedHttpClient.validateDsl(steps)
+        } catch (e: any) {
+            if (e?.violations) {
+                const v = e.violations[0]
+                configError.value = v?.message || t('workflows.create.dsl_invalid')
+                return
+            }
+            configError.value = e instanceof Error ? e.message : t('workflows.create.dsl_invalid')
             return
         }
 
@@ -197,4 +223,16 @@
             loading.value = false
         }
     }
+    // Keep config JSON updated when steps change
+    watch(
+        steps,
+        v => {
+            try {
+                configJson.value = JSON.stringify({ steps: v }, null, 2)
+            } catch {
+                // ignore
+            }
+        },
+        { deep: true }
+    )
 </script>

@@ -93,9 +93,6 @@ pub struct AppConfig {
     /// Cache configuration
     pub cache: CacheConfig,
 
-    /// Workflow configuration
-    pub workflow: WorkflowConfig,
-
     /// Log configuration
     pub log: LogConfig,
 }
@@ -165,6 +162,65 @@ impl AppConfig {
                 .unwrap_or(10000),
         };
 
+        let log = LogConfig {
+            level: env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string()),
+            file: env::var("LOG_FILE").ok(),
+        };
+
+        Ok(Self {
+            environment,
+            database,
+            api,
+            cache,
+            log,
+        })
+    }
+}
+
+/// Worker-specific configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkerConfig {
+    /// Interval in seconds to reconcile scheduled jobs with DB
+    pub job_queue_update_interval_secs: u64,
+
+    /// Database configuration
+    pub database: DatabaseConfig,
+
+    /// Workflow configuration
+    pub workflow: WorkflowConfig,
+}
+
+impl WorkerConfig {
+    pub fn from_env() -> Result<Self> {
+        // Ensure .env is loaded for binaries that only use WorkerConfig
+        dotenv().ok();
+
+        let interval_str = env::var("JOB_QUEUE_UPDATE_INTERVAL")
+            .map_err(|_| Error::Config("JOB_QUEUE_UPDATE_INTERVAL not set".to_string()))?;
+        let job_queue_update_interval_secs = interval_str.parse::<u64>().map_err(|_| {
+            Error::Config(
+                "JOB_QUEUE_UPDATE_INTERVAL must be a positive integer (seconds)".to_string(),
+            )
+        })?;
+        if job_queue_update_interval_secs == 0 {
+            return Err(Error::Config(
+                "JOB_QUEUE_UPDATE_INTERVAL must be > 0 seconds".to_string(),
+            ));
+        }
+
+        let database = DatabaseConfig {
+            connection_string: env::var("WORKER_DATABASE_URL")
+                .map_err(|_| Error::Config("WORKER_DATABASE_URL not set".to_string()))?,
+            max_connections: env::var("WORKER_DATABASE_MAX_CONNECTIONS")
+                .unwrap_or_else(|_| "10".to_string())
+                .parse()
+                .unwrap_or(10),
+            connection_timeout: env::var("DATABASE_CONNECTION_TIMEOUT")
+                .unwrap_or_else(|_| "30".to_string())
+                .parse()
+                .unwrap_or(30),
+        };
+
         let workflow = WorkflowConfig {
             worker_threads: env::var("WORKFLOW_WORKER_THREADS")
                 .unwrap_or_else(|_| "4".to_string())
@@ -179,19 +235,11 @@ impl AppConfig {
                 .parse()
                 .unwrap_or(10),
         };
-
-        let log = LogConfig {
-            level: env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string()),
-            file: env::var("LOG_FILE").ok(),
-        };
-
+        
         Ok(Self {
-            environment,
+            job_queue_update_interval_secs,
             database,
-            api,
-            cache,
-            workflow,
-            log,
+            workflow
         })
     }
 }

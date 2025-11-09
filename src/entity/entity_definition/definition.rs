@@ -287,7 +287,7 @@ impl EntityDefinition {
 
         // Check if table exists and create it if not
         sql.push_str(&format!("CREATE TABLE IF NOT EXISTS {} (\n", table_name));
-        sql.push_str("    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v7(),\n");
+        sql.push_str("    uuid UUID PRIMARY KEY DEFAULT uuidv7(),\n");
         sql.push_str("    path TEXT,\n");
         sql.push_str("    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n");
         sql.push_str("    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n");

@@ -26,13 +26,11 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_validate_invalid_missing_mapping() {
-        let cfg = load_example("invalid_missing_mapping.json");
+    async fn test_validate_valid_missing_mapping() {
+        let cfg = load_example("valid_missing_mapping.json");
         let prog = DslProgram::from_config(&cfg).expect("parse dsl");
-        let err = prog.validate().unwrap_err();
-        assert!(err
-            .to_string()
-            .contains("mapping must contain at least one field"));
+        // Empty mappings are allowed now; validation should succeed
+        assert!(prog.validate().is_ok());
     }
 
     #[tokio::test]

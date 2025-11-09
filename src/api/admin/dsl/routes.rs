@@ -6,8 +6,8 @@ use utoipa::ToSchema;
 use crate::api::auth::auth_enum;
 use crate::api::response::{ApiResponse, ValidationViolation};
 use crate::workflow::dsl::{
-    ArithmeticOp, ArithmeticTransform, DslProgram, DslStep, EntityFilter, EntityWriteMode, FromDef, Operand, OutputMode,
-    ToDef, Transform,
+    ArithmeticOp, ArithmeticTransform, ConcatTransform, DslProgram, DslStep, EntityFilter,
+    EntityWriteMode, FromDef, Operand, OutputMode, StringOperand, ToDef, Transform,
 };
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -80,7 +80,9 @@ pub async fn validate_dsl(
     payload: web::Json<DslValidateRequest>,
     _: auth_enum::RequiredAuth,
 ) -> impl Responder {
-    let program = DslProgram { steps: payload.steps.clone() };
+    let program = DslProgram {
+        steps: payload.steps.clone(),
+    };
     match program.validate() {
         Ok(()) => ApiResponse::ok(DslValidateResponse { valid: true }),
         Err(e) => ApiResponse::<()>::unprocessable_entity_with_violations(
@@ -340,115 +342,162 @@ pub async fn list_to_options(_: auth_enum::RequiredAuth) -> impl Responder {
 #[get("/transform/options")]
 pub async fn list_transform_options(_: auth_enum::RequiredAuth) -> impl Responder {
     let types = DslOptionsResponse {
-        types: vec![DslTypeSpec {
-            r#type: "arithmetic".to_string(),
-            fields: vec![
-                DslFieldSpec {
-                    name: "target".to_string(),
-                    r#type: "string".to_string(),
-                    required: true,
-                    options: None,
-                },
-                DslFieldSpec {
-                    name: "left.kind".to_string(),
-                    r#type: "enum".to_string(),
-                    required: true,
-                    options: Some(vec![
-                        "field".into(),
-                        "const".into(),
-                        "external_entity_field".into(),
-                    ]),
-                },
-                DslFieldSpec {
-                    name: "left.field".to_string(),
-                    r#type: "string".to_string(),
-                    required: false,
-                    options: None,
-                },
-                DslFieldSpec {
-                    name: "left.value".to_string(),
-                    r#type: "number".to_string(),
-                    required: false,
-                    options: None,
-                },
-                DslFieldSpec {
-                    name: "left.entity_definition".to_string(),
-                    r#type: "string".to_string(),
-                    required: false,
-                    options: None,
-                },
-                DslFieldSpec {
-                    name: "left.filter.field".to_string(),
-                    r#type: "string".to_string(),
-                    required: false,
-                    options: None,
-                },
-                DslFieldSpec {
-                    name: "left.filter.value".to_string(),
-                    r#type: "string".to_string(),
-                    required: false,
-                    options: None,
-                },
-                DslFieldSpec {
-                    name: "left.field".to_string(),
-                    r#type: "string".to_string(),
-                    required: false,
-                    options: None,
-                },
-                DslFieldSpec {
-                    name: "op".to_string(),
-                    r#type: "enum".to_string(),
-                    required: true,
-                    options: Some(vec!["add".into(), "sub".into(), "mul".into(), "div".into()]),
-                },
-                DslFieldSpec {
-                    name: "right.kind".to_string(),
-                    r#type: "enum".to_string(),
-                    required: true,
-                    options: Some(vec![
-                        "field".into(),
-                        "const".into(),
-                        "external_entity_field".into(),
-                    ]),
-                },
-                DslFieldSpec {
-                    name: "right.field".to_string(),
-                    r#type: "string".to_string(),
-                    required: false,
-                    options: None,
-                },
-                DslFieldSpec {
-                    name: "right.value".to_string(),
-                    r#type: "number".to_string(),
-                    required: false,
-                    options: None,
-                },
-                DslFieldSpec {
-                    name: "right.entity_definition".to_string(),
-                    r#type: "string".to_string(),
-                    required: false,
-                    options: None,
-                },
-                DslFieldSpec {
-                    name: "right.filter.field".to_string(),
-                    r#type: "string".to_string(),
-                    required: false,
-                    options: None,
-                },
-                DslFieldSpec {
-                    name: "right.filter.value".to_string(),
-                    r#type: "string".to_string(),
-                    required: false,
-                    options: None,
-                },
-                DslFieldSpec {
-                    name: "right.field".to_string(),
-                    r#type: "string".to_string(),
-                    required: false,
-                    options: None,
-                },
-            ],
-        }],
+        types: vec![
+            DslTypeSpec {
+                r#type: "none".to_string(),
+                fields: vec![],
+            },
+            DslTypeSpec {
+                r#type: "arithmetic".to_string(),
+                fields: vec![
+                    DslFieldSpec {
+                        name: "target".to_string(),
+                        r#type: "string".to_string(),
+                        required: true,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "left.kind".to_string(),
+                        r#type: "enum".to_string(),
+                        required: true,
+                        options: Some(vec![
+                            "field".into(),
+                            "const".into(),
+                            "external_entity_field".into(),
+                        ]),
+                    },
+                    DslFieldSpec {
+                        name: "left.field".to_string(),
+                        r#type: "string".to_string(),
+                        required: false,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "left.value".to_string(),
+                        r#type: "number".to_string(),
+                        required: false,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "left.entity_definition".to_string(),
+                        r#type: "string".to_string(),
+                        required: false,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "left.filter.field".to_string(),
+                        r#type: "string".to_string(),
+                        required: false,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "left.filter.value".to_string(),
+                        r#type: "string".to_string(),
+                        required: false,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "op".to_string(),
+                        r#type: "enum".to_string(),
+                        required: true,
+                        options: Some(vec!["add".into(), "sub".into(), "mul".into(), "div".into()]),
+                    },
+                    DslFieldSpec {
+                        name: "right.kind".to_string(),
+                        r#type: "enum".to_string(),
+                        required: true,
+                        options: Some(vec![
+                            "field".into(),
+                            "const".into(),
+                            "external_entity_field".into(),
+                        ]),
+                    },
+                    DslFieldSpec {
+                        name: "right.field".to_string(),
+                        r#type: "string".to_string(),
+                        required: false,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "right.value".to_string(),
+                        r#type: "number".to_string(),
+                        required: false,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "right.entity_definition".to_string(),
+                        r#type: "string".to_string(),
+                        required: false,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "right.filter.field".to_string(),
+                        r#type: "string".to_string(),
+                        required: false,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "right.filter.value".to_string(),
+                        r#type: "string".to_string(),
+                        required: false,
+                        options: None,
+                    },
+                ],
+            },
+            DslTypeSpec {
+                r#type: "concat".to_string(),
+                fields: vec![
+                    DslFieldSpec {
+                        name: "target".to_string(),
+                        r#type: "string".to_string(),
+                        required: true,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "left.kind".to_string(),
+                        r#type: "enum".to_string(),
+                        required: true,
+                        options: Some(vec!["field".into(), "const_string".into()]),
+                    },
+                    DslFieldSpec {
+                        name: "left.field".to_string(),
+                        r#type: "string".to_string(),
+                        required: false,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "left.value".to_string(),
+                        r#type: "string".to_string(),
+                        required: false,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "separator".to_string(),
+                        r#type: "string".to_string(),
+                        required: false,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "right.kind".to_string(),
+                        r#type: "enum".to_string(),
+                        required: true,
+                        options: Some(vec!["field".into(), "const_string".into()]),
+                    },
+                    DslFieldSpec {
+                        name: "right.field".to_string(),
+                        r#type: "string".to_string(),
+                        required: false,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "right.value".to_string(),
+                        r#type: "string".to_string(),
+                        required: false,
+                        options: None,
+                    },
+                ],
+            },
+        ],
     };
     let ex_arith = serde_json::to_value(Transform::Arithmetic(ArithmeticTransform {
         target: "price".to_string(),
@@ -459,9 +508,20 @@ pub async fn list_transform_options(_: auth_enum::RequiredAuth) -> impl Responde
         right: Operand::Const { value: 5.0 },
     }))
     .unwrap();
+    let ex_concat = serde_json::to_value(Transform::Concat(ConcatTransform {
+        target: "full_name".to_string(),
+        left: StringOperand::Field {
+            field: "first_name".to_string(),
+        },
+        separator: Some(" ".to_string()),
+        right: StringOperand::Field {
+            field: "last_name".to_string(),
+        },
+    }))
+    .unwrap();
     let resp = DslOptionsAndExamplesResponse {
         types: types.types,
-        examples: vec![ex_arith],
+        examples: vec![ex_arith, ex_concat],
     };
     ApiResponse::ok(resp)
 }

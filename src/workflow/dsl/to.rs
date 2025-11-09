@@ -51,6 +51,7 @@ pub enum ToDef {
 pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<()> {
     match to {
         ToDef::Csv { output: _, mapping } | ToDef::Json { output: _, mapping } => {
+            // Allow empty mappings
             validate_mapping(idx, mapping, safe_field)?;
         }
         ToDef::Entity {
@@ -69,6 +70,7 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<
             if path.trim().is_empty() {
                 bail!("DSL step {}: to.entity.path must not be empty", idx);
             }
+            // Allow empty mappings
             validate_mapping(idx, mapping, safe_field)?;
         }
     }

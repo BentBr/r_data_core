@@ -1,10 +1,13 @@
+// Aggregate re-export for backward compatibility. New code should import from submodules.
 import { z } from 'zod'
+export * from './schemas/base'
+export * from './schemas/dsl'
 
 // Base schemas for common patterns - UUID v7 only
 const UuidSchema = z.string().refine(
     val => {
         // UUID v7 format: version nibble must be 7; variant must be 8,9,a,b
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
         return uuidRegex.test(val)
     },
     {
@@ -386,3 +389,5 @@ export type FormField = z.infer<typeof FormFieldSchema>
 
 // Additional exports for base schemas
 export { UuidSchema, TimestampSchema, NullableTimestampSchema }
+
+// DSL schemas moved to ./schemas/dsl; types are re-exported above

@@ -175,32 +175,6 @@ The application can be configured using environment variables. See `.env.example
 
 The application supports both in-memory caching and Redis caching. By default, Redis caching is enabled when the `REDIS_URL` environment variable is set.
 
-## UUID v7 Support
-
-This project uses UUID v7 for generating primary keys. Our Docker setup includes a custom PostgreSQL image that automatically installs the necessary extension:
-
-- When using Docker: UUID v7 support is automatically provided by our custom PostgreSQL image
-- For local development without Docker: You'll need to install the `pg_uuidv7` extension
-
-### Installing UUID v7 Extension for Local Development
-
-If you're developing locally without Docker, follow these steps to install the UUID v7 extension:
-
-```bash
-# Clone the pg_uuidv7 repository
-git clone https://github.com/fboulnois/pg_uuidv7.git
-cd pg_uuidv7
-
-# Build and install the extension
-make
-sudo make install
-
-# Enable the extension in your database
-psql -U postgres -d your_database_name -c "CREATE EXTENSION pg_uuidv7;"
-```
-
-For more information about our PostgresSQL setup with UUID v7, see the [documentation](./docker/postgres/README.md).
-
 ## Entity System
 
 The R Data Core provides a flexible system for defining and working with dynamic entities. This allows you to create custom data structures at runtime through the API rather than needing to modify the application code.

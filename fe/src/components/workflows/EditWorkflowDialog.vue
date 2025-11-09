@@ -30,7 +30,8 @@
                     />
                     <v-switch
                         v-model="form.enabled"
-                        label="Enabled"
+                        :label="t('workflows.create.enabled')"
+                        color="success"
                         inset
                     ></v-switch>
                     <v-text-field
@@ -56,6 +57,9 @@
                         <v-expansion-panel>
                             <v-expansion-panel-title>Config (JSON)</v-expansion-panel-title>
                             <v-expansion-panel-text>
+                                <div class="mb-4">
+                                    <DslConfigurator v-model="steps" />
+                                </div>
                                 <v-textarea
                                     v-model="configJson"
                                     rows="8"
@@ -86,9 +90,11 @@
 </template>
 
 <script setup lang="ts">
-    import { computed, onMounted, ref, watch } from 'vue'
+    import { computed, ref, watch } from 'vue'
     import { typedHttpClient } from '@/api/typed-client'
     import { ValidationError } from '@/api/typed-client'
+    import DslConfigurator from './DslConfigurator.vue'
+    import { useTranslations } from '@/composables/useTranslations'
 
     const props = defineProps<{ modelValue: boolean; workflowUuid: string | null }>()
     const emit = defineEmits<{
@@ -96,6 +102,7 @@
         (e: 'updated'): void
     }>()
 
+    const { t } = useTranslations()
     const model = computed({ get: () => props.modelValue, set: v => emit('update:modelValue', v) })
     const loading = ref(false)
     const formRef = ref()
@@ -115,6 +122,7 @@
 
     const configJson = ref('')
     const configError = ref<string | null>(null)
+    const steps = ref<any[]>([])
     const cronError = ref<string | null>(null)
     const cronHelp = ref<string>(
         'Use standard 5-field cron (min hour day month dow), e.g. "*/5 * * * *"'
@@ -148,6 +156,12 @@
             form.value.enabled = data.enabled
             form.value.schedule_cron = data.schedule_cron ?? ''
             configJson.value = JSON.stringify(data.config ?? {}, null, 2)
+            try {
+                const cfg: any = data.config ?? {}
+                steps.value = Array.isArray(cfg.steps) ? cfg.steps : []
+            } catch {
+                steps.value = []
+            }
         } finally {
             loading.value = false
         }
@@ -192,9 +206,29 @@
         }
         configError.value = null
         cronError.value = null
+        if (steps.value && steps.value.length > 0) {
+            configJson.value = JSON.stringify({ steps: steps.value }, null, 2)
+        }
         const parsedConfig = parseJson(configJson.value)
         if (parsedConfig === null) {
             configError.value = 'Invalid JSON'
+            return
+        }
+        // Strict DSL presence and validation against BE
+        try {
+            const steps = Array.isArray(parsedConfig?.steps) ? parsedConfig.steps : null
+            if (!steps || steps.length === 0) {
+                configError.value = 'DSL steps are required'
+                return
+            }
+            await typedHttpClient.validateDsl(steps)
+        } catch (e: any) {
+            if (e?.violations) {
+                const v = e.violations[0]
+                configError.value = v?.message || 'Invalid DSL'
+                return
+            }
+            configError.value = e instanceof Error ? e.message : 'Invalid DSL'
             return
         }
 
@@ -223,4 +257,17 @@
             loading.value = false
         }
     }
+
+    // Keep config JSON updated when steps change
+    watch(
+        steps,
+        v => {
+            try {
+                configJson.value = JSON.stringify({ steps: v }, null, 2)
+            } catch {
+                // ignore
+            }
+        },
+        { deep: true }
+    )
 </script>

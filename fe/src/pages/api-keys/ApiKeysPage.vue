@@ -26,7 +26,7 @@
                             :headers="tableHeaders"
                             :loading="loading"
                             :error="error"
-                            loading-text="Loading API keys..."
+                            :loading-text="t('table.loading')"
                             :current-page="currentPage"
                             :items-per-page="itemsPerPage"
                             :total-items="totalItems"

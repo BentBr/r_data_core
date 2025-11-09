@@ -51,11 +51,13 @@
                         class="mb-4"
                     />
 
-                    <!-- Published Checkbox -->
-                    <v-checkbox
+                    <!-- Published Switch -->
+                    <v-switch
                         v-model="formData.data.published"
                         :label="t('entities.create.published_label')"
                         :hint="t('entities.create.published_hint')"
+                        color="success"
+                        inset
                         persistent-hint
                         class="mb-4"
                     />

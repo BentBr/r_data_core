@@ -77,6 +77,14 @@ impl FromRequest for RequiredAuth {
     }
 }
 
+impl RequiredAuth {
+    /// Returns the authenticated user's UUID parsed from JWT claims subject.
+    /// None if parsing fails.
+    pub fn user_uuid(&self) -> Option<Uuid> {
+        Uuid::parse_str(&self.0.sub).ok()
+    }
+}
+
 impl FromRequest for OptionalAuth {
     type Error = Error;
     type Future = Ready<Result<Self, Self::Error>>;

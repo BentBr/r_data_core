@@ -67,6 +67,10 @@ services:
             context: .
             dockerfile: ./.docker/app/Dockerfile_local_app
         container_name: rdata_app
+        volumes:
+            - .env:/usr/local/bin/.env:ro
+        env_file:
+            - .env
         depends_on:
             postgres:
                 condition: service_healthy
@@ -81,10 +85,11 @@ services:
             LOG_LEVEL: info
             API_ENABLE_DOCS: true
             CORS_ORIGINS: '*'
-            VIRTUAL_HOST: .rdatacore.docker
-            MAIN_SERVICE: app
             JWT_SECRET: development_secret_key
             JWT_EXPIRATION: 86400
+            VIRTUAL_HOST: .rdatacore.docker
+            # RDT key
+            MAIN_SERVICE: app
         ports:
             - '80'
         extra_hosts:
@@ -99,6 +104,10 @@ services:
             context: .
             dockerfile: ./.docker/app/Dockerfile_local_worker
         container_name: rdata_worker
+        volumes:
+            - .env:/usr/local/bin/.env:ro
+        env_file:
+            -   .env
         depends_on:
             postgres:
                 condition: service_healthy
@@ -106,13 +115,11 @@ services:
                 condition: service_healthy
         environment:
             DATABASE_URL: postgres://postgres:postgres@postgres:5432/rdata
+            WORKER_DATABASE_URL: postgres://postgres:postgres@postgres:5432/rdata
             REDIS_URL: redis://redis:6379
             RUST_LOG: info
             LOG_LEVEL: info
             VIRTUAL_HOST: .worker.rdatacore.docker
-            ## Todo: remove those here!
-            JWT_SECRET: development_secret_key
-            JWT_EXPIRATION: 86400
         networks:
             default:
                 aliases:

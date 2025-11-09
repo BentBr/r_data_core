@@ -12,7 +12,9 @@ use utoipa::ToSchema;
 pub use from::{EntityFilter, FromDef};
 pub use processor::DslProcessor;
 pub use to::{EntityWriteMode, OutputMode, ToDef};
-pub use transform::{ArithmeticOp, ArithmeticTransform, Operand, Transform};
+pub use transform::{
+    ArithmeticOp, ArithmeticTransform, ConcatTransform, Operand, StringOperand, Transform,
+};
 
 /// Strict, explicit DSL step tying together from → transform → to
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -31,10 +33,10 @@ impl DslProgram {
     pub fn from_config(config: &Value) -> anyhow::Result<Self> {
         let steps_val = config
             .get("steps")
-            .ok_or_else(|| anyhow::anyhow!("Workflow config missing 'dsl' array"))?;
+            .ok_or_else(|| anyhow::anyhow!("Workflow config missing 'steps' array"))?;
         let steps = steps_val
             .as_array()
-            .ok_or_else(|| anyhow::anyhow!("'dsl' must be an array"))?;
+            .ok_or_else(|| anyhow::anyhow!("'steps' must be an array"))?;
 
         let parsed: Vec<DslStep> = steps
             .iter()
@@ -72,23 +74,39 @@ impl DslProgram {
                 set_nested(&mut normalized, dst, v);
             }
             // Transform
-            if let Transform::Arithmetic(ar) = &step.transform {
-                let left = eval_operand(&normalized, &ar.left);
-                let right = eval_operand(&normalized, &ar.right);
-                if let (Some(ln), Some(rn)) = (left, right) {
-                    let new_val = match ar.op {
-                        ArithmeticOp::Add => ln + rn,
-                        ArithmeticOp::Sub => ln - rn,
-                        ArithmeticOp::Mul => ln * rn,
-                        ArithmeticOp::Div => {
-                            if rn == 0.0 {
-                                ln
-                            } else {
-                                ln / rn
+            match &step.transform {
+                Transform::Arithmetic(ar) => {
+                    let left = eval_operand(&normalized, &ar.left);
+                    let right = eval_operand(&normalized, &ar.right);
+                    if let (Some(ln), Some(rn)) = (left, right) {
+                        let new_val = match ar.op {
+                            ArithmeticOp::Add => ln + rn,
+                            ArithmeticOp::Sub => ln - rn,
+                            ArithmeticOp::Mul => ln * rn,
+                            ArithmeticOp::Div => {
+                                if rn == 0.0 {
+                                    ln
+                                } else {
+                                    ln / rn
+                                }
                             }
-                        }
+                        };
+                        set_nested(&mut normalized, &ar.target, Value::from(new_val));
+                    }
+                }
+                Transform::Concat(ct) => {
+                    let left = eval_string_operand(&normalized, &ct.left).unwrap_or_default();
+                    let right = eval_string_operand(&normalized, &ct.right).unwrap_or_default();
+                    let sep = ct.separator.clone().unwrap_or_default();
+                    let combined = if sep.is_empty() {
+                        format!("{}{}", left, right)
+                    } else {
+                        format!("{}{}{}", left, sep, right)
                     };
-                    set_nested(&mut normalized, &ar.target, Value::from(new_val));
+                    set_nested(&mut normalized, &ct.target, Value::from(combined));
+                }
+                Transform::None => {
+                    // no-op
                 }
             }
             // Map to output
@@ -115,14 +133,21 @@ fn eval_operand(ctx: &Value, op: &Operand) -> Option<f64> {
     }
 }
 
+fn eval_string_operand(ctx: &Value, op: &StringOperand) -> Option<String> {
+    match op {
+        StringOperand::Field { field } => {
+            get_nested(ctx, field).and_then(|v| v.as_str().map(|s| s.to_string()))
+        }
+        StringOperand::ConstString { value } => Some(value.clone()),
+    }
+}
+
 pub(crate) fn validate_mapping(
     idx: usize,
     mapping: &std::collections::HashMap<String, String>,
     safe_field: &Regex,
 ) -> anyhow::Result<()> {
-    if mapping.is_empty() {
-        bail!("DSL step {}: mapping must contain at least one field", idx);
-    }
+    // Allow empty mappings
     for (k, v) in mapping {
         if !safe_field.is_match(k) || !safe_field.is_match(v) {
             bail!(
@@ -208,25 +233,5 @@ mod tests {
         assert_eq!(out["entity"]["total"], json!(15.0));
     }
 
-    #[test]
-    fn test_validate_fails_on_empty_mapping() {
-        let config = json!({
-            "steps": [{
-                "from": { "type": "csv", "uri": "x", "mapping": {} },
-                "transform": {
-                    "type": "arithmetic",
-                    "target": "x",
-                    "left": { "kind": "const", "value": 1.0 },
-                    "op": "add",
-                    "right": { "kind": "const", "value": 2.0 }
-                },
-                "to": { "type": "json", "output": "api", "mapping": {} }
-            }]
-        });
-        let prog = DslProgram::from_config(&config).unwrap();
-        let err = prog.validate().unwrap_err();
-        assert!(err
-            .to_string()
-            .contains("mapping must contain at least one field"));
-    }
+    // No validation failure on empty mappings anymore
 }
