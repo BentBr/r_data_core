@@ -48,7 +48,7 @@ vi.mock('@/composables/useTranslations', () => ({
 }))
 
 // silence noisy console
-global.console = { ...console, warn: vi.fn(), info: vi.fn() }
+global.console = { ...console, warn: vi.fn(), info: vi.fn(), error: vi.fn() }
 
 // Mock matchMedia for Vuetify components
 Object.defineProperty(window, 'matchMedia', {

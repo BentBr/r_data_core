@@ -208,6 +208,22 @@
     }
 </script>
 
+<script lang="ts">
+export default {
+    // Expose selected internals for stable tests
+    expose: [
+        'openRunNow',
+        'confirmRunNow',
+        'uploadEnabled',
+        'uploadFile',
+        'activeTab',
+        'selectedWorkflowUuid',
+        'loadRuns',
+        'showRunDialog',
+    ],
+}
+</script>
+
 <template>
     <div class="page-wrapper">
         <div class="page">

@@ -83,7 +83,11 @@ impl WorkflowService {
         self.repo.get_by_uuid(uuid).await
     }
 
-    pub async fn create(&self, req: &CreateWorkflowRequest, created_by: Uuid) -> anyhow::Result<Uuid> {
+    pub async fn create(
+        &self,
+        req: &CreateWorkflowRequest,
+        created_by: Uuid,
+    ) -> anyhow::Result<Uuid> {
         if let Some(expr) = &req.schedule_cron {
             Schedule::from_str(expr)
                 .map_err(|e| anyhow::anyhow!("Invalid cron schedule: {}", e))?;
@@ -94,7 +98,12 @@ impl WorkflowService {
         self.repo.create(req, created_by).await
     }
 
-    pub async fn update(&self, uuid: Uuid, req: &UpdateWorkflowRequest, updated_by: Uuid) -> anyhow::Result<()> {
+    pub async fn update(
+        &self,
+        uuid: Uuid,
+        req: &UpdateWorkflowRequest,
+        updated_by: Uuid,
+    ) -> anyhow::Result<()> {
         if let Some(expr) = &req.schedule_cron {
             Schedule::from_str(expr)
                 .map_err(|e| anyhow::anyhow!("Invalid cron schedule: {}", e))?;

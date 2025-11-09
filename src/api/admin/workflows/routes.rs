@@ -250,10 +250,7 @@ pub async fn create_workflow(
         None => return ApiResponse::<()>::internal_error("No authentication claims found"),
     };
 
-    let created = state
-        .workflow_service
-        .create(&body.0, created_by)
-        .await;
+    let created = state.workflow_service.create(&body.0, created_by).await;
 
     match created {
         Ok(uuid) => ApiResponse::<CreateWorkflowResponse>::created(CreateWorkflowResponse { uuid }),

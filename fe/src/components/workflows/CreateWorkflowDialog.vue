@@ -1,7 +1,7 @@
 <template>
     <v-dialog
         v-model="model"
-        max-width="720px"
+        max-width="1200px"
     >
         <v-card>
             <v-card-title>{{ t('workflows.create.title') }}</v-card-title>
@@ -235,4 +235,11 @@
         },
         { deep: true }
     )
+</script>
+
+<script lang="ts">
+export default {
+    // Expose for tests
+    expose: ['submit', 'steps', 'configJson', 'configError'],
+}
 </script>

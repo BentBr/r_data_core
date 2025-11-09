@@ -54,7 +54,11 @@ impl WorkflowRepository {
         }
     }
 
-    pub async fn create(&self, req: &CreateWorkflowRequest, created_by: Uuid) -> anyhow::Result<Uuid> {
+    pub async fn create(
+        &self,
+        req: &CreateWorkflowRequest,
+        created_by: Uuid,
+    ) -> anyhow::Result<Uuid> {
         let row = sqlx::query(
             r#"
             INSERT INTO workflows (name, description, kind, enabled, schedule_cron, config, created_by)
@@ -76,7 +80,12 @@ impl WorkflowRepository {
         Ok(row.try_get("uuid")?)
     }
 
-    pub async fn update(&self, uuid: Uuid, req: &UpdateWorkflowRequest, updated_by: Uuid) -> anyhow::Result<()> {
+    pub async fn update(
+        &self,
+        uuid: Uuid,
+        req: &UpdateWorkflowRequest,
+        updated_by: Uuid,
+    ) -> anyhow::Result<()> {
         sqlx::query(
             r#"
             UPDATE workflows
@@ -417,7 +426,12 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
     async fn create(&self, req: &CreateWorkflowRequest, created_by: Uuid) -> anyhow::Result<Uuid> {
         self.create(req, created_by).await
     }
-    async fn update(&self, uuid: Uuid, req: &UpdateWorkflowRequest, updated_by: Uuid) -> anyhow::Result<()> {
+    async fn update(
+        &self,
+        uuid: Uuid,
+        req: &UpdateWorkflowRequest,
+        updated_by: Uuid,
+    ) -> anyhow::Result<()> {
         self.update(uuid, req, updated_by).await
     }
     async fn delete(&self, uuid: Uuid) -> anyhow::Result<()> {

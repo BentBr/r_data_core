@@ -54,8 +54,10 @@ async fn create_sets_created_by_and_fk_enforced() -> anyhow::Result<()> {
     assert_eq!(stored_created_by, creator_uuid);
 
     // Try to delete the admin user -> expect FK restriction error
-    let delete_res =
-        sqlx::query("DELETE FROM admin_users WHERE uuid = $1").bind(creator_uuid).execute(&pool).await;
+    let delete_res = sqlx::query("DELETE FROM admin_users WHERE uuid = $1")
+        .bind(creator_uuid)
+        .execute(&pool)
+        .await;
     assert!(
         delete_res.is_err(),
         "Expected FK restriction to prevent deleting referenced admin user"
@@ -115,8 +117,10 @@ async fn update_sets_updated_by_and_fk_enforced() -> anyhow::Result<()> {
     assert_eq!(stored_updated_by, Some(updater_uuid));
 
     // Deleting updater should be restricted
-    let delete_res =
-        sqlx::query("DELETE FROM admin_users WHERE uuid = $1").bind(updater_uuid).execute(&pool).await;
+    let delete_res = sqlx::query("DELETE FROM admin_users WHERE uuid = $1")
+        .bind(updater_uuid)
+        .execute(&pool)
+        .await;
     assert!(
         delete_res.is_err(),
         "Expected FK restriction to prevent deleting referenced admin user (updated_by)"
@@ -124,5 +128,3 @@ async fn update_sets_updated_by_and_fk_enforced() -> anyhow::Result<()> {
 
     Ok(())
 }
-
-

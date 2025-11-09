@@ -235,11 +235,11 @@ impl WorkerConfig {
                 .parse()
                 .unwrap_or(10),
         };
-        
+
         Ok(Self {
             job_queue_update_interval_secs,
             database,
-            workflow
+            workflow,
         })
     }
 }

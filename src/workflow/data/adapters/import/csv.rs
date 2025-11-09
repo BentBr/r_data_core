@@ -13,6 +13,7 @@ impl CsvImportAdapter {
     /// - format.has_header: bool (default: true)
     /// - format.delimiter: string of length 1 (default: ",")
     /// - format.quote: string of length 1 (optional)
+    /// - format.escape: string of length 1 (optional)
     pub fn parse_inline(
         inline: &str,
         format_cfg: &serde_json::Value,
@@ -30,12 +31,19 @@ impl CsvImportAdapter {
             .pointer("/quote")
             .and_then(|v| v.as_str())
             .and_then(|s| s.as_bytes().first().copied());
+        let escape = format_cfg
+            .pointer("/escape")
+            .and_then(|v| v.as_str())
+            .and_then(|s| s.as_bytes().first().copied());
 
         let mut builder = csv::ReaderBuilder::new();
         builder.has_headers(has_header);
         builder.delimiter(delimiter);
         if let Some(q) = quote {
             builder.quote(q);
+        }
+        if let Some(e) = escape {
+            builder.escape(Some(e));
         }
 
         let mut rdr = builder.from_reader(inline.as_bytes());

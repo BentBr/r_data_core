@@ -56,7 +56,12 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         self.inner.create(req, created_by).await
     }
 
-    async fn update(&self, uuid: Uuid, req: &UpdateWorkflowRequest, updated_by: Uuid) -> anyhow::Result<()> {
+    async fn update(
+        &self,
+        uuid: Uuid,
+        req: &UpdateWorkflowRequest,
+        updated_by: Uuid,
+    ) -> anyhow::Result<()> {
         self.inner.update(uuid, req, updated_by).await
     }
 

@@ -1174,6 +1174,22 @@ class TypedHttpClient {
             }
         )
     }
+
+    // New: entity fields helper for DSL mapping
+    async getEntityFields(entityType: string): Promise<Array<{ name: string; type: string; required: boolean; system: boolean }>> {
+        const Schema = z.array(
+            z.object({
+                name: z.string(),
+                type: z.string(),
+                required: z.boolean(),
+                system: z.boolean(),
+            })
+        )
+        return this.request(
+            `/admin/api/v1/entity-definitions/${encodeURIComponent(entityType)}/fields`,
+            ApiResponseSchema(Schema)
+        )
+    }
 }
 
 export const typedHttpClient = new TypedHttpClient()

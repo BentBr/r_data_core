@@ -1,9 +1,17 @@
 import { z } from 'zod'
 import { ApiResponseSchema } from './base'
 
+const CsvOptionsSchema = z.object({
+    header: z.boolean().default(true),
+    delimiter: z.string().min(1).max(1).default(','),
+    escape: z.string().min(1).max(1).optional(),
+    quote: z.string().min(1).max(1).optional(),
+})
+
 export const DslFromCsvSchema = z.object({
     type: z.literal('csv'),
     uri: z.string(),
+    options: CsvOptionsSchema.optional(),
     mapping: z.record(z.string(), z.string()),
 })
 
@@ -34,6 +42,7 @@ export const DslFromSchema = z.discriminatedUnion('type', [
 export const DslToCsvSchema = z.object({
     type: z.literal('csv'),
     output: z.enum(['api', 'download']),
+    options: CsvOptionsSchema.optional(),
     mapping: z.record(z.string(), z.string()),
 })
 export const DslToJsonSchema = z.object({
@@ -47,6 +56,7 @@ export const DslToEntitySchema = z.object({
     path: z.string(),
     mode: z.enum(['create', 'update']),
     identify: DslEntityFilterSchema.optional(),
+    update_key: z.string().optional(),
     mapping: z.record(z.string(), z.string()),
 })
 export const DslToSchema = z.discriminatedUnion('type', [

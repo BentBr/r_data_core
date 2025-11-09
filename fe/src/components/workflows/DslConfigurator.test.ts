@@ -7,6 +7,8 @@ vi.mock('@/api/typed-client', () => ({
         getDslFromOptions: vi.fn().mockResolvedValue({}),
         getDslToOptions: vi.fn().mockResolvedValue({}),
         getDslTransformOptions: vi.fn().mockResolvedValue({}),
+        getEntityDefinitions: vi.fn().mockResolvedValue({ data: [], meta: { pagination: { total: 0 } } }),
+        getEntityFields: vi.fn().mockResolvedValue([]),
     },
 }))
 

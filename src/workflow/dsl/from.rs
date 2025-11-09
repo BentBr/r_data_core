@@ -17,6 +17,9 @@ pub enum FromDef {
     /// CSV input (uri is replaced with uploaded file during manual runs)
     Csv {
         uri: String,
+        /// CSV parsing options (header/delimiter/escape/quote)
+        #[serde(default)]
+        options: super::CsvOptions,
         /// One-to-one mapping: source_field -> normalized_field
         mapping: std::collections::HashMap<String, String>,
     },
@@ -37,7 +40,40 @@ pub enum FromDef {
 
 pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> Result<()> {
     match from {
-        FromDef::Csv { uri, mapping } | FromDef::Json { uri, mapping } => {
+        FromDef::Csv {
+            uri,
+            options,
+            mapping,
+        } => {
+            if uri.trim().is_empty() {
+                bail!("DSL step {}: from.uri must not be empty", idx);
+            }
+            if options.delimiter.len() != 1 {
+                bail!(
+                    "DSL step {}: from.csv.options.delimiter must be a single character",
+                    idx
+                );
+            }
+            if let Some(esc) = &options.escape {
+                if !esc.is_empty() && esc.len() != 1 {
+                    bail!(
+                        "DSL step {}: from.csv.options.escape must be a single character when set",
+                        idx
+                    );
+                }
+            }
+            if let Some(q) = &options.quote {
+                if !q.is_empty() && q.len() != 1 {
+                    bail!(
+                        "DSL step {}: from.csv.options.quote must be a single character when set",
+                        idx
+                    );
+                }
+            }
+            // Allow empty mappings
+            validate_mapping(idx, mapping, safe_field)?;
+        }
+        FromDef::Json { uri, mapping } => {
             if uri.trim().is_empty() {
                 bail!("DSL step {}: from.uri must not be empty", idx);
             }

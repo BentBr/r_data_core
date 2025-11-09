@@ -2,6 +2,7 @@ use crate::api::auth::auth_enum;
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use log::{debug, error, info};
 use serde_json::json;
+use serde::Serialize;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -11,6 +12,7 @@ use crate::api::query::PaginationQuery;
 use crate::api::response::ApiResponse;
 use crate::api::ApiState;
 use crate::entity::EntityDefinition;
+use utoipa::ToSchema;
 
 /// List entity definitions with pagination
 #[utoipa::path(
@@ -456,5 +458,55 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
         .service(create_entity_definition)
         .service(update_entity_definition)
         .service(delete_entity_definition)
-        .service(apply_entity_definition_schema);
+        .service(apply_entity_definition_schema)
+        .service(list_entity_fields_by_type);
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+struct EntityFieldInfo {
+    name: String,
+    r#type: String,
+    required: bool,
+    system: bool,
+}
+
+/// List all fields for an entity definition by entity_type, including system fields
+#[utoipa::path(
+    get,
+    path = "/admin/api/v1/entity-definitions/{entity_type}/fields",
+    tag = "entity-definitions",
+    params(("entity_type" = String, Path, description = "Entity type identifier")),
+    responses(
+        (status = 200, description = "Fields for entity type (including system fields)", body = [EntityFieldInfo]),
+        (status = 404, description = "Entity definition not found")
+    ),
+    security(("jwt" = []))
+)]
+#[get("/{entity_type}/fields")]
+async fn list_entity_fields_by_type(
+    data: web::Data<ApiState>,
+    path: web::Path<String>,
+    _: auth_enum::RequiredAuth,
+) -> impl Responder {
+    let entity_type = path.into_inner();
+    match data
+        .entity_definition_service
+        .list_fields_with_system_by_entity_type(&entity_type)
+        .await
+    {
+        Ok(items) => {
+            let api_items: Vec<EntityFieldInfo> = items
+                .into_iter()
+                .map(|i| EntityFieldInfo {
+                    name: i.name,
+                    r#type: i.field_type,
+                    required: i.required,
+                    system: i.system,
+                })
+                .collect::<Vec<EntityFieldInfo>>();
+            ApiResponse::ok(api_items)
+        }
+        Err(crate::error::Error::NotFound(_)) => ApiResponse::<()>::not_found("Entity definition"),
+        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to load fields: {}", e)),
+    }
 }

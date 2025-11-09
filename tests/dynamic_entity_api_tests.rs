@@ -10,7 +10,7 @@ use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core::error::{Error, Result};
 use r_data_core::services::{DynamicEntityService, EntityDefinitionService};
 use serde_json::json;
-use sqlx::{PgPool};
+use sqlx::PgPool;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Once;

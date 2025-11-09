@@ -1,7 +1,7 @@
 <template>
     <v-dialog
         v-model="model"
-        max-width="720px"
+        max-width="1200px"
     >
         <v-card>
             <v-card-title>Edit Workflow</v-card-title>

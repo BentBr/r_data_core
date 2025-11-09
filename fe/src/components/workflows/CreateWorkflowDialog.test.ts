@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import CreateWorkflowDialog from './CreateWorkflowDialog.vue'
 
 vi.mock('@/api/typed-client', () => ({
@@ -7,6 +8,12 @@ vi.mock('@/api/typed-client', () => ({
         previewCron: vi.fn().mockResolvedValue(['2025-01-01T00:00:00Z']),
         validateDsl: vi.fn().mockResolvedValue({ ok: true }),
         createWorkflow: vi.fn().mockResolvedValue({ uuid: '019a46aa-582d-7f51-8782-641a00ec534c' }),
+        // Needed by nested DslConfigurator
+        getDslFromOptions: vi.fn().mockResolvedValue({}),
+        getDslToOptions: vi.fn().mockResolvedValue({}),
+        getDslTransformOptions: vi.fn().mockResolvedValue({}),
+        getEntityDefinitions: vi.fn().mockResolvedValue({ data: [], meta: { pagination: { total: 0 } } }),
+        getEntityFields: vi.fn().mockResolvedValue([]),
     },
     ValidationError: class ValidationError extends Error {
         violations: Array<{ field: string; message: string }>
@@ -26,57 +33,39 @@ describe('CreateWorkflowDialog', () => {
         vi.clearAllMocks()
     })
 
-    it.skip('submits with DSL steps and emits created', async () => {
+    it('submits with DSL steps and emits created', async () => {
         const wrapper = mount(CreateWorkflowDialog, {
             props: { modelValue: true },
         })
 
-        // Open the config expansion (button contains 'config_label')
-        const expander = wrapper.findAll('button').find(b => /config_label/i.test(b.text()))
-        if (expander) {
-            await expander.trigger('click')
-        }
-        // Fill config JSON textarea with valid steps
-        const textarea = wrapper.findAll('textarea').at(-1)
-        expect(textarea).toBeTruthy()
-        await textarea!.setValue(
-            JSON.stringify(
-                {
-                    steps: [
-                        {
-                            from: { type: 'csv', uri: 'http://example.com/data.csv', mapping: {} },
-                            transform: { type: 'none' },
-                            to: { type: 'json', output: 'api', mapping: {} },
-                        },
-                    ],
-                },
-                null,
-                2
-            )
-        )
+        // Inject DSL via child configurator emit to avoid relying on expansion/textarea rendering
+        const dsl = [
+            {
+                from: { type: 'csv', uri: 'http://example.com/data.csv', options: { header: true }, mapping: {} },
+                transform: { type: 'none' },
+                to: { type: 'json', output: 'api', mapping: {} },
+            },
+        ]
+        // Set steps directly via exposed API
+        ;(wrapper.vm as any).steps = dsl
+        await nextTick()
 
-        // Click create button via VBtn component
-        const createBtn = wrapper.findAll('button').find(b => /create_button/i.test(b.text()))
-        expect(createBtn).toBeTruthy()
-        await createBtn!.trigger('click')
+        await (wrapper.vm as any).submit()
 
         const emitted = wrapper.emitted('created') as any[]
         expect(emitted?.length).toBe(1)
         expect(emitted[0][0]).toBeTypeOf('string')
     })
 
-    it.skip('shows validation error when DSL missing', async () => {
+    it('shows validation error when DSL missing', async () => {
         const wrapper = mount(CreateWorkflowDialog, {
             props: { modelValue: true },
         })
         // Trigger submit without providing steps/DSL
-        const createBtn = wrapper.findAll('button').find(b => /create_button/i.test(b.text()))
-        expect(createBtn).toBeTruthy()
-        await createBtn!.trigger('click')
+        await (wrapper.vm as any).submit()
 
-        const text = wrapper.text().toLowerCase()
-        // Expect an error string from translations: 'dsl_required'
-        expect(text.includes('dsl_required')).toBe(true)
+        // Expect validation state set
+        expect((wrapper.vm as any).configError?.toLowerCase()?.includes('dsl_required')).toBe(true)
     })
 })
 

@@ -1,3 +1,4 @@
+mod csv;
 mod from;
 mod processor;
 mod to;
@@ -9,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use utoipa::ToSchema;
 
+pub use csv::CsvOptions;
 pub use from::{EntityFilter, FromDef};
 pub use processor::DslProcessor;
 pub use to::{EntityWriteMode, OutputMode, ToDef};

@@ -11,7 +11,12 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
     async fn count_all(&self) -> anyhow::Result<i64>;
     async fn get_by_uuid(&self, uuid: Uuid) -> anyhow::Result<Option<Workflow>>;
     async fn create(&self, req: &CreateWorkflowRequest, created_by: Uuid) -> anyhow::Result<Uuid>;
-    async fn update(&self, uuid: Uuid, req: &UpdateWorkflowRequest, updated_by: Uuid) -> anyhow::Result<()>;
+    async fn update(
+        &self,
+        uuid: Uuid,
+        req: &UpdateWorkflowRequest,
+        updated_by: Uuid,
+    ) -> anyhow::Result<()>;
     async fn delete(&self, uuid: Uuid) -> anyhow::Result<()>;
     async fn list_scheduled_consumers(&self) -> anyhow::Result<Vec<(Uuid, String)>>;
     async fn insert_run_queued(
