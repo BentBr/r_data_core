@@ -611,10 +611,23 @@ async fn persist_entity_create(
         }
     }
     // Respect path from config if not already set by mapping/normalized
+    // Also normalize path from mapping if it doesn't start with /
     if let Some(p) = path {
+        let normalized_path = if p.starts_with('/') {
+            p.to_string()
+        } else {
+            format!("/{}", p)
+        };
         field_data
             .entry("path".to_string())
-            .or_insert_with(|| serde_json::json!(p));
+            .or_insert_with(|| serde_json::json!(normalized_path));
+    } else if let Some(path_value) = field_data.get("path") {
+        // Normalize path from mapping if it doesn't start with /
+        if let Some(path_str) = path_value.as_str() {
+            if !path_str.starts_with('/') {
+                field_data.insert("path".to_string(), serde_json::json!(format!("/{}", path_str)));
+            }
+        }
     }
 
     // Fetch entity definition from the embedded definition service
@@ -700,22 +713,7 @@ async fn persist_entity_create(
         .entry("updated_by".to_string())
         .or_insert_with(|| serde_json::json!(run_uuid.to_string()));
 
-    // Derive entity_key if missing: prefer 'username', then 'email'
-    if !normalized_field_data.contains_key("entity_key") {
-        if let Some(serde_json::Value::String(u)) = normalized_field_data.get("username") {
-            if !u.trim().is_empty() {
-                normalized_field_data.insert("entity_key".to_string(), serde_json::json!(u));
-            }
-        }
-        if !normalized_field_data.contains_key("entity_key") {
-            if let Some(serde_json::Value::String(e)) = normalized_field_data.get("email") {
-                if !e.trim().is_empty() {
-                    normalized_field_data.insert("entity_key".to_string(), serde_json::json!(e));
-                }
-            }
-        }
-    }
-    // If still missing, generate `<entity_type>-<count+1>-<hash8>`
+    // If entity_key is missing, generate `<entity_type>-<count+1>-<hash8>`
     if !normalized_field_data.contains_key("entity_key") {
         let existing_count = de_service.count_entities(entity_type).await.unwrap_or(0);
         let rand = uuid::Uuid::now_v7().to_string();

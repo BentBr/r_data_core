@@ -18,6 +18,13 @@ vi.mock('@/composables/useTranslations', () => ({
     useTranslations: () => ({ t: (k: string) => k }),
 }))
 
+vi.mock('@/composables/useEntityDefinitions', () => ({
+    useEntityDefinitions: () => ({
+        entityDefinitions: { value: [] },
+        loadEntityDefinitions: vi.fn().mockResolvedValue(undefined),
+    }),
+}))
+
 describe('DslConfigurator', () => {
     beforeEach(() => {
         vi.clearAllMocks()

@@ -158,9 +158,15 @@
             configJson.value = JSON.stringify(data.config ?? {}, null, 2)
             try {
                 const cfg: any = data.config ?? {}
+                isSyncingSteps = true
                 steps.value = Array.isArray(cfg.steps) ? cfg.steps : []
+                // Reset flag after next tick
+                setTimeout(() => {
+                    isSyncingSteps = false
+                }, 0)
             } catch {
                 steps.value = []
+                isSyncingSteps = false
             }
         } finally {
             loading.value = false
@@ -206,8 +212,13 @@
         }
         configError.value = null
         cronError.value = null
+        // Sync steps to config JSON before validation
         if (steps.value && steps.value.length > 0) {
+            isSyncingSteps = true
             configJson.value = JSON.stringify({ steps: steps.value }, null, 2)
+            setTimeout(() => {
+                isSyncingSteps = false
+            }, 0)
         }
         const parsedConfig = parseJson(configJson.value)
         if (parsedConfig === null) {
@@ -258,16 +269,25 @@
         }
     }
 
-    // Keep config JSON updated when steps change
+    // Sync config JSON when steps change, but only on explicit updates (not during prop sync)
+    // We use a flag to prevent recursive updates
+    let isSyncingSteps = false
     watch(
-        steps,
-        v => {
+        () => steps.value,
+        (v) => {
+            if (isSyncingSteps) {
+                return
+            }
             try {
-                configJson.value = JSON.stringify({ steps: v }, null, 2)
+                const newJson = JSON.stringify({ steps: v }, null, 2)
+                // Only update if different to prevent loops
+                if (configJson.value !== newJson) {
+                    configJson.value = newJson
+                }
             } catch {
                 // ignore
             }
         },
-        { deep: true }
+        { deep: false } // Shallow watch to prevent deep reactivity issues
     )
 </script>

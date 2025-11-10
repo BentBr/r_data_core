@@ -105,6 +105,8 @@
       "mode": "Mode",
       "update_key": "Update key",
       "destination": "destination",
+      "entity_field": "Entity field",
+      "normalized_field": "Normalized field",
       "step_label": "Step {n}"
     },
     "create": {

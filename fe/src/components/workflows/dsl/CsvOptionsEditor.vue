@@ -1,34 +1,38 @@
 <template>
     <div class="d-flex ga-2 mb-2 flex-wrap">
         <v-checkbox
-            v-model="opts.header"
+            :model-value="opts.header"
             :label="t('workflows.dsl.csv_header')"
             color="success"
             density="comfortable"
+            @update:model-value="updateField('header', $event)"
         />
         <v-text-field
-            v-model="opts.delimiter"
+            :model-value="opts.delimiter"
             :label="t('workflows.dsl.csv_delimiter')"
             density="comfortable"
             style="max-width: 120px"
+            @update:model-value="updateField('delimiter', $event)"
         />
         <v-text-field
-            v-model="opts.escape"
+            :model-value="opts.escape"
             :label="t('workflows.dsl.csv_escape')"
             density="comfortable"
             style="max-width: 120px"
+            @update:model-value="updateField('escape', $event)"
         />
         <v-text-field
-            v-model="opts.quote"
+            :model-value="opts.quote"
             :label="t('workflows.dsl.csv_quote')"
             density="comfortable"
             style="max-width: 120px"
+            @update:model-value="updateField('quote', $event)"
         />
     </div>
 </template>
 
 <script setup lang="ts">
-    import { ref, watch } from 'vue'
+    import { ref, watch, nextTick } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
 
     type CsvOptions = { header?: boolean; delimiter?: string; escape?: string; quote?: string }
@@ -43,19 +47,28 @@
 
     const opts = ref<CsvOptions>({ ...(props.modelValue || defaults()) })
 
+    // Update local state when prop changes
     watch(
         () => props.modelValue,
-        v => {
-            opts.value = { ...(v || defaults()) }
+        (v) => {
+            const newOpts = { ...(v || defaults()) }
+            // Only update if actually different to prevent loops
+            const currentStr = JSON.stringify(opts.value)
+            const newStr = JSON.stringify(newOpts)
+            if (currentStr !== newStr) {
+                opts.value = newOpts
+            }
         },
         { immediate: true }
     )
 
-    watch(
-        () => opts.value,
-        v => emit('update:modelValue', { ...v }),
-        { deep: true }
-    )
+    function updateField(field: keyof CsvOptions, value: any) {
+        opts.value = { ...opts.value, [field]: value }
+        // Use nextTick to batch updates and prevent recursive loops
+        nextTick(() => {
+            emit('update:modelValue', { ...opts.value })
+        })
+    }
 </script>
 
 <style scoped>

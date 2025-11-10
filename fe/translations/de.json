@@ -105,6 +105,8 @@
       "mode": "Modus",
       "update_key": "Aktualisierungsschlüssel",
       "destination": "ziel",
+      "entity_field": "Entitätsfeld",
+      "normalized_field": "Normalisiertes Feld",
       "step_label": "Schritt {n}"
     },
     "create": {
