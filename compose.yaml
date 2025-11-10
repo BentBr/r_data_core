@@ -65,7 +65,12 @@ services:
     app:
         build:
             context: .
-            dockerfile: ./.docker/app/Dockerfile_local_app
+            dockerfile: ./.docker/app/Dockerfile
+            args:
+                RUST_VERSION: "1.88.0"
+                BUILD_MODE: "debug"
+                BINARY_NAME: "r_data_core"
+                RUST_LOG_LEVEL: "info"
         container_name: rdata_app
         volumes:
             - .env:/usr/local/bin/.env:ro
@@ -102,7 +107,12 @@ services:
     worker:
         build:
             context: .
-            dockerfile: ./.docker/app/Dockerfile_local_worker
+            dockerfile: ./.docker/app/Dockerfile
+            args:
+                RUST_VERSION: "1.88.0"
+                BUILD_MODE: "debug"
+                BINARY_NAME: "worker"
+                RUST_LOG_LEVEL: "info"
         container_name: rdata_worker
         volumes:
             - .env:/usr/local/bin/.env:ro
