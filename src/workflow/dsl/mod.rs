@@ -77,7 +77,10 @@ impl DslProgram {
                     }
                 }
             } else {
-                for (src, dst) in mapping.iter() {
+                // Sort mapping entries to ensure deterministic execution
+                let mut sorted_mapping: Vec<_> = mapping.iter().collect();
+                sorted_mapping.sort_by_key(|(src, _)| *src);
+                for (src, dst) in sorted_mapping {
                     let v = get_nested(input, src).unwrap_or(Value::Null);
                     set_nested(&mut normalized, dst, v);
                 }
@@ -127,7 +130,12 @@ impl DslProgram {
                 }
                 _ => {
                     let out_mapping = to::mapping_of(&step.to);
-                    for (src, dst) in out_mapping.iter() {
+                    // Sort mapping entries by destination to ensure deterministic execution
+                    // This ensures reserved fields like 'path' are processed in a consistent order
+                    // Mapping structure: { destination_field: normalized_field }
+                    let mut sorted_mapping: Vec<_> = out_mapping.iter().collect();
+                    sorted_mapping.sort_by_key(|(dst, _)| *dst);
+                    for (dst, src) in sorted_mapping {
                         let v = get_nested(&normalized, src).unwrap_or(Value::Null);
                         set_nested(&mut produced, dst, v);
                     }
@@ -148,7 +156,10 @@ impl DslProgram {
             // Normalize
             let mut normalized = json!({});
             let mapping = from::mapping_of(&step.from);
-            for (src, dst) in mapping.iter() {
+            // Sort mapping entries to ensure deterministic execution
+            let mut sorted_mapping: Vec<_> = mapping.iter().collect();
+            sorted_mapping.sort_by_key(|(src, _)| *src);
+            for (src, dst) in sorted_mapping {
                 let v = get_nested(input, src).unwrap_or(Value::Null);
                 set_nested(&mut normalized, dst, v);
             }
@@ -191,7 +202,12 @@ impl DslProgram {
             // Map to output
             let out_mapping = to::mapping_of(&step.to);
             let mut produced = json!({});
-            for (src, dst) in out_mapping.iter() {
+            // Sort mapping entries by destination to ensure deterministic execution
+            // This ensures reserved fields like 'path' are processed in a consistent order
+            // Mapping structure: { destination_field: normalized_field }
+            let mut sorted_out_mapping: Vec<_> = out_mapping.iter().collect();
+            sorted_out_mapping.sort_by_key(|(dst, _)| *dst);
+            for (dst, src) in sorted_out_mapping {
                 let v = get_nested(&normalized, src).unwrap_or(Value::Null);
                 set_nested(&mut produced, dst, v);
             }
@@ -301,7 +317,9 @@ mod tests {
                     "op": "add",
                     "right": { "kind": "const", "value": 5.0 }
                 },
-                "to": { "type": "json", "output": "api", "mapping": { "price": "entity.total" } }
+                // Mapping structure: { destination_field: normalized_field }
+                // So "entity.total" (destination) maps from normalized "price"
+                "to": { "type": "json", "output": "api", "mapping": { "entity.total": "price" } }
             }]
         });
         let prog = DslProgram::from_config(&config).unwrap();
@@ -313,4 +331,154 @@ mod tests {
     }
 
     // No validation failure on empty mappings anymore
+
+    #[test]
+    fn test_mapping_destination_to_normalized() {
+        // Test that mapping structure { destination_field: normalized_field } works correctly
+        // This tests the fix where we swap (src, dst) to (dst, src) in the iteration
+        let config = json!({
+            "steps": [{
+                "from": {
+                    "type": "csv",
+                    "uri": "http://example.com/data.csv",
+                    "mapping": {
+                        "email": "email",
+                        "active": "active",
+                        "firstName": "firstName",
+                        "lastName": "lastName"
+                    }
+                },
+                "transform": { "type": "none" },
+                "to": {
+                    "type": "entity",
+                    "entity_definition": "Customer",
+                    "path": "/test",
+                    "mode": "create",
+                    "mapping": {
+                        "email": "email",
+                        "published": "active",
+                        "firstName": "firstName",
+                        "lastName": "lastName",
+                        "entity_key": "email"
+                    }
+                }
+            }]
+        });
+        let prog = DslProgram::from_config(&config).unwrap();
+        prog.validate().unwrap();
+
+        // Input has: email, active, firstName, lastName
+        let input = json!({
+            "email": "test@example.com",
+            "active": true,
+            "firstName": "John",
+            "lastName": "Doe"
+        });
+
+        // Execute should produce: email, published (from active), firstName, lastName, entity_key (from email)
+        let outputs = prog.execute(&input).unwrap();
+        assert_eq!(outputs.len(), 1);
+        
+        let (to_def, produced) = &outputs[0];
+        match to_def {
+            ToDef::Entity { .. } => {
+                // Verify that "active" was mapped to "published"
+                assert_eq!(produced["published"], json!(true));
+                // Verify that "email" was mapped to both "email" and "entity_key"
+                assert_eq!(produced["email"], json!("test@example.com"));
+                assert_eq!(produced["entity_key"], json!("test@example.com"));
+                // Verify that "active" is NOT in the output (should be "published" instead)
+                assert!(!produced.as_object().unwrap().contains_key("active"));
+                // Verify other fields
+                assert_eq!(produced["firstName"], json!("John"));
+                assert_eq!(produced["lastName"], json!("Doe"));
+            }
+            _ => panic!("Expected Entity ToDef"),
+        }
+    }
+
+    #[test]
+    fn test_mapping_same_field_multiple_times() {
+        // Test that the same normalized field can be mapped to multiple destination fields
+        let config = json!({
+            "steps": [{
+                "from": {
+                    "type": "csv",
+                    "uri": "http://example.com/data.csv",
+                    "mapping": {
+                        "email": "email"
+                    }
+                },
+                "transform": { "type": "none" },
+                "to": {
+                    "type": "entity",
+                    "entity_definition": "Customer",
+                    "path": "/test",
+                    "mode": "create",
+                    "mapping": {
+                        "email": "email",
+                        "entity_key": "email"
+                    }
+                }
+            }]
+        });
+        let prog = DslProgram::from_config(&config).unwrap();
+        prog.validate().unwrap();
+
+        let input = json!({
+            "email": "test@example.com"
+        });
+
+        let outputs = prog.execute(&input).unwrap();
+        assert_eq!(outputs.len(), 1);
+        
+        let (_, produced) = &outputs[0];
+        // Both email and entity_key should have the same value
+        assert_eq!(produced["email"], json!("test@example.com"));
+        assert_eq!(produced["entity_key"], json!("test@example.com"));
+    }
+
+    #[test]
+    fn test_mapping_apply_consistency() {
+        // Test that apply() method has the same behavior as execute() for mapping
+        let config = json!({
+            "steps": [{
+                "from": {
+                    "type": "csv",
+                    "uri": "http://example.com/data.csv",
+                    "mapping": {
+                        "active": "active"
+                    }
+                },
+                "transform": { "type": "none" },
+                "to": {
+                    "type": "entity",
+                    "entity_definition": "Customer",
+                    "path": "/test",
+                    "mode": "create",
+                    "mapping": {
+                        "published": "active"
+                    }
+                }
+            }]
+        });
+        let prog = DslProgram::from_config(&config).unwrap();
+        prog.validate().unwrap();
+
+        let input = json!({
+            "active": true
+        });
+
+        // Test apply()
+        let out = prog.apply(&input).unwrap();
+        assert_eq!(out["published"], json!(true));
+        assert!(!out.as_object().unwrap().contains_key("active"));
+
+        // Test execute() - should produce same result
+        let outputs = prog.execute(&input).unwrap();
+        assert_eq!(outputs.len(), 1);
+        let (_, produced) = &outputs[0];
+        assert_eq!(produced["published"], json!(true));
+        assert!(!produced.as_object().unwrap().contains_key("active"));
+    }
 }

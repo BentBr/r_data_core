@@ -610,18 +610,18 @@ async fn persist_entity_create(
             field_data.insert(k.clone(), v.clone());
         }
     }
-    // Respect path from config if not already set by mapping/normalized
-    // Also normalize path from mapping if it doesn't start with /
+    // Respect path from config - it should always override path from mapping
+    // Path is a reserved field and should come from the workflow config, not from data mapping
     if let Some(p) = path {
         let normalized_path = if p.starts_with('/') {
             p.to_string()
         } else {
             format!("/{}", p)
         };
-        field_data
-            .entry("path".to_string())
-            .or_insert_with(|| serde_json::json!(normalized_path));
+        // Always use the path from config, overriding any path from mapping
+        field_data.insert("path".to_string(), serde_json::json!(normalized_path));
     } else if let Some(path_value) = field_data.get("path") {
+        // Only use path from mapping if config path is not provided
         // Normalize path from mapping if it doesn't start with /
         if let Some(path_str) = path_value.as_str() {
             if !path_str.starts_with('/') {
@@ -720,6 +720,23 @@ async fn persist_entity_create(
         let short = &rand[..8];
         let key = format!("{}-{}-{}", entity_type, existing_count + 1, short);
         normalized_field_data.insert("entity_key".to_string(), serde_json::json!(key));
+    }
+
+    // Log missing required fields for debugging inconsistent behavior
+    let missing_required_fields: Vec<String> = def
+        .fields
+        .iter()
+        .filter(|f| f.required && !normalized_field_data.contains_key(&f.name))
+        .map(|f| f.name.clone())
+        .collect();
+    if !missing_required_fields.is_empty() {
+        log::warn!(
+            "persist_entity_create: Missing required fields for entity_type={}, run_uuid={}, missing_fields={:?}, produced_keys={:?}",
+            entity_type,
+            run_uuid,
+            missing_required_fields,
+            produced.as_object().map(|o| o.keys().cloned().collect::<Vec<_>>()).unwrap_or_default()
+        );
     }
 
     let entity = DynamicEntity {

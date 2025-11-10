@@ -1,0 +1,32 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "csv",
+        "uri": "http://example.com/data.csv",
+        "mapping": {
+          "email": "email",
+          "name": "name"
+        },
+        "options": {
+          "header": true,
+          "delimiter": ","
+        }
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "entity",
+        "entity_definition": "Customer",
+        "path": "/test",
+        "mode": "create",
+        "mapping": {
+          "email": "email",
+          "name": "name"
+        }
+      }
+    }
+  ]
+}
+

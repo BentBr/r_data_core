@@ -19,7 +19,7 @@
         "type": "json",
         "output": "api",
         "mapping": {
-          "price": "entity.total"
+          "entity.total": "price"
         }
       }
     }
