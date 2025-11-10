@@ -187,4 +187,177 @@ async fn update_workflow_sets_updated_by() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[actix_web::test]
+async fn create_workflow_accepts_valid_complex_dsl_config() -> anyhow::Result<()> {
+    let (app, _pool, token) = setup_app_and_token().await?;
+
+    // Valid complex DSL config with mappings
+    let payload = serde_json::json!({
+        "name": format!("wf-valid-complex-{}", Uuid::now_v7()),
+        "description": "test complex DSL",
+        "kind": WorkflowKind::Consumer.to_string(),
+        "enabled": true,
+        "schedule_cron": null,
+        "config": {
+            "steps": [
+                {
+                    "from": {
+                        "type": "csv",
+                        "uri": "http://example.com/data.csv",
+                        "options": { "header": true, "delimiter": "," },
+                        "mapping": {
+                            "source_col1": "normalized_field1",
+                            "source_col2": "normalized_field2"
+                        }
+                    },
+                    "transform": {
+                        "type": "arithmetic",
+                        "target": "total",
+                        "left": { "kind": "field", "field": "normalized_field1" },
+                        "op": "add",
+                        "right": { "kind": "const", "value": 5.0 }
+                    },
+                    "to": {
+                        "type": "json",
+                        "output": "api",
+                        "mapping": {
+                            "normalized_field1": "output_field1",
+                            "normalized_field2": "output_field2",
+                            "total": "total"
+                        }
+                    }
+                }
+            ]
+        }
+    });
+
+    let req = test::TestRequest::post()
+        .uri("/admin/api/v1/workflows")
+        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .set_json(payload)
+        .to_request();
+
+    let resp = test::call_service(&app, req).await;
+    assert!(resp.status().is_success(), "Should accept valid complex DSL config");
+    
+    Ok(())
+}
+
+#[actix_web::test]
+async fn create_workflow_rejects_invalid_dsl_config_missing_from() -> anyhow::Result<()> {
+    let (app, _pool, token) = setup_app_and_token().await?;
+
+    // Invalid DSL config - missing 'from'
+    let payload = serde_json::json!({
+        "name": format!("wf-invalid-{}", Uuid::now_v7()),
+        "description": "test invalid DSL",
+        "kind": WorkflowKind::Consumer.to_string(),
+        "enabled": true,
+        "schedule_cron": null,
+        "config": {
+            "steps": [
+                {
+                    "transform": { "type": "none" },
+                    "to": { "type": "json", "output": "api", "mapping": {} }
+                }
+            ]
+        }
+    });
+
+    let req = test::TestRequest::post()
+        .uri("/admin/api/v1/workflows")
+        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .set_json(payload)
+        .to_request();
+
+    let resp = test::call_service(&app, req).await;
+    assert!(!resp.status().is_success(), "Should reject invalid DSL config with missing 'from'");
+    
+    Ok(())
+}
+
+#[actix_web::test]
+async fn create_workflow_rejects_invalid_dsl_config_empty_steps() -> anyhow::Result<()> {
+    let (app, _pool, token) = setup_app_and_token().await?;
+
+    // Invalid DSL config - empty steps array
+    let payload = serde_json::json!({
+        "name": format!("wf-invalid-empty-{}", Uuid::now_v7()),
+        "description": "test invalid DSL",
+        "kind": WorkflowKind::Consumer.to_string(),
+        "enabled": true,
+        "schedule_cron": null,
+        "config": {
+            "steps": []
+        }
+    });
+
+    let req = test::TestRequest::post()
+        .uri("/admin/api/v1/workflows")
+        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .set_json(payload)
+        .to_request();
+
+    let resp = test::call_service(&app, req).await;
+    assert!(!resp.status().is_success(), "Should reject invalid DSL config with empty steps");
+    
+    Ok(())
+}
+
+#[actix_web::test]
+async fn update_workflow_validates_dsl_config() -> anyhow::Result<()> {
+    let (app, pool, token) = setup_app_and_token().await?;
+
+    // First create a valid workflow
+    let repo = WorkflowRepository::new(pool.clone());
+    let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
+        .fetch_one(&pool)
+        .await?;
+    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
+        name: format!("wf-update-validate-{}", Uuid::now_v7()),
+        description: Some("test".to_string()),
+        kind: WorkflowKind::Consumer,
+        enabled: true,
+        schedule_cron: None,
+        config: serde_json::json!({
+            "steps": [
+                {
+                    "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} },
+                    "transform": { "type": "none" },
+                    "to": { "type": "json", "output": "api", "mapping": {} }
+                }
+            ]
+        }),
+    };
+    let wf_uuid = repo.create(&create_req, creator_uuid).await?;
+
+    // Try to update with invalid DSL config
+    let update_payload = serde_json::json!({
+        "name": format!("wf-update-validate-{}", Uuid::now_v7()),
+        "description": "updated",
+        "kind": WorkflowKind::Consumer.to_string(),
+        "enabled": true,
+        "schedule_cron": null,
+        "config": {
+            "steps": [
+                {
+                    "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} },
+                    "transform": { "type": "none" }
+                    // Missing 'to'
+                }
+            ]
+        }
+    });
+
+    let req = test::TestRequest::put()
+        .uri(&format!("/admin/api/v1/workflows/{}", wf_uuid))
+        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .set_json(update_payload)
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert!(!resp.status().is_success(), "Should reject update with invalid DSL config");
+
+    Ok(())
+}
+
 

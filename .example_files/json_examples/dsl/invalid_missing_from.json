@@ -1,0 +1,15 @@
+{
+  "steps": [
+    {
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "json",
+        "output": "api",
+        "mapping": {}
+      }
+    }
+  ]
+}
+

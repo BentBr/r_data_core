@@ -1,0 +1,25 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "csv",
+        "uri": "http://example.com/data.csv",
+        "mapping": {
+          "valid_field": "normalized_field",
+          "invalid-field": "target_field"
+        }
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "json",
+        "output": "api",
+        "mapping": {
+          "normalized_field": "output.field"
+        }
+      }
+    }
+  ]
+}
+

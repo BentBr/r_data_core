@@ -35,22 +35,26 @@ The project uses a dynamic entity model with the following key tables:
 ## Quick Start
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/yourusername/r-data-core.git
 cd r-data-core
 ```
 
 2. Start the services using Docker Compose:
+
 ```bash
 docker compose up -d postgres redis
 ```
 
 3. Run database migrations:
+
 ```bash
 cargo sqlx migrate run
 ```
 
 4. Start the application:
+
 ```bash
 cargo run
 ```
@@ -58,6 +62,7 @@ cargo run
 The application will be available at `http://rdatacore.docker:8888`.
 
 run via docker:
+
 ```bash
 docker compose up -d
 ```
@@ -67,48 +72,57 @@ The application will be available at `http://rdatacore.docker:80`.
 ## Development Setup
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/yourusername/r-data-core.git
 cd r-data-core
 ```
 
 2. Start the database and Redis:
+
 ```bash
 docker compose up -d postgres redis
 ```
 
 3. Set up environment variables:
+
 ```bash
 cp .env.example .env
 ```
 
 4. Run database migrations:
+
 ```bash
 cargo sqlx migrate run
 ```
 
 5. Start the development server:
+
 ```bash
 cargo run
 ```
 
 Run our applicaiton
+
 ```bash
 # Run the application with logging and backtrace enabled (info is defined in .env, debug for extensive output)
 RUST_BACKTRACE=1 RUST_LOG=info cargo run --bin r_data_core
 ```
 
 renew database:
+
 ```bash
 docker compose down -v && docker compose up -d redis postgres && sleep 7 && cargo sqlx migrate run
 ```
 
 update sqlx:
+
 ```bash
 cargo sqlx prepare
 ```
 
-testing: 
+testing:
+
 ```bash
 # Only r_data_core unit tests
 # Unit tests can run concurrently
@@ -123,11 +137,13 @@ DATABASE_URL="postgres://postgres:postgres@pg-test.rdatacore.docker:5433/rdata_t
 ```
 
 Hint:
+
 - Unit tests are within the `src` directory in each file
 - Integration tests are located in the `tests` directory
 - Tests can be run by their name without the `test_` prefix
 
 Binaries
+
 - `r_data_core` - The main application binary
 - `r_data_core_migrations` - The binary for running database migrations (or use `cargo sqlx migrate`)
 - `hash_password` - A utility for hashing passwords (for admin users)
@@ -135,17 +151,20 @@ Binaries
 ### Important Note about SQLx
 
 This project uses SQLx, which performs compile-time query verification. This means:
+
 - A running PostgreSQL database is required during compilation
 - The database must have all required tables and schema
 - Database migrations must be run before compiling the project
 
 If you encounter compilation errors about missing tables, ensure that:
+
 1. The database is running (`docker compose up -d postgres redis`)
 2. Migrations have been applied (`cargo sqlx migrate run`)
 
 ## API Documentation
 
 Once the server is running, you can access the API documentation at:
+
 ```
 http://rdatacore.docker/api/docs
 ```
@@ -184,6 +203,7 @@ The R Data Core provides a flexible system for defining and working with dynamic
 #### Class Definitions
 
 A **Class Definition** is a schema that defines the structure of an entity type. It includes:
+
 - A unique identifier
 - An entity type name (which becomes the table name)
 - A set of field definitions
@@ -197,6 +217,7 @@ You can find example JSON files in [example files](.example_files/json_examples)
 #### Fields
 
 Each **Field Definition** within a class specifies:
+
 - Field name and display name
 - Data type (String, Integer, Boolean, DateTime, etc.)
 - Validation rules (required, min/max length, patterns, etc.)
@@ -206,6 +227,7 @@ Each **Field Definition** within a class specifies:
 #### Dynamic Entities
 
 A **Dynamic Entity** is an actual data object that follows the structure defined by a entity definition. Entities can be created, updated, queried, and deleted through the API. Each entity instance includes:
+
 - Standard system fields (UUID, creation timestamp, etc.)
 - The custom fields defined in its entity definition
 - Metadata and relationship information
@@ -213,6 +235,7 @@ A **Dynamic Entity** is an actual data object that follows the structure defined
 ### Supported Field Types
 
 The system supports a rich set of field types:
+
 - **Text Types**: String, Text, Wysiwyg (rich text)
 - **Numeric Types**: Integer, Float
 - **Boolean Type**: Boolean (true/false)
@@ -228,24 +251,21 @@ All entity definition endpoints are secured with JWT authentication and require 
 
 - `GET /admin/api/v1/entity-definitions` - List all entity definitions
 - `GET /admin/api/v1/entity-definitions/{uuid}` - Get a specific entity definition
-- `POST /admin/api/v1/entity-definitions` - Create a new entity definition 
+- `POST /admin/api/v1/entity-definitions` - Create a new entity definition
 - `PUT /admin/api/v1/entity-definitions/{uuid}` - Update an existing entity definition
 - `DELETE /admin/api/v1/entity-definitions/{uuid}` - Delete a entity definition
 
 Entity data can be manipulated through the public API endpoints (documentation pending).
 
 ## Routes
+
 Swagger:
 /api/docs/
 /admin/api/docs/
 
-
 ## Todos
-- ~~fix sqlx topic~~
-- ~~fix swagger~~
+
 - add routes
-  - ~~auth~~
-  - ~~entity-definitions~~
   - workflows
     - export
       - json, xml, csv
@@ -256,8 +276,6 @@ Swagger:
       - webhooks
     - manipulate data
   - versions
-  - ~~entities~~
-    - ~~crud~~
   - permissions
 - update readme
 - add options for custom tables (like bricks)
@@ -283,17 +301,19 @@ Swagger:
 - DSL readme
 - admin easy default password warning (admin admin) -> hint in admin if default pw is being used
 - add unique constraint to entity_definitions (FE + BE)
-- dockerfile rework (too many)
 - uuid refactoring -> all in db
 
 Check DSL:
+
 - map to entity
 - map to field
 - map to validation
 - map to uri / source
 - calculate (basic arithmetic)
+- concatenation of string (conversion of int, float etc)
 
 fixes:
+
 - setting all fields for dynamic entities
 - testing validations (+ tests)
 - auth tests for all api routes
@@ -302,8 +322,8 @@ fixes:
 - getting all entity types with fields and validations
 - filter entities (by field and value) (validate against entity-definition)
 
-
 ## License Model
+
 Draft of an idea
 
 ![licenses.png](docs/licenses.png)

@@ -1,0 +1,15 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "csv",
+        "uri": "http://example.com/data.csv",
+        "mapping": {}
+      },
+      "transform": {
+        "type": "none"
+      }
+    }
+  ]
+}
+

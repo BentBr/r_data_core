@@ -1,0 +1,43 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "json",
+        "uri": "http://example.com/data.json",
+        "mapping": {
+          "user.name": "first_name",
+          "user.surname": "last_name",
+          "user.email": "email"
+        }
+      },
+      "transform": {
+        "type": "concat",
+        "target": "full_name",
+        "left": {
+          "kind": "field",
+          "field": "first_name"
+        },
+        "separator": " ",
+        "right": {
+          "kind": "field",
+          "field": "last_name"
+        }
+      },
+      "to": {
+        "type": "csv",
+        "output": "download",
+        "options": {
+          "header": true,
+          "delimiter": ","
+        },
+        "mapping": {
+          "first_name": "first_name",
+          "last_name": "last_name",
+          "full_name": "full_name",
+          "email": "email"
+        }
+      }
+    }
+  ]
+}
+

@@ -1,0 +1,32 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "entity",
+        "entity_definition": "customer",
+        "filter": {
+          "field": "active",
+          "value": "true"
+        },
+        "mapping": {
+          "name": "customer_name",
+          "email": "customer_email",
+          "phone": "customer_phone"
+        }
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "json",
+        "output": "api",
+        "mapping": {
+          "name": "customer_name",
+          "email": "customer_email",
+          "phone": "customer_phone"
+        }
+      }
+    }
+  ]
+}
+

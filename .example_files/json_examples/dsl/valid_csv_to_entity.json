@@ -1,0 +1,45 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "csv",
+        "uri": "http://example.com/products.csv",
+        "options": {
+          "header": true,
+          "delimiter": ","
+        },
+        "mapping": {
+          "product_name": "name",
+          "product_price": "price",
+          "product_category": "category"
+        }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "price_with_tax",
+        "left": {
+          "kind": "field",
+          "field": "price"
+        },
+        "op": "mul",
+        "right": {
+          "kind": "const",
+          "value": 1.19
+        }
+      },
+      "to": {
+        "type": "entity",
+        "entity_definition": "product",
+        "path": "/products",
+        "mode": "create",
+        "mapping": {
+          "name": "name",
+          "price": "price",
+          "price_with_tax": "price_with_tax",
+          "category": "category"
+        }
+      }
+    }
+  ]
+}
+

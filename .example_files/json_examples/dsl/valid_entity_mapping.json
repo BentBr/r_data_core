@@ -1,0 +1,32 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "entity",
+        "entity_definition": "source_entity",
+        "filter": {
+          "field": "status",
+          "value": "active"
+        },
+        "mapping": {
+          "field1": "normalized_field1",
+          "field2": "normalized_field2"
+        }
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "entity",
+        "entity_definition": "target_entity",
+        "path": "/target",
+        "mode": "create",
+        "mapping": {
+          "normalized_field1": "target_field1",
+          "normalized_field2": "target_field2"
+        }
+      }
+    }
+  ]
+}
+
