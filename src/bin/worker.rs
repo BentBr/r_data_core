@@ -6,11 +6,12 @@ use tokio::sync::Mutex;
 use tokio_cron_scheduler::{Job, JobScheduler};
 use uuid::Uuid;
 
+use r_data_core::cache::CacheManager;
 use r_data_core::config::WorkerConfig;
 use r_data_core::services::adapters::EntityDefinitionRepositoryAdapter;
 use r_data_core::services::{
-    worker::compute_reconcile_actions, DynamicEntityRepositoryAdapter, DynamicEntityService, EntityDefinitionService,
-    WorkflowRepositoryAdapter, WorkflowService,
+    worker::compute_reconcile_actions, DynamicEntityRepositoryAdapter, DynamicEntityService,
+    EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService,
 };
 use r_data_core::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 use r_data_core::workflow::data::job_queue::JobQueue;
@@ -46,6 +47,28 @@ async fn main() -> anyhow::Result<()> {
         .connect(&config.database.connection_string)
         .await?;
 
+    // Initialize cache manager (shares Redis with queue if available)
+    let cache_manager = if config.cache.enabled {
+        let manager = CacheManager::new(config.cache.clone());
+        // Try to connect to Redis (same URL as queue)
+        match manager.with_redis(&config.queue.redis_url).await {
+            Ok(m) => {
+                info!("Cache manager initialized with Redis (shared with queue)");
+                Arc::new(m)
+            }
+            Err(e) => {
+                info!(
+                    "Failed to initialize Redis cache: {}, using in-memory only",
+                    e
+                );
+                Arc::new(CacheManager::new(config.cache.clone()))
+            }
+        }
+    } else {
+        info!("Cache disabled, using in-memory cache only");
+        Arc::new(CacheManager::new(config.cache.clone()))
+    };
+
     let queue_cfg = Arc::new(config.queue.clone());
     let _queue = ApalisRedisQueue::from_parts(
         &queue_cfg.redis_url,
@@ -76,11 +99,17 @@ async fn main() -> anyhow::Result<()> {
                 let pool = pool_clone.clone();
                 let queue_cfg = queue_cfg.clone();
                 Box::pin(async move {
-                    info!("Schedule: creating run and enqueueing fetch job for workflow {}", workflow_id);
+                    info!(
+                        "Schedule: creating run and enqueueing fetch job for workflow {}",
+                        workflow_id
+                    );
                     let repo = WorkflowRepository::new(pool.clone());
                     // Use a separate trigger identifier to store provenance; DB returns run_uuid
                     let external_trigger_id = Uuid::now_v7();
-                    if let Ok(run_uuid) = repo.insert_run_queued(workflow_id, external_trigger_id).await {
+                    if let Ok(run_uuid) = repo
+                        .insert_run_queued(workflow_id, external_trigger_id)
+                        .await
+                    {
                         // Enqueue fetch job with run_uuid in the trigger slot for downstream processing
                         match ApalisRedisQueue::from_parts(
                             &queue_cfg.redis_url,
@@ -106,7 +135,10 @@ async fn main() -> anyhow::Result<()> {
                                 }
                             }
                             Err(e) => {
-                                error!("Failed to create Redis queue client for workflow {}: {}", workflow_id, e);
+                                error!(
+                                    "Failed to create Redis queue client for workflow {}: {}",
+                                    workflow_id, e
+                                );
                             }
                         }
                         let _ = repo
@@ -114,7 +146,9 @@ async fn main() -> anyhow::Result<()> {
                                 run_uuid,
                                 "info",
                                 "Run enqueued by scheduler",
-                                Some(serde_json::json!({"trigger": external_trigger_id.to_string()})),
+                                Some(
+                                    serde_json::json!({"trigger": external_trigger_id.to_string()}),
+                                ),
                             )
                             .await;
                     }
@@ -129,8 +163,14 @@ async fn main() -> anyhow::Result<()> {
     {
         let workflows = repo.list_scheduled_consumers().await?;
         for (workflow_id, cron) in workflows {
-            let job_id =
-                schedule_job(scheduler.clone(), workflow_id, cron.clone(), pool.clone(), queue_cfg.clone()).await?;
+            let job_id = schedule_job(
+                scheduler.clone(),
+                workflow_id,
+                cron.clone(),
+                pool.clone(),
+                queue_cfg.clone(),
+            )
+            .await?;
             scheduled.lock().await.insert(workflow_id, (job_id, cron));
         }
     }
@@ -195,6 +235,7 @@ async fn main() -> anyhow::Result<()> {
     {
         let pool_for_consumer = pool.clone();
         let queue_cfg = queue_cfg.clone();
+        let cache_manager_for_consumer = cache_manager.clone();
         tokio::spawn(async move {
             let queue = ApalisRedisQueue::from_parts(
                 &queue_cfg.redis_url,
@@ -213,10 +254,16 @@ async fn main() -> anyhow::Result<()> {
                         } else {
                             // Create a run if not provided
                             let external_trigger_id = Uuid::now_v7();
-                            match repo.insert_run_queued(job.workflow_id, external_trigger_id).await {
+                            match repo
+                                .insert_run_queued(job.workflow_id, external_trigger_id)
+                                .await
+                            {
                                 Ok(uuid) => uuid,
                                 Err(e) => {
-                                    error!("Failed to create run for workflow {}: {}", job.workflow_id, e);
+                                    error!(
+                                        "Failed to create run for workflow {}: {}",
+                                        job.workflow_id, e
+                                    );
                                     continue;
                                 }
                             }
@@ -224,29 +271,35 @@ async fn main() -> anyhow::Result<()> {
                         // Transition to running
                         let _ = repo.mark_run_running(run_uuid).await;
                         // If nothing staged yet, fetch & stage from config
-                        let staged_existing = repo.count_raw_items_for_run(run_uuid).await.unwrap_or(0);
+                        let staged_existing =
+                            repo.count_raw_items_for_run(run_uuid).await.unwrap_or(0);
                         if staged_existing == 0 {
-                            if let Ok(Some(wf_uuid)) = repo.get_workflow_uuid_for_run(run_uuid).await {
-                                let adapter = WorkflowRepositoryAdapter::new(WorkflowRepository::new(
-                                    pool_for_consumer.clone(),
-                                ));
+                            if let Ok(Some(wf_uuid)) =
+                                repo.get_workflow_uuid_for_run(run_uuid).await
+                            {
+                                let adapter = WorkflowRepositoryAdapter::new(
+                                    WorkflowRepository::new(pool_for_consumer.clone()),
+                                );
                                 let service = WorkflowService::new(Arc::new(adapter));
-                                let _ = service.fetch_and_stage_from_config(wf_uuid, run_uuid).await;
+                                let _ =
+                                    service.fetch_and_stage_from_config(wf_uuid, run_uuid).await;
                             }
                         }
                         // Build services for processing
-                        let wf_adapter = WorkflowRepositoryAdapter::new(
-                            WorkflowRepository::new(pool_for_consumer.clone()),
-                        );
+                        let wf_adapter = WorkflowRepositoryAdapter::new(WorkflowRepository::new(
+                            pool_for_consumer.clone(),
+                        ));
                         let de_repo = r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool_for_consumer.clone());
                         let de_adapter = DynamicEntityRepositoryAdapter::new(de_repo);
                         let ed_repo = r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(pool_for_consumer.clone());
                         let ed_adapter = EntityDefinitionRepositoryAdapter::new(ed_repo);
-                        let ed_service = EntityDefinitionService::new(Arc::new(ed_adapter));
-                        let de_service = DynamicEntityService::new(
-                            Arc::new(de_adapter),
-                            Arc::new(ed_service),
+                        // Use cache manager for entity definitions (shared with main API server via Redis)
+                        let ed_service = EntityDefinitionService::new(
+                            Arc::new(ed_adapter),
+                            cache_manager_for_consumer.clone(),
                         );
+                        let de_service =
+                            DynamicEntityService::new(Arc::new(de_adapter), Arc::new(ed_service));
                         let service = WorkflowService::new_with_entities(
                             Arc::new(wf_adapter),
                             Arc::new(de_service),
@@ -266,7 +319,8 @@ async fn main() -> anyhow::Result<()> {
                                             None,
                                         )
                                         .await;
-                                    let _ = repo.mark_run_success(run_uuid, processed, failed).await;
+                                    let _ =
+                                        repo.mark_run_success(run_uuid, processed, failed).await;
                                 }
                                 Err(e) => {
                                     let _ = repo
@@ -277,14 +331,22 @@ async fn main() -> anyhow::Result<()> {
                                             None,
                                         )
                                         .await;
-                                    let _ = repo.mark_run_failure(run_uuid, &format!("{}", e)).await;
+                                    let _ =
+                                        repo.mark_run_failure(run_uuid, &format!("{}", e)).await;
                                 }
                             }
                         } else {
                             let _ = repo
-                                .insert_run_log(run_uuid, "error", "Missing workflow_uuid for run", None)
+                                .insert_run_log(
+                                    run_uuid,
+                                    "error",
+                                    "Missing workflow_uuid for run",
+                                    None,
+                                )
                                 .await;
-                            let _ = repo.mark_run_failure(run_uuid, "Missing workflow_uuid").await;
+                            let _ = repo
+                                .mark_run_failure(run_uuid, "Missing workflow_uuid")
+                                .await;
                         }
                     }
                     Err(e) => {

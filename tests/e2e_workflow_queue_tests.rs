@@ -1,7 +1,9 @@
 use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
+use r_data_core::entity::dynamic_entity::DynamicEntityRepositoryTrait;
+use r_data_core::entity::DynamicEntity;
 use r_data_core::services::{
-    adapters::EntityDefinitionRepositoryAdapter, DynamicEntityRepositoryAdapter, EntityDefinitionService,
-    WorkflowRepositoryAdapter, WorkflowService,
+    adapters::EntityDefinitionRepositoryAdapter, DynamicEntityRepositoryAdapter,
+    EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService,
 };
 use r_data_core::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 use r_data_core::workflow::data::job_queue::JobQueue;
@@ -11,8 +13,6 @@ use r_data_core::workflow::data::WorkflowKind;
 use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
-use r_data_core::entity::dynamic_entity::DynamicEntityRepositoryTrait;
-use r_data_core::entity::DynamicEntity;
 
 // Import common test utilities
 #[path = "common/mod.rs"]
@@ -41,7 +41,8 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
 
     // Create a dynamic entity definition used by the workflow's "to" step
     let entity_type = common::utils::unique_entity_type("e2e_entity");
-    let _entity_def_uuid = common::utils::create_test_entity_definition(&pool, &entity_type).await?;
+    let _entity_def_uuid =
+        common::utils::create_test_entity_definition(&pool, &entity_type).await?;
 
     // Create a workflow that maps CSV to the dynamic entity
     let wf_repo = WorkflowRepository::new(pool.clone());
@@ -112,13 +113,16 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
 
     // Build services for processing (same as worker)
     let wf_adapter = WorkflowRepositoryAdapter::new(WorkflowRepository::new(pool.clone()));
-    let de_repo = r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool.clone());
+    let de_repo =
+        r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool.clone());
     let de_adapter = DynamicEntityRepositoryAdapter::new(de_repo);
     let ed_repo = EntityDefinitionRepository::new(pool.clone());
     let ed_adapter = EntityDefinitionRepositoryAdapter::new(ed_repo);
-    let ed_service = EntityDefinitionService::new(Arc::new(ed_adapter));
-    let de_service =
-        r_data_core::services::DynamicEntityService::new(Arc::new(de_adapter), Arc::new(ed_service));
+    let ed_service = EntityDefinitionService::new_without_cache(Arc::new(ed_adapter));
+    let de_service = r_data_core::services::DynamicEntityService::new(
+        Arc::new(de_adapter),
+        Arc::new(ed_service),
+    );
     let service = WorkflowService::new_with_entities(Arc::new(wf_adapter), Arc::new(de_service));
 
     // Process
@@ -128,7 +132,10 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
                 .insert_run_log(
                     run_uuid,
                     "info",
-                    &format!("E2E Run processed (processed_items={}, failed_items={})", processed, failed),
+                    &format!(
+                        "E2E Run processed (processed_items={}, failed_items={})",
+                        processed, failed
+                    ),
                     None,
                 )
                 .await;
@@ -148,12 +155,10 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
     // Validate output: the dynamic entity was created
     let de_repo_check =
         r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool.clone());
-    let entities: Vec<DynamicEntity>     = de_repo_check
+    let entities: Vec<DynamicEntity> = de_repo_check
         .get_all_by_type(&entity_type, 10, 0, None)
         .await?;
     assert_eq!(entities.len(), 1, "exactly one entity should be created");
 
     Ok(())
 }
-
-

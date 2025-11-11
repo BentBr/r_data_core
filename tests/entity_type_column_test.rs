@@ -224,8 +224,10 @@ async fn create_test_app(
 > {
     // Create a cache manager
     let cache_config = CacheConfig {
+        entity_definition_ttl: 0, // No expiration
+        api_key_ttl: 600,         // 10 minutes for tests
         enabled: true,
-        ttl: 300,
+        ttl: 3600, // 1-hour default
         max_size: 10000,
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
@@ -238,7 +240,8 @@ async fn create_test_app(
     let admin_user_service = AdminUserService::new(admin_user_repository);
 
     let entity_definition_repository = Arc::new(EntityDefinitionRepository::new(pool.clone()));
-    let entity_definition_service = EntityDefinitionService::new(entity_definition_repository);
+    let entity_definition_service =
+        EntityDefinitionService::new_without_cache(entity_definition_repository);
 
     let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
     let dynamic_entity_service = Arc::new(DynamicEntityService::new(

@@ -378,7 +378,7 @@ mod tests {
         // Execute should produce: email, published (from active), firstName, lastName, entity_key (from email)
         let outputs = prog.execute(&input).unwrap();
         assert_eq!(outputs.len(), 1);
-        
+
         let (to_def, produced) = &outputs[0];
         match to_def {
             ToDef::Entity { .. } => {
@@ -431,7 +431,7 @@ mod tests {
 
         let outputs = prog.execute(&input).unwrap();
         assert_eq!(outputs.len(), 1);
-        
+
         let (_, produced) = &outputs[0];
         // Both email and entity_key should have the same value
         assert_eq!(produced["email"], json!("test@example.com"));

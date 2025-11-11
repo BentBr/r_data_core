@@ -107,4 +107,44 @@ impl CacheBackend for RedisCache {
 
         Ok(())
     }
+
+    async fn delete_by_prefix(&self, prefix: &str) -> Result<usize> {
+        let mut conn = self.get_connection().await?;
+        let mut deleted = 0;
+        let mut cursor = 0u64;
+        let pattern = format!("{}*", prefix);
+
+        loop {
+            // Use SCAN to find keys matching the pattern
+            let result: (u64, Vec<String>) = redis::cmd("SCAN")
+                .arg(cursor)
+                .arg("MATCH")
+                .arg(&pattern)
+                .arg("COUNT")
+                .arg(100)
+                .query_async(&mut conn)
+                .await
+                .map_err(|e| Error::Cache(format!("Failed to scan Redis keys: {}", e)))?;
+
+            cursor = result.0;
+            let keys = result.1;
+
+            if !keys.is_empty() {
+                // Delete the keys
+                let count: u64 = redis::cmd("DEL")
+                    .arg(&keys)
+                    .query_async(&mut conn)
+                    .await
+                    .map_err(|e| Error::Cache(format!("Failed to delete Redis keys: {}", e)))?;
+                deleted += count as usize;
+            }
+
+            // If cursor is 0, we've scanned all keys
+            if cursor == 0 {
+                break;
+            }
+        }
+
+        Ok(deleted)
+    }
 }

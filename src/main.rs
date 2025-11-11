@@ -36,8 +36,8 @@ use crate::services::DynamicEntityService;
 use crate::services::EntityDefinitionService;
 use crate::services::WorkflowRepositoryAdapter;
 use crate::services::WorkflowService;
-use crate::workflow::data::repository::WorkflowRepository;
 use crate::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
+use crate::workflow::data::repository::WorkflowRepository;
 
 // 404 handler function
 async fn default_404_handler() -> impl actix_web::Responder {
@@ -116,11 +116,16 @@ async fn main() -> std::io::Result<()> {
     let api_key_repository = ApiKeyRepository::new(pool_arc.clone());
     let admin_user_repository = AdminUserRepository::new(pool_arc.clone());
     let entity_definition_repository = EntityDefinitionRepository::new(pool.clone());
-    let dynamic_entity_repository = DynamicEntityRepository::new(pool.clone());
+    let dynamic_entity_repository =
+        DynamicEntityRepository::with_cache(pool.clone(), cache_manager.clone());
 
     // Initialize services with adapters
     let api_key_adapter = ApiKeyRepositoryAdapter::new(api_key_repository);
-    let api_key_service = ApiKeyService::new(Arc::new(api_key_adapter));
+    let api_key_service = ApiKeyService::with_cache(
+        Arc::new(api_key_adapter),
+        cache_manager.clone(),
+        config.cache.api_key_ttl,
+    );
 
     // Use adapter for AdminUserRepository
     let admin_user_adapter = AdminUserRepositoryAdapter::new(admin_user_repository);
@@ -130,7 +135,7 @@ async fn main() -> std::io::Result<()> {
     let entity_definition_adapter =
         EntityDefinitionRepositoryAdapter::new(entity_definition_repository);
     let entity_definition_service =
-        EntityDefinitionService::new(Arc::new(entity_definition_adapter));
+        EntityDefinitionService::new(Arc::new(entity_definition_adapter), cache_manager.clone());
 
     // Initialize dynamic entity service
     let dynamic_entity_adapter =

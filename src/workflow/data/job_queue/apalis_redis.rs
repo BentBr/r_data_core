@@ -19,7 +19,7 @@ impl ApalisRedisQueue {
     /// Tests the connection immediately to fail fast if Redis is unreachable.
     pub async fn from_parts(url: &str, fetch_key: &str, process_key: &str) -> anyhow::Result<Self> {
         let client = Client::open(url).with_context(|| format!("invalid redis url: {}", url))?;
-        
+
         // Test connection immediately
         let mut test_conn = client
             .get_multiplexed_async_connection()
@@ -29,9 +29,14 @@ impl ApalisRedisQueue {
             .query_async::<_, String>(&mut test_conn)
             .await
             .context("failed to ping Redis - connection test failed")?;
-        
-        log::info!("Redis queue initialized: url={}, fetch_key={}, process_key={}", url, fetch_key, process_key);
-        
+
+        log::info!(
+            "Redis queue initialized: url={}, fetch_key={}, process_key={}",
+            url,
+            fetch_key,
+            process_key
+        );
+
         Ok(Self {
             client: Some(client),
             fetch_queue_key: fetch_key.to_string(),
@@ -61,7 +66,11 @@ impl ApalisRedisQueue {
             .query_async(&mut conn)
             .await
             .with_context(|| format!("failed to RPUSH job to Redis key '{}'", key))?;
-        log::info!("Successfully enqueued job: RPUSH returned length {} for key '{}'", result, key);
+        log::info!(
+            "Successfully enqueued job: RPUSH returned length {} for key '{}'",
+            result,
+            key
+        );
         Ok(())
     }
 

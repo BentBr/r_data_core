@@ -48,11 +48,17 @@ pub struct CacheConfig {
     /// Enable caching
     pub enabled: bool,
 
-    /// Cache time-to-live in seconds
+    /// Cache time-to-live in seconds (default TTL)
     pub ttl: u64,
 
     /// Maximum cache size (number of items)
     pub max_size: u64,
+
+    /// TTL for entity definitions cache (0 = no expiration, use None when setting)
+    pub entity_definition_ttl: u64,
+
+    /// TTL for API keys cache in seconds
+    pub api_key_ttl: u64,
 }
 
 /// Workflow engine configuration
@@ -173,13 +179,20 @@ impl AppConfig {
                 .unwrap_or_else(|_| "10000".to_string())
                 .parse()
                 .unwrap_or(10000),
+            entity_definition_ttl: env::var("CACHE_ENTITY_DEFINITION_TTL")
+                .unwrap_or_else(|_| "0".to_string())
+                .parse()
+                .unwrap_or(0), // 0 = no expiration
+            api_key_ttl: env::var("CACHE_API_KEY_TTL")
+                .unwrap_or_else(|_| "600".to_string())
+                .parse()
+                .unwrap_or(600), // 10 minutes default
         };
 
         let log = LogConfig {
             level: env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string()),
             file: env::var("LOG_FILE").ok(),
         };
-
 
         let queue = QueueConfig {
             redis_url: env::var("REDIS_URL")
@@ -214,6 +227,8 @@ pub struct WorkerConfig {
     pub workflow: WorkflowConfig,
     /// Queue configuration (required for worker)
     pub queue: QueueConfig,
+    /// Cache configuration (optional, uses same Redis as queue if available)
+    pub cache: CacheConfig,
 }
 
 impl WorkerConfig {
@@ -271,11 +286,35 @@ impl WorkerConfig {
                 .unwrap_or_else(|_| "queue:workflows:process".to_string()),
         };
 
+        let cache = CacheConfig {
+            enabled: env::var("CACHE_ENABLED")
+                .unwrap_or_else(|_| "true".to_string())
+                .parse()
+                .unwrap_or(true),
+            ttl: env::var("CACHE_TTL")
+                .unwrap_or_else(|_| "300".to_string())
+                .parse()
+                .unwrap_or(300),
+            max_size: env::var("CACHE_MAX_SIZE")
+                .unwrap_or_else(|_| "10000".to_string())
+                .parse()
+                .unwrap_or(10000),
+            entity_definition_ttl: env::var("CACHE_ENTITY_DEFINITION_TTL")
+                .unwrap_or_else(|_| "0".to_string())
+                .parse()
+                .unwrap_or(0), // 0 = no expiration
+            api_key_ttl: env::var("CACHE_API_KEY_TTL")
+                .unwrap_or_else(|_| "600".to_string())
+                .parse()
+                .unwrap_or(600), // 10 minutes default
+        };
+
         Ok(Self {
             job_queue_update_interval_secs,
             database,
             workflow,
             queue,
+            cache,
         })
     }
 }

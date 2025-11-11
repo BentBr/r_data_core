@@ -107,4 +107,25 @@ impl CacheBackend for InMemoryCache {
         cache.clear();
         Ok(())
     }
+
+    async fn delete_by_prefix(&self, prefix: &str) -> Result<usize> {
+        let mut cache = self.data.write().await;
+        let mut deleted = 0;
+
+        // Collect keys to delete (we can't modify while iterating)
+        let keys_to_delete: Vec<String> = cache
+            .iter()
+            .filter(|(key, _)| key.starts_with(prefix))
+            .map(|(key, _)| key.clone())
+            .collect();
+
+        // Delete the keys
+        for key in keys_to_delete {
+            if cache.pop(&key).is_some() {
+                deleted += 1;
+            }
+        }
+
+        Ok(deleted)
+    }
 }

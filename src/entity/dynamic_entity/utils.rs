@@ -1,15 +1,30 @@
+use crate::cache::CacheManager;
 use crate::entity::field::FieldDefinition;
 use crate::entity::EntityDefinition;
 use crate::error::{Error, Result};
 use serde_json::{self, Value as JsonValue};
 use sqlx::{PgPool, Row};
+use std::sync::Arc;
 use uuid::Uuid;
+
+/// Generate cache key for entity definition by entity type
+fn cache_key_by_entity_type(entity_type: &str) -> String {
+    format!("entity_def:by_type:{}", entity_type)
+}
 
 /// Get a entity definition by entity type
 pub async fn get_entity_definition(
     db_pool: &PgPool,
     entity_type: &str,
+    cache_manager: Option<Arc<CacheManager>>,
 ) -> Result<EntityDefinition> {
+    // Check cache first if cache manager is provided
+    if let Some(cache) = &cache_manager {
+        let cache_key = cache_key_by_entity_type(entity_type);
+        if let Ok(Some(cached)) = cache.get::<EntityDefinition>(&cache_key).await {
+            return Ok(cached);
+        }
+    }
     let entity_def = sqlx::query(
         r#"
         SELECT entity_type, display_name, description,
@@ -31,7 +46,7 @@ pub async fn get_entity_definition(
             serde_json::from_value(row.try_get("field_definitions").map_err(Error::Database)?)
                 .map_err(Error::Serialization)?;
 
-        Ok(EntityDefinition::new(
+        let definition = EntityDefinition::new(
             row.try_get("entity_type").map_err(Error::Database)?,
             row.try_get("display_name").map_err(Error::Database)?,
             row.try_get("description").map_err(Error::Database)?,
@@ -40,7 +55,17 @@ pub async fn get_entity_definition(
             row.try_get("icon").map_err(Error::Database)?,
             fields,
             row.try_get("created_by").map_err(Error::Database)?,
-        ))
+        );
+
+        // Cache the result if cache manager is provided
+        if let Some(cache) = &cache_manager {
+            let cache_key = cache_key_by_entity_type(entity_type);
+            if let Err(e) = cache.set(&cache_key, &definition, None).await {
+                log::warn!("Failed to cache entity definition: {}", e);
+            }
+        }
+
+        Ok(definition)
     } else {
         Err(Error::NotFound(format!(
             "Class definition for entity type '{}' not found",

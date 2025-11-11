@@ -125,7 +125,7 @@ async fn test_list_entity_definitions() -> Result<()> {
         .with(eq(10), eq(0))
         .return_once(move |_, _| Ok(expected_definitions));
 
-    let service = EntityDefinitionService::new(Arc::new(mock_repo));
+    let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
     // Act
     let result = service.list_entity_definitions(10, 0).await?;
@@ -148,7 +148,7 @@ async fn test_get_entity_definition_by_uuid_found() -> Result<()> {
         .with(eq(test_uuid.clone()))
         .return_once(move |_| Ok(Some(expected_definition)));
 
-    let service = EntityDefinitionService::new(Arc::new(mock_repo));
+    let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
     // Act
     let result = service.get_entity_definition(&test_uuid).await?;
@@ -170,7 +170,7 @@ async fn test_get_entity_definition_by_uuid_not_found() -> Result<()> {
         .with(eq(test_uuid.clone()))
         .return_once(|_| Ok(None));
 
-    let service = EntityDefinitionService::new(Arc::new(mock_repo));
+    let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
     // Act
     let result = service.get_entity_definition(&test_uuid).await;
@@ -208,7 +208,7 @@ async fn test_create_entity_definition_success() -> Result<()> {
         .expect_update_entity_view_for_entity_definition()
         .return_once(|_| Ok(()));
 
-    let service = EntityDefinitionService::new(Arc::new(mock_repo));
+    let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
     // Act
     let result = service.create_entity_definition(&definition).await?;
@@ -235,7 +235,7 @@ async fn test_create_entity_definition_duplicate_entity_type() -> Result<()> {
     // The service should now return an error before reaching the create call,
     // so we no longer need to mock the create method
 
-    let service = EntityDefinitionService::new(Arc::new(mock_repo));
+    let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
     // Act
     let result = service.create_entity_definition(&definition).await;
@@ -265,7 +265,7 @@ async fn test_create_entity_definition_invalid_entity_type() -> Result<()> {
     let mock_repo = MockEntityDefRepository::new();
     let invalid_definition = create_invalid_entity_definition();
 
-    let service = EntityDefinitionService::new(Arc::new(mock_repo));
+    let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
     // Act
     let result = service.create_entity_definition(&invalid_definition).await;
@@ -292,7 +292,7 @@ async fn test_create_entity_definition_duplicate_field_names() -> Result<()> {
     let mock_repo = MockEntityDefRepository::new();
     let definition_with_duplicates = create_entity_definition_with_duplicate_fields();
 
-    let service = EntityDefinitionService::new(Arc::new(mock_repo));
+    let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
     // Act
     let result = service
@@ -342,7 +342,7 @@ async fn test_update_entity_definition_success() -> Result<()> {
         .expect_update_entity_view_for_entity_definition()
         .return_once(|_| Ok(()));
 
-    let service = EntityDefinitionService::new(Arc::new(mock_repo));
+    let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
     // Act
     let result = service
@@ -368,7 +368,7 @@ async fn test_update_entity_definition_not_found() -> Result<()> {
         .with(eq(test_uuid.clone()))
         .return_once(|_| Ok(None));
 
-    let service = EntityDefinitionService::new(Arc::new(mock_repo));
+    let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
     // Act
     let result = service
@@ -409,7 +409,7 @@ async fn test_delete_entity_definition_success() -> Result<()> {
     // Delete should succeed
     mock_repo.expect_delete().return_once(|_| Ok(()));
 
-    let service = EntityDefinitionService::new(Arc::new(mock_repo));
+    let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
     // Act
     let result = service.delete_entity_definition(&test_uuid).await;
@@ -441,7 +441,7 @@ async fn test_delete_entity_definition_with_records() -> Result<()> {
     // Records exist for this class
     mock_repo.expect_count_view_records().return_once(|_| Ok(5));
 
-    let service = EntityDefinitionService::new(Arc::new(mock_repo));
+    let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
     // Act
     let result = service.delete_entity_definition(&test_uuid).await;
@@ -473,7 +473,7 @@ async fn test_delete_entity_definition_not_found() -> Result<()> {
         .with(eq(test_uuid.clone()))
         .return_once(|_| Ok(None));
 
-    let service = EntityDefinitionService::new(Arc::new(mock_repo));
+    let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
     // Act
     let result = service.delete_entity_definition(&test_uuid).await;
@@ -498,7 +498,7 @@ async fn test_cleanup_unused_entity_tables() -> Result<()> {
         .expect_cleanup_unused_entity_view()
         .return_once(|| Ok(()));
 
-    let service = EntityDefinitionService::new(Arc::new(mock_repo));
+    let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
     // Act
     let result = service.cleanup_unused_entity_tables().await;

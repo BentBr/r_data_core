@@ -71,7 +71,7 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
     let de_adapter = DynamicEntityRepositoryAdapter::new(de_repo);
     let ed_repo = EntityDefinitionRepository::new(pool.clone());
     let ed_adapter = EntityDefinitionRepositoryAdapter::new(ed_repo);
-    let ed_service = EntityDefinitionService::new(Arc::new(ed_adapter));
+    let ed_service = EntityDefinitionService::new_without_cache(Arc::new(ed_adapter));
     let de_service = DynamicEntityService::new(Arc::new(de_adapter), Arc::new(ed_service));
     let wf_service_with_entities =
         WorkflowService::new_with_entities(wf_adapter_arc, Arc::new(de_service));
@@ -184,7 +184,7 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     let de_repo = DynamicEntityRepository::new(pool.clone());
     let ed_repo = EntityDefinitionRepository::new(pool.clone());
     let ed_adapter = EntityDefinitionRepositoryAdapter::new(ed_repo);
-    let ed_service = EntityDefinitionService::new(Arc::new(ed_adapter));
+    let ed_service = EntityDefinitionService::new_without_cache(Arc::new(ed_adapter));
     let de_adapter = DynamicEntityRepositoryAdapter::new(de_repo);
     let de_service = DynamicEntityService::new(Arc::new(de_adapter), Arc::new(ed_service.clone()));
 

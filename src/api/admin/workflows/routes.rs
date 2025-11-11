@@ -369,19 +369,30 @@ pub async fn run_workflow_now(
     match state.workflow_service.get(uuid).await {
         Ok(Some(_)) => match state.workflow_service.enqueue_run(uuid).await {
             Ok(run_uuid) => {
-                match state.queue
-                .enqueue_fetch(FetchAndStageJob {
-                    workflow_id: uuid,
-                    trigger_id: Some(run_uuid),
-                })
-                .await {
+                match state
+                    .queue
+                    .enqueue_fetch(FetchAndStageJob {
+                        workflow_id: uuid,
+                        trigger_id: Some(run_uuid),
+                    })
+                    .await
+                {
                     Ok(_) => {
-                        info!("Successfully enqueued fetch job for workflow {} (run: {})", uuid, run_uuid);
+                        info!(
+                            "Successfully enqueued fetch job for workflow {} (run: {})",
+                            uuid, run_uuid
+                        );
                         ApiResponse::<()>::message("Workflow run enqueued")
                     }
                     Err(e) => {
-                        error!("Failed to enqueue fetch job for workflow {} (run: {}): {}", uuid, run_uuid, e);
-                        ApiResponse::<()>::internal_error(&format!("Failed to enqueue job to Redis: {}", e))
+                        error!(
+                            "Failed to enqueue fetch job for workflow {} (run: {}): {}",
+                            uuid, run_uuid, e
+                        );
+                        ApiResponse::<()>::internal_error(&format!(
+                            "Failed to enqueue job to Redis: {}",
+                            e
+                        ))
                     }
                 }
             }
@@ -452,12 +463,14 @@ pub async fn run_workflow_now_upload(
     {
         Ok((run_uuid, staged)) => {
             // Enqueue job to process the staged items (worker will skip fetching since items are already staged)
-            match state.queue
+            match state
+                .queue
                 .enqueue_fetch(FetchAndStageJob {
                     workflow_id: workflow_uuid,
                     trigger_id: Some(run_uuid),
                 })
-                .await {
+                .await
+            {
                 Ok(_) => {
                     info!("Successfully enqueued fetch job for uploaded workflow {} (run: {}, staged: {})", workflow_uuid, run_uuid, staged);
                     ApiResponse::<serde_json::Value>::ok(serde_json::json!({
@@ -466,7 +479,10 @@ pub async fn run_workflow_now_upload(
                     }))
                 }
                 Err(e) => {
-                    error!("Failed to enqueue fetch job for uploaded workflow {} (run: {}): {}", workflow_uuid, run_uuid, e);
+                    error!(
+                        "Failed to enqueue fetch job for uploaded workflow {} (run: {}): {}",
+                        workflow_uuid, run_uuid, e
+                    );
                     // Still return success for the upload, but log the enqueue failure
                     ApiResponse::<serde_json::Value>::ok(serde_json::json!({
                         "run_uuid": run_uuid,

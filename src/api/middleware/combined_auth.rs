@@ -111,7 +111,7 @@ where
             }
 
             // Try API key authentication if JWT failed
-            let api_key_result = extract_and_validate_api_key(&request, &state.db_pool).await;
+            let api_key_result = extract_and_validate_api_key(&request).await;
             match api_key_result {
                 Ok(Some((key, user_uuid))) => {
                     let key_uuid = key.uuid;

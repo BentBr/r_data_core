@@ -99,7 +99,7 @@ mod tests {
 
         // Test apply() method
         let out = prog.apply(&input).expect("apply");
-        
+
         // Verify mapping fix works in apply()
         assert_eq!(out["published"], json!(false));
         assert_eq!(out["email"], json!("test@example.com"));
@@ -113,7 +113,7 @@ mod tests {
         let cfg = load_example("valid_complex_mapping.json");
         let prog = DslProgram::from_config(&cfg).expect("parse dsl");
         prog.validate().expect("valid dsl");
-        
+
         // Test execution with complex mappings
         let input = json!({
             "source_col1": "value1",
@@ -121,7 +121,7 @@ mod tests {
             "source_col3": "value3",
             "nested": { "source": "nested_value" }
         });
-        
+
         let out = prog.apply(&input).expect("apply");
         assert_eq!(out["output_field1"], json!("value1"));
         assert_eq!(out["output_field2"], json!("value2"));
@@ -135,11 +135,15 @@ mod tests {
         let cfg = load_example("valid_entity_mapping.json");
         let prog = DslProgram::from_config(&cfg).expect("parse dsl");
         prog.validate().expect("valid dsl");
-        
+
         // Entity mappings should parse and validate correctly
         assert_eq!(prog.steps.len(), 1);
         match &prog.steps[0].from {
-            r_data_core::workflow::dsl::FromDef::Entity { entity_definition, filter, .. } => {
+            r_data_core::workflow::dsl::FromDef::Entity {
+                entity_definition,
+                filter,
+                ..
+            } => {
                 assert_eq!(entity_definition, "source_entity");
                 assert_eq!(filter.field, "status");
                 assert_eq!(filter.value, "active");
@@ -154,17 +158,17 @@ mod tests {
         let cfg = load_example("valid_csv_to_entity.json");
         let prog = DslProgram::from_config(&cfg).expect("parse dsl");
         prog.validate().expect("valid dsl");
-        
+
         // Test execution with CSV to Entity workflow
         let input = json!({
             "product_name": "Test Product",
             "product_price": 100.0,
             "product_category": "Electronics"
         });
-        
+
         let outputs = prog.execute(&input).expect("execute");
         assert_eq!(outputs.len(), 1);
-        
+
         let (to_def, produced) = &outputs[0];
         match to_def {
             r_data_core::workflow::dsl::ToDef::Entity { .. } => {
@@ -184,7 +188,7 @@ mod tests {
         let cfg = load_example("valid_json_to_csv.json");
         let prog = DslProgram::from_config(&cfg).expect("parse dsl");
         prog.validate().expect("valid dsl");
-        
+
         // Test execution with JSON to CSV workflow
         let input = json!({
             "user": {
@@ -193,7 +197,7 @@ mod tests {
                 "email": "john@example.com"
             }
         });
-        
+
         let out = prog.apply(&input).expect("apply");
         assert_eq!(out["first_name"], json!("John"));
         assert_eq!(out["last_name"], json!("Doe"));
@@ -207,14 +211,14 @@ mod tests {
         let cfg = load_example("valid_entity_to_json.json");
         let prog = DslProgram::from_config(&cfg).expect("parse dsl");
         prog.validate().expect("valid dsl");
-        
+
         // Test execution with Entity to JSON workflow
         let input = json!({
             "name": "Customer Name",
             "email": "customer@example.com",
             "phone": "123-456-7890"
         });
-        
+
         let out = prog.apply(&input).expect("apply");
         assert_eq!(out["name"], json!("Customer Name"));
         assert_eq!(out["email"], json!("customer@example.com"));
@@ -226,7 +230,10 @@ mod tests {
     async fn test_validate_invalid_missing_from() {
         let cfg = load_example("invalid_missing_from.json");
         let parsed = DslProgram::from_config(&cfg);
-        assert!(parsed.is_err(), "Should fail to parse when 'from' is missing");
+        assert!(
+            parsed.is_err(),
+            "Should fail to parse when 'from' is missing"
+        );
     }
 
     #[tokio::test]
@@ -244,10 +251,16 @@ mod tests {
         let parsed = DslProgram::from_config(&cfg);
         if let Ok(prog) = parsed {
             // Should fail validation due to unsafe field names
-            assert!(prog.validate().is_err(), "Should fail validation with unsafe field names");
+            assert!(
+                prog.validate().is_err(),
+                "Should fail validation with unsafe field names"
+            );
         } else {
             // Or fail to parse
-            assert!(parsed.is_err(), "Should fail to parse or validate with unsafe field names");
+            assert!(
+                parsed.is_err(),
+                "Should fail to parse or validate with unsafe field names"
+            );
         }
     }
 
@@ -271,10 +284,16 @@ mod tests {
         let cfg = load_example("invalid_entity_definition.json");
         let parsed = DslProgram::from_config(&cfg);
         // Should parse successfully (entity definition validation happens at runtime)
-        assert!(parsed.is_ok(), "Should parse even with non-existent entity definition");
+        assert!(
+            parsed.is_ok(),
+            "Should parse even with non-existent entity definition"
+        );
         if let Ok(prog) = parsed {
             // Validation should pass (entity existence is checked at runtime)
-            assert!(prog.validate().is_ok(), "Validation should pass (entity check is runtime)");
+            assert!(
+                prog.validate().is_ok(),
+                "Validation should pass (entity check is runtime)"
+            );
         }
     }
 
@@ -286,7 +305,10 @@ mod tests {
         assert!(parsed.is_ok(), "Should parse empty steps array");
         if let Ok(prog) = parsed {
             // Should fail validation because steps array is empty
-            assert!(prog.validate().is_err(), "Should fail validation with empty steps array");
+            assert!(
+                prog.validate().is_err(),
+                "Should fail validation with empty steps array"
+            );
         }
     }
 }

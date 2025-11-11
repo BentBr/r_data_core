@@ -82,9 +82,7 @@ where
             };
 
             // Try API key authentication
-            if let Ok(Some((key, user_uuid))) =
-                extract_and_validate_api_key(&request, &state.db_pool).await
-            {
+            if let Ok(Some((key, user_uuid))) = extract_and_validate_api_key(&request).await {
                 log::debug!(
                     "API key authentication successful, user_uuid: {}",
                     user_uuid

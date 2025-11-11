@@ -1,19 +1,16 @@
+use crate::cache::CacheManager;
 use crate::entity::entity_definition::definition::EntityDefinition;
 use crate::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
-use crate::entity::entity_definition::schema::Schema;
-use crate::entity::field::types::FieldType;
-use crate::entity::field::FieldDefinition;
 use crate::error::{Error, Result};
-use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use std::sync::Arc;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// Service for managing entity definitions
 #[derive(Clone)]
 pub struct EntityDefinitionService {
     repository: Arc<dyn EntityDefinitionRepositoryTrait>,
+    cache_manager: Arc<CacheManager>,
 }
 
 /// Helper structure describing an entity field (including system fields)
@@ -27,8 +24,60 @@ pub struct ServiceEntityFieldInfo {
 
 impl EntityDefinitionService {
     /// Create a new entity definition service
-    pub fn new(repository: Arc<dyn EntityDefinitionRepositoryTrait>) -> Self {
-        Self { repository }
+    pub fn new(
+        repository: Arc<dyn EntityDefinitionRepositoryTrait>,
+        cache_manager: Arc<CacheManager>,
+    ) -> Self {
+        Self {
+            repository,
+            cache_manager,
+        }
+    }
+
+    /// Create a new entity definition service with disabled cache (for testing)
+    pub fn new_without_cache(repository: Arc<dyn EntityDefinitionRepositoryTrait>) -> Self {
+        use crate::config::CacheConfig;
+        let config = CacheConfig {
+            enabled: false,
+            ttl: 3600,
+            max_size: 10000,
+            entity_definition_ttl: 0,
+            api_key_ttl: 600,
+        };
+        Self {
+            repository,
+            cache_manager: Arc::new(CacheManager::new(config)),
+        }
+    }
+
+    /// Generate cache key for entity definition by entity type
+    fn cache_key_by_entity_type(&self, entity_type: &str) -> String {
+        format!("entity_def:by_type:{}", entity_type)
+    }
+
+    /// Generate cache key for entity definition by UUID
+    fn cache_key_by_uuid(&self, uuid: &Uuid) -> String {
+        format!("entity_def:by_uuid:{}", uuid)
+    }
+
+    /// Invalidate cache entries for an entity definition
+    async fn invalidate_entity_definition_cache(
+        &self,
+        entity_type: &str,
+        uuid: &Uuid,
+    ) -> Result<()> {
+        let type_key = self.cache_key_by_entity_type(entity_type);
+        let uuid_key = self.cache_key_by_uuid(uuid);
+
+        // Invalidate both cache keys
+        if let Err(e) = self.cache_manager.delete(&type_key).await {
+            log::warn!("Failed to invalidate entity type cache key: {}", e);
+        }
+        if let Err(e) = self.cache_manager.delete(&uuid_key).await {
+            log::warn!("Failed to invalidate UUID cache key: {}", e);
+        }
+
+        Ok(())
     }
 
     /// List entity definitions with pagination
@@ -47,10 +96,24 @@ impl EntityDefinitionService {
 
     /// Get an entity definition by UUID
     pub async fn get_entity_definition(&self, uuid: &Uuid) -> Result<EntityDefinition> {
+        // Check cache first
+        let cache_key = self.cache_key_by_uuid(uuid);
+        if let Ok(Some(cached)) = self.cache_manager.get::<EntityDefinition>(&cache_key).await {
+            return Ok(cached);
+        }
+
+        // Cache miss - query repository
         let definition = self.repository.get_by_uuid(uuid).await?;
-        definition.ok_or_else(|| {
+        let definition = definition.ok_or_else(|| {
             Error::NotFound(format!("Entity definition with UUID {} not found", uuid))
-        })
+        })?;
+
+        // Cache the result (no TTL - cache until explicitly invalidated)
+        if let Err(e) = self.cache_manager.set(&cache_key, &definition, None).await {
+            log::warn!("Failed to cache entity definition: {}", e);
+        }
+
+        Ok(definition)
     }
 
     /// Get an entity definition by entity type
@@ -58,13 +121,33 @@ impl EntityDefinitionService {
         &self,
         entity_type: &str,
     ) -> Result<EntityDefinition> {
+        // Check cache first
+        let cache_key = self.cache_key_by_entity_type(entity_type);
+        if let Ok(Some(cached)) = self.cache_manager.get::<EntityDefinition>(&cache_key).await {
+            return Ok(cached);
+        }
+
+        // Cache miss - query repository
         let definition = self.repository.get_by_entity_type(entity_type).await?;
-        definition.ok_or_else(|| {
+        let definition = definition.ok_or_else(|| {
             Error::NotFound(format!(
                 "Entity definition with entity type '{}' not found",
                 entity_type
             ))
-        })
+        })?;
+
+        // Cache the result with both keys (no TTL - cache until explicitly invalidated)
+        let type_key = self.cache_key_by_entity_type(entity_type);
+        let uuid_key = self.cache_key_by_uuid(&definition.uuid);
+
+        if let Err(e) = self.cache_manager.set(&type_key, &definition, None).await {
+            log::warn!("Failed to cache entity definition by type: {}", e);
+        }
+        if let Err(e) = self.cache_manager.set(&uuid_key, &definition, None).await {
+            log::warn!("Failed to cache entity definition by UUID: {}", e);
+        }
+
+        Ok(definition)
     }
 
     /// Create a new entity definition
@@ -95,6 +178,17 @@ impl EntityDefinitionService {
             .update_entity_view_for_entity_definition(definition)
             .await?;
 
+        // Cache the new definition with both keys
+        let type_key = self.cache_key_by_entity_type(&definition.entity_type);
+        let uuid_key = self.cache_key_by_uuid(&uuid);
+
+        if let Err(e) = self.cache_manager.set(&type_key, definition, None).await {
+            log::warn!("Failed to cache new entity definition by type: {}", e);
+        }
+        if let Err(e) = self.cache_manager.set(&uuid_key, definition, None).await {
+            log::warn!("Failed to cache new entity definition by UUID: {}", e);
+        }
+
         Ok(uuid)
     }
 
@@ -104,20 +198,24 @@ impl EntityDefinitionService {
         uuid: &Uuid,
         definition: &EntityDefinition,
     ) -> Result<()> {
-        // Check that the entity definition exists
+        // Check that the entity definition exists and get old entity_type
         let existing = self.repository.get_by_uuid(uuid).await?;
-        if existing.is_none() {
-            return Err(Error::NotFound(format!(
-                "Entity definition with UUID {} not found",
-                uuid
-            )));
-        }
+        let old_entity_type = existing
+            .as_ref()
+            .map(|e| e.entity_type.clone())
+            .ok_or_else(|| {
+                Error::NotFound(format!("Entity definition with UUID {} not found", uuid))
+            })?;
 
         // Validate that entity type follows naming conventions
         self.validate_entity_type(&definition.entity_type)?;
 
         // Validate field names and configurations
         self.validate_fields(&definition)?;
+
+        // Invalidate old cache entries before update
+        self.invalidate_entity_definition_cache(&old_entity_type, uuid)
+            .await?;
 
         // Update the entity definition
         self.repository.update(uuid, definition).await?;
@@ -126,6 +224,25 @@ impl EntityDefinitionService {
         self.repository
             .update_entity_view_for_entity_definition(definition)
             .await?;
+
+        // Cache the updated definition with both keys
+        let type_key = self.cache_key_by_entity_type(&definition.entity_type);
+        let uuid_key = self.cache_key_by_uuid(uuid);
+
+        if let Err(e) = self.cache_manager.set(&type_key, definition, None).await {
+            log::warn!("Failed to cache updated entity definition by type: {}", e);
+        }
+        if let Err(e) = self.cache_manager.set(&uuid_key, definition, None).await {
+            log::warn!("Failed to cache updated entity definition by UUID: {}", e);
+        }
+
+        // If entity_type changed, also invalidate the old entity_type cache key
+        if old_entity_type != definition.entity_type {
+            let old_type_key = self.cache_key_by_entity_type(&old_entity_type);
+            if let Err(e) = self.cache_manager.delete(&old_type_key).await {
+                log::warn!("Failed to invalidate old entity type cache key: {}", e);
+            }
+        }
 
         Ok(())
     }
@@ -136,6 +253,7 @@ impl EntityDefinitionService {
         let definition = self.repository.get_by_uuid(uuid).await?;
 
         if let Some(def) = definition {
+            let entity_type = def.entity_type.clone();
             let table_name = def.get_table_name();
             let table_exists = self.repository.check_view_exists(&table_name).await?;
 
@@ -152,6 +270,10 @@ impl EntityDefinitionService {
 
             // Delete the entity definition and associated tables
             self.repository.delete(uuid).await?;
+
+            // Invalidate cache entries after successful deletion
+            self.invalidate_entity_definition_cache(&entity_type, uuid)
+                .await?;
 
             Ok(())
         } else {
@@ -362,11 +484,13 @@ impl EntityDefinitionService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::entity::entity_definition::schema::Schema;
     use crate::entity::field::types::FieldType;
     use crate::entity::field::FieldDefinition;
     use async_trait::async_trait;
     use mockall::mock;
     use mockall::predicate::{self, eq};
+    use serde_json::Value as JsonValue;
     use std::collections::HashMap;
     use time::OffsetDateTime;
 
@@ -465,7 +589,7 @@ mod tests {
             .withf(move |id| id == &uuid)
             .returning(move |_| Ok(Some(expected_definition.clone())));
 
-        let service = EntityDefinitionService::new(Arc::new(mock_repo));
+        let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
         let result = service.get_entity_definition(&uuid).await?;
 
         assert_eq!(result.entity_type, "TestEntity");
@@ -485,7 +609,7 @@ mod tests {
             .withf(move |id| id == &uuid)
             .returning(|_| Ok(None));
 
-        let service = EntityDefinitionService::new(Arc::new(mock_repo));
+        let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
         let result = service.get_entity_definition(&uuid).await;
 
         assert!(result.is_err());
@@ -520,7 +644,7 @@ mod tests {
             .with(predicate::always())
             .returning(|_| Ok(()));
 
-        let service = EntityDefinitionService::new(Arc::new(mock_repo));
+        let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
         let result = service.create_entity_definition(&definition).await?;
 
         assert_eq!(result, expected_uuid);
@@ -534,7 +658,7 @@ mod tests {
         let mut definition = create_test_entity_definition();
         definition.entity_type = "123InvalidStart".to_string();
 
-        let service = EntityDefinitionService::new(Arc::new(mock_repo));
+        let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
         let result = service.create_entity_definition(&definition).await;
 
         assert!(result.is_err());
@@ -553,7 +677,7 @@ mod tests {
         let mut definition = create_test_entity_definition();
         definition.entity_type = "table".to_string();
 
-        let service = EntityDefinitionService::new(Arc::new(mock_repo));
+        let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
         let result = service.create_entity_definition(&definition).await;
 
         assert!(result.is_err());
@@ -586,7 +710,7 @@ mod tests {
             validation: Default::default(),
         });
 
-        let service = EntityDefinitionService::new(Arc::new(mock_repo));
+        let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
         let result = service.create_entity_definition(&definition).await;
 
         assert!(result.is_err());
@@ -614,7 +738,7 @@ mod tests {
 
         mock_repo.expect_count_view_records().returning(|_| Ok(10)); // 10 records exist
 
-        let service = EntityDefinitionService::new(Arc::new(mock_repo));
+        let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
         let result = service.delete_entity_definition(&uuid).await;
 
         assert!(result.is_err());
@@ -647,7 +771,7 @@ mod tests {
             .withf(move |id| id == &uuid)
             .returning(|_| Ok(()));
 
-        let service = EntityDefinitionService::new(Arc::new(mock_repo));
+        let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
         let result = service.delete_entity_definition(&uuid).await;
 
         assert!(result.is_ok());
@@ -670,7 +794,7 @@ mod tests {
             .expect_update_entity_view_for_entity_definition()
             .returning(|_| Ok(()));
 
-        let service = EntityDefinitionService::new(Arc::new(mock_repo));
+        let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
         let result = service.apply_schema(Some(&uuid)).await?;
 
         assert_eq!(result.0, 1); // 1 success
@@ -698,7 +822,7 @@ mod tests {
             .times(3)
             .returning(|_| Ok(()));
 
-        let service = EntityDefinitionService::new(Arc::new(mock_repo));
+        let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
         let result = service.apply_schema(None).await?;
 
         assert_eq!(result.0, 3); // 3 successes
@@ -718,7 +842,7 @@ mod tests {
             .withf(move |et| et == entity_type)
             .returning(move |_| Ok(Some(expected_definition.clone())));
 
-        let service = EntityDefinitionService::new(Arc::new(mock_repo));
+        let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
         let result = service
             .get_entity_definition_by_entity_type(entity_type)
             .await?;
@@ -740,7 +864,7 @@ mod tests {
             .withf(move |et| et == entity_type)
             .returning(|_| Ok(None));
 
-        let service = EntityDefinitionService::new(Arc::new(mock_repo));
+        let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
         let result = service
             .get_entity_definition_by_entity_type(entity_type)
             .await;
@@ -779,7 +903,7 @@ mod tests {
             .expect_update_entity_view_for_entity_definition()
             .returning(|_| Ok(()));
 
-        let service = EntityDefinitionService::new(Arc::new(mock_repo));
+        let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
         let result = service.update_entity_definition(&uuid, &definition).await;
 
         assert!(result.is_ok());
@@ -798,7 +922,7 @@ mod tests {
             .withf(move |id| id == &uuid)
             .returning(|_| Ok(None));
 
-        let service = EntityDefinitionService::new(Arc::new(mock_repo));
+        let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
         let result = service.update_entity_definition(&uuid, &definition).await;
 
         assert!(result.is_err());
@@ -831,7 +955,7 @@ mod tests {
                 Ok(Some(def))
             });
 
-        let service = EntityDefinitionService::new(Arc::new(mock_repo));
+        let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
         let result = service
             .update_entity_definition(&uuid, &invalid_definition)
             .await;
@@ -854,7 +978,7 @@ mod tests {
             .expect_cleanup_unused_entity_view()
             .returning(|| Ok(()));
 
-        let service = EntityDefinitionService::new(Arc::new(mock_repo));
+        let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
         let result = service.cleanup_unused_entity_tables().await;
 
         assert!(result.is_ok());

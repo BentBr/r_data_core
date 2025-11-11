@@ -1,14 +1,14 @@
 use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
+use r_data_core::api::admin::workflows::models::CreateWorkflowRequest;
 use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
 use r_data_core::entity::entity_definition::definition::EntityDefinition;
-use r_data_core::services::{
-    DynamicEntityRepositoryAdapter, DynamicEntityService,
-    EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService,
-};
 use r_data_core::services::adapters::EntityDefinitionRepositoryAdapter;
+use r_data_core::services::{
+    DynamicEntityRepositoryAdapter, DynamicEntityService, EntityDefinitionService,
+    WorkflowRepositoryAdapter, WorkflowService,
+};
 use r_data_core::workflow::data::repository::WorkflowRepository;
 use r_data_core::workflow::data::WorkflowKind;
-use r_data_core::api::admin::workflows::models::CreateWorkflowRequest;
 use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
@@ -29,7 +29,7 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
     let entity_type = format!("TestCustomer{}", Uuid::now_v7().simple());
     let ed_repo = EntityDefinitionRepository::new(pool.clone());
     let ed_adapter = EntityDefinitionRepositoryAdapter::new(ed_repo);
-    let ed_service = EntityDefinitionService::new(Arc::new(ed_adapter));
+    let ed_service = EntityDefinitionService::new_without_cache(Arc::new(ed_adapter));
 
     let mut entity_def = EntityDefinition::default();
     entity_def.entity_type = entity_type.clone();
@@ -151,11 +151,12 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
         "has_header": true,
         "delimiter": ","
     });
-    let payloads = r_data_core::workflow::data::adapters::import::csv::CsvImportAdapter::parse_inline(
-        csv_data,
-        &format_cfg,
-    )
-    .expect("parse CSV");
+    let payloads =
+        r_data_core::workflow::data::adapters::import::csv::CsvImportAdapter::parse_inline(
+            csv_data,
+            &format_cfg,
+        )
+        .expect("parse CSV");
 
     // Run import multiple times (3-5 times) and verify identical outcomes
     let num_runs = 5;
@@ -210,9 +211,7 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
                 // Extract UUID from field_data
                 if let Some(serde_json::Value::String(uuid_str)) = entity.field_data.get("uuid") {
                     if let Ok(uuid) = Uuid::parse_str(uuid_str) {
-                        let _ = de_service
-                            .delete_entity(&entity_type, &uuid)
-                            .await;
+                        let _ = de_service.delete_entity(&entity_type, &uuid).await;
                     }
                 }
             }
@@ -240,9 +239,7 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
         assert_eq!(
             result.3, first_result.3,
             "Run {}: Error messages differ from first run. Got: {:?}, Expected: {:?}",
-            idx,
-            result.3,
-            first_result.3
+            idx, result.3, first_result.3
         );
     }
 
@@ -253,8 +250,5 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
 
     // Clean up
     let _ = wf_service.delete(wf_uuid).await;
-    let _ = ed_service
-        .delete_entity_definition(&entity_def.uuid)
-        .await;
+    let _ = ed_service.delete_entity_definition(&entity_def.uuid).await;
 }
-

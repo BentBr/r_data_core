@@ -625,7 +625,10 @@ async fn persist_entity_create(
         // Normalize path from mapping if it doesn't start with /
         if let Some(path_str) = path_value.as_str() {
             if !path_str.starts_with('/') {
-                field_data.insert("path".to_string(), serde_json::json!(format!("/{}", path_str)));
+                field_data.insert(
+                    "path".to_string(),
+                    serde_json::json!(format!("/{}", path_str)),
+                );
             }
         }
     }

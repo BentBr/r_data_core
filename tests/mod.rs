@@ -1,4 +1,5 @@
 pub mod api;
+pub mod cache;
 pub mod common;
 pub mod repositories;
 pub mod services;

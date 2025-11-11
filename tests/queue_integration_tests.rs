@@ -9,17 +9,20 @@ fn get_test_queue() -> Option<ApalisRedisQueue> {
         .unwrap_or_else(|_| format!("test_queue:fetch:{}", Uuid::now_v7()));
     let process_key = std::env::var("QUEUE_PROCESS_KEY")
         .unwrap_or_else(|_| format!("test_queue:process:{}", Uuid::now_v7()));
-    
+
     // Use tokio runtime to call async function
     tokio::runtime::Handle::try_current()
         .ok()
         .and_then(|handle| {
-            handle.block_on(ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key)).ok()
+            handle
+                .block_on(ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key))
+                .ok()
         })
         .or_else(|| {
-            tokio::runtime::Runtime::new()
-                .ok()
-                .and_then(|rt| rt.block_on(ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key)).ok())
+            tokio::runtime::Runtime::new().ok().and_then(|rt| {
+                rt.block_on(ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key))
+                    .ok()
+            })
         })
 }
 
@@ -67,9 +70,7 @@ async fn enqueue_process_job_if_redis_available() {
 
     // Enqueue process job
     queue
-        .enqueue_process(ProcessRawItemJob {
-            raw_item_id: item,
-        })
+        .enqueue_process(ProcessRawItemJob { raw_item_id: item })
         .await
         .expect("enqueue process should succeed");
 
@@ -78,21 +79,21 @@ async fn enqueue_process_job_if_redis_available() {
     let url = std::env::var("REDIS_URL").expect("REDIS_URL should be set");
     let process_key = std::env::var("QUEUE_PROCESS_KEY")
         .unwrap_or_else(|_| "queue:workflows:process".to_string());
-    
+
     let client = redis::Client::open(url).expect("Failed to create Redis client");
     let mut conn = client
         .get_multiplexed_async_connection()
         .await
         .expect("Failed to get Redis connection");
-    
+
     let len: i64 = redis::cmd("LLEN")
         .arg(&process_key)
         .query_async(&mut conn)
         .await
         .expect("Failed to check queue length");
-    
+
     assert!(len > 0, "Process queue should have at least one job");
-    
+
     // Clean up: pop the job we just enqueued
     let _: Option<(String, String)> = redis::cmd("BLPOP")
         .arg(&process_key)
@@ -112,7 +113,7 @@ async fn enqueue_multiple_jobs_fifo_ordering_if_redis_available() {
         }
     };
     let wf = Uuid::now_v7();
-    
+
     // Enqueue 3 jobs
     let runs = vec![Uuid::now_v7(), Uuid::now_v7(), Uuid::now_v7()];
     for run in &runs {
@@ -138,13 +139,10 @@ async fn enqueue_multiple_jobs_fifo_ordering_if_redis_available() {
 
 #[tokio::test]
 async fn queue_initialization_fails_with_invalid_redis_url() {
-    let result = ApalisRedisQueue::from_parts(
-        "redis://invalid-host:9999",
-        "test:fetch",
-        "test:process",
-    )
-    .await;
-    
+    let result =
+        ApalisRedisQueue::from_parts("redis://invalid-host:9999", "test:fetch", "test:process")
+            .await;
+
     assert!(result.is_err(), "Should fail with invalid Redis URL");
 }
 
@@ -177,5 +175,3 @@ async fn enqueue_fetch_without_trigger_id_if_redis_available() {
     assert_eq!(popped.workflow_id, wf);
     assert_eq!(popped.trigger_id, None);
 }
-
-

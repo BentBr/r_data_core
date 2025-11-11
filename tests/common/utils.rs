@@ -12,6 +12,7 @@ use r_data_core::error::{Error, Result};
 use r_data_core::services::{
     DynamicEntityService, EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService,
 };
+use r_data_core::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 use r_data_core::workflow::data::repository::WorkflowRepository;
 use serde_json::json;
 use sqlx::{postgres::PgPoolOptions, PgPool, Row};
@@ -20,7 +21,6 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use time::OffsetDateTime;
 use uuid::Uuid;
-use r_data_core::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
 // Global constants and state for test synchronization
 lazy_static! {
@@ -107,7 +107,7 @@ pub async fn create_test_entity_definition(pool: &PgPool, entity_type: &str) -> 
 
     // Use the repository trait to create the entity definition
     let repository = EntityDefinitionRepository::new(pool.clone());
-    let service = EntityDefinitionService::new(Arc::new(repository));
+    let service = EntityDefinitionService::new_without_cache(Arc::new(repository));
 
     // Create the entity definition and wait for the service to finish
     let uuid = service.create_entity_definition(&entity_def).await?;
@@ -158,7 +158,7 @@ pub async fn create_test_entity(
 
     // First get the entity definition for this entity type
     let class_repo = EntityDefinitionRepository::new(pool.clone());
-    let class_service = EntityDefinitionService::new(Arc::new(class_repo));
+    let class_service = EntityDefinitionService::new_without_cache(Arc::new(class_repo));
     let entity_def = class_service
         .get_entity_definition_by_entity_type(entity_type)
         .await?;
@@ -517,7 +517,7 @@ pub async fn create_entity_definition_from_json(pool: &PgPool, json_path: &str) 
 
     // Create the entity definition using the service
     let repository = EntityDefinitionRepository::new(pool.clone());
-    let service = EntityDefinitionService::new(Arc::new(repository));
+    let service = EntityDefinitionService::new_without_cache(Arc::new(repository));
     let uuid = service.create_entity_definition(&entity_def).await?;
 
     // The view creation should be handled by the service, but we'll add a small delay
@@ -546,15 +546,15 @@ pub fn make_workflow_service(pool: &PgPool) -> WorkflowService {
 pub async fn test_queue_client_async() -> Arc<ApalisRedisQueue> {
     // Use env if provided, otherwise fall back to localhost defaults.
     let url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
-    let fetch_key = std::env::var("QUEUE_FETCH_KEY")
-        .unwrap_or_else(|_| "queue:workflows:fetch".to_string());
+    let fetch_key =
+        std::env::var("QUEUE_FETCH_KEY").unwrap_or_else(|_| "queue:workflows:fetch".to_string());
     let process_key = std::env::var("QUEUE_PROCESS_KEY")
         .unwrap_or_else(|_| "queue:workflows:process".to_string());
-    
+
     let queue = ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key)
         .await
         .expect("Failed to construct test ApalisRedisQueue");
-    
+
     Arc::new(queue)
 }
 
@@ -563,25 +563,24 @@ pub fn test_queue_client() -> Arc<ApalisRedisQueue> {
     // For sync contexts, use spawn_blocking to avoid blocking the async runtime
     // This is safe because we're creating a new runtime in the blocking thread
     let url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
-    let fetch_key = std::env::var("QUEUE_FETCH_KEY")
-        .unwrap_or_else(|_| "queue:workflows:fetch".to_string());
+    let fetch_key =
+        std::env::var("QUEUE_FETCH_KEY").unwrap_or_else(|_| "queue:workflows:fetch".to_string());
     let process_key = std::env::var("QUEUE_PROCESS_KEY")
         .unwrap_or_else(|_| "queue:workflows:process".to_string());
-    
+
     // Use spawn_blocking to run async code in a blocking context
     // This avoids deadlocks when called from within a tokio runtime
     let queue = if let Ok(handle) = tokio::runtime::Handle::try_current() {
         // We're in a tokio runtime, use spawn_blocking
-        handle.block_on(
-            tokio::task::spawn_blocking(move || {
+        handle
+            .block_on(tokio::task::spawn_blocking(move || {
                 // Create a new runtime in the blocking thread
                 tokio::runtime::Runtime::new()
                     .expect("Failed to create runtime for test_queue_client")
                     .block_on(ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key))
-            })
-        )
-        .expect("Failed to spawn blocking task")
-        .expect("Failed to join blocking task")
+            }))
+            .expect("Failed to spawn blocking task")
+            .expect("Failed to join blocking task")
     } else {
         // Not in a runtime, create one
         tokio::runtime::Runtime::new()
@@ -589,6 +588,6 @@ pub fn test_queue_client() -> Arc<ApalisRedisQueue> {
             .block_on(ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key))
             .expect("Failed to construct queue")
     };
-    
+
     Arc::new(queue)
 }

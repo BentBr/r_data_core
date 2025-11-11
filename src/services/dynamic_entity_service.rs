@@ -569,7 +569,7 @@ mod tests {
             .returning(|_, _, _, _| Ok(vec![create_test_entity()]));
 
         // Create service with proper mocks
-        let class_service = EntityDefinitionService::new(Arc::new(class_repo));
+        let class_service = EntityDefinitionService::new_without_cache(Arc::new(class_repo));
         let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
 
         let entities = service
@@ -606,7 +606,7 @@ mod tests {
             .returning(|_, _, _| Ok(Some(create_test_entity())));
 
         // Create service with proper mocks
-        let class_service = EntityDefinitionService::new(Arc::new(class_repo));
+        let class_service = EntityDefinitionService::new_without_cache(Arc::new(class_repo));
         let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
 
         let entity = service.get_entity_by_uuid(entity_type, &uuid, None).await?;
@@ -639,7 +639,7 @@ mod tests {
             .returning(|_| Ok(()));
 
         // Create service with proper mocks
-        let class_service = EntityDefinitionService::new(Arc::new(class_repo));
+        let class_service = EntityDefinitionService::new_without_cache(Arc::new(class_repo));
         let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
 
         let result = service.create_entity(&entity).await;
@@ -675,7 +675,7 @@ mod tests {
         };
 
         // Create service with proper mocks
-        let class_service = EntityDefinitionService::new(Arc::new(class_repo));
+        let class_service = EntityDefinitionService::new_without_cache(Arc::new(class_repo));
         let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
 
         // Try to create the entity, should fail because of missing required field
@@ -712,7 +712,7 @@ mod tests {
             .returning(|_| Ok(Some(create_test_entity_definition())));
 
         // Create service with proper mocks
-        let class_service = EntityDefinitionService::new(Arc::new(class_repo));
+        let class_service = EntityDefinitionService::new_without_cache(Arc::new(class_repo));
         let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
 
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -744,7 +744,7 @@ mod tests {
             .returning(|_, _, _, _| Ok(vec![create_test_entity()]));
 
         // Create service with proper mocks
-        let class_service = EntityDefinitionService::new(Arc::new(class_repo));
+        let class_service = EntityDefinitionService::new_without_cache(Arc::new(class_repo));
         let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
 
         let entities = service.list_entities(entity_type, 10, 0, None).await?;

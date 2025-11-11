@@ -1,3 +1,4 @@
+use crate::cache::CacheManager;
 use crate::{
     entity::admin_user::{ApiKey, ApiKeyRepository, ApiKeyRepositoryTrait},
     error::{Error, Result},
@@ -8,19 +9,45 @@ use uuid::Uuid;
 /// Service for handling API key operations
 pub struct ApiKeyService {
     repository: Arc<dyn ApiKeyRepositoryTrait>,
+    cache_manager: Option<Arc<CacheManager>>,
+    api_key_ttl: u64,
 }
 
 impl ApiKeyService {
     /// Create a new API key service with a concrete repository
     pub fn new(repository: Arc<dyn ApiKeyRepositoryTrait>) -> Self {
-        Self { repository }
+        Self {
+            repository,
+            cache_manager: None,
+            api_key_ttl: 600, // Default 10 minutes
+        }
+    }
+
+    /// Create a new API key service with cache manager
+    pub fn with_cache(
+        repository: Arc<dyn ApiKeyRepositoryTrait>,
+        cache_manager: Arc<CacheManager>,
+        api_key_ttl: u64,
+    ) -> Self {
+        Self {
+            repository,
+            cache_manager: Some(cache_manager),
+            api_key_ttl,
+        }
     }
 
     /// Create a new API key service from a concrete repository
     pub fn from_repository(repository: ApiKeyRepository) -> Self {
         Self {
             repository: Arc::new(repository),
+            cache_manager: None,
+            api_key_ttl: 600, // Default 10 minutes
         }
+    }
+
+    /// Generate cache key for API key by hash
+    fn cache_key_by_hash(&self, key_hash: &str) -> String {
+        format!("api_key:hash:{}", key_hash)
     }
 
     /// Create a new API key
@@ -55,7 +82,45 @@ impl ApiKeyService {
             return Ok(None);
         }
 
-        self.repository.find_api_key_for_auth(api_key).await
+        // Hash the API key for cache lookup
+        let key_hash = match ApiKey::hash_api_key(api_key) {
+            Ok(hash) => hash,
+            Err(e) => {
+                log::warn!("Failed to hash API key for cache: {}", e);
+                // Fall back to repository lookup
+                return self.repository.find_api_key_for_auth(api_key).await;
+            }
+        };
+
+        // Check cache first if cache manager is available
+        if let Some(cache) = &self.cache_manager {
+            let cache_key = self.cache_key_by_hash(&key_hash);
+            if let Ok(Some(cached)) = cache.get::<(ApiKey, Uuid)>(&cache_key).await {
+                // Cache hit - return cached result (skip last_used_at update for performance)
+                return Ok(Some(cached));
+            }
+        }
+
+        // Cache miss - query repository
+        let result = self.repository.find_api_key_for_auth(api_key).await?;
+
+        // Cache the result if valid and cache manager is available
+        if let Some((ref key, ref user_uuid)) = result {
+            if let Some(cache) = &self.cache_manager {
+                let cache_key = self.cache_key_by_hash(&key_hash);
+                // Use configured TTL (0 = no expiration, but we use Some() to respect TTL)
+                let ttl = if self.api_key_ttl > 0 {
+                    Some(self.api_key_ttl)
+                } else {
+                    None // No expiration
+                };
+                if let Err(e) = cache.set(&cache_key, &(key.clone(), *user_uuid), ttl).await {
+                    log::warn!("Failed to cache API key validation result: {}", e);
+                }
+            }
+        }
+
+        Ok(result)
     }
 
     /// List all API keys for a user
@@ -78,7 +143,22 @@ impl ApiKeyService {
         let key = self.repository.get_by_uuid(key_uuid).await?;
 
         match key {
-            Some(key) if key.user_uuid == user_uuid => self.repository.revoke(key_uuid).await,
+            Some(key) if key.user_uuid == user_uuid => {
+                // Revoke the key
+                let result = self.repository.revoke(key_uuid).await;
+
+                // Invalidate cache if revocation succeeded
+                if result.is_ok() {
+                    if let Some(cache) = &self.cache_manager {
+                        let cache_key = self.cache_key_by_hash(&key.key_hash);
+                        if let Err(e) = cache.delete(&cache_key).await {
+                            log::warn!("Failed to invalidate API key cache: {}", e);
+                        }
+                    }
+                }
+
+                result
+            }
             Some(_) => Err(Error::Forbidden(
                 "You don't have permission to revoke this API key".to_string(),
             )),

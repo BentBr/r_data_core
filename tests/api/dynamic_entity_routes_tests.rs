@@ -32,14 +32,16 @@ mod dynamic_entity_api_tests {
 
         // Create required services
         let cache_config = CacheConfig {
+            entity_definition_ttl: 0, // No expiration
+            api_key_ttl: 600,         // 10 minutes for tests
             enabled: true,
-            ttl: 300,
+            ttl: 3600, // 1-hour default
             max_size: 10000,
         };
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
         // Create user entity definition
-        let user_def_uuid = common::utils::create_test_entity_definition(&pool, "user").await?;
+        let _ = common::utils::create_test_entity_definition(&pool, "user").await?;
 
         // Create test users with paths to exercise folder browsing
         for i in 1..=3 {
@@ -55,8 +57,7 @@ mod dynamic_entity_api_tests {
                 .bind(uuid)
                 .bind(format!("root-{}", i))
                 .execute(&pool)
-                .await
-                .unwrap();
+                .await?;
         }
 
         // Add users under /team and /team/dev
@@ -67,8 +68,7 @@ mod dynamic_entity_api_tests {
         )
         .bind(u1)
         .execute(&pool)
-        .await
-        .unwrap();
+        .await?;
 
         let u2 = common::utils::create_test_entity(&pool, "user", "Bob", "bob@example.com").await?;
         sqlx::query(
@@ -76,8 +76,7 @@ mod dynamic_entity_api_tests {
         )
         .bind(u2)
         .execute(&pool)
-        .await
-        .unwrap();
+        .await?;
 
         // Create an API key
         let api_key = "test_api_key_12345";
@@ -91,7 +90,8 @@ mod dynamic_entity_api_tests {
         let admin_user_service = AdminUserService::new(admin_user_repository);
 
         let entity_definition_repository = Arc::new(EntityDefinitionRepository::new(pool.clone()));
-        let entity_definition_service = EntityDefinitionService::new(entity_definition_repository);
+        let entity_definition_service =
+            EntityDefinitionService::new_without_cache(entity_definition_repository);
 
         let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
         let dynamic_entity_service = Arc::new(DynamicEntityService::new(

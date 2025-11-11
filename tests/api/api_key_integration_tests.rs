@@ -85,6 +85,8 @@ mod tests {
         );
 
         let cache_config = CacheConfig {
+            entity_definition_ttl: 0,
+            api_key_ttl: 600,
             enabled: true,
             ttl: 3600,
             max_size: 1000,
@@ -102,7 +104,9 @@ mod tests {
                     cache_manager: Arc::new(CacheManager::new(cache_config)),
                     api_key_service: ApiKeyService::from_repository(api_key_repo),
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    entity_definition_service: EntityDefinitionService::new(entity_def_repo),
+                    entity_definition_service: EntityDefinitionService::new_without_cache(
+                        entity_def_repo,
+                    ),
                     dynamic_entity_service: None,
                     workflow_service: crate::common::utils::make_workflow_service(&pool),
                     queue: crate::common::utils::test_queue_client_async().await,
@@ -173,6 +177,8 @@ mod tests {
         );
 
         let cache_config = CacheConfig {
+            entity_definition_ttl: 0,
+            api_key_ttl: 600,
             enabled: true,
             ttl: 3600,
             max_size: 1000,
@@ -190,7 +196,9 @@ mod tests {
                     cache_manager: Arc::new(CacheManager::new(cache_config)),
                     api_key_service: ApiKeyService::from_repository(api_key_repo),
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    entity_definition_service: EntityDefinitionService::new(entity_def_repo),
+                    entity_definition_service: EntityDefinitionService::new_without_cache(
+                        entity_def_repo,
+                    ),
                     dynamic_entity_service: None,
                     workflow_service: crate::common::utils::make_workflow_service(&pool),
                     queue: crate::common::utils::test_queue_client_async().await,
@@ -280,6 +288,8 @@ mod tests {
         );
 
         let cache_config = CacheConfig {
+            entity_definition_ttl: 0,
+            api_key_ttl: 600,
             enabled: true,
             ttl: 3600,
             max_size: 1000,
@@ -294,7 +304,9 @@ mod tests {
                         cache_manager: Arc::new(CacheManager::new(cache_config)),
                         api_key_service: ApiKeyService::from_repository(api_key_repo),
                         admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                        entity_definition_service: EntityDefinitionService::new(entity_def_repo),
+                        entity_definition_service: EntityDefinitionService::new_without_cache(
+                            entity_def_repo,
+                        ),
                         dynamic_entity_service: None,
                         workflow_service: crate::common::utils::make_workflow_service(&pool),
                         queue: crate::common::utils::test_queue_client_async().await,
@@ -362,6 +374,8 @@ mod tests {
         );
 
         let cache_config = CacheConfig {
+            entity_definition_ttl: 0,
+            api_key_ttl: 600,
             enabled: true,
             ttl: 3600,
             max_size: 1000,
@@ -376,7 +390,9 @@ mod tests {
                         cache_manager: Arc::new(CacheManager::new(cache_config)),
                         api_key_service: ApiKeyService::from_repository(api_key_repo),
                         admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                        entity_definition_service: EntityDefinitionService::new(entity_def_repo),
+                        entity_definition_service: EntityDefinitionService::new_without_cache(
+                            entity_def_repo,
+                        ),
                         dynamic_entity_service: None,
                         workflow_service: crate::common::utils::make_workflow_service(&pool),
                         queue: crate::common::utils::test_queue_client_async().await,
@@ -451,6 +467,8 @@ mod tests {
         );
 
         let cache_config = CacheConfig {
+            entity_definition_ttl: 0,
+            api_key_ttl: 600,
             enabled: true,
             ttl: 3600,
             max_size: 1000,
@@ -465,7 +483,9 @@ mod tests {
                         cache_manager: Arc::new(CacheManager::new(cache_config)),
                         api_key_service: ApiKeyService::from_repository(api_key_repo),
                         admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                        entity_definition_service: EntityDefinitionService::new(entity_def_repo),
+                        entity_definition_service: EntityDefinitionService::new_without_cache(
+                            entity_def_repo,
+                        ),
                         dynamic_entity_service: None,
                         workflow_service: crate::common::utils::make_workflow_service(&pool),
                         queue: crate::common::utils::test_queue_client_async().await,
@@ -588,6 +608,8 @@ mod tests {
         );
 
         let cache_config = CacheConfig {
+            entity_definition_ttl: 0,
+            api_key_ttl: 600,
             enabled: true,
             ttl: 3600,
             max_size: 1000,
@@ -602,7 +624,9 @@ mod tests {
                         cache_manager: Arc::new(CacheManager::new(cache_config)),
                         api_key_service: ApiKeyService::from_repository(api_key_repo),
                         admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                        entity_definition_service: EntityDefinitionService::new(entity_def_repo),
+                        entity_definition_service: EntityDefinitionService::new_without_cache(
+                            entity_def_repo,
+                        ),
                         dynamic_entity_service: None,
                         workflow_service: crate::common::utils::make_workflow_service(&pool),
                         queue: crate::common::utils::test_queue_client_async().await,
@@ -728,6 +752,8 @@ mod tests {
         );
 
         let cache_config = CacheConfig {
+            entity_definition_ttl: 0,
+            api_key_ttl: 600,
             enabled: true,
             ttl: 3600,
             max_size: 1000,
@@ -741,7 +767,9 @@ mod tests {
                     cache_manager: Arc::new(CacheManager::new(cache_config)),
                     api_key_service: ApiKeyService::from_repository(api_key_repo),
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    entity_definition_service: EntityDefinitionService::new(entity_def_repo),
+                    entity_definition_service: EntityDefinitionService::new_without_cache(
+                        entity_def_repo,
+                    ),
                     dynamic_entity_service: None,
                     workflow_service: crate::common::utils::make_workflow_service(&pool),
                     queue: crate::common::utils::test_queue_client_async().await,

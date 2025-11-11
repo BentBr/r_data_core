@@ -129,7 +129,7 @@ impl FromRequest for CombinedRequiredAuth {
                 // Check for an API key in the X-API-Key header
                 if let Some(_) = req.headers().get("X-API-Key").and_then(|h| h.to_str().ok()) {
                     // Try to validate an API key
-                    match extract_and_validate_api_key(&req, &state.db_pool).await {
+                    match extract_and_validate_api_key(&req).await {
                         Ok(Some((key, user_uuid))) => {
                             let key_uuid = key.uuid;
                             req.extensions_mut().insert(ApiKeyInfo {

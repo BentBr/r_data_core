@@ -2,9 +2,11 @@ use log::{debug, error, warn};
 use serde_json::Value as JsonValue;
 use sqlx::{PgPool, Row};
 use std::collections::HashMap;
+use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::cache::CacheManager;
 use crate::entity::dynamic_entity::entity::DynamicEntity;
 use crate::entity::dynamic_entity::mapper;
 use crate::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
@@ -15,18 +17,36 @@ use crate::error::{Error, Result};
 pub struct DynamicEntityRepository {
     /// Database connection pool
     pub pool: PgPool,
+    /// Cache manager for entity definitions
+    pub cache_manager: Option<Arc<CacheManager>>,
 }
 
 impl DynamicEntityRepository {
     /// Create a new repository instance
     pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+        Self {
+            pool,
+            cache_manager: None,
+        }
+    }
+
+    /// Create a new repository instance with cache manager
+    pub fn with_cache(pool: PgPool, cache_manager: Arc<CacheManager>) -> Self {
+        Self {
+            pool,
+            cache_manager: Some(cache_manager),
+        }
     }
 
     /// Create a new dynamic entity
     pub async fn create(&self, entity: &DynamicEntity) -> Result<()> {
         // Get the entity definition to validate against
-        let _entity_def = utils::get_entity_definition(&self.pool, &entity.entity_type).await?;
+        let _entity_def = utils::get_entity_definition(
+            &self.pool,
+            &entity.entity_type,
+            self.cache_manager.clone(),
+        )
+        .await?;
 
         // Validate the entity against the entity definition
         entity.validate()?;
@@ -636,7 +656,9 @@ impl DynamicEntityRepository {
         debug!("Executing filter query: {}", query);
 
         // Get the entity definition for mapping
-        let entity_def = utils::get_entity_definition(&self.pool, entity_type).await?;
+        let entity_def =
+            utils::get_entity_definition(&self.pool, entity_type, self.cache_manager.clone())
+                .await?;
 
         // Prepare and execute the query with proper parameter binding
         let mut sql = sqlx::query(&query);
@@ -734,7 +756,9 @@ impl DynamicEntityRepository {
         offset: i64,
     ) -> Result<Vec<DynamicEntity>> {
         let table_name = utils::get_table_name(entity_type);
-        let entity_def = utils::get_entity_definition(&self.pool, entity_type).await?;
+        let entity_def =
+            utils::get_entity_definition(&self.pool, entity_type, self.cache_manager.clone())
+                .await?;
 
         // Build the query
         let mut query = format!(
@@ -830,7 +854,9 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
         debug!("Getting entity of type {} with UUID {}", entity_type, uuid);
 
         // Get the entity definition to understand entity structure
-        let entity_def = utils::get_entity_definition(&self.pool, entity_type).await?;
+        let entity_def =
+            utils::get_entity_definition(&self.pool, entity_type, self.cache_manager.clone())
+                .await?;
 
         // Get the view name
         let view_name = utils::get_view_name(entity_type);
@@ -895,7 +921,9 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
         debug!("Getting all entities of type {}", entity_type);
 
         // Get the entity definition to understand entity structure
-        let entity_def = utils::get_entity_definition(&self.pool, entity_type).await?;
+        let entity_def =
+            utils::get_entity_definition(&self.pool, entity_type, self.cache_manager.clone())
+                .await?;
 
         // Get the view name
         let view_name = utils::get_view_name(entity_type);

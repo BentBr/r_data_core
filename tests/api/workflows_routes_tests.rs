@@ -31,9 +31,13 @@ async fn setup_app_and_token() -> anyhow::Result<(
 
     // Minimal services for configure_app
     let cache_config = CacheConfig {
+            entity_definition_ttl: 0,
+            api_key_ttl: 600,
         enabled: true,
         ttl: 300,
         max_size: 10000,
+            entity_definition_ttl: 0,
+            api_key_ttl: 600,
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
 
@@ -44,7 +48,7 @@ async fn setup_app_and_token() -> anyhow::Result<(
     let admin_user_service = AdminUserService::new(admin_user_repository);
 
     let entity_definition_service =
-        EntityDefinitionService::new(Arc::new(r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(pool.clone())));
+        EntityDefinitionService::new_without_cache(Arc::new(r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(pool.clone())));
 
     let wf_repo = WorkflowRepository::new(pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
