@@ -1,6 +1,6 @@
 use actix_web::{delete, get, post, put, web, Responder};
 use chrono::{DateTime, Utc};
-use log::error;
+use log::{error, info};
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -13,7 +13,6 @@ use crate::api::query::PaginationQuery;
 use crate::api::response::ValidationViolation;
 use crate::api::ApiResponse;
 use crate::api::ApiState;
-use crate::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 use crate::workflow::data::job_queue::JobQueue;
 use crate::workflow::data::jobs::FetchAndStageJob;
 use actix_multipart::Multipart;
@@ -370,13 +369,21 @@ pub async fn run_workflow_now(
     match state.workflow_service.get(uuid).await {
         Ok(Some(_)) => match state.workflow_service.enqueue_run(uuid).await {
             Ok(run_uuid) => {
-                let _ = ApalisRedisQueue::new()
-                    .enqueue_fetch(FetchAndStageJob {
-                        workflow_id: uuid,
-                        trigger_id: Some(run_uuid),
-                    })
-                    .await;
-                ApiResponse::<()>::message("Workflow run enqueued")
+                match state.queue
+                .enqueue_fetch(FetchAndStageJob {
+                    workflow_id: uuid,
+                    trigger_id: Some(run_uuid),
+                })
+                .await {
+                    Ok(_) => {
+                        info!("Successfully enqueued fetch job for workflow {} (run: {})", uuid, run_uuid);
+                        ApiResponse::<()>::message("Workflow run enqueued")
+                    }
+                    Err(e) => {
+                        error!("Failed to enqueue fetch job for workflow {} (run: {}): {}", uuid, run_uuid, e);
+                        ApiResponse::<()>::internal_error(&format!("Failed to enqueue job to Redis: {}", e))
+                    }
+                }
             }
             Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to enqueue run: {}", e)),
         },
@@ -443,10 +450,32 @@ pub async fn run_workflow_now_upload(
         .run_now_upload_csv(workflow_uuid, &file_bytes)
         .await
     {
-        Ok((run_uuid, staged)) => ApiResponse::<serde_json::Value>::ok(serde_json::json!({
-            "run_uuid": run_uuid,
-            "staged_items": staged
-        })),
+        Ok((run_uuid, staged)) => {
+            // Enqueue job to process the staged items (worker will skip fetching since items are already staged)
+            match state.queue
+                .enqueue_fetch(FetchAndStageJob {
+                    workflow_id: workflow_uuid,
+                    trigger_id: Some(run_uuid),
+                })
+                .await {
+                Ok(_) => {
+                    info!("Successfully enqueued fetch job for uploaded workflow {} (run: {}, staged: {})", workflow_uuid, run_uuid, staged);
+                    ApiResponse::<serde_json::Value>::ok(serde_json::json!({
+                        "run_uuid": run_uuid,
+                        "staged_items": staged
+                    }))
+                }
+                Err(e) => {
+                    error!("Failed to enqueue fetch job for uploaded workflow {} (run: {}): {}", workflow_uuid, run_uuid, e);
+                    // Still return success for the upload, but log the enqueue failure
+                    ApiResponse::<serde_json::Value>::ok(serde_json::json!({
+                        "run_uuid": run_uuid,
+                        "staged_items": staged,
+                        "warning": "Upload succeeded but job enqueue failed - items may not be processed automatically"
+                    }))
+                }
+            }
+        }
         Err(e) => {
             error!(target: "workflows", "run_workflow_now_upload failed: {:#?}", e);
             // Treat CSV parse issues as 422 to surface validation to the UI

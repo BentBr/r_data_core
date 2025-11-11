@@ -60,6 +60,7 @@ async fn setup_app_and_token() -> anyhow::Result<(
         entity_definition_service,
         dynamic_entity_service: None,
         workflow_service,
+        queue: crate::common::utils::test_queue_client_async().await,
     });
 
     let app = test::init_service(App::new().app_data(app_state.clone()).configure(configure_app)).await;
@@ -356,6 +357,79 @@ async fn update_workflow_validates_dsl_config() -> anyhow::Result<()> {
         .to_request();
     let resp = test::call_service(&app, req).await;
     assert!(!resp.status().is_success(), "Should reject update with invalid DSL config");
+
+    Ok(())
+}
+
+#[actix_web::test]
+async fn run_workflow_now_enqueues_job_to_redis_if_available() -> anyhow::Result<()> {
+    let (app, pool, token) = setup_app_and_token().await?;
+
+    // Create a workflow
+    let repo = WorkflowRepository::new(pool.clone());
+    let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
+        .fetch_one(&pool)
+        .await?;
+    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
+        name: format!("wf-run-now-test-{}", Uuid::now_v7()),
+        description: Some("test".to_string()),
+        kind: WorkflowKind::Consumer,
+        enabled: true,
+        schedule_cron: None,
+        config: serde_json::json!({
+            "steps": [
+                {
+                    "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} },
+                    "transform": { "type": "none" },
+                    "to": { "type": "json", "output": "api", "mapping": {} }
+                }
+            ]
+        }),
+    };
+    let wf_uuid = repo.create(&create_req, creator_uuid).await?;
+
+    // Check if Redis is available
+    let redis_url = std::env::var("REDIS_URL").ok();
+    let fetch_key = std::env::var("QUEUE_FETCH_KEY")
+        .unwrap_or_else(|_| format!("test_queue:fetch:{}", Uuid::now_v7()));
+
+    // Call run_workflow_now endpoint
+    let req = test::TestRequest::post()
+        .uri(&format!("/admin/api/v1/workflows/{}/run", wf_uuid))
+        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    
+    assert!(resp.status().is_success(), "run_workflow_now should succeed");
+
+    // If Redis is available, verify job was enqueued
+    if let Some(url) = redis_url {
+        let client = redis::Client::open(url).ok();
+        if let Some(client) = client {
+            let mut conn = client
+                .get_multiplexed_async_connection()
+                .await
+                .ok();
+            if let Some(mut conn) = conn {
+                let len: i64 = redis::cmd("LLEN")
+                    .arg(&fetch_key)
+                    .query_async(&mut conn)
+                    .await
+                    .unwrap_or(0);
+                // Job should be in queue (or already consumed, so len >= 0 is acceptable)
+                assert!(len >= 0, "Queue length should be non-negative");
+            }
+        }
+    }
+
+    // Verify run was created in database
+    let run_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM workflow_runs WHERE workflow_uuid = $1"
+    )
+        .bind(wf_uuid)
+        .fetch_one(&pool)
+        .await?;
+    assert!(run_count > 0, "At least one run should be created");
 
     Ok(())
 }

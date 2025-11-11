@@ -302,6 +302,7 @@ Swagger:
 - admin easy default password warning (admin admin) -> hint in admin if default pw is being used
 - add unique constraint to entity_definitions (FE + BE)
 - uuid refactoring -> all in db
+- caching of definitions for our API so we don't need to query entity_definitions every time
 
 Check DSL:
 

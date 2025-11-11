@@ -68,6 +68,17 @@ pub struct WorkflowConfig {
     pub max_concurrent: u32,
 }
 
+/// Queue configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QueueConfig {
+    /// Redis connection URL
+    pub redis_url: String,
+    /// Redis key for fetch jobs
+    pub fetch_key: String,
+    /// Redis key for process jobs
+    pub process_key: String,
+}
+
 /// Log configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogConfig {
@@ -95,6 +106,8 @@ pub struct AppConfig {
 
     /// Log configuration
     pub log: LogConfig,
+    /// Queue configuration (mandatory)
+    pub queue: QueueConfig,
 }
 
 impl AppConfig {
@@ -167,12 +180,23 @@ impl AppConfig {
             file: env::var("LOG_FILE").ok(),
         };
 
+
+        let queue = QueueConfig {
+            redis_url: env::var("REDIS_URL")
+                .map_err(|_| Error::Config("REDIS_URL not set".to_string()))?,
+            fetch_key: env::var("QUEUE_FETCH_KEY")
+                .unwrap_or_else(|_| "queue:workflows:fetch".to_string()),
+            process_key: env::var("QUEUE_PROCESS_KEY")
+                .unwrap_or_else(|_| "queue:workflows:process".to_string()),
+        };
+
         Ok(Self {
             environment,
             database,
             api,
             cache,
             log,
+            queue,
         })
     }
 }
@@ -188,6 +212,8 @@ pub struct WorkerConfig {
 
     /// Workflow configuration
     pub workflow: WorkflowConfig,
+    /// Queue configuration (required for worker)
+    pub queue: QueueConfig,
 }
 
 impl WorkerConfig {
@@ -236,10 +262,20 @@ impl WorkerConfig {
                 .unwrap_or(10),
         };
 
+        let queue = QueueConfig {
+            redis_url: env::var("REDIS_URL")
+                .map_err(|_| Error::Config("REDIS_URL not set".to_string()))?,
+            fetch_key: env::var("QUEUE_FETCH_KEY")
+                .unwrap_or_else(|_| "queue:workflows:fetch".to_string()),
+            process_key: env::var("QUEUE_PROCESS_KEY")
+                .unwrap_or_else(|_| "queue:workflows:process".to_string()),
+        };
+
         Ok(Self {
             job_queue_update_interval_secs,
             database,
             workflow,
+            queue,
         })
     }
 }

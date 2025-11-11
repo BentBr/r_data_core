@@ -119,6 +119,7 @@ mod tests {
                             ),
                         ),
                     )),
+                    queue: crate::common::utils::test_queue_client_async().await,
                 }))
                 .service(web::scope("/admin/api/v1").service(
                     web::scope("/entity-definitions").configure(

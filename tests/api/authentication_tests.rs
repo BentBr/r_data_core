@@ -58,6 +58,7 @@ mod tests {
                     entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                     dynamic_entity_service: None,
                     workflow_service: utils::make_workflow_service(&pool),
+                    queue: utils::test_queue_client_async().await,
                 }))
                 .service(
                     web::resource("/test")
@@ -133,6 +134,7 @@ mod tests {
                         entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                         dynamic_entity_service: None,
                         workflow_service: crate::common::utils::make_workflow_service(&pool),
+                        queue: crate::common::utils::test_queue_client_async().await,
                     }))
                     .service(web::resource("/test").wrap(ApiAuth).to(
                         |req: HttpRequest| async move {
@@ -199,6 +201,7 @@ mod tests {
                     entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                     dynamic_entity_service: None,
                     workflow_service: crate::common::utils::make_workflow_service(&pool),
+                    queue: crate::common::utils::test_queue_client_async().await,
                 }))
                 .service(
                     web::resource("/test")
@@ -273,6 +276,7 @@ mod tests {
                     entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                     dynamic_entity_service: None,
                     workflow_service: crate::common::utils::make_workflow_service(&pool),
+                    queue: crate::common::utils::test_queue_client_async().await,
                 }))
                 .service(
                     web::resource("/test")
@@ -370,6 +374,7 @@ mod tests {
                             ),
                         ),
                     )),
+                    queue: crate::common::utils::test_queue_client_async().await,
                 }))
                 .service(
                     web::resource("/test")
@@ -463,6 +468,7 @@ mod tests {
                             ),
                         ),
                     )),
+                    queue: crate::common::utils::test_queue_client_async().await,
                 }))
                 .service(
                     web::resource("/test")
@@ -539,11 +545,12 @@ mod tests {
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
                     entity_definition_service: EntityDefinitionService::new(entity_def_repo),
                     dynamic_entity_service: None,
-                    workflow_service: crate::common::utils::make_workflow_service(&pool),
+                    workflow_service: utils::make_workflow_service(&pool),
+                    queue: utils::test_queue_client_async().await,
                 }))
                 .service(
                     web::resource("/test")
-                        .wrap(r_data_core::api::middleware::ApiAuth)
+                        .wrap(ApiAuth)
                         .to(|req: HttpRequest| async move {
                             // Check if API key info was added to request extensions
                             if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {

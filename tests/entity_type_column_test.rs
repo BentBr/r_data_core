@@ -259,6 +259,7 @@ async fn create_test_app(
         entity_definition_service,
         dynamic_entity_service: Some(dynamic_entity_service),
         workflow_service,
+        queue: crate::common::utils::test_queue_client_async().await,
     });
 
     // Build test app

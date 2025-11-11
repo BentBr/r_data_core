@@ -47,7 +47,7 @@ services:
         image: redis:8-alpine
         container_name: rdata_redis
         ports:
-            - "6379"
+            - "6379:6379"
         volumes:
             - redis_data:/data
         healthcheck:
@@ -84,6 +84,7 @@ services:
         environment:
             DATABASE_URL: postgres://postgres:postgres@postgres:5432/rdata
             REDIS_URL: redis://redis:6379
+            QUEUE_FETCH_KEY: queue:workflows:fetch
             API_HOST: rdatacore.docker
             API_PORT: 80
             RUST_LOG: info
@@ -127,6 +128,8 @@ services:
             DATABASE_URL: postgres://postgres:postgres@postgres:5432/rdata
             WORKER_DATABASE_URL: postgres://postgres:postgres@postgres:5432/rdata
             REDIS_URL: redis://redis:6379
+            QUEUE_FETCH_KEY: queue:workflows:fetch
+            QUEUE_PROCESS_KEY: queue:workflows:process
             RUST_LOG: info
             LOG_LEVEL: info
             VIRTUAL_HOST: .worker.rdatacore.docker

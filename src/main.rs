@@ -37,6 +37,7 @@ use crate::services::EntityDefinitionService;
 use crate::services::WorkflowRepositoryAdapter;
 use crate::services::WorkflowService;
 use crate::workflow::data::repository::WorkflowRepository;
+use crate::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
 // 404 handler function
 async fn default_404_handler() -> impl actix_web::Responder {
@@ -143,6 +144,17 @@ async fn main() -> std::io::Result<()> {
     let workflow_repo = WorkflowRepository::new(pool.clone());
     let workflow_adapter = WorkflowRepositoryAdapter::new(workflow_repo);
     let workflow_service = WorkflowService::new(Arc::new(workflow_adapter));
+    // Initialize mandatory queue client (fail fast if invalid)
+    let queue_client = Arc::new(
+        ApalisRedisQueue::from_parts(
+            &config.queue.redis_url,
+            &config.queue.fetch_key,
+            &config.queue.process_key,
+        )
+        .await
+        .expect("Failed to initialize Redis queue client"),
+    );
+
     let app_state = web::Data::new(ApiState {
         db_pool: pool,
         jwt_secret: config.api.jwt_secret.clone(),
@@ -152,6 +164,7 @@ async fn main() -> std::io::Result<()> {
         entity_definition_service,
         dynamic_entity_service: Some(Arc::new(dynamic_entity_service)),
         workflow_service,
+        queue: queue_client.clone(),
     });
 
     let bind_address = format!("{}:{}", config.api.host, config.api.port);

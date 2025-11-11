@@ -20,6 +20,7 @@ use crate::services::ApiKeyService;
 use crate::services::DynamicEntityService;
 use crate::services::EntityDefinitionService;
 use crate::services::WorkflowService;
+use crate::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
 /// Shared application state
 pub struct ApiState {
@@ -46,6 +47,8 @@ pub struct ApiState {
 
     /// Workflow service (data import/export workflows)
     pub workflow_service: WorkflowService,
+    /// Queue client for producing jobs
+    pub queue: Arc<ApalisRedisQueue>,
 }
 
 // 404 handler for API routes within scope

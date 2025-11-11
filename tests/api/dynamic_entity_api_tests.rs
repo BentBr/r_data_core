@@ -250,7 +250,8 @@ mod dynamic_entity_api_tests {
             admin_user_service,
             entity_definition_service,
             dynamic_entity_service: Some(dynamic_entity_service),
-            workflow_service: crate::common::utils::make_workflow_service(&pool),
+            workflow_service: crate::common::utils::make_workflow_service(&db_pool),
+            queue: crate::common::utils::test_queue_client_async().await,
         });
 
         // Build test app
