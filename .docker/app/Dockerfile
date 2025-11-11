@@ -48,9 +48,12 @@ COPY src/ ./src/
 COPY migrations/ ./migrations/
 COPY .sqlx/ ./.sqlx/
 
-# Build the actual binary (do not cache the target dir so artifacts persist in the layer)
+# Build the actual binary
+# Note: We don't cache the target directory here to ensure source changes trigger rebuilds
+# We only cache the registry and git to speed up dependency downloads
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
+    cargo clean && \
     if [ "${BUILD_MODE}" = "release" ]; then \
         cargo build --release --bin ${BINARY_NAME}; \
     else \
