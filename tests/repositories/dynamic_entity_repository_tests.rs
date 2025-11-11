@@ -13,6 +13,9 @@ use r_data_core::{
     entity::field::types::FieldType, error::Result,
 };
 
+#[path = "../common/mod.rs"]
+mod common;
+
 // Helper function to create a test entity definition for dynamic entities
 fn create_test_entity_definition() -> EntityDefinition {
     EntityDefinition {
@@ -299,6 +302,226 @@ async fn test_count_entities() -> Result<()> {
 
     // Placeholder assertion until we implement actual tests
     assert!(true);
+
+    Ok(())
+}
+
+/// Test that field names with different cases are handled correctly:
+/// - Entity definition uses camelCase (firstName, lastName)
+/// - Database stores in lowercase (firstname, lastname)
+/// - API returns in entity definition case (firstName, lastName)
+#[tokio::test]
+async fn test_field_name_case_handling() -> Result<()> {
+    use common::utils::{setup_test_db, unique_entity_type};
+    use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
+    use r_data_core::services::EntityDefinitionService;
+    use sqlx::Row;
+
+    let pool = setup_test_db().await;
+    let repo = DynamicEntityRepository::new(pool.clone());
+
+    // Create a unique entity type for this test
+    let entity_type = unique_entity_type("Customer");
+
+    // Create entity definition with camelCase field names
+    let mut entity_def = EntityDefinition::default();
+    entity_def.entity_type = entity_type.clone();
+    entity_def.display_name = format!("{} Entity", entity_type);
+    entity_def.published = true;
+    entity_def.created_by = Uuid::now_v7();
+
+    // Add fields with camelCase names (like firstName, lastName)
+    entity_def.fields = vec![
+        FieldDefinition {
+            name: "firstName".to_string(), // camelCase
+            display_name: "First Name".to_string(),
+            field_type: FieldType::String,
+            required: false,
+            description: Some("First name".to_string()),
+            filterable: true,
+            indexed: false,
+            default_value: None,
+            validation: Default::default(),
+            ui_settings: Default::default(),
+            constraints: HashMap::new(),
+        },
+        FieldDefinition {
+            name: "lastName".to_string(), // camelCase
+            display_name: "Last Name".to_string(),
+            field_type: FieldType::String,
+            required: false,
+            description: Some("Last name".to_string()),
+            filterable: true,
+            indexed: false,
+            default_value: None,
+            validation: Default::default(),
+            ui_settings: Default::default(),
+            constraints: HashMap::new(),
+        },
+        FieldDefinition {
+            name: "email".to_string(), // lowercase
+            display_name: "Email".to_string(),
+            field_type: FieldType::String,
+            required: true,
+            description: Some("Email address".to_string()),
+            filterable: true,
+            indexed: true,
+            default_value: None,
+            validation: Default::default(),
+            ui_settings: Default::default(),
+            constraints: HashMap::new(),
+        },
+    ];
+
+    // Create the entity definition in the database
+    let def_repo = EntityDefinitionRepository::new(pool.clone());
+    let def_service = EntityDefinitionService::new_without_cache(Arc::new(def_repo));
+    def_service.create_entity_definition(&entity_def).await?;
+
+    // Wait for view creation
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+    // Get the created entity definition (with proper structure)
+    let created_def = def_service
+        .get_entity_definition_by_entity_type(&entity_type)
+        .await?;
+
+    // Create an entity with camelCase field names (matching entity definition)
+    let uuid = Uuid::now_v7();
+    let created_by = Uuid::now_v7();
+    let mut field_data = HashMap::new();
+    field_data.insert("uuid".to_string(), json!(uuid.to_string()));
+    field_data.insert("firstName".to_string(), json!("John")); // camelCase
+    field_data.insert("lastName".to_string(), json!("Doe")); // camelCase
+    field_data.insert("email".to_string(), json!("john.doe@example.com"));
+    field_data.insert("entity_key".to_string(), json!("customer-1"));
+    field_data.insert("path".to_string(), json!("/"));
+    field_data.insert("created_by".to_string(), json!(created_by.to_string()));
+    field_data.insert("version".to_string(), json!(1));
+    field_data.insert("published".to_string(), json!(true));
+
+    let entity = DynamicEntity {
+        entity_type: entity_type.clone(),
+        field_data: field_data.clone(),
+        definition: Arc::new(created_def.clone()),
+    };
+
+    // Test 1: Create entity - field names should be converted to lowercase in database
+    repo.create(&entity).await?;
+
+    // Test 2: Verify database stores columns in lowercase
+    let table_name = format!("entity_{}", entity_type.to_lowercase());
+    let row = sqlx::query(&format!(
+        "SELECT firstname, lastname, email FROM {} WHERE uuid = $1",
+        table_name
+    ))
+    .bind(uuid)
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| r_data_core::error::Error::Database(e))?;
+
+    assert!(row.is_some(), "Entity should exist in database");
+    let row = row.unwrap();
+    let db_firstname: Option<String> = row.try_get("firstname").ok();
+    let db_lastname: Option<String> = row.try_get("lastname").ok();
+    let db_email: Option<String> = row.try_get("email").ok();
+
+    assert_eq!(db_firstname, Some("John".to_string()), "Database should store firstname in lowercase column");
+    assert_eq!(db_lastname, Some("Doe".to_string()), "Database should store lastname in lowercase column");
+    assert_eq!(db_email, Some("john.doe@example.com".to_string()));
+
+    // Test 3: Read entity back - field names should be in entity definition case (camelCase)
+    let retrieved = repo
+        .get_by_type(&entity_type, &uuid, None)
+        .await?;
+
+    assert!(retrieved.is_some(), "Entity should be retrievable");
+    let retrieved = retrieved.unwrap();
+
+    // Verify field names are in camelCase (entity definition case)
+    assert!(
+        retrieved.field_data.contains_key("firstName"),
+        "Retrieved entity should have 'firstName' (camelCase) not 'firstname'"
+    );
+    assert!(
+        retrieved.field_data.contains_key("lastName"),
+        "Retrieved entity should have 'lastName' (camelCase) not 'lastname'"
+    );
+    assert!(
+        !retrieved.field_data.contains_key("firstname"),
+        "Retrieved entity should NOT have 'firstname' (lowercase)"
+    );
+    assert!(
+        !retrieved.field_data.contains_key("lastname"),
+        "Retrieved entity should NOT have 'lastname' (lowercase)"
+    );
+
+    // Verify values are correct
+    assert_eq!(
+        retrieved.field_data.get("firstName").and_then(|v| v.as_str()),
+        Some("John"),
+        "firstName value should match"
+    );
+    assert_eq!(
+        retrieved.field_data.get("lastName").and_then(|v| v.as_str()),
+        Some("Doe"),
+        "lastName value should match"
+    );
+    assert_eq!(
+        retrieved.field_data.get("email").and_then(|v| v.as_str()),
+        Some("john.doe@example.com"),
+        "email value should match"
+    );
+
+    // Test 4: Update entity with camelCase field names
+    let mut updated_field_data = retrieved.field_data.clone();
+    updated_field_data.insert("firstName".to_string(), json!("Jane")); // Still camelCase
+    updated_field_data.insert("lastName".to_string(), json!("Smith")); // Still camelCase
+
+    let updated_entity = DynamicEntity {
+        entity_type: entity_type.clone(),
+        field_data: updated_field_data,
+        definition: Arc::new(created_def.clone()),
+    };
+
+    repo.update(&updated_entity).await?;
+
+    // Test 5: Verify update worked and field names are still in camelCase
+    let updated_retrieved = repo
+        .get_by_type(&entity_type, &uuid, None)
+        .await?;
+
+    assert!(updated_retrieved.is_some());
+    let updated_retrieved = updated_retrieved.unwrap();
+
+    assert_eq!(
+        updated_retrieved.field_data.get("firstName").and_then(|v| v.as_str()),
+        Some("Jane"),
+        "Updated firstName should be 'Jane'"
+    );
+    assert_eq!(
+        updated_retrieved.field_data.get("lastName").and_then(|v| v.as_str()),
+        Some("Smith"),
+        "Updated lastName should be 'Smith'"
+    );
+
+    // Verify database still has lowercase columns
+    let updated_row = sqlx::query(&format!(
+        "SELECT firstname, lastname FROM {} WHERE uuid = $1",
+        table_name
+    ))
+    .bind(uuid)
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| r_data_core::error::Error::Database(e))?;
+
+    assert!(updated_row.is_some());
+    let updated_row = updated_row.unwrap();
+    let db_firstname: Option<String> = updated_row.try_get("firstname").ok();
+    let db_lastname: Option<String> = updated_row.try_get("lastname").ok();
+
+    assert_eq!(db_firstname, Some("Jane".to_string()), "Database should have updated firstname");
+    assert_eq!(db_lastname, Some("Smith".to_string()), "Database should have updated lastname");
 
     Ok(())
 }

@@ -314,7 +314,7 @@ mod tests {
                     .service(web::resource("/protected").wrap(ApiAuth::new()).route(
                         web::get().to(move |req: HttpRequest| async move {
                             // Simulate protected endpoint
-                            if let Some(auth) = req.extensions().get::<ApiKeyInfo>() {
+                            if let Some(_auth) = req.extensions().get::<ApiKeyInfo>() {
                                 HttpResponse::Ok().json(serde_json::json!({
                                     "status": "success",
                                     "message": "Access granted"
@@ -400,7 +400,7 @@ mod tests {
                     .service(web::resource("/protected").wrap(ApiAuth::new()).route(
                         web::get().to(move |req: HttpRequest| async move {
                             // Simulate protected endpoint
-                            if let Some(auth) = req.extensions().get::<ApiKeyInfo>() {
+                            if let Some(_auth) = req.extensions().get::<ApiKeyInfo>() {
                                 HttpResponse::Ok().json(serde_json::json!({
                                     "status": "success",
                                     "message": "Access granted"
@@ -493,7 +493,7 @@ mod tests {
                     .service(web::resource("/protected").wrap(ApiAuth::new()).route(
                         web::get().to(move |req: HttpRequest| async move {
                             // Simulate protected endpoint
-                            if let Some(auth) = req.extensions().get::<ApiKeyInfo>() {
+                            if let Some(_auth) = req.extensions().get::<ApiKeyInfo>() {
                                 HttpResponse::Ok().json(serde_json::json!({
                                     "status": "success",
                                     "message": "Access granted"
@@ -634,7 +634,7 @@ mod tests {
                     .service(web::resource("/protected").wrap(ApiAuth::new()).route(
                         web::get().to(move |req: HttpRequest| async move {
                             // Simulate protected endpoint
-                            if let Some(auth) = req.extensions().get::<ApiKeyInfo>() {
+                            if let Some(_auth) = req.extensions().get::<ApiKeyInfo>() {
                                 HttpResponse::Ok().json(serde_json::json!({
                                     "status": "success",
                                     "message": "Access granted"

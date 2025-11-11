@@ -201,7 +201,7 @@ impl DynamicEntityService {
                 continue;
             }
 
-            // Check if this field exists in the entity definition
+            // Check if this field exists in the entity definition (exact case match required)
             if !entity
                 .definition
                 .fields

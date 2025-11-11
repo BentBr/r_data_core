@@ -241,8 +241,10 @@ impl DynamicEntityRepository {
                 continue; // Skip fields that are stored in entities_registry
             }
 
-            if valid_columns.contains(&key.to_lowercase()) {
-                columns.push(key.clone());
+            let key_lower = key.to_lowercase();
+            if valid_columns.contains(&key_lower) {
+                // Database columns are lowercase, so use lowercase for column name
+                columns.push(key_lower);
 
                 // Format the value appropriately based on its type
                 let value_str = match value {
@@ -449,8 +451,10 @@ impl DynamicEntityRepository {
                 continue; // Skip fields that are stored in entities_registry
             }
 
-            if valid_columns.contains(&key.to_lowercase()) {
-                set_clauses.push(format!("{} = ${}", key, param_index));
+            let key_lower = key.to_lowercase();
+            if valid_columns.contains(&key_lower) {
+                // Database columns are lowercase, so use lowercase for column name
+                set_clauses.push(format!("{} = ${}", key_lower, param_index));
                 entity_params.push((param_index, value.clone()));
                 param_index += 1;
             }

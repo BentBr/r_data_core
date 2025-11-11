@@ -5,7 +5,6 @@ use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRep
 use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
 use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
 use r_data_core::entity::entity_definition::definition::EntityDefinition;
-use r_data_core::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use r_data_core::entity::field::ui::UiSettings;
 use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core::error::{Error, Result};

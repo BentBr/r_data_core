@@ -421,6 +421,12 @@ impl EntityDefinitionService {
                 required: true,
                 system: true,
             },
+            ServiceEntityFieldInfo {
+                name: "entity_key".into(),
+                field_type: "String".into(),
+                required: true,
+                system: true,
+            },
         ];
         fields.append(&mut system_fields);
 

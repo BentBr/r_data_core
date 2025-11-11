@@ -598,8 +598,8 @@ async fn persist_entity_create(
         .get_entity_definition_by_entity_type(entity_type)
         .await?;
 
-    // Normalize field names to match definition:
-    // exact match preferred; otherwise case-insensitive match
+    // Keep field names exactly as provided - no case normalization
+    // Validation will fail if field names don't match definition exactly
     let reserved: std::collections::HashSet<&'static str> = [
         "uuid",
         "path",
@@ -614,11 +614,6 @@ async fn persist_entity_create(
     ]
     .into_iter()
     .collect();
-    let mut def_name_lookup: std::collections::HashMap<String, String> =
-        std::collections::HashMap::new();
-    for f in &def.fields {
-        def_name_lookup.insert(f.name.to_lowercase(), f.name.clone());
-    }
     let mut normalized_field_data: std::collections::HashMap<String, serde_json::Value> =
         std::collections::HashMap::new();
     for (k, v) in field_data.into_iter() {
@@ -651,14 +646,8 @@ async fn persist_entity_create(
             }
             continue;
         }
-        if def.fields.iter().any(|f| f.name == k) {
-            normalized_field_data.insert(k, v);
-        } else if let Some(real) = def_name_lookup.get(&k.to_lowercase()) {
-            normalized_field_data.insert(real.clone(), v);
-        } else {
-            // keep as-is; validator will report unknown field cleanly
-            normalized_field_data.insert(k, v);
-        }
+        // Keep field names exactly as provided - validator will check exact match
+        normalized_field_data.insert(k, v);
     }
 
     // Force uuid generation (repository requires uuid on create)
@@ -736,14 +725,9 @@ async fn persist_entity_update(
             .or_insert_with(|| serde_json::json!(p));
     }
 
-    // Fetch entity definition from the embedded definition service
-    let defs = de_service.entity_definition_service();
-    let def = defs
-        .get_entity_definition_by_entity_type(entity_type)
-        .await?;
-
-    // Normalize field names to match definition:
-    // exact match preferred; otherwise case-insensitive match
+    // Keep field names exactly as provided - no case normalization
+    // Validation will fail if field names don't match definition exactly
+    // Note: Entity definition is fetched during validation in update_entity()
     let reserved: std::collections::HashSet<&'static str> = [
         "uuid",
         "path",
@@ -758,11 +742,6 @@ async fn persist_entity_update(
     ]
     .into_iter()
     .collect();
-    let mut def_name_lookup: std::collections::HashMap<String, String> =
-        std::collections::HashMap::new();
-    for f in &def.fields {
-        def_name_lookup.insert(f.name.to_lowercase(), f.name.clone());
-    }
     let mut normalized_field_data: std::collections::HashMap<String, serde_json::Value> =
         std::collections::HashMap::new();
     for (k, v) in field_data.into_iter() {
@@ -790,14 +769,8 @@ async fn persist_entity_update(
             }
             continue;
         }
-        if def.fields.iter().any(|f| f.name == k) {
-            normalized_field_data.insert(k, v);
-        } else if let Some(real) = def_name_lookup.get(&k.to_lowercase()) {
-            normalized_field_data.insert(real.clone(), v);
-        } else {
-            // keep as-is; validator will report unknown field cleanly
-            normalized_field_data.insert(k, v);
-        }
+        // Keep field names exactly as provided - validator will check exact match
+        normalized_field_data.insert(k, v);
     }
 
     // Find existing entity by uuid, update_key, or entity_key in produced data

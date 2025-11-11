@@ -264,8 +264,8 @@ mod tests {
             ),
         );
 
-        // Create API key
-        let (key_uuid, key_value) = api_key_repo
+        // Create the API key
+        let (_key_uuid, key_value) = api_key_repo
             .create_new_api_key("TestKey", "Test Description", user_uuid, 30)
             .await?;
 
@@ -356,7 +356,7 @@ mod tests {
         );
 
         // Create API key
-        let (key_uuid, key_value) = api_key_repo
+        let (_key_uuid, _key_value) = api_key_repo
             .create_new_api_key(
                 "TestKey",
                 "Test Description",
