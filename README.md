@@ -188,10 +188,14 @@ The application can be configured using environment variables. See `.env.example
 - `REDIS_URL` - Redis connection URL (optional)
 - `CACHE_ENABLED` - Enable caching (true/false)
 - `CACHE_TTL` - Cache TTL in seconds
+- `CACHE_ENTITY_DEFINITION_TTL` - seconds until entity definition is cached. Zero for infinite (default)
+- `CACHE_API_KEY_TTL` - seconds until api key is cached, 10 min default
 - `RUST_LOG` - Logging level (info/debug/error)
 
 ## Cache Configuration
+@todo: update the cache config and text here
 
+` cargo run --bin clear_cache -- --help` for a list of available cache clear options.
 The application supports both in-memory caching and Redis caching. By default, Redis caching is enabled when the `REDIS_URL` environment variable is set.
 
 ## Entity System
@@ -291,7 +295,6 @@ Swagger:
 - relations 1:n + n:n
 - admin swagger field definitions / constraints
 - tests
-- caching
 - crons + refresh token deletion
 - load/performance test binary
 - typescript bindings
@@ -302,7 +305,6 @@ Swagger:
 - admin easy default password warning (admin admin) -> hint in admin if default pw is being used
 - add unique constraint to entity_definitions (FE + BE)
 - uuid refactoring -> all in db
-- caching of definitions for our API so we don't need to query entity_definitions every time
 
 Check DSL:
 

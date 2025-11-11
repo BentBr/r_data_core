@@ -3,8 +3,6 @@ use crate::workflow::data::repository_trait::WorkflowRepositoryTrait;
 use crate::workflow::data::Workflow;
 use std::sync::Arc;
 use uuid::Uuid;
-
-// NOTE: Using API DTOs directly to simplify service signatures as requested.
 use crate::api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use cron::Schedule;
 use std::str::FromStr;
@@ -31,46 +29,7 @@ impl WorkflowService {
             dynamic_entity_service: Some(dynamic_entity_service),
         }
     }
-
-    fn validate_dsl_config(cfg: &serde_json::Value) -> anyhow::Result<()> {
-        let dsl = cfg
-            .get("dsl")
-            .ok_or_else(|| anyhow::anyhow!("Invalid workflow configuration: missing 'dsl'"))?;
-        let steps = dsl.as_array().ok_or_else(|| {
-            anyhow::anyhow!("Invalid workflow configuration: 'dsl' must be an array")
-        })?;
-        if steps.is_empty() {
-            return Err(anyhow::anyhow!(
-                "Invalid workflow configuration: 'dsl' must contain at least one step"
-            ));
-        }
-        // Minimal per-step validation
-        for (idx, step) in steps.iter().enumerate() {
-            let t = step.get("type").and_then(|v| v.as_str()).ok_or_else(|| {
-                anyhow::anyhow!(format!("Invalid DSL: step {} missing 'type'", idx))
-            })?;
-            if t != "map" {
-                return Err(anyhow::anyhow!(format!(
-                    "Invalid DSL: unsupported step type '{}' at index {}",
-                    t, idx
-                )));
-            }
-            if step.get("from").and_then(|v| v.as_str()).is_none() {
-                return Err(anyhow::anyhow!(format!(
-                    "Invalid DSL: step {} missing 'from'",
-                    idx
-                )));
-            }
-            if step.get("to").and_then(|v| v.as_str()).is_none() {
-                return Err(anyhow::anyhow!(format!(
-                    "Invalid DSL: step {} missing 'to'",
-                    idx
-                )));
-            }
-        }
-        Ok(())
-    }
-
+ 
     fn infer_input_type(cfg: &serde_json::Value) -> Option<String> {
         // Required structure: { "input": { "type": "csv" | "ndjson", "format": {...}, "source": {...} } }
         cfg.pointer("/input/type")
