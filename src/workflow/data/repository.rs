@@ -1,4 +1,5 @@
 use anyhow::Context;
+use serde_json::Value;
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
@@ -192,9 +193,40 @@ impl WorkflowRepository {
         Ok(row.try_get::<i64, _>("cnt")?)
     }
 
+    /// Check if a workflow config has from.api source type (accepts POST, cron disabled)
+    fn check_has_api_endpoint(config: &Value) -> bool {
+        if let Some(steps) = config.get("steps").and_then(|v| v.as_array()) {
+            for step in steps {
+                if let Some(from) = step.get("from") {
+                    // Check for from.format.source.source_type === "api" without endpoint field
+                    if let Some(source) = from
+                        .get("source")
+                        .or_else(|| from.get("format").and_then(|f| f.get("source")))
+                    {
+                        if let Some(source_type) = source.get("source_type").and_then(|v| v.as_str()) {
+                            if source_type == "api" {
+                                // from.api without endpoint field = accepts POST
+                                if let Some(config_obj) = source.get("config").and_then(|v| v.as_object()) {
+                                    if !config_obj.contains_key("endpoint") {
+                                        return true;
+                                    }
+                                } else {
+                                    // No config object or empty config = accepts POST
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }
+
     pub async fn list_scheduled_consumers(&self) -> anyhow::Result<Vec<(Uuid, String)>> {
+        // Fetch workflows with their config to check for from.api source type
         let rows = sqlx::query(
-            r#"SELECT uuid, schedule_cron FROM workflows WHERE enabled = true AND kind = 'consumer'::workflow_kind AND schedule_cron IS NOT NULL"#,
+            r#"SELECT uuid, schedule_cron, config FROM workflows WHERE enabled = true AND kind = 'consumer'::workflow_kind AND schedule_cron IS NOT NULL"#,
         )
         .fetch_all(&self.pool)
         .await
@@ -204,7 +236,12 @@ impl WorkflowRepository {
         for r in rows {
             let uuid: Uuid = r.try_get(0).unwrap();
             let cron: String = r.try_get::<Option<String>, _>(1).unwrap().unwrap();
-            out.push((uuid, cron));
+            let config: Value = r.try_get(2).unwrap_or(serde_json::json!({}));
+            
+            // Exclude workflows with from.api source type (they accept POST, not cron)
+            if !Self::check_has_api_endpoint(&config) {
+                out.push((uuid, cron));
+            }
         }
         Ok(out)
     }

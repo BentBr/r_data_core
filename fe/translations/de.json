@@ -38,6 +38,7 @@
       "kind": "Typ",
       "enabled": "Aktiv",
       "cron": "Cron",
+      "cron_disabled_endpoint": "Deaktiviert (Endpunkt)",
       "actions": "Aktionen"
     },
     "history": {

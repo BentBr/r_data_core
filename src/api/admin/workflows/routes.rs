@@ -1,6 +1,7 @@
 use actix_web::{delete, get, post, put, web, Responder};
 use chrono::{DateTime, Utc};
 use log::{error, info};
+use serde_json::Value;
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -17,6 +18,36 @@ use crate::workflow::data::job_queue::JobQueue;
 use crate::workflow::data::jobs::FetchAndStageJob;
 use actix_multipart::Multipart;
 use futures_util::StreamExt;
+
+/// Check if a workflow config has from.api source type (accepts POST, cron disabled)
+fn check_has_api_endpoint(config: &Value) -> bool {
+    if let Some(steps) = config.get("steps").and_then(|v| v.as_array()) {
+        for step in steps {
+            if let Some(from) = step.get("from") {
+                // Check for from.format.source.source_type === "api" without endpoint field
+                if let Some(source) = from
+                    .get("source")
+                    .or_else(|| from.get("format").and_then(|f| f.get("source")))
+                {
+                    if let Some(source_type) = source.get("source_type").and_then(|v| v.as_str()) {
+                        if source_type == "api" {
+                            // from.api without endpoint field = accepts POST
+                            if let Some(config_obj) = source.get("config").and_then(|v| v.as_object()) {
+                                if !config_obj.contains_key("endpoint") {
+                                    return true;
+                                }
+                            } else {
+                                // No config object or empty config = accepts POST
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    false
+}
 
 /// Register workflow routes
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
@@ -156,12 +187,17 @@ pub async fn list_workflows(
         Ok((items, total)) => {
             let summaries: Vec<WorkflowSummary> = items
                 .into_iter()
-                .map(|workflow| WorkflowSummary {
-                    uuid: workflow.uuid,
-                    name: workflow.name,
-                    kind: workflow.kind,
-                    enabled: workflow.enabled,
-                    schedule_cron: workflow.schedule_cron,
+                .map(|workflow| {
+                    // Check if workflow has from.api source type (accepts POST, cron disabled)
+                    let has_api_endpoint = check_has_api_endpoint(&workflow.config);
+                    WorkflowSummary {
+                        uuid: workflow.uuid,
+                        name: workflow.name,
+                        kind: workflow.kind,
+                        enabled: workflow.enabled,
+                        schedule_cron: workflow.schedule_cron,
+                        has_api_endpoint,
+                    }
                 })
                 .collect();
             ApiResponse::ok_paginated(summaries, total, page, per_page)

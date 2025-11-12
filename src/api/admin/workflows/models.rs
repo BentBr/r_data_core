@@ -10,6 +10,9 @@ pub struct WorkflowSummary {
     pub kind: WorkflowKind,
     pub enabled: bool,
     pub schedule_cron: Option<String>,
+    /// Indicates if this workflow has a from.api source type (accepts POST, cron disabled)
+    #[serde(default)]
+    pub has_api_endpoint: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]

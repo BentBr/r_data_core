@@ -413,3 +413,136 @@ async fn test_post_endpoint_ignores_cron_for_json() -> anyhow::Result<()> {
     Ok(())
 }
 
+// ============================================================================
+// 2.d.II: Verify that workflows with from.api are NOT scheduled via cron
+// ============================================================================
+
+#[actix_web::test]
+async fn test_from_api_workflow_excluded_from_cron_scheduling() -> anyhow::Result<()> {
+    let (_app, pool, _token, _) = setup_app_with_entities().await?;
+    let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
+        .fetch_one(&pool)
+        .await?;
+
+    let entity_type = generate_entity_type("test_cron_exclusion");
+    let _ed_uuid = create_test_entity_definition(&pool, &entity_type).await?;
+
+    // Create a workflow with from.api source type (should NOT be scheduled via cron)
+    let api_config = serde_json::json!({
+        "steps": [
+            {
+                "from": {
+                    "type": "format",
+                    "source": {
+                        "source_type": "api",
+                        "config": {},
+                        "auth": null
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": { "has_header": true }
+                    },
+                    "mapping": {}
+                },
+                "transform": { "type": "none" },
+                "to": {
+                    "type": "entity",
+                    "entity_definition": entity_type,
+                    "path": "/",
+                    "mode": "create",
+                    "mapping": {}
+                }
+            }
+        ]
+    });
+
+    // Create workflow with from.api and a cron schedule (cron should be ignored)
+    let api_wf_uuid = create_consumer_workflow(
+        &pool,
+        creator_uuid,
+        api_config,
+        true,
+        Some("*/5 * * * *".to_string()),
+    )
+    .await?;
+
+    // Create a regular workflow with from.uri source type (SHOULD be scheduled via cron)
+    let uri_config = serde_json::json!({
+        "steps": [
+            {
+                "from": {
+                    "type": "format",
+                    "source": {
+                        "source_type": "uri",
+                        "config": {
+                            "uri": "http://example.com/data.csv"
+                        },
+                        "auth": null
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": { "has_header": true }
+                    },
+                    "mapping": {}
+                },
+                "transform": { "type": "none" },
+                "to": {
+                    "type": "entity",
+                    "entity_definition": entity_type,
+                    "path": "/",
+                    "mode": "create",
+                    "mapping": {}
+                }
+            }
+        ]
+    });
+
+    let uri_wf_uuid = create_consumer_workflow(
+        &pool,
+        creator_uuid,
+        uri_config,
+        true,
+        Some("*/10 * * * *".to_string()),
+    )
+    .await?;
+
+    // Verify both workflows exist and have cron schedules
+    let api_cron: Option<String> = sqlx::query_scalar(
+        "SELECT schedule_cron FROM workflows WHERE uuid = $1"
+    )
+        .bind(api_wf_uuid)
+        .fetch_one(&pool)
+        .await?;
+    assert_eq!(api_cron, Some("*/5 * * * *".to_string()), "API workflow should have cron stored");
+
+    let uri_cron: Option<String> = sqlx::query_scalar(
+        "SELECT schedule_cron FROM workflows WHERE uuid = $1"
+    )
+        .bind(uri_wf_uuid)
+        .fetch_one(&pool)
+        .await?;
+    assert_eq!(uri_cron, Some("*/10 * * * *".to_string()), "URI workflow should have cron stored");
+
+    // Now test that list_scheduled_consumers excludes the from.api workflow
+    use r_data_core::workflow::data::repository::WorkflowRepository;
+    let repo = WorkflowRepository::new(pool.clone());
+    let scheduled = repo.list_scheduled_consumers().await?;
+
+    // The from.api workflow should NOT be in the scheduled list
+    let api_in_scheduled = scheduled.iter().any(|(uuid, _)| *uuid == api_wf_uuid);
+    assert!(!api_in_scheduled, "Workflow with from.api should NOT be scheduled via cron");
+
+    // The from.uri workflow SHOULD be in the scheduled list
+    let uri_in_scheduled = scheduled.iter().any(|(uuid, _)| *uuid == uri_wf_uuid);
+    assert!(uri_in_scheduled, "Workflow with from.uri SHOULD be scheduled via cron");
+
+    // Verify the scheduled list contains the URI workflow with correct cron
+    let uri_entry = scheduled.iter().find(|(uuid, _)| *uuid == uri_wf_uuid);
+    assert!(uri_entry.is_some(), "URI workflow should be in scheduled list");
+    if let Some((_, cron)) = uri_entry {
+        assert_eq!(cron, "*/10 * * * *", "URI workflow should have correct cron in scheduled list");
+    }
+
+    Ok(())
+}
+

@@ -38,6 +38,7 @@
       "kind": "Kind",
       "enabled": "Enabled",
       "cron": "Cron",
+      "cron_disabled_endpoint": "Disabled (endpoint)",
       "actions": "Actions"
     },
     "history": {

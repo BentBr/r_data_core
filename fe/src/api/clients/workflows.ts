@@ -44,6 +44,7 @@ export class WorkflowsClient extends BaseTypedHttpClient {
                 kind: z.enum(['consumer', 'provider']),
                 enabled: z.boolean(),
                 schedule_cron: z.string().nullable().optional(),
+                has_api_endpoint: z.boolean().optional().default(false),
             })
         )
         return this.paginatedRequest(

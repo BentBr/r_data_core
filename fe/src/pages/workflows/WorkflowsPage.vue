@@ -16,6 +16,7 @@
         kind: 'consumer' | 'provider'
         enabled: boolean
         schedule_cron?: string | null
+        has_api_endpoint?: boolean
     }
 
     const loading = ref(false)
@@ -323,7 +324,12 @@
                                 />
                             </template>
                             <template #item.schedule_cron="{ item }">
-                                {{ item.schedule_cron || t('common.empty') }}
+                                <span v-if="item.has_api_endpoint" class="text-caption text-disabled">
+                                    {{ t('workflows.table.cron_disabled_endpoint') }}
+                                </span>
+                                <span v-else>
+                                    {{ item.schedule_cron || t('common.empty') }}
+                                </span>
                             </template>
                             <template #item.actions="{ item }">
                                 <v-btn
