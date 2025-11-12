@@ -4,11 +4,48 @@
 
 export type Mapping = Record<string, string>
 
-export type CsvOptions = { header?: boolean; delimiter?: string; escape?: string; quote?: string }
+export type CsvOptions = { has_header?: boolean; delimiter?: string; escape?: string; quote?: string }
+
+// Auth configuration types
+export type KeyLocation = 'header' | 'body'
+
+export type AuthConfig =
+    | { type: 'none' }
+    | { type: 'api_key'; key: string; header_name?: string }
+    | { type: 'basic_auth'; username: string; password: string }
+    | { type: 'pre_shared_key'; key: string; location: KeyLocation; field_name: string }
+
+// Source configuration
+export type SourceConfig = {
+    source_type: string // "uri", "file", "api", "sftp", etc.
+    config: Record<string, any> // Source-specific config
+    auth?: AuthConfig
+}
+
+// Format configuration
+export type FormatConfig = {
+    format_type: string // "csv", "json", "xml", etc.
+    options?: Record<string, any> // Format-specific options
+}
+
+// Destination configuration
+export type DestinationConfig = {
+    destination_type: string // "uri", "file", "sftp", etc.
+    config: Record<string, any> // Destination-specific config
+    auth?: AuthConfig
+}
+
+// HTTP method
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'
+
+// Output mode
+export type OutputMode =
+    | { mode: 'download' }
+    | { mode: 'api' }
+    | { mode: 'push'; destination: DestinationConfig; method?: HttpMethod }
 
 export type FromDef =
-    | { type: 'csv'; uri: string; options: CsvOptions; mapping: Mapping }
-    | { type: 'json'; uri: string; mapping: Mapping }
+    | { type: 'format'; source: SourceConfig; format: FormatConfig; mapping: Mapping }
     | { type: 'entity'; entity_definition: string; filter: { field: string; value: string }; mapping: Mapping }
 
 export type OperandField = { kind: 'field'; field: string }
@@ -25,8 +62,7 @@ export type Transform =
     | { type: 'concat'; target: string; left: StringOperand; separator?: string; right: StringOperand }
 
 export type ToDef =
-    | { type: 'csv'; output: 'api' | 'download'; options: CsvOptions; mapping: Mapping }
-    | { type: 'json'; output: 'api' | 'download'; mapping: Mapping }
+    | { type: 'format'; output: OutputMode; format: FormatConfig; mapping: Mapping }
     | { type: 'entity'; entity_definition: string; path: string; mode: 'create' | 'update'; update_key?: string; identify?: { field: string; value: string }; mapping: Mapping }
 
 export type DslStep = { from: FromDef; transform: Transform; to: ToDef }
@@ -42,13 +78,30 @@ export function sanitizeDslStep(step: any): DslStep {
     // Sanitize 'to' definition
     if (sanitized.to) {
         if (sanitized.to.type === 'entity') {
-            // Remove 'output' field from entity type (it should only exist for csv/json)
+            // Remove 'output' field from entity type
             const { output, ...rest } = sanitized.to
             sanitized.to = rest
-        } else if (sanitized.to.type === 'csv' || sanitized.to.type === 'json') {
-            // Ensure 'output' field exists for csv/json types
+        } else if (sanitized.to.type === 'format') {
+            // Ensure output mode exists
             if (!sanitized.to.output) {
-                sanitized.to.output = 'api'
+                sanitized.to.output = { mode: 'api' }
+            }
+            // Ensure format exists
+            if (!sanitized.to.format) {
+                sanitized.to.format = { format_type: 'json', options: {} }
+            }
+        }
+    }
+
+    // Sanitize 'from' definition
+    if (sanitized.from) {
+        if (sanitized.from.type === 'format') {
+            // Ensure source and format exist
+            if (!sanitized.from.source) {
+                sanitized.from.source = { source_type: 'uri', config: {} }
+            }
+            if (!sanitized.from.format) {
+                sanitized.from.format = { format_type: 'csv', options: {} }
             }
         }
     }
@@ -70,17 +123,37 @@ export function sanitizeDslSteps(steps: any[]): DslStep[] {
  * Default CSV options
  */
 export function defaultCsvOptions(): CsvOptions {
-    return { header: true, delimiter: ',', escape: undefined, quote: undefined }
+    return { has_header: true, delimiter: ',', escape: undefined, quote: undefined }
 }
 
 /**
- * Default step
+ * Default step (using new format-based structure)
  */
 export function defaultStep(): DslStep {
     return {
-        from: { type: 'csv', uri: '', options: defaultCsvOptions(), mapping: {} },
+        from: {
+            type: 'format',
+            source: {
+                source_type: 'uri',
+                config: { uri: '' },
+                auth: { type: 'none' },
+            },
+            format: {
+                format_type: 'csv',
+                options: defaultCsvOptions(),
+            },
+            mapping: {},
+        },
         transform: { type: 'none' },
-        to: { type: 'json', output: 'api', mapping: {} },
+        to: {
+            type: 'format',
+            output: { mode: 'api' },
+            format: {
+                format_type: 'json',
+                options: {},
+            },
+            mapping: {},
+        },
     }
 }
 
@@ -88,16 +161,14 @@ export function defaultStep(): DslStep {
  * Ensures CSV options exist on a step
  */
 export function ensureCsvOptions(step: DslStep) {
-    if (step.from?.type === 'csv') {
-        const f: any = step.from
-        if (!f.options) {
-            f.options = defaultCsvOptions()
+    if (step.from?.type === 'format' && step.from.format.format_type === 'csv') {
+        if (!step.from.format.options) {
+            step.from.format.options = defaultCsvOptions()
         }
     }
-    if (step.to?.type === 'csv') {
-        const t: any = step.to
-        if (!t.options) {
-            t.options = defaultCsvOptions()
+    if (step.to?.type === 'format' && step.to.format.format_type === 'csv') {
+        if (!step.to.format.options) {
+            step.to.format.options = defaultCsvOptions()
         }
     }
 }

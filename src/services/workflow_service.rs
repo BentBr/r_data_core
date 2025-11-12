@@ -359,14 +359,8 @@ impl WorkflowService {
             .ok_or_else(|| anyhow::anyhow!("Workflow not found"))?;
 
         // Parse DSL program to get FromDef steps
-        let program = match crate::workflow::dsl::DslProgram::from_config(&wf.config) {
-            Ok(p) => p,
-            Err(e) => {
-                log::warn!("Failed to parse DSL for fetch: {}", e);
-                // Fall back to legacy config format
-                return self.fetch_and_stage_legacy(workflow_uuid, run_uuid, &wf.config).await;
-            }
-        };
+        let program = crate::workflow::dsl::DslProgram::from_config(&wf.config)
+            .map_err(|e| anyhow::anyhow!("Failed to parse DSL for fetch: {}", e))?;
 
         // Find Format-based FromDef steps that need fetching
         let mut total_staged = 0_i64;
@@ -462,61 +456,7 @@ impl WorkflowService {
             }
         }
 
-        if total_staged > 0 {
-            Ok(total_staged)
-        } else {
-            // Fall back to legacy config format if no Format sources found
-            self.fetch_and_stage_legacy(workflow_uuid, run_uuid, &wf.config).await
-        }
-    }
-
-    /// Legacy fetch method for backward compatibility with old config format
-    async fn fetch_and_stage_legacy(
-        &self,
-        workflow_uuid: Uuid,
-        run_uuid: Uuid,
-        config: &serde_json::Value,
-    ) -> anyhow::Result<i64> {
-        // Determine adapter via unified input.type and input.source.uri
-        let input_type = Self::infer_input_type(config).unwrap_or_else(|| "csv".to_string());
-        if let Some(uri) = Self::input_uri_from_config(config) {
-            let body = reqwest::get(&uri).await?.error_for_status()?.text().await?;
-            let payloads = match input_type.as_str() {
-                "csv" => {
-                    use crate::workflow::data::adapters::format::FormatHandler;
-                    let format_cfg = Self::csv_format_from_config(config);
-                    crate::workflow::data::adapters::format::csv::CsvFormatHandler::new()
-                        .parse(body.as_bytes(), &format_cfg)?
-                }
-                "ndjson" => body
-                    .lines()
-                    .filter(|l| !l.trim().is_empty())
-                    .map(|l| serde_json::from_str::<serde_json::Value>(l))
-                    .collect::<Result<Vec<_>, _>>()?,
-                other => {
-                    return Err(anyhow::anyhow!(format!(
-                        "Unsupported input type for fetch: {}",
-                        other
-                    )))
-                }
-            };
-            let staged = self
-                .stage_raw_items(workflow_uuid, run_uuid, payloads)
-                .await?;
-            let _ = self
-                .repo
-                .insert_run_log(
-                    run_uuid,
-                    "info",
-                    "Fetched and staged",
-                    Some(serde_json::json!({ "staged_items": staged, "uri": uri, "input_type": input_type })),
-                )
-                .await;
-            return Ok(staged);
-        }
-
-        // Nothing to fetch
-        Ok(0)
+        Ok(total_staged)
     }
 
     /// Process staged raw items for a run using the workflow DSL

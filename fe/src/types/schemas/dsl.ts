@@ -2,16 +2,53 @@ import { z } from 'zod'
 import { ApiResponseSchema } from './base'
 
 const CsvOptionsSchema = z.object({
-    header: z.boolean().default(true),
-    delimiter: z.string().min(1).max(1).default(','),
+    has_header: z.boolean().optional(),
+    delimiter: z.string().min(1).max(1).optional(),
     escape: z.string().min(1).max(1).optional(),
     quote: z.string().min(1).max(1).optional(),
 })
 
-export const DslFromCsvSchema = z.object({
-    type: z.literal('csv'),
-    uri: z.string(),
-    options: CsvOptionsSchema.optional(),
+// Auth configuration schemas
+const KeyLocationSchema = z.enum(['header', 'body'])
+
+const AuthConfigSchema = z.discriminatedUnion('type', [
+    z.object({ type: z.literal('none') }),
+    z.object({
+        type: z.literal('api_key'),
+        key: z.string(),
+        header_name: z.string().default('X-API-Key'),
+    }),
+    z.object({
+        type: z.literal('basic_auth'),
+        username: z.string(),
+        password: z.string(),
+    }),
+    z.object({
+        type: z.literal('pre_shared_key'),
+        key: z.string(),
+        location: KeyLocationSchema,
+        field_name: z.string(),
+    }),
+])
+
+// Source configuration
+const SourceConfigSchema = z.object({
+    source_type: z.string(), // "uri", "file", "api", "sftp", etc.
+    config: z.record(z.any()), // Source-specific config (e.g., { uri: "..." } or { endpoint: "..." })
+    auth: AuthConfigSchema.optional(),
+})
+
+// Format configuration
+const FormatConfigSchema = z.object({
+    format_type: z.string(), // "csv", "json", "xml", etc.
+    options: z.record(z.any()).optional(), // Format-specific options
+})
+
+// New Format-based FromDef
+export const DslFromFormatSchema = z.object({
+    type: z.literal('format'),
+    source: SourceConfigSchema,
+    format: FormatConfigSchema,
     mapping: z.record(z.string(), z.string()),
 })
 
@@ -34,22 +71,39 @@ export const DslFromEntitySchema = z.object({
 })
 
 export const DslFromSchema = z.discriminatedUnion('type', [
-    DslFromCsvSchema,
-    DslFromJsonSchema,
+    DslFromFormatSchema, // New format-based structure
     DslFromEntitySchema,
 ])
 
-export const DslToCsvSchema = z.object({
-    type: z.literal('csv'),
-    output: z.enum(['api', 'download']),
-    options: CsvOptionsSchema.optional(),
+// Destination configuration
+const DestinationConfigSchema = z.object({
+    destination_type: z.string(), // "uri", "file", "sftp", etc.
+    config: z.record(z.any()), // Destination-specific config (e.g., { uri: "..." })
+    auth: AuthConfigSchema.optional(),
+})
+
+// HTTP method enum
+const HttpMethodSchema = z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
+
+// Output mode
+const OutputModeSchema = z.discriminatedUnion('mode', [
+    z.object({ mode: z.literal('download') }),
+    z.object({ mode: z.literal('api') }),
+    z.object({
+        mode: z.literal('push'),
+        destination: DestinationConfigSchema,
+        method: HttpMethodSchema.optional(),
+    }),
+])
+
+// New Format-based ToDef
+export const DslToFormatSchema = z.object({
+    type: z.literal('format'),
+    output: OutputModeSchema,
+    format: FormatConfigSchema,
     mapping: z.record(z.string(), z.string()),
 })
-export const DslToJsonSchema = z.object({
-    type: z.literal('json'),
-    output: z.enum(['api', 'download']),
-    mapping: z.record(z.string(), z.string()),
-})
+
 export const DslToEntitySchema = z.object({
     type: z.literal('entity'),
     entity_definition: z.string(),
@@ -60,8 +114,7 @@ export const DslToEntitySchema = z.object({
     mapping: z.record(z.string(), z.string()),
 })
 export const DslToSchema = z.discriminatedUnion('type', [
-    DslToCsvSchema,
-    DslToJsonSchema,
+    DslToFormatSchema,
     DslToEntitySchema,
 ])
 

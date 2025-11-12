@@ -1,5 +1,5 @@
 use crate::workflow::dsl::validate_mapping;
-use crate::workflow::data::adapters::auth::AuthConfig;
+use crate::workflow::data::adapters::auth::{AuthConfig, KeyLocation};
 use anyhow::{bail, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -126,6 +126,10 @@ pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> R
                         if endpoint.trim().is_empty() {
                             bail!("DSL step {}: from.format.source.config.endpoint must not be empty", idx);
                         }
+                        // Validate endpoint format (should start with /)
+                        if !endpoint.starts_with('/') {
+                            bail!("DSL step {}: from.format.source.config.endpoint must start with '/' (e.g., '/api/v1/workflows/{{uuid}}')", idx);
+                        }
                     } else {
                         bail!("DSL step {}: from.format.source.config.endpoint is required for api source", idx);
                     }
@@ -133,6 +137,10 @@ pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> R
                 _ => {
                     // Other source types will be validated by their handlers
                 }
+            }
+            // Validate auth config if present
+            if let Some(auth) = &source.auth {
+                validate_auth_config(idx, auth, "from")?;
             }
             // Allow empty mappings
             validate_mapping(idx, mapping, safe_field)?;
@@ -156,6 +164,40 @@ pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> R
             }
             // Allow empty mappings
             validate_mapping(idx, mapping, safe_field)?;
+        }
+    }
+    Ok(())
+}
+
+/// Validate authentication configuration
+fn validate_auth_config(idx: usize, auth: &AuthConfig, context: &str) -> Result<()> {
+    match auth {
+        AuthConfig::None => {
+            // No validation needed
+        }
+        AuthConfig::ApiKey { key, header_name } => {
+            if key.trim().is_empty() {
+                bail!("DSL step {}: {}.auth.api_key.key must not be empty", idx, context);
+            }
+            if header_name.trim().is_empty() {
+                bail!("DSL step {}: {}.auth.api_key.header_name must not be empty", idx, context);
+            }
+        }
+        AuthConfig::BasicAuth { username, password } => {
+            if username.trim().is_empty() {
+                bail!("DSL step {}: {}.auth.basic_auth.username must not be empty", idx, context);
+            }
+            if password.trim().is_empty() {
+                bail!("DSL step {}: {}.auth.basic_auth.password must not be empty", idx, context);
+            }
+        }
+        AuthConfig::PreSharedKey { key, location: _, field_name } => {
+            if key.trim().is_empty() {
+                bail!("DSL step {}: {}.auth.pre_shared_key.key must not be empty", idx, context);
+            }
+            if field_name.trim().is_empty() {
+                bail!("DSL step {}: {}.auth.pre_shared_key.field_name must not be empty", idx, context);
+            }
         }
     }
     Ok(())

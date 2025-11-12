@@ -16,7 +16,19 @@ pub struct DslValidateRequest {
     /// The DSL steps array (JSON). Example: { "steps": [ { "from": { ... }, "transform": { ... }, "to": { ... } } ] }
     #[schema(value_type = Vec<DslStep>, example = json!([
         {
-            "from": { "type": "csv", "uri": "http://example.com/data.csv", "options": {"header": true, "delimiter": ","}, "mapping": { "price": "price" } },
+            "from": {
+                "type": "format",
+                "source": {
+                    "source_type": "uri",
+                    "config": { "uri": "http://example.com/data.csv" },
+                    "auth": { "type": "none" }
+                },
+                "format": {
+                    "format_type": "csv",
+                    "options": { "has_header": true, "delimiter": "," }
+                },
+                "mapping": { "price": "price" }
+            },
             "transform": {
                 "type": "arithmetic",
                 "target": "price",
@@ -24,7 +36,15 @@ pub struct DslValidateRequest {
                 "op": "add",
                 "right": { "kind": "const", "value": 5.0 }
             },
-            "to": { "type": "json", "output": "api", "mapping": { "price": "entity.total" } }
+            "to": {
+                "type": "format",
+                "output": { "mode": "api" },
+                "format": {
+                    "format_type": "json",
+                    "options": {}
+                },
+                "mapping": { "price": "entity.total" }
+            }
         }
     ]))]
     pub steps: Vec<DslStep>,
@@ -112,53 +132,60 @@ pub async fn list_from_options(_: auth_enum::RequiredAuth) -> impl Responder {
     let types = DslOptionsResponse {
         types: vec![
             DslTypeSpec {
-                r#type: "csv".to_string(),
+                r#type: "format".to_string(),
                 fields: vec![
                     DslFieldSpec {
-                        name: "uri".into(),
+                        name: "source.source_type".into(),
                         r#type: "string".into(),
                         required: true,
+                        options: Some(vec!["uri".into(), "api".into(), "file".into()]),
+                    },
+                    DslFieldSpec {
+                        name: "source.config.uri".into(),
+                        r#type: "string".into(),
+                        required: false,
                         options: None,
                     },
                     DslFieldSpec {
-                        name: "options.header".into(),
+                        name: "source.config.endpoint".into(),
+                        r#type: "string".into(),
+                        required: false,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "source.auth".into(),
+                        r#type: "object".into(),
+                        required: false,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "format.format_type".into(),
+                        r#type: "string".into(),
+                        required: true,
+                        options: Some(vec!["csv".into(), "json".into()]),
+                    },
+                    DslFieldSpec {
+                        name: "format.options.has_header".into(),
                         r#type: "boolean".into(),
                         required: false,
                         options: None,
                     },
                     DslFieldSpec {
-                        name: "options.delimiter".into(),
+                        name: "format.options.delimiter".into(),
                         r#type: "string(1)".into(),
                         required: false,
                         options: None,
                     },
                     DslFieldSpec {
-                        name: "options.escape".into(),
+                        name: "format.options.escape".into(),
                         r#type: "string(1)".into(),
                         required: false,
                         options: None,
                     },
                     DslFieldSpec {
-                        name: "options.quote".into(),
+                        name: "format.options.quote".into(),
                         r#type: "string(1)".into(),
                         required: false,
-                        options: None,
-                    },
-                    DslFieldSpec {
-                        name: "mapping".into(),
-                        r#type: "map<string,string>".into(),
-                        required: true,
-                        options: None,
-                    },
-                ],
-            },
-            DslTypeSpec {
-                r#type: "json".to_string(),
-                fields: vec![
-                    DslFieldSpec {
-                        name: "uri".into(),
-                        r#type: "string".into(),
-                        required: true,
                         options: None,
                     },
                     DslFieldSpec {
@@ -270,54 +297,67 @@ pub async fn list_to_options(_: auth_enum::RequiredAuth) -> impl Responder {
     let types = DslOptionsResponse {
         types: vec![
             DslTypeSpec {
-                r#type: "csv".to_string(),
+                r#type: "format".to_string(),
                 fields: vec![
                     DslFieldSpec {
-                        name: "output".into(),
+                        name: "output.mode".into(),
                         r#type: "enum".into(),
                         required: true,
-                        options: Some(vec!["api".into(), "download".into()]),
+                        options: Some(vec!["api".into(), "download".into(), "push".into()]),
                     },
                     DslFieldSpec {
-                        name: "options.header".into(),
+                        name: "output.push.destination.destination_type".into(),
+                        r#type: "string".into(),
+                        required: false,
+                        options: Some(vec!["uri".into()]),
+                    },
+                    DslFieldSpec {
+                        name: "output.push.destination.config.uri".into(),
+                        r#type: "string".into(),
+                        required: false,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "output.push.method".into(),
+                        r#type: "enum".into(),
+                        required: false,
+                        options: Some(vec!["GET".into(), "POST".into(), "PUT".into(), "PATCH".into(), "DELETE".into(), "HEAD".into(), "OPTIONS".into()]),
+                    },
+                    DslFieldSpec {
+                        name: "output.push.destination.auth".into(),
+                        r#type: "object".into(),
+                        required: false,
+                        options: None,
+                    },
+                    DslFieldSpec {
+                        name: "format.format_type".into(),
+                        r#type: "string".into(),
+                        required: true,
+                        options: Some(vec!["csv".into(), "json".into()]),
+                    },
+                    DslFieldSpec {
+                        name: "format.options.has_header".into(),
                         r#type: "boolean".into(),
                         required: false,
                         options: None,
                     },
                     DslFieldSpec {
-                        name: "options.delimiter".into(),
+                        name: "format.options.delimiter".into(),
                         r#type: "string(1)".into(),
                         required: false,
                         options: None,
                     },
                     DslFieldSpec {
-                        name: "options.escape".into(),
+                        name: "format.options.escape".into(),
                         r#type: "string(1)".into(),
                         required: false,
                         options: None,
                     },
                     DslFieldSpec {
-                        name: "options.quote".into(),
+                        name: "format.options.quote".into(),
                         r#type: "string(1)".into(),
                         required: false,
                         options: None,
-                    },
-                    DslFieldSpec {
-                        name: "mapping".into(),
-                        r#type: "map<string,string>".into(),
-                        required: true,
-                        options: None,
-                    },
-                ],
-            },
-            DslTypeSpec {
-                r#type: "json".to_string(),
-                fields: vec![
-                    DslFieldSpec {
-                        name: "output".into(),
-                        r#type: "enum".into(),
-                        required: true,
-                        options: Some(vec!["api".into(), "download".into()]),
                     },
                     DslFieldSpec {
                         name: "mapping".into(),

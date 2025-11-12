@@ -1,11 +1,11 @@
 <template>
     <div class="d-flex ga-2 mb-2 flex-wrap">
         <v-checkbox
-            :model-value="opts.header"
+            :model-value="opts.has_header"
             :label="t('workflows.dsl.csv_header')"
             color="success"
             density="comfortable"
-            @update:model-value="updateField('header', $event)"
+            @update:model-value="updateField('has_header', $event)"
         />
         <v-text-field
             :model-value="opts.delimiter"
@@ -35,14 +35,14 @@
     import { ref, watch, nextTick } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
 
-    type CsvOptions = { header?: boolean; delimiter?: string; escape?: string; quote?: string }
+    type CsvOptions = { has_header?: boolean; delimiter?: string; escape?: string; quote?: string }
     const props = defineProps<{ modelValue: CsvOptions }>()
     const emit = defineEmits<{ (e: 'update:modelValue', v: CsvOptions): void }>()
 
     const { t } = useTranslations()
 
     function defaults(): CsvOptions {
-        return { header: true, delimiter: ',', escape: undefined, quote: undefined }
+        return { has_header: true, delimiter: ',', escape: undefined, quote: undefined }
     }
 
     const opts = ref<CsvOptions>({ ...(props.modelValue || defaults()) })

@@ -1,5 +1,5 @@
 use crate::workflow::dsl::validate_mapping;
-use crate::workflow::data::adapters::auth::AuthConfig;
+use crate::workflow::data::adapters::auth::{AuthConfig, KeyLocation};
 use crate::workflow::data::adapters::destination::HttpMethod;
 use anyhow::{bail, Result};
 use regex::Regex;
@@ -122,7 +122,7 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<
                 OutputMode::Download | OutputMode::Api => {
                     // No additional validation needed
                 }
-                OutputMode::Push { destination, .. } => {
+                OutputMode::Push { destination, method, .. } => {
                     if destination.destination_type.trim().is_empty() {
                         bail!("DSL step {}: to.format.output.push.destination.destination_type must not be empty", idx);
                     }
@@ -138,10 +138,27 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<
                             } else {
                                 bail!("DSL step {}: to.format.output.push.destination.config.uri is required for uri destination", idx);
                             }
+                            // Validate HTTP method for URI destinations
+                            if let Some(m) = method {
+                                // HTTP method is validated by the enum itself (serde will reject invalid values)
+                                // But we can add additional validation if needed
+                                match m {
+                                    HttpMethod::Get | HttpMethod::Head | HttpMethod::Options => {
+                                        // These methods don't require body, which is fine
+                                    }
+                                    HttpMethod::Post | HttpMethod::Put | HttpMethod::Patch | HttpMethod::Delete => {
+                                        // These methods will send body (CSV/JSON)
+                                    }
+                                }
+                            }
                         }
                         _ => {
                             // Other destination types will be validated by their handlers
                         }
+                    }
+                    // Validate auth config if present
+                    if let Some(auth) = &destination.auth {
+                        validate_auth_config(idx, auth, "to")?;
                     }
                 }
             }
@@ -167,6 +184,40 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<
             }
             // Allow empty mappings
             validate_mapping(idx, mapping, safe_field)?;
+        }
+    }
+    Ok(())
+}
+
+/// Validate authentication configuration
+fn validate_auth_config(idx: usize, auth: &AuthConfig, context: &str) -> Result<()> {
+    match auth {
+        AuthConfig::None => {
+            // No validation needed
+        }
+        AuthConfig::ApiKey { key, header_name } => {
+            if key.trim().is_empty() {
+                bail!("DSL step {}: {}.auth.api_key.key must not be empty", idx, context);
+            }
+            if header_name.trim().is_empty() {
+                bail!("DSL step {}: {}.auth.api_key.header_name must not be empty", idx, context);
+            }
+        }
+        AuthConfig::BasicAuth { username, password } => {
+            if username.trim().is_empty() {
+                bail!("DSL step {}: {}.auth.basic_auth.username must not be empty", idx, context);
+            }
+            if password.trim().is_empty() {
+                bail!("DSL step {}: {}.auth.basic_auth.password must not be empty", idx, context);
+            }
+        }
+        AuthConfig::PreSharedKey { key, location: _, field_name } => {
+            if key.trim().is_empty() {
+                bail!("DSL step {}: {}.auth.pre_shared_key.key must not be empty", idx, context);
+            }
+            if field_name.trim().is_empty() {
+                bail!("DSL step {}: {}.auth.pre_shared_key.field_name must not be empty", idx, context);
+            }
         }
     }
     Ok(())
