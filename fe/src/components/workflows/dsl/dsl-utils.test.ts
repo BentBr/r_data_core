@@ -5,8 +5,6 @@ import {
     sanitizeDslStep,
     ensureCsvOptions,
     type DslStep,
-    type FromDef,
-    type ToDef,
 } from './dsl-utils'
 
 describe('dsl-utils', () => {
@@ -133,9 +131,9 @@ describe('dsl-utils', () => {
 
             ensureCsvOptions(step)
 
-            if (step.from.type === 'format' && step.from.format.format_type === 'csv') {
+            if (step.from.type === 'format' && step.from.format?.format_type === 'csv') {
                 expect(step.from.format.options).toBeDefined()
-                expect(step.from.format.options.has_header).toBe(true)
+                expect(step.from.format.options?.has_header).toBe(true)
             }
         })
 
@@ -158,9 +156,9 @@ describe('dsl-utils', () => {
 
             ensureCsvOptions(step)
 
-            if (step.to.type === 'format' && step.to.format.format_type === 'csv') {
+            if (step.to.type === 'format' && step.to.format?.format_type === 'csv') {
                 expect(step.to.format.options).toBeDefined()
-                expect(step.to.format.options.has_header).toBe(true)
+                expect(step.to.format.options?.has_header).toBe(true)
             }
         })
     })

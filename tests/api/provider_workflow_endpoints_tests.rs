@@ -465,7 +465,7 @@ async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
         .fetch_one(&pool)
         .await?;
 
-    // Create consumer workflow with from.api source - use format output instead of entity to avoid entity definition requirement
+    // Create consumer workflow with from.api source (accepts POST) - use format output instead of entity to avoid entity definition requirement
     let config = serde_json::json!({
         "steps": [
             {
@@ -473,14 +473,12 @@ async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
                     "type": "format",
                     "source": {
                         "source_type": "api",
-                        "config": {
-                            "endpoint": "/api/v1/workflows/test"
-                        },
+                        "config": {},
                         "auth": null
                     },
                     "format": {
-                        "format_type": "json",
-                        "options": {}
+                        "format_type": "csv",
+                        "options": { "has_header": true }
                     },
                     "mapping": {}
                 },
@@ -500,24 +498,106 @@ async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
 
     let wf_uuid = create_consumer_workflow_with_api_source(&pool, creator_uuid, config).await?;
 
-    // Test POST endpoint with JSON data
+    // Test POST endpoint with CSV data (matching the format_type in config)
     let csv_data: Vec<u8> = b"name,email\nJohn,john@example.com".to_vec();
     let req = test::TestRequest::post()
         .uri(&format!("/api/v1/workflows/{}", wf_uuid))
-        .insert_header(("Content-Type", "application/json"))
+        .insert_header(("Content-Type", "text/csv"))
         .set_payload(csv_data)
         .to_request();
 
     let resp = test::call_service(&app, req).await;
 
-    // Should accept the request (202 Accepted) or 500 if processing fails
-    // Note: from.api source processing may not be fully implemented yet
-    assert!(
-        resp.status().is_success()
-            || resp.status().as_u16() == 202
-            || resp.status().as_u16() == 500,
-        "Expected success, 202, or 500, got: {}",
+    // Should accept the request (202 Accepted) when workflow is enabled and has from.api source
+    assert_eq!(
+        resp.status().as_u16(),
+        202,
+        "Expected 202 Accepted, got: {}",
         resp.status()
+    );
+
+    // Verify response contains run_uuid and staged_items
+    let body: serde_json::Value = test::read_body_json(resp).await;
+    assert!(body.get("run_uuid").is_some(), "Response should contain run_uuid");
+    assert!(body.get("staged_items").is_some(), "Response should contain staged_items");
+
+    Ok(())
+}
+
+#[actix_web::test]
+async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
+    let (app, pool, _token, _) = setup_app_with_entities().await?;
+
+    let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
+        .fetch_one(&pool)
+        .await?;
+
+    // Create consumer workflow with from.api source but disabled
+    let config = serde_json::json!({
+        "steps": [
+            {
+                "from": {
+                    "type": "format",
+                    "source": {
+                        "source_type": "api",
+                        "config": {},
+                        "auth": null
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": { "has_header": true }
+                    },
+                    "mapping": {}
+                },
+                "transform": { "type": "none" },
+                "to": {
+                    "type": "format",
+                    "output": { "mode": "api" },
+                    "format": {
+                        "format_type": "json",
+                        "options": {}
+                    },
+                    "mapping": {}
+                }
+            }
+        ]
+    });
+
+    // Create workflow as disabled
+    let repo = WorkflowRepository::new(pool.clone());
+    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
+        name: format!("consumer-api-disabled-{}", Uuid::now_v7()),
+        description: Some("Consumer workflow with API source (disabled)".to_string()),
+        kind: WorkflowKind::Consumer,
+        enabled: false, // Disabled
+        schedule_cron: None,
+        config,
+    };
+    let wf_uuid = repo.create(&create_req, creator_uuid).await?;
+
+    // Test POST endpoint with CSV data
+    let csv_data: Vec<u8> = b"name,email\nJohn,john@example.com".to_vec();
+    let req = test::TestRequest::post()
+        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .insert_header(("Content-Type", "text/csv"))
+        .set_payload(csv_data)
+        .to_request();
+
+    let resp = test::call_service(&app, req).await;
+
+    // Should return 503 Service Unavailable when workflow is disabled
+    assert_eq!(
+        resp.status().as_u16(),
+        503,
+        "Expected 503 Service Unavailable for disabled workflow, got: {}",
+        resp.status()
+    );
+
+    let body: serde_json::Value = test::read_body_json(resp).await;
+    assert_eq!(
+        body.get("error").and_then(|v| v.as_str()),
+        Some("Workflow is not enabled"),
+        "Error message should indicate workflow is not enabled"
     );
 
     Ok(())

@@ -136,6 +136,7 @@
       "kind": "Typ",
       "enabled": "Aktiv",
       "cron": "Zeitplan (Cron)",
+      "cron_disabled_for_api_source": "Cron ist für Workflows deaktiviert, die POST-Daten akzeptieren (from.api Quelltyp)",
       "consumer_config": "Consumer-Konfiguration (JSON)",
       "provider_config": "Provider-Konfiguration (JSON)",
       "create_button": "Erstellen",

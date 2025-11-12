@@ -1,4 +1,4 @@
-use crate::workflow::data::adapters::auth::{AuthConfig, KeyLocation};
+use crate::workflow::data::adapters::auth::AuthConfig;
 use crate::workflow::dsl::validate_mapping;
 use anyhow::{bail, Result};
 use regex::Regex;
@@ -136,19 +136,14 @@ pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> R
                     // File source is handled during manual runs
                 }
                 "api" => {
-                    if let Some(endpoint) = source.config.get("endpoint").and_then(|v| v.as_str()) {
-                        if endpoint.trim().is_empty() {
-                            bail!(
-                                "DSL step {}: from.format.source.config.endpoint must not be empty",
-                                idx
-                            );
-                        }
-                        // Validate endpoint format (should start with /)
-                        if !endpoint.starts_with('/') {
-                            bail!("DSL step {}: from.format.source.config.endpoint must start with '/' (e.g., '/api/v1/workflows/{{uuid}}')", idx);
-                        }
-                    } else {
-                        bail!("DSL step {}: from.format.source.config.endpoint is required for api source", idx);
+                    // from.api source type = Accept data via POST to this workflow
+                    // No endpoint field needed (always /api/v1/workflows/{this-workflow-uuid})
+                    // If endpoint field is present, it's invalid (use from.uri instead to pull from provider workflows)
+                    if source.config.get("endpoint").is_some() {
+                        bail!(
+                            "DSL step {}: from.format.source.config.endpoint is not allowed for 'api' source type. Use 'uri' source type to pull from provider workflows.",
+                            idx
+                        );
                     }
                 }
                 _ => {

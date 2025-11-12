@@ -426,6 +426,81 @@ mod tests {
     }
 
     #[test]
+    fn test_validate_from_api_without_endpoint() {
+        // from.api without endpoint field should be valid (accepts POST)
+        let config = json!({
+            "steps": [{
+                "from": {
+                    "type": "format",
+                    "source": {
+                        "source_type": "api",
+                        "config": {},
+                        "auth": null
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": { "has_header": true }
+                    },
+                    "mapping": {}
+                },
+                "transform": { "type": "none" },
+                "to": {
+                    "type": "format",
+                    "output": { "mode": "api" },
+                    "format": {
+                        "format_type": "json",
+                        "options": {}
+                    },
+                    "mapping": {}
+                }
+            }]
+        });
+        let prog = DslProgram::from_config(&config).unwrap();
+        prog.validate().unwrap();
+    }
+
+    #[test]
+    fn test_validate_from_api_with_endpoint_fails() {
+        // from.api with endpoint field should fail validation
+        let config = json!({
+            "steps": [{
+                "from": {
+                    "type": "format",
+                    "source": {
+                        "source_type": "api",
+                        "config": {
+                            "endpoint": "/api/v1/workflows/test"
+                        },
+                        "auth": null
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": { "has_header": true }
+                    },
+                    "mapping": {}
+                },
+                "transform": { "type": "none" },
+                "to": {
+                    "type": "format",
+                    "output": { "mode": "api" },
+                    "format": {
+                        "format_type": "json",
+                        "options": {}
+                    },
+                    "mapping": {}
+                }
+            }]
+        });
+        let prog = DslProgram::from_config(&config).unwrap();
+        let result = prog.validate();
+        assert!(result.is_err(), "Expected validation to fail for from.api with endpoint field");
+        assert!(
+            result.unwrap_err().to_string().contains("endpoint is not allowed"),
+            "Error message should mention endpoint is not allowed"
+        );
+    }
+
+    #[test]
     fn test_mapping_same_field_multiple_times() {
         // Test that the same normalized field can be mapped to multiple destination fields
         let config = json!({

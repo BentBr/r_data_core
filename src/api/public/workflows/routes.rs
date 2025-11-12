@@ -385,7 +385,15 @@ pub async fn post_workflow_ingest(
             .json(json!({"error": "This endpoint only accepts POST for consumer workflows"}));
     }
 
-    // Check if workflow has from.api source
+    // Check if workflow is enabled
+    if !workflow.enabled {
+        return HttpResponse::ServiceUnavailable().json(json!({
+            "error": "Workflow is not enabled",
+            "message": "This workflow is currently disabled and cannot accept data"
+        }));
+    }
+
+    // Check if workflow has from.api source (without endpoint field - meaning it accepts POST)
     let program = match DslProgram::from_config(&workflow.config) {
         Ok(p) => p,
         Err(e) => {
@@ -398,17 +406,18 @@ pub async fn post_workflow_ingest(
         }
     };
 
-    let has_api_source = program.steps.iter().any(|step| {
+    // Check for from.api source WITHOUT endpoint field (accepts POST)
+    let has_api_source_accepting_post = program.steps.iter().any(|step| {
         if let crate::workflow::dsl::FromDef::Format { source, .. } = &step.from {
-            source.source_type == "api"
+            source.source_type == "api" && source.config.get("endpoint").is_none()
         } else {
             false
         }
     });
 
-    if !has_api_source {
+    if !has_api_source_accepting_post {
         return HttpResponse::BadRequest()
-            .json(json!({"error": "Workflow does not support API ingestion"}));
+            .json(json!({"error": "Workflow does not support API ingestion", "message": "This workflow must have a 'from.api' source type (without endpoint field) to accept POST data"}));
     }
 
     // Create a run and process synchronously

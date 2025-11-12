@@ -79,9 +79,16 @@ describe('DslFromEditor', () => {
 
     it('adds mapping via addMapping button', async () => {
         const fromDef: FromDef = {
-            type: 'csv',
-            uri: '',
-            options: { header: true },
+            type: 'format',
+            source: {
+                source_type: 'uri',
+                config: { uri: '' },
+                auth: { type: 'none' },
+            },
+            format: {
+                format_type: 'csv',
+                options: { has_header: true },
+            },
             mapping: {},
         }
         const wrapper = mount(DslFromEditor, {

@@ -38,16 +38,19 @@
                         v-model="form.schedule_cron"
                         label="Cron"
                         :error-messages="cronError || ''"
+                        :disabled="hasApiSource"
+                        :hint="hasApiSource ? t('workflows.create.cron_disabled_for_api_source') : ''"
+                        persistent-hint
                         @update:model-value="onCronChange"
                     />
                     <div
-                        v-if="cronHelp"
+                        v-if="cronHelp && !hasApiSource"
                         class="text-caption mb-2"
                     >
                         {{ cronHelp }}
                     </div>
                     <div
-                        v-if="nextRuns.length"
+                        v-if="nextRuns.length && !hasApiSource"
                         class="text-caption"
                     >
                         Next: {{ nextRuns.join(', ') }}
@@ -129,6 +132,17 @@
     )
     const nextRuns = ref<string[]>([])
     let cronDebounce: any = null
+
+    // Check if any step has from.api source type (accepts POST, no cron needed)
+    const hasApiSource = computed(() => {
+        return steps.value.some((step: any) => {
+            if (step.from?.type === 'format' && step.from?.source?.source_type === 'api') {
+                // from.api without endpoint field = accepts POST
+                return !step.from?.source?.config?.endpoint
+            }
+            return false
+        })
+    })
 
     const rules = {
         required: (v: any) => !!v || 'Required',

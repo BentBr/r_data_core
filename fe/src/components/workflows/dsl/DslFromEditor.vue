@@ -35,16 +35,7 @@
                     @update:model-value="updateSourceConfig('uri', $event)"
                 />
             </template>
-            <template v-else-if="(modelValue as any).source?.source_type === 'api'">
-                <v-text-field
-                    :model-value="(modelValue as any).source?.config?.endpoint || ''"
-                    :label="t('workflows.dsl.endpoint')"
-                    density="comfortable"
-                    class="mb-2"
-                    hint="/api/v1/workflows/{uuid}"
-                    @update:model-value="updateSourceConfig('endpoint', $event)"
-                />
-            </template>
+            <!-- from.api source type = Accept POST to this workflow (no endpoint field needed) -->
             <div
                 v-if="(modelValue as any).format?.format_type === 'csv'"
                 class="mb-2"

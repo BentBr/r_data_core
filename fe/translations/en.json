@@ -136,6 +136,7 @@
       "kind": "Kind",
       "enabled": "Enabled",
       "cron": "Schedule (cron)",
+      "cron_disabled_for_api_source": "Cron is disabled for workflows that accept POST data (from.api source type)",
       "consumer_config": "Consumer Config (JSON)",
       "provider_config": "Provider Config (JSON)",
       "create_button": "Create",
