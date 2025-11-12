@@ -1,9 +1,9 @@
 use bytes::Bytes;
 use r_data_core::workflow::data::adapters::auth::{create_auth_provider, AuthConfig};
+use r_data_core::workflow::data::adapters::destination::uri::UriDestination;
 use r_data_core::workflow::data::adapters::destination::{
     DataDestination, DestinationContext, HttpMethod,
 };
-use r_data_core::workflow::data::adapters::destination::uri::UriDestination;
 use serde_json::json;
 
 #[test]
@@ -122,4 +122,3 @@ async fn test_uri_destination_with_basic_auth() {
     let result = dest.push(&ctx, data).await;
     assert!(result.is_err() || result.is_ok());
 }
-

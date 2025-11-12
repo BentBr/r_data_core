@@ -214,13 +214,17 @@ pub fn map_row_to_entity(
     entity_def: &EntityDefinition,
 ) -> DynamicEntity {
     let field_data = extract_field_data(row);
-    
+
     // Map lowercase database column names back to entity definition field names (original case)
     // Database columns are lowercase, but entity definition uses original case
     let mut mapped_field_data = HashMap::new();
     for (db_column_name, value) in field_data.iter() {
         // Find the field definition that matches this column (case-insensitive)
-        if let Some(field_def) = entity_def.fields.iter().find(|f| f.name.to_lowercase() == *db_column_name) {
+        if let Some(field_def) = entity_def
+            .fields
+            .iter()
+            .find(|f| f.name.to_lowercase() == *db_column_name)
+        {
             // Use the original field name from entity definition
             mapped_field_data.insert(field_def.name.clone(), value.clone());
         } else {
@@ -228,6 +232,10 @@ pub fn map_row_to_entity(
             mapped_field_data.insert(db_column_name.clone(), value.clone());
         }
     }
-    
-    create_entity(entity_type.to_string(), mapped_field_data, entity_def.clone())
+
+    create_entity(
+        entity_type.to_string(),
+        mapped_field_data,
+        entity_def.clone(),
+    )
 }

@@ -321,7 +321,15 @@ pub async fn list_to_options(_: auth_enum::RequiredAuth) -> impl Responder {
                         name: "output.push.method".into(),
                         r#type: "enum".into(),
                         required: false,
-                        options: Some(vec!["GET".into(), "POST".into(), "PUT".into(), "PATCH".into(), "DELETE".into(), "HEAD".into(), "OPTIONS".into()]),
+                        options: Some(vec![
+                            "GET".into(),
+                            "POST".into(),
+                            "PUT".into(),
+                            "PATCH".into(),
+                            "DELETE".into(),
+                            "HEAD".into(),
+                            "OPTIONS".into(),
+                        ]),
                     },
                     DslFieldSpec {
                         name: "output.push.destination.auth".into(),

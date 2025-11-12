@@ -1,6 +1,6 @@
-use crate::workflow::dsl::validate_mapping;
 use crate::workflow::data::adapters::auth::{AuthConfig, KeyLocation};
 use crate::workflow::data::adapters::destination::HttpMethod;
+use crate::workflow::dsl::validate_mapping;
 use anyhow::{bail, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -80,12 +80,17 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<
             mapping,
         } => {
             if format.format_type.trim().is_empty() {
-                bail!("DSL step {}: to.format.format.format_type must not be empty", idx);
+                bail!(
+                    "DSL step {}: to.format.format.format_type must not be empty",
+                    idx
+                );
             }
             // Validate format-specific options
             match format.format_type.as_str() {
                 "csv" => {
-                    if let Some(delimiter) = format.options.get("delimiter").and_then(|v| v.as_str()) {
+                    if let Some(delimiter) =
+                        format.options.get("delimiter").and_then(|v| v.as_str())
+                    {
                         if delimiter.len() != 1 {
                             bail!(
                                 "DSL step {}: to.format.format.options.delimiter must be a single character",
@@ -122,13 +127,19 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<
                 OutputMode::Download | OutputMode::Api => {
                     // No additional validation needed
                 }
-                OutputMode::Push { destination, method, .. } => {
+                OutputMode::Push {
+                    destination,
+                    method,
+                    ..
+                } => {
                     if destination.destination_type.trim().is_empty() {
                         bail!("DSL step {}: to.format.output.push.destination.destination_type must not be empty", idx);
                     }
                     match destination.destination_type.as_str() {
                         "uri" => {
-                            if let Some(uri) = destination.config.get("uri").and_then(|v| v.as_str()) {
+                            if let Some(uri) =
+                                destination.config.get("uri").and_then(|v| v.as_str())
+                            {
                                 if uri.trim().is_empty() {
                                     bail!("DSL step {}: to.format.output.push.destination.config.uri must not be empty", idx);
                                 }
@@ -146,7 +157,10 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<
                                     HttpMethod::Get | HttpMethod::Head | HttpMethod::Options => {
                                         // These methods don't require body, which is fine
                                     }
-                                    HttpMethod::Post | HttpMethod::Put | HttpMethod::Patch | HttpMethod::Delete => {
+                                    HttpMethod::Post
+                                    | HttpMethod::Put
+                                    | HttpMethod::Patch
+                                    | HttpMethod::Delete => {
                                         // These methods will send body (CSV/JSON)
                                     }
                                 }
@@ -197,26 +211,54 @@ fn validate_auth_config(idx: usize, auth: &AuthConfig, context: &str) -> Result<
         }
         AuthConfig::ApiKey { key, header_name } => {
             if key.trim().is_empty() {
-                bail!("DSL step {}: {}.auth.api_key.key must not be empty", idx, context);
+                bail!(
+                    "DSL step {}: {}.auth.api_key.key must not be empty",
+                    idx,
+                    context
+                );
             }
             if header_name.trim().is_empty() {
-                bail!("DSL step {}: {}.auth.api_key.header_name must not be empty", idx, context);
+                bail!(
+                    "DSL step {}: {}.auth.api_key.header_name must not be empty",
+                    idx,
+                    context
+                );
             }
         }
         AuthConfig::BasicAuth { username, password } => {
             if username.trim().is_empty() {
-                bail!("DSL step {}: {}.auth.basic_auth.username must not be empty", idx, context);
+                bail!(
+                    "DSL step {}: {}.auth.basic_auth.username must not be empty",
+                    idx,
+                    context
+                );
             }
             if password.trim().is_empty() {
-                bail!("DSL step {}: {}.auth.basic_auth.password must not be empty", idx, context);
+                bail!(
+                    "DSL step {}: {}.auth.basic_auth.password must not be empty",
+                    idx,
+                    context
+                );
             }
         }
-        AuthConfig::PreSharedKey { key, location: _, field_name } => {
+        AuthConfig::PreSharedKey {
+            key,
+            location: _,
+            field_name,
+        } => {
             if key.trim().is_empty() {
-                bail!("DSL step {}: {}.auth.pre_shared_key.key must not be empty", idx, context);
+                bail!(
+                    "DSL step {}: {}.auth.pre_shared_key.key must not be empty",
+                    idx,
+                    context
+                );
             }
             if field_name.trim().is_empty() {
-                bail!("DSL step {}: {}.auth.pre_shared_key.field_name must not be empty", idx, context);
+                bail!(
+                    "DSL step {}: {}.auth.pre_shared_key.field_name must not be empty",
+                    idx,
+                    context
+                );
             }
         }
     }

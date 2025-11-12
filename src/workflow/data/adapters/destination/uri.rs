@@ -68,4 +68,3 @@ impl DataDestination for UriDestination {
         Ok(())
     }
 }
-

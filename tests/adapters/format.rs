@@ -204,4 +204,3 @@ fn test_json_validate_options() {
     let options = json!({"format": "ndjson"});
     assert!(handler.validate_options(&options).is_ok());
 }
-

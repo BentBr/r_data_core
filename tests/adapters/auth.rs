@@ -12,7 +12,8 @@ fn test_no_auth_provider() {
 
 #[test]
 fn test_api_key_auth_provider() {
-    let provider = ApiKeyAuthProvider::new("test-key".to_string(), Some("X-Custom-Key".to_string()));
+    let provider =
+        ApiKeyAuthProvider::new("test-key".to_string(), Some("X-Custom-Key".to_string()));
     assert_eq!(provider.auth_type(), "api_key");
 
     // Test applying to request
@@ -188,4 +189,3 @@ fn test_auth_config_pre_shared_key_serialization() {
     assert_eq!(json["location"], "header");
     assert_eq!(json["field_name"], "X-Key");
 }
-

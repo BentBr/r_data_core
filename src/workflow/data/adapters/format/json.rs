@@ -75,4 +75,3 @@ impl FormatHandler for JsonFormatHandler {
         Ok(())
     }
 }
-

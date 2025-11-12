@@ -52,9 +52,8 @@ async fn setup_app_with_entities() -> anyhow::Result<(
     ));
 
     // Create dynamic entity service
-    let de_repo = r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(
-        pool.clone(),
-    );
+    let de_repo =
+        r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool.clone());
     let de_adapter = r_data_core::services::DynamicEntityRepositoryAdapter::new(de_repo);
     let dynamic_entity_service = Arc::new(DynamicEntityService::new(
         Arc::new(de_adapter),
@@ -82,7 +81,12 @@ async fn setup_app_with_entities() -> anyhow::Result<(
         queue: crate::common::utils::test_queue_client_async().await,
     });
 
-    let app = test::init_service(App::new().app_data(app_state.clone()).configure(configure_app)).await;
+    let app = test::init_service(
+        App::new()
+            .app_data(app_state.clone())
+            .configure(configure_app),
+    )
+    .await;
 
     // Create test admin user and JWT
     let user_uuid = common::utils::create_test_admin_user(&pool).await?;
@@ -185,7 +189,7 @@ async fn test_provider_endpoint_with_jwt_auth() -> anyhow::Result<()> {
         .to_request();
 
     let resp = test::call_service(&app, req).await;
-    
+
     // Should succeed (even if data fetch fails, auth should work)
     assert!(
         resp.status().is_success() || resp.status().as_u16() == 500,
@@ -244,7 +248,7 @@ async fn test_provider_endpoint_with_api_key_auth() -> anyhow::Result<()> {
         .to_request();
 
     let resp = test::call_service(&app, req).await;
-    
+
     assert!(
         resp.status().is_success() || resp.status().as_u16() == 500,
         "Expected success or 500, got: {}",
@@ -308,7 +312,7 @@ async fn test_provider_endpoint_with_pre_shared_key() -> anyhow::Result<()> {
         .to_request();
 
     let resp = test::call_service(&app, req).await;
-    
+
     assert!(
         resp.status().is_success() || resp.status().as_u16() == 500,
         "Expected success or 500 with valid pre-shared key, got: {}",
@@ -505,11 +509,13 @@ async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
         .to_request();
 
     let resp = test::call_service(&app, req).await;
-    
+
     // Should accept the request (202 Accepted) or 500 if processing fails
     // Note: from.api source processing may not be fully implemented yet
     assert!(
-        resp.status().is_success() || resp.status().as_u16() == 202 || resp.status().as_u16() == 500,
+        resp.status().is_success()
+            || resp.status().as_u16() == 202
+            || resp.status().as_u16() == 500,
         "Expected success, 202, or 500, got: {}",
         resp.status()
     );
@@ -641,4 +647,3 @@ async fn test_consumer_endpoint_post_returns_405_for_provider_workflow() -> anyh
 
     Ok(())
 }
-

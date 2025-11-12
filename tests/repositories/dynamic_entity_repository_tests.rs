@@ -426,14 +426,20 @@ async fn test_field_name_case_handling() -> Result<()> {
     let db_lastname: Option<String> = row.try_get("lastname").ok();
     let db_email: Option<String> = row.try_get("email").ok();
 
-    assert_eq!(db_firstname, Some("John".to_string()), "Database should store firstname in lowercase column");
-    assert_eq!(db_lastname, Some("Doe".to_string()), "Database should store lastname in lowercase column");
+    assert_eq!(
+        db_firstname,
+        Some("John".to_string()),
+        "Database should store firstname in lowercase column"
+    );
+    assert_eq!(
+        db_lastname,
+        Some("Doe".to_string()),
+        "Database should store lastname in lowercase column"
+    );
     assert_eq!(db_email, Some("john.doe@example.com".to_string()));
 
     // Test 3: Read entity back - field names should be in entity definition case (camelCase)
-    let retrieved = repo
-        .get_by_type(&entity_type, &uuid, None)
-        .await?;
+    let retrieved = repo.get_by_type(&entity_type, &uuid, None).await?;
 
     assert!(retrieved.is_some(), "Entity should be retrievable");
     let retrieved = retrieved.unwrap();
@@ -458,12 +464,18 @@ async fn test_field_name_case_handling() -> Result<()> {
 
     // Verify values are correct
     assert_eq!(
-        retrieved.field_data.get("firstName").and_then(|v| v.as_str()),
+        retrieved
+            .field_data
+            .get("firstName")
+            .and_then(|v| v.as_str()),
         Some("John"),
         "firstName value should match"
     );
     assert_eq!(
-        retrieved.field_data.get("lastName").and_then(|v| v.as_str()),
+        retrieved
+            .field_data
+            .get("lastName")
+            .and_then(|v| v.as_str()),
         Some("Doe"),
         "lastName value should match"
     );
@@ -487,20 +499,24 @@ async fn test_field_name_case_handling() -> Result<()> {
     repo.update(&updated_entity).await?;
 
     // Test 5: Verify update worked and field names are still in camelCase
-    let updated_retrieved = repo
-        .get_by_type(&entity_type, &uuid, None)
-        .await?;
+    let updated_retrieved = repo.get_by_type(&entity_type, &uuid, None).await?;
 
     assert!(updated_retrieved.is_some());
     let updated_retrieved = updated_retrieved.unwrap();
 
     assert_eq!(
-        updated_retrieved.field_data.get("firstName").and_then(|v| v.as_str()),
+        updated_retrieved
+            .field_data
+            .get("firstName")
+            .and_then(|v| v.as_str()),
         Some("Jane"),
         "Updated firstName should be 'Jane'"
     );
     assert_eq!(
-        updated_retrieved.field_data.get("lastName").and_then(|v| v.as_str()),
+        updated_retrieved
+            .field_data
+            .get("lastName")
+            .and_then(|v| v.as_str()),
         Some("Smith"),
         "Updated lastName should be 'Smith'"
     );
@@ -520,8 +536,16 @@ async fn test_field_name_case_handling() -> Result<()> {
     let db_firstname: Option<String> = updated_row.try_get("firstname").ok();
     let db_lastname: Option<String> = updated_row.try_get("lastname").ok();
 
-    assert_eq!(db_firstname, Some("Jane".to_string()), "Database should have updated firstname");
-    assert_eq!(db_lastname, Some("Smith".to_string()), "Database should have updated lastname");
+    assert_eq!(
+        db_firstname,
+        Some("Jane".to_string()),
+        "Database should have updated firstname"
+    );
+    assert_eq!(
+        db_lastname,
+        Some("Smith".to_string()),
+        "Database should have updated lastname"
+    );
 
     Ok(())
 }

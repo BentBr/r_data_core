@@ -47,10 +47,7 @@ pub enum AuthConfig {
         header_name: String,
     },
     /// Basic authentication
-    BasicAuth {
-        username: String,
-        password: String,
-    },
+    BasicAuth { username: String, password: String },
     /// Pre-shared key (for provider workflow)
     PreSharedKey {
         key: String,
@@ -212,4 +209,3 @@ pub fn create_auth_provider(config: &AuthConfig) -> Result<Box<dyn AuthProvider>
         ))),
     }
 }
-

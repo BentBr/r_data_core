@@ -1,6 +1,6 @@
 use r_data_core::workflow::data::adapters::auth::{create_auth_provider, AuthConfig};
-use r_data_core::workflow::data::adapters::source::{DataSource, SourceContext};
 use r_data_core::workflow::data::adapters::source::uri::UriSource;
+use r_data_core::workflow::data::adapters::source::{DataSource, SourceContext};
 use serde_json::json;
 
 #[tokio::test]
@@ -77,4 +77,3 @@ async fn test_uri_source_with_basic_auth() {
     let result = source.fetch(&ctx).await;
     assert!(result.is_err() || result.is_ok());
 }
-

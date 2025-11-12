@@ -159,4 +159,3 @@ impl FormatHandler for CsvFormatHandler {
         Ok(())
     }
 }
-

@@ -1,10 +1,10 @@
 use actix_web::{get, post, web, HttpMessage, HttpRequest, HttpResponse, Responder};
-use uuid::Uuid;
 use serde_json::json;
 use std::result::Result;
+use uuid::Uuid;
 
-use crate::api::ApiState;
 use crate::api::auth::auth_enum::CombinedRequiredAuth;
+use crate::api::ApiState;
 use crate::workflow::data::adapters::auth::{AuthConfig, KeyLocation};
 use crate::workflow::data::adapters::format::FormatHandler;
 use crate::workflow::dsl::DslProgram;
@@ -53,7 +53,8 @@ pub async fn get_workflow_data(
         Ok(None) => return HttpResponse::NotFound().json(json!({"error": "Workflow not found"})),
         Err(e) => {
             log::error!("Failed to get workflow: {}", e);
-            return HttpResponse::InternalServerError().json(json!({"error": "Internal server error"}));
+            return HttpResponse::InternalServerError()
+                .json(json!({"error": "Internal server error"}));
         }
     };
 
@@ -85,10 +86,12 @@ pub async fn get_workflow_data(
             Err(_) => {
                 // Check if pre-shared key was required
                 if extract_provider_auth_config(&workflow.config).is_some() {
-                    return HttpResponse::Unauthorized().json(json!({"error": "Authentication required"}));
+                    return HttpResponse::Unauthorized()
+                        .json(json!({"error": "Authentication required"}));
                 }
                 // If no pre-shared key required, still need JWT/API key
-                return HttpResponse::Unauthorized().json(json!({"error": "Authentication required"}));
+                return HttpResponse::Unauthorized()
+                    .json(json!({"error": "Authentication required"}));
             }
         }
     }
@@ -119,12 +122,15 @@ pub async fn get_workflow_data(
         {
             // Query entities based on filter
             if let Some(entity_service) = &state.dynamic_entity_service {
-                use std::collections::HashMap;
                 use serde_json::Value as JsonValue;
+                use std::collections::HashMap;
 
                 // Build filter map from EntityFilter
                 let mut filter_map = HashMap::new();
-                filter_map.insert(filter.field.clone(), JsonValue::String(filter.value.clone()));
+                filter_map.insert(
+                    filter.field.clone(),
+                    JsonValue::String(filter.value.clone()),
+                );
 
                 match entity_service
                     .filter_entities(
@@ -143,8 +149,9 @@ pub async fn get_workflow_data(
                         // DynamicEntity stores all fields in field_data HashMap
                         for entity in entities {
                             // Convert field_data HashMap directly to JSON object
-                            let entity_json: serde_json::Value = serde_json::to_value(&entity.field_data)
-                                .unwrap_or_else(|_| json!({}));
+                            let entity_json: serde_json::Value =
+                                serde_json::to_value(&entity.field_data)
+                                    .unwrap_or_else(|_| json!({}));
                             input_data.push(entity_json);
                         }
                     }
@@ -209,9 +216,7 @@ pub async fn get_workflow_data(
             let handler = crate::workflow::data::adapters::format::csv::CsvFormatHandler::new();
             match handler.serialize(&all_data, &format.options) {
                 Ok(bytes) => {
-                    return HttpResponse::Ok()
-                        .content_type("text/csv")
-                        .body(bytes);
+                    return HttpResponse::Ok().content_type("text/csv").body(bytes);
                 }
                 Err(e) => {
                     log::error!("Failed to serialize CSV: {}", e);
@@ -236,8 +241,7 @@ pub async fn get_workflow_data(
             }
         }
         _ => {
-            return HttpResponse::NotImplemented()
-                .json(json!({"error": "Format not supported"}));
+            return HttpResponse::NotImplemented().json(json!({"error": "Format not supported"}));
         }
     }
 }
@@ -275,7 +279,8 @@ pub async fn get_workflow_stats(
         Ok(None) => return HttpResponse::NotFound().json(json!({"error": "Workflow not found"})),
         Err(e) => {
             log::error!("Failed to get workflow: {}", e);
-            return HttpResponse::InternalServerError().json(json!({"error": "Internal server error"}));
+            return HttpResponse::InternalServerError()
+                .json(json!({"error": "Internal server error"}));
         }
     };
 
@@ -369,13 +374,15 @@ pub async fn post_workflow_ingest(
         Ok(None) => return HttpResponse::NotFound().json(json!({"error": "Workflow not found"})),
         Err(e) => {
             log::error!("Failed to get workflow: {}", e);
-            return HttpResponse::InternalServerError().json(json!({"error": "Internal server error"}));
+            return HttpResponse::InternalServerError()
+                .json(json!({"error": "Internal server error"}));
         }
     };
 
     // Only consumer workflows can accept POST
     if workflow.kind != crate::workflow::data::WorkflowKind::Consumer {
-        return HttpResponse::MethodNotAllowed().json(json!({"error": "This endpoint only accepts POST for consumer workflows"}));
+        return HttpResponse::MethodNotAllowed()
+            .json(json!({"error": "This endpoint only accepts POST for consumer workflows"}));
     }
 
     // Check if workflow has from.api source
@@ -400,18 +407,21 @@ pub async fn post_workflow_ingest(
     });
 
     if !has_api_source {
-        return HttpResponse::BadRequest().json(json!({"error": "Workflow does not support API ingestion"}));
+        return HttpResponse::BadRequest()
+            .json(json!({"error": "Workflow does not support API ingestion"}));
     }
 
     // Create a run and process synchronously
-    match state.workflow_service.run_now_upload_bytes(uuid, &body).await {
-        Ok((run_uuid, staged_count)) => {
-            HttpResponse::Accepted().json(json!({
-                "run_uuid": run_uuid,
-                "staged_items": staged_count,
-                "status": "processing"
-            }))
-        }
+    match state
+        .workflow_service
+        .run_now_upload_bytes(uuid, &body)
+        .await
+    {
+        Ok((run_uuid, staged_count)) => HttpResponse::Accepted().json(json!({
+            "run_uuid": run_uuid,
+            "staged_items": staged_count,
+            "status": "processing"
+        })),
         Err(e) => {
             log::error!("Failed to process workflow: {}", e);
             HttpResponse::InternalServerError().json(json!({"error": "Failed to process workflow"}))
@@ -428,14 +438,18 @@ async fn validate_provider_auth(
 ) -> Result<(), String> {
     // Check for pre-shared key in config first
     if let Some(auth_config) = extract_provider_auth_config(config) {
-        if let AuthConfig::PreSharedKey { key, location, field_name } = auth_config {
+        if let AuthConfig::PreSharedKey {
+            key,
+            location,
+            field_name,
+        } = auth_config
+        {
             let provided_key = match location {
-                KeyLocation::Header => {
-                    req.headers()
-                        .get(&field_name)
-                        .and_then(|v| v.to_str().ok())
-                        .map(|s| s.to_string())
-                }
+                KeyLocation::Header => req
+                    .headers()
+                    .get(&field_name)
+                    .and_then(|v| v.to_str().ok())
+                    .map(|s| s.to_string()),
                 KeyLocation::Body => {
                     // Body extraction would need to be done in the route handler
                     // For now, we'll check header only

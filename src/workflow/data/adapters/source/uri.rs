@@ -58,4 +58,3 @@ impl DataSource for UriSource {
         Ok(())
     }
 }
-

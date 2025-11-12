@@ -1,11 +1,11 @@
+use crate::api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use crate::services::dynamic_entity_service::DynamicEntityService;
 use crate::workflow::data::repository_trait::WorkflowRepositoryTrait;
 use crate::workflow::data::Workflow;
-use std::sync::Arc;
-use uuid::Uuid;
-use crate::api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use cron::Schedule;
 use std::str::FromStr;
+use std::sync::Arc;
+use uuid::Uuid;
 
 pub struct WorkflowService {
     repo: Arc<dyn WorkflowRepositoryTrait>,
@@ -29,7 +29,7 @@ impl WorkflowService {
             dynamic_entity_service: Some(dynamic_entity_service),
         }
     }
- 
+
     fn infer_input_type(cfg: &serde_json::Value) -> Option<String> {
         // Required structure: { "input": { "type": "csv" | "ndjson", "format": {...}, "source": {...} } }
         cfg.pointer("/input/type")
@@ -269,10 +269,12 @@ impl WorkflowService {
             .get_by_uuid(workflow_uuid)
             .await?
             .ok_or_else(|| anyhow::anyhow!("Workflow not found"))?;
-        
+
         // Try to infer format from DSL
         let program = crate::workflow::dsl::DslProgram::from_config(&wf.config)?;
-        let format_type = program.steps.first()
+        let format_type = program
+            .steps
+            .first()
             .and_then(|step| {
                 if let crate::workflow::dsl::FromDef::Format { format, .. } = &step.from {
                     Some(format.format_type.clone())
@@ -284,7 +286,9 @@ impl WorkflowService {
 
         let payloads = match format_type.as_str() {
             "csv" => {
-                let format_cfg = program.steps.first()
+                let format_cfg = program
+                    .steps
+                    .first()
                     .and_then(|step| {
                         if let crate::workflow::dsl::FromDef::Format { format, .. } = &step.from {
                             Some(format.options.clone())
@@ -300,7 +304,9 @@ impl WorkflowService {
                 }
             }
             "json" => {
-                let format_cfg = program.steps.first()
+                let format_cfg = program
+                    .steps
+                    .first()
                     .and_then(|step| {
                         if let crate::workflow::dsl::FromDef::Format { format, .. } = &step.from {
                             Some(format.options.clone())
@@ -365,12 +371,7 @@ impl WorkflowService {
         // Find Format-based FromDef steps that need fetching
         let mut total_staged = 0_i64;
         for step in &program.steps {
-            if let crate::workflow::dsl::FromDef::Format {
-                source,
-                format,
-                ..
-            } = &step.from
-            {
+            if let crate::workflow::dsl::FromDef::Format { source, format, .. } = &step.from {
                 // Skip "api" source type (handled by POST endpoint)
                 if source.source_type == "api" {
                     continue;
@@ -415,21 +416,22 @@ impl WorkflowService {
                 }
 
                 // Get format handler
-                let format_handler: Box<dyn crate::workflow::data::adapters::format::FormatHandler> =
-                    match format.format_type.as_str() {
-                        "csv" => Box::new(
-                            crate::workflow::data::adapters::format::csv::CsvFormatHandler::new(),
-                        ),
-                        "json" => Box::new(
-                            crate::workflow::data::adapters::format::json::JsonFormatHandler::new(),
-                        ),
-                        _ => {
-                            return Err(anyhow::anyhow!(
-                                "Unsupported format type: {}",
-                                format.format_type
-                            ));
-                        }
-                    };
+                let format_handler: Box<
+                    dyn crate::workflow::data::adapters::format::FormatHandler,
+                > = match format.format_type.as_str() {
+                    "csv" => Box::new(
+                        crate::workflow::data::adapters::format::csv::CsvFormatHandler::new(),
+                    ),
+                    "json" => Box::new(
+                        crate::workflow::data::adapters::format::json::JsonFormatHandler::new(),
+                    ),
+                    _ => {
+                        return Err(anyhow::anyhow!(
+                            "Unsupported format type: {}",
+                            format.format_type
+                        ));
+                    }
+                };
 
                 // Parse data
                 let payloads = format_handler.parse(&all_data, &format.options)?;
@@ -505,11 +507,8 @@ impl WorkflowService {
                         let mut entity_ops_ok = true;
                         for (to_def, produced) in outputs {
                             // Handle Format outputs with Push mode
-                            if let crate::workflow::dsl::ToDef::Format {
-                                output,
-                                format,
-                                ..
-                            } = &to_def
+                            if let crate::workflow::dsl::ToDef::Format { output, format, .. } =
+                                &to_def
                             {
                                 if let crate::workflow::dsl::OutputMode::Push {
                                     destination,
@@ -545,7 +544,9 @@ impl WorkflowService {
                                     };
 
                                     // Serialize to bytes (clone produced since it may be used later for Entity outputs)
-                                    let data_bytes = match format_handler.serialize(&[produced.clone()], &format.options) {
+                                    let data_bytes = match format_handler
+                                        .serialize(&[produced.clone()], &format.options)
+                                    {
                                         Ok(bytes) => bytes,
                                         Err(e) => {
                                             let _ = self
