@@ -2,11 +2,20 @@
   "steps": [
     {
       "from": {
-        "type": "csv",
-        "uri": "http://example.com/products.csv",
-        "options": {
-          "header": true,
-          "delimiter": ","
+        "type": "format",
+        "source": {
+          "source_type": "uri",
+          "config": {
+            "uri": "http://example.com/products.csv"
+          },
+          "auth": null
+        },
+        "format": {
+          "format_type": "csv",
+          "options": {
+            "has_header": true,
+            "delimiter": ","
+          }
         },
         "mapping": {
           "product_name": "name",

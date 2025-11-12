@@ -92,15 +92,24 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
         "steps": [
             {
                 "from": {
-                    "type": "csv",
-                    "uri": "http://example.com/data.csv",
+                    "type": "format",
+                    "source": {
+                        "source_type": "uri",
+                        "config": {
+                            "uri": "http://example.com/data.csv"
+                        },
+                        "auth": null
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": {
+                            "has_header": true,
+                            "delimiter": ","
+                        }
+                    },
                     "mapping": {
                         "email": "email",
                         "name": "name"
-                    },
-                    "options": {
-                        "header": true,
-                        "delimiter": ","
                     }
                 },
                 "transform": {
@@ -151,11 +160,9 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
         "has_header": true,
         "delimiter": ","
     });
-    let payloads =
-        r_data_core::workflow::data::adapters::import::csv::CsvImportAdapter::parse_inline(
-            csv_data,
-            &format_cfg,
-        )
+    use r_data_core::workflow::data::adapters::format::FormatHandler;
+    let payloads = r_data_core::workflow::data::adapters::format::csv::CsvFormatHandler::new()
+        .parse(csv_data.as_bytes(), &format_cfg)
         .expect("parse CSV");
 
     // Run import multiple times (3-5 times) and verify identical outcomes

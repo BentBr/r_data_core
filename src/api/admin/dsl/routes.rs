@@ -7,7 +7,8 @@ use crate::api::auth::auth_enum;
 use crate::api::response::{ApiResponse, ValidationViolation};
 use crate::workflow::dsl::{
     ArithmeticOp, ArithmeticTransform, ConcatTransform, DslProgram, DslStep, EntityFilter,
-    EntityWriteMode, FromDef, Operand, OutputMode, StringOperand, ToDef, Transform,
+    EntityWriteMode, FormatConfig, FromDef, Operand, OutputMode, SourceConfig, StringOperand,
+    ToDef, Transform,
 };
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -199,16 +200,38 @@ pub async fn list_from_options(_: auth_enum::RequiredAuth) -> impl Responder {
             },
         ],
     };
-    let ex_csv = serde_json::to_value(FromDef::Csv {
-        uri: "http://example.com/data.csv".to_string(),
-        options: Default::default(),
+    let ex_csv = serde_json::to_value(FromDef::Format {
+        source: SourceConfig {
+            source_type: "uri".to_string(),
+            config: serde_json::json!({
+                "uri": "http://example.com/data.csv"
+            }),
+            auth: None,
+        },
+        format: FormatConfig {
+            format_type: "csv".to_string(),
+            options: serde_json::json!({
+                "has_header": true,
+                "delimiter": ","
+            }),
+        },
         mapping: [("price".to_string(), "price".to_string())]
             .into_iter()
             .collect(),
     })
     .unwrap();
-    let ex_json = serde_json::to_value(FromDef::Json {
-        uri: "http://example.com/data.json".to_string(),
+    let ex_json = serde_json::to_value(FromDef::Format {
+        source: SourceConfig {
+            source_type: "uri".to_string(),
+            config: serde_json::json!({
+                "uri": "http://example.com/data.json"
+            }),
+            auth: None,
+        },
+        format: FormatConfig {
+            format_type: "json".to_string(),
+            options: serde_json::json!({}),
+        },
         mapping: [("amount".to_string(), "amount".to_string())]
             .into_iter()
             .collect(),
@@ -353,16 +376,26 @@ pub async fn list_to_options(_: auth_enum::RequiredAuth) -> impl Responder {
             },
         ],
     };
-    let ex_csv = serde_json::to_value(ToDef::Csv {
+    let ex_csv = serde_json::to_value(ToDef::Format {
         output: OutputMode::Api,
-        options: Default::default(),
+        format: FormatConfig {
+            format_type: "csv".to_string(),
+            options: serde_json::json!({
+                "has_header": true,
+                "delimiter": ","
+            }),
+        },
         mapping: [("price".to_string(), "entity.total".to_string())]
             .into_iter()
             .collect(),
     })
     .unwrap();
-    let ex_json = serde_json::to_value(ToDef::Json {
+    let ex_json = serde_json::to_value(ToDef::Format {
         output: OutputMode::Api,
+        format: FormatConfig {
+            format_type: "json".to_string(),
+            options: serde_json::json!({}),
+        },
         mapping: [("price".to_string(), "entity.total".to_string())]
             .into_iter()
             .collect(),

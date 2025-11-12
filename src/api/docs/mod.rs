@@ -260,7 +260,10 @@ impl Modify for JsonValueSchemaAddon {
         crate::api::public::dynamic_entities::routes::create_entity,
         crate::api::public::dynamic_entities::routes::get_entity,
         crate::api::public::dynamic_entities::routes::update_entity,
-        crate::api::public::dynamic_entities::routes::delete_entity
+        crate::api::public::dynamic_entities::routes::delete_entity,
+        crate::api::public::workflows::routes::get_workflow_data,
+        crate::api::public::workflows::routes::get_workflow_stats,
+        crate::api::public::workflows::routes::post_workflow_ingest
     ),
     components(
         schemas(
@@ -280,7 +283,8 @@ impl Modify for JsonValueSchemaAddon {
     tags(
         (name = "public-health", description = "Public health check endpoints"),
         (name = "public", description = "Public API endpoints"),
-        (name = "dynamic-entities", description = "Dynamic entity CRUD operations")
+        (name = "dynamic-entities", description = "Dynamic entity CRUD operations"),
+        (name = "workflows", description = "Workflow provider and consumer endpoints")
     ),
     info(
         title = "R Data Core Public API",

@@ -2,18 +2,27 @@
   "steps": [
     {
       "from": {
-        "type": "csv",
-        "uri": "http://example.com/data.csv",
+        "type": "format",
+        "source": {
+          "source_type": "uri",
+          "config": {
+            "uri": "http://example.com/data.csv"
+          },
+          "auth": null
+        },
+        "format": {
+          "format_type": "csv",
+          "options": {
+            "has_header": true,
+            "delimiter": ","
+          }
+        },
         "mapping": {
           "email": "email",
           "active": "active",
           "lastName": "lastName",
           "username": "username",
           "firstName": "firstName"
-        },
-        "options": {
-          "header": true,
-          "delimiter": ","
         }
       },
       "transform": {

@@ -7,7 +7,6 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::api::auth::auth_enum::CombinedRequiredAuth;
-use crate::api::middleware::ApiKeyInfo;
 use crate::api::query::StandardQuery;
 use crate::api::response::{ApiResponse, ValidationViolation};
 use crate::api::ApiState;

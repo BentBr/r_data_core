@@ -2,12 +2,21 @@
   "steps": [
     {
       "from": {
-        "type": "csv",
-        "uri": "http://example.com/data.csv",
-        "options": {
-          "header": true,
-          "delimiter": ",",
-          "quote": "\""
+        "type": "format",
+        "source": {
+          "source_type": "uri",
+          "config": {
+            "uri": "http://example.com/data.csv"
+          },
+          "auth": null
+        },
+        "format": {
+          "format_type": "csv",
+          "options": {
+            "has_header": true,
+            "delimiter": ",",
+            "quote": "\""
+          }
         },
         "mapping": {
           "source_col1": "normalized_field1",
@@ -20,8 +29,14 @@
         "type": "none"
       },
       "to": {
-        "type": "json",
-        "output": "api",
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
         "mapping": {
           "output_field1": "normalized_field1",
           "output_field2": "normalized_field2",

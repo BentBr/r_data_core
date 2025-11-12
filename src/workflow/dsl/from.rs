@@ -1,7 +1,9 @@
 use crate::workflow::dsl::validate_mapping;
+use crate::workflow::data::adapters::auth::AuthConfig;
 use anyhow::{bail, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -10,23 +12,39 @@ pub struct EntityFilter {
     pub value: String,
 }
 
+/// Source configuration - references source type and config
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct SourceConfig {
+    /// Source type: "uri", "file", "api", "sftp", etc.
+    pub source_type: String,
+    /// Source-specific configuration
+    pub config: Value,
+    /// Optional authentication configuration
+    #[serde(default)]
+    pub auth: Option<AuthConfig>,
+}
+
+/// Format configuration
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct FormatConfig {
+    /// Format type: "csv", "json", "xml", etc.
+    pub format_type: String,
+    /// Format-specific options
+    #[serde(default)]
+    pub options: Value,
+}
+
 /// FROM definitions - where data originates
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum FromDef {
-    /// CSV input (uri is replaced with uploaded file during manual runs)
-    Csv {
-        uri: String,
-        /// CSV parsing options (header/delimiter/escape/quote)
-        #[serde(default)]
-        options: super::CsvOptions,
-        /// One-to-one mapping: source_field -> normalized_field
-        mapping: std::collections::HashMap<String, String>,
-    },
-    /// JSON/NDJSON input (uri is replaced with uploaded file during manual runs)
-    Json {
-        uri: String,
-        /// One-to-one mapping: source_field -> normalized_field
+    /// Format-based input (CSV, JSON, XML, etc.)
+    Format {
+        /// Source configuration (URI, File, API, etc.)
+        source: SourceConfig,
+        /// Format configuration
+        format: FormatConfig,
+        /// Field mapping
         mapping: std::collections::HashMap<String, String>,
     },
     /// Existing entities as input
@@ -40,42 +58,81 @@ pub enum FromDef {
 
 pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> Result<()> {
     match from {
-        FromDef::Csv {
-            uri,
-            options,
+        FromDef::Format {
+            source,
+            format,
             mapping,
         } => {
-            if uri.trim().is_empty() {
-                bail!("DSL step {}: from.uri must not be empty", idx);
+            if source.source_type.trim().is_empty() {
+                bail!("DSL step {}: from.format.source.source_type must not be empty", idx);
             }
-            if options.delimiter.len() != 1 {
-                bail!(
-                    "DSL step {}: from.csv.options.delimiter must be a single character",
-                    idx
-                );
+            if format.format_type.trim().is_empty() {
+                bail!("DSL step {}: from.format.format.format_type must not be empty", idx);
             }
-            if let Some(esc) = &options.escape {
-                if !esc.is_empty() && esc.len() != 1 {
-                    bail!(
-                        "DSL step {}: from.csv.options.escape must be a single character when set",
-                        idx
-                    );
+            // Validate format-specific options
+            match format.format_type.as_str() {
+                "csv" => {
+                    if let Some(delimiter) = format.options.get("delimiter").and_then(|v| v.as_str()) {
+                        if delimiter.len() != 1 {
+                            bail!(
+                                "DSL step {}: from.format.format.options.delimiter must be a single character",
+                                idx
+                            );
+                        }
+                    }
+                    if let Some(escape) = format.options.get("escape").and_then(|v| v.as_str()) {
+                        if !escape.is_empty() && escape.len() != 1 {
+                            bail!(
+                                "DSL step {}: from.format.format.options.escape must be a single character when set",
+                                idx
+                            );
+                        }
+                    }
+                    if let Some(quote) = format.options.get("quote").and_then(|v| v.as_str()) {
+                        if !quote.is_empty() && quote.len() != 1 {
+                            bail!(
+                                "DSL step {}: from.format.format.options.quote must be a single character when set",
+                                idx
+                            );
+                        }
+                    }
+                }
+                "json" => {
+                    // JSON format has minimal validation
+                }
+                _ => {
+                    // Other formats will be validated by their handlers
                 }
             }
-            if let Some(q) = &options.quote {
-                if !q.is_empty() && q.len() != 1 {
-                    bail!(
-                        "DSL step {}: from.csv.options.quote must be a single character when set",
-                        idx
-                    );
+            // Validate source config
+            match source.source_type.as_str() {
+                "uri" => {
+                    if let Some(uri) = source.config.get("uri").and_then(|v| v.as_str()) {
+                        if uri.trim().is_empty() {
+                            bail!("DSL step {}: from.format.source.config.uri must not be empty", idx);
+                        }
+                        if !uri.starts_with("http://") && !uri.starts_with("https://") {
+                            bail!("DSL step {}: from.format.source.config.uri must start with http:// or https://", idx);
+                        }
+                    } else {
+                        bail!("DSL step {}: from.format.source.config.uri is required for uri source", idx);
+                    }
                 }
-            }
-            // Allow empty mappings
-            validate_mapping(idx, mapping, safe_field)?;
-        }
-        FromDef::Json { uri, mapping } => {
-            if uri.trim().is_empty() {
-                bail!("DSL step {}: from.uri must not be empty", idx);
+                "file" => {
+                    // File source is handled during manual runs
+                }
+                "api" => {
+                    if let Some(endpoint) = source.config.get("endpoint").and_then(|v| v.as_str()) {
+                        if endpoint.trim().is_empty() {
+                            bail!("DSL step {}: from.format.source.config.endpoint must not be empty", idx);
+                        }
+                    } else {
+                        bail!("DSL step {}: from.format.source.config.endpoint is required for api source", idx);
+                    }
+                }
+                _ => {
+                    // Other source types will be validated by their handlers
+                }
             }
             // Allow empty mappings
             validate_mapping(idx, mapping, safe_field)?;
@@ -106,8 +163,6 @@ pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> R
 
 pub(crate) fn mapping_of(from: &FromDef) -> &std::collections::HashMap<String, String> {
     match from {
-        FromDef::Csv { mapping, .. }
-        | FromDef::Json { mapping, .. }
-        | FromDef::Entity { mapping, .. } => mapping,
+        FromDef::Format { mapping, .. } | FromDef::Entity { mapping, .. } => mapping,
     }
 }

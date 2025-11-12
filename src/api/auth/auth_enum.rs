@@ -23,10 +23,11 @@ pub struct RequiredAuth(pub AuthUserClaims);
 /// Extractor for optional authentication
 pub struct OptionalAuth(pub Option<AuthUserClaims>);
 
-/// Extractor for combined required authentication (JWT or API key)
+/// Extractor for combined required authentication (JWT, API key, or pre-shared key)
 pub struct CombinedRequiredAuth {
     pub jwt_claims: Option<AuthUserClaims>,
     pub api_key_info: Option<ApiKeyInfo>,
+    pub pre_shared_key_valid: bool,
 }
 
 /// Extract and verify JWT from the Authorization header
@@ -113,6 +114,7 @@ impl FromRequest for CombinedRequiredAuth {
                 return Ok(CombinedRequiredAuth {
                     jwt_claims: Some(jwt_claims),
                     api_key_info: None,
+                    pre_shared_key_valid: false,
                 });
             }
 
@@ -121,11 +123,12 @@ impl FromRequest for CombinedRequiredAuth {
                 return Ok(CombinedRequiredAuth {
                     jwt_claims: None,
                     api_key_info: Some(api_key_info.clone()),
+                    pre_shared_key_valid: false,
                 });
             }
 
             // Try API key authentication from headers
-            if let Some(state) = req.app_data::<web::Data<ApiState>>() {
+            if req.app_data::<web::Data<ApiState>>().is_some() {
                 // Check for an API key in the X-API-Key header
                 if let Some(_) = req.headers().get("X-API-Key").and_then(|h| h.to_str().ok()) {
                     // Try to validate an API key
@@ -149,6 +152,7 @@ impl FromRequest for CombinedRequiredAuth {
                                     created_at: key.created_at,
                                     expires_at: key.expires_at,
                                 }),
+                                pre_shared_key_valid: false,
                             });
                         }
                         Ok(None) => {
@@ -161,9 +165,20 @@ impl FromRequest for CombinedRequiredAuth {
                 }
             }
 
-            // Both authentication methods failed
+            // Check for pre-shared key in extensions (set by middleware or route handler)
+            if let Some(valid) = req.extensions().get::<bool>() {
+                if *valid {
+                    return Ok(CombinedRequiredAuth {
+                        jwt_claims: None,
+                        api_key_info: None,
+                        pre_shared_key_valid: true,
+                    });
+                }
+            }
+
+            // All authentication methods failed
             Err(ErrorUnauthorized(
-                "Authentication required. Please provide a valid JWT token or API key.",
+                "Authentication required. Please provide a valid JWT token, API key, or pre-shared key.",
             ))
         })
     }

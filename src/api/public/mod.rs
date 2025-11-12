@@ -11,7 +11,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
         web::scope("/api/v1")
             .configure(entities::routes::register_routes)
             .configure(queries::register_routes)
-            .configure(dynamic_entities::register_routes)
-            .configure(workflows::register_routes),
+            .configure(workflows::register_routes)  // Register workflows BEFORE dynamic_entities to avoid route conflicts
+            .configure(dynamic_entities::register_routes),
     );
 }

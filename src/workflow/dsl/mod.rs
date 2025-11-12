@@ -11,7 +11,7 @@ use serde_json::{json, Value};
 use utoipa::ToSchema;
 
 pub use csv::CsvOptions;
-pub use from::{EntityFilter, FromDef};
+pub use from::{EntityFilter, FormatConfig, FromDef, SourceConfig};
 pub use processor::DslProcessor;
 pub use to::{EntityWriteMode, OutputMode, ToDef};
 pub use transform::{
@@ -309,7 +309,19 @@ mod tests {
     fn test_validate_ok_and_apply_arithmetic_field_const() {
         let config = json!({
             "steps": [{
-                "from": { "type": "csv", "uri": "http://example/csv", "mapping": { "price": "price" } },
+                "from": {
+                    "type": "format",
+                    "source": {
+                        "source_type": "uri",
+                        "config": { "uri": "http://example/csv" },
+                        "auth": null
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": {}
+                    },
+                    "mapping": { "price": "price" }
+                },
                 "transform": {
                     "type": "arithmetic",
                     "target": "price",
@@ -319,7 +331,15 @@ mod tests {
                 },
                 // Mapping structure: { destination_field: normalized_field }
                 // So "entity.total" (destination) maps from normalized "price"
-                "to": { "type": "json", "output": "api", "mapping": { "entity.total": "price" } }
+                "to": {
+                    "type": "format",
+                    "output": { "mode": "api" },
+                    "format": {
+                        "format_type": "json",
+                        "options": {}
+                    },
+                    "mapping": { "entity.total": "price" }
+                }
             }]
         });
         let prog = DslProgram::from_config(&config).unwrap();
@@ -339,8 +359,16 @@ mod tests {
         let config = json!({
             "steps": [{
                 "from": {
-                    "type": "csv",
-                    "uri": "http://example.com/data.csv",
+                    "type": "format",
+                    "source": {
+                        "source_type": "uri",
+                        "config": { "uri": "http://example.com/data.csv" },
+                        "auth": null
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": {}
+                    },
                     "mapping": {
                         "email": "email",
                         "active": "active",
@@ -403,8 +431,16 @@ mod tests {
         let config = json!({
             "steps": [{
                 "from": {
-                    "type": "csv",
-                    "uri": "http://example.com/data.csv",
+                    "type": "format",
+                    "source": {
+                        "source_type": "uri",
+                        "config": { "uri": "http://example.com/data.csv" },
+                        "auth": null
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": {}
+                    },
                     "mapping": {
                         "email": "email"
                     }
@@ -444,8 +480,16 @@ mod tests {
         let config = json!({
             "steps": [{
                 "from": {
-                    "type": "csv",
-                    "uri": "http://example.com/data.csv",
+                    "type": "format",
+                    "source": {
+                        "source_type": "uri",
+                        "config": { "uri": "http://example.com/data.csv" },
+                        "auth": null
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": {}
+                    },
                     "mapping": {
                         "active": "active"
                     }

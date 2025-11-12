@@ -39,7 +39,19 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
     let cfg = serde_json::json!({
         "steps": [
             {
-                "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} },
+                "from": {
+                    "type": "format",
+                    "source": {
+                        "source_type": "uri",
+                        "config": { "uri": "http://example.com/data.csv" },
+                        "auth": null
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": {}
+                    },
+                    "mapping": {}
+                },
                 "transform": { "type": "none" },
                 "to": {
                     "type": "entity",
@@ -218,7 +230,19 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     let cfg = serde_json::json!({
         "steps": [
             {
-                "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} },
+                "from": {
+                    "type": "format",
+                    "source": {
+                        "source_type": "uri",
+                        "config": { "uri": "http://example.com/data.csv" },
+                        "auth": null
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": {}
+                    },
+                    "mapping": {}
+                },
                 "transform": { "type": "none" },
                 "to": {
                     "type": "entity",

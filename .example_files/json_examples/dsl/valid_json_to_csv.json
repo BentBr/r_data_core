@@ -2,8 +2,18 @@
   "steps": [
     {
       "from": {
-        "type": "json",
-        "uri": "http://example.com/data.json",
+        "type": "format",
+        "source": {
+          "source_type": "uri",
+          "config": {
+            "uri": "http://example.com/data.json"
+          },
+          "auth": null
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
         "mapping": {
           "user.name": "first_name",
           "user.surname": "last_name",
@@ -24,11 +34,16 @@
         }
       },
       "to": {
-        "type": "csv",
-        "output": "download",
-        "options": {
-          "header": true,
-          "delimiter": ","
+        "type": "format",
+        "output": {
+          "mode": "download"
+        },
+        "format": {
+          "format_type": "csv",
+          "options": {
+            "has_header": true,
+            "delimiter": ","
+          }
         },
         "mapping": {
           "first_name": "first_name",

@@ -2,8 +2,18 @@
   "steps": [
     {
       "from": {
-        "type": "csv",
-        "uri": "http://example.com/empty.csv",
+        "type": "format",
+        "source": {
+          "source_type": "uri",
+          "config": {
+            "uri": "http://example.com/empty.csv"
+          },
+          "auth": null
+        },
+        "format": {
+          "format_type": "csv",
+          "options": {}
+        },
         "mapping": {}
       },
       "transform": {
@@ -14,8 +24,14 @@
         "right": { "kind": "const", "value": 2.0 }
       },
       "to": {
-        "type": "json",
-        "output": "api",
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
         "mapping": {}
       }
     }

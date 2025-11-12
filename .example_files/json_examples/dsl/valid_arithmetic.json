@@ -2,8 +2,18 @@
   "steps": [
     {
       "from": {
-        "type": "csv",
-        "uri": "http://example.com/data.csv",
+        "type": "format",
+        "source": {
+          "source_type": "uri",
+          "config": {
+            "uri": "http://example.com/data.csv"
+          },
+          "auth": null
+        },
+        "format": {
+          "format_type": "csv",
+          "options": {}
+        },
         "mapping": {
           "price": "price"
         }
@@ -16,8 +26,14 @@
         "right": { "kind": "const", "value": 5.0 }
       },
       "to": {
-        "type": "json",
-        "output": "api",
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
         "mapping": {
           "entity.total": "price"
         }

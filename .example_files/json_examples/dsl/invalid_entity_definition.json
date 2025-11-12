@@ -14,8 +14,14 @@
         "type": "none"
       },
       "to": {
-        "type": "json",
-        "output": "api",
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
         "mapping": {}
       }
     }

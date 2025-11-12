@@ -213,11 +213,10 @@ impl WorkflowService {
         let inline = String::from_utf8_lossy(bytes).to_string();
         let payloads = match input_type.as_str() {
             "csv" => {
+                use crate::workflow::data::adapters::format::FormatHandler;
                 let format_cfg = Self::csv_format_from_config(&wf.config);
-                crate::workflow::data::adapters::import::csv::CsvImportAdapter::parse_inline(
-                    &inline,
-                    &format_cfg,
-                )?
+                crate::workflow::data::adapters::format::csv::CsvFormatHandler::new()
+                    .parse(inline.as_bytes(), &format_cfg)?
             }
             "ndjson" => inline
                 .lines()
@@ -256,6 +255,97 @@ impl WorkflowService {
         Ok((run_uuid, staged))
     }
 
+    /// Upload bytes (CSV/JSON) and trigger workflow run synchronously
+    pub async fn run_now_upload_bytes(
+        &self,
+        workflow_uuid: Uuid,
+        bytes: &[u8],
+    ) -> anyhow::Result<(Uuid, i64)> {
+        let run_uuid = self.enqueue_run(workflow_uuid).await?;
+
+        // Read workflow config for input options
+        let wf = self
+            .repo
+            .get_by_uuid(workflow_uuid)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Workflow not found"))?;
+        
+        // Try to infer format from DSL
+        let program = crate::workflow::dsl::DslProgram::from_config(&wf.config)?;
+        let format_type = program.steps.first()
+            .and_then(|step| {
+                if let crate::workflow::dsl::FromDef::Format { format, .. } = &step.from {
+                    Some(format.format_type.clone())
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| "csv".to_string());
+
+        let payloads = match format_type.as_str() {
+            "csv" => {
+                let format_cfg = program.steps.first()
+                    .and_then(|step| {
+                        if let crate::workflow::dsl::FromDef::Format { format, .. } = &step.from {
+                            Some(format.options.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_else(|| serde_json::json!({}));
+                {
+                    use crate::workflow::data::adapters::format::FormatHandler;
+                    crate::workflow::data::adapters::format::csv::CsvFormatHandler::new()
+                        .parse(bytes, &format_cfg)?
+                }
+            }
+            "json" => {
+                let format_cfg = program.steps.first()
+                    .and_then(|step| {
+                        if let crate::workflow::dsl::FromDef::Format { format, .. } = &step.from {
+                            Some(format.options.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_else(|| serde_json::json!({}));
+                {
+                    use crate::workflow::data::adapters::format::FormatHandler;
+                    crate::workflow::data::adapters::format::json::JsonFormatHandler::new()
+                        .parse(bytes, &format_cfg)?
+                }
+            }
+            other => {
+                return Err(anyhow::anyhow!(format!(
+                    "Unsupported input type for upload: {}",
+                    other
+                )))
+            }
+        };
+
+        if payloads.is_empty() {
+            self.repo
+                .insert_run_log(run_uuid, "warn", "Upload contained no data rows", None)
+                .await
+                .ok();
+            return Ok((run_uuid, 0));
+        }
+
+        let staged = self
+            .stage_raw_items(workflow_uuid, run_uuid, payloads)
+            .await?;
+        let _ = self
+            .repo
+            .insert_run_log(
+                run_uuid,
+                "info",
+                "Upload staged",
+                Some(serde_json::json!({ "staged_items": staged, "input_type": format_type })),
+            )
+            .await;
+        Ok((run_uuid, staged))
+    }
+
     /// Fetch from configured source (URI) and stage items using the appropriate adapter (csv or ndjson)
     pub async fn fetch_and_stage_from_config(
         &self,
@@ -268,17 +358,135 @@ impl WorkflowService {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Workflow not found"))?;
 
+        // Parse DSL program to get FromDef steps
+        let program = match crate::workflow::dsl::DslProgram::from_config(&wf.config) {
+            Ok(p) => p,
+            Err(e) => {
+                log::warn!("Failed to parse DSL for fetch: {}", e);
+                // Fall back to legacy config format
+                return self.fetch_and_stage_legacy(workflow_uuid, run_uuid, &wf.config).await;
+            }
+        };
+
+        // Find Format-based FromDef steps that need fetching
+        let mut total_staged = 0_i64;
+        for step in &program.steps {
+            if let crate::workflow::dsl::FromDef::Format {
+                source,
+                format,
+                ..
+            } = &step.from
+            {
+                // Skip "api" source type (handled by POST endpoint)
+                if source.source_type == "api" {
+                    continue;
+                }
+
+                // Create auth provider
+                let auth_provider = source
+                    .auth
+                    .as_ref()
+                    .map(|auth_cfg| {
+                        crate::workflow::data::adapters::auth::create_auth_provider(auth_cfg)
+                    })
+                    .transpose()?;
+
+                // Create source context
+                let source_ctx = crate::workflow::data::adapters::source::SourceContext {
+                    auth: auth_provider,
+                    config: source.config.clone(),
+                };
+
+                // Get appropriate source based on source_type
+                let source_adapter: Box<dyn crate::workflow::data::adapters::source::DataSource> =
+                    match source.source_type.as_str() {
+                        "uri" => {
+                            Box::new(crate::workflow::data::adapters::source::uri::UriSource::new())
+                        }
+                        _ => {
+                            return Err(anyhow::anyhow!(
+                                "Unsupported source type: {}",
+                                source.source_type
+                            ));
+                        }
+                    };
+
+                // Fetch data
+                let mut stream = source_adapter.fetch(&source_ctx).await?;
+                use futures::StreamExt;
+                let mut all_data = Vec::new();
+                while let Some(chunk_result) = stream.next().await {
+                    let chunk = chunk_result?;
+                    all_data.extend_from_slice(&chunk);
+                }
+
+                // Get format handler
+                let format_handler: Box<dyn crate::workflow::data::adapters::format::FormatHandler> =
+                    match format.format_type.as_str() {
+                        "csv" => Box::new(
+                            crate::workflow::data::adapters::format::csv::CsvFormatHandler::new(),
+                        ),
+                        "json" => Box::new(
+                            crate::workflow::data::adapters::format::json::JsonFormatHandler::new(),
+                        ),
+                        _ => {
+                            return Err(anyhow::anyhow!(
+                                "Unsupported format type: {}",
+                                format.format_type
+                            ));
+                        }
+                    };
+
+                // Parse data
+                let payloads = format_handler.parse(&all_data, &format.options)?;
+
+                // Stage items
+                let staged = self
+                    .stage_raw_items(workflow_uuid, run_uuid, payloads)
+                    .await?;
+                total_staged += staged;
+
+                let _ = self
+                    .repo
+                    .insert_run_log(
+                        run_uuid,
+                        "info",
+                        "Fetched and staged",
+                        Some(serde_json::json!({
+                            "staged_items": staged,
+                            "source_type": source.source_type,
+                            "format_type": format.format_type
+                        })),
+                    )
+                    .await;
+            }
+        }
+
+        if total_staged > 0 {
+            Ok(total_staged)
+        } else {
+            // Fall back to legacy config format if no Format sources found
+            self.fetch_and_stage_legacy(workflow_uuid, run_uuid, &wf.config).await
+        }
+    }
+
+    /// Legacy fetch method for backward compatibility with old config format
+    async fn fetch_and_stage_legacy(
+        &self,
+        workflow_uuid: Uuid,
+        run_uuid: Uuid,
+        config: &serde_json::Value,
+    ) -> anyhow::Result<i64> {
         // Determine adapter via unified input.type and input.source.uri
-        let input_type = Self::infer_input_type(&wf.config).unwrap_or_else(|| "csv".to_string());
-        if let Some(uri) = Self::input_uri_from_config(&wf.config) {
+        let input_type = Self::infer_input_type(config).unwrap_or_else(|| "csv".to_string());
+        if let Some(uri) = Self::input_uri_from_config(config) {
             let body = reqwest::get(&uri).await?.error_for_status()?.text().await?;
             let payloads = match input_type.as_str() {
                 "csv" => {
-                    let format_cfg = Self::csv_format_from_config(&wf.config);
-                    crate::workflow::data::adapters::import::csv::CsvImportAdapter::parse_inline(
-                        &body,
-                        &format_cfg,
-                    )?
+                    use crate::workflow::data::adapters::format::FormatHandler;
+                    let format_cfg = Self::csv_format_from_config(config);
+                    crate::workflow::data::adapters::format::csv::CsvFormatHandler::new()
+                        .parse(body.as_bytes(), &format_cfg)?
                 }
                 "ndjson" => body
                     .lines()
@@ -351,11 +559,135 @@ impl WorkflowService {
                 break;
             }
             for (item_uuid, payload) in items {
-                // Execute steps; on each step, handle ToDef::Entity create/update
+                // Execute steps; on each step, handle ToDef::Entity create/update and ToDef::Format with Push
                 match program.execute(&payload) {
                     Ok(outputs) => {
                         let mut entity_ops_ok = true;
                         for (to_def, produced) in outputs {
+                            // Handle Format outputs with Push mode
+                            if let crate::workflow::dsl::ToDef::Format {
+                                output,
+                                format,
+                                ..
+                            } = &to_def
+                            {
+                                if let crate::workflow::dsl::OutputMode::Push {
+                                    destination,
+                                    method,
+                                } = output
+                                {
+                                    // Serialize data using format handler
+                                    let format_handler: Box<
+                                        dyn crate::workflow::data::adapters::format::FormatHandler,
+                                    > = match format.format_type.as_str() {
+                                        "csv" => Box::new(
+                                            crate::workflow::data::adapters::format::csv::CsvFormatHandler::new(),
+                                        ),
+                                        "json" => Box::new(
+                                            crate::workflow::data::adapters::format::json::JsonFormatHandler::new(),
+                                        ),
+                                        _ => {
+                                            let _ = self
+                                                .repo
+                                                .insert_run_log(
+                                                    run_uuid,
+                                                    "error",
+                                                    "Unsupported format for push",
+                                                    Some(serde_json::json!({
+                                                        "item_uuid": item_uuid,
+                                                        "format_type": format.format_type
+                                                    })),
+                                                )
+                                                .await;
+                                            entity_ops_ok = false;
+                                            break;
+                                        }
+                                    };
+
+                                    // Serialize to bytes (clone produced since it may be used later for Entity outputs)
+                                    let data_bytes = match format_handler.serialize(&[produced.clone()], &format.options) {
+                                        Ok(bytes) => bytes,
+                                        Err(e) => {
+                                            let _ = self
+                                                .repo
+                                                .insert_run_log(
+                                                    run_uuid,
+                                                    "error",
+                                                    "Failed to serialize data for push",
+                                                    Some(serde_json::json!({
+                                                        "item_uuid": item_uuid,
+                                                        "error": e.to_string()
+                                                    })),
+                                                )
+                                                .await;
+                                            entity_ops_ok = false;
+                                            break;
+                                        }
+                                    };
+
+                                    // Create auth provider
+                                    let auth_provider = destination
+                                        .auth
+                                        .as_ref()
+                                        .map(|auth_cfg| {
+                                            crate::workflow::data::adapters::auth::create_auth_provider(auth_cfg)
+                                        })
+                                        .transpose()?;
+
+                                    // Create destination context
+                                    let dest_ctx = crate::workflow::data::adapters::destination::DestinationContext {
+                                        auth: auth_provider,
+                                        method: *method,
+                                        config: destination.config.clone(),
+                                    };
+
+                                    // Get appropriate destination based on destination_type
+                                    let dest_adapter: Box<
+                                        dyn crate::workflow::data::adapters::destination::DataDestination,
+                                    > = match destination.destination_type.as_str() {
+                                        "uri" => Box::new(
+                                            crate::workflow::data::adapters::destination::uri::UriDestination::new(),
+                                        ),
+                                        _ => {
+                                            let _ = self
+                                                .repo
+                                                .insert_run_log(
+                                                    run_uuid,
+                                                    "error",
+                                                    "Unsupported destination type",
+                                                    Some(serde_json::json!({
+                                                        "item_uuid": item_uuid,
+                                                        "destination_type": destination.destination_type
+                                                    })),
+                                                )
+                                                .await;
+                                            entity_ops_ok = false;
+                                            break;
+                                        }
+                                    };
+
+                                    // Push data
+                                    if let Err(e) = dest_adapter.push(&dest_ctx, data_bytes).await {
+                                        let _ = self
+                                            .repo
+                                            .insert_run_log(
+                                                run_uuid,
+                                                "error",
+                                                "Failed to push data to destination",
+                                                Some(serde_json::json!({
+                                                    "item_uuid": item_uuid,
+                                                    "destination_type": destination.destination_type,
+                                                    "error": e.to_string()
+                                                })),
+                                            )
+                                            .await;
+                                        entity_ops_ok = false;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // Handle Entity outputs
                             if let crate::workflow::dsl::ToDef::Entity {
                                 entity_definition,
                                 path,
