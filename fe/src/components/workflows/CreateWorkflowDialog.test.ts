@@ -74,4 +74,103 @@ describe('CreateWorkflowDialog', () => {
         // Expect validation state set
         expect((wrapper.vm as any).configError?.toLowerCase()?.includes('dsl_required')).toBe(true)
     })
+
+    it('disables cron field when from.api source is used', async () => {
+        const wrapper = mount(CreateWorkflowDialog, {
+            props: { modelValue: true },
+        })
+
+        // Set steps with from.api source (accepts POST)
+        const dsl = [
+            {
+                from: {
+                    type: 'format',
+                    source: {
+                        source_type: 'api',
+                        config: {}, // No endpoint field = accepts POST
+                        auth: null,
+                    },
+                    format: {
+                        format_type: 'csv',
+                        options: { has_header: true },
+                    },
+                    mapping: {},
+                },
+                transform: { type: 'none' },
+                to: {
+                    type: 'format',
+                    output: { mode: 'api' },
+                    format: {
+                        format_type: 'json',
+                        options: {},
+                    },
+                    mapping: {},
+                },
+            },
+        ]
+        ;(wrapper.vm as any).steps = dsl
+        await nextTick()
+
+        // Find the cron field by label
+        const cronField = wrapper.find('input[type="text"]')
+        if (cronField.exists()) {
+            // Check if cron field is disabled
+            expect(cronField.attributes('disabled')).toBeDefined()
+
+            // Check if hint is shown
+            const hint = wrapper.text()
+            expect(hint).toContain('cron_disabled_for_api_source')
+        } else {
+            // If field not found, check that hasApiSource computed is true
+            expect((wrapper.vm as any).hasApiSource).toBe(true)
+        }
+    })
+
+    it('enables cron field when from.api source is not used', async () => {
+        const wrapper = mount(CreateWorkflowDialog, {
+            props: { modelValue: true },
+        })
+
+        // Set steps with from.uri source (not from.api)
+        const dsl = [
+            {
+                from: {
+                    type: 'format',
+                    source: {
+                        source_type: 'uri',
+                        config: {
+                            uri: 'http://example.com/data.csv',
+                        },
+                        auth: null,
+                    },
+                    format: {
+                        format_type: 'csv',
+                        options: { has_header: true },
+                    },
+                    mapping: {},
+                },
+                transform: { type: 'none' },
+                to: {
+                    type: 'format',
+                    output: { mode: 'api' },
+                    format: {
+                        format_type: 'json',
+                        options: {},
+                    },
+                    mapping: {},
+                },
+            },
+        ]
+        ;(wrapper.vm as any).steps = dsl
+        await nextTick()
+
+        // Check that hasApiSource is false
+        expect((wrapper.vm as any).hasApiSource).toBe(false)
+
+        // Check if cron field is NOT disabled (if found)
+        const cronInput = wrapper.find('input[type="text"]')
+        if (cronInput.exists()) {
+            expect(cronInput.attributes('disabled')).toBeUndefined()
+        }
+    })
 })
