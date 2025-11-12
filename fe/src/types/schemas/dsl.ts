@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { ApiResponseSchema } from './base'
 
-const CsvOptionsSchema = z.object({
+export const CsvOptionsSchema = z.object({
     has_header: z.boolean().optional(),
     delimiter: z.string().min(1).max(1).optional(),
     escape: z.string().min(1).max(1).optional(),
@@ -34,14 +34,14 @@ const AuthConfigSchema = z.discriminatedUnion('type', [
 // Source configuration
 const SourceConfigSchema = z.object({
     source_type: z.string(), // "uri", "file", "api", "sftp", etc.
-    config: z.record(z.any()), // Source-specific config (e.g., { uri: "..." } or { endpoint: "..." })
+    config: z.record(z.string(), z.any()), // Source-specific config (e.g., { uri: "..." } or { endpoint: "..." })
     auth: AuthConfigSchema.optional(),
 })
 
 // Format configuration
 const FormatConfigSchema = z.object({
     format_type: z.string(), // "csv", "json", "xml", etc.
-    options: z.record(z.any()).optional(), // Format-specific options
+    options: z.record(z.string(), z.any()).optional(), // Format-specific options
 })
 
 // New Format-based FromDef
@@ -78,7 +78,7 @@ export const DslFromSchema = z.discriminatedUnion('type', [
 // Destination configuration
 const DestinationConfigSchema = z.object({
     destination_type: z.string(), // "uri", "file", "sftp", etc.
-    config: z.record(z.any()), // Destination-specific config (e.g., { uri: "..." })
+    config: z.record(z.string(), z.any()), // Destination-specific config (e.g., { uri: "..." })
     auth: AuthConfigSchema.optional(),
 })
 

@@ -51,6 +51,22 @@
                     @update:model-value="updateFormatOptions($event)"
                 />
             </div>
+            <div v-if="(modelValue as any).format?.format_type === 'csv'" class="mb-2">
+                <div class="d-flex align-center ga-2 flex-wrap">
+                    <input
+                        type="file"
+                        accept=".csv,text/csv"
+                        @change="onTestUpload"
+                    />
+                    <v-btn
+                        v-if="(modelValue as any).source?.source_type === 'uri' && (modelValue as any).source?.config?.uri"
+                        size="x-small"
+                        variant="tonal"
+                        @click="autoMapFromUri"
+                        >{{ t('workflows.dsl.auto_map_from_uri') }}</v-btn
+                    >
+                </div>
+            </div>
             <div class="mb-2">
                 <v-expansion-panels variant="accordion">
                     <v-expansion-panel>
