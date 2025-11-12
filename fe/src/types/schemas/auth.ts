@@ -39,4 +39,3 @@ export type LoginResponse = z.infer<typeof LoginResponseSchema>
 export type RefreshTokenRequest = z.infer<typeof RefreshTokenRequestSchema>
 export type RefreshTokenResponse = z.infer<typeof RefreshTokenResponseSchema>
 export type LogoutRequest = z.infer<typeof LogoutRequestSchema>
-

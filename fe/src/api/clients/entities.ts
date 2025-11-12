@@ -172,4 +172,3 @@ export class EntitiesClient extends BaseTypedHttpClient {
         )
     }
 }
-

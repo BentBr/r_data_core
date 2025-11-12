@@ -12,4 +12,3 @@ export class UsersClient extends BaseTypedHttpClient {
         )
     }
 }
-

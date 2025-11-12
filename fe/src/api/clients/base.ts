@@ -502,4 +502,3 @@ export class BaseTypedHttpClient {
         }
     }
 }
-

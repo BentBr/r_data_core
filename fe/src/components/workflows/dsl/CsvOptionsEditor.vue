@@ -50,7 +50,7 @@
     // Update local state when prop changes
     watch(
         () => props.modelValue,
-        (v) => {
+        v => {
             const newOpts = { ...(v || defaults()) }
             // Only update if actually different to prevent loops
             const currentStr = JSON.stringify(opts.value)

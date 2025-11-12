@@ -4,7 +4,12 @@
 
 export type Mapping = Record<string, string>
 
-export type CsvOptions = { has_header?: boolean; delimiter?: string; escape?: string; quote?: string }
+export type CsvOptions = {
+    has_header?: boolean
+    delimiter?: string
+    escape?: string
+    quote?: string
+}
 
 // Auth configuration types
 export type KeyLocation = 'header' | 'body'
@@ -46,7 +51,12 @@ export type OutputMode =
 
 export type FromDef =
     | { type: 'format'; source: SourceConfig; format: FormatConfig; mapping: Mapping }
-    | { type: 'entity'; entity_definition: string; filter: { field: string; value: string }; mapping: Mapping }
+    | {
+          type: 'entity'
+          entity_definition: string
+          filter: { field: string; value: string }
+          mapping: Mapping
+      }
 
 export type OperandField = { kind: 'field'; field: string }
 export type OperandConst = { kind: 'const'; value: number }
@@ -58,12 +68,32 @@ export type StringOperand = StringOperandField | StringOperandConst
 
 export type Transform =
     | { type: 'none' }
-    | { type: 'arithmetic'; target: string; left: Operand; op: 'add' | 'sub' | 'mul' | 'div'; right: Operand }
-    | { type: 'concat'; target: string; left: StringOperand; separator?: string; right: StringOperand }
+    | {
+          type: 'arithmetic'
+          target: string
+          left: Operand
+          op: 'add' | 'sub' | 'mul' | 'div'
+          right: Operand
+      }
+    | {
+          type: 'concat'
+          target: string
+          left: StringOperand
+          separator?: string
+          right: StringOperand
+      }
 
 export type ToDef =
     | { type: 'format'; output: OutputMode; format: FormatConfig; mapping: Mapping }
-    | { type: 'entity'; entity_definition: string; path: string; mode: 'create' | 'update'; update_key?: string; identify?: { field: string; value: string }; mapping: Mapping }
+    | {
+          type: 'entity'
+          entity_definition: string
+          path: string
+          mode: 'create' | 'update'
+          update_key?: string
+          identify?: { field: string; value: string }
+          mapping: Mapping
+      }
 
 export type DslStep = { from: FromDef; transform: Transform; to: ToDef }
 
@@ -213,4 +243,3 @@ export function pairsToMapping(pairs: Array<{ k: string; v: string }>): Mapping 
     }
     return out
 }
-

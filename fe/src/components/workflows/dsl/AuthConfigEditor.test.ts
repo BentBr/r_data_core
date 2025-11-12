@@ -37,10 +37,12 @@ describe('AuthConfigEditor', () => {
         const textFields = wrapper.findAllComponents({ name: 'VTextField' })
         // Should have key field (password) and header_name field
         expect(textFields.length).toBeGreaterThanOrEqual(2)
-        
+
         const keyField = textFields.find(tf => tf.props('type') === 'password')
-        const headerField = textFields.find(tf => tf.props('type') !== 'password' && tf.props('label')?.includes('header'))
-        
+        const headerField = textFields.find(
+            tf => tf.props('type') !== 'password' && tf.props('label')?.includes('header')
+        )
+
         expect(keyField?.exists()).toBe(true)
         expect(headerField?.exists()).toBe(true)
     })
@@ -60,14 +62,14 @@ describe('AuthConfigEditor', () => {
         const textFields = wrapper.findAllComponents({ name: 'VTextField' })
         // Should have username and password fields
         expect(textFields.length).toBeGreaterThanOrEqual(2)
-        
+
         // Find username field (first non-password field, or by label)
         const usernameField = textFields.find(tf => {
             const label = tf.props('label') as string
             return label && label.includes('username')
         })
         const passwordField = textFields.find(tf => tf.props('type') === 'password')
-        
+
         expect(usernameField?.exists()).toBe(true)
         expect(passwordField?.exists()).toBe(true)
         if (usernameField) {
@@ -92,15 +94,17 @@ describe('AuthConfigEditor', () => {
 
         const textFields = wrapper.findAllComponents({ name: 'VTextField' })
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
-        
+
         // Should have key field (password), field_name field, and location select
         // Plus the auth type select at the top
         expect(textFields.length).toBeGreaterThanOrEqual(2)
         expect(selects.length).toBeGreaterThanOrEqual(2) // auth type select + location select
-        
+
         const keyField = textFields.find(tf => tf.props('type') === 'password')
-        const fieldNameField = textFields.find(tf => tf.props('type') !== 'password' && tf.props('label')?.includes('field_name'))
-        
+        const fieldNameField = textFields.find(
+            tf => tf.props('type') !== 'password' && tf.props('label')?.includes('field_name')
+        )
+
         expect(keyField?.exists()).toBe(true)
         if (fieldNameField) {
             expect(fieldNameField.exists()).toBe(true)
@@ -108,7 +112,9 @@ describe('AuthConfigEditor', () => {
         // Find the location select (not the auth type select)
         const locationSelect = selects.find(s => {
             const items = s.props('items') as any[]
-            return items && items.some((item: any) => item.value === 'header' || item.value === 'body')
+            return (
+                items && items.some((item: any) => item.value === 'header' || item.value === 'body')
+            )
         })
         if (locationSelect) {
             expect(locationSelect.props('modelValue')).toBe('header')
@@ -152,7 +158,7 @@ describe('AuthConfigEditor', () => {
         await nextTick()
         const textFields = wrapper.findAllComponents({ name: 'VTextField' })
         const keyField = textFields.find(tf => tf.props('type') === 'password')
-        
+
         if (keyField) {
             await keyField.vm.$emit('update:modelValue', 'new-key-value')
             await nextTick()
@@ -186,7 +192,7 @@ describe('AuthConfigEditor', () => {
         await nextTick()
         const textFields = wrapper.findAllComponents({ name: 'VTextField' })
         const headerField = textFields.find(tf => tf.props('type') !== 'password')
-        
+
         if (headerField) {
             await headerField.vm.$emit('update:modelValue', 'X-Custom-Header')
             await nextTick()
@@ -219,7 +225,7 @@ describe('AuthConfigEditor', () => {
 
         await nextTick()
         const textFields = wrapper.findAllComponents({ name: 'VTextField' })
-        
+
         await textFields[0].vm.$emit('update:modelValue', 'newuser')
         await nextTick()
         await textFields[1].vm.$emit('update:modelValue', 'newpass')
@@ -257,7 +263,7 @@ describe('AuthConfigEditor', () => {
             const items = s.props('items') as any[]
             return items && items.some((item: any) => item.value === 'body')
         })
-        
+
         if (locationSelect) {
             await locationSelect.vm.$emit('update:modelValue', 'body')
             await nextTick()
@@ -321,4 +327,3 @@ describe('AuthConfigEditor', () => {
         }
     })
 })
-

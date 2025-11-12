@@ -150,200 +150,202 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useTranslations } from '@/composables/useTranslations'
-import type { Transform, Operand, StringOperand } from './dsl-utils'
+    import { ref, watch } from 'vue'
+    import { useTranslations } from '@/composables/useTranslations'
+    import type { Transform, Operand, StringOperand } from './dsl-utils'
 
-const props = defineProps<{
-    modelValue: Transform
-}>()
+    const props = defineProps<{
+        modelValue: Transform
+    }>()
 
-const emit = defineEmits<{ (e: 'update:modelValue', value: Transform): void }>()
+    const emit = defineEmits<{ (e: 'update:modelValue', value: Transform): void }>()
 
-const { t } = useTranslations()
+    const { t } = useTranslations()
 
-const ops = ['add', 'sub', 'mul', 'div']
-const operandKinds = ['field', 'const']
-const stringOperandKinds = ['field', 'const_string']
-const transformTypes = [
-    { title: 'None', value: 'none' },
-    { title: 'Arithmetic', value: 'arithmetic' },
-    { title: 'Concat', value: 'concat' },
-]
+    const ops = ['add', 'sub', 'mul', 'div']
+    const operandKinds = ['field', 'const']
+    const stringOperandKinds = ['field', 'const_string']
+    const transformTypes = [
+        { title: 'None', value: 'none' },
+        { title: 'Arithmetic', value: 'arithmetic' },
+        { title: 'Concat', value: 'concat' },
+    ]
 
-const transformType = ref<'none' | 'arithmetic' | 'concat'>(props.modelValue.type || 'none')
+    const transformType = ref<'none' | 'arithmetic' | 'concat'>(props.modelValue.type || 'none')
 
-// Local operand editors
-const left = ref<Operand>({ kind: 'field', field: '' })
-const right = ref<Operand>({ kind: 'const', value: 0 })
-const leftConcat = ref<StringOperand>({ kind: 'field', field: '' })
-const rightConcat = ref<StringOperand>({ kind: 'const_string', value: '' })
+    // Local operand editors
+    const left = ref<Operand>({ kind: 'field', field: '' })
+    const right = ref<Operand>({ kind: 'const', value: 0 })
+    const leftConcat = ref<StringOperand>({ kind: 'field', field: '' })
+    const rightConcat = ref<StringOperand>({ kind: 'const_string', value: '' })
 
-// Sync local operands from modelValue
-watch(
-    () => props.modelValue,
-    (newTransform) => {
-        transformType.value = newTransform.type || 'none'
-        if (newTransform.type === 'arithmetic') {
-            left.value = { ...(newTransform as any).left } || { kind: 'field', field: '' }
-            right.value = { ...(newTransform as any).right } || { kind: 'const', value: 0 }
-        } else if (newTransform.type === 'concat') {
-            leftConcat.value = { ...(newTransform as any).left } || { kind: 'field', field: '' }
-            rightConcat.value = { ...(newTransform as any).right } || { kind: 'const_string', value: '' }
+    // Sync local operands from modelValue
+    watch(
+        () => props.modelValue,
+        newTransform => {
+            transformType.value = newTransform.type || 'none'
+            if (newTransform.type === 'arithmetic') {
+                left.value = { ...(newTransform as any).left } || { kind: 'field', field: '' }
+                right.value = { ...(newTransform as any).right } || { kind: 'const', value: 0 }
+            } else if (newTransform.type === 'concat') {
+                leftConcat.value = { ...(newTransform as any).left } || { kind: 'field', field: '' }
+                rightConcat.value = { ...(newTransform as any).right } || {
+                    kind: 'const_string',
+                    value: '',
+                }
+            }
+        },
+        { immediate: true, deep: true }
+    )
+
+    function updateField(field: string, value: any) {
+        const updated: any = { ...props.modelValue }
+        updated[field] = value
+        emit('update:modelValue', updated as Transform)
+    }
+
+    function onTypeChange(newType: 'none' | 'arithmetic' | 'concat') {
+        transformType.value = newType
+        let newTransform: Transform
+        if (newType === 'none') {
+            newTransform = { type: 'none' }
+        } else if (newType === 'arithmetic') {
+            newTransform = {
+                type: 'arithmetic',
+                target: '',
+                left: { kind: 'field', field: '' },
+                op: 'add',
+                right: { kind: 'const', value: 0 },
+            }
+            left.value = { kind: 'field', field: '' }
+            right.value = { kind: 'const', value: 0 }
+        } else {
+            newTransform = {
+                type: 'concat',
+                target: '',
+                left: { kind: 'field', field: '' },
+                separator: ' ',
+                right: { kind: 'field', field: '' },
+            }
+            leftConcat.value = { kind: 'field', field: '' }
+            rightConcat.value = { kind: 'field', field: '' }
         }
-    },
-    { immediate: true, deep: true }
-)
+        emit('update:modelValue', newTransform)
+    }
 
-function updateField(field: string, value: any) {
-    const updated: any = { ...props.modelValue }
-    updated[field] = value
-    emit('update:modelValue', updated as Transform)
-}
-
-function onTypeChange(newType: 'none' | 'arithmetic' | 'concat') {
-    transformType.value = newType
-    let newTransform: Transform
-    if (newType === 'none') {
-        newTransform = { type: 'none' }
-    } else if (newType === 'arithmetic') {
-        newTransform = {
-            type: 'arithmetic',
-            target: '',
-            left: { kind: 'field', field: '' },
-            op: 'add',
-            right: { kind: 'const', value: 0 },
+    // Arithmetic operand updates
+    function updateLeftKind(kind: 'field' | 'const') {
+        if (kind === 'field') {
+            left.value = { kind: 'field', field: '' }
+        } else {
+            left.value = { kind: 'const', value: 0 }
         }
-        left.value = { kind: 'field', field: '' }
-        right.value = { kind: 'const', value: 0 }
-    } else {
-        newTransform = {
-            type: 'concat',
-            target: '',
-            left: { kind: 'field', field: '' },
-            separator: ' ',
-            right: { kind: 'field', field: '' },
+        syncLeft()
+    }
+
+    function updateLeftField(field: string) {
+        left.value = { kind: 'field', field }
+        syncLeft()
+    }
+
+    function updateLeftValue(value: number) {
+        left.value = { kind: 'const', value }
+        syncLeft()
+    }
+
+    function updateRightKind(kind: 'field' | 'const') {
+        if (kind === 'field') {
+            right.value = { kind: 'field', field: '' }
+        } else {
+            right.value = { kind: 'const', value: 0 }
         }
-        leftConcat.value = { kind: 'field', field: '' }
-        rightConcat.value = { kind: 'field', field: '' }
+        syncRight()
     }
-    emit('update:modelValue', newTransform)
-}
 
-// Arithmetic operand updates
-function updateLeftKind(kind: 'field' | 'const') {
-    if (kind === 'field') {
-        left.value = { kind: 'field', field: '' }
-    } else {
-        left.value = { kind: 'const', value: 0 }
+    function updateRightField(field: string) {
+        right.value = { kind: 'field', field }
+        syncRight()
     }
-    syncLeft()
-}
 
-function updateLeftField(field: string) {
-    left.value = { kind: 'field', field }
-    syncLeft()
-}
-
-function updateLeftValue(value: number) {
-    left.value = { kind: 'const', value }
-    syncLeft()
-}
-
-function updateRightKind(kind: 'field' | 'const') {
-    if (kind === 'field') {
-        right.value = { kind: 'field', field: '' }
-    } else {
-        right.value = { kind: 'const', value: 0 }
+    function updateRightValue(value: number) {
+        right.value = { kind: 'const', value }
+        syncRight()
     }
-    syncRight()
-}
 
-function updateRightField(field: string) {
-    right.value = { kind: 'field', field }
-    syncRight()
-}
-
-function updateRightValue(value: number) {
-    right.value = { kind: 'const', value }
-    syncRight()
-}
-
-function syncLeft() {
-    if (transformType.value === 'arithmetic') {
-        const updated: any = { ...props.modelValue }
-        updated.left = { ...left.value }
-        emit('update:modelValue', updated as Transform)
+    function syncLeft() {
+        if (transformType.value === 'arithmetic') {
+            const updated: any = { ...props.modelValue }
+            updated.left = { ...left.value }
+            emit('update:modelValue', updated as Transform)
+        }
     }
-}
 
-function syncRight() {
-    if (transformType.value === 'arithmetic') {
-        const updated: any = { ...props.modelValue }
-        updated.right = { ...right.value }
-        emit('update:modelValue', updated as Transform)
+    function syncRight() {
+        if (transformType.value === 'arithmetic') {
+            const updated: any = { ...props.modelValue }
+            updated.right = { ...right.value }
+            emit('update:modelValue', updated as Transform)
+        }
     }
-}
 
-// Concat operand updates
-function updateLeftConcatKind(kind: 'field' | 'const_string') {
-    if (kind === 'field') {
-        leftConcat.value = { kind: 'field', field: '' }
-    } else {
-        leftConcat.value = { kind: 'const_string', value: '' }
+    // Concat operand updates
+    function updateLeftConcatKind(kind: 'field' | 'const_string') {
+        if (kind === 'field') {
+            leftConcat.value = { kind: 'field', field: '' }
+        } else {
+            leftConcat.value = { kind: 'const_string', value: '' }
+        }
+        syncLeftConcat()
     }
-    syncLeftConcat()
-}
 
-function updateLeftConcatField(field: string) {
-    leftConcat.value = { kind: 'field', field }
-    syncLeftConcat()
-}
-
-function updateLeftConcatValue(value: string) {
-    leftConcat.value = { kind: 'const_string', value }
-    syncLeftConcat()
-}
-
-function updateRightConcatKind(kind: 'field' | 'const_string') {
-    if (kind === 'field') {
-        rightConcat.value = { kind: 'field', field: '' }
-    } else {
-        rightConcat.value = { kind: 'const_string', value: '' }
+    function updateLeftConcatField(field: string) {
+        leftConcat.value = { kind: 'field', field }
+        syncLeftConcat()
     }
-    syncRightConcat()
-}
 
-function updateRightConcatField(field: string) {
-    rightConcat.value = { kind: 'field', field }
-    syncRightConcat()
-}
-
-function updateRightConcatValue(value: string) {
-    rightConcat.value = { kind: 'const_string', value }
-    syncRightConcat()
-}
-
-function syncLeftConcat() {
-    if (transformType.value === 'concat') {
-        const updated: any = { ...props.modelValue }
-        updated.left = { ...leftConcat.value }
-        emit('update:modelValue', updated as Transform)
+    function updateLeftConcatValue(value: string) {
+        leftConcat.value = { kind: 'const_string', value }
+        syncLeftConcat()
     }
-}
 
-function syncRightConcat() {
-    if (transformType.value === 'concat') {
-        const updated: any = { ...props.modelValue }
-        updated.right = { ...rightConcat.value }
-        emit('update:modelValue', updated as Transform)
+    function updateRightConcatKind(kind: 'field' | 'const_string') {
+        if (kind === 'field') {
+            rightConcat.value = { kind: 'field', field: '' }
+        } else {
+            rightConcat.value = { kind: 'const_string', value: '' }
+        }
+        syncRightConcat()
     }
-}
+
+    function updateRightConcatField(field: string) {
+        rightConcat.value = { kind: 'field', field }
+        syncRightConcat()
+    }
+
+    function updateRightConcatValue(value: string) {
+        rightConcat.value = { kind: 'const_string', value }
+        syncRightConcat()
+    }
+
+    function syncLeftConcat() {
+        if (transformType.value === 'concat') {
+            const updated: any = { ...props.modelValue }
+            updated.left = { ...leftConcat.value }
+            emit('update:modelValue', updated as Transform)
+        }
+    }
+
+    function syncRightConcat() {
+        if (transformType.value === 'concat') {
+            const updated: any = { ...props.modelValue }
+            updated.right = { ...rightConcat.value }
+            emit('update:modelValue', updated as Transform)
+        }
+    }
 </script>
 
 <style scoped>
-.ga-2 {
-    gap: 8px;
-}
+    .ga-2 {
+        gap: 8px;
+    }
 </style>
-

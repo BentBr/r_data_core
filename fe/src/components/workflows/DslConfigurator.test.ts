@@ -89,7 +89,11 @@ describe('DslConfigurator', () => {
                             mapping: { col1: 'field1', col2: 'field2' },
                         },
                         transform: { type: 'none' },
-                        to: { type: 'json', output: 'api', mapping: { field1: 'out1', field2: 'out2' } },
+                        to: {
+                            type: 'json',
+                            output: 'api',
+                            mapping: { field1: 'out1', field2: 'out2' },
+                        },
                     },
                 ],
             },

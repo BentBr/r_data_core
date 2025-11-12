@@ -26,7 +26,6 @@ describe('DslFromEditor', () => {
         ;(global.fetch as any).mockClear()
     })
 
-
     it('renders Entity type editor correctly', () => {
         const fromDef: FromDef = {
             type: 'entity',
@@ -43,7 +42,6 @@ describe('DslFromEditor', () => {
         const textFields = wrapper.findAllComponents({ name: 'VTextField' })
         expect(textFields.length).toBeGreaterThan(0)
     })
-
 
     it('updates entity filter fields', async () => {
         const fromDef: FromDef = {
@@ -65,7 +63,7 @@ describe('DslFromEditor', () => {
             const label = tf.props('label') as string
             return label && label.includes('filter_field')
         })
-        
+
         if (filterFieldField) {
             await filterFieldField.vm.$emit('update:modelValue', 'category')
             await nextTick()
@@ -92,7 +90,9 @@ describe('DslFromEditor', () => {
             },
         })
 
-        const addMappingButton = wrapper.findAll('button').find(b => b.text().includes('add_mapping'))
+        const addMappingButton = wrapper
+            .findAll('button')
+            .find(b => b.text().includes('add_mapping'))
         if (addMappingButton) {
             await addMappingButton.trigger('click')
             await nextTick()
@@ -340,12 +340,10 @@ describe('DslFromEditor', () => {
 
         const expansionPanels = wrapper.findAllComponents({ name: 'VExpansionPanel' })
         expect(expansionPanels.length).toBeGreaterThan(0)
-        
+
         // AuthConfigEditor might be inside collapsed expansion panel, so check if it exists in the component tree
         // We can check if the expansion panel exists with the auth title
         const expansionPanel = expansionPanels[0]
         expect(expansionPanel.exists()).toBe(true)
     })
-
 })
-

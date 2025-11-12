@@ -15,8 +15,8 @@ describe('MappingEditor', () => {
 
     it('displays mapping pairs correctly', () => {
         const mapping: Mapping = {
-            'source_field': 'normalized_field',
-            'another_source': 'another_normalized',
+            source_field: 'normalized_field',
+            another_source: 'another_normalized',
         }
         const wrapper = mount(MappingEditor, {
             props: {
@@ -32,7 +32,7 @@ describe('MappingEditor', () => {
 
     it('adds empty pair via addEmptyPair method', async () => {
         const mapping: Mapping = {
-            'field1': 'field2',
+            field1: 'field2',
         }
         const wrapper = mount(MappingEditor, {
             props: {
@@ -52,8 +52,8 @@ describe('MappingEditor', () => {
 
     it('removes mapping pair via delete button', async () => {
         const mapping: Mapping = {
-            'field1': 'field2',
-            'field3': 'field4',
+            field1: 'field2',
+            field3: 'field4',
         }
         const wrapper = mount(MappingEditor, {
             props: {
@@ -68,13 +68,15 @@ describe('MappingEditor', () => {
         const deleteButtons = wrapper.findAll('button')
         // Vuetify buttons might be rendered as v-btn components, so try finding by component
         const vBtns = wrapper.findAllComponents({ name: 'VBtn' })
-        const deleteBtn = vBtns.find(b => {
-            const icon = b.props('icon')
-            return icon === 'mdi-delete' || icon?.includes('delete')
-        }) || deleteButtons.find(b => {
-            const attrs = b.attributes()
-            return attrs.icon === 'mdi-delete' || attrs['data-testid']?.includes('delete')
-        })
+        const deleteBtn =
+            vBtns.find(b => {
+                const icon = b.props('icon')
+                return icon === 'mdi-delete' || icon?.includes('delete')
+            }) ||
+            deleteButtons.find(b => {
+                const attrs = b.attributes()
+                return attrs.icon === 'mdi-delete' || attrs['data-testid']?.includes('delete')
+            })
 
         if (deleteBtn) {
             await deleteBtn.trigger('click')
@@ -92,7 +94,7 @@ describe('MappingEditor', () => {
 
     it('updates mapping pair key', async () => {
         const mapping: Mapping = {
-            'old_key': 'value',
+            old_key: 'value',
         }
         const wrapper = mount(MappingEditor, {
             props: {
@@ -117,7 +119,7 @@ describe('MappingEditor', () => {
 
     it('updates mapping pair value', async () => {
         const mapping: Mapping = {
-            'key': 'old_value',
+            key: 'old_value',
         }
         const wrapper = mount(MappingEditor, {
             props: {
@@ -140,7 +142,7 @@ describe('MappingEditor', () => {
     })
 
     it('displays leftItems in select when useSelectForLeft is true', async () => {
-        const mapping: Mapping = { 'field1': 'field2' }
+        const mapping: Mapping = { field1: 'field2' }
         const leftItems = ['field1', 'field2', 'field3']
         const wrapper = mount(MappingEditor, {
             props: {
@@ -160,7 +162,7 @@ describe('MappingEditor', () => {
     })
 
     it('displays rightItems in select when useSelectForRight is true', async () => {
-        const mapping: Mapping = { 'field1': 'field2' }
+        const mapping: Mapping = { field1: 'field2' }
         const rightItems = ['target1', 'target2', 'target3']
         const wrapper = mount(MappingEditor, {
             props: {
@@ -182,7 +184,7 @@ describe('MappingEditor', () => {
 
     it('uses text fields when selects are not enabled', () => {
         const mapping: Mapping = {
-            'field1': 'field2',
+            field1: 'field2',
         }
         const wrapper = mount(MappingEditor, {
             props: {
@@ -229,7 +231,7 @@ describe('MappingEditor', () => {
 
     it('preserves empty pairs during editing', async () => {
         const mapping: Mapping = {
-            'field1': 'field2',
+            field1: 'field2',
         }
         const wrapper = mount(MappingEditor, {
             props: {
@@ -249,4 +251,3 @@ describe('MappingEditor', () => {
         expect(rows.length).toBe(2)
     })
 })
-

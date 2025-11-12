@@ -55,116 +55,121 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch, nextTick, shallowRef } from 'vue'
-import { typedHttpClient } from '@/api/typed-client'
-import { useTranslations } from '@/composables/useTranslations'
-import { useEntityDefinitions } from '@/composables/useEntityDefinitions'
-import type { DslStep } from './dsl/dsl-utils'
-import { sanitizeDslSteps, defaultStep, ensureCsvOptions, ensureEntityFilter } from './dsl/dsl-utils'
-import DslStepEditor from './dsl/DslStepEditor.vue'
+    import { onMounted, ref, watch, nextTick, shallowRef } from 'vue'
+    import { typedHttpClient } from '@/api/typed-client'
+    import { useTranslations } from '@/composables/useTranslations'
+    import { useEntityDefinitions } from '@/composables/useEntityDefinitions'
+    import type { DslStep } from './dsl/dsl-utils'
+    import {
+        sanitizeDslSteps,
+        defaultStep,
+        ensureCsvOptions,
+        ensureEntityFilter,
+    } from './dsl/dsl-utils'
+    import DslStepEditor from './dsl/DslStepEditor.vue'
 
-const props = defineProps<{ modelValue: DslStep[] }>()
-const emit = defineEmits<{ (e: 'update:modelValue', value: DslStep[]): void }>()
+    const props = defineProps<{ modelValue: DslStep[] }>()
+    const emit = defineEmits<{ (e: 'update:modelValue', value: DslStep[]): void }>()
 
-const loading = ref(false)
-const loadError = ref<string | null>(null)
-// Use shallowRef to avoid deep reactivity issues
-const stepsLocal = shallowRef<DslStep[]>([])
-const openPanels = ref<number[]>([])
-const { t } = useTranslations()
+    const loading = ref(false)
+    const loadError = ref<string | null>(null)
+    // Use shallowRef to avoid deep reactivity issues
+    const stepsLocal = shallowRef<DslStep[]>([])
+    const openPanels = ref<number[]>([])
+    const { t } = useTranslations()
 
-const { loadEntityDefinitions } = useEntityDefinitions()
+    const { loadEntityDefinitions } = useEntityDefinitions()
 
-// Track if we're currently updating to prevent recursive loops
-let isUpdating = false
+    // Track if we're currently updating to prevent recursive loops
+    let isUpdating = false
 
-function updateStep(idx: number, newStep: DslStep) {
-    if (isUpdating) {
-        return
-    }
-    const updated = [...stepsLocal.value]
-    // Sanitize the step before storing
-    const sanitized = sanitizeDslSteps([newStep])[0]
-    ensureCsvOptions(sanitized)
-    ensureEntityFilter(sanitized)
-    updated[idx] = sanitized
-    stepsLocal.value = updated
-    // Emit change after next tick to batch updates
-    nextTick(() => {
-        if (!isUpdating) {
-            emit('update:modelValue', [...stepsLocal.value])
-        }
-    })
-}
-
-function addStep() {
-    const newStep = defaultStep()
-    stepsLocal.value = [...stepsLocal.value, newStep]
-    openPanels.value = [stepsLocal.value.length - 1]
-    nextTick(() => {
-        emit('update:modelValue', [...stepsLocal.value])
-    })
-}
-
-function removeStep(idx: number) {
-    const updated = [...stepsLocal.value]
-    updated.splice(idx, 1)
-    stepsLocal.value = updated
-    nextTick(() => {
-        emit('update:modelValue', [...stepsLocal.value])
-    })
-}
-
-onMounted(async () => {
-    loading.value = true
-    try {
-        await Promise.all([
-            typedHttpClient.getDslFromOptions(),
-            typedHttpClient.getDslToOptions(),
-            typedHttpClient.getDslTransformOptions(),
-            loadEntityDefinitions(),
-        ])
-    } catch (e: any) {
-        loadError.value = e?.message || 'Failed to load DSL options'
-    } finally {
-        loading.value = false
-    }
-})
-
-// Watch for prop changes and update local state
-watch(
-    () => props.modelValue,
-    (newValue) => {
+    function updateStep(idx: number, newStep: DslStep) {
         if (isUpdating) {
             return
         }
-        // Only update if actually different to prevent loops
-        const currentStr = JSON.stringify(stepsLocal.value)
-        const newStr = JSON.stringify(newValue || [])
-        if (currentStr !== newStr) {
-            isUpdating = true
-            try {
-                // Sanitize steps when loading from props
-                const sanitized = sanitizeDslSteps(newValue || [])
-                sanitized.forEach(s => {
-                    ensureCsvOptions(s)
-                    ensureEntityFilter(s)
-                })
-                stepsLocal.value = sanitized
-            } finally {
-                // Reset flag after next tick
-                nextTick(() => {
-                    isUpdating = false
-                })
+        const updated = [...stepsLocal.value]
+        // Sanitize the step before storing
+        const sanitized = sanitizeDslSteps([newStep])[0]
+        ensureCsvOptions(sanitized)
+        ensureEntityFilter(sanitized)
+        updated[idx] = sanitized
+        stepsLocal.value = updated
+        // Emit change after next tick to batch updates
+        nextTick(() => {
+            if (!isUpdating) {
+                emit('update:modelValue', [...stepsLocal.value])
             }
+        })
+    }
+
+    function addStep() {
+        const newStep = defaultStep()
+        stepsLocal.value = [...stepsLocal.value, newStep]
+        openPanels.value = [stepsLocal.value.length - 1]
+        nextTick(() => {
+            emit('update:modelValue', [...stepsLocal.value])
+        })
+    }
+
+    function removeStep(idx: number) {
+        const updated = [...stepsLocal.value]
+        updated.splice(idx, 1)
+        stepsLocal.value = updated
+        nextTick(() => {
+            emit('update:modelValue', [...stepsLocal.value])
+        })
+    }
+
+    onMounted(async () => {
+        loading.value = true
+        try {
+            await Promise.all([
+                typedHttpClient.getDslFromOptions(),
+                typedHttpClient.getDslToOptions(),
+                typedHttpClient.getDslTransformOptions(),
+                loadEntityDefinitions(),
+            ])
+        } catch (e: any) {
+            loadError.value = e?.message || 'Failed to load DSL options'
+        } finally {
+            loading.value = false
         }
-    },
-    { immediate: true, deep: false } // Use shallow watch to avoid deep reactivity
-)
+    })
+
+    // Watch for prop changes and update local state
+    watch(
+        () => props.modelValue,
+        newValue => {
+            if (isUpdating) {
+                return
+            }
+            // Only update if actually different to prevent loops
+            const currentStr = JSON.stringify(stepsLocal.value)
+            const newStr = JSON.stringify(newValue || [])
+            if (currentStr !== newStr) {
+                isUpdating = true
+                try {
+                    // Sanitize steps when loading from props
+                    const sanitized = sanitizeDslSteps(newValue || [])
+                    sanitized.forEach(s => {
+                        ensureCsvOptions(s)
+                        ensureEntityFilter(s)
+                    })
+                    stepsLocal.value = sanitized
+                } finally {
+                    // Reset flag after next tick
+                    nextTick(() => {
+                        isUpdating = false
+                    })
+                }
+            }
+        },
+        { immediate: true, deep: false } // Use shallow watch to avoid deep reactivity
+    )
 </script>
 
 <style scoped>
-.dsl-config {
-    width: 100%;
-}
+    .dsl-config {
+        width: 100%;
+    }
 </style>

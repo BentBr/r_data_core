@@ -45,13 +45,19 @@
                     @update:model-value="updateSourceConfig('endpoint', $event)"
                 />
             </template>
-            <div v-if="(modelValue as any).format?.format_type === 'csv'" class="mb-2">
+            <div
+                v-if="(modelValue as any).format?.format_type === 'csv'"
+                class="mb-2"
+            >
                 <CsvOptionsEditor
                     :model-value="(modelValue as any).format?.options || {}"
                     @update:model-value="updateFormatOptions($event)"
                 />
             </div>
-            <div v-if="(modelValue as any).format?.format_type === 'csv'" class="mb-2">
+            <div
+                v-if="(modelValue as any).format?.format_type === 'csv'"
+                class="mb-2"
+            >
                 <div class="d-flex align-center ga-2 flex-wrap">
                     <input
                         type="file"
@@ -59,7 +65,10 @@
                         @change="onTestUpload"
                     />
                     <v-btn
-                        v-if="(modelValue as any).source?.source_type === 'uri' && (modelValue as any).source?.config?.uri"
+                        v-if="
+                            (modelValue as any).source?.source_type === 'uri' &&
+                            (modelValue as any).source?.config?.uri
+                        "
                         size="x-small"
                         variant="tonal"
                         @click="autoMapFromUri"
@@ -70,7 +79,9 @@
             <div class="mb-2">
                 <v-expansion-panels variant="accordion">
                     <v-expansion-panel>
-                        <v-expansion-panel-title>{{ t('workflows.dsl.auth_type') }}</v-expansion-panel-title>
+                        <v-expansion-panel-title>{{
+                            t('workflows.dsl.auth_type')
+                        }}</v-expansion-panel-title>
                         <v-expansion-panel-text>
                             <AuthConfigEditor
                                 :model-value="(modelValue as any).source?.auth || { type: 'none' }"
@@ -139,245 +150,214 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useTranslations } from '@/composables/useTranslations'
-import type { FromDef, AuthConfig } from './dsl-utils'
-import { defaultCsvOptions } from './dsl-utils'
-import CsvOptionsEditor from './CsvOptionsEditor.vue'
-import MappingEditor from './MappingEditor.vue'
-import AuthConfigEditor from './AuthConfigEditor.vue'
+    import { ref } from 'vue'
+    import { useTranslations } from '@/composables/useTranslations'
+    import type { FromDef, AuthConfig } from './dsl-utils'
+    import { defaultCsvOptions } from './dsl-utils'
+    import CsvOptionsEditor from './CsvOptionsEditor.vue'
+    import MappingEditor from './MappingEditor.vue'
+    import AuthConfigEditor from './AuthConfigEditor.vue'
 
-const props = defineProps<{
-    modelValue: FromDef
-}>()
+    const props = defineProps<{
+        modelValue: FromDef
+    }>()
 
-const emit = defineEmits<{ (e: 'update:modelValue', value: FromDef): void }>()
+    const emit = defineEmits<{ (e: 'update:modelValue', value: FromDef): void }>()
 
-const { t } = useTranslations()
+    const { t } = useTranslations()
 
-const mappingEditorRef = ref<{ addEmptyPair: () => void } | null>(null)
+    const mappingEditorRef = ref<{ addEmptyPair: () => void } | null>(null)
 
-const fromTypes = [
-    { title: 'Format (CSV/JSON)', value: 'format' },
-    { title: 'Entity', value: 'entity' },
-]
+    const fromTypes = [
+        { title: 'Format (CSV/JSON)', value: 'format' },
+        { title: 'Entity', value: 'entity' },
+    ]
 
-function updateField(field: string, value: any) {
-    const updated: any = { ...props.modelValue }
-    updated[field] = value
-    // Ensure entity filter exists if type is entity
-    if (updated.type === 'entity') {
+    function updateField(field: string, value: any) {
+        const updated: any = { ...props.modelValue }
+        updated[field] = value
+        // Ensure entity filter exists if type is entity
+        if (updated.type === 'entity') {
+            if (!updated.filter) {
+                updated.filter = { field: '', value: '' }
+            }
+            if (!updated.mapping) {
+                updated.mapping = {}
+            }
+        }
+        emit('update:modelValue', updated as FromDef)
+    }
+
+    function updateFilterField(field: string, value: any) {
+        const updated: any = { ...props.modelValue }
         if (!updated.filter) {
             updated.filter = { field: '', value: '' }
         }
-        if (!updated.mapping) {
-            updated.mapping = {}
-        }
-    }
-    emit('update:modelValue', updated as FromDef)
-}
-
-function updateFilterField(field: string, value: any) {
-    const updated: any = { ...props.modelValue }
-    if (!updated.filter) {
-        updated.filter = { field: '', value: '' }
-    }
-    updated.filter[field] = value
-    emit('update:modelValue', updated as FromDef)
-}
-
-const sourceTypes = [
-    { title: 'URI', value: 'uri' },
-    { title: 'API', value: 'api' },
-    { title: 'File', value: 'file' },
-]
-
-const formatTypes = [
-    { title: 'CSV', value: 'csv' },
-    { title: 'JSON', value: 'json' },
-]
-
-function updateSourceType(newType: string) {
-    const updated: any = { ...props.modelValue }
-    if (!updated.source) {
-        updated.source = { source_type: newType, config: {}, auth: { type: 'none' } }
-    } else {
-        updated.source.source_type = newType
-        // Reset config based on source type
-        if (newType === 'uri') {
-            updated.source.config = { uri: '' }
-        } else if (newType === 'api') {
-            updated.source.config = { endpoint: '' }
-        } else {
-            updated.source.config = {}
-        }
-    }
-    emit('update:modelValue', updated as FromDef)
-}
-
-function updateFormatType(newType: string) {
-    const updated: any = { ...props.modelValue }
-    if (!updated.format) {
-        updated.format = { format_type: newType, options: {} }
-    } else {
-        updated.format.format_type = newType
-        if (newType === 'csv' && !updated.format.options) {
-            updated.format.options = defaultCsvOptions()
-        }
-    }
-    emit('update:modelValue', updated as FromDef)
-}
-
-function updateSourceConfig(key: string, value: any) {
-    const updated: any = { ...props.modelValue }
-    if (!updated.source) {
-        updated.source = { source_type: 'uri', config: {}, auth: { type: 'none' } }
-    }
-    if (!updated.source.config) {
-        updated.source.config = {}
-    }
-    updated.source.config[key] = value
-    emit('update:modelValue', updated as FromDef)
-}
-
-function updateFormatOptions(options: any) {
-    const updated: any = { ...props.modelValue }
-    if (!updated.format) {
-        updated.format = { format_type: 'csv', options: {} }
-    }
-    updated.format.options = options
-    emit('update:modelValue', updated as FromDef)
-}
-
-function updateSourceAuth(auth: AuthConfig) {
-    const updated: any = { ...props.modelValue }
-    if (!updated.source) {
-        updated.source = { source_type: 'uri', config: {}, auth: { type: 'none' } }
-    }
-    updated.source.auth = auth
-    emit('update:modelValue', updated as FromDef)
-}
-
-function onTypeChange(newType: 'format' | 'entity') {
-    let newFrom: FromDef
-    if (newType === 'format') {
-        newFrom = {
-            type: 'format',
-            source: {
-                source_type: 'uri',
-                config: { uri: '' },
-                auth: { type: 'none' },
-            },
-            format: {
-                format_type: 'csv',
-                options: defaultCsvOptions(),
-            },
-            mapping: {},
-        }
-    } else {
-        newFrom = {
-            type: 'entity',
-            entity_definition: '',
-            filter: { field: '', value: '' },
-            mapping: {},
-        }
-    }
-    emit('update:modelValue', newFrom)
-}
-
-function addMapping() {
-    // Add empty pair directly to MappingEditor's local state
-    if (mappingEditorRef.value) {
-        mappingEditorRef.value.addEmptyPair()
-    } else {
-        // Fallback: add to mapping object
-        const updated: any = { ...props.modelValue }
-        if (!updated.mapping) {
-            updated.mapping = {}
-        }
-        updated.mapping[''] = ''
+        updated.filter[field] = value
         emit('update:modelValue', updated as FromDef)
     }
-}
 
-function parseCsvHeader(text: string, delimiter: string | undefined, quote: string | undefined): string[] {
-    const del = delimiter && delimiter.length ? delimiter : ','
-    const q = quote && quote.length ? quote : '"'
-    const line = text.split(/\r?\n/)[0] || ''
-    const cols: string[] = []
-    let cur = ''
-    let inQuotes = false
-    for (let i = 0; i < line.length; i++) {
-        const ch = line[i]
-        if (ch === q) {
-            inQuotes = !inQuotes
-            continue
-        }
-        if (!inQuotes && ch === del) {
-            cols.push(cur)
-            cur = ''
+    const sourceTypes = [
+        { title: 'URI', value: 'uri' },
+        { title: 'API', value: 'api' },
+        { title: 'File', value: 'file' },
+    ]
+
+    const formatTypes = [
+        { title: 'CSV', value: 'csv' },
+        { title: 'JSON', value: 'json' },
+    ]
+
+    function updateSourceType(newType: string) {
+        const updated: any = { ...props.modelValue }
+        if (!updated.source) {
+            updated.source = { source_type: newType, config: {}, auth: { type: 'none' } }
         } else {
-            cur += ch
+            updated.source.source_type = newType
+            // Reset config based on source type
+            if (newType === 'uri') {
+                updated.source.config = { uri: '' }
+            } else if (newType === 'api') {
+                updated.source.config = { endpoint: '' }
+            } else {
+                updated.source.config = {}
+            }
+        }
+        emit('update:modelValue', updated as FromDef)
+    }
+
+    function updateFormatType(newType: string) {
+        const updated: any = { ...props.modelValue }
+        if (!updated.format) {
+            updated.format = { format_type: newType, options: {} }
+        } else {
+            updated.format.format_type = newType
+            if (newType === 'csv' && !updated.format.options) {
+                updated.format.options = defaultCsvOptions()
+            }
+        }
+        emit('update:modelValue', updated as FromDef)
+    }
+
+    function updateSourceConfig(key: string, value: any) {
+        const updated: any = { ...props.modelValue }
+        if (!updated.source) {
+            updated.source = { source_type: 'uri', config: {}, auth: { type: 'none' } }
+        }
+        if (!updated.source.config) {
+            updated.source.config = {}
+        }
+        updated.source.config[key] = value
+        emit('update:modelValue', updated as FromDef)
+    }
+
+    function updateFormatOptions(options: any) {
+        const updated: any = { ...props.modelValue }
+        if (!updated.format) {
+            updated.format = { format_type: 'csv', options: {} }
+        }
+        updated.format.options = options
+        emit('update:modelValue', updated as FromDef)
+    }
+
+    function updateSourceAuth(auth: AuthConfig) {
+        const updated: any = { ...props.modelValue }
+        if (!updated.source) {
+            updated.source = { source_type: 'uri', config: {}, auth: { type: 'none' } }
+        }
+        updated.source.auth = auth
+        emit('update:modelValue', updated as FromDef)
+    }
+
+    function onTypeChange(newType: 'format' | 'entity') {
+        let newFrom: FromDef
+        if (newType === 'format') {
+            newFrom = {
+                type: 'format',
+                source: {
+                    source_type: 'uri',
+                    config: { uri: '' },
+                    auth: { type: 'none' },
+                },
+                format: {
+                    format_type: 'csv',
+                    options: defaultCsvOptions(),
+                },
+                mapping: {},
+            }
+        } else {
+            newFrom = {
+                type: 'entity',
+                entity_definition: '',
+                filter: { field: '', value: '' },
+                mapping: {},
+            }
+        }
+        emit('update:modelValue', newFrom)
+    }
+
+    function addMapping() {
+        // Add empty pair directly to MappingEditor's local state
+        if (mappingEditorRef.value) {
+            mappingEditorRef.value.addEmptyPair()
+        } else {
+            // Fallback: add to mapping object
+            const updated: any = { ...props.modelValue }
+            if (!updated.mapping) {
+                updated.mapping = {}
+            }
+            updated.mapping[''] = ''
+            emit('update:modelValue', updated as FromDef)
         }
     }
-    cols.push(cur)
-    return cols.map(c => c.trim())
-}
 
-async function onTestUpload(e: Event) {
-    const input = e.target as HTMLInputElement | null
-    const file = input?.files?.[0]
-    if (!file || props.modelValue.type !== 'format') {
-        return
-    }
-    const text = await file.text()
-    const formatFrom = props.modelValue as any
-    if (formatFrom.format?.format_type !== 'csv') {
-        return
-    }
-    const header = formatFrom.format?.options?.has_header !== false
-    const delimiter = formatFrom.format?.options?.delimiter || ','
-    const quote = formatFrom.format?.options?.quote || '"'
-    let fields: string[]
-    if (header) {
-        fields = parseCsvHeader(text, delimiter, quote)
-    } else {
-        const firstLine = text.split(/\r?\n/)[0] || ''
-        const count = firstLine.split(delimiter).length
-        fields = Array.from({ length: count }, (_, i) => `col_${i + 1}`)
-    }
-    const mapping: Record<string, string> = {}
-    for (const f of fields) {
-        if (f) {
-            mapping[f] = f
+    function parseCsvHeader(
+        text: string,
+        delimiter: string | undefined,
+        quote: string | undefined
+    ): string[] {
+        const del = delimiter?.length ? delimiter : ','
+        const q = quote?.length ? quote : '"'
+        const line = text.split(/\r?\n/)[0] || ''
+        const cols: string[] = []
+        let cur = ''
+        let inQuotes = false
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i]
+            if (ch === q) {
+                inQuotes = !inQuotes
+                continue
+            }
+            if (!inQuotes && ch === del) {
+                cols.push(cur)
+                cur = ''
+            } else {
+                cur += ch
+            }
         }
+        cols.push(cur)
+        return cols.map(c => c.trim())
     }
-    updateField('mapping', mapping)
-}
 
-async function autoMapFromUri() {
-    if (props.modelValue.type !== 'format') {
-        return
-    }
-    const formatFrom = props.modelValue as any
-    if (formatFrom.format?.format_type !== 'csv') {
-        return
-    }
-    const uri = formatFrom.source?.config?.uri
-    if (!uri) {
-        return
-    }
-    try {
-        const res = await fetch(uri)
-        const txt = await res.text()
+    async function onTestUpload(e: Event) {
+        const input = e.target as HTMLInputElement | null
+        const file = input?.files?.[0]
+        if (!file || props.modelValue.type !== 'format') {
+            return
+        }
+        const text = await file.text()
+        const formatFrom = props.modelValue as any
+        if (formatFrom.format?.format_type !== 'csv') {
+            return
+        }
         const header = formatFrom.format?.options?.has_header !== false
         const delimiter = formatFrom.format?.options?.delimiter || ','
         const quote = formatFrom.format?.options?.quote || '"'
         let fields: string[]
         if (header) {
-            fields = parseCsvHeader(txt, delimiter, quote)
+            fields = parseCsvHeader(text, delimiter, quote)
         } else {
-            const firstLine = txt.split(/\r?\n/)[0] || ''
+            const firstLine = text.split(/\r?\n/)[0] || ''
             const count = firstLine.split(delimiter).length
             fields = Array.from({ length: count }, (_, i) => `col_${i + 1}`)
         }
@@ -388,15 +368,49 @@ async function autoMapFromUri() {
             }
         }
         updateField('mapping', mapping)
-    } catch (e) {
-        // ignore fetch errors (CORS etc.)
     }
-}
+
+    async function autoMapFromUri() {
+        if (props.modelValue.type !== 'format') {
+            return
+        }
+        const formatFrom = props.modelValue as any
+        if (formatFrom.format?.format_type !== 'csv') {
+            return
+        }
+        const uri = formatFrom.source?.config?.uri
+        if (!uri) {
+            return
+        }
+        try {
+            const res = await fetch(uri)
+            const txt = await res.text()
+            const header = formatFrom.format?.options?.has_header !== false
+            const delimiter = formatFrom.format?.options?.delimiter || ','
+            const quote = formatFrom.format?.options?.quote || '"'
+            let fields: string[]
+            if (header) {
+                fields = parseCsvHeader(txt, delimiter, quote)
+            } else {
+                const firstLine = txt.split(/\r?\n/)[0] || ''
+                const count = firstLine.split(delimiter).length
+                fields = Array.from({ length: count }, (_, i) => `col_${i + 1}`)
+            }
+            const mapping: Record<string, string> = {}
+            for (const f of fields) {
+                if (f) {
+                    mapping[f] = f
+                }
+            }
+            updateField('mapping', mapping)
+        } catch (e) {
+            // ignore fetch errors (CORS etc.)
+        }
+    }
 </script>
 
 <style scoped>
-.ga-2 {
-    gap: 8px;
-}
+    .ga-2 {
+        gap: 8px;
+    }
 </style>
-

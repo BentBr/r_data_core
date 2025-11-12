@@ -33,4 +33,3 @@ export const WorkflowRunLogSchema = z.object({
 export type Workflow = z.infer<typeof WorkflowSchema>
 export type WorkflowRun = z.infer<typeof WorkflowRunSchema>
 export type WorkflowRunLog = z.infer<typeof WorkflowRunLogSchema>
-

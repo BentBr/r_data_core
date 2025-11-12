@@ -15,12 +15,12 @@ describe('dsl-utils', () => {
             const step = defaultStep()
             expect(step.from.type).toBe('format')
             expect(step.to.type).toBe('format')
-            
+
             if (step.from.type === 'format') {
                 expect(step.from.source.source_type).toBe('uri')
                 expect(step.from.format.format_type).toBe('csv')
             }
-            
+
             if (step.to.type === 'format') {
                 expect(step.to.output.mode).toBe('api')
                 expect(step.to.format.format_type).toBe('json')
@@ -53,7 +53,7 @@ describe('dsl-utils', () => {
                 },
                 transform: { type: 'none' },
             }
-            
+
             const sanitized = sanitizeDslStep(step)
             expect(sanitized.to.type).toBe('format')
             if (sanitized.to.type === 'format') {
@@ -77,7 +77,7 @@ describe('dsl-utils', () => {
                 },
                 transform: { type: 'none' },
             }
-            
+
             const sanitized = sanitizeDslStep(step)
             expect(sanitized.from.type).toBe('format')
             if (sanitized.from.type === 'format') {
@@ -88,7 +88,12 @@ describe('dsl-utils', () => {
 
         it('removes output field from entity type', () => {
             const step: any = {
-                from: { type: 'entity', entity_definition: 'test', filter: { field: 'id', value: '1' }, mapping: {} },
+                from: {
+                    type: 'entity',
+                    entity_definition: 'test',
+                    filter: { field: 'id', value: '1' },
+                    mapping: {},
+                },
                 to: {
                     type: 'entity',
                     output: 'api', // Should be removed
@@ -99,14 +104,13 @@ describe('dsl-utils', () => {
                 },
                 transform: { type: 'none' },
             }
-            
+
             const sanitized = sanitizeDslStep(step)
             expect(sanitized.to.type).toBe('entity')
             if (sanitized.to.type === 'entity') {
                 expect('output' in sanitized.to).toBe(false)
             }
         })
-
     })
 
     describe('ensureCsvOptions', () => {
@@ -126,9 +130,9 @@ describe('dsl-utils', () => {
                 },
                 transform: { type: 'none' },
             }
-            
+
             ensureCsvOptions(step)
-            
+
             if (step.from.type === 'format' && step.from.format.format_type === 'csv') {
                 expect(step.from.format.options).toBeDefined()
                 expect(step.from.format.options.has_header).toBe(true)
@@ -151,15 +155,13 @@ describe('dsl-utils', () => {
                 },
                 transform: { type: 'none' },
             }
-            
+
             ensureCsvOptions(step)
-            
+
             if (step.to.type === 'format' && step.to.format.format_type === 'csv') {
                 expect(step.to.format.options).toBeDefined()
                 expect(step.to.format.options.has_header).toBe(true)
             }
         })
-
     })
 })
-

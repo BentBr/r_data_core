@@ -38,7 +38,6 @@ describe('DslToEditor', () => {
         ])
     })
 
-
     it('renders Entity type editor correctly', async () => {
         const toDef: ToDef = {
             type: 'entity',
@@ -79,7 +78,7 @@ describe('DslToEditor', () => {
 
         // Clear previous calls
         mockGetEntityFields.mockClear()
-        
+
         // Update the modelValue to trigger the watch
         const updatedToDef: ToDef = {
             type: 'entity',
@@ -154,7 +153,6 @@ describe('DslToEditor', () => {
         expect(leftItems).toContain('field2')
     })
 
-
     it('does not include output field for entity type', async () => {
         const toDef: ToDef = {
             type: 'entity',
@@ -174,7 +172,10 @@ describe('DslToEditor', () => {
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const hasOutputSelect = selects.some(s => {
             const items = s.props('items') as any[]
-            return items && items.some((item: any) => item.value === 'api' || item.value === 'download')
+            return (
+                items &&
+                items.some((item: any) => item.value === 'api' || item.value === 'download')
+            )
         })
 
         expect(hasOutputSelect).toBe(false)
@@ -254,7 +255,9 @@ describe('DslToEditor', () => {
             },
         })
 
-        const addMappingButton = wrapper.findAll('button').find(b => b.text().includes('add_mapping'))
+        const addMappingButton = wrapper
+            .findAll('button')
+            .find(b => b.text().includes('add_mapping'))
         if (addMappingButton) {
             await addMappingButton.trigger('click')
             await nextTick()
@@ -414,7 +417,7 @@ describe('DslToEditor', () => {
         await nextTick()
         const textFields = wrapper.findAllComponents({ name: 'VTextField' })
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
-        
+
         // Should have destination type select, HTTP method select, and URI field
         expect(selects.length).toBeGreaterThan(2)
         expect(textFields.length).toBeGreaterThan(0)
@@ -459,7 +462,9 @@ describe('DslToEditor', () => {
             if (emitted && emitted.length > 0) {
                 const updated = emitted[emitted.length - 1][0] as ToDef
                 if (updated.type === 'format' && updated.output.mode === 'push') {
-                    expect(updated.output.destination.config.uri).toBe('http://example.com/new-endpoint')
+                    expect(updated.output.destination.config.uri).toBe(
+                        'http://example.com/new-endpoint'
+                    )
                 }
             } else {
                 // If no event was emitted, the component might handle it internally
@@ -539,12 +544,11 @@ describe('DslToEditor', () => {
 
         const expansionPanels = wrapper.findAllComponents({ name: 'VExpansionPanel' })
         expect(expansionPanels.length).toBeGreaterThan(0)
-        
+
         // AuthConfigEditor might be inside collapsed expansion panel, so check if expansion panel exists
         const expansionPanel = expansionPanels[0]
         expect(expansionPanel.exists()).toBe(true)
     })
-
 
     it('updates output mode from push to api', async () => {
         const toDef: ToDef = {
@@ -590,4 +594,3 @@ describe('DslToEditor', () => {
         }
     })
 })
-

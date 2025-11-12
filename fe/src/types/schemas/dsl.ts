@@ -113,10 +113,7 @@ export const DslToEntitySchema = z.object({
     update_key: z.string().optional(),
     mapping: z.record(z.string(), z.string()),
 })
-export const DslToSchema = z.discriminatedUnion('type', [
-    DslToFormatSchema,
-    DslToEntitySchema,
-])
+export const DslToSchema = z.discriminatedUnion('type', [DslToFormatSchema, DslToEntitySchema])
 
 export const DslOperandFieldSchema = z.object({
     kind: z.literal('field'),

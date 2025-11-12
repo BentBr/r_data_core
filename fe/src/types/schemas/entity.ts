@@ -106,4 +106,3 @@ export type UpdateEntityRequest = z.infer<typeof UpdateEntityRequestSchema>
 export type EntityResponse = z.infer<typeof EntityResponseSchema>
 export type CreateEntityDefinitionRequest = z.infer<typeof CreateEntityDefinitionRequestSchema>
 export type UpdateEntityDefinitionRequest = z.infer<typeof UpdateEntityDefinitionRequestSchema>
-

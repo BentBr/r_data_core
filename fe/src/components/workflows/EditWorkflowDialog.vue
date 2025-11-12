@@ -274,7 +274,7 @@
     let isSyncingSteps = false
     watch(
         () => steps.value,
-        (v) => {
+        v => {
             if (isSyncingSteps) {
                 return
             }

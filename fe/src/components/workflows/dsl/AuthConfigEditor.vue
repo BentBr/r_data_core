@@ -68,71 +68,70 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useTranslations } from '@/composables/useTranslations'
-import type { AuthConfig } from './dsl-utils'
+    import { computed } from 'vue'
+    import { useTranslations } from '@/composables/useTranslations'
+    import type { AuthConfig } from './dsl-utils'
 
-const props = defineProps<{
-    modelValue: AuthConfig
-}>()
+    const props = defineProps<{
+        modelValue: AuthConfig
+    }>()
 
-const emit = defineEmits<{
-    'update:modelValue': [value: AuthConfig]
-}>()
+    const emit = defineEmits<{
+        'update:modelValue': [value: AuthConfig]
+    }>()
 
-const { t } = useTranslations()
+    const { t } = useTranslations()
 
-const authType = computed(() => props.modelValue?.type || 'none')
+    const authType = computed(() => props.modelValue?.type || 'none')
 
-const authTypes = [
-    { title: t('workflows.dsl.auth_none'), value: 'none' },
-    { title: t('workflows.dsl.auth_api_key'), value: 'api_key' },
-    { title: t('workflows.dsl.auth_basic'), value: 'basic_auth' },
-    { title: t('workflows.dsl.auth_pre_shared_key'), value: 'pre_shared_key' },
-]
+    const authTypes = [
+        { title: t('workflows.dsl.auth_none'), value: 'none' },
+        { title: t('workflows.dsl.auth_api_key'), value: 'api_key' },
+        { title: t('workflows.dsl.auth_basic'), value: 'basic_auth' },
+        { title: t('workflows.dsl.auth_pre_shared_key'), value: 'pre_shared_key' },
+    ]
 
-const keyLocations = [
-    { title: t('workflows.dsl.key_location_header'), value: 'header' },
-    { title: t('workflows.dsl.key_location_body'), value: 'body' },
-]
+    const keyLocations = [
+        { title: t('workflows.dsl.key_location_header'), value: 'header' },
+        { title: t('workflows.dsl.key_location_body'), value: 'body' },
+    ]
 
-function onAuthTypeChange(newType: string) {
-    let newAuth: AuthConfig
-    switch (newType) {
-        case 'none':
-            newAuth = { type: 'none' }
-            break
-        case 'api_key':
-            newAuth = {
-                type: 'api_key',
-                key: '',
-                header_name: 'X-API-Key',
-            }
-            break
-        case 'basic_auth':
-            newAuth = {
-                type: 'basic_auth',
-                username: '',
-                password: '',
-            }
-            break
-        case 'pre_shared_key':
-            newAuth = {
-                type: 'pre_shared_key',
-                key: '',
-                location: 'header',
-                field_name: '',
-            }
-            break
-        default:
-            newAuth = { type: 'none' }
+    function onAuthTypeChange(newType: string) {
+        let newAuth: AuthConfig
+        switch (newType) {
+            case 'none':
+                newAuth = { type: 'none' }
+                break
+            case 'api_key':
+                newAuth = {
+                    type: 'api_key',
+                    key: '',
+                    header_name: 'X-API-Key',
+                }
+                break
+            case 'basic_auth':
+                newAuth = {
+                    type: 'basic_auth',
+                    username: '',
+                    password: '',
+                }
+                break
+            case 'pre_shared_key':
+                newAuth = {
+                    type: 'pre_shared_key',
+                    key: '',
+                    location: 'header',
+                    field_name: '',
+                }
+                break
+            default:
+                newAuth = { type: 'none' }
+        }
+        emit('update:modelValue', newAuth)
     }
-    emit('update:modelValue', newAuth)
-}
 
-function updateField(field: string, value: any) {
-    const updated = { ...props.modelValue, [field]: value }
-    emit('update:modelValue', updated as AuthConfig)
-}
+    function updateField(field: string, value: any) {
+        const updated = { ...props.modelValue, [field]: value }
+        emit('update:modelValue', updated as AuthConfig)
+    }
 </script>
-

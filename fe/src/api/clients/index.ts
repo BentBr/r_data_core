@@ -23,7 +23,9 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     private entitiesClient = new EntitiesClient()
 
     // Entity Definitions
-    async getEntityDefinitions(...args: Parameters<EntityDefinitionsClient['getEntityDefinitions']>) {
+    async getEntityDefinitions(
+        ...args: Parameters<EntityDefinitionsClient['getEntityDefinitions']>
+    ) {
         return this.entityDefinitionsClient.getEntityDefinitions(...args)
     }
     async getEntityDefinition(...args: Parameters<EntityDefinitionsClient['getEntityDefinition']>) {
@@ -168,4 +170,3 @@ export { WorkflowsClient } from './workflows'
 export { AuthClient } from './auth'
 export { UsersClient } from './users'
 export { EntitiesClient } from './entities'
-

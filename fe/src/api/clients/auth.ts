@@ -1,9 +1,5 @@
 import { z } from 'zod'
-import {
-    ApiResponseSchema,
-    LoginResponseSchema,
-    RefreshTokenResponseSchema,
-} from '@/types/schemas'
+import { ApiResponseSchema, LoginResponseSchema, RefreshTokenResponseSchema } from '@/types/schemas'
 import type {
     LoginRequest,
     LoginResponse,
@@ -55,4 +51,3 @@ export class AuthClient extends BaseTypedHttpClient {
         )
     }
 }
-
