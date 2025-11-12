@@ -63,7 +63,7 @@ describe('DslFromEditor', () => {
             const label = tf.props('label') as string
             return label && label.includes('filter_field')
         })
-
+        
         if (filterFieldField) {
             await filterFieldField.vm.$emit('update:modelValue', 'category')
             await nextTick()
@@ -200,7 +200,8 @@ describe('DslFromEditor', () => {
             const updated = emitted[emitted.length - 1][0] as FromDef
             if (updated.type === 'format') {
                 expect(updated.source.source_type).toBe('api')
-                expect(updated.source.config.endpoint).toBeDefined()
+                // from.api source type should NOT have endpoint field (accepts POST, no endpoint needed)
+                expect(updated.source.config.endpoint).toBeUndefined()
             }
         }
     })
@@ -285,16 +286,16 @@ describe('DslFromEditor', () => {
         }
     })
 
-    it('updates endpoint for format type with api source', async () => {
+    it('does not show endpoint field for api source type', async () => {
         const fromDef: FromDef = {
             type: 'format',
             source: {
                 source_type: 'api',
-                config: { endpoint: '' },
+                config: {}, // No endpoint field for api source
                 auth: { type: 'none' },
             },
             format: {
-                format_type: 'json',
+                format_type: 'csv',
                 options: {},
             },
             mapping: {},
@@ -306,23 +307,81 @@ describe('DslFromEditor', () => {
         })
 
         await nextTick()
+        
+        // Verify that no endpoint field is shown (only URI field should be shown for uri source type)
         const textFields = wrapper.findAllComponents({ name: 'VTextField' })
-        if (textFields.length > 0) {
-            await textFields[0].vm.$emit('update:modelValue', '/api/v1/workflows/123')
-            await nextTick()
-
-            const emitted = wrapper.emitted('update:modelValue')
-            if (emitted && emitted.length > 0) {
-                const updated = emitted[emitted.length - 1][0] as FromDef
-                if (updated.type === 'format') {
-                    expect(updated.source.config.endpoint).toBe('/api/v1/workflows/123')
-                }
-            } else {
-                // If no event was emitted, the component might handle it internally
-                // Just verify the component rendered correctly
-                expect(textFields.length).toBeGreaterThan(0)
+        // For api source type, there should be no URI/endpoint field visible
+        // The only text fields should be for CSV options or other non-source config fields
+        const uriField = textFields.find(field => {
+            const label = field.props('label') || ''
+            return label.toLowerCase().includes('uri') || label.toLowerCase().includes('endpoint')
+        })
+        expect(uriField).toBeUndefined()
+        
+        // Verify config does not have endpoint field
+        const emitted = wrapper.emitted('update:modelValue')
+        if (emitted && emitted.length > 0) {
+            const updated = emitted[emitted.length - 1][0] as FromDef
+            if (updated.type === 'format') {
+                expect(updated.source.config.endpoint).toBeUndefined()
             }
         }
+    })
+
+    it('shows uri field for uri source type but not for api source type', async () => {
+        // Test with uri source type - should show URI field
+        const uriFromDef: FromDef = {
+            type: 'format',
+            source: {
+                source_type: 'uri',
+                config: { uri: '' },
+                auth: { type: 'none' },
+            },
+            format: {
+                format_type: 'csv',
+                options: {},
+            },
+            mapping: {},
+        }
+        const uriWrapper = mount(DslFromEditor, {
+            props: {
+                modelValue: uriFromDef,
+            },
+        })
+        await nextTick()
+        const uriTextFields = uriWrapper.findAllComponents({ name: 'VTextField' })
+        const uriField = uriTextFields.find(field => {
+            const label = field.props('label') || ''
+            return label.toLowerCase().includes('uri')
+        })
+        expect(uriField).toBeDefined()
+        
+        // Test with api source type - should NOT show URI/endpoint field
+        const apiFromDef: FromDef = {
+            type: 'format',
+            source: {
+                source_type: 'api',
+                config: {}, // No endpoint field
+                auth: { type: 'none' },
+            },
+            format: {
+                format_type: 'csv',
+                options: {},
+            },
+            mapping: {},
+        }
+        const apiWrapper = mount(DslFromEditor, {
+            props: {
+                modelValue: apiFromDef,
+            },
+        })
+        await nextTick()
+        const apiTextFields = apiWrapper.findAllComponents({ name: 'VTextField' })
+        const apiEndpointField = apiTextFields.find(field => {
+            const label = field.props('label') || ''
+            return label.toLowerCase().includes('uri') || label.toLowerCase().includes('endpoint')
+        })
+        expect(apiEndpointField).toBeUndefined()
     })
 
     it('shows auth config editor in expansion panel', () => {

@@ -46,6 +46,7 @@
                 <v-expansion-panel-text>
                     <DslStepEditor
                         :model-value="step"
+                        :workflow-uuid="workflowUuid"
                         @update:model-value="updateStep(idx, $event)"
                     />
                 </v-expansion-panel-text>
@@ -68,7 +69,10 @@
     } from './dsl/dsl-utils'
     import DslStepEditor from './dsl/DslStepEditor.vue'
 
-    const props = defineProps<{ modelValue: DslStep[] }>()
+    const props = defineProps<{ 
+        modelValue: DslStep[]
+        workflowUuid?: string | null
+    }>()
     const emit = defineEmits<{ (e: 'update:modelValue', value: DslStep[]): void }>()
 
     const loading = ref(false)

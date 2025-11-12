@@ -126,7 +126,8 @@
       "key_location_body": "Body",
       "field_name": "Field name",
       "http_method": "HTTP Method",
-      "endpoint": "Endpoint"
+      "endpoint": "Endpoint",
+      "endpoint_info": "Your endpoint can be reached at"
     },
     "create": {
       "button": "Create Workflow",

@@ -36,6 +36,11 @@
                 />
             </template>
             <!-- from.api source type = Accept POST to this workflow (no endpoint field needed) -->
+            <template v-if="(modelValue as any).source?.source_type === 'api'">
+                <div class="text-caption mb-2 pa-2" style="background-color: rgba(var(--v-theme-primary), 0.1); border-radius: 4px;">
+                    <strong>{{ t('workflows.dsl.endpoint_info') }}:</strong> POST {{ getFullEndpointUri() }}
+                </div>
+            </template>
             <div
                 v-if="(modelValue as any).format?.format_type === 'csv'"
                 class="mb-2"
@@ -143,6 +148,7 @@
 <script setup lang="ts">
     import { ref } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
+    import { env } from '@/env-check'
     import type { FromDef, AuthConfig } from './dsl-utils'
     import { defaultCsvOptions } from './dsl-utils'
     import CsvOptionsEditor from './CsvOptionsEditor.vue'
@@ -151,6 +157,7 @@
 
     const props = defineProps<{
         modelValue: FromDef
+        workflowUuid?: string | null
     }>()
 
     const emit = defineEmits<{ (e: 'update:modelValue', value: FromDef): void }>()
@@ -158,6 +165,12 @@
     const { t } = useTranslations()
 
     const mappingEditorRef = ref<{ addEmptyPair: () => void } | null>(null)
+
+    function getFullEndpointUri(): string {
+        const baseUrl = env.apiBaseUrl || window.location.origin
+        const uuid = props.workflowUuid || '{workflow-uuid}'
+        return `${baseUrl}/api/v1/workflows/${uuid}`
+    }
 
     const fromTypes = [
         { title: 'Format (CSV/JSON)', value: 'format' },
@@ -208,8 +221,18 @@
             // Reset config based on source type
             if (newType === 'uri') {
                 updated.source.config = { uri: '' }
+                // Remove endpoint if it exists (should only be for api, but clean up)
+                if (updated.source.config.endpoint !== undefined) {
+                    delete updated.source.config.endpoint
+                }
             } else if (newType === 'api') {
-                updated.source.config = { endpoint: '' }
+                // from.api source type = Accept POST to this workflow (no endpoint field needed)
+                // Remove endpoint field if it exists, then set empty config
+                const currentConfig = updated.source.config || {}
+                if (currentConfig.endpoint !== undefined) {
+                    delete currentConfig.endpoint
+                }
+                updated.source.config = {}
             } else {
                 updated.source.config = {}
             }

@@ -111,6 +111,76 @@ describe('dsl-utils', () => {
         })
     })
 
+    describe('sanitizeDslStep removes endpoint from api source', () => {
+        it('removes endpoint field from api source type config', () => {
+            const step = {
+                from: {
+                    type: 'format',
+                    source: {
+                        source_type: 'api',
+                        config: { endpoint: '/api/v1/workflows/123' }, // Should be removed
+                        auth: { type: 'none' },
+                    },
+                    format: {
+                        format_type: 'csv',
+                        options: {},
+                    },
+                    mapping: {},
+                },
+                transform: { type: 'none' },
+                to: {
+                    type: 'format',
+                    output: { mode: 'api' },
+                    format: {
+                        format_type: 'json',
+                        options: {},
+                    },
+                    mapping: {},
+                },
+            }
+            const sanitized = sanitizeDslStep(step)
+            expect(sanitized.from.type).toBe('format')
+            if (sanitized.from.type === 'format') {
+                expect(sanitized.from.source.source_type).toBe('api')
+                expect(sanitized.from.source.config.endpoint).toBeUndefined()
+            }
+        })
+
+        it('keeps endpoint field for uri source type', () => {
+            const step = {
+                from: {
+                    type: 'format',
+                    source: {
+                        source_type: 'uri',
+                        config: { uri: 'http://example.com/data.csv' },
+                        auth: { type: 'none' },
+                    },
+                    format: {
+                        format_type: 'csv',
+                        options: {},
+                    },
+                    mapping: {},
+                },
+                transform: { type: 'none' },
+                to: {
+                    type: 'format',
+                    output: { mode: 'api' },
+                    format: {
+                        format_type: 'json',
+                        options: {},
+                    },
+                    mapping: {},
+                },
+            }
+            const sanitized = sanitizeDslStep(step)
+            expect(sanitized.from.type).toBe('format')
+            if (sanitized.from.type === 'format') {
+                expect(sanitized.from.source.source_type).toBe('uri')
+                expect(sanitized.from.source.config.uri).toBe('http://example.com/data.csv')
+            }
+        })
+    })
+
     describe('ensureCsvOptions', () => {
         it('ensures CSV options for format-based from with csv format', () => {
             const step: DslStep = {

@@ -133,6 +133,12 @@ export function sanitizeDslStep(step: any): DslStep {
             if (!sanitized.from.format) {
                 sanitized.from.format = { format_type: 'csv', options: {} }
             }
+            // Remove endpoint field from api source type (from.api accepts POST, no endpoint needed)
+            if (sanitized.from.source.source_type === 'api' && sanitized.from.source.config) {
+                if (sanitized.from.source.config.endpoint !== undefined) {
+                    delete sanitized.from.source.config.endpoint
+                }
+            }
         }
     }
 

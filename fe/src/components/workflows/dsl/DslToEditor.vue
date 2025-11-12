@@ -74,6 +74,12 @@
                     </v-expansion-panels>
                 </div>
             </template>
+            <!-- to.api output mode = Provide data via our API endpoint -->
+            <template v-if="getOutputMode() === 'api'">
+                <div class="text-caption mb-2 pa-2" style="background-color: rgba(var(--v-theme-primary), 0.1); border-radius: 4px;">
+                    <strong>{{ t('workflows.dsl.endpoint_info') }}:</strong> GET {{ getFullEndpointUri() }}
+                </div>
+            </template>
             <div
                 v-if="(modelValue as any).format?.format_type === 'csv'"
                 class="mb-2"
@@ -156,6 +162,7 @@
     import { useTranslations } from '@/composables/useTranslations'
     import { useEntityDefinitions } from '@/composables/useEntityDefinitions'
     import { typedHttpClient } from '@/api/typed-client'
+    import { env } from '@/env-check'
     import type { ToDef, AuthConfig, HttpMethod } from './dsl-utils'
     import { defaultCsvOptions } from './dsl-utils'
     import CsvOptionsEditor from './CsvOptionsEditor.vue'
@@ -164,12 +171,19 @@
 
     const props = defineProps<{
         modelValue: ToDef
+        workflowUuid?: string | null
     }>()
 
     const emit = defineEmits<{ (e: 'update:modelValue', value: ToDef): void }>()
 
     const { t } = useTranslations()
     const { entityDefinitions, loadEntityDefinitions } = useEntityDefinitions()
+
+    function getFullEndpointUri(): string {
+        const baseUrl = env.apiBaseUrl || window.location.origin
+        const uuid = props.workflowUuid || '{workflow-uuid}'
+        return `${baseUrl}/api/v1/workflows/${uuid}`
+    }
 
     const entityDefItems = ref<{ title: string; value: string }[]>([])
     const entityTargetFields = ref<string[]>([])
@@ -178,10 +192,6 @@
     const toTypes = [
         { title: 'Format (CSV/JSON)', value: 'format' },
         { title: 'Entity', value: 'entity' },
-    ]
-    const outputs = [
-        { title: 'API', value: 'api' },
-        { title: 'Download', value: 'download' },
     ]
     const outputModes = [
         { title: 'API', value: 'api' },

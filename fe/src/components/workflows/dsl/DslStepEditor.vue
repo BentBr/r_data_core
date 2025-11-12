@@ -2,6 +2,7 @@
     <div>
         <DslFromEditor
             :model-value="modelValue.from"
+            :workflow-uuid="workflowUuid"
             @update:model-value="updateFrom"
         />
         <div class="mb-4" />
@@ -12,6 +13,7 @@
         <div class="mb-4" />
         <DslToEditor
             :model-value="modelValue.to"
+            :workflow-uuid="workflowUuid"
             @update:model-value="updateTo"
         />
     </div>
@@ -25,6 +27,7 @@
 
     const props = defineProps<{
         modelValue: DslStep
+        workflowUuid?: string | null
     }>()
 
     const emit = defineEmits<{ (e: 'update:modelValue', value: DslStep): void }>()

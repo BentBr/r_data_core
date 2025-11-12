@@ -26,7 +26,7 @@ export const WorkflowRunLogSchema = z.object({
     ts: z.string(),
     level: z.string(),
     message: z.string(),
-    meta: z.record(z.string(), z.unknown()).optional(),
+    meta: z.record(z.string(), z.unknown()).nullish(), // Allow null or undefined
 })
 
 // Type exports

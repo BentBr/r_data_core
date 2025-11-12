@@ -61,7 +61,10 @@
                             <v-expansion-panel-title>Config (JSON)</v-expansion-panel-title>
                             <v-expansion-panel-text>
                                 <div class="mb-4">
-                                    <DslConfigurator v-model="steps" />
+                                    <DslConfigurator 
+                                        v-model="steps" 
+                                        :workflow-uuid="workflowUuid"
+                                    />
                                 </div>
                                 <v-textarea
                                     v-model="configJson"
