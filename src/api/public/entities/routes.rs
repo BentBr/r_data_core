@@ -123,7 +123,7 @@ pub struct VersionMeta {
 #[utoipa::path(
     get,
     path = "/api/v1/entities/{entity_type}/{uuid}/versions",
-    tag = "public",
+    tag = "dynamic-entities",
     params(
         ("entity_type" = String, Path, description = "Entity type"),
         ("uuid" = Uuid, Path, description = "Entity UUID")
@@ -179,7 +179,7 @@ pub struct VersionPayload {
 #[utoipa::path(
     get,
     path = "/api/v1/entities/{entity_type}/{uuid}/versions/{version_number}",
-    tag = "public",
+    tag = "dynamic-entities",
     params(
         ("entity_type" = String, Path, description = "Entity type"),
         ("uuid" = Uuid, Path, description = "Entity UUID"),
