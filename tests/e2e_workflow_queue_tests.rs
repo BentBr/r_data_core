@@ -78,6 +78,7 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
         enabled: true,
         schedule_cron: None,
         config: cfg,
+        versioning_disabled: false,
     };
     let wf_uuid = wf_service.create(&create_req, creator_uuid).await?;
 

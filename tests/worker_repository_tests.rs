@@ -36,6 +36,7 @@ async fn get_workflow_uuid_for_run_round_trip() -> anyhow::Result<()> {
                 }
             ]
         }),
+        versioning_disabled: false,
     };
     let wf_uuid = repo.create(&req, creator_uuid).await?;
 

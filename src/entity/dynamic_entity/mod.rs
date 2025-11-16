@@ -4,8 +4,10 @@ pub mod entity;
 pub mod mapper;
 pub mod repository;
 pub mod repository_trait;
+pub mod repository_update;
 pub mod utils;
 pub mod validator;
+pub mod versioning;
 
 pub use entity::{DynamicEntity, FromValue, ToValue};
 pub use repository::DynamicEntityRepository;

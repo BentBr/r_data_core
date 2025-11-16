@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::env;
 
 use crate::error::{Error, Result};
+use crate::utils::cron;
 
 /// Database configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -166,42 +167,13 @@ impl AppConfig {
                 .collect(),
         };
 
-        let cache = CacheConfig {
-            enabled: env::var("CACHE_ENABLED")
-                .unwrap_or_else(|_| "true".to_string())
-                .parse()
-                .unwrap_or(true),
-            ttl: env::var("CACHE_TTL")
-                .unwrap_or_else(|_| "300".to_string())
-                .parse()
-                .unwrap_or(300),
-            max_size: env::var("CACHE_MAX_SIZE")
-                .unwrap_or_else(|_| "10000".to_string())
-                .parse()
-                .unwrap_or(10000),
-            entity_definition_ttl: env::var("CACHE_ENTITY_DEFINITION_TTL")
-                .unwrap_or_else(|_| "0".to_string())
-                .parse()
-                .unwrap_or(0), // 0 = no expiration
-            api_key_ttl: env::var("CACHE_API_KEY_TTL")
-                .unwrap_or_else(|_| "600".to_string())
-                .parse()
-                .unwrap_or(600), // 10 minutes default
-        };
-
         let log = LogConfig {
             level: env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string()),
             file: env::var("LOG_FILE").ok(),
         };
 
-        let queue = QueueConfig {
-            redis_url: env::var("REDIS_URL")
-                .map_err(|_| Error::Config("REDIS_URL not set".to_string()))?,
-            fetch_key: env::var("QUEUE_FETCH_KEY")
-                .unwrap_or_else(|_| "queue:workflows:fetch".to_string()),
-            process_key: env::var("QUEUE_PROCESS_KEY")
-                .unwrap_or_else(|_| "queue:workflows:process".to_string()),
-        };
+        let cache = get_cache_config();
+        let queue = get_queue_config()?;
 
         Ok(Self {
             environment,
@@ -277,37 +249,8 @@ impl WorkerConfig {
                 .unwrap_or(10),
         };
 
-        let queue = QueueConfig {
-            redis_url: env::var("REDIS_URL")
-                .map_err(|_| Error::Config("REDIS_URL not set".to_string()))?,
-            fetch_key: env::var("QUEUE_FETCH_KEY")
-                .unwrap_or_else(|_| "queue:workflows:fetch".to_string()),
-            process_key: env::var("QUEUE_PROCESS_KEY")
-                .unwrap_or_else(|_| "queue:workflows:process".to_string()),
-        };
-
-        let cache = CacheConfig {
-            enabled: env::var("CACHE_ENABLED")
-                .unwrap_or_else(|_| "true".to_string())
-                .parse()
-                .unwrap_or(true),
-            ttl: env::var("CACHE_TTL")
-                .unwrap_or_else(|_| "300".to_string())
-                .parse()
-                .unwrap_or(300),
-            max_size: env::var("CACHE_MAX_SIZE")
-                .unwrap_or_else(|_| "10000".to_string())
-                .parse()
-                .unwrap_or(10000),
-            entity_definition_ttl: env::var("CACHE_ENTITY_DEFINITION_TTL")
-                .unwrap_or_else(|_| "0".to_string())
-                .parse()
-                .unwrap_or(0), // 0 = no expiration
-            api_key_ttl: env::var("CACHE_API_KEY_TTL")
-                .unwrap_or_else(|_| "600".to_string())
-                .parse()
-                .unwrap_or(600), // 10 minutes default
-        };
+        let queue = get_queue_config()?;
+        let cache = get_cache_config();
 
         Ok(Self {
             job_queue_update_interval_secs,
@@ -317,4 +260,100 @@ impl WorkerConfig {
             cache,
         })
     }
+}
+
+/// Maintenance worker configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MaintenanceConfig {
+    /// Cron expression for maintenance scheduler
+    pub cron: String,
+
+    /// Database configuration used by maintenance worker
+    pub database: DatabaseConfig,
+
+    /// Cache configuration
+    pub cache: CacheConfig,
+    /// Redis URL for cache usage (mandatory)
+    pub redis_url: String,
+}
+
+impl MaintenanceConfig {
+    pub fn from_env() -> Result<Self> {
+        // Ensure .env is loaded for binaries that only use MaintenanceConfig
+        dotenv().ok();
+
+        let cron = env::var("MAINTENANCE_CRON").unwrap_or_else(|_| "*/5 * * * *".to_string());
+        // Validate cron expression using the same logic as cron preview
+        cron::validate_cron(&cron)
+            .map_err(|e| Error::Config(format!("Invalid MAINTENANCE_CRON '{}': {}", cron, e)))?;
+
+        // Prefer dedicated MAINTENANCE_*, then WORKER_*, then general DATABASE_* where sensible
+        let connection_string = env::var("MAINTENANCE_DATABASE_URL")
+            .map_err(|_| Error::Config("MAINTENANCE_DATABASE_URL not set".to_string()))?;
+
+        let max_connections: u32 = env::var("MAINTENANCE_DATABASE_MAX_CONNECTIONS")
+            .unwrap_or_else(|_| "10".to_string())
+            .parse()
+            .unwrap_or(10);
+
+        let connection_timeout: u64 = env::var("MAINTENANCE_DATABASE_CONNECTION_TIMEOUT")
+            .unwrap_or_else(|_| "30".to_string())
+            .parse()
+            .unwrap_or(30);
+
+        let database = DatabaseConfig {
+            connection_string,
+            max_connections,
+            connection_timeout,
+        };
+
+        let cache = get_cache_config();
+        let redis_url =
+            env::var("REDIS_URL").map_err(|_| Error::Config("REDIS_URL not set".to_string()))?;
+
+        Ok(Self {
+            cron,
+            database,
+            cache,
+            redis_url,
+        })
+    }
+}
+
+fn get_cache_config() -> CacheConfig {
+    CacheConfig {
+        enabled: env::var("CACHE_ENABLED")
+            .unwrap_or_else(|_| "true".to_string())
+            .parse()
+            .unwrap_or(true),
+        ttl: env::var("CACHE_TTL")
+            .unwrap_or_else(|_| "300".to_string())
+            .parse()
+            .unwrap_or(300),
+        max_size: env::var("CACHE_MAX_SIZE")
+            .unwrap_or_else(|_| "10000".to_string())
+            .parse()
+            .unwrap_or(10000),
+        entity_definition_ttl: env::var("CACHE_ENTITY_DEFINITION_TTL")
+            .unwrap_or_else(|_| "0".to_string())
+            .parse()
+            .unwrap_or(0),
+        api_key_ttl: env::var("CACHE_API_KEY_TTL")
+            .unwrap_or_else(|_| "600".to_string())
+            .parse()
+            .unwrap_or(600),
+    }
+}
+
+fn get_queue_config() -> Result<QueueConfig> {
+    let config = QueueConfig {
+        redis_url: env::var("REDIS_URL")
+            .map_err(|_| Error::Config("REDIS_URL not set".to_string()))?,
+        fetch_key: env::var("QUEUE_FETCH_KEY")
+            .unwrap_or_else(|_| "queue:workflows:fetch".to_string()),
+        process_key: env::var("QUEUE_PROCESS_KEY")
+            .unwrap_or_else(|_| "queue:workflows:process".to_string()),
+    };
+
+    Ok(config)
 }

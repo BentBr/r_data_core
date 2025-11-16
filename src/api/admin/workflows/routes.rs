@@ -1,5 +1,6 @@
 use actix_web::{delete, get, post, put, web, Responder};
 use chrono::{DateTime, Utc};
+use crate::utils::cron;
 use log::{error, info};
 use serde_json::Value;
 use std::str::FromStr;
@@ -32,7 +33,9 @@ fn check_has_api_endpoint(config: &Value) -> bool {
                     if let Some(source_type) = source.get("source_type").and_then(|v| v.as_str()) {
                         if source_type == "api" {
                             // from.api without endpoint field = accepts POST
-                            if let Some(config_obj) = source.get("config").and_then(|v| v.as_object()) {
+                            if let Some(config_obj) =
+                                source.get("config").and_then(|v| v.as_object())
+                            {
                                 if !config_obj.contains_key("endpoint") {
                                     return true;
                                 }
@@ -88,15 +91,8 @@ pub async fn cron_preview(
         _ => return ApiResponse::<()>::unprocessable_entity("Missing expr parameter"),
     };
 
-    match cron::Schedule::from_str(&expr) {
-        Ok(schedule) => {
-            let next: Vec<String> = schedule
-                .upcoming(Utc)
-                .take(5)
-                .map(|dt: DateTime<Utc>| dt.to_rfc3339())
-                .collect();
-            ApiResponse::ok(next)
-        }
+    match cron::preview_next(&expr, 5) {
+        Ok(next) => ApiResponse::ok(next),
         Err(e) => ApiResponse::<()>::unprocessable_entity(&format!("Invalid cron: {}", e)),
     }
 }
@@ -197,6 +193,7 @@ pub async fn list_workflows(
                         enabled: workflow.enabled,
                         schedule_cron: workflow.schedule_cron,
                         has_api_endpoint,
+                        versioning_disabled: workflow.versioning_disabled,
                     }
                 })
                 .collect();
@@ -236,6 +233,7 @@ pub async fn get_workflow_details(
                 enabled: workflow.enabled,
                 schedule_cron: workflow.schedule_cron,
                 config: workflow.config,
+                versioning_disabled: workflow.versioning_disabled,
             };
             ApiResponse::ok(detail)
         }
@@ -267,7 +265,7 @@ pub async fn create_workflow(
 ) -> impl Responder {
     // Validate cron format early to return Symfony-style 422
     if let Some(cron_str) = &body.schedule_cron {
-        if let Err(e) = cron::Schedule::from_str(cron_str) {
+        if let Err(e) = cron::validate_cron(cron_str) {
             return ApiResponse::<()>::unprocessable_entity_with_violations(
                 &format!("Invalid cron schedule: {}", e),
                 vec![ValidationViolation {
@@ -333,7 +331,7 @@ pub async fn update_workflow(
     };
     // Validate cron format early to return Symfony-style 422
     if let Some(cron_str) = &body.schedule_cron {
-        if let Err(e) = cron::Schedule::from_str(cron_str) {
+        if let Err(e) = cron::validate_cron(cron_str) {
             return ApiResponse::<()>::unprocessable_entity_with_violations(
                 &format!("Invalid cron schedule: {}", e),
                 vec![ValidationViolation {

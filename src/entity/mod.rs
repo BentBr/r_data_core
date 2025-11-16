@@ -4,6 +4,7 @@ mod notification;
 mod permission_scheme;
 pub mod refresh_token;
 mod version;
+pub mod version_repository;
 mod workflow;
 // mod workflow_definition;
 // mod workflow_task;

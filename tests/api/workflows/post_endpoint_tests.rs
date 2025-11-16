@@ -5,8 +5,11 @@
 // Use Case 2.c: POST endpoint with disabled workflow returns 503 (already exists in provider_workflow_endpoints_tests.rs)
 // Use Case 2.d: POST endpoint ignores cron when from.api is used
 
+use super::common::{
+    create_consumer_workflow, create_test_entity_definition, generate_entity_type,
+    setup_app_with_entities,
+};
 use actix_web::test;
-use super::common::{create_consumer_workflow, create_test_entity_definition, generate_entity_type, setup_app_with_entities};
 use uuid::Uuid;
 
 // ============================================================================
@@ -61,7 +64,8 @@ async fn test_post_endpoint_accepts_csv_into_entities() -> anyhow::Result<()> {
     let wf_uuid = create_consumer_workflow(&pool, creator_uuid, config, true, None).await?;
 
     // Test POST endpoint with CSV data
-    let csv_data: Vec<u8> = b"name,email\nJohn Doe,john@example.com\nJane Smith,jane@example.com".to_vec();
+    let csv_data: Vec<u8> =
+        b"name,email\nJohn Doe,john@example.com\nJane Smith,jane@example.com".to_vec();
     let req = test::TestRequest::post()
         .uri(&format!("/api/v1/workflows/{}", wf_uuid))
         .insert_header(("Content-Type", "text/csv"))
@@ -343,15 +347,21 @@ async fn test_post_endpoint_ignores_cron_for_csv() -> anyhow::Result<()> {
     });
 
     // Even if we set a cron, it should be ignored for from.api workflows
-    let wf_uuid = create_consumer_workflow(&pool, creator_uuid, config, true, Some("*/5 * * * *".to_string())).await?;
+    let wf_uuid = create_consumer_workflow(
+        &pool,
+        creator_uuid,
+        config,
+        true,
+        Some("*/5 * * * *".to_string()),
+    )
+    .await?;
 
     // Verify workflow was created (cron may be stored but should be ignored during execution)
-    let workflow_exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM workflows WHERE uuid = $1)"
-    )
-        .bind(wf_uuid)
-        .fetch_one(&pool)
-        .await?;
+    let workflow_exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM workflows WHERE uuid = $1)")
+            .bind(wf_uuid)
+            .fetch_one(&pool)
+            .await?;
 
     assert!(workflow_exists, "Workflow should be created");
 
@@ -399,14 +409,20 @@ async fn test_post_endpoint_ignores_cron_for_json() -> anyhow::Result<()> {
         ]
     });
 
-    let wf_uuid = create_consumer_workflow(&pool, creator_uuid, config, true, Some("*/10 * * * *".to_string())).await?;
-
-    let workflow_exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM workflows WHERE uuid = $1)"
+    let wf_uuid = create_consumer_workflow(
+        &pool,
+        creator_uuid,
+        config,
+        true,
+        Some("*/10 * * * *".to_string()),
     )
-        .bind(wf_uuid)
-        .fetch_one(&pool)
-        .await?;
+    .await?;
+
+    let workflow_exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM workflows WHERE uuid = $1)")
+            .bind(wf_uuid)
+            .fetch_one(&pool)
+            .await?;
 
     assert!(workflow_exists, "Workflow should be created");
 
@@ -507,21 +523,27 @@ async fn test_from_api_workflow_excluded_from_cron_scheduling() -> anyhow::Resul
     .await?;
 
     // Verify both workflows exist and have cron schedules
-    let api_cron: Option<String> = sqlx::query_scalar(
-        "SELECT schedule_cron FROM workflows WHERE uuid = $1"
-    )
-        .bind(api_wf_uuid)
-        .fetch_one(&pool)
-        .await?;
-    assert_eq!(api_cron, Some("*/5 * * * *".to_string()), "API workflow should have cron stored");
+    let api_cron: Option<String> =
+        sqlx::query_scalar("SELECT schedule_cron FROM workflows WHERE uuid = $1")
+            .bind(api_wf_uuid)
+            .fetch_one(&pool)
+            .await?;
+    assert_eq!(
+        api_cron,
+        Some("*/5 * * * *".to_string()),
+        "API workflow should have cron stored"
+    );
 
-    let uri_cron: Option<String> = sqlx::query_scalar(
-        "SELECT schedule_cron FROM workflows WHERE uuid = $1"
-    )
-        .bind(uri_wf_uuid)
-        .fetch_one(&pool)
-        .await?;
-    assert_eq!(uri_cron, Some("*/10 * * * *".to_string()), "URI workflow should have cron stored");
+    let uri_cron: Option<String> =
+        sqlx::query_scalar("SELECT schedule_cron FROM workflows WHERE uuid = $1")
+            .bind(uri_wf_uuid)
+            .fetch_one(&pool)
+            .await?;
+    assert_eq!(
+        uri_cron,
+        Some("*/10 * * * *".to_string()),
+        "URI workflow should have cron stored"
+    );
 
     // Now test that list_scheduled_consumers excludes the from.api workflow
     use r_data_core::workflow::data::repository::WorkflowRepository;
@@ -530,19 +552,30 @@ async fn test_from_api_workflow_excluded_from_cron_scheduling() -> anyhow::Resul
 
     // The from.api workflow should NOT be in the scheduled list
     let api_in_scheduled = scheduled.iter().any(|(uuid, _)| *uuid == api_wf_uuid);
-    assert!(!api_in_scheduled, "Workflow with from.api should NOT be scheduled via cron");
+    assert!(
+        !api_in_scheduled,
+        "Workflow with from.api should NOT be scheduled via cron"
+    );
 
     // The from.uri workflow SHOULD be in the scheduled list
     let uri_in_scheduled = scheduled.iter().any(|(uuid, _)| *uuid == uri_wf_uuid);
-    assert!(uri_in_scheduled, "Workflow with from.uri SHOULD be scheduled via cron");
+    assert!(
+        uri_in_scheduled,
+        "Workflow with from.uri SHOULD be scheduled via cron"
+    );
 
     // Verify the scheduled list contains the URI workflow with correct cron
     let uri_entry = scheduled.iter().find(|(uuid, _)| *uuid == uri_wf_uuid);
-    assert!(uri_entry.is_some(), "URI workflow should be in scheduled list");
+    assert!(
+        uri_entry.is_some(),
+        "URI workflow should be in scheduled list"
+    );
     if let Some((_, cron)) = uri_entry {
-        assert_eq!(cron, "*/10 * * * *", "URI workflow should have correct cron in scheduled list");
+        assert_eq!(
+            cron, "*/10 * * * *",
+            "URI workflow should have correct cron in scheduled list"
+        );
     }
 
     Ok(())
 }
-

@@ -493,9 +493,15 @@ mod tests {
         });
         let prog = DslProgram::from_config(&config).unwrap();
         let result = prog.validate();
-        assert!(result.is_err(), "Expected validation to fail for from.api with endpoint field");
         assert!(
-            result.unwrap_err().to_string().contains("endpoint is not allowed"),
+            result.is_err(),
+            "Expected validation to fail for from.api with endpoint field"
+        );
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("endpoint is not allowed"),
             "Error message should mention endpoint is not allowed"
         );
     }

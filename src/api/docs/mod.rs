@@ -94,7 +94,9 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
             crate::api::admin::dsl::routes::DslValidateResponse,
             crate::api::admin::dsl::routes::DslFieldSpec,
             crate::api::admin::dsl::routes::DslTypeSpec,
-            crate::api::admin::dsl::routes::DslOptionsResponse
+            crate::api::admin::dsl::routes::DslOptionsResponse,
+            crate::api::admin::system::models::EntityVersioningSettingsDto,
+            crate::api::admin::system::routes::UpdateSettingsBody
         )
     ),
     modifiers(&SecurityAddon, &UuidSchemaAddon, &DateTimeSchemaAddon, &ModelSchemaAddon, &JsonValueSchemaAddon),
@@ -263,7 +265,9 @@ impl Modify for JsonValueSchemaAddon {
         crate::api::public::dynamic_entities::routes::delete_entity,
         crate::api::public::workflows::routes::get_workflow_data,
         crate::api::public::workflows::routes::get_workflow_stats,
-        crate::api::public::workflows::routes::post_workflow_ingest
+        crate::api::public::workflows::routes::post_workflow_ingest,
+        crate::api::public::entities::routes::list_entity_versions,
+        crate::api::public::entities::routes::get_entity_version
     ),
     components(
         schemas(
@@ -276,7 +280,9 @@ impl Modify for JsonValueSchemaAddon {
             crate::api::query::PaginationQuery,
             crate::api::query::StandardQuery,
             crate::api::public::dynamic_entities::routes::DynamicEntityResponse,
-            crate::api::public::dynamic_entities::routes::EntityResponse
+            crate::api::public::dynamic_entities::routes::EntityResponse,
+            crate::api::public::entities::routes::VersionMeta,
+            crate::api::public::entities::routes::VersionPayload
         )
     ),
     modifiers(&SecurityAddon, &UuidSchemaAddon, &DateTimeSchemaAddon, &ModelSchemaAddon, &JsonValueSchemaAddon),

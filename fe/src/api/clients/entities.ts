@@ -171,4 +171,42 @@ export class EntitiesClient extends BaseTypedHttpClient {
             }
         )
     }
+
+    async listEntityVersions(entityType: string, uuid: string): Promise<Array<{
+        version_number: number
+        created_at: string
+        created_by?: string | null
+    }>> {
+        return this.request(
+            `/api/v1/entities/${encodeURIComponent(entityType)}/${uuid}/versions`,
+            ApiResponseSchema(
+                z.array(
+                    z.object({
+                        version_number: z.number(),
+                        created_at: z.string(),
+                        created_by: UuidSchema.nullable().optional(),
+                    })
+                )
+            )
+        )
+    }
+
+    async getEntityVersion(entityType: string, uuid: string, versionNumber: number): Promise<{
+        version_number: number
+        created_at: string
+        created_by?: string | null
+        data: Record<string, unknown>
+    }> {
+        return this.request(
+            `/api/v1/entities/${encodeURIComponent(entityType)}/${uuid}/versions/${versionNumber}`,
+            ApiResponseSchema(
+                z.object({
+                    version_number: z.number(),
+                    created_at: z.string(),
+                    created_by: UuidSchema.nullable().optional(),
+                    data: z.record(z.any()),
+                })
+            )
+        )
+    }
 }

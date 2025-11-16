@@ -13,6 +13,8 @@ pub struct WorkflowSummary {
     /// Indicates if this workflow has a from.api source type (accepts POST, cron disabled)
     #[serde(default)]
     pub has_api_endpoint: bool,
+    #[serde(default)]
+    pub versioning_disabled: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -24,6 +26,8 @@ pub struct WorkflowDetail {
     pub enabled: bool,
     pub schedule_cron: Option<String>,
     pub config: serde_json::Value,
+    #[serde(default)]
+    pub versioning_disabled: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -34,6 +38,8 @@ pub struct CreateWorkflowRequest {
     pub enabled: bool,
     pub schedule_cron: Option<String>,
     pub config: serde_json::Value,
+    #[serde(default)]
+    pub versioning_disabled: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -49,6 +55,8 @@ pub struct UpdateWorkflowRequest {
     pub enabled: bool,
     pub schedule_cron: Option<String>,
     pub config: serde_json::Value,
+    #[serde(default)]
+    pub versioning_disabled: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]

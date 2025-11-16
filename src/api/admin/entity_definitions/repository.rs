@@ -370,6 +370,35 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
         let published = definition.published;
         let version = definition.version;
 
+        // Pre-update snapshot of current definition
+        if let Ok(Some(ver)) = sqlx::query_scalar::<_, Option<i32>>(
+            "SELECT version FROM entity_definitions WHERE uuid = $1",
+        )
+        .bind(uuid)
+        .fetch_one(&self.db_pool)
+        .await
+        {
+            if let Ok(Some(current_json)) = sqlx::query_scalar::<_, Option<serde_json::Value>>(
+                "SELECT row_to_json(t) FROM (SELECT * FROM entity_definitions WHERE uuid = $1) t",
+            )
+            .bind(uuid)
+            .fetch_one(&self.db_pool)
+            .await
+            {
+                let repo =
+                    crate::entity::version_repository::VersionRepository::new(self.db_pool.clone());
+                let _ = repo
+                    .insert_snapshot(
+                        *uuid,
+                        "entity_definition",
+                        ver,
+                        current_json,
+                        definition.updated_by,
+                    )
+                    .await;
+            }
+        }
+
         // SQL query
         let query = "UPDATE entity_definitions SET
                     entity_type = $1,
@@ -382,7 +411,7 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
                     updated_at = $8,
                     updated_by = $9,
                     published = $10,
-                    version = $11
+                    version = $11 + 1
                     WHERE uuid = $12";
 
         sqlx::query(query)

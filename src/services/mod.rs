@@ -2,8 +2,10 @@ pub mod adapters;
 pub mod admin_user_service;
 pub mod api_key_adapter;
 pub mod api_key_service;
+pub mod bootstrap;
 pub mod dynamic_entity_service;
 pub mod entity_definition_service;
+pub mod settings_service;
 pub mod worker;
 pub mod workflow_service;
 

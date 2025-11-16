@@ -41,19 +41,20 @@ BEFORE UPDATE ON entities_registry
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
 
--- Entity Versions Table
+-- Entity Versions Table (append-only snapshots)
 CREATE TABLE IF NOT EXISTS entities_versions (
     uuid UUID PRIMARY KEY DEFAULT uuidv7(),
-    entity_uuid UUID NOT NULL,
-    version INT NOT NULL,
+    entity_uuid UUID NOT NULL REFERENCES entities_registry(uuid) ON DELETE CASCADE,
+    entity_type TEXT,
+    version_number INT NOT NULL,
     data JSONB NOT NULL,
-    created_by UUID NOT NULL,
+    created_by UUID,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     comment TEXT,
-    UNIQUE(entity_uuid, version)
+    UNIQUE(entity_uuid, version_number)
 );
 
-CREATE INDEX IF NOT EXISTS idx_entities_versions_entity_uuid ON entities_versions(entity_uuid);
+CREATE INDEX IF NOT EXISTS idx_entities_versions_uuid_version ON entities_versions(entity_uuid, version_number DESC);
 
 -- Entity Definitions Table
 CREATE TABLE IF NOT EXISTS entity_definitions (
@@ -603,23 +604,10 @@ CREATE INDEX IF NOT EXISTS idx_notifications_recipient_uuid ON notifications(rec
 CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications(status);
 
 -- Enums
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'workflow_kind') THEN
+-- Note: Types are created without IF NOT EXISTS because tests initialize a fresh schema
 CREATE TYPE workflow_kind AS ENUM ('consumer', 'provider');
-END IF;
-END $$;
-
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'workflow_run_status') THEN
 CREATE TYPE workflow_run_status AS ENUM ('queued', 'running', 'success', 'failed', 'cancelled');
-END IF;
-END $$;
-
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'data_raw_item_status') THEN
 CREATE TYPE data_raw_item_status AS ENUM ('queued', 'processed', 'failed');
-END IF;
-END $$;
 
 -- Workflows (definitions)
 CREATE TABLE IF NOT EXISTS workflows (
@@ -631,6 +619,7 @@ CREATE TABLE IF NOT EXISTS workflows (
      schedule_cron TEXT,
      consumer_config JSONB,
      provider_config JSONB,
+     versioning_disabled BOOLEAN NOT NULL DEFAULT FALSE,
      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
      created_by UUID NOT NULL,
@@ -642,16 +631,11 @@ CREATE INDEX IF NOT EXISTS idx_workflows_kind ON workflows(kind);
 CREATE INDEX IF NOT EXISTS idx_workflows_enabled ON workflows(enabled);
 
 -- Auto-update trigger for updated_at
-DO $$ BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_trigger WHERE tgname = 'set_timestamp_workflows'
-    ) THEN
+DROP TRIGGER IF EXISTS set_timestamp_workflows ON workflows;
 CREATE TRIGGER set_timestamp_workflows
     BEFORE UPDATE ON workflows
     FOR EACH ROW
     EXECUTE FUNCTION update_timestamp();
-END IF;
-END $$;
 
 -- Workflow runs
 CREATE TABLE IF NOT EXISTS workflow_runs (
@@ -686,6 +670,41 @@ CREATE INDEX IF NOT EXISTS idx_workflow_raw_items_run_uuid ON workflow_raw_items
 CREATE INDEX IF NOT EXISTS idx_workflow_raw_items_status ON workflow_raw_items(status);
 CREATE INDEX IF NOT EXISTS idx_workflow_raw_items_seq ON workflow_raw_items(workflow_run_uuid, seq_no);
 
+-- System settings (JSONB)
+CREATE TABLE IF NOT EXISTS system_settings (
+    key TEXT PRIMARY KEY,
+    value JSONB NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_by UUID REFERENCES admin_users(uuid)
+);
+
+-- Seed default versioning settings
+INSERT INTO system_settings (key, value)
+VALUES (
+    'entity_versioning',
+    jsonb_build_object(
+        'enabled', true,
+        'max_versions', NULL,
+        'max_age_days', 180
+    )
+)
+ON CONFLICT (key) DO UPDATE
+SET value = EXCLUDED.value,
+    updated_at = NOW();
+
+-- Forbid updates to entities_versions (append-only; allow DELETE)
+CREATE OR REPLACE FUNCTION forbid_update_on_entities_versions()
+RETURNS trigger AS $$
+BEGIN
+    RAISE EXCEPTION 'Updates to entities_versions are not allowed';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS entities_versions_no_update ON entities_versions;
+CREATE TRIGGER entities_versions_no_update
+BEFORE UPDATE ON entities_versions
+FOR EACH ROW
+EXECUTE FUNCTION forbid_update_on_entities_versions();
 -- Create a trigger to update entity views when entity definitions change
 CREATE OR REPLACE FUNCTION entity_view_on_class_change()
 RETURNS TRIGGER AS $$

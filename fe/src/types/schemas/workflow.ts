@@ -10,6 +10,7 @@ export const WorkflowSchema = z.object({
     enabled: z.boolean(),
     schedule_cron: z.string().nullable().optional(),
     config: z.record(z.string(), z.unknown()),
+    versioning_disabled: z.boolean().optional().default(false),
 })
 
 export const WorkflowRunSchema = z.object({

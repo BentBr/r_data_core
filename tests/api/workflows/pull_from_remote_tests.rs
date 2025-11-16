@@ -3,7 +3,10 @@
 // Use Case 1.a: Pull from remote API with authentication
 // Use Case 1.b: Pull from remote API with different HTTP methods
 
-use super::common::{create_consumer_workflow, create_test_entity_definition, generate_entity_type, setup_app_with_entities};
+use super::common::{
+    create_consumer_workflow, create_test_entity_definition, generate_entity_type,
+    setup_app_with_entities,
+};
 use uuid::Uuid;
 
 // ============================================================================
@@ -58,17 +61,28 @@ async fn test_pull_from_remote_api_csv_into_entities_via_cron() -> anyhow::Resul
         ]
     });
 
-    let wf_uuid = create_consumer_workflow(&pool, creator_uuid, config, true, Some("*/5 * * * *".to_string())).await?;
+    let wf_uuid = create_consumer_workflow(
+        &pool,
+        creator_uuid,
+        config,
+        true,
+        Some("*/5 * * * *".to_string()),
+    )
+    .await?;
 
     // Verify workflow was created with cron
     let workflow = sqlx::query_scalar::<_, Option<String>>(
-        "SELECT schedule_cron FROM workflows WHERE uuid = $1"
+        "SELECT schedule_cron FROM workflows WHERE uuid = $1",
     )
-        .bind(wf_uuid)
-        .fetch_one(&pool)
-        .await?;
+    .bind(wf_uuid)
+    .fetch_one(&pool)
+    .await?;
 
-    assert_eq!(workflow, Some("*/5 * * * *".to_string()), "Workflow should have cron schedule");
+    assert_eq!(
+        workflow,
+        Some("*/5 * * * *".to_string()),
+        "Workflow should have cron schedule"
+    );
 
     Ok(())
 }
@@ -121,17 +135,28 @@ async fn test_pull_from_remote_api_json_into_entities_via_cron() -> anyhow::Resu
         ]
     });
 
-    let wf_uuid = create_consumer_workflow(&pool, creator_uuid, config, true, Some("*/10 * * * *".to_string())).await?;
+    let wf_uuid = create_consumer_workflow(
+        &pool,
+        creator_uuid,
+        config,
+        true,
+        Some("*/10 * * * *".to_string()),
+    )
+    .await?;
 
     // Verify workflow was created with cron
     let workflow = sqlx::query_scalar::<_, Option<String>>(
-        "SELECT schedule_cron FROM workflows WHERE uuid = $1"
+        "SELECT schedule_cron FROM workflows WHERE uuid = $1",
     )
-        .bind(wf_uuid)
-        .fetch_one(&pool)
-        .await?;
+    .bind(wf_uuid)
+    .fetch_one(&pool)
+    .await?;
 
-    assert_eq!(workflow, Some("*/10 * * * *".to_string()), "Workflow should have cron schedule");
+    assert_eq!(
+        workflow,
+        Some("*/10 * * * *".to_string()),
+        "Workflow should have cron schedule"
+    );
 
     Ok(())
 }
@@ -184,18 +209,28 @@ async fn test_pull_from_remote_api_csv_with_api_key_auth() -> anyhow::Result<()>
         ]
     });
 
-    let wf_uuid = create_consumer_workflow(&pool, creator_uuid, config, true, Some("*/5 * * * *".to_string())).await?;
-    
-    // Verify workflow config contains API key auth
-    let workflow_config: serde_json::Value = sqlx::query_scalar(
-        "SELECT config FROM workflows WHERE uuid = $1"
+    let wf_uuid = create_consumer_workflow(
+        &pool,
+        creator_uuid,
+        config,
+        true,
+        Some("*/5 * * * *".to_string()),
     )
-        .bind(wf_uuid)
-        .fetch_one(&pool)
-        .await?;
+    .await?;
+
+    // Verify workflow config contains API key auth
+    let workflow_config: serde_json::Value =
+        sqlx::query_scalar("SELECT config FROM workflows WHERE uuid = $1")
+            .bind(wf_uuid)
+            .fetch_one(&pool)
+            .await?;
 
     let auth_type = workflow_config["steps"][0]["from"]["source"]["auth"]["type"].as_str();
-    assert_eq!(auth_type, Some("api_key"), "Workflow should have API key auth configured");
+    assert_eq!(
+        auth_type,
+        Some("api_key"),
+        "Workflow should have API key auth configured"
+    );
 
     Ok(())
 }
@@ -245,17 +280,27 @@ async fn test_pull_from_remote_api_csv_with_pre_shared_key_auth() -> anyhow::Res
         ]
     });
 
-    let wf_uuid = create_consumer_workflow(&pool, creator_uuid, config, true, Some("*/5 * * * *".to_string())).await?;
-    
-    let workflow_config: serde_json::Value = sqlx::query_scalar(
-        "SELECT config FROM workflows WHERE uuid = $1"
+    let wf_uuid = create_consumer_workflow(
+        &pool,
+        creator_uuid,
+        config,
+        true,
+        Some("*/5 * * * *".to_string()),
     )
-        .bind(wf_uuid)
-        .fetch_one(&pool)
-        .await?;
+    .await?;
+
+    let workflow_config: serde_json::Value =
+        sqlx::query_scalar("SELECT config FROM workflows WHERE uuid = $1")
+            .bind(wf_uuid)
+            .fetch_one(&pool)
+            .await?;
 
     let auth_type = workflow_config["steps"][0]["from"]["source"]["auth"]["type"].as_str();
-    assert_eq!(auth_type, Some("pre_shared_key"), "Workflow should have pre-shared key auth configured");
+    assert_eq!(
+        auth_type,
+        Some("pre_shared_key"),
+        "Workflow should have pre-shared key auth configured"
+    );
 
     Ok(())
 }
@@ -304,17 +349,27 @@ async fn test_pull_from_remote_api_csv_with_basic_auth() -> anyhow::Result<()> {
         ]
     });
 
-    let wf_uuid = create_consumer_workflow(&pool, creator_uuid, config, true, Some("*/5 * * * *".to_string())).await?;
-    
-    let workflow_config: serde_json::Value = sqlx::query_scalar(
-        "SELECT config FROM workflows WHERE uuid = $1"
+    let wf_uuid = create_consumer_workflow(
+        &pool,
+        creator_uuid,
+        config,
+        true,
+        Some("*/5 * * * *".to_string()),
     )
-        .bind(wf_uuid)
-        .fetch_one(&pool)
-        .await?;
+    .await?;
+
+    let workflow_config: serde_json::Value =
+        sqlx::query_scalar("SELECT config FROM workflows WHERE uuid = $1")
+            .bind(wf_uuid)
+            .fetch_one(&pool)
+            .await?;
 
     let auth_type = workflow_config["steps"][0]["from"]["source"]["auth"]["type"].as_str();
-    assert_eq!(auth_type, Some("basic_auth"), "Workflow should have basic auth configured");
+    assert_eq!(
+        auth_type,
+        Some("basic_auth"),
+        "Workflow should have basic auth configured"
+    );
 
     Ok(())
 }
@@ -366,18 +421,23 @@ async fn test_pull_from_remote_api_csv_with_get_method() -> anyhow::Result<()> {
         ]
     });
 
-    let wf_uuid = create_consumer_workflow(&pool, creator_uuid, config, true, Some("*/5 * * * *".to_string())).await?;
-    
-    // Verify workflow was created successfully
-    let workflow_exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM workflows WHERE uuid = $1)"
+    let wf_uuid = create_consumer_workflow(
+        &pool,
+        creator_uuid,
+        config,
+        true,
+        Some("*/5 * * * *".to_string()),
     )
-        .bind(wf_uuid)
-        .fetch_one(&pool)
-        .await?;
+    .await?;
+
+    // Verify workflow was created successfully
+    let workflow_exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM workflows WHERE uuid = $1)")
+            .bind(wf_uuid)
+            .fetch_one(&pool)
+            .await?;
 
     assert!(workflow_exists, "Workflow should be created");
 
     Ok(())
 }
-

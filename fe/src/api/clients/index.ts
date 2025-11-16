@@ -8,6 +8,7 @@ import { WorkflowsClient } from './workflows'
 import { AuthClient } from './auth'
 import { UsersClient } from './users'
 import { EntitiesClient } from './entities'
+import { SystemClient } from './system'
 
 /**
  * Main typed HTTP client that combines all domain-specific clients
@@ -21,6 +22,7 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     private authClient = new AuthClient()
     private usersClient = new UsersClient()
     private entitiesClient = new EntitiesClient()
+    private systemClient = new SystemClient()
 
     // Entity Definitions
     async getEntityDefinitions(
@@ -159,6 +161,22 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     }
     async deleteEntity(...args: Parameters<EntitiesClient['deleteEntity']>) {
         return this.entitiesClient.deleteEntity(...args)
+    }
+    async listEntityVersions(...args: Parameters<EntitiesClient['listEntityVersions']>) {
+        return this.entitiesClient.listEntityVersions(...args)
+    }
+    async getEntityVersion(...args: Parameters<EntitiesClient['getEntityVersion']>) {
+        return this.entitiesClient.getEntityVersion(...args)
+    }
+
+    // System
+    async getEntityVersioningSettings(...args: Parameters<SystemClient['getEntityVersioningSettings']>) {
+        return this.systemClient.getEntityVersioningSettings(...args)
+    }
+    async updateEntityVersioningSettings(
+        ...args: Parameters<SystemClient['updateEntityVersioningSettings']>
+    ) {
+        return this.systemClient.updateEntityVersioningSettings(...args)
     }
 }
 

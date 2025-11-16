@@ -10,6 +10,7 @@ use crate::api::auth::auth_enum::CombinedRequiredAuth;
 use crate::api::response::ApiResponse;
 use crate::api::ApiState;
 use crate::entity::dynamic_entity::repository::DynamicEntityRepository;
+use crate::entity::version_repository::VersionRepository;
 
 /// List all available entity types
 #[utoipa::path(
@@ -46,6 +47,8 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(list_available_entities);
     cfg.service(list_by_path);
     cfg.service(query_entities);
+    cfg.service(list_entity_versions);
+    cfg.service(get_entity_version);
 }
 
 #[derive(Debug, Deserialize)]
@@ -106,6 +109,117 @@ async fn list_by_path(
             "status": "Error",
             "message": format!("Server error: {}", e),
         })),
+    }
+}
+
+#[derive(serde::Serialize, ToSchema)]
+pub struct VersionMeta {
+    version_number: i32,
+    created_at: time::OffsetDateTime,
+    created_by: Option<Uuid>,
+}
+
+/// List versions of a dynamic entity
+#[utoipa::path(
+    get,
+    path = "/api/v1/entities/{entity_type}/{uuid}/versions",
+    tag = "public",
+    params(
+        ("entity_type" = String, Path, description = "Entity type"),
+        ("uuid" = Uuid, Path, description = "Entity UUID")
+    ),
+    responses(
+        (status = 200, description = "List of versions", body = Vec<VersionMeta>),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Entity not found"),
+        (status = 500, description = "Server error")
+    ),
+    security(
+        ("jwt" = []),
+        ("apiKey" = [])
+    )
+)]
+#[get("/entities/{entity_type}/{uuid}/versions")]
+async fn list_entity_versions(
+    data: web::Data<ApiState>,
+    path: web::Path<(String, Uuid)>,
+    _: CombinedRequiredAuth,
+) -> impl Responder {
+    let (_entity_type, uuid) = path.into_inner();
+
+    let repo = VersionRepository::new(data.db_pool.clone());
+    match repo.list_entity_versions(uuid).await {
+        Ok(rows) => {
+            let out: Vec<VersionMeta> = rows
+                .into_iter()
+                .map(|r| VersionMeta {
+                    version_number: r.version_number,
+                    created_at: r.created_at,
+                    created_by: r.created_by,
+                })
+                .collect();
+            ApiResponse::ok(out)
+        }
+        Err(e) => {
+            log::error!("Failed to list versions: {}", e);
+            ApiResponse::<()>::internal_error("Failed to list versions")
+        }
+    }
+}
+
+#[derive(serde::Serialize, ToSchema)]
+pub struct VersionPayload {
+    version_number: i32,
+    created_at: time::OffsetDateTime,
+    created_by: Option<Uuid>,
+    data: serde_json::Value,
+}
+
+/// Get a specific version snapshot of a dynamic entity
+#[utoipa::path(
+    get,
+    path = "/api/v1/entities/{entity_type}/{uuid}/versions/{version_number}",
+    tag = "public",
+    params(
+        ("entity_type" = String, Path, description = "Entity type"),
+        ("uuid" = Uuid, Path, description = "Entity UUID"),
+        ("version_number" = i32, Path, description = "Version number")
+    ),
+    responses(
+        (status = 200, description = "Version payload", body = VersionPayload),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Version not found"),
+        (status = 500, description = "Server error")
+    ),
+    security(
+        ("jwt" = []),
+        ("apiKey" = [])
+    )
+)]
+#[get("/entities/{entity_type}/{uuid}/versions/{version_number}")]
+async fn get_entity_version(
+    data: web::Data<ApiState>,
+    path: web::Path<(String, Uuid, i32)>,
+    _: CombinedRequiredAuth,
+) -> impl Responder {
+    let (_entity_type, uuid, version_number) = path.into_inner();
+
+    let repo = VersionRepository::new(data.db_pool.clone());
+    match repo.get_entity_version(uuid, version_number).await {
+        Ok(Some(row)) => {
+            let payload = VersionPayload {
+                version_number: row.version_number,
+                created_at: row.created_at,
+                created_by: row.created_by,
+                data: row.data,
+            };
+            ApiResponse::ok(payload)
+        }
+        Ok(None) => ApiResponse::<()>::not_found("Version not found"),
+        Err(e) => {
+            log::error!("Failed to get version: {}", e);
+            ApiResponse::<()>::internal_error("Failed to get version")
+        }
     }
 }
 

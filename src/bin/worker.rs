@@ -1,14 +1,15 @@
 use log::{debug, error, info};
-use sqlx::postgres::PgPoolOptions;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio_cron_scheduler::{Job, JobScheduler};
 use uuid::Uuid;
 
-use r_data_core::cache::CacheManager;
 use r_data_core::config::WorkerConfig;
 use r_data_core::services::adapters::EntityDefinitionRepositoryAdapter;
+use r_data_core::services::bootstrap::{
+    init_cache_manager, init_logger_with_default, init_pg_pool,
+};
 use r_data_core::services::{
     worker::compute_reconcile_actions, DynamicEntityRepositoryAdapter, DynamicEntityService,
     EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService,
@@ -21,12 +22,7 @@ use r_data_core::workflow::data::repository::WorkflowRepository;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Basic logger init
-    let env = env_logger::Env::new().default_filter_or("info");
-    env_logger::Builder::from_env(env)
-        .format_timestamp(Some(env_logger::fmt::TimestampPrecision::Millis))
-        .format_module_path(true)
-        .format_target(true)
-        .init();
+    init_logger_with_default("info");
 
     info!("Starting data workflow worker");
 
@@ -42,32 +38,15 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    let pool = PgPoolOptions::new()
-        .max_connections(config.database.max_connections)
-        .connect(&config.database.connection_string)
-        .await?;
+    let pool = init_pg_pool(
+        &config.database.connection_string,
+        config.database.max_connections,
+    )
+    .await?;
 
     // Initialize cache manager (shares Redis with queue if available)
-    let cache_manager = if config.cache.enabled {
-        let manager = CacheManager::new(config.cache.clone());
-        // Try to connect to Redis (same URL as queue)
-        match manager.with_redis(&config.queue.redis_url).await {
-            Ok(m) => {
-                info!("Cache manager initialized with Redis (shared with queue)");
-                Arc::new(m)
-            }
-            Err(e) => {
-                info!(
-                    "Failed to initialize Redis cache: {}, using in-memory only",
-                    e
-                );
-                Arc::new(CacheManager::new(config.cache.clone()))
-            }
-        }
-    } else {
-        info!("Cache disabled, using in-memory cache only");
-        Arc::new(CacheManager::new(config.cache.clone()))
-    };
+    let cache_manager =
+        init_cache_manager(config.cache.clone(), Some(&config.queue.redis_url)).await;
 
     let queue_cfg = Arc::new(config.queue.clone());
     let _queue = ApalisRedisQueue::from_parts(

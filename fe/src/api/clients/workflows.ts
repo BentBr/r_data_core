@@ -64,6 +64,7 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         enabled: boolean
         schedule_cron?: string | null
         config: unknown
+        versioning_disabled?: boolean
     }): Promise<{ uuid: string }> {
         const Schema = z.object({ uuid: UuidSchema })
         return this.request('/admin/api/v1/workflows', ApiResponseSchema(Schema), {
@@ -81,6 +82,7 @@ export class WorkflowsClient extends BaseTypedHttpClient {
             enabled: boolean
             schedule_cron?: string | null
             config: unknown
+            versioning_disabled?: boolean
         }
     ): Promise<{ message: string }> {
         const Schema = z.object({ message: z.string() })

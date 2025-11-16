@@ -34,6 +34,12 @@
                         color="success"
                         inset
                     ></v-switch>
+                    <v-switch
+                        v-model="form.versioning_disabled"
+                        :label="t('workflows.create.versioning_disabled') || 'Disable versioning for this workflow'"
+                        color="warning"
+                        inset
+                    ></v-switch>
                     <v-text-field
                         v-model="form.schedule_cron"
                         label="Cron"
@@ -124,6 +130,7 @@
         kind: 'consumer' as 'consumer' | 'provider',
         enabled: true,
         schedule_cron: '' as string | null,
+        versioning_disabled: false,
     })
 
     const configJson = ref('')
@@ -172,6 +179,7 @@
             form.value.kind = data.kind
             form.value.enabled = data.enabled
             form.value.schedule_cron = data.schedule_cron ?? ''
+            form.value.versioning_disabled = (data as any).versioning_disabled ?? false
             configJson.value = JSON.stringify(data.config ?? {}, null, 2)
             try {
                 const cfg: any = data.config ?? {}
@@ -269,6 +277,7 @@
                 enabled: form.value.enabled,
                 schedule_cron: form.value.schedule_cron || null,
                 config: parsedConfig ?? {},
+                versioning_disabled: form.value.versioning_disabled,
             })
             emit('updated')
             model.value = false

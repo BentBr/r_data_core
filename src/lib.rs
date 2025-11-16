@@ -6,6 +6,8 @@ pub mod entity;
 pub mod error;
 pub mod notification;
 pub mod services;
+pub mod system_settings;
+pub mod utils;
 pub mod versioning;
 pub mod workflow;
 

@@ -74,6 +74,7 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
         enabled: true,
         schedule_cron: None,
         config: cfg,
+        versioning_disabled: false,
     };
 
     let wf_uuid = wf_service.create(&req, creator_uuid).await?;
@@ -266,6 +267,7 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
         enabled: true,
         schedule_cron: None,
         config: cfg,
+        versioning_disabled: false,
     };
 
     let wf_uuid = wf_service.create(&req, creator_uuid).await?;

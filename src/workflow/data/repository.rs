@@ -6,6 +6,7 @@ use uuid::Uuid;
 use super::repository_trait::WorkflowRepositoryTrait;
 use super::{Workflow, WorkflowKind};
 use crate::api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
+use crate::workflow::data::versioning::snapshot_workflow_pre_update;
 use std::str::FromStr;
 
 pub struct WorkflowRepository {
@@ -24,7 +25,7 @@ impl WorkflowRepository {
     pub async fn get_by_uuid(&self, uuid: Uuid) -> anyhow::Result<Option<Workflow>> {
         let row = sqlx::query(
             r#"
-            SELECT uuid, name, description, kind::text, enabled, schedule_cron, config
+            SELECT uuid, name, description, kind::text, enabled, schedule_cron, config, versioning_disabled
             FROM workflows
             WHERE uuid = $1
             "#,
@@ -48,6 +49,10 @@ impl WorkflowRepository {
                     .unwrap_or(true),
                 schedule_cron: r.try_get(5).ok(),
                 config: r.try_get(6).unwrap_or(serde_json::json!({})),
+                versioning_disabled: r
+                    .try_get::<Option<bool>, _>(7)
+                    .unwrap_or(Some(false))
+                    .unwrap_or(false),
             };
             Ok(Some(wf))
         } else {
@@ -62,8 +67,8 @@ impl WorkflowRepository {
     ) -> anyhow::Result<Uuid> {
         let row = sqlx::query(
             r#"
-            INSERT INTO workflows (name, description, kind, enabled, schedule_cron, config, created_by)
-            VALUES ($1, $2, $3::workflow_kind, $4, $5, $6, $7)
+            INSERT INTO workflows (name, description, kind, enabled, schedule_cron, config, versioning_disabled, created_by)
+            VALUES ($1, $2, $3::workflow_kind, $4, $5, $6, $7, $8)
             RETURNING uuid
             "#,
         )
@@ -73,6 +78,7 @@ impl WorkflowRepository {
         .bind(req.enabled)
         .bind(req.schedule_cron.as_deref())
         .bind(&req.config)
+        .bind(req.versioning_disabled)
         .bind(created_by)
         .fetch_one(&self.pool)
         .await
@@ -87,11 +93,14 @@ impl WorkflowRepository {
         req: &UpdateWorkflowRequest,
         updated_by: Uuid,
     ) -> anyhow::Result<()> {
+        // Pre-update snapshot of current workflow row
+        snapshot_workflow_pre_update(&self.pool, uuid, Some(updated_by)).await?;
+
         sqlx::query(
             r#"
             UPDATE workflows
             SET name = $2, description = $3, kind = $4::workflow_kind, enabled = $5,
-                schedule_cron = $6, config = $7, updated_by = $8
+                schedule_cron = $6, config = $7, versioning_disabled = $8, updated_by = $9, version = version + 1, updated_at = NOW()
             WHERE uuid = $1
             "#,
         )
@@ -102,6 +111,7 @@ impl WorkflowRepository {
         .bind(req.enabled)
         .bind(req.schedule_cron.as_deref())
         .bind(&req.config)
+        .bind(req.versioning_disabled)
         .bind(updated_by)
         .execute(&self.pool)
         .await
@@ -121,7 +131,7 @@ impl WorkflowRepository {
     pub async fn list_all(&self) -> anyhow::Result<Vec<Workflow>> {
         let rows = sqlx::query(
             r#"
-            SELECT uuid, name, description, kind::text, enabled, schedule_cron, config
+            SELECT uuid, name, description, kind::text, enabled, schedule_cron, config, versioning_disabled
             FROM workflows
             ORDER BY name
             "#,
@@ -145,6 +155,10 @@ impl WorkflowRepository {
                     .unwrap_or(true),
                 schedule_cron: r.try_get(5).ok(),
                 config: r.try_get(6).unwrap_or(serde_json::json!({})),
+                versioning_disabled: r
+                    .try_get::<Option<bool>, _>(7)
+                    .unwrap_or(Some(false))
+                    .unwrap_or(false),
             });
         }
         Ok(out)
@@ -153,7 +167,7 @@ impl WorkflowRepository {
     pub async fn list_paginated(&self, limit: i64, offset: i64) -> anyhow::Result<Vec<Workflow>> {
         let rows = sqlx::query(
             r#"
-            SELECT uuid, name, description, kind::text, enabled, schedule_cron, config
+            SELECT uuid, name, description, kind::text, enabled, schedule_cron, config, versioning_disabled
             FROM workflows
             ORDER BY name
             LIMIT $1 OFFSET $2
@@ -180,6 +194,10 @@ impl WorkflowRepository {
                     .unwrap_or(true),
                 schedule_cron: r.try_get(5).ok(),
                 config: r.try_get(6).unwrap_or(serde_json::json!({})),
+                versioning_disabled: r
+                    .try_get::<Option<bool>, _>(7)
+                    .unwrap_or(Some(false))
+                    .unwrap_or(false),
             });
         }
         Ok(out)
@@ -203,10 +221,14 @@ impl WorkflowRepository {
                         .get("source")
                         .or_else(|| from.get("format").and_then(|f| f.get("source")))
                     {
-                        if let Some(source_type) = source.get("source_type").and_then(|v| v.as_str()) {
+                        if let Some(source_type) =
+                            source.get("source_type").and_then(|v| v.as_str())
+                        {
                             if source_type == "api" {
                                 // from.api without endpoint field = accepts POST
-                                if let Some(config_obj) = source.get("config").and_then(|v| v.as_object()) {
+                                if let Some(config_obj) =
+                                    source.get("config").and_then(|v| v.as_object())
+                                {
                                     if !config_obj.contains_key("endpoint") {
                                         return true;
                                     }
@@ -237,7 +259,7 @@ impl WorkflowRepository {
             let uuid: Uuid = r.try_get(0).unwrap();
             let cron: String = r.try_get::<Option<String>, _>(1).unwrap().unwrap();
             let config: Value = r.try_get(2).unwrap_or(serde_json::json!({}));
-            
+
             // Exclude workflows with from.api source type (they accept POST, not cron)
             if !Self::check_has_api_endpoint(&config) {
                 out.push((uuid, cron));

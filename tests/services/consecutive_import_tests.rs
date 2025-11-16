@@ -136,6 +136,7 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
         enabled: true,
         schedule_cron: None,
         config: workflow_config,
+        versioning_disabled: false,
     };
     let wf_uuid = wf_service
         .create(&req, creator_uuid)

@@ -137,6 +137,37 @@ services:
             default:
                 aliases:
                     - worker.rdatacore.docker
+    worker_maintenance:
+        build:
+            context: .
+            dockerfile: ./.docker/app/Dockerfile
+            args:
+                RUST_VERSION: "1.88.0"
+                BUILD_MODE: "debug"
+                BINARY_NAME: "maintenance"
+                RUST_LOG_LEVEL: "info"
+        container_name: rdata_worker_maintenance
+        volumes:
+            - .env:/usr/local/bin/.env:ro
+        env_file:
+            - .env
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        environment:
+            DATABASE_URL: postgres://postgres:postgres@postgres:5432/rdata
+            WORKER_DATABASE_URL: postgres://postgres:postgres@postgres:5432/rdata
+            REDIS_URL: redis://redis:6379
+            RUST_LOG: info
+            LOG_LEVEL: info
+            MAINTENANCE_CRON: "*/5 * * * *"
+            VIRTUAL_HOST: .maintenance.rdatacore.docker
+        networks:
+            default:
+                aliases:
+                    - maintenance.rdatacore.docker
 
     node:
         image: node:22-alpine

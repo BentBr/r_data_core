@@ -118,6 +118,7 @@ async fn create_provider_workflow(
         enabled: true,
         schedule_cron: None,
         config,
+        versioning_disabled: false,
     };
     Ok(repo.create(&create_req, creator_uuid).await?)
 }
@@ -135,6 +136,7 @@ async fn create_consumer_workflow_with_api_source(
         enabled: true,
         schedule_cron: None,
         config,
+        versioning_disabled: false,
     };
     Ok(repo.create(&create_req, creator_uuid).await?)
 }
@@ -518,8 +520,14 @@ async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
 
     // Verify response contains run_uuid and staged_items
     let body: serde_json::Value = test::read_body_json(resp).await;
-    assert!(body.get("run_uuid").is_some(), "Response should contain run_uuid");
-    assert!(body.get("staged_items").is_some(), "Response should contain staged_items");
+    assert!(
+        body.get("run_uuid").is_some(),
+        "Response should contain run_uuid"
+    );
+    assert!(
+        body.get("staged_items").is_some(),
+        "Response should contain staged_items"
+    );
 
     Ok(())
 }
@@ -572,6 +580,7 @@ async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
         enabled: false, // Disabled
         schedule_cron: None,
         config,
+        versioning_disabled: false,
     };
     let wf_uuid = repo.create(&create_req, creator_uuid).await?;
 
@@ -648,6 +657,7 @@ async fn test_provider_endpoint_returns_404_for_consumer_workflow() -> anyhow::R
         enabled: true,
         schedule_cron: None,
         config,
+        versioning_disabled: false,
     };
     let wf_uuid = repo.create(&create_req, creator_uuid).await?;
 

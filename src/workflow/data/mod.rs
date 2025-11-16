@@ -3,6 +3,7 @@ pub mod job_queue;
 pub mod jobs;
 pub mod repository;
 pub mod repository_trait;
+pub mod versioning;
 
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -55,4 +56,5 @@ pub struct Workflow {
     pub enabled: bool,
     pub schedule_cron: Option<String>,
     pub config: serde_json::Value,
+    pub versioning_disabled: bool,
 }

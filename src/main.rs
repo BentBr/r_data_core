@@ -13,11 +13,12 @@ mod entity;
 mod error;
 mod notification;
 mod services;
+mod system_settings;
+mod utils;
 mod versioning;
 mod workflow;
 
 // Todo: These modules will be implemented later
-// mod versioning;
 // mod notification;
 
 use crate::api::admin::entity_definitions::repository::EntityDefinitionRepository;

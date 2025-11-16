@@ -302,6 +302,22 @@ impl DynamicEntityRepository {
         // Start a transaction
         let mut tx = self.pool.begin().await?;
 
+        // Check for internal flag to skip versioning (used by workflows with opt-out)
+        let skip_versioning = entity
+            .field_data
+            .get("__skip_versioning")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        // Extract updated_by if present for snapshot attribution
+        let updated_by =
+            utils::extract_uuid_from_entity_field_data(&entity.field_data, "updated_by");
+        if !skip_versioning {
+            crate::entity::dynamic_entity::versioning::snapshot_pre_update_pool(
+                &self.pool, uuid, updated_by,
+            )
+            .await?;
+        }
+
         // 1. Update entities_registry table
         // Collect update fields with their proper types
         let mut update_clauses = Vec::new();
@@ -449,6 +465,9 @@ impl DynamicEntityRepository {
         for (key, value) in &entity.field_data {
             if registry_fields.contains(&key.as_str()) || key == "uuid" {
                 continue; // Skip fields that are stored in entities_registry
+            }
+            if key == "__skip_versioning" {
+                continue; // internal flag, do not persist
             }
 
             let key_lower = key.to_lowercase();

@@ -127,6 +127,31 @@ impl DynamicEntityService {
         self.repository.update(entity).await
     }
 
+    /// Update an existing entity with options (e.g., skip versioning snapshots)
+    pub async fn update_entity_with_options(
+        &self,
+        entity: &DynamicEntity,
+        skip_versioning: bool,
+    ) -> Result<()> {
+        // Check if the entity type is published
+        self.check_entity_type_exists_and_published(&entity.entity_type)
+            .await?;
+
+        // Validate entity against entity definition
+        self.validate_entity(entity)?;
+
+        if skip_versioning {
+            // Temporary: inject internal flag until repository trait supports explicit param
+            let mut cloned = entity.clone();
+            cloned
+                .field_data
+                .insert("__skip_versioning".to_string(), serde_json::json!(true));
+            self.repository.update(&cloned).await
+        } else {
+            self.repository.update(entity).await
+        }
+    }
+
     /// Delete an entity
     pub async fn delete_entity(&self, entity_type: &str, uuid: &Uuid) -> Result<()> {
         // Verify the entity type exists and is published

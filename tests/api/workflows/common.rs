@@ -131,6 +131,7 @@ pub async fn create_consumer_workflow(
         enabled,
         schedule_cron,
         config,
+        versioning_disabled: false,
     };
     Ok(repo.create(&create_req, creator_uuid).await?)
 }
@@ -148,12 +149,16 @@ pub async fn create_provider_workflow(
         enabled: true,
         schedule_cron: None, // Provider workflows ignore cron
         config,
+        versioning_disabled: false,
     };
     Ok(repo.create(&create_req, creator_uuid).await?)
 }
 
 /// Generate a valid entity type name (starts with letter, contains only letters, numbers, underscores)
 pub fn generate_entity_type(prefix: &str) -> String {
-    format!("{}_{}", prefix, Uuid::now_v7().simple().to_string().replace('-', "_"))
+    format!(
+        "{}_{}",
+        prefix,
+        Uuid::now_v7().simple().to_string().replace('-', "_")
+    )
 }
-

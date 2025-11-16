@@ -39,6 +39,7 @@ async fn create_sets_created_by_and_fk_enforced() -> anyhow::Result<()> {
         enabled: true,
         schedule_cron: None,
         config: cfg,
+        versioning_disabled: false,
     };
 
     // Create via repository (adapter only used to match service wiring)
@@ -94,6 +95,7 @@ async fn update_sets_updated_by_and_fk_enforced() -> anyhow::Result<()> {
         enabled: true,
         schedule_cron: None,
         config: cfg.clone(),
+        versioning_disabled: false,
     };
     let wf_uuid = repo.create(&create_req, creator_uuid).await?;
 
@@ -105,6 +107,7 @@ async fn update_sets_updated_by_and_fk_enforced() -> anyhow::Result<()> {
         enabled: false,
         schedule_cron: Some("*/5 * * * *".to_string()),
         config: cfg,
+        versioning_disabled: false,
     };
     repo.update(wf_uuid, &update_req, updater_uuid).await?;
 

@@ -306,6 +306,7 @@ Swagger:
 - add unique constraint to entity_definitions (FE + BE)
 - uuid refactoring -> all in db
 - toDef ->update action -> by key -> dropdown of existing one
+- push all path / params / post body usages to dependency injection
 
 Check DSL:
 

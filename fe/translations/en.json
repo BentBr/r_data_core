@@ -143,7 +143,8 @@
       "provider_config": "Provider Config (JSON)",
       "create_button": "Create",
       "json_invalid": "Invalid JSON",
-      "config_label": "Workflow configuration"
+      "config_label": "Workflow configuration",
+      "versioning_disabled": "Disable versioning for this workflow"
     }
   },
   "validation": { "required": "This field is required" },
@@ -237,6 +238,14 @@
       "data": "Data",
       "raw_data": "Raw Data",
       "formatted_data": "Formatted Data",
+      "history": "History",
+      "version_a": "Version A",
+      "version_b": "Version B",
+      "compare": "Compare",
+      "diff_field": "Field",
+      "diff_a": "A",
+      "diff_b": "B",
+      "no_diff": "No differences",
       "no_children": "No children",
       "no_parent": "No parent",
       "child_count": "children"
@@ -397,6 +406,21 @@
       "profile": "Profile",
       "profile_subtitle": "Edit your profile settings",
       "logout_subtitle": "Sign out of your account"
+    }
+  },
+  "system": {
+    "admin": {
+      "title": "System Administration"
+    },
+    "versioning": {
+      "section_title": "Entity Versioning",
+      "enabled": "Enabled",
+      "max_versions": "Max versions (leave empty for unlimited)",
+      "max_age_days": "Max age days (leave empty to disable age pruning)",
+      "save": "Save",
+      "save_success": "Settings saved",
+      "load_failed": "Failed to load settings",
+      "save_failed": "Failed to save settings"
     }
   }
 }

@@ -3,8 +3,8 @@
 // Use Case 4.a: Expose CSV via API with all auth methods (header)
 // Use Case 4.b: Expose JSON via API with all auth methods (body)
 
-use actix_web::test;
 use super::common::setup_app_with_entities;
+use actix_web::test;
 use uuid::Uuid;
 
 // ============================================================================
@@ -61,16 +61,17 @@ async fn test_expose_data_via_api_endpoint_csv_ignores_cron() -> anyhow::Result<
         enabled: true,
         schedule_cron: Some("*/5 * * * *".to_string()), // This should be ignored
         config,
+        versioning_disabled: false,
     };
     let wf_uuid = repo.create(&create_req, creator_uuid).await?;
 
     // Verify workflow was created
     let workflow_exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM workflows WHERE uuid = $1 AND kind = 'provider')"
+        "SELECT EXISTS(SELECT 1 FROM workflows WHERE uuid = $1 AND kind = 'provider')",
     )
-        .bind(wf_uuid)
-        .fetch_one(&pool)
-        .await?;
+    .bind(wf_uuid)
+    .fetch_one(&pool)
+    .await?;
 
     assert!(workflow_exists, "Provider workflow should be created");
 
@@ -139,15 +140,16 @@ async fn test_expose_data_via_api_endpoint_json_ignores_cron() -> anyhow::Result
         enabled: true,
         schedule_cron: Some("*/10 * * * *".to_string()), // This should be ignored
         config,
+        versioning_disabled: false,
     };
     let wf_uuid = repo.create(&create_req, creator_uuid).await?;
 
     let workflow_exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM workflows WHERE uuid = $1 AND kind = 'provider')"
+        "SELECT EXISTS(SELECT 1 FROM workflows WHERE uuid = $1 AND kind = 'provider')",
     )
-        .bind(wf_uuid)
-        .fetch_one(&pool)
-        .await?;
+    .bind(wf_uuid)
+    .fetch_one(&pool)
+    .await?;
 
     assert!(workflow_exists, "Provider workflow should be created");
 
@@ -179,4 +181,3 @@ async fn test_expose_data_via_api_endpoint_json_ignores_cron() -> anyhow::Result
 // ============================================================================
 
 // Similar to 4.a, but for JSON format. The auth methods are the same regardless of format.
-

@@ -684,6 +684,7 @@ impl WorkflowService {
                                                 Some(&path),
                                                 run_uuid,
                                                 update_key.as_ref(),
+                                                wf.versioning_disabled,
                                             )
                                             .await
                                         }
@@ -979,6 +980,7 @@ async fn persist_entity_update(
     path: Option<&str>,
     run_uuid: Uuid,
     update_key: Option<&String>,
+    skip_versioning: bool,
 ) -> anyhow::Result<()> {
     use crate::entity::dynamic_entity::entity::DynamicEntity;
 
@@ -1128,7 +1130,9 @@ async fn persist_entity_update(
         return Err(anyhow::anyhow!("Cannot update entity: missing uuid"));
     }
 
-    de_service.update_entity(&entity).await?;
+    de_service
+        .update_entity_with_options(&entity, skip_versioning)
+        .await?;
     Ok(())
 }
 
