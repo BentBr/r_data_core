@@ -312,8 +312,9 @@ impl DynamicEntityRepository {
         let updated_by =
             utils::extract_uuid_from_entity_field_data(&entity.field_data, "updated_by");
         if !skip_versioning {
-            crate::entity::dynamic_entity::versioning::snapshot_pre_update_pool(
-                &self.pool, uuid, updated_by,
+            // Create snapshot BEFORE incrementing version - must be within transaction
+            crate::entity::dynamic_entity::versioning::snapshot_pre_update(
+                &mut tx, uuid, updated_by,
             )
             .await?;
         }

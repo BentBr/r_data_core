@@ -1,4 +1,4 @@
-use sqlx::{PgPool, Row};
+use sqlx::{PgPool, Row, Transaction, Postgres};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -109,6 +109,34 @@ impl VersionRepository {
         .bind(data)
         .bind(created_by)
         .execute(&self.pool)
+        .await
+        .map_err(Error::Database)?;
+        Ok(())
+    }
+
+    /// Insert a version snapshot within a transaction.
+    /// This is an associated function (static method) since it doesn't require a VersionRepository instance.
+    pub async fn insert_snapshot_tx(
+        tx: &mut Transaction<'_, Postgres>,
+        entity_uuid: Uuid,
+        entity_type: &str,
+        version_number: i32,
+        data: serde_json::Value,
+        created_by: Option<Uuid>,
+    ) -> Result<()> {
+        sqlx::query(
+            r#"
+            INSERT INTO entities_versions (entity_uuid, entity_type, version_number, data, created_at, created_by)
+            VALUES ($1, $2, $3, $4, NOW(), $5)
+            ON CONFLICT (entity_uuid, version_number) DO NOTHING
+            "#,
+        )
+        .bind(entity_uuid)
+        .bind(entity_type)
+        .bind(version_number)
+        .bind(data)
+        .bind(created_by)
+        .execute(&mut **tx)
         .await
         .map_err(Error::Database)?;
         Ok(())

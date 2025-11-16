@@ -115,6 +115,7 @@ async fn list_by_path(
 #[derive(serde::Serialize, ToSchema)]
 pub struct VersionMeta {
     version_number: i32,
+    #[serde(with = "time::serde::rfc3339")]
     created_at: time::OffsetDateTime,
     created_by: Option<Uuid>,
 }
@@ -170,6 +171,7 @@ async fn list_entity_versions(
 #[derive(serde::Serialize, ToSchema)]
 pub struct VersionPayload {
     version_number: i32,
+    #[serde(with = "time::serde::rfc3339")]
     created_at: time::OffsetDateTime,
     created_by: Option<Uuid>,
     data: serde_json::Value,
