@@ -246,6 +246,7 @@
       "diff_a": "A",
       "diff_b": "B",
       "no_diff": "No differences",
+      "no_versions": "No versions available",
       "no_children": "No children",
       "no_parent": "No parent",
       "child_count": "children"

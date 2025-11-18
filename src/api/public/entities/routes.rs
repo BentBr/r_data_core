@@ -11,6 +11,7 @@ use crate::api::response::ApiResponse;
 use crate::api::ApiState;
 use crate::entity::dynamic_entity::repository::DynamicEntityRepository;
 use crate::entity::version_repository::VersionRepository;
+use crate::services::VersionService;
 
 /// List all available entity types
 #[utoipa::path(
@@ -118,6 +119,7 @@ pub struct VersionMeta {
     #[serde(with = "time::serde::rfc3339")]
     created_at: time::OffsetDateTime,
     created_by: Option<Uuid>,
+    created_by_name: Option<String>,
 }
 
 /// List versions of a dynamic entity
@@ -148,15 +150,17 @@ async fn list_entity_versions(
 ) -> impl Responder {
     let (_entity_type, uuid) = path.into_inner();
 
-    let repo = VersionRepository::new(data.db_pool.clone());
-    match repo.list_entity_versions(uuid).await {
-        Ok(rows) => {
-            let out: Vec<VersionMeta> = rows
+    let version_service = VersionService::new(data.db_pool.clone());
+
+    match version_service.list_entity_versions_with_metadata(uuid).await {
+        Ok(versions) => {
+            let out: Vec<VersionMeta> = versions
                 .into_iter()
-                .map(|r| VersionMeta {
-                    version_number: r.version_number,
-                    created_at: r.created_at,
-                    created_by: r.created_by,
+                .map(|v| VersionMeta {
+                    version_number: v.version_number,
+                    created_at: v.created_at,
+                    created_by: v.created_by,
+                    created_by_name: v.created_by_name,
                 })
                 .collect();
             ApiResponse::ok(out)
@@ -204,9 +208,11 @@ async fn get_entity_version(
     path: web::Path<(String, Uuid, i32)>,
     _: CombinedRequiredAuth,
 ) -> impl Responder {
-    let (_entity_type, uuid, version_number) = path.into_inner();
+    let (entity_type, uuid, version_number) = path.into_inner();
 
     let repo = VersionRepository::new(data.db_pool.clone());
+    
+    // First try to get from versions table
     match repo.get_entity_version(uuid, version_number).await {
         Ok(Some(row)) => {
             let payload = VersionPayload {
@@ -215,14 +221,34 @@ async fn get_entity_version(
                 created_by: row.created_by,
                 data: row.data,
             };
-            ApiResponse::ok(payload)
+            return ApiResponse::ok(payload);
         }
-        Ok(None) => ApiResponse::<()>::not_found("Version not found"),
+        Ok(None) => {
+            // Not in versions table, check if it's the current version
+            let current_metadata = repo.get_current_entity_metadata(uuid).await.ok().flatten();
+
+            if let Some((current_version, updated_at, updated_by, _updated_by_name)) = current_metadata {
+                if current_version == version_number {
+                    // This is the current version, fetch from entity view using repository
+                    if let Ok(Some(data_json)) = repo.get_current_entity_data(uuid, &entity_type).await {
+                        let payload = VersionPayload {
+                            version_number,
+                            created_at: updated_at,
+                            created_by: updated_by,
+                            data: data_json,
+                        };
+                        return ApiResponse::ok(payload);
+                    }
+                }
+            }
+        }
         Err(e) => {
             log::error!("Failed to get version: {}", e);
-            ApiResponse::<()>::internal_error("Failed to get version")
+            return ApiResponse::<()>::internal_error("Failed to get version");
         }
     }
+
+    ApiResponse::<()>::not_found("Version not found")
 }
 
 /// Request body for querying entities

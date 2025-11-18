@@ -159,10 +159,12 @@ services:
         environment:
             DATABASE_URL: postgres://postgres:postgres@postgres:5432/rdata
             WORKER_DATABASE_URL: postgres://postgres:postgres@postgres:5432/rdata
+            MAINTENANCE_DATABASE_URL: postgres://postgres:postgres@postgres:5432/rdata
             REDIS_URL: redis://redis:6379
             RUST_LOG: info
             LOG_LEVEL: info
-            MAINTENANCE_CRON: "*/5 * * * *"
+            # Using the long definition
+            MAINTENANCE_CRON: "*/5 * * * * *"
             VIRTUAL_HOST: .maintenance.rdatacore.docker
         networks:
             default:

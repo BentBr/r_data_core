@@ -371,33 +371,13 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
         let version = definition.version;
 
         // Pre-update snapshot of current definition
-        if let Ok(Some(ver)) = sqlx::query_scalar::<_, Option<i32>>(
-            "SELECT version FROM entity_definitions WHERE uuid = $1",
-        )
-        .bind(uuid)
-        .fetch_one(&self.db_pool)
-        .await
-        {
-            if let Ok(Some(current_json)) = sqlx::query_scalar::<_, Option<serde_json::Value>>(
-                "SELECT row_to_json(t) FROM (SELECT * FROM entity_definitions WHERE uuid = $1) t",
-            )
-            .bind(uuid)
-            .fetch_one(&self.db_pool)
-            .await
-            {
-                let repo =
-                    crate::entity::version_repository::VersionRepository::new(self.db_pool.clone());
-                let _ = repo
-                    .insert_snapshot(
-                        *uuid,
-                        "entity_definition",
-                        ver,
-                        current_json,
-                        definition.updated_by,
-                    )
-                    .await;
-            }
-        }
+        let versioning_repo =
+            crate::api::admin::entity_definitions::versioning_repository::EntityDefinitionVersioningRepository::new(
+                self.db_pool.clone(),
+            );
+        let _ = versioning_repo
+            .snapshot_pre_update(*uuid, definition.updated_by)
+            .await;
 
         // SQL query
         let query = "UPDATE entity_definitions SET

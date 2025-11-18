@@ -4,6 +4,7 @@ pub mod jobs;
 pub mod repository;
 pub mod repository_trait;
 pub mod versioning;
+pub mod versioning_repository;
 
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;

@@ -176,6 +176,7 @@ export class EntitiesClient extends BaseTypedHttpClient {
         version_number: number
         created_at: string
         created_by?: string | null
+        created_by_name?: string | null
     }>> {
         return this.request(
             `/api/v1/entities/${encodeURIComponent(entityType)}/${uuid}/versions`,
@@ -185,6 +186,7 @@ export class EntitiesClient extends BaseTypedHttpClient {
                         version_number: z.number(),
                         created_at: z.string(),
                         created_by: UuidSchema.nullable().optional(),
+                        created_by_name: z.string().nullable().optional(),
                     })
                 )
             )
@@ -204,7 +206,7 @@ export class EntitiesClient extends BaseTypedHttpClient {
                     version_number: z.number(),
                     created_at: z.string(),
                     created_by: UuidSchema.nullable().optional(),
-                    data: z.record(z.any()),
+                    data: z.any(), // Use z.any() instead of z.record(z.any()) to handle nested objects
                 })
             )
         )

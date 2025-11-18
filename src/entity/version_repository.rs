@@ -9,6 +9,7 @@ pub struct EntityVersionMeta {
     pub version_number: i32,
     pub created_at: OffsetDateTime,
     pub created_by: Option<Uuid>,
+    pub created_by_name: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -31,10 +32,20 @@ impl VersionRepository {
     pub async fn list_entity_versions(&self, entity_uuid: Uuid) -> Result<Vec<EntityVersionMeta>> {
         let rows = sqlx::query(
             r#"
-            SELECT version_number, created_at, created_by
-            FROM entities_versions
-            WHERE entity_uuid = $1
-            ORDER BY version_number DESC
+            SELECT 
+                ev.version_number,
+                ev.created_at,
+                ev.created_by,
+                COALESCE(
+                    TRIM(COALESCE(au.first_name || ' ', '') || COALESCE(au.last_name, '')),
+                    au.username,
+                    w.name
+                ) AS created_by_name
+            FROM entities_versions ev
+            LEFT JOIN admin_users au ON ev.created_by = au.uuid
+            LEFT JOIN workflows w ON ev.created_by = w.uuid
+            WHERE ev.entity_uuid = $1
+            ORDER BY ev.version_number DESC
             "#,
         )
         .bind(entity_uuid)
@@ -47,10 +58,12 @@ impl VersionRepository {
             let version_number: i32 = r.try_get("version_number").unwrap();
             let created_at: time::OffsetDateTime = r.try_get("created_at").unwrap();
             let created_by: Option<Uuid> = r.try_get("created_by").ok();
+            let created_by_name: Option<String> = r.try_get("created_by_name").ok();
             out.push(EntityVersionMeta {
                 version_number,
                 created_at,
                 created_by,
+                created_by_name,
             });
         }
         Ok(out)
@@ -177,5 +190,60 @@ impl VersionRepository {
         .await
         .map_err(Error::Database)?;
         Ok(res.rows_affected())
+    }
+
+    /// Get current entity metadata from entities_registry with resolved creator name
+    pub async fn get_current_entity_metadata(
+        &self,
+        entity_uuid: Uuid,
+    ) -> Result<Option<(i32, OffsetDateTime, Option<Uuid>, Option<String>)>> {
+        let row = sqlx::query(
+            r#"
+            SELECT 
+                er.version,
+                er.updated_at,
+                er.updated_by,
+                COALESCE(
+                    TRIM(COALESCE(au.first_name || ' ', '') || COALESCE(au.last_name, '')),
+                    au.username,
+                    w.name
+                ) AS updated_by_name
+            FROM entities_registry er
+            LEFT JOIN admin_users au ON er.updated_by = au.uuid
+            LEFT JOIN workflows w ON er.updated_by = w.uuid
+            WHERE er.uuid = $1
+            "#,
+        )
+        .bind(entity_uuid)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(Error::Database)?;
+
+        Ok(row.map(|r| {
+            let version: i32 = r.try_get("version").unwrap();
+            let updated_at: OffsetDateTime = r.try_get("updated_at").unwrap();
+            let updated_by: Option<Uuid> = r.try_get("updated_by").ok();
+            let updated_by_name: Option<String> = r.try_get("updated_by_name").ok();
+            (version, updated_at, updated_by, updated_by_name)
+        }))
+    }
+
+    /// Get current entity data as JSON from the entity view
+    pub async fn get_current_entity_data(
+        &self,
+        entity_uuid: Uuid,
+        entity_type: &str,
+    ) -> Result<Option<serde_json::Value>> {
+        use crate::entity::dynamic_entity::utils;
+        let view_name = utils::get_view_name(entity_type);
+        let current_json: Option<serde_json::Value> = sqlx::query_scalar(&format!(
+            "SELECT row_to_json(t) FROM (SELECT * FROM {} WHERE uuid = $1) t",
+            view_name
+        ))
+        .bind(entity_uuid)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(Error::Database)?;
+        Ok(current_json)
     }
 }

@@ -41,7 +41,8 @@ BEFORE UPDATE ON entities_registry
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
 
--- Entity Versions Table (append-only snapshots)
+-- Entity Versions Table (append-only snapshots for dynamic entities)
+-- This table ONLY stores versions for entities in entities_registry
 CREATE TABLE IF NOT EXISTS entities_versions (
     uuid UUID PRIMARY KEY DEFAULT uuidv7(),
     entity_uuid UUID NOT NULL REFERENCES entities_registry(uuid) ON DELETE CASCADE,
@@ -75,6 +76,20 @@ CREATE TABLE IF NOT EXISTS entity_definitions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_entity_definitions_uuid ON entity_definitions(uuid);
+
+-- Entity Definition Versions Table (append-only snapshots for entity definitions)
+CREATE TABLE IF NOT EXISTS entity_definition_versions (
+    uuid UUID PRIMARY KEY DEFAULT uuidv7(),
+    definition_uuid UUID NOT NULL REFERENCES entity_definitions(uuid) ON DELETE CASCADE,
+    version_number INT NOT NULL,
+    data JSONB NOT NULL,
+    created_by UUID,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    comment TEXT,
+    UNIQUE(definition_uuid, version_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_entity_definition_versions_uuid_version ON entity_definition_versions(definition_uuid, version_number DESC);
 
 -- Create a logging function that can be used to debug UUID issues
 CREATE OR REPLACE FUNCTION log_uuid_debug(uuid_val UUID)
@@ -669,6 +684,20 @@ CREATE TABLE IF NOT EXISTS workflow_raw_items (
 CREATE INDEX IF NOT EXISTS idx_workflow_raw_items_run_uuid ON workflow_raw_items(workflow_run_uuid);
 CREATE INDEX IF NOT EXISTS idx_workflow_raw_items_status ON workflow_raw_items(status);
 CREATE INDEX IF NOT EXISTS idx_workflow_raw_items_seq ON workflow_raw_items(workflow_run_uuid, seq_no);
+
+-- Workflow Versions Table (append-only snapshots for workflows)
+CREATE TABLE IF NOT EXISTS workflow_versions (
+     uuid UUID PRIMARY KEY DEFAULT uuidv7(),
+     workflow_uuid UUID NOT NULL REFERENCES workflows(uuid) ON DELETE CASCADE,
+     version_number INT NOT NULL,
+     data JSONB NOT NULL,
+     created_by UUID,
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     comment TEXT,
+     UNIQUE(workflow_uuid, version_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_versions_uuid_version ON workflow_versions(workflow_uuid, version_number DESC);
 
 -- System settings (JSONB)
 CREATE TABLE IF NOT EXISTS system_settings (

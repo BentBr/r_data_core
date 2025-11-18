@@ -106,4 +106,44 @@ export class EntityDefinitionsClient extends BaseTypedHttpClient {
             ApiResponseSchema(Schema)
         )
     }
+
+    async listEntityDefinitionVersions(uuid: string): Promise<Array<{
+        version_number: number
+        created_at: string
+        created_by?: string | null
+        created_by_name?: string | null
+    }>> {
+        return this.request(
+            `/admin/api/v1/entity-definitions/${uuid}/versions`,
+            ApiResponseSchema(
+                z.array(
+                    z.object({
+                        version_number: z.number(),
+                        created_at: z.string(),
+                        created_by: UuidSchema.nullable().optional(),
+                        created_by_name: z.string().nullable().optional(),
+                    })
+                )
+            )
+        )
+    }
+
+    async getEntityDefinitionVersion(uuid: string, versionNumber: number): Promise<{
+        version_number: number
+        created_at: string
+        created_by?: string | null
+        data: Record<string, unknown>
+    }> {
+        return this.request(
+            `/admin/api/v1/entity-definitions/${uuid}/versions/${versionNumber}`,
+            ApiResponseSchema(
+                z.object({
+                    version_number: z.number(),
+                    created_at: z.string(),
+                    created_by: UuidSchema.nullable().optional(),
+                    data: z.any(),
+                })
+            )
+        )
+    }
 }

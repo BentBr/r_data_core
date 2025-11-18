@@ -6,6 +6,7 @@ pub mod bootstrap;
 pub mod dynamic_entity_service;
 pub mod entity_definition_service;
 pub mod settings_service;
+pub mod version_service;
 pub mod worker;
 pub mod workflow_service;
 
@@ -16,4 +17,5 @@ pub use api_key_adapter::ApiKeyRepositoryAdapter;
 pub use api_key_service::ApiKeyService;
 pub use dynamic_entity_service::DynamicEntityService;
 pub use entity_definition_service::EntityDefinitionService;
+pub use version_service::VersionService;
 pub use workflow_service::WorkflowService;

@@ -56,6 +56,16 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     async getEntityFields(...args: Parameters<EntityDefinitionsClient['getEntityFields']>) {
         return this.entityDefinitionsClient.getEntityFields(...args)
     }
+    async listEntityDefinitionVersions(
+        ...args: Parameters<EntityDefinitionsClient['listEntityDefinitionVersions']>
+    ) {
+        return this.entityDefinitionsClient.listEntityDefinitionVersions(...args)
+    }
+    async getEntityDefinitionVersion(
+        ...args: Parameters<EntityDefinitionsClient['getEntityDefinitionVersion']>
+    ) {
+        return this.entityDefinitionsClient.getEntityDefinitionVersion(...args)
+    }
 
     // API Keys
     async getApiKeys(...args: Parameters<ApiKeysClient['getApiKeys']>) {
@@ -119,6 +129,12 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     }
     async validateDsl(...args: Parameters<WorkflowsClient['validateDsl']>) {
         return this.workflowsClient.validateDsl(...args)
+    }
+    async listWorkflowVersions(...args: Parameters<WorkflowsClient['listWorkflowVersions']>) {
+        return this.workflowsClient.listWorkflowVersions(...args)
+    }
+    async getWorkflowVersion(...args: Parameters<WorkflowsClient['getWorkflowVersion']>) {
+        return this.workflowsClient.getWorkflowVersion(...args)
     }
 
     // Auth

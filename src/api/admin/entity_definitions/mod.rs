@@ -1,6 +1,7 @@
 pub mod models;
 pub mod repository;
 pub mod routes;
+pub mod versioning_repository;
 
 use actix_web::web;
 
@@ -13,6 +14,8 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
             .service(routes::create_entity_definition)
             .service(routes::update_entity_definition)
             .service(routes::delete_entity_definition)
-            .service(routes::apply_entity_definition_schema),
+            .service(routes::apply_entity_definition_schema)
+            .service(routes::list_entity_definition_versions)
+            .service(routes::get_entity_definition_version),
     );
 }

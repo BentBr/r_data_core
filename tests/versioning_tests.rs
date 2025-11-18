@@ -129,10 +129,11 @@ async fn test_workflow_update_creates_snapshot_and_increments_version() {
         "SELECT version_number FROM entities_versions WHERE entity_uuid = $1 AND entity_type = 'workflow' ORDER BY version_number DESC LIMIT 1",
     )
     .bind(wf_uuid)
-    .fetch_one(&pool)
+    .fetch_optional(&pool)
     .await
     .unwrap();
-    let snap_version: i32 = row.try_get("version_number").unwrap();
+    assert!(row.is_some(), "Snapshot should exist");
+    let snap_version: i32 = row.unwrap().try_get("version_number").unwrap();
     assert_eq!(snap_version, ver_before);
 
     // Version incremented
@@ -186,10 +187,11 @@ async fn test_entity_definition_update_creates_snapshot_and_increments_version()
         "SELECT version_number FROM entities_versions WHERE entity_uuid = $1 AND entity_type = 'entity_definition' ORDER BY version_number DESC LIMIT 1",
     )
     .bind(def_uuid)
-    .fetch_one(&pool)
+    .fetch_optional(&pool)
     .await
     .unwrap();
-    let snap_version: i32 = row.try_get("version_number").unwrap();
+    assert!(row.is_some(), "Snapshot should exist");
+    let snap_version: i32 = row.unwrap().try_get("version_number").unwrap();
     assert_eq!(snap_version, before_ver);
 
     // Version incremented
@@ -207,6 +209,18 @@ async fn test_maintenance_prunes_by_age_and_count() {
     let pool = setup_test_db().await;
     let repo = VersionRepository::new(pool.clone());
     let entity_uuid = Uuid::now_v7();
+
+    // Create a dummy entity in entities_registry to satisfy foreign key constraint
+    sqlx::query(
+        "INSERT INTO entities_registry (uuid, entity_type, path, entity_key, version, created_at, updated_at, created_by, published)
+         VALUES ($1, $2, '/', $1::text, 5, NOW(), NOW(), $3, true)"
+    )
+    .bind(entity_uuid)
+    .bind("dynamic_entity")
+    .bind(Uuid::now_v7())
+    .execute(&pool)
+    .await
+    .unwrap();
 
     // Seed versions 1..5 with different created_at; directly insert to control timestamps
     for v in 1..=5 {
@@ -253,4 +267,98 @@ async fn test_maintenance_prunes_by_age_and_count() {
     if kept.len() == 2 {
         assert_eq!(kept, vec![5, 4]);
     }
+}
+
+#[tokio::test]
+async fn test_version_creation_and_endpoint_output() {
+    let pool = setup_test_db().await;
+    let entity_type = unique_entity_type("ver_endpoint");
+    let version_repo = VersionRepository::new(pool.clone());
+
+    // Create definition and entity
+    let _def_uuid = create_test_entity_definition(&pool, &entity_type)
+        .await
+        .unwrap();
+    let entity_uuid = create_test_entity(&pool, &entity_type, "Bob", "bob@example.com")
+        .await
+        .unwrap();
+
+    // Confirm initial version in registry (should be 1)
+    let initial_version: i32 =
+        sqlx::query_scalar("SELECT version FROM entities_registry WHERE uuid = $1")
+            .bind(entity_uuid)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(initial_version, 1);
+
+    // Update entity to create a snapshot
+    let updated_by = common::utils::create_test_admin_user(&pool).await.unwrap();
+    let mut payload = serde_json::json!({
+        "uuid": entity_uuid.to_string(),
+        "name": "Bob Updated",
+        "email": "bob.updated@example.com",
+        "updated_by": updated_by.to_string()
+    });
+    
+    let repo = r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool.clone());
+    let def_repo = EntityDefinitionRepository::new(pool.clone());
+    let def_svc = EntityDefinitionService::new_without_cache(std::sync::Arc::new(def_repo));
+    let def = def_svc
+        .get_entity_definition_by_entity_type(&entity_type)
+        .await
+        .unwrap();
+    let entity = r_data_core::entity::dynamic_entity::entity::DynamicEntity {
+        entity_type: entity_type.clone(),
+        field_data: payload
+            .as_object_mut()
+            .unwrap()
+            .clone()
+            .into_iter()
+            .collect(),
+        definition: std::sync::Arc::new(def),
+    };
+    repo.update(&entity).await.unwrap();
+
+    // Verify registry version incremented to 2
+    let after_version: i32 =
+        sqlx::query_scalar("SELECT version FROM entities_registry WHERE uuid = $1")
+            .bind(entity_uuid)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(after_version, 2);
+
+    // Test: List versions using repository
+    let versions = version_repo.list_entity_versions(entity_uuid).await.unwrap();
+    assert_eq!(versions.len(), 1, "Should have one version snapshot");
+    assert_eq!(versions[0].version_number, 1, "Snapshot should be for version 1");
+    assert_eq!(versions[0].created_by, Some(updated_by), "Snapshot should be attributed to updated_by");
+
+    // Test: Get specific version using repository
+    let version_payload = version_repo.get_entity_version(entity_uuid, 1).await.unwrap();
+    assert!(version_payload.is_some(), "Version 1 should exist");
+    let payload = version_payload.unwrap();
+    assert_eq!(payload.version_number, 1);
+    assert_eq!(payload.created_by, Some(updated_by));
+    
+    // Verify the data contains the original values (before update)
+    let data = payload.data.as_object().unwrap();
+    assert_eq!(data.get("name").and_then(|v| v.as_str()), Some("Bob"), "Version 1 should have original name");
+    assert_eq!(data.get("email").and_then(|v| v.as_str()), Some("bob@example.com"), "Version 1 should have original email");
+
+    // Test: Get current version metadata using repository
+    let current_metadata = version_repo.get_current_entity_metadata(entity_uuid).await.unwrap();
+    assert!(current_metadata.is_some(), "Current metadata should exist");
+    let (current_version, _, current_updated_by, _current_updated_by_name) = current_metadata.unwrap();
+    assert_eq!(current_version, 2, "Current version should be 2");
+    assert_eq!(current_updated_by, Some(updated_by), "Current version should be attributed to updated_by");
+
+    // Test: Get current entity data using repository
+    let current_data = version_repo.get_current_entity_data(entity_uuid, &entity_type).await.unwrap();
+    assert!(current_data.is_some(), "Current data should exist");
+    let current_data_value = current_data.unwrap();
+    let current_data_obj = current_data_value.as_object().unwrap();
+    assert_eq!(current_data_obj.get("name").and_then(|v| v.as_str()), Some("Bob Updated"), "Current version should have updated name");
+    assert_eq!(current_data_obj.get("email").and_then(|v| v.as_str()), Some("bob.updated@example.com"), "Current version should have updated email");
 }
