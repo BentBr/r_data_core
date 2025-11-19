@@ -74,7 +74,7 @@ impl WorkflowVersioningRepository {
                 wv.created_at,
                 wv.created_by,
                 COALESCE(
-                    TRIM(COALESCE(au.first_name || ' ', '') || COALESCE(au.last_name, '')),
+                    NULLIF(TRIM(COALESCE(au.first_name || ' ', '') || COALESCE(au.last_name, '')), ''),
                     au.username
                 ) AS created_by_name
             FROM workflow_versions wv
@@ -139,7 +139,7 @@ impl WorkflowVersioningRepository {
                 w.updated_at,
                 w.updated_by,
                 COALESCE(
-                    TRIM(COALESCE(au.first_name || ' ', '') || COALESCE(au.last_name, '')),
+                    NULLIF(TRIM(COALESCE(au.first_name || ' ', '') || COALESCE(au.last_name, '')), ''),
                     au.username
                 ) AS updated_by_name
             FROM workflows w

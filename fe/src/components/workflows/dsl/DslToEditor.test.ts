@@ -242,6 +242,105 @@ describe('DslToEditor', () => {
         expect(hasUpdateKeyField).toBe(true)
     })
 
+    it('shows update_key field when mode is create_or_update', async () => {
+        const toDef: ToDef = {
+            type: 'entity',
+            entity_definition: 'test_entity',
+            path: '/test',
+            mode: 'create_or_update',
+            update_key: 'entity_key',
+            mapping: {},
+        }
+        const wrapper = mount(DslToEditor, {
+            props: {
+                modelValue: toDef,
+            },
+        })
+
+        await nextTick()
+
+        const textFields = wrapper.findAllComponents({ name: 'VTextField' })
+        const hasUpdateKeyField = textFields.some(tf => {
+            const label = tf.props('label') as string
+            return label && label.includes('update_key')
+        })
+
+        expect(hasUpdateKeyField).toBe(true)
+    })
+
+    it('includes create_or_update in entity modes', async () => {
+        const toDef: ToDef = {
+            type: 'entity',
+            entity_definition: 'test_entity',
+            path: '/test',
+            mode: 'create',
+            mapping: {},
+        }
+        const wrapper = mount(DslToEditor, {
+            props: {
+                modelValue: toDef,
+            },
+        })
+
+        await nextTick()
+
+        const selects = wrapper.findAllComponents({ name: 'VSelect' })
+        const modeSelect = selects.find(s => {
+            const items = s.props('items') as any[]
+            return (
+                items &&
+                items.some(
+                    (item: any) =>
+                        item.value === 'create' ||
+                        item.value === 'update' ||
+                        item.value === 'create_or_update'
+                )
+            )
+        })
+
+        expect(modeSelect).toBeTruthy()
+        if (modeSelect) {
+            const items = modeSelect.props('items') as any[]
+            const hasCreateOrUpdate = items.some((item: any) => item.value === 'create_or_update')
+            expect(hasCreateOrUpdate).toBe(true)
+        }
+    })
+
+    it('updates entity mode to create_or_update', async () => {
+        const toDef: ToDef = {
+            type: 'entity',
+            entity_definition: 'test_entity',
+            path: '/test',
+            mode: 'create',
+            mapping: {},
+        }
+        const wrapper = mount(DslToEditor, {
+            props: {
+                modelValue: toDef,
+            },
+        })
+
+        await nextTick()
+
+        const selects = wrapper.findAllComponents({ name: 'VSelect' })
+        const modeSelect = selects.find(s => {
+            const items = s.props('items') as any[]
+            return items && items.some((item: any) => item.value === 'create_or_update')
+        })
+
+        if (modeSelect) {
+            await modeSelect.vm.$emit('update:modelValue', 'create_or_update')
+            await nextTick()
+
+            const emitted = wrapper.emitted('update:modelValue') as any[]
+            expect(emitted?.length).toBeGreaterThan(0)
+            const updated = emitted[emitted.length - 1][0] as ToDef
+            if (updated.type === 'entity') {
+                expect(updated.mode).toBe('create_or_update')
+            }
+        }
+    })
+
     it('adds mapping via addMapping button', async () => {
         const toDef: ToDef = {
             type: 'csv',

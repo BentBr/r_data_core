@@ -62,7 +62,7 @@
                         Next: {{ nextRuns.join(', ') }}
                     </div>
 
-                    <v-expansion-panels class="mt-2">
+                    <v-expansion-panels class="mt-2" :model-value="[]">
                         <v-expansion-panel>
                             <v-expansion-panel-title>{{
                                 t('workflows.create.config_label')
@@ -212,6 +212,21 @@
             }
             await typedHttpClient.validateDsl(steps)
         } catch (e: any) {
+            if (e instanceof ValidationError) {
+                // Handle Symfony-style validation errors
+                const violations = e.violations || []
+                if (violations.length > 0) {
+                    // Show all violations, with field names if available
+                    const errorMessages = violations.map(v => {
+                        const fieldName = v.field && v.field !== 'dsl' ? `${v.field}: ` : ''
+                        return `${fieldName}${v.message}`
+                    })
+                    configError.value = errorMessages.join('; ')
+                } else {
+                    configError.value = e.message || t('workflows.create.dsl_invalid')
+                }
+                return
+            }
             if (e?.violations) {
                 const v = e.violations[0]
                 configError.value = v?.message || t('workflows.create.dsl_invalid')

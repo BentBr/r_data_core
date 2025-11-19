@@ -141,8 +141,8 @@ export class BaseTypedHttpClient {
                         })
                     }
 
-                    // Handle validation errors (422) with structured violations
-                    if (response.status === 422 && errorData.violations) {
+                    // Handle validation errors (422) and bad request errors (400) with structured violations
+                    if ((response.status === 422 || response.status === 400) && errorData.violations) {
                         try {
                             const validationError = ValidationErrorResponseSchema.parse(errorData)
                             throw new ValidationError(
@@ -161,6 +161,26 @@ export class BaseTypedHttpClient {
                             throw new Error(
                                 errorData.message ??
                                     `HTTP ${response.status}: ${response.statusText}`
+                            )
+                        }
+                    }
+
+                    // Handle 400 errors that might have validation-like structure
+                    if (response.status === 400 && errorData.message) {
+                        // Try to extract field errors from the message (Symfony style)
+                        const message = errorData.message
+                        // Check if it's a deserialization error that can be converted to validation error
+                        if (message.includes('unknown variant') || message.includes('Json deserialize error')) {
+                            // Extract field name from error message if possible
+                            const fieldMatch = message.match(/unknown variant `(\w+)`/i)
+                            const field = fieldMatch ? fieldMatch[1] : 'dsl'
+                            throw new ValidationError(
+                                'Validation failed',
+                                [{
+                                    field,
+                                    message: message.replace(/Json deserialize error: /, ''),
+                                    code: 'INVALID_VALUE'
+                                }]
                             )
                         }
                     }

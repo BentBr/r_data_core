@@ -128,7 +128,7 @@ impl EntityDefinitionVersioningRepository {
                 edv.created_at,
                 edv.created_by,
                 COALESCE(
-                    TRIM(COALESCE(au.first_name || ' ', '') || COALESCE(au.last_name, '')),
+                    NULLIF(TRIM(COALESCE(au.first_name || ' ', '') || COALESCE(au.last_name, '')), ''),
                     au.username,
                     w.name
                 ) AS created_by_name
@@ -196,7 +196,7 @@ impl EntityDefinitionVersioningRepository {
                 ed.updated_at,
                 ed.updated_by,
                 COALESCE(
-                    TRIM(COALESCE(au.first_name || ' ', '') || COALESCE(au.last_name, '')),
+                    NULLIF(TRIM(COALESCE(au.first_name || ' ', '') || COALESCE(au.last_name, '')), ''),
                     au.username,
                     w.name
                 ) AS updated_by_name

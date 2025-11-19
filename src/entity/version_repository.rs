@@ -37,7 +37,7 @@ impl VersionRepository {
                 ev.created_at,
                 ev.created_by,
                 COALESCE(
-                    TRIM(COALESCE(au.first_name || ' ', '') || COALESCE(au.last_name, '')),
+                    NULLIF(TRIM(COALESCE(au.first_name || ' ', '') || COALESCE(au.last_name, '')), ''),
                     au.username,
                     w.name
                 ) AS created_by_name
@@ -205,7 +205,7 @@ impl VersionRepository {
                 er.updated_at,
                 er.updated_by,
                 COALESCE(
-                    TRIM(COALESCE(au.first_name || ' ', '') || COALESCE(au.last_name, '')),
+                    NULLIF(TRIM(COALESCE(au.first_name || ' ', '') || COALESCE(au.last_name, '')), ''),
                     au.username,
                     w.name
                 ) AS updated_by_name

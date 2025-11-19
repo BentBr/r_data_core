@@ -186,7 +186,7 @@
                 <v-card-text class="pa-3">
                     <v-expansion-panels
                         variant="accordion"
-                        :model-value="entityDefinition ? [0, 1, 2] : [0, 2]"
+                        :model-value="entityDefinition ? [0] : []"
                     >
                         <v-expansion-panel v-if="entityDefinition">
                             <v-expansion-panel-title>
