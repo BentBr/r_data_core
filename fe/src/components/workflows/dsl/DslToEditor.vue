@@ -129,7 +129,7 @@
                 @update:model-value="updateField('mode', $event)"
             />
             <v-text-field
-                v-if="(modelValue as any).mode === 'update'"
+                v-if="(modelValue as any).mode === 'update' || (modelValue as any).mode === 'create_or_update'"
                 :model-value="(modelValue as any).update_key"
                 :label="t('workflows.dsl.update_key')"
                 density="comfortable"
@@ -215,6 +215,7 @@
     const entityModes = [
         { title: 'Create', value: 'create' },
         { title: 'Update', value: 'update' },
+        { title: 'Create or Update', value: 'create_or_update' },
     ]
 
     // Load entity definitions on mount

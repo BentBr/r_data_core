@@ -254,6 +254,16 @@
         { immediate: true }
     )
 
+    // Reload versions when switching to history tab
+    watch(
+        () => activeTab.value,
+        async (newTab) => {
+            if (newTab === 'history' && props.definition?.uuid) {
+                await loadVersions()
+            }
+        }
+    )
+
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleString()
     }

@@ -1,4 +1,4 @@
-use crate::workflow::data::adapters::auth::{AuthConfig, KeyLocation};
+use crate::workflow::data::adapters::auth::AuthConfig;
 use crate::workflow::data::adapters::destination::HttpMethod;
 use crate::workflow::dsl::validate_mapping;
 use anyhow::{bail, Result};
@@ -41,6 +41,7 @@ pub enum OutputMode {
 pub enum EntityWriteMode {
     Create,
     Update,
+    CreateOrUpdate,
 }
 
 /// TO definitions - where data is written

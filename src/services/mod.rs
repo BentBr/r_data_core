@@ -8,6 +8,7 @@ pub mod entity_definition_service;
 pub mod settings_service;
 pub mod version_service;
 pub mod worker;
+pub mod workflow;
 pub mod workflow_service;
 
 pub use adapters::WorkflowRepositoryAdapter;

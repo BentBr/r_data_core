@@ -269,7 +269,7 @@
         }
     }
 
-    const handleItemClick = (item: TreeNode) => {
+    const handleItemClick = async (item: TreeNode) => {
         if (item.entity_type === 'group') {
             // For groups, toggle expansion
             const groupId = item.id
@@ -278,17 +278,34 @@
             } else {
                 expandedGroups.value.push(groupId)
             }
-        } else {
-            // For entity definitions, select them
-            const definition = entityDefinitions.value.find(d => d.uuid === item.uuid)
-            if (definition) {
-                selectedDefinition.value = definition
+        } else if (item.uuid) {
+            // For entity definitions, reload from server (like entities do)
+            try {
+                loading.value = true
+                const definition = await typedHttpClient.getEntityDefinition(item.uuid)
+                // Sanitize fields
+                const sanitizedDefinition = {
+                    ...definition,
+                    fields: sanitizeFields(definition.fields),
+                }
+                selectedDefinition.value = sanitizedDefinition
                 // Deep copy the definition including fields with sanitization
                 originalDefinition.value = {
-                    ...definition,
-                    fields: sanitizeFields(definition.fields.map(field => ({ ...field }))),
+                    ...sanitizedDefinition,
+                    fields: sanitizeFields(sanitizedDefinition.fields.map(field => ({ ...field }))),
                 }
-                selectedItems.value = [item.uuid!]
+                selectedItems.value = [item.uuid]
+                
+                // Update the cached version in the list
+                const index = entityDefinitions.value.findIndex(d => d.uuid === item.uuid)
+                if (index !== -1) {
+                    entityDefinitions.value[index] = sanitizedDefinition
+                }
+            } catch (err) {
+                console.error('Failed to load entity definition:', err)
+                showError(err instanceof Error ? err.message : 'Failed to load entity definition')
+            } finally {
+                loading.value = false
             }
         }
     }
@@ -312,12 +329,30 @@
                 published: selectedDefinition.value.published,
             })
 
-            // Update original definition to reflect saved state
-            originalDefinition.value = {
-                ...selectedDefinition.value,
-                fields: sanitizeFields(
-                    selectedDefinition.value.fields.map(field => ({ ...field }))
-                ),
+            // Reload the definition from server to get latest version and history
+            if (selectedDefinition.value?.uuid) {
+                try {
+                    const reloaded = await typedHttpClient.getEntityDefinition(selectedDefinition.value.uuid)
+                    const sanitizedReloaded = {
+                        ...reloaded,
+                        fields: sanitizeFields(reloaded.fields),
+                    }
+                    selectedDefinition.value = sanitizedReloaded
+                    originalDefinition.value = {
+                        ...sanitizedReloaded,
+                        fields: sanitizeFields(sanitizedReloaded.fields.map(field => ({ ...field }))),
+                    }
+                    
+                    // Update the cached version in the list
+                    const index = entityDefinitions.value.findIndex(
+                        d => d.uuid === selectedDefinition.value?.uuid
+                    )
+                    if (index !== -1) {
+                        entityDefinitions.value[index] = sanitizedReloaded
+                    }
+                } catch (err) {
+                    console.error('Failed to reload entity definition:', err)
+                }
             }
 
             showSuccess(t('entity_definitions.details.changes_saved'))
@@ -388,18 +423,30 @@
         try {
             await typedHttpClient.updateEntityDefinition(selectedDefinition.value.uuid!, data)
 
-            // Update the selected definition
-            selectedDefinition.value = {
-                ...selectedDefinition.value,
-                ...data,
-            }
-
-            // Update the list
-            const index = entityDefinitions.value.findIndex(
-                d => d.uuid === selectedDefinition.value?.uuid
-            )
-            if (index !== -1) {
-                entityDefinitions.value[index] = selectedDefinition.value
+            // Reload the definition from server to get latest version and history
+            if (selectedDefinition.value?.uuid) {
+                try {
+                    const reloaded = await typedHttpClient.getEntityDefinition(selectedDefinition.value.uuid)
+                    const sanitizedReloaded = {
+                        ...reloaded,
+                        fields: sanitizeFields(reloaded.fields),
+                    }
+                    selectedDefinition.value = sanitizedReloaded
+                    originalDefinition.value = {
+                        ...sanitizedReloaded,
+                        fields: sanitizeFields(sanitizedReloaded.fields.map(field => ({ ...field }))),
+                    }
+                    
+                    // Update the cached version in the list
+                    const index = entityDefinitions.value.findIndex(
+                        d => d.uuid === selectedDefinition.value?.uuid
+                    )
+                    if (index !== -1) {
+                        entityDefinitions.value[index] = sanitizedReloaded
+                    }
+                } catch (err) {
+                    console.error('Failed to reload entity definition:', err)
+                }
             }
 
             showEditDialog.value = false

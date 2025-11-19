@@ -89,7 +89,7 @@ export type ToDef =
           type: 'entity'
           entity_definition: string
           path: string
-          mode: 'create' | 'update'
+          mode: 'create' | 'update' | 'create_or_update'
           update_key?: string
           identify?: { field: string; value: string }
           mapping: Mapping

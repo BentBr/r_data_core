@@ -108,7 +108,7 @@ export const DslToEntitySchema = z.object({
     type: z.literal('entity'),
     entity_definition: z.string(),
     path: z.string(),
-    mode: z.enum(['create', 'update']),
+    mode: z.enum(['create', 'update', 'create_or_update']),
     identify: DslEntityFilterSchema.optional(),
     update_key: z.string().optional(),
     mapping: z.record(z.string(), z.string()),

@@ -95,7 +95,59 @@
 
                     <v-row v-if="showDefaultValue">
                         <v-col cols="12">
+                            <!-- Boolean: Dropdown -->
+                            <v-select
+                                v-if="form.field_type === 'Boolean'"
+                                v-model="form.default_value"
+                                :label="
+                                    t('entity_definitions.fields.default_value') + ' (Optional)'
+                                "
+                                :items="[
+                                    { title: 'True', value: true },
+                                    { title: 'False', value: false },
+                                ]"
+                                clearable
+                            />
+                            <!-- Integer: Number input -->
                             <v-text-field
+                                v-else-if="form.field_type === 'Integer'"
+                                v-model.number="form.default_value"
+                                :label="
+                                    t('entity_definitions.fields.default_value') + ' (Optional)'
+                                "
+                                type="number"
+                            />
+                            <!-- Float: Number input -->
+                            <v-text-field
+                                v-else-if="form.field_type === 'Float'"
+                                v-model.number="form.default_value"
+                                :label="
+                                    t('entity_definitions.fields.default_value') + ' (Optional)'
+                                "
+                                type="number"
+                                step="any"
+                            />
+                            <!-- Date: Date picker -->
+                            <v-text-field
+                                v-else-if="form.field_type === 'Date'"
+                                v-model="form.default_value"
+                                :label="
+                                    t('entity_definitions.fields.default_value') + ' (Optional)'
+                                "
+                                type="date"
+                            />
+                            <!-- DateTime: DateTime picker -->
+                            <v-text-field
+                                v-else-if="form.field_type === 'DateTime'"
+                                v-model="form.default_value"
+                                :label="
+                                    t('entity_definitions.fields.default_value') + ' (Optional)'
+                                "
+                                type="datetime-local"
+                            />
+                            <!-- String/Text: Text input -->
+                            <v-text-field
+                                v-else
                                 v-model="form.default_value"
                                 :label="
                                     t('entity_definitions.fields.default_value') + ' (Optional)'
@@ -195,7 +247,9 @@
     })
 
     const showDefaultValue = computed(() => {
-        return ['String', 'Text', 'Integer', 'Float', 'Boolean'].includes(form.value.field_type)
+        return ['String', 'Text', 'Integer', 'Float', 'Boolean', 'Date', 'DateTime'].includes(
+            form.value.field_type
+        )
     })
 
     const resetForm = () => {
@@ -244,14 +298,59 @@
         resetForm()
     }
 
+    // Format default value to proper type
+    const formatDefaultValue = (value: any, fieldType: string): any => {
+        if (value === null || value === undefined || value === '') {
+            return undefined
+        }
+
+        switch (fieldType) {
+            case 'Boolean':
+                if (typeof value === 'boolean') return value
+                if (typeof value === 'string') {
+                    const lower = value.toLowerCase()
+                    return lower === 'true' || lower === '1' || lower === 'yes' || lower === 'on'
+                }
+                if (typeof value === 'number') return value !== 0
+                return false
+            case 'Integer':
+                if (typeof value === 'number') return Math.floor(value)
+                if (typeof value === 'string') {
+                    const parsed = parseInt(value, 10)
+                    return isNaN(parsed) ? undefined : parsed
+                }
+                return undefined
+            case 'Float':
+                if (typeof value === 'number') return value
+                if (typeof value === 'string') {
+                    const parsed = parseFloat(value)
+                    return isNaN(parsed) ? undefined : parsed
+                }
+                return undefined
+            case 'Date':
+            case 'DateTime':
+                // Keep as string for date/datetime
+                return typeof value === 'string' ? value : undefined
+            default:
+                // String, Text, etc. - keep as string
+                return typeof value === 'string' ? value : String(value)
+        }
+    }
+
     const saveField = () => {
         if (!formValid.value) {
             return
         }
 
+        // Format default value to proper type
+        const formattedDefaultValue = form.value.default_value !== undefined
+            ? formatDefaultValue(form.value.default_value, form.value.field_type)
+            : undefined
+
         // Ensure constraints and ui_settings are always objects, not null
         const sanitizedField = {
             ...form.value,
+            default_value: formattedDefaultValue,
             constraints: form.value.constraints ?? {},
             ui_settings: form.value.ui_settings ?? {},
         }

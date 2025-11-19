@@ -1,5 +1,8 @@
 use crate::api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use crate::services::dynamic_entity_service::DynamicEntityService;
+use crate::services::workflow::entity_persistence::{
+    create_entity, create_or_update_entity, update_entity, PersistenceContext,
+};
 use crate::workflow::data::repository_trait::WorkflowRepositoryTrait;
 use crate::workflow::data::Workflow;
 use cron::Schedule;
@@ -643,6 +646,7 @@ impl WorkflowService {
                                     let produced_for_update = if matches!(
                                         mode,
                                         crate::workflow::dsl::EntityWriteMode::Update
+                                            | crate::workflow::dsl::EntityWriteMode::CreateOrUpdate
                                     ) {
                                         let mut merged = produced.clone();
                                         if let (Some(merged_obj), Some(payload_obj)) =
@@ -665,28 +669,32 @@ impl WorkflowService {
                                         produced.clone()
                                     };
 
+                                    let ctx = PersistenceContext {
+                                        entity_type: entity_definition.clone(),
+                                        produced: produced_for_update.clone(),
+                                        path: Some(path.clone()),
+                                        run_uuid,
+                                        update_key: update_key.clone(),
+                                        skip_versioning: wf.versioning_disabled,
+                                    };
+
                                     let result = match mode {
                                         crate::workflow::dsl::EntityWriteMode::Create => {
-                                            persist_entity_create(
-                                                de_service,
-                                                &entity_definition,
-                                                &produced,
-                                                Some(&path),
+                                            let create_ctx = PersistenceContext {
+                                                entity_type: entity_definition.clone(),
+                                                produced: produced.clone(),
+                                                path: Some(path.clone()),
                                                 run_uuid,
-                                            )
-                                            .await
+                                                update_key: None,
+                                                skip_versioning: wf.versioning_disabled,
+                                            };
+                                            create_entity(de_service, &create_ctx).await
                                         }
                                         crate::workflow::dsl::EntityWriteMode::Update => {
-                                            persist_entity_update(
-                                                de_service,
-                                                &entity_definition,
-                                                &produced_for_update,
-                                                Some(&path),
-                                                run_uuid,
-                                                update_key.as_ref(),
-                                                wf.versioning_disabled,
-                                            )
-                                            .await
+                                            update_entity(de_service, &ctx).await
+                                        }
+                                        crate::workflow::dsl::EntityWriteMode::CreateOrUpdate => {
+                                            create_or_update_entity(de_service, &ctx).await
                                         }
                                     };
                                     if let Err(e) = result {
@@ -696,6 +704,9 @@ impl WorkflowService {
                                             }
                                             crate::workflow::dsl::EntityWriteMode::Update => {
                                                 "update"
+                                            }
+                                            crate::workflow::dsl::EntityWriteMode::CreateOrUpdate => {
+                                                "create_or_update"
                                             }
                                         };
                                         let _ = self
@@ -823,317 +834,6 @@ impl WorkflowService {
         let _ = self.repo.mark_run_failure(run_uuid, &message).await;
         Err(anyhow::anyhow!(message))
     }
-}
-
-async fn persist_entity_create(
-    de_service: &DynamicEntityService,
-    entity_type: &str,
-    produced: &serde_json::Value,
-    path: Option<&str>,
-    run_uuid: Uuid,
-) -> anyhow::Result<()> {
-    use crate::entity::dynamic_entity::entity::DynamicEntity;
-    use std::sync::Arc;
-
-    // Build field_data as a flat object from produced
-    let mut field_data: std::collections::HashMap<String, serde_json::Value> =
-        std::collections::HashMap::new();
-    if let Some(obj) = produced.as_object() {
-        for (k, v) in obj.iter() {
-            field_data.insert(k.clone(), v.clone());
-        }
-    }
-    // Respect path from config - it should always override path from mapping
-    // Path is a reserved field and should come from the workflow config, not from data mapping
-    if let Some(p) = path {
-        let normalized_path = if p.starts_with('/') {
-            p.to_string()
-        } else {
-            format!("/{}", p)
-        };
-        // Always use the path from config, overriding any path from mapping
-        field_data.insert("path".to_string(), serde_json::json!(normalized_path));
-    } else if let Some(path_value) = field_data.get("path") {
-        // Only use path from mapping if config path is not provided
-        // Normalize path from mapping if it doesn't start with /
-        if let Some(path_str) = path_value.as_str() {
-            if !path_str.starts_with('/') {
-                field_data.insert(
-                    "path".to_string(),
-                    serde_json::json!(format!("/{}", path_str)),
-                );
-            }
-        }
-    }
-
-    // Fetch entity definition from the embedded definition service
-    let defs = de_service.entity_definition_service();
-    let def = defs
-        .get_entity_definition_by_entity_type(entity_type)
-        .await?;
-
-    // Keep field names exactly as provided - no case normalization
-    // Validation will fail if field names don't match definition exactly
-    let reserved: std::collections::HashSet<&'static str> = [
-        "uuid",
-        "path",
-        "parent_uuid",
-        "entity_key",
-        "created_at",
-        "updated_at",
-        "created_by",
-        "updated_by",
-        "published",
-        "version",
-    ]
-    .into_iter()
-    .collect();
-    let mut normalized_field_data: std::collections::HashMap<String, serde_json::Value> =
-        std::collections::HashMap::new();
-    for (k, v) in field_data.into_iter() {
-        if reserved.contains(k.as_str()) {
-            // Coerce published from string if needed
-            if k == "published" {
-                let coerced = match v {
-                    serde_json::Value::String(s) => match s.to_lowercase().as_str() {
-                        "true" | "1" => serde_json::Value::Bool(true),
-                        "false" | "0" => serde_json::Value::Bool(false),
-                        _ => serde_json::Value::String(s),
-                    },
-                    other => other,
-                };
-                normalized_field_data.insert(k, coerced);
-            } else if k == "entity_key" {
-                // allow explicit mapping of entity_key
-                normalized_field_data.insert(k, v);
-            } else if k == "uuid"
-                || k == "created_at"
-                || k == "updated_at"
-                || k == "created_by"
-                || k == "updated_by"
-            {
-                // ignore protected fields from import payload
-                continue;
-            } else {
-                // keep other reserved fields like path, parent_uuid, version if provided
-                normalized_field_data.insert(k, v);
-            }
-            continue;
-        }
-        // Keep field names exactly as provided - validator will check exact match
-        normalized_field_data.insert(k, v);
-    }
-
-    // Force uuid generation (repository requires uuid on create)
-    normalized_field_data
-        .entry("uuid".to_string())
-        .or_insert_with(|| serde_json::json!(uuid::Uuid::now_v7().to_string()));
-
-    // Ensure audit fields exist for worker-created entities
-    // Use workflow_run UUID for audit fields
-    normalized_field_data
-        .entry("created_by".to_string())
-        .or_insert_with(|| serde_json::json!(run_uuid.to_string()));
-    normalized_field_data
-        .entry("updated_by".to_string())
-        .or_insert_with(|| serde_json::json!(run_uuid.to_string()));
-
-    // If entity_key is missing, generate `<entity_type>-<count+1>-<hash8>`
-    if !normalized_field_data.contains_key("entity_key") {
-        let existing_count = de_service.count_entities(entity_type).await.unwrap_or(0);
-        let rand = uuid::Uuid::now_v7().to_string();
-        let short = &rand[..8];
-        let key = format!("{}-{}-{}", entity_type, existing_count + 1, short);
-        normalized_field_data.insert("entity_key".to_string(), serde_json::json!(key));
-    }
-
-    // Log missing required fields for debugging inconsistent behavior
-    let missing_required_fields: Vec<String> = def
-        .fields
-        .iter()
-        .filter(|f| f.required && !normalized_field_data.contains_key(&f.name))
-        .map(|f| f.name.clone())
-        .collect();
-    if !missing_required_fields.is_empty() {
-        log::warn!(
-            "persist_entity_create: Missing required fields for entity_type={}, run_uuid={}, missing_fields={:?}, produced_keys={:?}",
-            entity_type,
-            run_uuid,
-            missing_required_fields,
-            produced.as_object().map(|o| o.keys().cloned().collect::<Vec<_>>()).unwrap_or_default()
-        );
-    }
-
-    let entity = DynamicEntity {
-        entity_type: entity_type.to_string(),
-        field_data: normalized_field_data,
-        definition: Arc::new(def),
-    };
-    de_service.create_entity(&entity).await?;
-    Ok(())
-}
-
-async fn persist_entity_update(
-    de_service: &DynamicEntityService,
-    entity_type: &str,
-    produced: &serde_json::Value,
-    path: Option<&str>,
-    run_uuid: Uuid,
-    update_key: Option<&String>,
-    skip_versioning: bool,
-) -> anyhow::Result<()> {
-    use crate::entity::dynamic_entity::entity::DynamicEntity;
-
-    // Build field_data as a flat object from produced (keep original for lookup)
-    let mut field_data: std::collections::HashMap<String, serde_json::Value> =
-        std::collections::HashMap::new();
-    if let Some(obj) = produced.as_object() {
-        for (k, v) in obj.iter() {
-            field_data.insert(k.clone(), v.clone());
-        }
-    }
-    let original_field_data = field_data.clone();
-    // Respect path from config if not already set by mapping/normalized
-    if let Some(p) = path {
-        field_data
-            .entry("path".to_string())
-            .or_insert_with(|| serde_json::json!(p));
-    }
-
-    // Keep field names exactly as provided - no case normalization
-    // Validation will fail if field names don't match definition exactly
-    // Note: Entity definition is fetched during validation in update_entity()
-    let reserved: std::collections::HashSet<&'static str> = [
-        "uuid",
-        "path",
-        "parent_uuid",
-        "entity_key",
-        "created_at",
-        "updated_at",
-        "created_by",
-        "updated_by",
-        "published",
-        "version",
-    ]
-    .into_iter()
-    .collect();
-    let mut normalized_field_data: std::collections::HashMap<String, serde_json::Value> =
-        std::collections::HashMap::new();
-    for (k, v) in field_data.into_iter() {
-        if reserved.contains(k.as_str()) {
-            // Coerce published from string if needed
-            if k == "published" {
-                let coerced = match v {
-                    serde_json::Value::String(s) => match s.to_lowercase().as_str() {
-                        "true" | "1" => serde_json::Value::Bool(true),
-                        "false" | "0" => serde_json::Value::Bool(false),
-                        _ => serde_json::Value::String(s),
-                    },
-                    other => other,
-                };
-                normalized_field_data.insert(k, coerced);
-            } else if k == "entity_key" {
-                // allow explicit mapping of entity_key
-                normalized_field_data.insert(k, v);
-            } else if k == "created_at" || k == "created_by" {
-                // ignore protected fields from import payload (don't allow changing created_at/created_by)
-                continue;
-            } else {
-                // keep other reserved fields like uuid, path, parent_uuid, updated_at, updated_by, version if provided
-                normalized_field_data.insert(k, v);
-            }
-            continue;
-        }
-        // Keep field names exactly as provided - validator will check exact match
-        normalized_field_data.insert(k, v);
-    }
-
-    // Find existing entity by uuid, update_key, or entity_key in produced data
-    let mut existing_entity: Option<DynamicEntity> = None;
-
-    // First, try to find by UUID if present
-    if let Some(serde_json::Value::String(uuid_str)) = normalized_field_data.get("uuid") {
-        if let Ok(uuid) = uuid::Uuid::parse_str(uuid_str) {
-            if let Ok(Some(entity)) = de_service
-                .get_entity_by_uuid(entity_type, &uuid, None)
-                .await
-            {
-                existing_entity = Some(entity);
-            }
-        }
-    }
-
-    // If not found by UUID, try to find by update_key or entity_key
-    if existing_entity.is_none() {
-        let search_key = if let Some(key_field) = update_key {
-            // Use the update_key field name to find the value in produced data
-            // First check normalized_field_data, then check original field_data, then check produced directly
-            normalized_field_data
-                .get(key_field)
-                .or_else(|| original_field_data.get(key_field))
-                .or_else(|| {
-                    if let Some(produced_obj) = produced.as_object() {
-                        produced_obj.get(key_field)
-                    } else {
-                        None
-                    }
-                })
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string())
-        } else if let Some(serde_json::Value::String(key)) = normalized_field_data.get("entity_key")
-        {
-            Some(key.clone())
-        } else if let Some(serde_json::Value::String(key)) = original_field_data.get("entity_key") {
-            Some(key.clone())
-        } else if let Some(serde_json::Value::String(key)) = produced.get("entity_key") {
-            Some(key.clone())
-        } else {
-            None
-        };
-
-        if let Some(key_value) = search_key {
-            // Use filter_entities to find by entity_key
-            let mut filters = std::collections::HashMap::new();
-            filters.insert("entity_key".to_string(), serde_json::json!(key_value));
-            if let Ok(entities) = de_service
-                .filter_entities(entity_type, 1, 0, Some(filters), None, None, None)
-                .await
-            {
-                if let Some(entity) = entities.first() {
-                    existing_entity = Some(entity.clone());
-                }
-            }
-        }
-    }
-
-    // If entity not found, return error
-    let mut entity = existing_entity.ok_or_else(|| {
-        anyhow::anyhow!("Entity not found for update. Provide uuid or entity_key in the data.")
-    })?;
-
-    // Update the entity's field_data with new values
-    for (k, v) in normalized_field_data.iter() {
-        // Don't overwrite created_at or created_by
-        if k != "created_at" && k != "created_by" {
-            entity.field_data.insert(k.clone(), v.clone());
-        }
-    }
-
-    // Set updated_by to run_uuid
-    entity.field_data.insert(
-        "updated_by".to_string(),
-        serde_json::json!(run_uuid.to_string()),
-    );
-
-    // Ensure uuid is set (should already be present from existing entity)
-    if !entity.field_data.contains_key("uuid") {
-        return Err(anyhow::anyhow!("Cannot update entity: missing uuid"));
-    }
-
-    de_service
-        .update_entity_with_options(&entity, skip_versioning)
-        .await?;
-    Ok(())
 }
 
 fn extract_sqlx_meta(e: &anyhow::Error) -> serde_json::Value {
