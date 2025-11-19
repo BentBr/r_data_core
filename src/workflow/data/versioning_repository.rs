@@ -1,7 +1,9 @@
+use async_trait::async_trait;
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
 use crate::error::{Error, Result};
+use crate::versioning::purger_trait::VersionPurger;
 
 /// Repository for workflow versioning operations
 pub struct WorkflowVersioningRepository {
@@ -159,6 +161,60 @@ impl WorkflowVersioningRepository {
             let updated_by_name: Option<String> = r.try_get("updated_by_name").ok();
             (version, updated_at, updated_by, updated_by_name)
         }))
+    }
+
+    /// Prune workflow versions older than the specified number of days
+    pub async fn prune_older_than_days(&self, days: i32) -> Result<u64> {
+        let res = sqlx::query(
+            r#"
+            DELETE FROM workflow_versions
+            WHERE created_at < NOW() - ($1::text || ' days')::interval
+            "#,
+        )
+        .bind(days.to_string())
+        .execute(&self.pool)
+        .await
+        .map_err(Error::Database)?;
+        Ok(res.rows_affected())
+    }
+
+    /// Prune workflow versions, keeping only the latest N versions per workflow
+    pub async fn prune_keep_latest_per_workflow(&self, keep: i32) -> Result<u64> {
+        let res = sqlx::query(
+            r#"
+            WITH ranked AS (
+                SELECT workflow_uuid,
+                       version_number,
+                       ROW_NUMBER() OVER (PARTITION BY workflow_uuid ORDER BY version_number DESC) AS rn
+                FROM workflow_versions
+            )
+            DELETE FROM workflow_versions wv
+            USING ranked r
+            WHERE wv.workflow_uuid = r.workflow_uuid
+              AND wv.version_number = r.version_number
+              AND r.rn > $1
+            "#,
+        )
+        .bind(keep)
+        .execute(&self.pool)
+        .await
+        .map_err(Error::Database)?;
+        Ok(res.rows_affected())
+    }
+}
+
+#[async_trait]
+impl VersionPurger for WorkflowVersioningRepository {
+    fn repository_name(&self) -> &'static str {
+        "workflows"
+    }
+
+    async fn prune_older_than_days(&self, days: i32) -> Result<u64> {
+        WorkflowVersioningRepository::prune_older_than_days(self, days).await
+    }
+
+    async fn prune_keep_latest(&self, keep: i32) -> Result<u64> {
+        self.prune_keep_latest_per_workflow(keep).await
     }
 }
 

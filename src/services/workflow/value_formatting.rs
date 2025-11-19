@@ -333,8 +333,8 @@ mod tests {
     #[test]
     fn test_cast_to_float_from_number() {
         assert_eq!(
-            cast_field_value(json!(3.14), &FieldType::Float),
-            json!(3.14)
+            cast_field_value(json!(2.14), &FieldType::Float),
+            json!(2.14)
         );
         assert_eq!(cast_field_value(json!(0.0), &FieldType::Float), json!(0.0));
         assert_eq!(
@@ -346,8 +346,8 @@ mod tests {
     #[test]
     fn test_cast_to_float_from_string() {
         assert_eq!(
-            cast_field_value(json!("3.14"), &FieldType::Float),
-            json!(3.14)
+            cast_field_value(json!("2.14"), &FieldType::Float),
+            json!(2.14)
         );
         assert_eq!(
             cast_field_value(json!("0.0"), &FieldType::Float),

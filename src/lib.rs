@@ -4,6 +4,7 @@ pub mod config;
 pub mod db;
 pub mod entity;
 pub mod error;
+pub mod maintenance;
 pub mod notification;
 pub mod services;
 pub mod system_settings;

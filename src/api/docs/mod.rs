@@ -44,7 +44,9 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         crate::api::admin::dsl::routes::validate_dsl,
         crate::api::admin::dsl::routes::list_from_options,
         crate::api::admin::dsl::routes::list_to_options,
-        crate::api::admin::dsl::routes::list_transform_options
+        crate::api::admin::dsl::routes::list_transform_options,
+        crate::api::admin::system::routes::get_entity_versioning_settings,
+        crate::api::admin::system::routes::update_entity_versioning_settings,
     ),
     components(
         schemas(
@@ -110,12 +112,12 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
     modifiers(&SecurityAddon, &UuidSchemaAddon, &DateTimeSchemaAddon, &ModelSchemaAddon, &JsonValueSchemaAddon),
     tags(
         (name = "admin-health", description = "Admin health check endpoints"),
-        (name = "admin", description = "Administrative endpoints for managing system resources"),
         (name = "admin-auth", description = "Admin authentication endpoints"),
         (name = "entity-definitions", description = "Entity definition management"),
         (name = "api-keys", description = "API key management"),
         (name = "workflows", description = "Workflow management"),
-        (name = "DSL", description = "Workflow DSL validation and options")
+        (name = "DSL", description = "Workflow DSL validation and options"),
+        (name = "system", description = "System settings management"),
     ),
     info(
         title = "R Data Core Admin API",

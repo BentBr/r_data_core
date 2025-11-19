@@ -1,7 +1,9 @@
+use async_trait::async_trait;
 use sqlx::{PgPool, Postgres, Row, Transaction};
 use uuid::Uuid;
 
 use crate::error::{Error, Result};
+use crate::versioning::purger_trait::VersionPurger;
 
 /// Repository for entity definition versioning operations
 pub struct EntityDefinitionVersioningRepository {
@@ -219,6 +221,60 @@ impl EntityDefinitionVersioningRepository {
             let updated_by_name: Option<String> = r.try_get("updated_by_name").ok();
             (version, updated_at, updated_by, updated_by_name)
         }))
+    }
+
+    /// Prune entity definition versions older than the specified number of days
+    pub async fn prune_older_than_days(&self, days: i32) -> Result<u64> {
+        let res = sqlx::query(
+            r#"
+            DELETE FROM entity_definition_versions
+            WHERE created_at < NOW() - ($1::text || ' days')::interval
+            "#,
+        )
+        .bind(days.to_string())
+        .execute(&self.pool)
+        .await
+        .map_err(Error::Database)?;
+        Ok(res.rows_affected())
+    }
+
+    /// Prune entity definition versions, keeping only the latest N versions per definition
+    pub async fn prune_keep_latest_per_definition(&self, keep: i32) -> Result<u64> {
+        let res = sqlx::query(
+            r#"
+            WITH ranked AS (
+                SELECT definition_uuid,
+                       version_number,
+                       ROW_NUMBER() OVER (PARTITION BY definition_uuid ORDER BY version_number DESC) AS rn
+                FROM entity_definition_versions
+            )
+            DELETE FROM entity_definition_versions edv
+            USING ranked r
+            WHERE edv.definition_uuid = r.definition_uuid
+              AND edv.version_number = r.version_number
+              AND r.rn > $1
+            "#,
+        )
+        .bind(keep)
+        .execute(&self.pool)
+        .await
+        .map_err(Error::Database)?;
+        Ok(res.rows_affected())
+    }
+}
+
+#[async_trait]
+impl VersionPurger for EntityDefinitionVersioningRepository {
+    fn repository_name(&self) -> &'static str {
+        "entity_definitions"
+    }
+
+    async fn prune_older_than_days(&self, days: i32) -> Result<u64> {
+        EntityDefinitionVersioningRepository::prune_older_than_days(self, days).await
+    }
+
+    async fn prune_keep_latest(&self, keep: i32) -> Result<u64> {
+        self.prune_keep_latest_per_definition(keep).await
     }
 }
 

@@ -6,7 +6,6 @@ use crate::api::auth::auth_enum::RequiredAuth;
 use crate::api::response::ApiResponse;
 use crate::api::ApiState;
 use crate::services::settings_service::SettingsService;
-use crate::system_settings::entity_versioning::EntityVersioningSettings;
 use utoipa::ToSchema;
 
 /// Register system routes
@@ -15,11 +14,10 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(update_entity_versioning_settings);
 }
 
-#[get("/admin/api/v1/system/settings/entity-versioning")]
 #[utoipa::path(
     get,
     path = "/admin/api/v1/system/settings/entity-versioning",
-    tag = "admin",
+    tag = "system",
     responses(
         (status = 200, description = "Get entity versioning settings", body = EntityVersioningSettingsDto),
         (status = 401, description = "Unauthorized"),
@@ -27,7 +25,11 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
     ),
     security(("jwt" = []))
 )]
-pub async fn get_entity_versioning_settings(data: web::Data<ApiState>) -> impl Responder {
+#[get("/settings/entity-versioning")]
+pub async fn get_entity_versioning_settings(
+    data: web::Data<ApiState>,
+    _: RequiredAuth,
+) -> impl Responder {
     let service = SettingsService::new(data.db_pool.clone(), data.cache_manager.clone());
     match service.get_entity_versioning_settings().await {
         Ok(settings) => ApiResponse::ok(settings),
@@ -45,11 +47,10 @@ pub struct UpdateSettingsBody {
     max_age_days: Option<i32>,
 }
 
-#[put("/admin/api/v1/system/settings/entity-versioning")]
 #[utoipa::path(
     put,
     path = "/admin/api/v1/system/settings/entity-versioning",
-    tag = "admin",
+    tag = "system",
     request_body = UpdateSettingsBody,
     responses(
         (status = 200, description = "Updated entity versioning settings", body = EntityVersioningSettingsDto),
@@ -58,6 +59,7 @@ pub struct UpdateSettingsBody {
     ),
     security(("jwt" = []))
 )]
+#[put("/settings/entity-versioning")]
 pub async fn update_entity_versioning_settings(
     data: web::Data<ApiState>,
     body: web::Json<UpdateSettingsBody>,

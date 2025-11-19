@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+pub mod purger_trait;
+
 /// Version history entry
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Version {

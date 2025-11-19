@@ -268,6 +268,9 @@ pub struct MaintenanceConfig {
     /// Cron expression for maintenance scheduler
     pub cron: String,
 
+    /// Cron expression for version purger task (required)
+    pub version_purger_cron: String,
+
     /// Database configuration used by maintenance worker
     pub database: DatabaseConfig,
 
@@ -282,10 +285,20 @@ impl MaintenanceConfig {
         // Ensure .env is loaded for binaries that only use MaintenanceConfig
         dotenv().ok();
 
-        let cron = env::var("MAINTENANCE_CRON").unwrap_or_else(|_| "*/5 * * * *".to_string());
+        let cron = env::var("MAINTENANCE_CRON")
+            .map_err(|_| Error::Config("MAINTENANCE_CRON not set".to_string()))?;
         // Validate cron expression using the same logic as cron preview
         cron::validate_cron(&cron)
             .map_err(|e| Error::Config(format!("Invalid MAINTENANCE_CRON '{}': {}", cron, e)))?;
+
+        let version_purger_cron = env::var("VERSION_PURGER_CRON")
+            .map_err(|_| Error::Config("VERSION_PURGER_CRON not set".to_string()))?;
+        cron::validate_cron(&version_purger_cron).map_err(|e| {
+            Error::Config(format!(
+                "Invalid VERSION_PURGER_CRON '{}': {}",
+                version_purger_cron, e
+            ))
+        })?;
 
         // Prefer dedicated MAINTENANCE_*, then WORKER_*, then general DATABASE_* where sensible
         let connection_string = env::var("MAINTENANCE_DATABASE_URL")
@@ -313,6 +326,7 @@ impl MaintenanceConfig {
 
         Ok(Self {
             cron,
+            version_purger_cron,
             database,
             cache,
             redis_url,

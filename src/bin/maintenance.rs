@@ -1,26 +1,43 @@
 use std::sync::Arc;
+use std::time::Instant;
 
-use env_logger;
 use log::{error, info};
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-use r_data_core::cache::CacheManager;
 use r_data_core::config::MaintenanceConfig;
-use r_data_core::entity::version_repository::VersionRepository;
+use r_data_core::maintenance::tasks::VersionPurgerTask;
+use r_data_core::maintenance::{MaintenanceTask, TaskContext};
 use r_data_core::services::bootstrap::{
     init_cache_manager, init_logger_with_default, init_pg_pool,
 };
-use r_data_core::services::settings_service::SettingsService;
-use r_data_core::system_settings::entity_versioning::EntityVersioningSettings;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Init logger
     init_logger_with_default("info");
 
+    info!("========================================");
     info!("Starting maintenance worker");
+    info!("========================================");
 
-    let cfg = MaintenanceConfig::from_env().expect("Failed to load MaintenanceConfig");
+    let cfg = MaintenanceConfig::from_env()
+        .map_err(|e| anyhow::anyhow!("Failed to load MaintenanceConfig: {}", e))?;
+
+    info!("Maintenance worker configuration loaded:");
+    info!(
+        "  - Database: {} (max_connections: {})",
+        cfg.database
+            .connection_string
+            .split('@')
+            .last()
+            .unwrap_or("***"),
+        cfg.database.max_connections
+    );
+    info!(
+        "  - Cache: enabled={}, ttl={}s",
+        cfg.cache.enabled, cfg.cache.ttl
+    );
+    info!("  - Default cron: {}", cfg.cron);
 
     let pool = init_pg_pool(
         &cfg.database.connection_string,
@@ -28,63 +45,102 @@ async fn main() -> anyhow::Result<()> {
     )
     .await?;
 
+    info!("Database connection pool initialized");
+
     // Cache manager (optionally Redis via config)
     let cache_mgr = init_cache_manager(cfg.cache.clone(), Some(&cfg.redis_url)).await;
+    info!("Cache manager initialized");
 
-    let cron = cfg.cron.clone();
+    // Create task context
+    let task_context = Arc::new(TaskContext {
+        pool: pool.clone(),
+        cache: cache_mgr.clone(),
+    });
 
+    // Initialize scheduler
     let scheduler = JobScheduler::new().await?;
-    let pool_clone = pool.clone();
-    let cache_clone = cache_mgr.clone();
+    info!("Job scheduler initialized");
 
-    let job = Job::new_async(cron.as_str(), move |_uuid, _l| {
-        let pool = pool_clone.clone();
-        let cache = cache_clone.clone();
-        Box::pin(async move {
-            if let Err(e) = run_prune(pool, cache).await {
-                error!("Maintenance prune job failed: {}", e);
-            }
-        })
-    })?;
-    scheduler.add(job).await?;
+    // Register all maintenance tasks
+    info!("Discovering and registering maintenance tasks...");
 
+    // Register version purger task
+    {
+        let task = VersionPurgerTask::new(cfg.version_purger_cron.clone());
+        let task_name = task.name();
+        let cron_expr = task.cron();
+
+        info!("Registering task '{}' with cron '{}'", task_name, cron_expr);
+
+        // Validate cron expression
+        r_data_core::utils::cron::validate_cron(cron_expr).map_err(|e| {
+            anyhow::anyhow!(
+                "Invalid cron expression '{}' for task '{}': {}",
+                cron_expr,
+                task_name,
+                e
+            )
+        })?;
+
+        let context = task_context.clone();
+        let task_name_log = task_name.to_string();
+        let cron_expr_str = cron_expr.to_string();
+        let version_purger_cron = cfg.version_purger_cron.clone();
+
+        // Create job for this task
+        let job = Job::new_async(&cron_expr_str, move |_uuid, _l| {
+            let context = context.clone();
+            let task_name = task_name_log.clone();
+            let version_purger_cron = version_purger_cron.clone();
+            Box::pin(async move {
+                let start_time = Instant::now();
+                info!("[{}] Task execution started", task_name);
+
+                // Create a new task instance for this execution
+                let task = VersionPurgerTask::new(version_purger_cron);
+                match task.execute(&context).await {
+                    Ok(()) => {
+                        let duration = start_time.elapsed();
+                        info!(
+                            "[{}] Task execution completed successfully in {:?}",
+                            task_name, duration
+                        );
+                    }
+                    Err(e) => {
+                        let duration = start_time.elapsed();
+                        error!(
+                            "[{}] Task execution failed after {:?}: {}",
+                            task_name, duration, e
+                        );
+                    }
+                }
+            })
+        })?;
+
+        let job_id = scheduler.add(job).await?;
+        info!(
+            "Task '{}' registered successfully with job ID: {}",
+            task_name, job_id
+        );
+    }
+
+    // Add more task registrations here as they are implemented
+    // Example for future tasks:
+    // {
+    //     let task = AnotherTask::new();
+    //     let task_name = task.name();
+    //     let cron_expr = task.cron();
+    //     // ... similar registration code ...
+    // }
+
+    // Start the scheduler
     scheduler.start().await?;
-    info!("Maintenance scheduler started with cron '{}'", cron);
+    info!("========================================");
+    info!("Maintenance scheduler started");
+    info!("All tasks are now scheduled and running");
+    info!("========================================");
 
+    // Keep the process running
     futures::future::pending::<()>().await;
-    Ok(())
-}
-
-async fn run_prune(
-    pool: sqlx::Pool<sqlx::Postgres>,
-    cache: Arc<CacheManager>,
-) -> anyhow::Result<()> {
-    let settings_service = SettingsService::new(pool.clone(), cache);
-    let EntityVersioningSettings {
-        enabled,
-        max_versions,
-        max_age_days,
-    } = settings_service
-        .get_entity_versioning_settings()
-        .await
-        .map_err(|e| anyhow::anyhow!(e.to_string()))?;
-
-    if !enabled {
-        info!("Entity versioning disabled; prune skipped");
-        return Ok(());
-    }
-
-    let version_repo = VersionRepository::new(pool.clone());
-    // Prune by age first if configured
-    if let Some(days) = max_age_days {
-        let _ = version_repo.prune_older_than_days(days).await?;
-    }
-
-    // Prune by count (preserve latest N per entity)
-    if let Some(keep) = max_versions {
-        let _ = version_repo.prune_keep_latest_per_entity(keep).await?;
-    }
-
-    info!("Maintenance prune completed");
     Ok(())
 }

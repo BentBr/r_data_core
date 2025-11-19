@@ -1,8 +1,10 @@
+use async_trait::async_trait;
 use sqlx::{PgPool, Postgres, Row, Transaction};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::error::{Error, Result};
+use crate::versioning::purger_trait::VersionPurger;
 
 #[derive(Debug, Clone)]
 pub struct EntityVersionMeta {
@@ -302,5 +304,20 @@ impl VersionRepository {
         }
 
         Ok(())
+    }
+}
+
+#[async_trait]
+impl VersionPurger for VersionRepository {
+    fn repository_name(&self) -> &'static str {
+        "entities"
+    }
+
+    async fn prune_older_than_days(&self, days: i32) -> Result<u64> {
+        VersionRepository::prune_older_than_days(self, days).await
+    }
+
+    async fn prune_keep_latest(&self, keep: i32) -> Result<u64> {
+        self.prune_keep_latest_per_entity(keep).await
     }
 }

@@ -137,6 +137,7 @@ services:
             default:
                 aliases:
                     - worker.rdatacore.docker
+
     worker_maintenance:
         build:
             context: .
@@ -163,8 +164,9 @@ services:
             REDIS_URL: redis://redis:6379
             RUST_LOG: info
             LOG_LEVEL: info
-            # Using the long definition
-            MAINTENANCE_CRON: "*/5 * * * * *"
+            # Using the long definition every 5 minutes
+            MAINTENANCE_CRON: "* */5 * * * *"
+            VERSION_PURGER_CRON: "* */5 * * * *"
             VIRTUAL_HOST: .maintenance.rdatacore.docker
         networks:
             default:
