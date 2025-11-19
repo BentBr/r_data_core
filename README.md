@@ -5,12 +5,16 @@ A robust backend for flexible data management with dynamic entity system, workfl
 ## Features
 
 - Dynamic entity system for flexible data modeling
-- Class definitions with customizable fields
+- Entity definitions with customizable fields
 - Entity registry with field validation
 - API authentication (JWT and API key)
 - Redis caching
 - PostgreSQL database support
 - Migration system
+- Workflow engine with DSL-based definitions and job queue
+- Versioning system for entities, entity definitions, and workflows
+- Workflow worker for processing scheduled and queued workflows
+- Maintenance worker for automated system maintenance tasks
 - API documentation at `/api/docs`
 
 ## Database Schema
@@ -18,9 +22,12 @@ A robust backend for flexible data management with dynamic entity system, workfl
 The project uses a dynamic entity model with the following key tables:
 
 - `entity_definitions`: Defines entity types with their field definitions
+- `entity_definition_versions`: Tracks changes to entity definitions for versioning
 - `entities_registry`: Stores all entities with their field data in a JSONB column
-- `entity_versions`: Tracks changes to entities for versioning
-- `entity_registry`: Registry of entity types (metadata)
+- `entities_versions`: Tracks changes to entities for versioning
+- `workflows`: Workflow definitions
+- `workflow_versions`: Tracks changes to workflows for versioning
+- `workflow_runs`: Workflow execution runs
 - `admin_users`: Admin user accounts
 - `api_keys`: API keys for authentication
 - `permission_schemes`: Permission definitions
@@ -145,8 +152,10 @@ Hint:
 Binaries
 
 - `r_data_core` - The main application binary
-- `r_data_core_migrations` - The binary for running database migrations (or use `cargo sqlx migrate`)
+- `run_migrations` - The binary for running database migrations (or use `cargo sqlx migrate`)
 - `hash_password` - A utility for hashing passwords (for admin users)
+- `worker` - Workflow worker that processes workflow jobs from Redis queue
+- `maintenance` - Maintenance worker for scheduled tasks (e.g., version pruning)
 
 ### Important Note about SQLx
 
@@ -179,18 +188,59 @@ The application can be configured using environment variables. See `.env.example
 
 ### Environment Variables
 
-- `DATABASE_URL` - PostgreSQL connection URL
-- `DATABASE_MAX_CONNECTIONS` - Maximum database connections
-- `API_HOST` - Server host address
-- `SERVER_PORT` - Server port
-- `JWT_SECRET` - Secret key for JWT tokens
-- `JWT_EXPIRATION` - JWT token expiration in seconds
-- `REDIS_URL` - Redis connection URL (optional)
-- `CACHE_ENABLED` - Enable caching (true/false)
-- `CACHE_TTL` - Cache TTL in seconds
-- `CACHE_ENTITY_DEFINITION_TTL` - seconds until entity definition is cached. Zero for infinite (default)
-- `CACHE_API_KEY_TTL` - seconds until api key is cached, 10 min default
-- `RUST_LOG` - Logging level (info/debug/error)
+#### Application (Main Server) - Mandatory
+- `DATABASE_URL` - PostgreSQL connection string (required)
+- `JWT_SECRET` - Secret key for JWT token signing (required)
+- `REDIS_URL` - Redis connection URL for queue and cache (required)
+
+#### Application (Main Server) - Optional
+- `APP_ENV` - Application environment (default: "development")
+- `API_HOST` - Server host address (default: "0.0.0.0")
+- `API_PORT` - Server port (default: 8888)
+- `API_USE_TLS` - Enable SSL/TLS (default: false)
+- `JWT_EXPIRATION` - JWT token expiration in seconds (default: 86400)
+- `API_ENABLE_DOCS` - Enable API documentation (default: true)
+- `CORS_ORIGINS` - Comma-separated list of allowed CORS origins (default: "*")
+- `DATABASE_MAX_CONNECTIONS` - Maximum database connections in pool (default: 10)
+- `DATABASE_CONNECTION_TIMEOUT` - Connection timeout in seconds (default: 30)
+- `LOG_LEVEL` - Logging level: info/debug/error (default: "info")
+- `LOG_FILE` - Optional log file path
+- `CACHE_ENABLED` - Enable caching (default: true)
+- `CACHE_TTL` - Default cache TTL in seconds (default: 300)
+- `CACHE_MAX_SIZE` - Maximum cache size in items (default: 10000)
+- `CACHE_ENTITY_DEFINITION_TTL` - Entity definition cache TTL in seconds, 0 = infinite (default: 0)
+- `CACHE_API_KEY_TTL` - API key cache TTL in seconds (default: 600)
+- `QUEUE_FETCH_KEY` - Redis key for fetch jobs queue (default: "queue:workflows:fetch")
+- `QUEUE_PROCESS_KEY` - Redis key for process jobs queue (default: "queue:workflows:process")
+
+#### Workflow Worker - Mandatory
+- `WORKER_DATABASE_URL` - PostgreSQL connection string for worker (required)
+- `REDIS_URL` - Redis connection URL for queue (required)
+- `JOB_QUEUE_UPDATE_INTERVAL` - Interval in seconds to reconcile scheduled jobs with DB (required, must be > 0)
+
+#### Workflow Worker - Optional
+- `WORKER_DATABASE_MAX_CONNECTIONS` - Maximum database connections (default: 10)
+- `DATABASE_CONNECTION_TIMEOUT` - Connection timeout in seconds (default: 30)
+- `WORKFLOW_WORKER_THREADS` - Number of worker threads (default: 4)
+- `WORKFLOW_DEFAULT_TIMEOUT` - Default workflow timeout in seconds (default: 300)
+- `WORKFLOW_MAX_CONCURRENT` - Maximum concurrent workflows (default: 10)
+- `QUEUE_FETCH_KEY` - Redis key for fetch jobs queue (default: "queue:workflows:fetch")
+- `QUEUE_PROCESS_KEY` - Redis key for process jobs queue (default: "queue:workflows:process")
+- `CACHE_ENABLED` - Enable caching (default: true)
+- `CACHE_TTL` - Default cache TTL in seconds (default: 300)
+- `CACHE_ENTITY_DEFINITION_TTL` - Entity definition cache TTL (default: 0 = infinite)
+- `CACHE_API_KEY_TTL` - API key cache TTL in seconds (default: 600)
+
+#### Maintenance Worker - Mandatory
+- `MAINTENANCE_DATABASE_URL` - PostgreSQL connection string for maintenance worker (required)
+- `REDIS_URL` - Redis connection URL for cache (required)
+
+#### Maintenance Worker - Optional
+- `MAINTENANCE_CRON` - Cron expression for maintenance scheduler (default: "*/5 * * * *")
+- `MAINTENANCE_DATABASE_MAX_CONNECTIONS` - Maximum database connections (default: 10)
+- `DATABASE_CONNECTION_TIMEOUT` - Connection timeout in seconds (default: 30)
+- `CACHE_ENABLED` - Enable caching (default: true)
+- `CACHE_TTL` - Default cache TTL in seconds (default: 300)
 
 ## Cache Configuration
 @todo: update the cache config and text here
@@ -204,9 +254,9 @@ The R Data Core provides a flexible system for defining and working with dynamic
 
 ### Key Concepts
 
-#### Class Definitions
+#### Entity Definitions
 
-A **Class Definition** is a schema that defines the structure of an entity type. It includes:
+An **Entity Definition** is a schema that defines the structure of an entity type. It includes:
 
 - A unique identifier
 - An entity type name (which becomes the table name)
@@ -214,13 +264,20 @@ A **Class Definition** is a schema that defines the structure of an entity type.
 - Metadata about the entity type (description, display name, etc.)
 - Schema information for database representation
 
-When a entity definition is created or updated, the system automatically generates the necessary database tables and columns to store entities of that type.
+When an entity definition is created or updated, the system automatically generates the necessary database tables and columns to store entities of that type.
+
+**Auto-Created Views**: For each entity type, the system automatically creates:
+- A table `entity_{entity_type}` for storing entity-specific field data
+- A view `entity_{entity_type}_view` that joins the `entities_registry` table (metadata) with the entity-specific table
+- The view provides a unified interface for querying entities with both registry metadata (uuid, created_at, updated_at, etc.) and custom fields
+- INSTEAD OF triggers on the view handle INSERT and UPDATE operations transparently
+- Views are automatically updated when entity definitions change
 
 You can find example JSON files in [example files](.example_files/json_examples)
 
 #### Fields
 
-Each **Field Definition** within a class specifies:
+Each **Field Definition** within an entity definition specifies:
 
 - Field name and display name
 - Data type (String, Integer, Boolean, DateTime, etc.)
@@ -257,9 +314,53 @@ All entity definition endpoints are secured with JWT authentication and require 
 - `GET /admin/api/v1/entity-definitions/{uuid}` - Get a specific entity definition
 - `POST /admin/api/v1/entity-definitions` - Create a new entity definition
 - `PUT /admin/api/v1/entity-definitions/{uuid}` - Update an existing entity definition
-- `DELETE /admin/api/v1/entity-definitions/{uuid}` - Delete a entity definition
+- `DELETE /admin/api/v1/entity-definitions/{uuid}` - Delete an entity definition
+- `GET /admin/api/v1/entity-definitions/{uuid}/versions` - List versions of an entity definition
+- `GET /admin/api/v1/entity-definitions/{uuid}/versions/{version_number}` - Get a specific version
 
 Entity data can be manipulated through the public API endpoints (documentation pending).
+
+### Workers
+
+The system includes two background workers:
+
+- **Workflow Worker** (`worker`): Processes workflow jobs from a Redis queue, handles scheduled workflows based on cron expressions, and processes staged items for data import/export/transformation operations.
+
+- **Maintenance Worker** (`maintenance`): Runs scheduled maintenance tasks such as pruning old entity versions based on configured retention policies (max age and max versions per entity).
+
+### Queue System (Apalis)
+
+The system uses **Apalis** with Redis for workflow job queuing:
+
+#### How It Works
+- **Redis Lists**: Uses Redis Lists (RPUSH/BLPOP) for queue operations
+- **Two Queues**:
+  - `fetch` queue: Jobs for fetching and staging data from external sources
+  - `process` queue: Jobs for processing staged items (transformations, imports, exports)
+- **Blocking Operations**: Workers use `BLPOP` to block until jobs are available, ensuring efficient resource usage
+- **Job Serialization**: Jobs are serialized as JSON and stored in Redis
+
+#### Workflow Execution Flow
+1. **Scheduled Workflows**: Workflow worker scans for enabled workflows with cron schedules
+2. **Manual Triggers**: Workflows can be triggered via API
+3. **Job Enqueueing**: Fetch jobs are enqueued to Redis `fetch` queue
+4. **Worker Processing**: Worker pops jobs from queue, creates workflow runs, and processes them
+5. **Staging**: Data is fetched from sources and staged in `workflow_raw_items` table
+6. **Processing**: Staged items are processed according to workflow DSL configuration
+7. **Completion**: Workflow runs are marked as success/failure with statistics
+
+### Maintenance Tasks
+
+The maintenance worker runs scheduled tasks based on cron expression (`MAINTENANCE_CRON`):
+
+- **Entity Version Pruning**: 
+  - Prunes old entity versions based on system settings
+  - Two pruning strategies:
+    - **By Age**: Removes versions older than configured days (`max_age_days` setting)
+    - **By Count**: Keeps only the latest N versions per entity (`max_versions` setting)
+  - Pruning respects entity versioning settings (can be disabled globally via system settings)
+  - Settings are configurable via system settings API (`/admin/api/v1/system/settings`)
+  - Default maintenance cron: `*/5 * * * *` (every 5 minutes)
 
 ## Routes
 
