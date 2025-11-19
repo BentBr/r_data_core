@@ -69,7 +69,7 @@
     } from './dsl/dsl-utils'
     import DslStepEditor from './dsl/DslStepEditor.vue'
 
-    const props = defineProps<{ 
+    const props = defineProps<{
         modelValue: DslStep[]
         workflowUuid?: string | null
     }>()
@@ -99,7 +99,7 @@
         updated[idx] = sanitized
         stepsLocal.value = updated
         // Emit change after next tick to batch updates
-        nextTick(() => {
+        void nextTick(() => {
             if (!isUpdating) {
                 emit('update:modelValue', [...stepsLocal.value])
             }
@@ -110,7 +110,7 @@
         const newStep = defaultStep()
         stepsLocal.value = [...stepsLocal.value, newStep]
         openPanels.value = [stepsLocal.value.length - 1]
-        nextTick(() => {
+        void nextTick(() => {
             emit('update:modelValue', [...stepsLocal.value])
         })
     }
@@ -119,7 +119,7 @@
         const updated = [...stepsLocal.value]
         updated.splice(idx, 1)
         stepsLocal.value = updated
-        nextTick(() => {
+        void nextTick(() => {
             emit('update:modelValue', [...stepsLocal.value])
         })
     }
@@ -134,7 +134,7 @@
                 loadEntityDefinitions(),
             ])
         } catch (e: any) {
-            loadError.value = e?.message || 'Failed to load DSL options'
+            loadError.value = e?.message ?? 'Failed to load DSL options'
         } finally {
             loading.value = false
         }
@@ -162,7 +162,7 @@
                     stepsLocal.value = sanitized
                 } finally {
                     // Reset flag after next tick
-                    nextTick(() => {
+                    void nextTick(() => {
                         isUpdating = false
                     })
                 }

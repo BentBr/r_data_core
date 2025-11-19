@@ -1,12 +1,13 @@
 use actix_web::{get, put, web, Responder};
 use serde::{Deserialize, Serialize};
 
-use crate::api::admin::system::models::EntityVersioningSettingsDto;
 use crate::api::auth::auth_enum::RequiredAuth;
 use crate::api::response::ApiResponse;
 use crate::api::ApiState;
 use crate::services::settings_service::SettingsService;
 use utoipa::ToSchema;
+#[allow(unused_imports)] // Required for utoipa macros
+use crate::api::admin::system::models::EntityVersioningSettingsDto;
 
 /// Register system routes
 pub fn register_routes(cfg: &mut web::ServiceConfig) {

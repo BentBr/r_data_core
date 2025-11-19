@@ -15,107 +15,133 @@
                     <v-window-item value="edit">
                         <v-form
                             ref="formRef"
-                            @submit.prevent
                             class="mt-4"
+                            @submit.prevent
                         >
-                    <v-text-field
-                        v-model="form.name"
-                        label="Name"
-                        :rules="[rules.required]"
-                    />
-                    <v-textarea
-                        v-model="form.description"
-                        label="Description"
-                        rows="2"
-                        auto-grow
-                    />
-                    <v-select
-                        v-model="form.kind"
-                        label="Kind"
-                        :items="kinds"
-                        item-title="label"
-                        item-value="value"
-                    />
-                    <v-switch
-                        v-model="form.enabled"
-                        :label="t('workflows.create.enabled')"
-                        color="success"
-                        inset
-                    ></v-switch>
-                    <v-switch
-                        v-model="form.versioning_disabled"
-                        :label="t('workflows.create.versioning_disabled') || 'Disable versioning for this workflow'"
-                        color="warning"
-                        inset
-                    ></v-switch>
-                    <v-text-field
-                        v-model="form.schedule_cron"
-                        label="Cron"
-                        :error-messages="cronError || ''"
-                        :disabled="hasApiSource"
-                        :hint="hasApiSource ? t('workflows.create.cron_disabled_for_api_source') : ''"
-                        persistent-hint
-                        @update:model-value="onCronChange"
-                    />
-                    <div
-                        v-if="cronHelp && !hasApiSource"
-                        class="text-caption mb-2"
-                    >
-                        {{ cronHelp }}
-                    </div>
-                    <div
-                        v-if="nextRuns.length && !hasApiSource"
-                        class="text-caption"
-                    >
-                        Next: {{ nextRuns.join(', ') }}
-                    </div>
+                            <v-text-field
+                                v-model="form.name"
+                                label="Name"
+                                :rules="[rules.required]"
+                            />
+                            <v-textarea
+                                v-model="form.description"
+                                label="Description"
+                                rows="2"
+                                auto-grow
+                            />
+                            <v-select
+                                v-model="form.kind"
+                                label="Kind"
+                                :items="kinds"
+                                item-title="label"
+                                item-value="value"
+                            />
+                            <v-switch
+                                v-model="form.enabled"
+                                :label="t('workflows.create.enabled')"
+                                color="success"
+                                inset
+                            ></v-switch>
+                            <v-switch
+                                v-model="form.versioning_disabled"
+                                :label="
+                                    t('workflows.create.versioning_disabled') ||
+                                    'Disable versioning for this workflow'
+                                "
+                                color="warning"
+                                inset
+                            ></v-switch>
+                            <v-text-field
+                                v-model="form.schedule_cron"
+                                label="Cron"
+                                :error-messages="cronError || ''"
+                                :disabled="hasApiSource"
+                                :hint="
+                                    hasApiSource
+                                        ? t('workflows.create.cron_disabled_for_api_source')
+                                        : ''
+                                "
+                                persistent-hint
+                                @update:model-value="onCronChange"
+                            />
+                            <div
+                                v-if="cronHelp && !hasApiSource"
+                                class="text-caption mb-2"
+                            >
+                                {{ cronHelp }}
+                            </div>
+                            <div
+                                v-if="nextRuns.length && !hasApiSource"
+                                class="text-caption"
+                            >
+                                Next: {{ nextRuns.join(', ') }}
+                            </div>
 
-                    <v-expansion-panels class="mt-2" :model-value="[]">
-                        <v-expansion-panel>
-                            <v-expansion-panel-title>Config (JSON)</v-expansion-panel-title>
-                            <v-expansion-panel-text>
-                                <div class="mb-4">
-                                    <DslConfigurator 
-                                        v-model="steps" 
-                                        :workflow-uuid="workflowUuid"
-                                    />
-                                </div>
-                                <v-textarea
-                                    v-model="configJson"
-                                    rows="8"
-                                    auto-grow
-                                    :error-messages="configError || ''"
-                                />
-                            </v-expansion-panel-text>
-                        </v-expansion-panel>
-                    </v-expansion-panels>
-                </v-form>
+                            <v-expansion-panels
+                                class="mt-2"
+                                :model-value="[]"
+                            >
+                                <v-expansion-panel>
+                                    <v-expansion-panel-title>Config (JSON)</v-expansion-panel-title>
+                                    <v-expansion-panel-text>
+                                        <div class="mb-4">
+                                            <DslConfigurator
+                                                v-model="steps"
+                                                :workflow-uuid="workflowUuid"
+                                            />
+                                        </div>
+                                        <v-textarea
+                                            v-model="configJson"
+                                            rows="8"
+                                            auto-grow
+                                            :error-messages="configError || ''"
+                                        />
+                                    </v-expansion-panel-text>
+                                </v-expansion-panel>
+                            </v-expansion-panels>
+                        </v-form>
                     </v-window-item>
 
                     <v-window-item value="history">
                         <div class="mt-4">
-                            <div v-if="versions.length === 0" class="text-grey text-body-2">
+                            <div
+                                v-if="versions.length === 0"
+                                class="text-grey text-body-2"
+                            >
                                 {{ t('entities.details.no_versions') }}
                             </div>
                             <div v-else>
                                 <div class="mb-4">
-                                    <div class="text-subtitle-2 mb-2">Select two versions to compare:</div>
-                                    <v-list density="compact" class="version-list">
+                                    <div class="text-subtitle-2 mb-2">
+                                        Select two versions to compare:
+                                    </div>
+                                    <v-list
+                                        density="compact"
+                                        class="version-list"
+                                    >
                                         <v-list-item
                                             v-for="version in versions"
                                             :key="version.version_number"
                                             :class="{
-                                                'version-selected': isVersionSelected(version.version_number),
-                                                'version-item': true
+                                                'version-selected': isVersionSelected(
+                                                    version.version_number
+                                                ),
+                                                'version-item': true,
                                             }"
                                             @click="toggleVersionSelection(version.version_number)"
                                         >
                                             <template v-slot:prepend>
                                                 <v-checkbox
-                                                    :model-value="isVersionSelected(version.version_number)"
+                                                    :model-value="
+                                                        isVersionSelected(version.version_number)
+                                                    "
                                                     density="compact"
                                                     hide-details
-                                                    @click.stop="toggleVersionSelection(version.version_number)"
+                                                    @click.stop="
+                                                        toggleVersionSelection(
+                                                            version.version_number
+                                                        )
+                                                    "
                                                 />
                                             </template>
                                             <v-list-item-title>
@@ -131,7 +157,14 @@
                                     </v-list>
                                 </div>
                                 <v-divider class="my-4" />
-                                <div v-if="diffRows.length === 0 && selectedA !== null && selectedB !== null" class="text-grey text-body-2">
+                                <div
+                                    v-if="
+                                        diffRows.length === 0 &&
+                                        selectedA !== null &&
+                                        selectedB !== null
+                                    "
+                                    class="text-grey text-body-2"
+                                >
                                     {{ t('entities.details.no_diff') }}
                                 </div>
                                 <v-table
@@ -202,7 +235,14 @@
     const activeTab = ref('edit')
 
     // Versions/diff
-    const versions = ref<Array<{ version_number: number; created_at: string; created_by?: string | null; created_by_name?: string | null }>>([])
+    const versions = ref<
+        Array<{
+            version_number: number
+            created_at: string
+            created_by?: string | null
+            created_by_name?: string | null
+        }>
+    >([])
     const selectedA = ref<number | null>(null)
     const selectedB = ref<number | null>(null)
     const diffRows = ref<Array<{ field: string; a: string; b: string; changed: boolean }>>([])
@@ -267,14 +307,16 @@
     )
 
     const loadVersions = async () => {
-        if (!props.workflowUuid) return
+        if (!props.workflowUuid) {
+            return
+        }
         try {
             versions.value = await typedHttpClient.listWorkflowVersions(props.workflowUuid)
             selectedA.value = null
             selectedB.value = null
             diffRows.value = []
         } catch (e) {
-            // ignore
+            console.error('Failed to load versions:', e)
         }
     }
 
@@ -307,15 +349,17 @@
 
     const loadDiff = async () => {
         diffRows.value = []
-        if (!props.workflowUuid || selectedA.value === null || selectedB.value === null) return
+        if (!props.workflowUuid || selectedA.value === null || selectedB.value === null) {
+            return
+        }
         try {
             const [a, b] = await Promise.all([
                 typedHttpClient.getWorkflowVersion(props.workflowUuid, selectedA.value),
                 typedHttpClient.getWorkflowVersion(props.workflowUuid, selectedB.value),
             ])
             diffRows.value = computeDiffRows(
-                (a.data as Record<string, unknown>) || {},
-                (b.data as Record<string, unknown>) || {}
+                (a.data as Record<string, unknown>) ?? {},
+                (b.data as Record<string, unknown>) ?? {}
             )
         } catch (e) {
             console.error('Failed to load diff:', e)
@@ -366,12 +410,14 @@
             nextRuns.value = []
             return
         }
-        cronDebounce = setTimeout(async () => {
-            try {
-                nextRuns.value = await typedHttpClient.previewCron(value)
-            } catch (e) {
-                nextRuns.value = []
-            }
+        cronDebounce = setTimeout(() => {
+            void (async () => {
+                try {
+                    nextRuns.value = await typedHttpClient.previewCron(value)
+                } catch {
+                    nextRuns.value = []
+                }
+            })()
         }, 350)
     }
 
@@ -429,13 +475,13 @@
                     })
                     configError.value = errorMessages.join('; ')
                 } else {
-                    configError.value = e.message || 'Invalid DSL'
+                    configError.value = e.message ?? 'Invalid DSL'
                 }
                 return
             }
             if (e?.violations) {
                 const v = e.violations[0]
-                configError.value = v?.message || 'Invalid DSL'
+                configError.value = v?.message ?? 'Invalid DSL'
                 return
             }
             configError.value = e instanceof Error ? e.message : 'Invalid DSL'
@@ -446,10 +492,10 @@
         try {
             await typedHttpClient.updateWorkflow(props.workflowUuid, {
                 name: form.value.name,
-                description: form.value.description || null,
+                description: form.value.description ?? null,
                 kind: form.value.kind,
                 enabled: form.value.enabled,
-                schedule_cron: form.value.schedule_cron || null,
+                schedule_cron: form.value.schedule_cron ?? null,
                 config: parsedConfig ?? {},
                 versioning_disabled: form.value.versioning_disabled,
             })
@@ -493,34 +539,34 @@
 </script>
 
 <style scoped>
-.version-list {
-    max-height: 400px;
-    overflow-y: auto;
-}
+    .version-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
 
-.version-item {
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
+    .version-item {
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
 
-.version-item:hover {
-    background-color: rgba(0, 0, 0, 0.04);
-}
+    .version-item:hover {
+        background-color: rgba(0, 0, 0, 0.04);
+    }
 
-.version-selected {
-    background-color: rgba(25, 118, 210, 0.08);
-}
+    .version-selected {
+        background-color: rgba(25, 118, 210, 0.08);
+    }
 
-.entity-diff-table .changed {
-    background-color: rgba(255, 193, 7, 0.1);
-}
+    .entity-diff-table .changed {
+        background-color: rgba(255, 193, 7, 0.1);
+    }
 
-.entity-diff-table .field {
-    font-weight: 500;
-}
+    .entity-diff-table .field {
+        font-weight: 500;
+    }
 
-.entity-diff-table .val {
-    font-family: monospace;
-    font-size: 0.875rem;
-}
+    .entity-diff-table .val {
+        font-family: monospace;
+        font-size: 0.875rem;
+    }
 </style>

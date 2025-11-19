@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import EntityTree from './EntityTree.vue'
+import type { TreeNode } from '@/types/schemas'
 
 const mockBrowseByPath = vi.fn()
 
 vi.mock('@/api/typed-client', () => ({
     typedHttpClient: {
-        browseByPath: (...args: any[]) => mockBrowseByPath(...args),
+        browseByPath: (path: string, limit: number, offset: number) =>
+            mockBrowseByPath(path, limit, offset),
     },
 }))
 
@@ -59,8 +61,14 @@ describe('EntityTree', () => {
                 ],
             },
         ]
-        ;(wrapper.vm as any).treeItems = treeItems
-        ;(wrapper.vm as any).loadedPaths.add('/test')
+        // Access component internals for testing
+        const vm1 = wrapper.vm as {
+            treeItems: TreeNode[]
+            loadedPaths: Set<string>
+            reloadPath: (path: string) => Promise<void>
+        }
+        vm1.treeItems = treeItems
+        vm1.loadedPaths.add('/test')
 
         // Mock browseByPath for reload
         mockBrowseByPath.mockResolvedValueOnce({
@@ -76,8 +84,7 @@ describe('EntityTree', () => {
         })
 
         // Call reloadPath
-        const reloadPath = (wrapper.vm as any).reloadPath
-        await reloadPath('/test')
+        await vm1.reloadPath('/test')
 
         // Check that expanded state was preserved
         const emitted = wrapper.emitted('update:expandedItems')
@@ -108,8 +115,14 @@ describe('EntityTree', () => {
                 children: [],
             },
         ]
-        ;(wrapper.vm as any).treeItems = treeItems
-        ;(wrapper.vm as any).loadedPaths.add('/test')
+        // Access component internals for testing
+        const vm2 = wrapper.vm as {
+            treeItems: TreeNode[]
+            loadedPaths: Set<string>
+            reloadPath: (path: string) => Promise<void>
+        }
+        vm2.treeItems = treeItems
+        vm2.loadedPaths.add('/test')
 
         // Mock browseByPath for reload
         mockBrowseByPath.mockResolvedValueOnce({
@@ -117,8 +130,7 @@ describe('EntityTree', () => {
         })
 
         // Call reloadPath
-        const reloadPath = (wrapper.vm as any).reloadPath
-        await reloadPath('/test')
+        await vm2.reloadPath('/test')
 
         // Check that browseByPath was called with /test
         expect(mockBrowseByPath).toHaveBeenCalledWith('/test', 100, 0)
@@ -144,8 +156,10 @@ describe('EntityTree', () => {
         })
 
         // Call reloadPath with root
-        const reloadPath = (wrapper.vm as any).reloadPath
-        await reloadPath('/')
+        const vm = wrapper.vm as unknown as {
+            reloadPath: (path: string) => Promise<void>
+        }
+        await vm.reloadPath('/')
 
         // Check that browseByPath was called with root
         expect(mockBrowseByPath).toHaveBeenCalledWith('/', 100, 0)

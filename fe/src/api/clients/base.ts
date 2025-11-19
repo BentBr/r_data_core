@@ -142,7 +142,10 @@ export class BaseTypedHttpClient {
                     }
 
                     // Handle validation errors (422) and bad request errors (400) with structured violations
-                    if ((response.status === 422 || response.status === 400) && errorData.violations) {
+                    if (
+                        (response.status === 422 || response.status === 400) &&
+                        errorData.violations
+                    ) {
                         try {
                             const validationError = ValidationErrorResponseSchema.parse(errorData)
                             throw new ValidationError(
@@ -170,18 +173,20 @@ export class BaseTypedHttpClient {
                         // Try to extract field errors from the message (Symfony style)
                         const message = errorData.message
                         // Check if it's a deserialization error that can be converted to validation error
-                        if (message.includes('unknown variant') || message.includes('Json deserialize error')) {
+                        if (
+                            message.includes('unknown variant') ||
+                            message.includes('Json deserialize error')
+                        ) {
                             // Extract field name from error message if possible
                             const fieldMatch = message.match(/unknown variant `(\w+)`/i)
                             const field = fieldMatch ? fieldMatch[1] : 'dsl'
-                            throw new ValidationError(
-                                'Validation failed',
-                                [{
+                            throw new ValidationError('Validation failed', [
+                                {
                                     field,
                                     message: message.replace(/Json deserialize error: /, ''),
-                                    code: 'INVALID_VALUE'
-                                }]
-                            )
+                                    code: 'INVALID_VALUE',
+                                },
+                            ])
                         }
                     }
 
@@ -211,9 +216,8 @@ export class BaseTypedHttpClient {
 
             // Fast-path for DSL validate to avoid circular schema issues in test bundlers
             if (endpoint.includes('/dsl/validate')) {
-                const raw = await response.json()
-                const data = (raw as any)?.data
-                return data as T
+                const raw = (await response.json()) as ApiResponse<T>
+                return raw.data as T
             }
             const rawData = await response.json()
             return this.validateResponse(rawData, schema)

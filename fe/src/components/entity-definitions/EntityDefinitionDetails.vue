@@ -61,19 +61,27 @@
 
                 <!-- History Tab -->
                 <v-window-item value="history">
-                    <div v-if="versions.length === 0" class="text-grey text-body-2">
+                    <div
+                        v-if="versions.length === 0"
+                        class="text-grey text-body-2"
+                    >
                         {{ t('entities.details.no_versions') }}
                     </div>
                     <div v-else>
                         <div class="mb-4">
                             <div class="text-subtitle-2 mb-2">Select two versions to compare:</div>
-                            <v-list density="compact" class="version-list">
+                            <v-list
+                                density="compact"
+                                class="version-list"
+                            >
                                 <v-list-item
                                     v-for="version in versions"
                                     :key="version.version_number"
                                     :class="{
-                                        'version-selected': isVersionSelected(version.version_number),
-                                        'version-item': true
+                                        'version-selected': isVersionSelected(
+                                            version.version_number
+                                        ),
+                                        'version-item': true,
                                     }"
                                     @click="toggleVersionSelection(version.version_number)"
                                 >
@@ -82,7 +90,9 @@
                                             :model-value="isVersionSelected(version.version_number)"
                                             density="compact"
                                             hide-details
-                                            @click.stop="toggleVersionSelection(version.version_number)"
+                                            @click.stop="
+                                                toggleVersionSelection(version.version_number)
+                                            "
                                         />
                                     </template>
                                     <v-list-item-title>
@@ -98,7 +108,10 @@
                             </v-list>
                         </div>
                         <v-divider class="my-4" />
-                        <div v-if="diffRows.length === 0 && selectedA !== null && selectedB !== null" class="text-grey text-body-2">
+                        <div
+                            v-if="diffRows.length === 0 && selectedA !== null && selectedB !== null"
+                            class="text-grey text-body-2"
+                        >
                             {{ t('entities.details.no_diff') }}
                         </div>
                         <v-table
@@ -183,13 +196,22 @@
     const activeTab = ref('meta')
 
     // Versions/diff
-    const versions = ref<Array<{ version_number: number; created_at: string; created_by?: string | null; created_by_name?: string | null }>>([])
+    const versions = ref<
+        Array<{
+            version_number: number
+            created_at: string
+            created_by?: string | null
+            created_by_name?: string | null
+        }>
+    >([])
     const selectedA = ref<number | null>(null)
     const selectedB = ref<number | null>(null)
     const diffRows = ref<Array<{ field: string; a: string; b: string; changed: boolean }>>([])
 
     const loadVersions = async () => {
-        if (!props.definition || !props.definition.uuid) return
+        if (!props.definition?.uuid) {
+            return
+        }
         try {
             const uuid = props.definition.uuid
             versions.value = await typedHttpClient.listEntityDefinitionVersions(uuid)
@@ -197,7 +219,7 @@
             selectedB.value = null
             diffRows.value = []
         } catch (e) {
-            // ignore
+            console.error('Failed to load versions:', e)
         }
     }
 
@@ -230,7 +252,9 @@
 
     const loadDiff = async () => {
         diffRows.value = []
-        if (!props.definition || !props.definition.uuid || selectedA.value === null || selectedB.value === null) return
+        if (!props.definition?.uuid || selectedA.value === null || selectedB.value === null) {
+            return
+        }
         const uuid = props.definition.uuid
         try {
             const [a, b] = await Promise.all([
@@ -257,7 +281,7 @@
     // Reload versions when switching to history tab
     watch(
         () => activeTab.value,
-        async (newTab) => {
+        async newTab => {
             if (newTab === 'history' && props.definition?.uuid) {
                 await loadVersions()
             }
@@ -270,34 +294,34 @@
 </script>
 
 <style scoped>
-.version-list {
-    max-height: 400px;
-    overflow-y: auto;
-}
+    .version-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
 
-.version-item {
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
+    .version-item {
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
 
-.version-item:hover {
-    background-color: rgba(0, 0, 0, 0.04);
-}
+    .version-item:hover {
+        background-color: rgba(0, 0, 0, 0.04);
+    }
 
-.version-selected {
-    background-color: rgba(25, 118, 210, 0.08);
-}
+    .version-selected {
+        background-color: rgba(25, 118, 210, 0.08);
+    }
 
-.entity-diff-table .changed {
-    background-color: rgba(255, 193, 7, 0.1);
-}
+    .entity-diff-table .changed {
+        background-color: rgba(255, 193, 7, 0.1);
+    }
 
-.entity-diff-table .field {
-    font-weight: 500;
-}
+    .entity-diff-table .field {
+        font-weight: 500;
+    }
 
-.entity-diff-table .val {
-    font-family: monospace;
-    font-size: 0.875rem;
-}
+    .entity-diff-table .val {
+        font-family: monospace;
+        font-size: 0.875rem;
+    }
 </style>

@@ -347,7 +347,7 @@ describe('FieldEditor', () => {
         // Check that save event was emitted with formatted value
         const saveEvents = wrapper.emitted('save')
         if (saveEvents && saveEvents.length > 0) {
-            const savedField = saveEvents[0][0] as any
+            const savedField = saveEvents[0][0] as FieldDefinition
             expect(savedField.default_value).toBe(true) // Should be boolean, not string
         }
     })
@@ -391,7 +391,7 @@ describe('FieldEditor', () => {
 
         const saveEvents = wrapper.emitted('save')
         if (saveEvents && saveEvents.length > 0) {
-            const savedField = saveEvents[0][0] as any
+            const savedField = saveEvents[0][0] as FieldDefinition
             expect(savedField.default_value).toBe(25) // Should be number, not string
         }
     })

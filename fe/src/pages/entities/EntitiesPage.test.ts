@@ -68,8 +68,6 @@ describe('EntitiesPage - Path Detection Logic', () => {
         await vi.waitUntil(() => mockGetEntityDefinitions.mock.calls.length > 0, { timeout: 1000 })
         await wrapper.vm.$nextTick()
 
-        const vm = wrapper.vm as any
-
         // Create entity with single-segment path (directory path)
         const createData = {
             entity_type: 'Customer',
@@ -82,11 +80,11 @@ describe('EntitiesPage - Path Detection Logic', () => {
 
         // Test path detection logic directly
         const entityPath = createData.data?.path
-        const segments = entityPath?.split('/').filter(s => s) || []
+        const segments = entityPath?.split('/').filter(s => s) ?? []
         const pathToReload =
             segments.length > 1
-                ? entityPath?.split('/').slice(0, -1).join('/') || '/'
-                : entityPath || '/'
+                ? (entityPath?.split('/').slice(0, -1).join('/') ?? '/')
+                : (entityPath ?? '/')
 
         // Single segment should use path directly
         expect(pathToReload).toBe('/test')
@@ -109,11 +107,11 @@ describe('EntitiesPage - Path Detection Logic', () => {
 
         // Test path detection logic directly
         const entityPath = createData.data?.path
-        const segments = entityPath?.split('/').filter(s => s) || []
+        const segments = entityPath?.split('/').filter(s => s) ?? []
         const pathToReload =
             segments.length > 1
-                ? entityPath?.split('/').slice(0, -1).join('/') || '/'
-                : entityPath || '/'
+                ? (entityPath?.split('/').slice(0, -1).join('/') ?? '/')
+                : (entityPath ?? '/')
 
         // Multi-segment should get parent directory
         expect(pathToReload).toBe('/test')
@@ -136,11 +134,11 @@ describe('EntitiesPage - Path Detection Logic', () => {
 
         // Test path detection logic directly
         const entityPath = selectedEntity.field_data?.path as string | undefined
-        const segments = entityPath?.split('/').filter(s => s) || []
+        const segments = entityPath?.split('/').filter(s => s) ?? []
         const pathToReload =
             segments.length > 1
-                ? entityPath?.split('/').slice(0, -1).join('/') || '/'
-                : entityPath || '/'
+                ? (entityPath?.split('/').slice(0, -1).join('/') ?? '/')
+                : (entityPath ?? '/')
 
         // Single segment should use path directly
         expect(pathToReload).toBe('/test')
@@ -163,11 +161,11 @@ describe('EntitiesPage - Path Detection Logic', () => {
 
         // Test path detection logic directly
         const entityPath = selectedEntity.field_data?.path as string | undefined
-        const segments = entityPath?.split('/').filter(s => s) || []
+        const segments = entityPath?.split('/').filter(s => s) ?? []
         const pathToReload =
             segments.length > 1
-                ? entityPath?.split('/').slice(0, -1).join('/') || '/'
-                : entityPath || '/'
+                ? (entityPath?.split('/').slice(0, -1).join('/') ?? '/')
+                : (entityPath ?? '/')
 
         // Multi-segment should get parent directory
         expect(pathToReload).toBe('/test')
@@ -195,7 +193,7 @@ describe('EntitiesPage - Path Detection Logic', () => {
             const segments = entityPath.split('/').filter(s => s)
             pathToReload =
                 segments.length > 1
-                    ? entityPath.split('/').slice(0, -1).join('/') || '/'
+                    ? (entityPath.split('/').slice(0, -1).join('/') ?? '/')
                     : entityPath
         }
 

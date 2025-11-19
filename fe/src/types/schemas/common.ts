@@ -18,8 +18,8 @@ export const TableColumnSchema = z.object({
     fixed: z.boolean().optional(),
 })
 
-// Tree view schemas
-export const TreeNodeSchema: z.ZodType<any> = z.object({
+// Tree view schemas - recursive type (type annotation removed to avoid circular reference)
+export const TreeNodeSchema = z.object({
     id: z.string(),
     title: z.string(),
     icon: z.string().optional(),

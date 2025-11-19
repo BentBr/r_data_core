@@ -19,5 +19,3 @@ describe('versionDiff utils', () => {
         expect(map['f'].b).toBe('true')
     })
 })
-
-

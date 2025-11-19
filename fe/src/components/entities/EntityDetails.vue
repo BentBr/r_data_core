@@ -238,28 +238,48 @@
                                 {{ t('entities.details.history') }}
                             </v-expansion-panel-title>
                             <v-expansion-panel-text>
-                                <div v-if="versions.length === 0" class="text-grey text-body-2">
+                                <div
+                                    v-if="versions.length === 0"
+                                    class="text-grey text-body-2"
+                                >
                                     {{ t('entities.details.no_versions') }}
                                 </div>
                                 <div v-else>
                                     <div class="mb-4">
-                                        <div class="text-subtitle-2 mb-2">Select two versions to compare:</div>
-                                        <v-list density="compact" class="version-list">
+                                        <div class="text-subtitle-2 mb-2">
+                                            Select two versions to compare:
+                                        </div>
+                                        <v-list
+                                            density="compact"
+                                            class="version-list"
+                                        >
                                             <v-list-item
                                                 v-for="version in versions"
                                                 :key="version.version_number"
                                                 :class="{
-                                                    'version-selected': isVersionSelected(version.version_number),
-                                                    'version-item': true
+                                                    'version-selected': isVersionSelected(
+                                                        version.version_number
+                                                    ),
+                                                    'version-item': true,
                                                 }"
-                                                @click="toggleVersionSelection(version.version_number)"
+                                                @click="
+                                                    toggleVersionSelection(version.version_number)
+                                                "
                                             >
                                                 <template v-slot:prepend>
                                                     <v-checkbox
-                                                        :model-value="isVersionSelected(version.version_number)"
+                                                        :model-value="
+                                                            isVersionSelected(
+                                                                version.version_number
+                                                            )
+                                                        "
                                                         density="compact"
                                                         hide-details
-                                                        @click.stop="toggleVersionSelection(version.version_number)"
+                                                        @click.stop="
+                                                            toggleVersionSelection(
+                                                                version.version_number
+                                                            )
+                                                        "
                                                     />
                                                 </template>
                                                 <v-list-item-title>
@@ -275,7 +295,14 @@
                                         </v-list>
                                     </div>
                                     <v-divider class="my-4" />
-                                    <div v-if="diffRows.length === 0 && selectedA !== null && selectedB !== null" class="text-grey text-body-2">
+                                    <div
+                                        v-if="
+                                            diffRows.length === 0 &&
+                                            selectedA !== null &&
+                                            selectedB !== null
+                                        "
+                                        class="text-grey text-body-2"
+                                    >
                                         {{ t('entities.details.no_diff') }}
                                     </div>
                                     <v-table
@@ -346,42 +373,51 @@
         }
         // 1) exact
         if (fieldName in data) {
-            return (data as any)[fieldName]
+            return (data as Record<string, unknown>)[fieldName]
         }
         // 2) case-insensitive
         const lower = fieldName.toLowerCase()
         for (const k of Object.keys(data)) {
             if (k.toLowerCase() === lower) {
-                return (data as any)[k]
+                return (data as Record<string, unknown>)[k]
             }
         }
         // 3) token-based (firstname vs first_name vs FirstName)
         const wanted = toToken(fieldName)
         for (const k of Object.keys(data)) {
             if (toToken(k) === wanted) {
-                return (data as any)[k]
+                return (data as Record<string, unknown>)[k]
             }
         }
         return undefined
     }
 
     // Versions/diff
-    const versions = ref<Array<{ version_number: number; created_at: string; created_by?: string | null; created_by_name?: string | null }>>([])
+    const versions = ref<
+        Array<{
+            version_number: number
+            created_at: string
+            created_by?: string | null
+            created_by_name?: string | null
+        }>
+    >([])
     const selectedA = ref<number | null>(null)
     const selectedB = ref<number | null>(null)
     const diffRows = ref<Array<{ field: string; a: string; b: string; changed: boolean }>>([])
 
     const loadVersions = async () => {
-        if (!props.entity) return
+        if (!props.entity) {
+            return
+        }
         try {
-            const uuid = String(props.entity.field_data?.uuid || '')
+            const uuid = String(props.entity.field_data?.uuid ?? '')
             const entityType = props.entity.entity_type
             versions.value = await typedHttpClient.listEntityVersions(entityType, uuid)
             selectedA.value = null
             selectedB.value = null
             diffRows.value = []
         } catch (e) {
-            // ignore
+            console.error('Failed to load versions:', e)
         }
     }
 
@@ -416,8 +452,10 @@
 
     const loadDiff = async () => {
         diffRows.value = []
-        if (!props.entity || selectedA.value === null || selectedB.value === null) return
-        const uuid = String(props.entity.field_data?.uuid || '')
+        if (!props.entity || selectedA.value === null || selectedB.value === null) {
+            return
+        }
+        const uuid = String(props.entity.field_data?.uuid ?? '')
         const entityType = props.entity.entity_type
         try {
             const [a, b] = await Promise.all([
@@ -425,8 +463,8 @@
                 typedHttpClient.getEntityVersion(entityType, uuid, selectedB.value),
             ])
             diffRows.value = computeDiffRows(
-                (a.data as Record<string, unknown>) || {},
-                (b.data as Record<string, unknown>) || {}
+                (a.data as Record<string, unknown>) ?? {},
+                (b.data as Record<string, unknown>) ?? {}
             )
         } catch (e) {
             console.error('Failed to load diff:', e)

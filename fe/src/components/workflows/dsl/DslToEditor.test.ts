@@ -172,10 +172,7 @@ describe('DslToEditor', () => {
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const hasOutputSelect = selects.some(s => {
             const items = s.props('items') as any[]
-            return (
-                items &&
-                items.some((item: any) => item.value === 'api' || item.value === 'download')
-            )
+            return items?.some((item: any) => item.value === 'api' || item.value === 'download')
         })
 
         expect(hasOutputSelect).toBe(false)
@@ -200,7 +197,7 @@ describe('DslToEditor', () => {
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const modeSelect = selects.find(s => {
             const items = s.props('items') as any[]
-            return items && items.some((item: any) => item.value === 'update')
+            return items?.some((item: any) => item.value === 'update')
         })
 
         if (modeSelect) {
@@ -236,7 +233,7 @@ describe('DslToEditor', () => {
         const textFields = wrapper.findAllComponents({ name: 'VTextField' })
         const hasUpdateKeyField = textFields.some(tf => {
             const label = tf.props('label') as string
-            return label && label.includes('update_key')
+            return label?.includes('update_key')
         })
 
         expect(hasUpdateKeyField).toBe(true)
@@ -262,7 +259,7 @@ describe('DslToEditor', () => {
         const textFields = wrapper.findAllComponents({ name: 'VTextField' })
         const hasUpdateKeyField = textFields.some(tf => {
             const label = tf.props('label') as string
-            return label && label.includes('update_key')
+            return label?.includes('update_key')
         })
 
         expect(hasUpdateKeyField).toBe(true)
@@ -287,14 +284,11 @@ describe('DslToEditor', () => {
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const modeSelect = selects.find(s => {
             const items = s.props('items') as any[]
-            return (
-                items &&
-                items.some(
-                    (item: any) =>
-                        item.value === 'create' ||
-                        item.value === 'update' ||
-                        item.value === 'create_or_update'
-                )
+            return items?.some(
+                (item: any) =>
+                    item.value === 'create' ||
+                    item.value === 'update' ||
+                    item.value === 'create_or_update'
             )
         })
 
@@ -325,7 +319,7 @@ describe('DslToEditor', () => {
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const modeSelect = selects.find(s => {
             const items = s.props('items') as any[]
-            return items && items.some((item: any) => item.value === 'create_or_update')
+            return items?.some((item: any) => item.value === 'create_or_update')
         })
 
         if (modeSelect) {
@@ -433,7 +427,7 @@ describe('DslToEditor', () => {
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const formatTypeSelect = selects.find(s => {
             const items = s.props('items') as any[]
-            return items && items.some((item: any) => item.value === 'csv')
+            return items?.some((item: any) => item.value === 'csv')
         })
 
         if (formatTypeSelect) {
@@ -469,7 +463,7 @@ describe('DslToEditor', () => {
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const outputModeSelect = selects.find(s => {
             const items = s.props('items') as any[]
-            return items && items.some((item: any) => item.value === 'push')
+            return items?.some((item: any) => item.value === 'push')
         })
 
         if (outputModeSelect) {
@@ -550,7 +544,7 @@ describe('DslToEditor', () => {
         const textFields = wrapper.findAllComponents({ name: 'VTextField' })
         const uriField = textFields.find(tf => {
             const label = tf.props('label') as string
-            return label && label.includes('uri')
+            return label?.includes('uri')
         })
 
         if (uriField) {
@@ -601,7 +595,7 @@ describe('DslToEditor', () => {
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const httpMethodSelect = selects.find(s => {
             const items = s.props('items') as any[]
-            return items && items.some((item: any) => item.value === 'PUT')
+            return items?.some((item: any) => item.value === 'PUT')
         })
 
         if (httpMethodSelect) {
@@ -677,7 +671,7 @@ describe('DslToEditor', () => {
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const outputModeSelect = selects.find(s => {
             const items = s.props('items') as any[]
-            return items && items.some((item: any) => item.value === 'api')
+            return items?.some((item: any) => item.value === 'api')
         })
 
         if (outputModeSelect) {

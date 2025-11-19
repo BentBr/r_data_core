@@ -324,7 +324,10 @@
                                 />
                             </template>
                             <template #item.schedule_cron="{ item }">
-                                <span v-if="item.has_api_endpoint" class="text-caption text-disabled">
+                                <span
+                                    v-if="item.has_api_endpoint"
+                                    class="text-caption text-disabled"
+                                >
                                     {{ t('workflows.table.cron_disabled_endpoint') }}
                                 </span>
                                 <span v-else>

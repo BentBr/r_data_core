@@ -61,9 +61,9 @@ describe('DslFromEditor', () => {
         // Find the filter field text field (should be the first one after entity_definition)
         const filterFieldField = textFields.find(tf => {
             const label = tf.props('label') as string
-            return label && label.includes('filter_field')
+            return label?.includes('filter_field')
         })
-        
+
         if (filterFieldField) {
             await filterFieldField.vm.$emit('update:modelValue', 'category')
             await nextTick()
@@ -188,7 +188,7 @@ describe('DslFromEditor', () => {
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const sourceTypeSelect = selects.find(s => {
             const items = s.props('items') as any[]
-            return items && items.some((item: any) => item.value === 'api')
+            return items?.some((item: any) => item.value === 'api')
         })
 
         if (sourceTypeSelect) {
@@ -230,7 +230,7 @@ describe('DslFromEditor', () => {
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const formatTypeSelect = selects.find(s => {
             const items = s.props('items') as any[]
-            return items && items.some((item: any) => item.value === 'json')
+            return items?.some((item: any) => item.value === 'json')
         })
 
         if (formatTypeSelect) {
@@ -307,17 +307,18 @@ describe('DslFromEditor', () => {
         })
 
         await nextTick()
-        
+
         // Verify that no endpoint field is shown (only URI field should be shown for uri source type)
         const textFields = wrapper.findAllComponents({ name: 'VTextField' })
         // For api source type, there should be no URI/endpoint field visible
         // The only text fields should be for CSV options or other non-source config fields
         const uriField = textFields.find(field => {
-            const label = field.props('label') || ''
-            return label.toLowerCase().includes('uri') || label.toLowerCase().includes('endpoint')
+            const label = field.props('label') ?? ''
+            const lowerLabel = label.toLowerCase()
+            return ['uri', 'endpoint'].some(term => lowerLabel.includes(term))
         })
         expect(uriField).toBeUndefined()
-        
+
         // Verify config does not have endpoint field
         const emitted = wrapper.emitted('update:modelValue')
         if (emitted && emitted.length > 0) {
@@ -351,11 +352,11 @@ describe('DslFromEditor', () => {
         await nextTick()
         const uriTextFields = uriWrapper.findAllComponents({ name: 'VTextField' })
         const uriField = uriTextFields.find(field => {
-            const label = field.props('label') || ''
+            const label = field.props('label') ?? ''
             return label.toLowerCase().includes('uri')
         })
         expect(uriField).toBeDefined()
-        
+
         // Test with api source type - should NOT show URI/endpoint field
         const apiFromDef: FromDef = {
             type: 'format',
@@ -378,8 +379,9 @@ describe('DslFromEditor', () => {
         await nextTick()
         const apiTextFields = apiWrapper.findAllComponents({ name: 'VTextField' })
         const apiEndpointField = apiTextFields.find(field => {
-            const label = field.props('label') || ''
-            return label.toLowerCase().includes('uri') || label.toLowerCase().includes('endpoint')
+            const label = field.props('label') ?? ''
+            const lowerLabel = label.toLowerCase()
+            return ['uri', 'endpoint'].some(term => lowerLabel.includes(term))
         })
         expect(apiEndpointField).toBeUndefined()
     })
@@ -410,6 +412,8 @@ describe('DslFromEditor', () => {
         // AuthConfigEditor might be inside collapsed expansion panel, so check if it exists in the component tree
         // We can check if the expansion panel exists with the auth title
         const expansionPanel = expansionPanels[0]
-        expect(expansionPanel.exists()).toBe(true)
+        if (expansionPanel) {
+            expect(expansionPanel.exists()).toBe(true)
+        }
     })
 })

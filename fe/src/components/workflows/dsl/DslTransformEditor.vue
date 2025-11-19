@@ -183,13 +183,13 @@
     watch(
         () => props.modelValue,
         newTransform => {
-            transformType.value = newTransform.type || 'none'
+            transformType.value = newTransform.type ?? 'none'
             if (newTransform.type === 'arithmetic') {
-                left.value = { ...(newTransform as any).left } || { kind: 'field', field: '' }
-                right.value = { ...(newTransform as any).right } || { kind: 'const', value: 0 }
+                left.value = { ...(newTransform as any).left } ?? { kind: 'field', field: '' }
+                right.value = { ...(newTransform as any).right } ?? { kind: 'const', value: 0 }
             } else if (newTransform.type === 'concat') {
-                leftConcat.value = { ...(newTransform as any).left } || { kind: 'field', field: '' }
-                rightConcat.value = { ...(newTransform as any).right } || {
+                leftConcat.value = { ...(newTransform as any).left } ?? { kind: 'field', field: '' }
+                rightConcat.value = { ...(newTransform as any).right } ?? {
                     kind: 'const_string',
                     value: '',
                 }

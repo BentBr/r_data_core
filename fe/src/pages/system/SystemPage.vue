@@ -12,7 +12,10 @@
                     </v-card-title>
                     <v-card-text>
                         <v-row>
-                            <v-col cols="12" md="6">
+                            <v-col
+                                cols="12"
+                                md="6"
+                            >
                                 <v-card variant="outlined">
                                     <v-card-title class="text-subtitle-1 pa-3">
                                         {{ t('system.versioning.section_title') }}
@@ -59,22 +62,22 @@
 
 <script setup lang="ts">
     import { onMounted, ref } from 'vue'
-    import { useAuthStore } from '@/stores/auth'
     import { useSnackbar } from '@/composables/useSnackbar'
     import { useTranslations } from '@/composables/useTranslations'
     import { typedHttpClient } from '@/api/typed-client'
 
     const { showSuccess, showError } = useSnackbar()
     const { t } = useTranslations()
-    const auth = useAuthStore()
 
-    const form = ref<{ enabled: boolean; max_versions: number | null; max_age_days: number | null }>(
-        {
-            enabled: true,
-            max_versions: null,
-            max_age_days: 180,
-        }
-    )
+    const form = ref<{
+        enabled: boolean
+        max_versions: number | null
+        max_age_days: number | null
+    }>({
+        enabled: true,
+        max_versions: null,
+        max_age_days: 180,
+    })
     const loading = ref(false)
     const saving = ref(false)
 
@@ -82,8 +85,8 @@
         loading.value = true
         try {
             const settings = await typedHttpClient.getEntityVersioningSettings()
-            form.value = settings || form.value
-        } catch (e: any) {
+            form.value = settings ?? form.value
+        } catch {
             showError(t('system.versioning.load_failed'))
         } finally {
             loading.value = false
@@ -95,7 +98,7 @@
         try {
             await typedHttpClient.updateEntityVersioningSettings(form.value)
             showSuccess(t('system.versioning.save_success'))
-        } catch (e: any) {
+        } catch {
             showError(t('system.versioning.save_failed'))
         } finally {
             saving.value = false

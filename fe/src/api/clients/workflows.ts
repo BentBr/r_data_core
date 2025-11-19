@@ -242,12 +242,14 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         return validateDsl(this, steps)
     }
 
-    async listWorkflowVersions(uuid: string): Promise<Array<{
-        version_number: number
-        created_at: string
-        created_by?: string | null
-        created_by_name?: string | null
-    }>> {
+    async listWorkflowVersions(uuid: string): Promise<
+        Array<{
+            version_number: number
+            created_at: string
+            created_by?: string | null
+            created_by_name?: string | null
+        }>
+    > {
         return this.request(
             `/admin/api/v1/workflows/${uuid}/versions`,
             ApiResponseSchema(
@@ -263,7 +265,10 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         )
     }
 
-    async getWorkflowVersion(uuid: string, versionNumber: number): Promise<{
+    async getWorkflowVersion(
+        uuid: string,
+        versionNumber: number
+    ): Promise<{
         version_number: number
         created_at: string
         created_by?: string | null

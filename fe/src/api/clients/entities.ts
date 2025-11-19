@@ -172,12 +172,17 @@ export class EntitiesClient extends BaseTypedHttpClient {
         )
     }
 
-    async listEntityVersions(entityType: string, uuid: string): Promise<Array<{
-        version_number: number
-        created_at: string
-        created_by?: string | null
-        created_by_name?: string | null
-    }>> {
+    async listEntityVersions(
+        entityType: string,
+        uuid: string
+    ): Promise<
+        Array<{
+            version_number: number
+            created_at: string
+            created_by?: string | null
+            created_by_name?: string | null
+        }>
+    > {
         return this.request(
             `/api/v1/entities/${encodeURIComponent(entityType)}/${uuid}/versions`,
             ApiResponseSchema(
@@ -193,7 +198,11 @@ export class EntitiesClient extends BaseTypedHttpClient {
         )
     }
 
-    async getEntityVersion(entityType: string, uuid: string, versionNumber: number): Promise<{
+    async getEntityVersion(
+        entityType: string,
+        uuid: string,
+        versionNumber: number
+    ): Promise<{
         version_number: number
         created_at: string
         created_by?: string | null

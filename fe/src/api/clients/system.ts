@@ -30,5 +30,3 @@ export class SystemClient extends BaseTypedHttpClient {
         )
     }
 }
-
-

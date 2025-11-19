@@ -24,7 +24,9 @@ export function flattenObject(
     prefix = ''
 ): Record<string, string> {
     const out: Record<string, string> = {}
-    if (!obj) return out
+    if (!obj) {
+        return out
+    }
     for (const [k, v] of Object.entries(obj)) {
         const key = prefix ? `${prefix}.${k}` : k
         if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
@@ -40,11 +42,9 @@ export function computeDiffRows(a: Record<string, unknown>, b: Record<string, un
     const af = flattenObject(a)
     const bf = flattenObject(b)
     const keys = Array.from(new Set([...Object.keys(af), ...Object.keys(bf)])).sort()
-    return keys.map((k) => {
+    return keys.map(k => {
         const va = af[k] ?? ''
         const vb = bf[k] ?? ''
         return { field: k, a: va, b: vb, changed: va !== vb }
     })
 }
-
-

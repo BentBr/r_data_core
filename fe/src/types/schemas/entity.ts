@@ -28,9 +28,9 @@ export const FieldDefinitionSchema = z.object({
     required: z.boolean(),
     indexed: z.boolean(),
     filterable: z.boolean(),
-    default_value: z.any().optional(),
-    constraints: z.any().optional(),
-    ui_settings: z.any().optional(),
+    default_value: z.unknown().optional(),
+    constraints: z.record(z.string(), z.unknown()).optional(),
+    ui_settings: z.record(z.string(), z.unknown()).optional(),
 })
 
 // Entity Definition schema
@@ -55,18 +55,18 @@ export const EntityDefinitionSchema = z.object({
 // Backend returns: { entity_type, field_data: { uuid, path, etc., ...customFields } }
 export const DynamicEntitySchema = z.object({
     entity_type: z.string(),
-    field_data: z.record(z.string(), z.any()),
+    field_data: z.record(z.string(), z.unknown()),
 })
 
 // Entity request/response schemas
 export const CreateEntityRequestSchema = z.object({
     entity_type: z.string(),
-    data: z.record(z.string(), z.any()),
+    data: z.record(z.string(), z.unknown()),
     parent_uuid: UuidSchema.optional().nullable(),
 })
 
 export const UpdateEntityRequestSchema = z.object({
-    data: z.record(z.string(), z.any()),
+    data: z.record(z.string(), z.unknown()),
     parent_uuid: UuidSchema.optional().nullable(),
 })
 

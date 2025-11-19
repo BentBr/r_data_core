@@ -65,7 +65,7 @@
     function updateField(field: keyof CsvOptions, value: any) {
         opts.value = { ...opts.value, [field]: value }
         // Use nextTick to batch updates and prevent recursive loops
-        nextTick(() => {
+        void nextTick(() => {
             emit('update:modelValue', { ...opts.value })
         })
     }

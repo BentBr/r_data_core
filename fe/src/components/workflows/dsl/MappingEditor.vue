@@ -129,14 +129,14 @@
         const newMapping = pairsToMapping(localPairs.value)
         emit('update:modelValue', newMapping)
         // Reset flag after next tick to allow external updates
-        nextTick(() => {
+        void nextTick(() => {
             isUpdatingFromLocal = false
         })
     }
 
     function deletePair(idx: number) {
         localPairs.value.splice(idx, 1)
-        nextTick(() => {
+        void nextTick(() => {
             const newMapping = pairsToMapping(localPairs.value)
             emit('update:modelValue', newMapping)
         })

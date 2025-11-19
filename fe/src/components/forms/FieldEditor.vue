@@ -299,29 +299,37 @@
     }
 
     // Format default value to proper type
-    const formatDefaultValue = (value: any, fieldType: string): any => {
+    const formatDefaultValue = (value: unknown, fieldType: string): unknown => {
         if (value === null || value === undefined || value === '') {
             return undefined
         }
 
         switch (fieldType) {
             case 'Boolean':
-                if (typeof value === 'boolean') return value
+                if (typeof value === 'boolean') {
+                    return value
+                }
                 if (typeof value === 'string') {
                     const lower = value.toLowerCase()
                     return lower === 'true' || lower === '1' || lower === 'yes' || lower === 'on'
                 }
-                if (typeof value === 'number') return value !== 0
+                if (typeof value === 'number') {
+                    return value !== 0
+                }
                 return false
             case 'Integer':
-                if (typeof value === 'number') return Math.floor(value)
+                if (typeof value === 'number') {
+                    return Math.floor(value)
+                }
                 if (typeof value === 'string') {
                     const parsed = parseInt(value, 10)
                     return isNaN(parsed) ? undefined : parsed
                 }
                 return undefined
             case 'Float':
-                if (typeof value === 'number') return value
+                if (typeof value === 'number') {
+                    return value
+                }
                 if (typeof value === 'string') {
                     const parsed = parseFloat(value)
                     return isNaN(parsed) ? undefined : parsed
@@ -343,9 +351,10 @@
         }
 
         // Format default value to proper type
-        const formattedDefaultValue = form.value.default_value !== undefined
-            ? formatDefaultValue(form.value.default_value, form.value.field_type)
-            : undefined
+        const formattedDefaultValue =
+            form.value.default_value !== undefined
+                ? formatDefaultValue(form.value.default_value, form.value.field_type)
+                : undefined
 
         // Ensure constraints and ui_settings are always objects, not null
         const sanitizedField = {

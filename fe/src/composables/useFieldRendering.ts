@@ -109,8 +109,8 @@ export function useFieldRendering() {
      * Formats a field value for display based on its type
      */
     const formatFieldValue = (value: unknown, fieldType: string): string => {
-        if (value === null ?? value === undefined) {
-            return t('common.empty') || 'Empty'
+        if (value === null || value === undefined) {
+            return t('common.empty') ?? 'Empty'
         }
 
         switch (fieldType) {

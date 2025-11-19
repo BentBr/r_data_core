@@ -37,8 +37,12 @@
             </template>
             <!-- from.api source type = Accept POST to this workflow (no endpoint field needed) -->
             <template v-if="(modelValue as any).source?.source_type === 'api'">
-                <div class="text-caption mb-2 pa-2" style="background-color: rgba(var(--v-theme-primary), 0.1); border-radius: 4px;">
-                    <strong>{{ t('workflows.dsl.endpoint_info') }}:</strong> POST {{ getFullEndpointUri() }}
+                <div
+                    class="text-caption mb-2 pa-2"
+                    style="background-color: rgba(var(--v-theme-primary), 0.1); border-radius: 4px"
+                >
+                    <strong>{{ t('workflows.dsl.endpoint_info') }}:</strong> POST
+                    {{ getFullEndpointUri() }}
                 </div>
             </template>
             <div
@@ -167,8 +171,8 @@
     const mappingEditorRef = ref<{ addEmptyPair: () => void } | null>(null)
 
     function getFullEndpointUri(): string {
-        const baseUrl = env.apiBaseUrl || window.location.origin
-        const uuid = props.workflowUuid || '{workflow-uuid}'
+        const baseUrl = env.apiBaseUrl ?? window.location.origin
+        const uuid = props.workflowUuid ?? '{workflow-uuid}'
         return `${baseUrl}/api/v1/workflows/${uuid}`
     }
 
@@ -182,21 +186,15 @@
         updated[field] = value
         // Ensure entity filter exists if type is entity
         if (updated.type === 'entity') {
-            if (!updated.filter) {
-                updated.filter = { field: '', value: '' }
-            }
-            if (!updated.mapping) {
-                updated.mapping = {}
-            }
+            updated.filter ??= { field: '', value: '' }
+            updated.mapping ??= {}
         }
         emit('update:modelValue', updated as FromDef)
     }
 
     function updateFilterField(field: string, value: any) {
         const updated: any = { ...props.modelValue }
-        if (!updated.filter) {
-            updated.filter = { field: '', value: '' }
-        }
+        updated.filter ??= { field: '', value: '' }
         updated.filter[field] = value
         emit('update:modelValue', updated as FromDef)
     }
@@ -228,7 +226,7 @@
             } else if (newType === 'api') {
                 // from.api source type = Accept POST to this workflow (no endpoint field needed)
                 // Remove endpoint field if it exists, then set empty config
-                const currentConfig = updated.source.config || {}
+                const currentConfig = updated.source.config ?? {}
                 if (currentConfig.endpoint !== undefined) {
                     delete currentConfig.endpoint
                 }
@@ -255,30 +253,22 @@
 
     function updateSourceConfig(key: string, value: any) {
         const updated: any = { ...props.modelValue }
-        if (!updated.source) {
-            updated.source = { source_type: 'uri', config: {}, auth: { type: 'none' } }
-        }
-        if (!updated.source.config) {
-            updated.source.config = {}
-        }
+        updated.source ??= { source_type: 'uri', config: {}, auth: { type: 'none' } }
+        updated.source.config ??= {}
         updated.source.config[key] = value
         emit('update:modelValue', updated as FromDef)
     }
 
     function updateFormatOptions(options: any) {
         const updated: any = { ...props.modelValue }
-        if (!updated.format) {
-            updated.format = { format_type: 'csv', options: {} }
-        }
+        updated.format ??= { format_type: 'csv', options: {} }
         updated.format.options = options
         emit('update:modelValue', updated as FromDef)
     }
 
     function updateSourceAuth(auth: AuthConfig) {
         const updated: any = { ...props.modelValue }
-        if (!updated.source) {
-            updated.source = { source_type: 'uri', config: {}, auth: { type: 'none' } }
-        }
+        updated.source ??= { source_type: 'uri', config: {}, auth: { type: 'none' } }
         updated.source.auth = auth
         emit('update:modelValue', updated as FromDef)
     }
@@ -317,9 +307,7 @@
         } else {
             // Fallback: add to mapping object
             const updated: any = { ...props.modelValue }
-            if (!updated.mapping) {
-                updated.mapping = {}
-            }
+            updated.mapping ??= {}
             updated.mapping[''] = ''
             emit('update:modelValue', updated as FromDef)
         }
@@ -332,7 +320,7 @@
     ): string[] {
         const del = delimiter?.length ? delimiter : ','
         const q = quote?.length ? quote : '"'
-        const line = text.split(/\r?\n/)[0] || ''
+        const line = text.split(/\r?\n/)[0] ?? ''
         const cols: string[] = []
         let cur = ''
         let inQuotes = false
@@ -365,13 +353,13 @@
             return
         }
         const header = formatFrom.format?.options?.has_header !== false
-        const delimiter = formatFrom.format?.options?.delimiter || ','
-        const quote = formatFrom.format?.options?.quote || '"'
+        const delimiter = formatFrom.format?.options?.delimiter ?? ','
+        const quote = formatFrom.format?.options?.quote ?? '"'
         let fields: string[]
         if (header) {
             fields = parseCsvHeader(text, delimiter, quote)
         } else {
-            const firstLine = text.split(/\r?\n/)[0] || ''
+            const firstLine = text.split(/\r?\n/)[0] ?? ''
             const count = firstLine.split(delimiter).length
             fields = Array.from({ length: count }, (_, i) => `col_${i + 1}`)
         }
@@ -400,13 +388,13 @@
             const res = await fetch(uri)
             const txt = await res.text()
             const header = formatFrom.format?.options?.has_header !== false
-            const delimiter = formatFrom.format?.options?.delimiter || ','
-            const quote = formatFrom.format?.options?.quote || '"'
+            const delimiter = formatFrom.format?.options?.delimiter ?? ','
+            const quote = formatFrom.format?.options?.quote ?? '"'
             let fields: string[]
             if (header) {
                 fields = parseCsvHeader(txt, delimiter, quote)
             } else {
-                const firstLine = txt.split(/\r?\n/)[0] || ''
+                const firstLine = txt.split(/\r?\n/)[0] ?? ''
                 const count = firstLine.split(delimiter).length
                 fields = Array.from({ length: count }, (_, i) => `col_${i + 1}`)
             }
@@ -417,7 +405,7 @@
                 }
             }
             updateField('mapping', mapping)
-        } catch (e) {
+        } catch {
             // ignore fetch errors (CORS etc.)
         }
     }

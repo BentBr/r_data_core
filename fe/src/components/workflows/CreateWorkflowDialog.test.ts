@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import CreateWorkflowDialog from './CreateWorkflowDialog.vue'
+import type { DslStep } from './dsl/dsl-utils'
 
 vi.mock('@/api/typed-client', () => ({
     typedHttpClient: {
@@ -54,12 +55,16 @@ describe('CreateWorkflowDialog', () => {
             },
         ]
         // Set steps directly via exposed API
-        ;(wrapper.vm as any).steps = dsl
+        const vm = wrapper.vm as {
+            steps: DslStep[]
+            submit: () => Promise<void>
+        }
+        vm.steps = dsl as DslStep[]
         await nextTick()
 
-        await (wrapper.vm as any).submit()
+        await vm.submit()
 
-        const emitted = wrapper.emitted('created') as any[]
+        const emitted = wrapper.emitted('created') as Array<[string]> | undefined
         expect(emitted?.length).toBe(1)
         expect(emitted[0][0]).toBeTypeOf('string')
     })
@@ -69,10 +74,14 @@ describe('CreateWorkflowDialog', () => {
             props: { modelValue: true },
         })
         // Trigger submit without providing steps/DSL
-        await (wrapper.vm as any).submit()
+        const vm = wrapper.vm as {
+            submit: () => Promise<void>
+            configError?: string
+        }
+        await vm.submit()
 
         // Expect validation state set
-        expect((wrapper.vm as any).configError?.toLowerCase()?.includes('dsl_required')).toBe(true)
+        expect(vm.configError?.toLowerCase()?.includes('dsl_required')).toBe(true)
     })
 
     it('disables cron field when from.api source is used', async () => {
@@ -108,7 +117,11 @@ describe('CreateWorkflowDialog', () => {
                 },
             },
         ]
-        ;(wrapper.vm as any).steps = dsl
+        const vm = wrapper.vm as {
+            steps: DslStep[]
+            hasApiSource?: boolean
+        }
+        vm.steps = dsl as DslStep[]
         await nextTick()
 
         // Find the cron field by label
@@ -122,7 +135,7 @@ describe('CreateWorkflowDialog', () => {
             expect(hint).toContain('cron_disabled_for_api_source')
         } else {
             // If field not found, check that hasApiSource computed is true
-            expect((wrapper.vm as any).hasApiSource).toBe(true)
+            expect(vm.hasApiSource).toBe(true)
         }
     })
 
@@ -161,11 +174,15 @@ describe('CreateWorkflowDialog', () => {
                 },
             },
         ]
-        ;(wrapper.vm as any).steps = dsl
+        const vm = wrapper.vm as {
+            steps: DslStep[]
+            hasApiSource?: boolean
+        }
+        vm.steps = dsl as DslStep[]
         await nextTick()
 
         // Check that hasApiSource is false
-        expect((wrapper.vm as any).hasApiSource).toBe(false)
+        expect(vm.hasApiSource).toBe(false)
 
         // Check if cron field is NOT disabled (if found)
         const cronInput = wrapper.find('input[type="text"]')

@@ -23,20 +23,20 @@ export type AuthConfig =
 // Source configuration
 export type SourceConfig = {
     source_type: string // "uri", "file", "api", "sftp", etc.
-    config: Record<string, any> // Source-specific config
+    config: Record<string, unknown> // Source-specific config
     auth?: AuthConfig
 }
 
 // Format configuration
 export type FormatConfig = {
     format_type: string // "csv", "json", "xml", etc.
-    options?: Record<string, any> // Format-specific options
+    options?: Record<string, unknown> // Format-specific options
 }
 
 // Destination configuration
 export type DestinationConfig = {
     destination_type: string // "uri", "file", "sftp", etc.
-    config: Record<string, any> // Destination-specific config
+    config: Record<string, unknown> // Destination-specific config
     auth?: AuthConfig
 }
 
@@ -111,15 +111,13 @@ export function sanitizeDslStep(step: any): DslStep {
             // Remove 'output' field from entity type
             const { output, ...rest } = sanitized.to
             sanitized.to = rest
+            // output is intentionally discarded
+            void output
         } else if (sanitized.to.type === 'format') {
             // Ensure output mode exists
-            if (!sanitized.to.output) {
-                sanitized.to.output = { mode: 'api' }
-            }
+            sanitized.to.output ??= { mode: 'api' }
             // Ensure format exists
-            if (!sanitized.to.format) {
-                sanitized.to.format = { format_type: 'json', options: {} }
-            }
+            sanitized.to.format ??= { format_type: 'json', options: {} }
         }
     }
 
@@ -127,12 +125,8 @@ export function sanitizeDslStep(step: any): DslStep {
     if (sanitized.from) {
         if (sanitized.from.type === 'format') {
             // Ensure source and format exist
-            if (!sanitized.from.source) {
-                sanitized.from.source = { source_type: 'uri', config: {} }
-            }
-            if (!sanitized.from.format) {
-                sanitized.from.format = { format_type: 'csv', options: {} }
-            }
+            sanitized.from.source ??= { source_type: 'uri', config: {} }
+            sanitized.from.format ??= { format_type: 'csv', options: {} }
             // Remove endpoint field from api source type (from.api accepts POST, no endpoint needed)
             if (sanitized.from.source.source_type === 'api' && sanitized.from.source.config) {
                 if (sanitized.from.source.config.endpoint !== undefined) {
@@ -198,14 +192,10 @@ export function defaultStep(): DslStep {
  */
 export function ensureCsvOptions(step: DslStep) {
     if (step.from?.type === 'format' && step.from.format.format_type === 'csv') {
-        if (!step.from.format.options) {
-            step.from.format.options = defaultCsvOptions()
-        }
+        step.from.format.options ??= defaultCsvOptions()
     }
     if (step.to?.type === 'format' && step.to.format.format_type === 'csv') {
-        if (!step.to.format.options) {
-            step.to.format.options = defaultCsvOptions()
-        }
+        step.to.format.options ??= defaultCsvOptions()
     }
 }
 
@@ -215,12 +205,8 @@ export function ensureCsvOptions(step: DslStep) {
 export function ensureEntityFilter(step: DslStep) {
     if (step.from?.type === 'entity') {
         const f: any = step.from
-        if (!f.filter) {
-            f.filter = { field: '', value: '' }
-        }
-        if (!f.mapping) {
-            f.mapping = {}
-        }
+        f.filter ??= { field: '', value: '' }
+        f.mapping ??= {}
     }
 }
 

@@ -72,7 +72,7 @@ describe('MappingEditor', () => {
             vBtns.find(b => {
                 const icon = b.props('icon')
                 return icon === 'mdi-delete' || icon?.includes('delete')
-            }) ||
+            }) ??
             deleteButtons.find(b => {
                 const attrs = b.attributes()
                 return attrs.icon === 'mdi-delete' || attrs['data-testid']?.includes('delete')

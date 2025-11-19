@@ -186,7 +186,9 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     }
 
     // System
-    async getEntityVersioningSettings(...args: Parameters<SystemClient['getEntityVersioningSettings']>) {
+    async getEntityVersioningSettings(
+        ...args: Parameters<SystemClient['getEntityVersioningSettings']>
+    ) {
         return this.systemClient.getEntityVersioningSettings(...args)
     }
     async updateEntityVersioningSettings(

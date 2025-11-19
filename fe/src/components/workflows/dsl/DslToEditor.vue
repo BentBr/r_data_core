@@ -76,8 +76,12 @@
             </template>
             <!-- to.api output mode = Provide data via our API endpoint -->
             <template v-if="getOutputMode() === 'api'">
-                <div class="text-caption mb-2 pa-2" style="background-color: rgba(var(--v-theme-primary), 0.1); border-radius: 4px;">
-                    <strong>{{ t('workflows.dsl.endpoint_info') }}:</strong> GET {{ getFullEndpointUri() }}
+                <div
+                    class="text-caption mb-2 pa-2"
+                    style="background-color: rgba(var(--v-theme-primary), 0.1); border-radius: 4px"
+                >
+                    <strong>{{ t('workflows.dsl.endpoint_info') }}:</strong> GET
+                    {{ getFullEndpointUri() }}
                 </div>
             </template>
             <div
@@ -129,7 +133,10 @@
                 @update:model-value="updateField('mode', $event)"
             />
             <v-text-field
-                v-if="(modelValue as any).mode === 'update' || (modelValue as any).mode === 'create_or_update'"
+                v-if="
+                    (modelValue as any).mode === 'update' ||
+                    (modelValue as any).mode === 'create_or_update'
+                "
                 :model-value="(modelValue as any).update_key"
                 :label="t('workflows.dsl.update_key')"
                 density="comfortable"
@@ -180,8 +187,8 @@
     const { entityDefinitions, loadEntityDefinitions } = useEntityDefinitions()
 
     function getFullEndpointUri(): string {
-        const baseUrl = env.apiBaseUrl || window.location.origin
-        const uuid = props.workflowUuid || '{workflow-uuid}'
+        const baseUrl = env.apiBaseUrl ?? window.location.origin
+        const uuid = props.workflowUuid ?? '{workflow-uuid}'
         return `${baseUrl}/api/v1/workflows/${uuid}`
     }
 
@@ -222,8 +229,8 @@
     watch(
         () => entityDefinitions.value,
         defs => {
-            entityDefItems.value = (defs || []).map(d => ({
-                title: d.display_name || d.entity_type,
+            entityDefItems.value = (defs ?? []).map(d => ({
+                title: d.display_name ?? d.entity_type,
                 value: d.entity_type,
             }))
         },
@@ -232,7 +239,7 @@
 
     // Load entity definitions when component is created
     onMounted(() => {
-        loadEntityDefinitions()
+        void loadEntityDefinitions()
     })
 
     // Load entity fields when entity definition changes
@@ -261,24 +268,24 @@
             entityTargetFields.value = fields
                 .map(f => f.name)
                 .filter(name => !systemFields.includes(name))
-        } catch (e) {
+        } catch {
             entityTargetFields.value = []
         }
     }
 
     // Load entity fields when entity definition is set initially
     watch(
-        () => (props.modelValue as any).entity_definition,
+        () => (props.modelValue.type === 'entity' ? props.modelValue.entity_definition : undefined),
         entityType => {
             if (props.modelValue.type === 'entity' && entityType) {
-                loadEntityFields(entityType)
+                void loadEntityFields(entityType)
             }
         },
         { immediate: true }
     )
 
-    function updateField(field: string, value: any) {
-        const updated: any = { ...props.modelValue }
+    function updateField(field: string, value: unknown) {
+        const updated = { ...props.modelValue } as Record<string, unknown>
         updated[field] = value
         // Remove 'output' field if type is entity
         if (updated.type === 'entity' && 'output' in updated) {
@@ -288,15 +295,17 @@
     }
 
     function getOutputMode(): string {
-        const output = (props.modelValue as any).output
-        if (!output) {
-            return 'api'
-        }
-        if (typeof output === 'string') {
-            return output
-        }
-        if (output.mode) {
-            return output.mode
+        if (props.modelValue.type === 'format') {
+            const output = props.modelValue.output
+            if (!output) {
+                return 'api'
+            }
+            if (typeof output === 'string') {
+                return output
+            }
+            if ('mode' in output && output.mode) {
+                return output.mode
+            }
         }
         return 'api'
     }
@@ -314,13 +323,18 @@
         emit('update:modelValue', updated as ToDef)
     }
 
-    function updateFormatOptions(options: any) {
-        const updated: any = { ...props.modelValue }
-        if (!updated.format) {
-            updated.format = { format_type: 'csv', options: {} }
+    function updateFormatOptions(options: Record<string, unknown>) {
+        if (props.modelValue.type !== 'format') {
+            return
         }
-        updated.format.options = options
-        emit('update:modelValue', updated as ToDef)
+        const updated: ToDef = {
+            ...props.modelValue,
+            format: {
+                ...props.modelValue.format,
+                options,
+            },
+        }
+        emit('update:modelValue', updated)
     }
 
     function updateOutputMode(mode: string) {
@@ -369,9 +383,7 @@
                 method: 'POST',
             }
         }
-        if (!updated.output.destination.config) {
-            updated.output.destination.config = {}
-        }
+        updated.output.destination.config ??= {}
         updated.output.destination.config[key] = value
         emit('update:modelValue', updated as ToDef)
     }
@@ -441,12 +453,14 @@
             mappingEditorRef.value.addEmptyPair()
         } else {
             // Fallback: add to mapping object
-            const updated: any = { ...props.modelValue }
-            if (!updated.mapping) {
-                updated.mapping = {}
+            const updated: ToDef = {
+                ...props.modelValue,
+                mapping: {
+                    ...props.modelValue.mapping,
+                    '': '',
+                },
             }
-            updated.mapping[''] = ''
-            emit('update:modelValue', updated as ToDef)
+            emit('update:modelValue', updated)
         }
     }
 </script>

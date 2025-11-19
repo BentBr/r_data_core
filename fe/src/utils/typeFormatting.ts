@@ -32,16 +32,22 @@ export function formatValueToType(value: any, fieldType: FieldType): any {
 
     switch (fieldType) {
         case 'Boolean':
-            if (typeof value === 'boolean') return value
+            if (typeof value === 'boolean') {
+                return value
+            }
             if (typeof value === 'string') {
                 const lower = value.toLowerCase().trim()
                 return lower === 'true' || lower === '1' || lower === 'yes' || lower === 'on'
             }
-            if (typeof value === 'number') return value !== 0
+            if (typeof value === 'number') {
+                return value !== 0
+            }
             return false
 
         case 'Integer':
-            if (typeof value === 'number') return Math.floor(value)
+            if (typeof value === 'number') {
+                return Math.floor(value)
+            }
             if (typeof value === 'string') {
                 const parsed = parseInt(value, 10)
                 return isNaN(parsed) ? null : parsed
@@ -49,7 +55,9 @@ export function formatValueToType(value: any, fieldType: FieldType): any {
             return null
 
         case 'Float':
-            if (typeof value === 'number') return value
+            if (typeof value === 'number') {
+                return value
+            }
             if (typeof value === 'string') {
                 const parsed = parseFloat(value)
                 return isNaN(parsed) ? null : parsed
@@ -64,7 +72,9 @@ export function formatValueToType(value: any, fieldType: FieldType): any {
         case 'Object':
         case 'Array':
             // If already an object/array, return as-is
-            if (typeof value === 'object') return value
+            if (typeof value === 'object') {
+                return value
+            }
             // Try to parse JSON string
             if (typeof value === 'string') {
                 try {
@@ -109,4 +119,3 @@ export function formatFieldData(
 
     return formatted
 }
-

@@ -36,7 +36,10 @@
                     ></v-switch>
                     <v-switch
                         v-model="form.versioning_disabled"
-                        :label="t('workflows.create.versioning_disabled') || 'Disable versioning for this workflow'"
+                        :label="
+                            t('workflows.create.versioning_disabled') ||
+                            'Disable versioning for this workflow'
+                        "
                         color="warning"
                         inset
                     ></v-switch>
@@ -45,7 +48,9 @@
                         :label="t('workflows.create.cron')"
                         :error-messages="cronError || ''"
                         :disabled="hasApiSource"
-                        :hint="hasApiSource ? t('workflows.create.cron_disabled_for_api_source') : ''"
+                        :hint="
+                            hasApiSource ? t('workflows.create.cron_disabled_for_api_source') : ''
+                        "
                         persistent-hint
                         @update:model-value="onCronChange"
                     />
@@ -62,15 +67,18 @@
                         Next: {{ nextRuns.join(', ') }}
                     </div>
 
-                    <v-expansion-panels class="mt-2" :model-value="[]">
+                    <v-expansion-panels
+                        class="mt-2"
+                        :model-value="[]"
+                    >
                         <v-expansion-panel>
                             <v-expansion-panel-title>{{
                                 t('workflows.create.config_label')
                             }}</v-expansion-panel-title>
                             <v-expansion-panel-text>
                                 <div class="mb-4">
-                                    <DslConfigurator 
-                                        v-model="steps" 
+                                    <DslConfigurator
+                                        v-model="steps"
                                         :workflow-uuid="null"
                                     />
                                 </div>
@@ -108,6 +116,7 @@
     import { typedHttpClient, ValidationError } from '@/api/typed-client'
     import { useTranslations } from '@/composables/useTranslations'
     import DslConfigurator from './DslConfigurator.vue'
+    import type { DslStep } from './dsl/dsl-utils'
 
     const props = defineProps<{ modelValue: boolean }>()
     const emit = defineEmits<{
@@ -136,7 +145,7 @@
 
     const configJson = ref('')
     const configError = ref<string | null>(null)
-    const steps = ref<any[]>([])
+    const steps = ref<DslStep[]>([])
     const cronError = ref<string | null>(null)
     const cronHelp = ref<string>(
         'Use standard 5-field cron (min hour day month dow), e.g. "*/5 * * * *"'
@@ -164,12 +173,14 @@
             nextRuns.value = []
             return
         }
-        cronDebounce = setTimeout(async () => {
-            try {
-                nextRuns.value = await typedHttpClient.previewCron(value)
-            } catch (e) {
-                nextRuns.value = []
-            }
+        cronDebounce = setTimeout(() => {
+            void (async () => {
+                try {
+                    nextRuns.value = await typedHttpClient.previewCron(value)
+                } catch {
+                    nextRuns.value = []
+                }
+            })()
         }, 350)
     }
 
@@ -229,7 +240,7 @@
             }
             if (e?.violations) {
                 const v = e.violations[0]
-                configError.value = v?.message || t('workflows.create.dsl_invalid')
+                configError.value = v?.message ?? t('workflows.create.dsl_invalid')
                 return
             }
             configError.value = e instanceof Error ? e.message : t('workflows.create.dsl_invalid')
@@ -240,10 +251,10 @@
         try {
             const payload = {
                 name: form.value.name,
-                description: form.value.description || null,
+                description: form.value.description ?? null,
                 kind: form.value.kind,
                 enabled: form.value.enabled,
-                schedule_cron: form.value.schedule_cron || null,
+                schedule_cron: form.value.schedule_cron ?? null,
                 config: parsedConfig ?? {},
                 versioning_disabled: form.value.versioning_disabled,
             }

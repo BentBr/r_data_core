@@ -35,7 +35,10 @@
                     <v-text-field
                         v-model="formData.data.entity_key"
                         :label="t('entities.create.key_label')"
-                        :rules="[(v: any) => !!v ?? t('entities.create.key_required')]"
+                        :rules="[
+                            (v: string | null | undefined) =>
+                                !!v ?? t('entities.create.key_required'),
+                        ]"
                         :error-messages="fieldErrors.entity_key ? [fieldErrors.entity_key] : []"
                         required
                         class="mb-4"

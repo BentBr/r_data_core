@@ -295,7 +295,7 @@
                     fields: sanitizeFields(sanitizedDefinition.fields.map(field => ({ ...field }))),
                 }
                 selectedItems.value = [item.uuid]
-                
+
                 // Update the cached version in the list
                 const index = entityDefinitions.value.findIndex(d => d.uuid === item.uuid)
                 if (index !== -1) {
@@ -332,7 +332,9 @@
             // Reload the definition from server to get latest version and history
             if (selectedDefinition.value?.uuid) {
                 try {
-                    const reloaded = await typedHttpClient.getEntityDefinition(selectedDefinition.value.uuid)
+                    const reloaded = await typedHttpClient.getEntityDefinition(
+                        selectedDefinition.value.uuid
+                    )
                     const sanitizedReloaded = {
                         ...reloaded,
                         fields: sanitizeFields(reloaded.fields),
@@ -340,9 +342,11 @@
                     selectedDefinition.value = sanitizedReloaded
                     originalDefinition.value = {
                         ...sanitizedReloaded,
-                        fields: sanitizeFields(sanitizedReloaded.fields.map(field => ({ ...field }))),
+                        fields: sanitizeFields(
+                            sanitizedReloaded.fields.map(field => ({ ...field }))
+                        ),
                     }
-                    
+
                     // Update the cached version in the list
                     const index = entityDefinitions.value.findIndex(
                         d => d.uuid === selectedDefinition.value?.uuid
@@ -426,7 +430,9 @@
             // Reload the definition from server to get latest version and history
             if (selectedDefinition.value?.uuid) {
                 try {
-                    const reloaded = await typedHttpClient.getEntityDefinition(selectedDefinition.value.uuid)
+                    const reloaded = await typedHttpClient.getEntityDefinition(
+                        selectedDefinition.value.uuid
+                    )
                     const sanitizedReloaded = {
                         ...reloaded,
                         fields: sanitizeFields(reloaded.fields),
@@ -434,9 +440,11 @@
                     selectedDefinition.value = sanitizedReloaded
                     originalDefinition.value = {
                         ...sanitizedReloaded,
-                        fields: sanitizeFields(sanitizedReloaded.fields.map(field => ({ ...field }))),
+                        fields: sanitizeFields(
+                            sanitizedReloaded.fields.map(field => ({ ...field }))
+                        ),
                     }
-                    
+
                     // Update the cached version in the list
                     const index = entityDefinitions.value.findIndex(
                         d => d.uuid === selectedDefinition.value?.uuid
