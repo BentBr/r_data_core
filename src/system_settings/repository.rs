@@ -14,13 +14,11 @@ impl SystemSettingsRepository {
     }
 
     pub async fn get_value(&self, key: SystemSettingKey) -> Result<Option<serde_json::Value>> {
-        let row = sqlx::query(
-            r#"SELECT value FROM system_settings WHERE key = $1"#,
-        )
-        .bind(key.as_str())
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(Error::Database)?;
+        let row = sqlx::query(r#"SELECT value FROM system_settings WHERE key = $1"#)
+            .bind(key.as_str())
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(Error::Database)?;
         Ok(row.and_then(|r| r.try_get::<serde_json::Value, _>("value").ok()))
     }
 

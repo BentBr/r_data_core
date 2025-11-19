@@ -152,7 +152,10 @@ async fn list_entity_versions(
 
     let version_service = VersionService::new(data.db_pool.clone());
 
-    match version_service.list_entity_versions_with_metadata(uuid).await {
+    match version_service
+        .list_entity_versions_with_metadata(uuid)
+        .await
+    {
         Ok(versions) => {
             let out: Vec<VersionMeta> = versions
                 .into_iter()
@@ -211,7 +214,7 @@ async fn get_entity_version(
     let (entity_type, uuid, version_number) = path.into_inner();
 
     let repo = VersionRepository::new(data.db_pool.clone());
-    
+
     // First try to get from versions table
     match repo.get_entity_version(uuid, version_number).await {
         Ok(Some(row)) => {
@@ -227,10 +230,14 @@ async fn get_entity_version(
             // Not in versions table, check if it's the current version
             let current_metadata = repo.get_current_entity_metadata(uuid).await.ok().flatten();
 
-            if let Some((current_version, updated_at, updated_by, _updated_by_name)) = current_metadata {
+            if let Some((current_version, updated_at, updated_by, _updated_by_name)) =
+                current_metadata
+            {
                 if current_version == version_number {
                     // This is the current version, fetch from entity view using repository
-                    if let Ok(Some(data_json)) = repo.get_current_entity_data(uuid, &entity_type).await {
+                    if let Ok(Some(data_json)) =
+                        repo.get_current_entity_data(uuid, &entity_type).await
+                    {
                         let payload = VersionPayload {
                             version_number,
                             created_at: updated_at,

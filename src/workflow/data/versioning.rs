@@ -7,8 +7,8 @@ use crate::workflow::data::versioning_repository::WorkflowVersioningRepository;
 pub async fn snapshot_workflow_pre_update(
     pool: &PgPool,
     uuid: Uuid,
-    updated_by: Option<Uuid>,
+    _updated_by: Option<Uuid>, // Not used - extracted from JSON
 ) -> Result<()> {
     let repo = WorkflowVersioningRepository::new(pool.clone());
-    repo.snapshot_pre_update(uuid, updated_by).await
+    repo.snapshot_pre_update(uuid).await
 }

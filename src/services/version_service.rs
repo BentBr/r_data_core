@@ -71,4 +71,3 @@ pub struct VersionMetaWithName {
     pub created_by: Option<Uuid>,
     pub created_by_name: Option<String>,
 }
-

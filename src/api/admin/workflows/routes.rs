@@ -1,6 +1,6 @@
+use crate::utils::cron;
 use actix_web::{delete, get, post, put, web, Responder};
 use chrono::{DateTime, Utc};
-use crate::utils::cron;
 use log::{error, info};
 use serde_json::Value;
 use std::str::FromStr;
@@ -699,7 +699,10 @@ pub async fn list_workflow_versions(
     };
 
     // Get current workflow metadata
-    let current_metadata = match versioning_repo.get_current_workflow_metadata(workflow_uuid).await {
+    let current_metadata = match versioning_repo
+        .get_current_workflow_metadata(workflow_uuid)
+        .await
+    {
         Ok(metadata) => metadata,
         Err(e) => {
             error!("Failed to get current workflow metadata: {}", e);
@@ -774,7 +777,10 @@ pub async fn get_workflow_version(
     let versioning_repo = WorkflowVersioningRepository::new(state.db_pool.clone());
 
     // First try to get from versions table
-    match versioning_repo.get_workflow_version(workflow_uuid, version_number).await {
+    match versioning_repo
+        .get_workflow_version(workflow_uuid, version_number)
+        .await
+    {
         Ok(Some(row)) => {
             let payload = WorkflowVersionPayload {
                 version_number: row.version_number,
@@ -786,13 +792,20 @@ pub async fn get_workflow_version(
         }
         Ok(None) => {
             // Not in versions table, check if it's the current version
-            let current_metadata = versioning_repo.get_current_workflow_metadata(workflow_uuid).await.ok().flatten();
+            let current_metadata = versioning_repo
+                .get_current_workflow_metadata(workflow_uuid)
+                .await
+                .ok()
+                .flatten();
 
-            if let Some((current_version, updated_at, updated_by, _updated_by_name)) = current_metadata {
+            if let Some((current_version, updated_at, updated_by, _updated_by_name)) =
+                current_metadata
+            {
                 if current_version == version_number {
                     // This is the current version, fetch from workflows table
                     if let Ok(Some(workflow)) = state.workflow_service.get(workflow_uuid).await {
-                        let current_json = serde_json::to_value(&workflow).unwrap_or(serde_json::json!({}));
+                        let current_json =
+                            serde_json::to_value(&workflow).unwrap_or(serde_json::json!({}));
                         let payload = WorkflowVersionPayload {
                             version_number,
                             created_at: updated_at,

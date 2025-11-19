@@ -1,4 +1,4 @@
-use sqlx::{PgPool, Row};
+use sqlx::{PgPool, Postgres, Row, Transaction};
 use uuid::Uuid;
 
 use crate::error::{Error, Result};
@@ -14,25 +14,9 @@ impl EntityDefinitionVersioningRepository {
     }
 
     /// Create a pre-update snapshot for an entity definition
-    pub async fn snapshot_pre_update(
-        &self,
-        definition_uuid: Uuid,
-        updated_by: Option<Uuid>,
-    ) -> Result<()> {
-        // Read current version
-        let version: Option<i32> = sqlx::query_scalar(
-            "SELECT version FROM entity_definitions WHERE uuid = $1",
-        )
-        .bind(definition_uuid)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(Error::Database)?;
-
-        let Some(ver) = version else {
-            return Ok(()); // No definition to snapshot
-        };
-
-        // Get current definition data as JSON
+    /// The snapshot's created_by is extracted from the JSON data (updated_by or created_by).
+    pub async fn snapshot_pre_update(&self, definition_uuid: Uuid) -> Result<()> {
+        // Get current definition data as JSON (includes version, updated_by, and created_by)
         let current_json: Option<serde_json::Value> = sqlx::query_scalar(
             "SELECT row_to_json(t) FROM (SELECT * FROM entity_definitions WHERE uuid = $1) t",
         )
@@ -42,6 +26,22 @@ impl EntityDefinitionVersioningRepository {
         .map_err(Error::Database)?;
 
         if let Some(data) = current_json {
+            // Extract version and creator from JSON
+            let ver: Option<i32> = data
+                .get("version")
+                .and_then(|v| v.as_i64())
+                .map(|v| v as i32);
+            let Some(version) = ver else {
+                return Ok(()); // No definition to snapshot
+            };
+
+            // Extract updated_by or created_by from the JSON data
+            let snapshot_created_by = data
+                .get("updated_by")
+                .or_else(|| data.get("created_by"))
+                .and_then(|v| v.as_str())
+                .and_then(|s| Uuid::parse_str(s).ok());
+
             // Insert snapshot into entity_definition_versions
             sqlx::query(
                 r#"
@@ -51,10 +51,64 @@ impl EntityDefinitionVersioningRepository {
                 "#,
             )
             .bind(definition_uuid)
-            .bind(ver)
+            .bind(version)
             .bind(data)
-            .bind(updated_by)
+            .bind(snapshot_created_by)
             .execute(&self.pool)
+            .await
+            .map_err(Error::Database)?;
+        }
+
+        Ok(())
+    }
+
+    /// Create a pre-update snapshot within a transaction
+    /// This is an associated function (static method) since it doesn't require a repository instance.
+    /// The snapshot's created_by is extracted from the JSON data (updated_by or created_by).
+    pub async fn snapshot_pre_update_tx(
+        tx: &mut Transaction<'_, Postgres>,
+        definition_uuid: Uuid,
+        _new_updated_by: Option<Uuid>, // Not used - we get the current state from JSON
+    ) -> Result<()> {
+        // Get current definition data as JSON (includes version, updated_by, and created_by)
+        let current_json: Option<serde_json::Value> = sqlx::query_scalar(
+            "SELECT row_to_json(t) FROM (SELECT * FROM entity_definitions WHERE uuid = $1) t",
+        )
+        .bind(definition_uuid)
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(Error::Database)?;
+
+        if let Some(data) = current_json {
+            // Extract version and creator from JSON
+            let ver: Option<i32> = data
+                .get("version")
+                .and_then(|v| v.as_i64())
+                .map(|v| v as i32);
+            let Some(version) = ver else {
+                return Ok(()); // No definition to snapshot
+            };
+
+            // Extract updated_by or created_by from the JSON data
+            let snapshot_created_by = data
+                .get("updated_by")
+                .or_else(|| data.get("created_by"))
+                .and_then(|v| v.as_str())
+                .and_then(|s| Uuid::parse_str(s).ok());
+
+            // Insert snapshot into entity_definition_versions
+            sqlx::query(
+                r#"
+                INSERT INTO entity_definition_versions (definition_uuid, version_number, data, created_by)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (definition_uuid, version_number) DO NOTHING
+                "#,
+            )
+            .bind(definition_uuid)
+            .bind(version)
+            .bind(data)
+            .bind(snapshot_created_by)
+            .execute(&mut **tx)
             .await
             .map_err(Error::Database)?;
         }
@@ -75,10 +129,13 @@ impl EntityDefinitionVersioningRepository {
                 edv.created_by,
                 COALESCE(
                     TRIM(COALESCE(au.first_name || ' ', '') || COALESCE(au.last_name, '')),
-                    au.username
+                    au.username,
+                    w.name
                 ) AS created_by_name
             FROM entity_definition_versions edv
             LEFT JOIN admin_users au ON edv.created_by = au.uuid
+            LEFT JOIN workflow_runs wr ON edv.created_by = wr.uuid
+            LEFT JOIN workflows w ON wr.workflow_uuid = w.uuid
             WHERE edv.definition_uuid = $1
             ORDER BY edv.version_number DESC
             "#,
@@ -140,10 +197,13 @@ impl EntityDefinitionVersioningRepository {
                 ed.updated_by,
                 COALESCE(
                     TRIM(COALESCE(au.first_name || ' ', '') || COALESCE(au.last_name, '')),
-                    au.username
+                    au.username,
+                    w.name
                 ) AS updated_by_name
             FROM entity_definitions ed
             LEFT JOIN admin_users au ON ed.updated_by = au.uuid
+            LEFT JOIN workflow_runs wr ON ed.updated_by = wr.uuid
+            LEFT JOIN workflows w ON wr.workflow_uuid = w.uuid
             WHERE ed.uuid = $1
             "#,
         )
@@ -177,4 +237,3 @@ pub struct EntityDefinitionVersionPayload {
     pub created_by: Option<Uuid>,
     pub data: serde_json::Value,
 }
-

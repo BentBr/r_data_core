@@ -314,7 +314,6 @@ async fn update_entity_definition(
     updated_def.display_name = existing_def.display_name;
     updated_def.created_at = existing_def.created_at;
     updated_def.created_by = existing_def.created_by;
-    updated_def.version = existing_def.version + 1; // Increment version
     updated_def.updated_at = OffsetDateTime::now_utc();
     updated_def.updated_by = Some(updater_uuid);
 
@@ -549,7 +548,10 @@ pub async fn list_entity_definition_versions(
     let versioning_repo = EntityDefinitionVersioningRepository::new(data.db_pool.clone());
 
     // Get historical versions
-    let rows = match versioning_repo.list_definition_versions(definition_uuid).await {
+    let rows = match versioning_repo
+        .list_definition_versions(definition_uuid)
+        .await
+    {
         Ok(rows) => rows,
         Err(e) => {
             error!("Failed to list entity definition versions: {}", e);
@@ -558,7 +560,10 @@ pub async fn list_entity_definition_versions(
     };
 
     // Get current definition metadata
-    let current_metadata = match versioning_repo.get_current_definition_metadata(definition_uuid).await {
+    let current_metadata = match versioning_repo
+        .get_current_definition_metadata(definition_uuid)
+        .await
+    {
         Ok(metadata) => metadata,
         Err(e) => {
             error!("Failed to get current entity definition metadata: {}", e);
@@ -633,7 +638,10 @@ pub async fn get_entity_definition_version(
     let versioning_repo = EntityDefinitionVersioningRepository::new(data.db_pool.clone());
 
     // First try to get from versions table
-    match versioning_repo.get_definition_version(definition_uuid, version_number).await {
+    match versioning_repo
+        .get_definition_version(definition_uuid, version_number)
+        .await
+    {
         Ok(Some(row)) => {
             let payload = EntityDefinitionVersionPayload {
                 version_number: row.version_number,
@@ -645,14 +653,25 @@ pub async fn get_entity_definition_version(
         }
         Ok(None) => {
             // Not in versions table, check if it's the current version
-            let current_metadata = versioning_repo.get_current_definition_metadata(definition_uuid).await.ok().flatten();
+            let current_metadata = versioning_repo
+                .get_current_definition_metadata(definition_uuid)
+                .await
+                .ok()
+                .flatten();
 
-            if let Some((current_version, updated_at, updated_by, _updated_by_name)) = current_metadata {
+            if let Some((current_version, updated_at, updated_by, _updated_by_name)) =
+                current_metadata
+            {
                 if current_version == version_number {
                     // This is the current version, fetch from entity_definitions table
-                    match data.entity_definition_service.get_entity_definition(&definition_uuid).await {
+                    match data
+                        .entity_definition_service
+                        .get_entity_definition(&definition_uuid)
+                        .await
+                    {
                         Ok(def) => {
-                            let current_json = serde_json::to_value(&def).unwrap_or(serde_json::json!({}));
+                            let current_json =
+                                serde_json::to_value(&def).unwrap_or(serde_json::json!({}));
                             let payload = EntityDefinitionVersionPayload {
                                 version_number,
                                 created_at: updated_at,
@@ -664,7 +683,9 @@ pub async fn get_entity_definition_version(
                         Err(crate::error::Error::NotFound(_)) => {}
                         Err(e) => {
                             error!("Failed to get entity definition: {}", e);
-                            return ApiResponse::<()>::internal_error("Failed to get entity definition");
+                            return ApiResponse::<()>::internal_error(
+                                "Failed to get entity definition",
+                            );
                         }
                     }
                 }

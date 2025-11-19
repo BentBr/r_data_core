@@ -368,18 +368,19 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
         let updated_at = definition.updated_at;
         let updated_by = definition.updated_by;
         let published = definition.published;
-        let version = definition.version;
 
-        // Pre-update snapshot of current definition
-        let versioning_repo =
-            crate::api::admin::entity_definitions::versioning_repository::EntityDefinitionVersioningRepository::new(
-                self.db_pool.clone(),
-            );
-        let _ = versioning_repo
-            .snapshot_pre_update(*uuid, definition.updated_by)
-            .await;
+        // Start a transaction
+        let mut tx = self.db_pool.begin().await?;
 
-        // SQL query
+        // Pre-update snapshot of current definition (within transaction)
+        crate::api::admin::entity_definitions::versioning_repository::EntityDefinitionVersioningRepository::snapshot_pre_update_tx(
+            &mut tx,
+            *uuid,
+            definition.updated_by,
+        )
+        .await?;
+
+        // SQL query - increment version atomically in SQL (like entities and workflows)
         let query = "UPDATE entity_definitions SET
                     entity_type = $1,
                     display_name = $2,
@@ -391,8 +392,8 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
                     updated_at = $8,
                     updated_by = $9,
                     published = $10,
-                    version = $11 + 1
-                    WHERE uuid = $12";
+                    version = version + 1
+                    WHERE uuid = $11";
 
         sqlx::query(query)
             .bind(entity_type)
@@ -405,11 +406,13 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
             .bind(updated_at)
             .bind(updated_by)
             .bind(published)
-            .bind(version)
             .bind(uuid)
-            .execute(&self.db_pool)
+            .execute(&mut *tx)
             .await
             .map_err(Error::Database)?;
+
+        // Commit the transaction
+        tx.commit().await?;
 
         Ok(())
     }

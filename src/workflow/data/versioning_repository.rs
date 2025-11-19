@@ -14,25 +14,9 @@ impl WorkflowVersioningRepository {
     }
 
     /// Create a pre-update snapshot for a workflow
-    pub async fn snapshot_pre_update(
-        &self,
-        workflow_uuid: Uuid,
-        updated_by: Option<Uuid>,
-    ) -> Result<()> {
-        // Read current version
-        let version: Option<i32> = sqlx::query_scalar(
-            "SELECT version FROM workflows WHERE uuid = $1",
-        )
-        .bind(workflow_uuid)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(Error::Database)?;
-
-        let Some(ver) = version else {
-            return Ok(()); // No workflow to snapshot
-        };
-
-        // Get current workflow data as JSON
+    /// The snapshot's created_by is extracted from the JSON data (updated_by or created_by).
+    pub async fn snapshot_pre_update(&self, workflow_uuid: Uuid) -> Result<()> {
+        // Get current workflow data as JSON (includes version, updated_by, and created_by)
         let current_json: Option<serde_json::Value> = sqlx::query_scalar(
             "SELECT row_to_json(t) FROM (SELECT * FROM workflows WHERE uuid = $1) t",
         )
@@ -42,6 +26,22 @@ impl WorkflowVersioningRepository {
         .map_err(Error::Database)?;
 
         if let Some(data) = current_json {
+            // Extract version and creator from JSON
+            let ver: Option<i32> = data
+                .get("version")
+                .and_then(|v| v.as_i64())
+                .map(|v| v as i32);
+            let Some(version) = ver else {
+                return Ok(()); // No workflow to snapshot
+            };
+
+            // Extract updated_by or created_by from the JSON data
+            let snapshot_created_by = data
+                .get("updated_by")
+                .or_else(|| data.get("created_by"))
+                .and_then(|v| v.as_str())
+                .and_then(|s| Uuid::parse_str(s).ok());
+
             // Insert snapshot into workflow_versions
             sqlx::query(
                 r#"
@@ -51,9 +51,9 @@ impl WorkflowVersioningRepository {
                 "#,
             )
             .bind(workflow_uuid)
-            .bind(ver)
+            .bind(version)
             .bind(data)
-            .bind(updated_by)
+            .bind(snapshot_created_by)
             .execute(&self.pool)
             .await
             .map_err(Error::Database)?;
@@ -177,4 +177,3 @@ pub struct WorkflowVersionPayload {
     pub created_by: Option<Uuid>,
     pub data: serde_json::Value,
 }
-

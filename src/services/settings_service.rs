@@ -30,14 +30,13 @@ impl SettingsService {
         }
 
         let repo = SystemSettingsRepository::new(self.pool.clone());
-        let settings: EntityVersioningSettings = match repo
-            .get_value(SystemSettingKey::EntityVersioning)
-            .await?
-        {
-            Some(value) => serde_json::from_value::<EntityVersioningSettings>(value)
-                .unwrap_or_default(),
-            None => EntityVersioningSettings::default(),
-        };
+        let settings: EntityVersioningSettings =
+            match repo.get_value(SystemSettingKey::EntityVersioning).await? {
+                Some(value) => {
+                    serde_json::from_value::<EntityVersioningSettings>(value).unwrap_or_default()
+                }
+                None => EntityVersioningSettings::default(),
+            };
 
         // cache
         let _ = self
