@@ -111,8 +111,8 @@ describe('AuthConfigEditor', () => {
         }
         // Find the location select (not the auth type select)
         const locationSelect = selects.find(s => {
-            const items = s.props('items') as any[]
-            return items?.some((item: any) => item.value === 'header' || item.value === 'body')
+            const items = s.props('items') as Array<{ value: string; title: string }> | undefined
+            return items?.some(item => item.value === 'header' || item.value === 'body')
         })
         if (locationSelect) {
             expect(locationSelect.props('modelValue')).toBe('header')
@@ -258,8 +258,8 @@ describe('AuthConfigEditor', () => {
         await nextTick()
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const locationSelect = selects.find(s => {
-            const items = s.props('items') as any[]
-            return items?.some((item: any) => item.value === 'body')
+            const items = s.props('items') as Array<{ value: string; title: string }> | undefined
+            return items?.some(item => item.value === 'body')
         })
 
         if (locationSelect) {

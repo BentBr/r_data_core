@@ -130,7 +130,7 @@
         emit('update:modelValue', newAuth)
     }
 
-    function updateField(field: string, value: any) {
+    function updateField(field: string, value: unknown) {
         const updated = { ...props.modelValue, [field]: value }
         emit('update:modelValue', updated as AuthConfig)
     }

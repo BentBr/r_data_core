@@ -42,7 +42,7 @@ describe('MappingEditor', () => {
             },
         })
 
-        const component = wrapper.vm as any
+        const component = wrapper.vm as { addEmptyPair: () => void }
         component.addEmptyPair()
         await nextTick()
 
@@ -82,7 +82,9 @@ describe('MappingEditor', () => {
             await deleteBtn.trigger('click')
             await nextTick()
 
-            const emitted = wrapper.emitted('update:modelValue') as any[]
+            const emitted = wrapper.emitted('update:modelValue') as
+                | Array<[Record<string, string>]>
+                | undefined
             expect(emitted?.length).toBeGreaterThan(0)
             const updatedMapping = emitted[emitted.length - 1][0] as Mapping
             expect(Object.keys(updatedMapping).length).toBeLessThan(2)
@@ -109,7 +111,9 @@ describe('MappingEditor', () => {
             await textFields[0].vm.$emit('update:modelValue', 'new_key')
             await nextTick()
 
-            const emitted = wrapper.emitted('update:modelValue') as any[]
+            const emitted = wrapper.emitted('update:modelValue') as
+                | Array<[Record<string, string>]>
+                | undefined
             expect(emitted?.length).toBeGreaterThan(0)
             const updatedMapping = emitted[emitted.length - 1][0] as Mapping
             expect(updatedMapping['new_key']).toBe('value')
@@ -134,7 +138,9 @@ describe('MappingEditor', () => {
             await textFields[1].vm.$emit('update:modelValue', 'new_value')
             await nextTick()
 
-            const emitted = wrapper.emitted('update:modelValue') as any[]
+            const emitted = wrapper.emitted('update:modelValue') as
+                | Array<[Record<string, string>]>
+                | undefined
             expect(emitted?.length).toBeGreaterThan(0)
             const updatedMapping = emitted[emitted.length - 1][0] as Mapping
             expect(updatedMapping['key']).toBe('new_value')
@@ -211,7 +217,7 @@ describe('MappingEditor', () => {
         })
 
         // Add a pair
-        const component = wrapper.vm as any
+        const component = wrapper.vm as { addEmptyPair: () => void }
         component.addEmptyPair()
         await nextTick()
 
@@ -222,7 +228,9 @@ describe('MappingEditor', () => {
             await textFields[1].vm.$emit('update:modelValue', 'normalized_field')
             await nextTick()
 
-            const emitted = wrapper.emitted('update:modelValue') as any[]
+            const emitted = wrapper.emitted('update:modelValue') as
+                | Array<[Record<string, string>]>
+                | undefined
             expect(emitted?.length).toBeGreaterThan(0)
             const updatedMapping = emitted[emitted.length - 1][0] as Mapping
             expect(updatedMapping['source_field']).toBe('normalized_field')
@@ -242,7 +250,7 @@ describe('MappingEditor', () => {
         })
 
         // Add empty pair
-        const component = wrapper.vm as any
+        const component = wrapper.vm as { addEmptyPair: () => void }
         component.addEmptyPair()
         await nextTick()
 

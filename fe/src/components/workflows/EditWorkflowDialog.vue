@@ -221,6 +221,7 @@
     import DslConfigurator from './DslConfigurator.vue'
     import { useTranslations } from '@/composables/useTranslations'
     import { computeDiffRows } from '@/utils/versionDiff'
+    import type { DslStep } from './dsl/dsl-utils'
 
     const props = defineProps<{ modelValue: boolean; workflowUuid: string | null }>()
     const emit = defineEmits<{
@@ -263,17 +264,17 @@
 
     const configJson = ref('')
     const configError = ref<string | null>(null)
-    const steps = ref<any[]>([])
+    const steps = ref<DslStep[]>([])
     const cronError = ref<string | null>(null)
     const cronHelp = ref<string>(
         'Use standard 5-field cron (min hour day month dow), e.g. "*/5 * * * *"'
     )
     const nextRuns = ref<string[]>([])
-    let cronDebounce: any = null
+    let cronDebounce: ReturnType<typeof setTimeout> | null = null
 
     // Check if any step has from.api source type (accepts POST, no cron needed)
     const hasApiSource = computed(() => {
-        return steps.value.some((step: any) => {
+        return steps.value.some((step: DslStep) => {
             if (step.from?.type === 'format' && step.from?.source?.source_type === 'api') {
                 // from.api without endpoint field = accepts POST
                 return !step.from?.source?.config?.endpoint
@@ -296,7 +297,7 @@
     })
 
     const rules = {
-        required: (v: any) => !!v || 'Required',
+        required: (v: unknown) => !!v || 'Required',
     }
 
     watch(
@@ -395,10 +396,13 @@
             form.value.kind = data.kind
             form.value.enabled = data.enabled
             form.value.schedule_cron = data.schedule_cron ?? ''
-            form.value.versioning_disabled = (data as any).versioning_disabled ?? false
+            form.value.versioning_disabled =
+                'versioning_disabled' in data && typeof data.versioning_disabled === 'boolean'
+                    ? data.versioning_disabled
+                    : false
             configJson.value = JSON.stringify(data.config ?? {}, null, 2)
             try {
-                const cfg: any = data.config ?? {}
+                const cfg = (data.config ?? {}) as { steps?: DslStep[] }
                 isSyncingSteps = true
                 steps.value = Array.isArray(cfg.steps) ? cfg.steps : []
                 // Reset flag after next tick
@@ -444,7 +448,7 @@
         model.value = false
     }
 
-    function parseJson(input: string): any | undefined {
+    function parseJson(input: string): unknown | undefined {
         if (!input?.trim()) {
             return undefined
         }
@@ -482,7 +486,7 @@
                 return
             }
             await typedHttpClient.validateDsl(steps)
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (e instanceof ValidationError) {
                 // Handle Symfony-style validation errors
                 const violations = e.violations || []
@@ -521,7 +525,7 @@
             })
             emit('updated')
             model.value = false
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (e instanceof ValidationError) {
                 const cronViolation = e.violations.find(v => v.field === 'schedule_cron')
                 if (cronViolation) {

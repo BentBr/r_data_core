@@ -133,8 +133,8 @@
                 typedHttpClient.getDslTransformOptions(),
                 loadEntityDefinitions(),
             ])
-        } catch (e: any) {
-            loadError.value = e?.message ?? 'Failed to load DSL options'
+        } catch (e: unknown) {
+            loadError.value = e instanceof Error ? e.message : 'Failed to load DSL options'
         } finally {
             loading.value = false
         }

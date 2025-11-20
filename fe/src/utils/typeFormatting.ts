@@ -25,7 +25,7 @@ export type FieldType =
  * Format a value to the proper type based on field type
  * Handles string-to-type conversions (e.g., "false" -> boolean false)
  */
-export function formatValueToType(value: any, fieldType: FieldType): any {
+export function formatValueToType(value: unknown, fieldType: FieldType): unknown {
     if (value === null || value === undefined || value === '') {
         return null
     }
@@ -95,10 +95,10 @@ export function formatValueToType(value: any, fieldType: FieldType): any {
  * Format field data object by applying type formatting to all fields based on field definitions
  */
 export function formatFieldData(
-    fieldData: Record<string, any>,
+    fieldData: Record<string, unknown>,
     fieldDefinitions: Array<{ name: string; field_type: FieldType }>
-): Record<string, any> {
-    const formatted: Record<string, any> = {}
+): Record<string, unknown> {
+    const formatted: Record<string, unknown> = {}
     const fieldTypeMap = new Map<string, FieldType>()
 
     // Build field type map

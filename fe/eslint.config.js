@@ -7,9 +7,10 @@ import typescriptParser from '@typescript-eslint/parser'
 import typescriptPlugin from '@typescript-eslint/eslint-plugin'
 
 export default [
-    // For config files and src files
+    // For config files and src files (excluding test files)
     {
         files: ['src/**/*.{js,vue,ts}'],
+        ignores: ['**/*.test.{js,ts}', '**/*.spec.{js,ts}'],
         languageOptions: {
             parser: vueParser,
             parserOptions: {
@@ -85,6 +86,32 @@ export default [
             'no-unused-vars': 'off',
             'no-undef': 'off', // TypeScript compiler handles this
             'prefer-const': 'error', // Use the base ESLint rule instead
+            'prettier/prettier': [
+                'error',
+                {
+                    tabWidth: 4,
+                    singleAttributePerLine: true,
+                    vueIndentScriptAndStyle: true,
+                    bracketSameLine: false,
+                },
+            ],
+        },
+    },
+    // For test files - allow any types (common practice for test utilities)
+    {
+        files: ['**/*.test.{js,ts}', '**/*.spec.{js,ts}'],
+        languageOptions: {
+            parser: typescriptParser,
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+        },
+        plugins: {
+            '@typescript-eslint': typescriptPlugin,
+            prettier,
+        },
+        rules: {
+            ...prettierConfig.rules,
+            '@typescript-eslint/no-explicit-any': 'off', // Allow any in tests
             'prettier/prettier': [
                 'error',
                 {

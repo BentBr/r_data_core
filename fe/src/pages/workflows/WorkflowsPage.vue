@@ -95,7 +95,7 @@
                 totalPages.value = 1
                 paginationMeta.value = null
             }
-        } catch (e: any) {
+        } catch (e: unknown) {
             error.value = e?.message ?? 'Failed to load workflows'
         } finally {
             loading.value = false

@@ -10,10 +10,12 @@ const mockGetEntity = vi.fn()
 
 vi.mock('@/api/typed-client', () => ({
     typedHttpClient: {
-        getEntityDefinitions: (...args: any[]) => mockGetEntityDefinitions(...args),
-        createEntity: (...args: any[]) => mockCreateEntity(...args),
-        deleteEntity: (...args: any[]) => mockDeleteEntity(...args),
-        getEntity: (...args: any[]) => mockGetEntity(...args),
+        getEntityDefinitions: (page?: number, itemsPerPage?: number) =>
+            mockGetEntityDefinitions(page, itemsPerPage),
+        createEntity: (entityType: string, data: Record<string, unknown>) =>
+            mockCreateEntity(entityType, data),
+        deleteEntity: (uuid: string) => mockDeleteEntity(uuid),
+        getEntity: (uuid: string) => mockGetEntity(uuid),
         browseByPath: vi.fn().mockResolvedValue({ data: [] }),
     },
     ValidationError: class ValidationError extends Error {

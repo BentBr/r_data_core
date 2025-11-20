@@ -8,9 +8,10 @@ const mockUploadRunFile = vi.fn().mockResolvedValue({ run_uuid: 'r1', staged_ite
 
 vi.mock('@/api/typed-client', () => ({
     typedHttpClient: {
-        getWorkflows: (...args: any[]) => mockGetWorkflows(...args),
-        runWorkflow: (...args: any[]) => mockRunWorkflow(...args),
-        uploadRunFile: (...args: any[]) => mockUploadRunFile(...args),
+        getWorkflows: (page?: number, itemsPerPage?: number) =>
+            mockGetWorkflows(page, itemsPerPage),
+        runWorkflow: (uuid: string, data?: { file?: File }) => mockRunWorkflow(uuid, data),
+        uploadRunFile: (uuid: string, file: File) => mockUploadRunFile(uuid, file),
         getWorkflowRuns: vi
             .fn()
             .mockResolvedValue({ data: [], meta: { pagination: { total: 0 } } }),

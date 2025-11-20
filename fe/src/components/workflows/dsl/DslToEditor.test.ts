@@ -8,7 +8,7 @@ const mockGetEntityFields = vi.fn()
 
 vi.mock('@/api/typed-client', () => ({
     typedHttpClient: {
-        getEntityFields: (...args: any[]) => mockGetEntityFields(...args),
+        getEntityFields: (entityType: string) => mockGetEntityFields(entityType),
     },
 }))
 
@@ -171,8 +171,8 @@ describe('DslToEditor', () => {
 
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const hasOutputSelect = selects.some(s => {
-            const items = s.props('items') as any[]
-            return items?.some((item: any) => item.value === 'api' || item.value === 'download')
+            const items = s.props('items') as Array<{ value: string; title: string }> | undefined
+            return items?.some(item => item.value === 'api' || item.value === 'download')
         })
 
         expect(hasOutputSelect).toBe(false)
@@ -196,15 +196,15 @@ describe('DslToEditor', () => {
 
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const modeSelect = selects.find(s => {
-            const items = s.props('items') as any[]
-            return items?.some((item: any) => item.value === 'update')
+            const items = s.props('items') as Array<{ value: string; title: string }> | undefined
+            return items?.some(item => item.value === 'update')
         })
 
         if (modeSelect) {
             await modeSelect.vm.$emit('update:modelValue', 'update')
             await nextTick()
 
-            const emitted = wrapper.emitted('update:modelValue') as any[]
+            const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
             const updated = emitted[emitted.length - 1][0] as ToDef
             if (updated.type === 'entity') {
@@ -283,9 +283,9 @@ describe('DslToEditor', () => {
 
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const modeSelect = selects.find(s => {
-            const items = s.props('items') as any[]
+            const items = s.props('items') as Array<{ value: string; title: string }> | undefined
             return items?.some(
-                (item: any) =>
+                item =>
                     item.value === 'create' ||
                     item.value === 'update' ||
                     item.value === 'create_or_update'
@@ -294,8 +294,11 @@ describe('DslToEditor', () => {
 
         expect(modeSelect).toBeTruthy()
         if (modeSelect) {
-            const items = modeSelect.props('items') as any[]
-            const hasCreateOrUpdate = items.some((item: any) => item.value === 'create_or_update')
+            const items = modeSelect.props('items') as
+                | Array<{ value: string; title: string }>
+                | undefined
+            const hasCreateOrUpdate =
+                items?.some(item => item.value === 'create_or_update') ?? false
             expect(hasCreateOrUpdate).toBe(true)
         }
     })
@@ -318,15 +321,15 @@ describe('DslToEditor', () => {
 
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const modeSelect = selects.find(s => {
-            const items = s.props('items') as any[]
-            return items?.some((item: any) => item.value === 'create_or_update')
+            const items = s.props('items') as Array<{ value: string; title: string }> | undefined
+            return items?.some(item => item.value === 'create_or_update')
         })
 
         if (modeSelect) {
             await modeSelect.vm.$emit('update:modelValue', 'create_or_update')
             await nextTick()
 
-            const emitted = wrapper.emitted('update:modelValue') as any[]
+            const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
             const updated = emitted[emitted.length - 1][0] as ToDef
             if (updated.type === 'entity') {
@@ -381,7 +384,7 @@ describe('DslToEditor', () => {
         await typeSelect.vm.$emit('update:modelValue', 'entity')
         await nextTick()
 
-        const emitted = wrapper.emitted('update:modelValue') as any[]
+        const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]> | undefined
         expect(emitted?.length).toBeGreaterThan(0)
         const updated = emitted[emitted.length - 1][0] as ToDef
         expect(updated.type).toBe('entity')
@@ -426,15 +429,15 @@ describe('DslToEditor', () => {
         await nextTick()
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const formatTypeSelect = selects.find(s => {
-            const items = s.props('items') as any[]
-            return items?.some((item: any) => item.value === 'csv')
+            const items = s.props('items') as Array<{ value: string; title: string }> | undefined
+            return items?.some(item => item.value === 'csv')
         })
 
         if (formatTypeSelect) {
             await formatTypeSelect.vm.$emit('update:modelValue', 'csv')
             await nextTick()
 
-            const emitted = wrapper.emitted('update:modelValue') as any[]
+            const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
             const updated = emitted[emitted.length - 1][0] as ToDef
             if (updated.type === 'format') {
@@ -462,15 +465,15 @@ describe('DslToEditor', () => {
         await nextTick()
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const outputModeSelect = selects.find(s => {
-            const items = s.props('items') as any[]
-            return items?.some((item: any) => item.value === 'push')
+            const items = s.props('items') as Array<{ value: string; title: string }> | undefined
+            return items?.some(item => item.value === 'push')
         })
 
         if (outputModeSelect) {
             await outputModeSelect.vm.$emit('update:modelValue', 'push')
             await nextTick()
 
-            const emitted = wrapper.emitted('update:modelValue') as any[]
+            const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
             const updated = emitted[emitted.length - 1][0] as ToDef
             if (updated.type === 'format') {
@@ -594,15 +597,15 @@ describe('DslToEditor', () => {
         await nextTick()
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const httpMethodSelect = selects.find(s => {
-            const items = s.props('items') as any[]
-            return items?.some((item: any) => item.value === 'PUT')
+            const items = s.props('items') as Array<{ value: string; title: string }> | undefined
+            return items?.some(item => item.value === 'PUT')
         })
 
         if (httpMethodSelect) {
             await httpMethodSelect.vm.$emit('update:modelValue', 'PUT')
             await nextTick()
 
-            const emitted = wrapper.emitted('update:modelValue') as any[]
+            const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
             const updated = emitted[emitted.length - 1][0] as ToDef
             if (updated.type === 'format' && updated.output.mode === 'push') {
@@ -670,15 +673,15 @@ describe('DslToEditor', () => {
         await nextTick()
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const outputModeSelect = selects.find(s => {
-            const items = s.props('items') as any[]
-            return items?.some((item: any) => item.value === 'api')
+            const items = s.props('items') as Array<{ value: string; title: string }> | undefined
+            return items?.some(item => item.value === 'api')
         })
 
         if (outputModeSelect) {
             await outputModeSelect.vm.$emit('update:modelValue', 'api')
             await nextTick()
 
-            const emitted = wrapper.emitted('update:modelValue') as any[]
+            const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
             const updated = emitted[emitted.length - 1][0] as ToDef
             if (updated.type === 'format') {

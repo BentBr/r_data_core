@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-    import type { DslStep } from './dsl-utils'
+    import type { DslStep, FromDef, Transform, ToDef } from './dsl-utils'
     import DslFromEditor from './DslFromEditor.vue'
     import DslTransformEditor from './DslTransformEditor.vue'
     import DslToEditor from './DslToEditor.vue'
@@ -32,15 +32,15 @@
 
     const emit = defineEmits<{ (e: 'update:modelValue', value: DslStep): void }>()
 
-    function updateFrom(from: any) {
+    function updateFrom(from: FromDef) {
         emit('update:modelValue', { ...props.modelValue, from })
     }
 
-    function updateTransform(transform: any) {
+    function updateTransform(transform: Transform) {
         emit('update:modelValue', { ...props.modelValue, transform })
     }
 
-    function updateTo(to: any) {
+    function updateTo(to: ToDef) {
         emit('update:modelValue', { ...props.modelValue, to })
     }
 </script>

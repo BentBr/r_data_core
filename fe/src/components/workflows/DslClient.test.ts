@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { typedHttpClient } from '@/api/typed-client'
-import { vi } from 'vitest'
 
 vi.mock('@/stores/auth', () => {
     return {
@@ -38,7 +37,7 @@ describe('DSL client', () => {
                     status: 200,
                     headers: { 'Content-Type': 'application/json' },
                 }
-            ) as any
+            ) as Response
         )
         const res = await typedHttpClient.validateDsl(steps)
         expect(res.valid).toBe(true)
@@ -68,7 +67,7 @@ describe('DSL client', () => {
             new Response(JSON.stringify(body), {
                 status: 422,
                 headers: { 'Content-Type': 'application/json' },
-            }) as any
+            }) as Response
         )
         await expect(typedHttpClient.validateDsl(steps)).rejects.toMatchObject({
             violations: body.violations,

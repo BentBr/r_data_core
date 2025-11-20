@@ -62,7 +62,7 @@
         { immediate: true }
     )
 
-    function updateField(field: keyof CsvOptions, value: any) {
+    function updateField(field: keyof CsvOptions, value: unknown) {
         opts.value = { ...opts.value, [field]: value }
         // Use nextTick to batch updates and prevent recursive loops
         void nextTick(() => {

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import DslConfigurator from './DslConfigurator.vue'
+import type { DslStep } from './dsl/dsl-utils'
 
 vi.mock('@/api/typed-client', () => ({
     typedHttpClient: {
@@ -38,7 +39,7 @@ describe('DslConfigurator', () => {
         // add step
         await wrapper.find('button').trigger('click')
         // expect one step
-        const emitted = wrapper.emitted()['update:modelValue'] as any[]
+        const emitted = wrapper.emitted('update:modelValue') as Array<[DslStep[]]> | undefined
         expect(emitted?.length).toBeGreaterThan(0)
         const steps = emitted[emitted.length - 1][0]
         expect(Array.isArray(steps)).toBe(true)
@@ -57,7 +58,7 @@ describe('DslConfigurator', () => {
         const transformSelect = selects[1]
         await transformSelect.vm.$emit('update:modelValue', 'concat')
         // should have emitted change
-        const emitted = wrapper.emitted()['update:modelValue'] as any[]
+        const emitted = wrapper.emitted('update:modelValue') as Array<[DslStep[]]> | undefined
         expect(emitted?.length).toBeGreaterThan(0)
     })
 
@@ -69,7 +70,7 @@ describe('DslConfigurator', () => {
         await wrapper.find('button').trigger('click')
         await nextTick()
 
-        const emitted = wrapper.emitted()['update:modelValue'] as any[]
+        const emitted = wrapper.emitted('update:modelValue') as Array<[DslStep[]]> | undefined
         expect(emitted?.length).toBeGreaterThan(0)
         const steps = emitted[emitted.length - 1][0]
         expect(steps.length).toBe(1)
@@ -102,7 +103,7 @@ describe('DslConfigurator', () => {
         await nextTick()
 
         // Verify mappings are preserved
-        const emitted = wrapper.emitted()['update:modelValue'] as any[]
+        const emitted = wrapper.emitted('update:modelValue') as Array<[DslStep[]]> | undefined
         if (emitted && emitted.length > 0) {
             const steps = emitted[emitted.length - 1][0]
             expect(steps[0].from.mapping.col1).toBe('field1')
@@ -137,7 +138,7 @@ describe('DslConfigurator', () => {
         await nextTick()
 
         // Verify entity types are preserved
-        const emitted = wrapper.emitted()['update:modelValue'] as any[]
+        const emitted = wrapper.emitted('update:modelValue') as Array<[DslStep[]]> | undefined
         if (emitted && emitted.length > 0) {
             const steps = emitted[emitted.length - 1][0]
             expect(steps[0].from.type).toBe('entity')

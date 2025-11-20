@@ -102,8 +102,8 @@ export type DslStep = { from: FromDef; transform: Transform; to: ToDef }
  * - Removes 'output' field from entity type 'to' definitions
  * - Ensures required fields exist
  */
-export function sanitizeDslStep(step: any): DslStep {
-    const sanitized: any = { ...step }
+export function sanitizeDslStep(step: unknown): DslStep {
+    const sanitized = { ...(step as Record<string, unknown>) } as Record<string, unknown>
 
     // Sanitize 'to' definition
     if (sanitized.to) {
@@ -142,7 +142,7 @@ export function sanitizeDslStep(step: any): DslStep {
 /**
  * Sanitizes an array of DSL steps
  */
-export function sanitizeDslSteps(steps: any[]): DslStep[] {
+export function sanitizeDslSteps(steps: unknown[]): DslStep[] {
     if (!Array.isArray(steps)) {
         return []
     }
@@ -204,7 +204,10 @@ export function ensureCsvOptions(step: DslStep) {
  */
 export function ensureEntityFilter(step: DslStep) {
     if (step.from?.type === 'entity') {
-        const f: any = step.from
+        const f = step.from as {
+            filter?: { field: string; value: string }
+            mapping?: Record<string, string>
+        }
         f.filter ??= { field: '', value: '' }
         f.mapping ??= {}
     }

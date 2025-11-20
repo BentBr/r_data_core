@@ -36,7 +36,7 @@ describe('dsl-utils', () => {
 
     describe('sanitizeDslStep', () => {
         it('sanitizes format-based to definition', () => {
-            const step: any = {
+            const step = {
                 from: {
                     type: 'format',
                     source: { source_type: 'uri', config: {} },
@@ -60,7 +60,7 @@ describe('dsl-utils', () => {
         })
 
         it('sanitizes format-based from definition', () => {
-            const step: any = {
+            const step = {
                 from: {
                     type: 'format',
                     source: null,
@@ -85,7 +85,7 @@ describe('dsl-utils', () => {
         })
 
         it('removes output field from entity type', () => {
-            const step: any = {
+            const step = {
                 from: {
                     type: 'entity',
                     entity_definition: 'test',
@@ -187,7 +187,7 @@ describe('dsl-utils', () => {
                 from: {
                     type: 'format',
                     source: { source_type: 'uri', config: {}, auth: { type: 'none' } },
-                    format: { format_type: 'csv', options: undefined as any },
+                    format: { format_type: 'csv', options: undefined },
                     mapping: {},
                 },
                 to: {
@@ -218,7 +218,7 @@ describe('dsl-utils', () => {
                 to: {
                     type: 'format',
                     output: { mode: 'api' },
-                    format: { format_type: 'csv', options: undefined as any },
+                    format: { format_type: 'csv', options: undefined },
                     mapping: {},
                 },
                 transform: { type: 'none' },

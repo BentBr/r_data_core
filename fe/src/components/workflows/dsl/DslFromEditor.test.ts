@@ -23,7 +23,7 @@ global.fetch = vi.fn()
 describe('DslFromEditor', () => {
     beforeEach(() => {
         vi.clearAllMocks()
-        ;(global.fetch as any).mockClear()
+        ;(global.fetch as ReturnType<typeof vi.fn>).mockClear()
     })
 
     it('renders Entity type editor correctly', () => {
@@ -68,7 +68,7 @@ describe('DslFromEditor', () => {
             await filterFieldField.vm.$emit('update:modelValue', 'category')
             await nextTick()
 
-            const emitted = wrapper.emitted('update:modelValue') as any[]
+            const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
             const updated = emitted[emitted.length - 1][0] as FromDef
             if (updated.type === 'entity') {
@@ -134,7 +134,7 @@ describe('DslFromEditor', () => {
         await select.vm.$emit('update:modelValue', 'entity')
         await nextTick()
 
-        const emitted = wrapper.emitted('update:modelValue') as any[]
+        const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]> | undefined
         expect(emitted?.length).toBeGreaterThan(0)
         const updated = emitted[emitted.length - 1][0] as FromDef
         expect(updated.type).toBe('entity')
@@ -187,15 +187,15 @@ describe('DslFromEditor', () => {
         await nextTick()
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const sourceTypeSelect = selects.find(s => {
-            const items = s.props('items') as any[]
-            return items?.some((item: any) => item.value === 'api')
+            const items = s.props('items') as Array<{ value: string; title: string }> | undefined
+            return items?.some(item => item.value === 'api')
         })
 
         if (sourceTypeSelect) {
             await sourceTypeSelect.vm.$emit('update:modelValue', 'api')
             await nextTick()
 
-            const emitted = wrapper.emitted('update:modelValue') as any[]
+            const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
             const updated = emitted[emitted.length - 1][0] as FromDef
             if (updated.type === 'format') {
@@ -229,15 +229,15 @@ describe('DslFromEditor', () => {
         await nextTick()
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const formatTypeSelect = selects.find(s => {
-            const items = s.props('items') as any[]
-            return items?.some((item: any) => item.value === 'json')
+            const items = s.props('items') as Array<{ value: string; title: string }> | undefined
+            return items?.some(item => item.value === 'json')
         })
 
         if (formatTypeSelect) {
             await formatTypeSelect.vm.$emit('update:modelValue', 'json')
             await nextTick()
 
-            const emitted = wrapper.emitted('update:modelValue') as any[]
+            const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
             const updated = emitted[emitted.length - 1][0] as FromDef
             if (updated.type === 'format') {

@@ -151,11 +151,11 @@
         'Use standard 5-field cron (min hour day month dow), e.g. "*/5 * * * *"'
     )
     const nextRuns = ref<string[]>([])
-    let cronDebounce: any = null
+    let cronDebounce: ReturnType<typeof setTimeout> | null = null
 
     // Check if any step has from.api source type (accepts POST, no cron needed)
     const hasApiSource = computed(() => {
-        return steps.value.some((step: any) => {
+        return steps.value.some((step: DslStep) => {
             if (step.from?.type === 'format' && step.from?.source?.source_type === 'api') {
                 // from.api without endpoint field = accepts POST
                 return !step.from?.source?.config?.endpoint
@@ -204,10 +204,10 @@
     }
 
     const rules = {
-        required: (v: any) => (!!v && String(v).trim().length > 0) || t('validation.required'),
+        required: (v: unknown) => (!!v && String(v).trim().length > 0) || t('validation.required'),
     }
 
-    function parseJson(input: string): any | undefined {
+    function parseJson(input: string): unknown | undefined {
         if (!input?.trim()) {
             return undefined
         }
@@ -241,7 +241,7 @@
                 return
             }
             await typedHttpClient.validateDsl(steps)
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (e instanceof ValidationError) {
                 // Handle Symfony-style validation errors
                 const violations = e.violations || []
@@ -281,7 +281,7 @@
             const res = await typedHttpClient.createWorkflow(payload)
             emit('created', res.uuid)
             model.value = false
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (e instanceof ValidationError) {
                 const cronViolation = e.violations.find(v => v.field === 'schedule_cron')
                 if (cronViolation) {
