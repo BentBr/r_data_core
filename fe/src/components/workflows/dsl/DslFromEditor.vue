@@ -12,23 +12,23 @@
         <template v-if="modelValue.type === 'format'">
             <div class="d-flex ga-2 mb-2 flex-wrap">
                 <v-select
-                    :model-value="(modelValue as any).source?.source_type || 'uri'"
+                    :model-value="sourceType"
                     :items="sourceTypes"
                     :label="t('workflows.dsl.source_type')"
                     density="comfortable"
                     @update:model-value="updateSourceType($event)"
                 />
                 <v-select
-                    :model-value="(modelValue as any).format?.format_type || 'csv'"
+                    :model-value="formatType"
                     :items="formatTypes"
                     :label="t('workflows.dsl.format_type')"
                     density="comfortable"
                     @update:model-value="updateFormatType($event)"
                 />
             </div>
-            <template v-if="(modelValue as any).source?.source_type === 'uri'">
+            <template v-if="sourceType === 'uri'">
                 <v-text-field
-                    :model-value="(modelValue as any).source?.config?.uri || ''"
+                    :model-value="sourceUri"
                     :label="t('workflows.dsl.uri')"
                     density="comfortable"
                     class="mb-2"
@@ -36,7 +36,7 @@
                 />
             </template>
             <!-- from.api source type = Accept POST to this workflow (no endpoint field needed) -->
-            <template v-if="(modelValue as any).source?.source_type === 'api'">
+            <template v-if="sourceType === 'api'">
                 <div
                     class="text-caption mb-2 pa-2"
                     style="background-color: rgba(var(--v-theme-primary), 0.1); border-radius: 4px"
@@ -46,16 +46,16 @@
                 </div>
             </template>
             <div
-                v-if="(modelValue as any).format?.format_type === 'csv'"
+                v-if="formatType === 'csv'"
                 class="mb-2"
             >
                 <CsvOptionsEditor
-                    :model-value="(modelValue as any).format?.options || {}"
+                    :model-value="formatOptions"
                     @update:model-value="updateFormatOptions($event)"
                 />
             </div>
             <div
-                v-if="(modelValue as any).format?.format_type === 'csv'"
+                v-if="formatType === 'csv'"
                 class="mb-2"
             >
                 <div class="d-flex align-center ga-2 flex-wrap">
@@ -65,10 +65,7 @@
                         @change="onTestUpload"
                     />
                     <v-btn
-                        v-if="
-                            (modelValue as any).source?.source_type === 'uri' &&
-                            (modelValue as any).source?.config?.uri
-                        "
+                        v-if="sourceType === 'uri' && sourceUri"
                         size="x-small"
                         variant="tonal"
                         @click="autoMapFromUri"
@@ -84,7 +81,7 @@
                         }}</v-expansion-panel-title>
                         <v-expansion-panel-text>
                             <AuthConfigEditor
-                                :model-value="(modelValue as any).source?.auth || { type: 'none' }"
+                                :model-value="sourceAuth"
                                 @update:model-value="updateSourceAuth($event)"
                             />
                         </v-expansion-panel-text>
@@ -110,20 +107,20 @@
         </template>
         <template v-else-if="modelValue.type === 'entity'">
             <v-text-field
-                :model-value="(modelValue as any).entity_definition"
+                :model-value="entityDefinition"
                 :label="t('workflows.dsl.entity_definition')"
                 density="comfortable"
                 @update:model-value="updateField('entity_definition', $event)"
             />
             <div class="d-flex ga-2">
                 <v-text-field
-                    :model-value="(modelValue as any).filter?.field"
+                    :model-value="filterField"
                     :label="t('workflows.dsl.filter_field')"
                     density="comfortable"
                     @update:model-value="updateFilterField('field', $event)"
                 />
                 <v-text-field
-                    :model-value="(modelValue as any).filter?.value"
+                    :model-value="filterValue"
                     :label="t('workflows.dsl.filter_value')"
                     density="comfortable"
                     @update:model-value="updateFilterField('value', $event)"
@@ -150,7 +147,7 @@
 </template>
 
 <script setup lang="ts">
-    import { ref } from 'vue'
+    import { ref, computed } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import { env } from '@/env-check'
     import type { FromDef, AuthConfig } from './dsl-utils'
@@ -170,6 +167,67 @@
 
     const mappingEditorRef = ref<{ addEmptyPair: () => void } | null>(null)
 
+    // Computed properties to avoid 'as any' in templates
+    const sourceType = computed(() => {
+        if (props.modelValue.type === 'format') {
+            return props.modelValue.source.source_type
+        }
+        return 'uri'
+    })
+
+    const formatType = computed(() => {
+        if (props.modelValue.type === 'format') {
+            return props.modelValue.format.format_type
+        }
+        return 'csv'
+    })
+
+    const sourceUri = computed(() => {
+        if (props.modelValue.type === 'format') {
+            const config = props.modelValue.source.config
+            if (typeof config === 'object' && config !== null && 'uri' in config) {
+                const uri = config.uri
+                return uri != null ? String(uri) : ''
+            }
+        }
+        return ''
+    })
+
+    const formatOptions = computed(() => {
+        if (props.modelValue.type === 'format') {
+            return props.modelValue.format.options ?? {}
+        }
+        return {}
+    })
+
+    const sourceAuth = computed(() => {
+        if (props.modelValue.type === 'format') {
+            return props.modelValue.source.auth ?? { type: 'none' as const }
+        }
+        return { type: 'none' as const }
+    })
+
+    const entityDefinition = computed(() => {
+        if (props.modelValue.type === 'entity') {
+            return props.modelValue.entity_definition
+        }
+        return ''
+    })
+
+    const filterField = computed(() => {
+        if (props.modelValue.type === 'entity') {
+            return props.modelValue.filter.field
+        }
+        return ''
+    })
+
+    const filterValue = computed(() => {
+        if (props.modelValue.type === 'entity') {
+            return props.modelValue.filter.value
+        }
+        return ''
+    })
+
     function getFullEndpointUri(): string {
         const baseUrl = env.apiBaseUrl ?? window.location.origin
         const uuid = props.workflowUuid ?? '{workflow-uuid}'
@@ -181,8 +239,8 @@
         { title: 'Entity', value: 'entity' },
     ]
 
-    function updateField(field: string, value: any) {
-        const updated: any = { ...props.modelValue }
+    function updateField(field: string, value: unknown) {
+        const updated = { ...props.modelValue } as Record<string, unknown>
         updated[field] = value
         // Ensure entity filter exists if type is entity
         if (updated.type === 'entity') {
@@ -192,8 +250,8 @@
         emit('update:modelValue', updated as FromDef)
     }
 
-    function updateFilterField(field: string, value: any) {
-        const updated: any = { ...props.modelValue }
+    function updateFilterField(field: string, value: unknown) {
+        const updated = { ...props.modelValue } as Record<string, unknown>
         updated.filter ??= { field: '', value: '' }
         updated.filter[field] = value
         emit('update:modelValue', updated as FromDef)
@@ -211,66 +269,81 @@
     ]
 
     function updateSourceType(newType: string) {
-        const updated: any = { ...props.modelValue }
-        if (!updated.source) {
-            updated.source = { source_type: newType, config: {}, auth: { type: 'none' } }
-        } else {
-            updated.source.source_type = newType
-            // Reset config based on source type
-            if (newType === 'uri') {
-                updated.source.config = { uri: '' }
-                // Remove endpoint if it exists (should only be for api, but clean up)
-                if (updated.source.config.endpoint !== undefined) {
-                    delete updated.source.config.endpoint
-                }
-            } else if (newType === 'api') {
-                // from.api source type = Accept POST to this workflow (no endpoint field needed)
-                // Remove endpoint field if it exists, then set empty config
-                const currentConfig = updated.source.config ?? {}
-                if (currentConfig.endpoint !== undefined) {
-                    delete currentConfig.endpoint
-                }
-                updated.source.config = {}
-            } else {
-                updated.source.config = {}
-            }
+        if (props.modelValue.type !== 'format') {
+            return
         }
-        emit('update:modelValue', updated as FromDef)
+        const updated: FromDef = {
+            ...props.modelValue,
+            source: {
+                ...props.modelValue.source,
+                source_type: newType,
+                config: newType === 'uri' ? { uri: '' } : newType === 'api' ? {} : {},
+            },
+        }
+        emit('update:modelValue', updated)
     }
 
     function updateFormatType(newType: string) {
-        const updated: any = { ...props.modelValue }
-        if (!updated.format) {
-            updated.format = { format_type: newType, options: {} }
-        } else {
-            updated.format.format_type = newType
-            if (newType === 'csv' && !updated.format.options) {
-                updated.format.options = defaultCsvOptions()
-            }
+        if (props.modelValue.type !== 'format') {
+            return
         }
-        emit('update:modelValue', updated as FromDef)
+        const updated: FromDef = {
+            ...props.modelValue,
+            format: {
+                ...props.modelValue.format,
+                format_type: newType,
+                options:
+                    newType === 'csv' && !props.modelValue.format.options
+                        ? defaultCsvOptions()
+                        : props.modelValue.format.options,
+            },
+        }
+        emit('update:modelValue', updated)
     }
 
-    function updateSourceConfig(key: string, value: any) {
-        const updated: any = { ...props.modelValue }
-        updated.source ??= { source_type: 'uri', config: {}, auth: { type: 'none' } }
-        updated.source.config ??= {}
-        updated.source.config[key] = value
-        emit('update:modelValue', updated as FromDef)
+    function updateSourceConfig(key: string, value: unknown) {
+        if (props.modelValue.type !== 'format') {
+            return
+        }
+        const updated: FromDef = {
+            ...props.modelValue,
+            source: {
+                ...props.modelValue.source,
+                config: {
+                    ...props.modelValue.source.config,
+                    [key]: value,
+                },
+            },
+        }
+        emit('update:modelValue', updated)
     }
 
-    function updateFormatOptions(options: any) {
-        const updated: any = { ...props.modelValue }
-        updated.format ??= { format_type: 'csv', options: {} }
-        updated.format.options = options
-        emit('update:modelValue', updated as FromDef)
+    function updateFormatOptions(options: Record<string, unknown>) {
+        if (props.modelValue.type !== 'format') {
+            return
+        }
+        const updated: FromDef = {
+            ...props.modelValue,
+            format: {
+                ...props.modelValue.format,
+                options,
+            },
+        }
+        emit('update:modelValue', updated)
     }
 
     function updateSourceAuth(auth: AuthConfig) {
-        const updated: any = { ...props.modelValue }
-        updated.source ??= { source_type: 'uri', config: {}, auth: { type: 'none' } }
-        updated.source.auth = auth
-        emit('update:modelValue', updated as FromDef)
+        if (props.modelValue.type !== 'format') {
+            return
+        }
+        const updated: FromDef = {
+            ...props.modelValue,
+            source: {
+                ...props.modelValue.source,
+                auth,
+            },
+        }
+        emit('update:modelValue', updated)
     }
 
     function onTypeChange(newType: 'format' | 'entity') {
@@ -306,10 +379,14 @@
             mappingEditorRef.value.addEmptyPair()
         } else {
             // Fallback: add to mapping object
-            const updated: any = { ...props.modelValue }
-            updated.mapping ??= {}
-            updated.mapping[''] = ''
-            emit('update:modelValue', updated as FromDef)
+            const updated: FromDef = {
+                ...props.modelValue,
+                mapping: {
+                    ...props.modelValue.mapping,
+                    '': '',
+                },
+            }
+            emit('update:modelValue', updated)
         }
     }
 
@@ -348,13 +425,12 @@
             return
         }
         const text = await file.text()
-        const formatFrom = props.modelValue as any
-        if (formatFrom.format?.format_type !== 'csv') {
+        if (props.modelValue.type !== 'format' || props.modelValue.format.format_type !== 'csv') {
             return
         }
-        const header = formatFrom.format?.options?.has_header !== false
-        const delimiter = formatFrom.format?.options?.delimiter ?? ','
-        const quote = formatFrom.format?.options?.quote ?? '"'
+        const header = props.modelValue.format.options?.has_header !== false
+        const delimiter = props.modelValue.format.options?.delimiter ?? ','
+        const quote = props.modelValue.format.options?.quote ?? '"'
         let fields: string[]
         if (header) {
             fields = parseCsvHeader(text, delimiter, quote)
@@ -373,23 +449,23 @@
     }
 
     async function autoMapFromUri() {
-        if (props.modelValue.type !== 'format') {
+        if (props.modelValue.type !== 'format' || props.modelValue.format.format_type !== 'csv') {
             return
         }
-        const formatFrom = props.modelValue as any
-        if (formatFrom.format?.format_type !== 'csv') {
-            return
-        }
-        const uri = formatFrom.source?.config?.uri
+        const config = props.modelValue.source.config
+        const uri =
+            typeof config === 'object' && config !== null && 'uri' in config
+                ? String(config.uri)
+                : ''
         if (!uri) {
             return
         }
         try {
             const res = await fetch(uri)
             const txt = await res.text()
-            const header = formatFrom.format?.options?.has_header !== false
-            const delimiter = formatFrom.format?.options?.delimiter ?? ','
-            const quote = formatFrom.format?.options?.quote ?? '"'
+            const header = props.modelValue.format.options?.has_header !== false
+            const delimiter = props.modelValue.format.options?.delimiter ?? ','
+            const quote = props.modelValue.format.options?.quote ?? '"'
             let fields: string[]
             if (header) {
                 fields = parseCsvHeader(txt, delimiter, quote)

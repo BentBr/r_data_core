@@ -282,6 +282,19 @@
         })
     })
 
+    // Watch hasApiSource and clear cron when API source is used
+    watch(hasApiSource, isApi => {
+        if (isApi) {
+            cronError.value = null
+            form.value.schedule_cron = null
+            nextRuns.value = []
+            if (cronDebounce) {
+                clearTimeout(cronDebounce)
+                cronDebounce = null
+            }
+        }
+    })
+
     const rules = {
         required: (v: any) => !!v || 'Required',
     }
@@ -402,6 +415,12 @@
     }
 
     async function onCronChange(value: string) {
+        // Skip validation if API source is used
+        if (hasApiSource.value) {
+            cronError.value = null
+            nextRuns.value = []
+            return
+        }
         cronError.value = null
         if (cronDebounce) {
             clearTimeout(cronDebounce)
@@ -495,7 +514,8 @@
                 description: form.value.description ?? null,
                 kind: form.value.kind,
                 enabled: form.value.enabled,
-                schedule_cron: form.value.schedule_cron ?? null,
+                // Set schedule_cron to null when API source is used
+                schedule_cron: hasApiSource.value ? null : (form.value.schedule_cron ?? null),
                 config: parsedConfig ?? {},
                 versioning_disabled: form.value.versioning_disabled,
             })

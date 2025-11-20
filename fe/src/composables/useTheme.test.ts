@@ -83,12 +83,11 @@ describe('useTheme', () => {
         expect(isDark.value).toBe(true)
     })
 
-    it('should update Vuetify theme when currentTheme changes', () => {
+    it('should update Vuetify theme when currentTheme changes', async () => {
         const { setThemePreference } = useTheme()
         setThemePreference('dark')
         // Wait for watch to trigger
-        setTimeout(() => {
-            expect(mockChangeTheme).toHaveBeenCalledWith('dark')
-        }, 10)
+        await new Promise(resolve => setTimeout(resolve, 10))
+        expect(mockChangeTheme).toHaveBeenCalledWith('dark')
     })
 })

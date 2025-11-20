@@ -12,7 +12,7 @@
         <template v-if="modelValue.type === 'format'">
             <div class="d-flex ga-2 mb-2 flex-wrap">
                 <v-select
-                    :model-value="(modelValue as any).format?.format_type || 'json'"
+                    :model-value="formatType"
                     :items="formatTypes"
                     :label="t('workflows.dsl.format_type')"
                     density="comfortable"
@@ -29,17 +29,15 @@
             <template v-if="getOutputMode() === 'push'">
                 <div class="d-flex ga-2 mb-2 flex-wrap">
                     <v-select
-                        :model-value="
-                            (modelValue as any).output?.destination?.destination_type || 'uri'
-                        "
+                        :model-value="outputDestinationType"
                         :items="destinationTypes"
                         :label="t('workflows.dsl.destination_type')"
                         density="comfortable"
                         @update:model-value="updateDestinationType($event)"
                     />
                     <v-select
-                        v-if="(modelValue as any).output?.destination?.destination_type === 'uri'"
-                        :model-value="(modelValue as any).output?.method || 'POST'"
+                        v-if="outputDestinationType === 'uri'"
+                        :model-value="outputMethod"
                         :items="httpMethods"
                         :label="t('workflows.dsl.http_method')"
                         density="comfortable"
@@ -47,8 +45,8 @@
                     />
                 </div>
                 <v-text-field
-                    v-if="(modelValue as any).output?.destination?.destination_type === 'uri'"
-                    :model-value="(modelValue as any).output?.destination?.config?.uri || ''"
+                    v-if="outputDestinationType === 'uri'"
+                    :model-value="outputDestinationUri"
                     :label="t('workflows.dsl.uri')"
                     density="comfortable"
                     class="mb-2"
@@ -62,11 +60,7 @@
                             }}</v-expansion-panel-title>
                             <v-expansion-panel-text>
                                 <AuthConfigEditor
-                                    :model-value="
-                                        (modelValue as any).output?.destination?.auth || {
-                                            type: 'none',
-                                        }
-                                    "
+                                    :model-value="outputDestinationAuth"
                                     @update:model-value="updateDestinationAuth($event)"
                                 />
                             </v-expansion-panel-text>
@@ -85,11 +79,11 @@
                 </div>
             </template>
             <div
-                v-if="(modelValue as any).format?.format_type === 'csv'"
+                v-if="formatType === 'csv'"
                 class="mb-2"
             >
                 <CsvOptionsEditor
-                    :model-value="(modelValue as any).format?.options || {}"
+                    :model-value="formatOptions"
                     @update:model-value="updateFormatOptions($event)"
                 />
             </div>
@@ -111,7 +105,7 @@
         </template>
         <template v-else-if="modelValue.type === 'entity'">
             <v-select
-                :model-value="(modelValue as any).entity_definition"
+                :model-value="entityDefinition"
                 :items="entityDefItems"
                 item-title="title"
                 item-value="value"
@@ -120,24 +114,21 @@
                 @update:model-value="onEntityDefChange"
             />
             <v-text-field
-                :model-value="(modelValue as any).path"
+                :model-value="entityPath"
                 :label="t('workflows.dsl.path')"
                 density="comfortable"
                 @update:model-value="updateField('path', $event)"
             />
             <v-select
-                :model-value="(modelValue as any).mode"
+                :model-value="entityMode"
                 :items="entityModes"
                 :label="t('workflows.dsl.mode')"
                 density="comfortable"
                 @update:model-value="updateField('mode', $event)"
             />
             <v-text-field
-                v-if="
-                    (modelValue as any).mode === 'update' ||
-                    (modelValue as any).mode === 'create_or_update'
-                "
-                :model-value="(modelValue as any).update_key"
+                v-if="entityMode === 'update' || entityMode === 'create_or_update'"
+                :model-value="entityUpdateKey"
                 :label="t('workflows.dsl.update_key')"
                 density="comfortable"
                 @update:model-value="updateField('update_key', $event)"
@@ -165,12 +156,12 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, watch, onMounted } from 'vue'
+    import { ref, watch, onMounted, computed } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import { useEntityDefinitions } from '@/composables/useEntityDefinitions'
     import { typedHttpClient } from '@/api/typed-client'
     import { env } from '@/env-check'
-    import type { ToDef, AuthConfig, HttpMethod } from './dsl-utils'
+    import type { ToDef, AuthConfig, HttpMethod, OutputMode } from './dsl-utils'
     import { defaultCsvOptions } from './dsl-utils'
     import CsvOptionsEditor from './CsvOptionsEditor.vue'
     import MappingEditor from './MappingEditor.vue'
@@ -195,6 +186,114 @@
     const entityDefItems = ref<{ title: string; value: string }[]>([])
     const entityTargetFields = ref<string[]>([])
     const mappingEditorRef = ref<{ addEmptyPair: () => void } | null>(null)
+
+    // Computed properties to avoid 'as any' in templates
+    const formatType = computed(() => {
+        if (props.modelValue.type === 'format') {
+            return props.modelValue.format.format_type
+        }
+        return 'json'
+    })
+
+    const formatOptions = computed(() => {
+        if (props.modelValue.type === 'format') {
+            return props.modelValue.format.options ?? {}
+        }
+        return {}
+    })
+
+    const outputDestinationType = computed(() => {
+        if (props.modelValue.type === 'format') {
+            const output = props.modelValue.output
+            if (
+                typeof output === 'object' &&
+                'mode' in output &&
+                output.mode === 'push' &&
+                'destination' in output
+            ) {
+                return output.destination.destination_type
+            }
+        }
+        return 'uri'
+    })
+
+    const outputMethod = computed(() => {
+        if (props.modelValue.type === 'format') {
+            const output = props.modelValue.output
+            if (
+                typeof output === 'object' &&
+                'mode' in output &&
+                output.mode === 'push' &&
+                'method' in output
+            ) {
+                return output.method ?? 'POST'
+            }
+        }
+        return 'POST'
+    })
+
+    const outputDestinationUri = computed(() => {
+        if (props.modelValue.type === 'format') {
+            const output = props.modelValue.output
+            if (
+                typeof output === 'object' &&
+                'mode' in output &&
+                output.mode === 'push' &&
+                'destination' in output &&
+                'config' in output.destination &&
+                typeof output.destination.config === 'object' &&
+                output.destination.config !== null &&
+                'uri' in output.destination.config
+            ) {
+                return String(output.destination.config.uri) ?? ''
+            }
+        }
+        return ''
+    })
+
+    const outputDestinationAuth = computed(() => {
+        if (props.modelValue.type === 'format') {
+            const output = props.modelValue.output
+            if (
+                typeof output === 'object' &&
+                'mode' in output &&
+                output.mode === 'push' &&
+                'destination' in output &&
+                'auth' in output.destination
+            ) {
+                return output.destination.auth
+            }
+        }
+        return { type: 'none' as const }
+    })
+
+    const entityDefinition = computed(() => {
+        if (props.modelValue.type === 'entity') {
+            return props.modelValue.entity_definition
+        }
+        return ''
+    })
+
+    const entityPath = computed(() => {
+        if (props.modelValue.type === 'entity') {
+            return props.modelValue.path
+        }
+        return ''
+    })
+
+    const entityMode = computed(() => {
+        if (props.modelValue.type === 'entity') {
+            return props.modelValue.mode
+        }
+        return 'create'
+    })
+
+    const entityUpdateKey = computed(() => {
+        if (props.modelValue.type === 'entity') {
+            return props.modelValue.update_key ?? ''
+        }
+        return ''
+    })
 
     const toTypes = [
         { title: 'Format (CSV/JSON)', value: 'format' },
@@ -311,16 +410,21 @@
     }
 
     function updateFormatType(newType: string) {
-        const updated: any = { ...props.modelValue }
-        if (!updated.format) {
-            updated.format = { format_type: newType, options: {} }
-        } else {
-            updated.format.format_type = newType
-            if (newType === 'csv' && !updated.format.options) {
-                updated.format.options = defaultCsvOptions()
-            }
+        if (props.modelValue.type !== 'format') {
+            return
         }
-        emit('update:modelValue', updated as ToDef)
+        const updated: ToDef = {
+            ...props.modelValue,
+            format: {
+                ...props.modelValue.format,
+                format_type: newType,
+                options:
+                    newType === 'csv' && !props.modelValue.format.options
+                        ? defaultCsvOptions()
+                        : props.modelValue.format.options,
+            },
+        }
+        emit('update:modelValue', updated)
     }
 
     function updateFormatOptions(options: Record<string, unknown>) {
@@ -338,9 +442,12 @@
     }
 
     function updateOutputMode(mode: string) {
-        const updated: any = { ...props.modelValue }
+        if (props.modelValue.type !== 'format') {
+            return
+        }
+        let output: OutputMode
         if (mode === 'push') {
-            updated.output = {
+            output = {
                 mode: 'push',
                 destination: {
                     destination_type: 'uri',
@@ -349,49 +456,113 @@
                 },
                 method: 'POST',
             }
+        } else if (mode === 'download') {
+            output = { mode: 'download' }
         } else {
-            updated.output = { mode: mode as 'api' | 'download' }
+            output = { mode: 'api' }
         }
-        emit('update:modelValue', updated as ToDef)
+        const updated: ToDef = {
+            ...props.modelValue,
+            output,
+        }
+        emit('update:modelValue', updated)
     }
 
     function updateDestinationType(newType: string) {
-        const updated: any = { ...props.modelValue }
-        if (!updated.output || updated.output.mode !== 'push') {
-            updated.output = {
+        if (props.modelValue.type !== 'format') {
+            return
+        }
+        const currentOutput = props.modelValue.output
+        let output: OutputMode
+        if (
+            !currentOutput ||
+            (typeof currentOutput === 'object' &&
+                'mode' in currentOutput &&
+                currentOutput.mode !== 'push')
+        ) {
+            output = {
                 mode: 'push',
                 destination: { destination_type: newType, config: {}, auth: { type: 'none' } },
                 method: 'POST',
             }
-        } else {
-            updated.output.destination.destination_type = newType
-            if (newType === 'uri') {
-                updated.output.destination.config = { uri: '' }
-            } else {
-                updated.output.destination.config = {}
+        } else if (
+            typeof currentOutput === 'object' &&
+            'mode' in currentOutput &&
+            currentOutput.mode === 'push'
+        ) {
+            output = {
+                ...currentOutput,
+                destination: {
+                    ...currentOutput.destination,
+                    destination_type: newType,
+                    config: newType === 'uri' ? { uri: '' } : {},
+                },
             }
+        } else {
+            output = { mode: 'api' }
         }
-        emit('update:modelValue', updated as ToDef)
+        const updated: ToDef = {
+            ...props.modelValue,
+            output,
+        }
+        emit('update:modelValue', updated)
     }
 
-    function updateDestinationConfig(key: string, value: any) {
-        const updated: any = { ...props.modelValue }
-        if (!updated.output || updated.output.mode !== 'push') {
-            updated.output = {
+    function updateDestinationConfig(key: string, value: unknown) {
+        if (props.modelValue.type !== 'format') {
+            return
+        }
+        const currentOutput = props.modelValue.output
+        let output: OutputMode
+        if (
+            !currentOutput ||
+            (typeof currentOutput === 'object' &&
+                'mode' in currentOutput &&
+                currentOutput.mode !== 'push')
+        ) {
+            output = {
                 mode: 'push',
                 destination: { destination_type: 'uri', config: {}, auth: { type: 'none' } },
                 method: 'POST',
             }
+        } else if (
+            typeof currentOutput === 'object' &&
+            'mode' in currentOutput &&
+            currentOutput.mode === 'push'
+        ) {
+            output = {
+                ...currentOutput,
+                destination: {
+                    ...currentOutput.destination,
+                    config: {
+                        ...currentOutput.destination.config,
+                        [key]: value,
+                    },
+                },
+            }
+        } else {
+            output = { mode: 'api' }
         }
-        updated.output.destination.config ??= {}
-        updated.output.destination.config[key] = value
-        emit('update:modelValue', updated as ToDef)
+        const updated: ToDef = {
+            ...props.modelValue,
+            output,
+        }
+        emit('update:modelValue', updated)
     }
 
     function updateHttpMethod(method: HttpMethod) {
-        const updated: any = { ...props.modelValue }
-        if (!updated.output || updated.output.mode !== 'push') {
-            updated.output = {
+        if (props.modelValue.type !== 'format') {
+            return
+        }
+        const currentOutput = props.modelValue.output
+        let output: OutputMode
+        if (
+            !currentOutput ||
+            (typeof currentOutput === 'object' &&
+                'mode' in currentOutput &&
+                currentOutput.mode !== 'push')
+        ) {
+            output = {
                 mode: 'push',
                 destination: {
                     destination_type: 'uri',
@@ -400,15 +571,38 @@
                 },
                 method: 'POST',
             }
+        } else if (
+            typeof currentOutput === 'object' &&
+            'mode' in currentOutput &&
+            currentOutput.mode === 'push'
+        ) {
+            output = {
+                ...currentOutput,
+                method,
+            }
+        } else {
+            output = { mode: 'api' }
         }
-        updated.output.method = method
-        emit('update:modelValue', updated as ToDef)
+        const updated: ToDef = {
+            ...props.modelValue,
+            output,
+        }
+        emit('update:modelValue', updated)
     }
 
     function updateDestinationAuth(auth: AuthConfig) {
-        const updated: any = { ...props.modelValue }
-        if (!updated.output || updated.output.mode !== 'push') {
-            updated.output = {
+        if (props.modelValue.type !== 'format') {
+            return
+        }
+        const currentOutput = props.modelValue.output
+        let output: OutputMode
+        if (
+            !currentOutput ||
+            (typeof currentOutput === 'object' &&
+                'mode' in currentOutput &&
+                currentOutput.mode !== 'push')
+        ) {
+            output = {
                 mode: 'push',
                 destination: {
                     destination_type: 'uri',
@@ -417,9 +611,26 @@
                 },
                 method: 'POST',
             }
+        } else if (
+            typeof currentOutput === 'object' &&
+            'mode' in currentOutput &&
+            currentOutput.mode === 'push'
+        ) {
+            output = {
+                ...currentOutput,
+                destination: {
+                    ...currentOutput.destination,
+                    auth,
+                },
+            }
+        } else {
+            output = { mode: 'api' }
         }
-        updated.output.destination.auth = auth
-        emit('update:modelValue', updated as ToDef)
+        const updated: ToDef = {
+            ...props.modelValue,
+            output,
+        }
+        emit('update:modelValue', updated)
     }
 
     function onTypeChange(newType: 'format' | 'entity') {

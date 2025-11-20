@@ -28,9 +28,9 @@ export const FieldDefinitionSchema = z.object({
     required: z.boolean(),
     indexed: z.boolean(),
     filterable: z.boolean(),
-    default_value: z.unknown().optional(),
-    constraints: z.record(z.string(), z.unknown()).optional(),
-    ui_settings: z.record(z.string(), z.unknown()).optional(),
+    default_value: z.unknown().nullish(),
+    constraints: z.record(z.string(), z.unknown()).nullish(),
+    ui_settings: z.record(z.string(), z.unknown()).nullish(),
 })
 
 // Entity Definition schema

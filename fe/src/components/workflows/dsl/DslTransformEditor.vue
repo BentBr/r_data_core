@@ -12,13 +12,13 @@
         <template v-if="transformType === 'arithmetic'">
             <div class="d-flex ga-2">
                 <v-text-field
-                    :model-value="(modelValue as any).target"
+                    :model-value="arithmeticTarget"
                     :label="t('workflows.dsl.target')"
                     density="comfortable"
                     @update:model-value="updateField('target', $event)"
                 />
                 <v-select
-                    :model-value="(modelValue as any).op"
+                    :model-value="arithmeticOp"
                     :items="ops"
                     :label="t('workflows.dsl.op')"
                     density="comfortable"
@@ -46,11 +46,11 @@
                 />
                 <v-text-field
                     v-else
-                    :model-value="left.value"
+                    :model-value="String(left.value)"
                     :label="t('workflows.dsl.left_value')"
                     type="number"
                     density="comfortable"
-                    @update:model-value="updateLeftValue"
+                    @update:model-value="updateLeftValue(Number($event))"
                 />
             </div>
             <div class="d-flex ga-2">
@@ -72,24 +72,24 @@
                 />
                 <v-text-field
                     v-else
-                    :model-value="right.value"
+                    :model-value="String(right.value)"
                     :label="t('workflows.dsl.right_value')"
                     type="number"
                     density="comfortable"
-                    @update:model-value="updateRightValue"
+                    @update:model-value="updateRightValue(Number($event))"
                 />
             </div>
         </template>
         <template v-else-if="transformType === 'concat'">
             <div class="d-flex ga-2">
                 <v-text-field
-                    :model-value="(modelValue as any).target"
+                    :model-value="props.modelValue.type === 'concat' ? props.modelValue.target : ''"
                     :label="t('workflows.dsl.target')"
                     density="comfortable"
                     @update:model-value="updateField('target', $event)"
                 />
                 <v-text-field
-                    :model-value="(modelValue as any).separator"
+                    :model-value="concatSeparator"
                     :label="t('workflows.dsl.separator')"
                     density="comfortable"
                     @update:model-value="updateField('separator', $event)"
@@ -150,7 +150,7 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, watch } from 'vue'
+    import { ref, watch, computed } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import type { Transform, Operand, StringOperand } from './dsl-utils'
 
@@ -173,6 +173,28 @@
 
     const transformType = ref<'none' | 'arithmetic' | 'concat'>(props.modelValue.type || 'none')
 
+    // Computed properties to avoid 'as any' in templates
+    const arithmeticTarget = computed(() => {
+        if (props.modelValue.type === 'arithmetic') {
+            return props.modelValue.target
+        }
+        return ''
+    })
+
+    const arithmeticOp = computed(() => {
+        if (props.modelValue.type === 'arithmetic') {
+            return props.modelValue.op
+        }
+        return 'add'
+    })
+
+    const concatSeparator = computed(() => {
+        if (props.modelValue.type === 'concat') {
+            return props.modelValue.separator ?? ' '
+        }
+        return ' '
+    })
+
     // Local operand editors
     const left = ref<Operand>({ kind: 'field', field: '' })
     const right = ref<Operand>({ kind: 'const', value: 0 })
@@ -185,11 +207,11 @@
         newTransform => {
             transformType.value = newTransform.type ?? 'none'
             if (newTransform.type === 'arithmetic') {
-                left.value = { ...(newTransform as any).left } ?? { kind: 'field', field: '' }
-                right.value = { ...(newTransform as any).right } ?? { kind: 'const', value: 0 }
+                left.value = newTransform.left ?? { kind: 'field', field: '' }
+                right.value = newTransform.right ?? { kind: 'const', value: 0 }
             } else if (newTransform.type === 'concat') {
-                leftConcat.value = { ...(newTransform as any).left } ?? { kind: 'field', field: '' }
-                rightConcat.value = { ...(newTransform as any).right } ?? {
+                leftConcat.value = newTransform.left ?? { kind: 'field', field: '' }
+                rightConcat.value = newTransform.right ?? {
                     kind: 'const_string',
                     value: '',
                 }
@@ -198,10 +220,20 @@
         { immediate: true, deep: true }
     )
 
-    function updateField(field: string, value: any) {
-        const updated: any = { ...props.modelValue }
-        updated[field] = value
-        emit('update:modelValue', updated as Transform)
+    function updateField(field: string, value: unknown) {
+        if (props.modelValue.type === 'arithmetic') {
+            const updated: Transform = {
+                ...props.modelValue,
+                [field]: value,
+            }
+            emit('update:modelValue', updated)
+        } else if (props.modelValue.type === 'concat') {
+            const updated: Transform = {
+                ...props.modelValue,
+                [field]: value,
+            }
+            emit('update:modelValue', updated)
+        }
     }
 
     function onTypeChange(newType: 'none' | 'arithmetic' | 'concat') {
@@ -273,18 +305,22 @@
     }
 
     function syncLeft() {
-        if (transformType.value === 'arithmetic') {
-            const updated: any = { ...props.modelValue }
-            updated.left = { ...left.value }
-            emit('update:modelValue', updated as Transform)
+        if (transformType.value === 'arithmetic' && props.modelValue.type === 'arithmetic') {
+            const updated: Transform = {
+                ...props.modelValue,
+                left: { ...left.value },
+            }
+            emit('update:modelValue', updated)
         }
     }
 
     function syncRight() {
-        if (transformType.value === 'arithmetic') {
-            const updated: any = { ...props.modelValue }
-            updated.right = { ...right.value }
-            emit('update:modelValue', updated as Transform)
+        if (transformType.value === 'arithmetic' && props.modelValue.type === 'arithmetic') {
+            const updated: Transform = {
+                ...props.modelValue,
+                right: { ...right.value },
+            }
+            emit('update:modelValue', updated)
         }
     }
 
@@ -328,18 +364,22 @@
     }
 
     function syncLeftConcat() {
-        if (transformType.value === 'concat') {
-            const updated: any = { ...props.modelValue }
-            updated.left = { ...leftConcat.value }
-            emit('update:modelValue', updated as Transform)
+        if (transformType.value === 'concat' && props.modelValue.type === 'concat') {
+            const updated: Transform = {
+                ...props.modelValue,
+                left: { ...leftConcat.value },
+            }
+            emit('update:modelValue', updated)
         }
     }
 
     function syncRightConcat() {
-        if (transformType.value === 'concat') {
-            const updated: any = { ...props.modelValue }
-            updated.right = { ...rightConcat.value }
-            emit('update:modelValue', updated as Transform)
+        if (transformType.value === 'concat' && props.modelValue.type === 'concat') {
+            const updated: Transform = {
+                ...props.modelValue,
+                right: { ...rightConcat.value },
+            }
+            emit('update:modelValue', updated)
         }
     }
 </script>
