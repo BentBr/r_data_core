@@ -7,7 +7,7 @@ fn test_hash_password_binary() {
 
     // Run the binary
     let output = Command::new("cargo")
-        .args(&["run", "--bin", "hash_password", test_password])
+        .args(&["run", "--package", "r_data_core_core", "--bin", "hash_password", "--", test_password])
         .output()
         .expect("Failed to execute hash_password binary");
 
@@ -64,7 +64,7 @@ fn test_hash_password_binary() {
 fn test_hash_password_binary_no_args() {
     // Test with no arguments (should show usage and exit successfully)
     let output = Command::new("cargo")
-        .args(&["run", "--bin", "hash_password"])
+        .args(&["run", "--package", "r_data_core_core", "--bin", "hash_password"])
         .output()
         .expect("Failed to execute hash_password binary");
 
@@ -91,7 +91,7 @@ fn test_hash_password_binary_empty_password() {
 
     // Run the binary
     let output = Command::new("cargo")
-        .args(&["run", "--bin", "hash_password", test_password])
+        .args(&["run", "--package", "r_data_core_core", "--bin", "hash_password", "--", test_password])
         .output()
         .expect("Failed to execute hash_password binary");
 
@@ -135,7 +135,7 @@ fn test_hash_password_binary_special_characters() {
 
     // Run the binary
     let output = Command::new("cargo")
-        .args(&["run", "--bin", "hash_password", test_password])
+        .args(&["run", "--package", "r_data_core_core", "--bin", "hash_password", "--", test_password])
         .output()
         .expect("Failed to execute hash_password binary");
 
@@ -179,7 +179,7 @@ fn test_hash_password_binary_sql_output() {
 
     // Run the binary
     let output = Command::new("cargo")
-        .args(&["run", "--bin", "hash_password", test_password])
+        .args(&["run", "--package", "r_data_core_core", "--bin", "hash_password", "--", test_password])
         .output()
         .expect("Failed to execute hash_password binary");
 

@@ -1,5 +1,5 @@
-use crate::entity::field::definition::FieldDefinition;
-use crate::entity::field::types::FieldType;
+use r_data_core_core::field::definition::FieldDefinition;
+use r_data_core_core::field::types::FieldType;
 
 impl FieldDefinition {
     /// Convert to API schema model with properly typed constraints
@@ -106,7 +106,7 @@ impl FieldDefinition {
                 // Extract options from options_source
                 let options = match &self.validation.options_source {
                     Some(source) => match source {
-                        crate::entity::field::options::OptionsSource::Fixed { options } => {
+                        r_data_core_core::field::options::OptionsSource::Fixed { options } => {
                             Some(options.iter().map(|opt| opt.value.clone()).collect())
                         }
                         _ => None, // Handle other option sources

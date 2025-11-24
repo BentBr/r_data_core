@@ -86,6 +86,7 @@ pub fn create_error_handlers() -> ActixErrorHandlers<BoxBody> {
 }
 
 // Add a custom panic handler for middleware errors
+#[allow(dead_code)] // Handler for future use
 pub fn handle_middleware_panic(err: &actix_web::Error) -> HttpResponse {
     log::error!("Middleware panic: {:?}", err);
 

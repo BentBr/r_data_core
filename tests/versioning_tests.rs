@@ -1,6 +1,6 @@
-use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
+use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core::api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
-use r_data_core::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
+use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use r_data_core::entity::version_repository::VersionRepository;
 use r_data_core::services::{EntityDefinitionService, VersionService};
 use r_data_core::workflow::data::repository::WorkflowRepository;
@@ -44,7 +44,7 @@ async fn test_dynamic_entity_update_creates_snapshot() {
     });
     // Use the view to validate after update
     let repo =
-        r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool.clone());
+        r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
     // We need definition for validation; load from service
     let def_repo = EntityDefinitionRepository::new(pool.clone());
     let def_svc = EntityDefinitionService::new_without_cache(std::sync::Arc::new(def_repo));
@@ -52,7 +52,7 @@ async fn test_dynamic_entity_update_creates_snapshot() {
         .get_entity_definition_by_entity_type(&entity_type)
         .await
         .unwrap();
-    let entity = r_data_core::entity::dynamic_entity::entity::DynamicEntity {
+    let entity = r_data_core_core::DynamicEntity {
         entity_type: entity_type.clone(),
         field_data: payload
             .as_object_mut()
@@ -153,7 +153,7 @@ async fn test_entity_definition_update_creates_snapshot_and_increments_version()
     let def_repo = EntityDefinitionRepository::new(pool.clone());
     let def_service = EntityDefinitionService::new_without_cache(std::sync::Arc::new(def_repo));
 
-    let mut def = r_data_core::entity::entity_definition::definition::EntityDefinition::default();
+    let mut def = r_data_core_core::entity_definition::definition::EntityDefinition::default();
     def.entity_type = entity_type.clone();
     def.display_name = "Ver Def".to_string();
     def.description = Some("d".to_string());
@@ -171,7 +171,7 @@ async fn test_entity_definition_update_creates_snapshot_and_increments_version()
 
     // Update via repository (service .update calls repository.update)
     let repo =
-        r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
+        r_data_core_persistence::EntityDefinitionRepository::new(
             pool.clone(),
         );
     let mut updated = def_service
@@ -312,14 +312,14 @@ async fn test_version_creation_and_endpoint_output() {
     });
 
     let repo =
-        r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool.clone());
+        r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
     let def_repo = EntityDefinitionRepository::new(pool.clone());
     let def_svc = EntityDefinitionService::new_without_cache(std::sync::Arc::new(def_repo));
     let def = def_svc
         .get_entity_definition_by_entity_type(&entity_type)
         .await
         .unwrap();
-    let entity = r_data_core::entity::dynamic_entity::entity::DynamicEntity {
+    let entity = r_data_core_core::DynamicEntity {
         entity_type: entity_type.clone(),
         field_data: payload
             .as_object_mut()
@@ -467,14 +467,14 @@ async fn test_version_creator_names_in_json_response() {
     });
 
     let repo =
-        r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool.clone());
+        r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
     let def_repo = EntityDefinitionRepository::new(pool.clone());
     let def_svc = EntityDefinitionService::new_without_cache(std::sync::Arc::new(def_repo));
     let def = def_svc
         .get_entity_definition_by_entity_type(&entity_type)
         .await
         .unwrap();
-    let entity1 = r_data_core::entity::dynamic_entity::entity::DynamicEntity {
+    let entity1 = r_data_core_core::DynamicEntity {
         entity_type: entity_type.clone(),
         field_data: payload1
             .as_object_mut()
@@ -501,7 +501,7 @@ async fn test_version_creator_names_in_json_response() {
         "updated_by": updater2.to_string()
     });
 
-    let entity2 = r_data_core::entity::dynamic_entity::entity::DynamicEntity {
+    let entity2 = r_data_core_core::DynamicEntity {
         entity_type: entity_type.clone(),
         field_data: payload2
             .as_object_mut()

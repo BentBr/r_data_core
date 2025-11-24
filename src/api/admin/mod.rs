@@ -12,11 +12,11 @@ use actix_web::web;
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/admin/api/v1")
-            .service(auth::admin_login)
-            .service(auth::admin_register)
-            .service(auth::admin_logout)
-            .service(auth::admin_refresh_token)
-            .service(auth::admin_revoke_all_tokens)
+            .service(auth::routes::admin_login)
+            .service(auth::routes::admin_register)
+            .service(auth::routes::admin_logout)
+            .service(auth::routes::admin_refresh_token)
+            .service(auth::routes::admin_revoke_all_tokens)
             // Module routes
             .service(
                 web::scope("/entity-definitions")

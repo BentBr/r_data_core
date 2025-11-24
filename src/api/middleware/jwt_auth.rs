@@ -11,6 +11,7 @@ use crate::api::middleware::AuthMiddlewareService;
 use crate::api::ApiState;
 
 /// Middleware service for JWT auth
+#[allow(dead_code)]
 pub struct JwtAuthMiddleware<S> {
     service: Rc<S>,
 }
@@ -39,7 +40,7 @@ where
                 }
             };
 
-            let jwt_secret = &state.jwt_secret;
+            let jwt_secret = &state.api_config.jwt_secret;
 
             match extract_and_validate_jwt(&request, jwt_secret).await {
                 Ok(Some(claims)) => {

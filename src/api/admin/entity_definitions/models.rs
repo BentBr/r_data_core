@@ -289,3 +289,21 @@ pub struct ApplySchemaRequest {
     #[serde(default)]
     pub uuid: Option<Uuid>,
 }
+
+#[derive(serde::Serialize, ToSchema)]
+pub struct EntityDefinitionVersionMeta {
+    pub version_number: i32,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: time::OffsetDateTime,
+    pub created_by: Option<Uuid>,
+    pub created_by_name: Option<String>,
+}
+
+#[derive(serde::Serialize, ToSchema)]
+pub struct EntityDefinitionVersionPayload {
+    pub version_number: i32,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: time::OffsetDateTime,
+    pub created_by: Option<Uuid>,
+    pub data: serde_json::Value,
+}

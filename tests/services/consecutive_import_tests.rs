@@ -1,10 +1,10 @@
-use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
+use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core::api::admin::workflows::models::CreateWorkflowRequest;
-use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
-use r_data_core::entity::entity_definition::definition::EntityDefinition;
+use r_data_core_persistence::DynamicEntityRepository;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core::services::adapters::EntityDefinitionRepositoryAdapter;
 use r_data_core::services::{
-    DynamicEntityRepositoryAdapter, DynamicEntityService, EntityDefinitionService,
+    adapters::DynamicEntityRepositoryAdapter, DynamicEntityService, EntityDefinitionService,
     WorkflowRepositoryAdapter, WorkflowService,
 };
 use r_data_core::workflow::data::repository::WorkflowRepository;
@@ -38,7 +38,7 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
     entity_def.published = true;
 
     // Add required fields
-    use r_data_core::entity::field::{FieldDefinition, FieldType};
+    use r_data_core_core::field::{FieldDefinition, FieldType};
     let mut fields = Vec::new();
 
     let email_field = FieldDefinition {
@@ -50,8 +50,8 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
         filterable: true,
         indexed: true,
         default_value: None,
-        validation: r_data_core::entity::field::FieldValidation::default(),
-        ui_settings: r_data_core::entity::field::ui::UiSettings::default(),
+        validation: r_data_core_core::field::FieldValidation::default(),
+        ui_settings: r_data_core_core::field::ui::UiSettings::default(),
         constraints: std::collections::HashMap::new(),
     };
     fields.push(email_field);
@@ -65,8 +65,8 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
         filterable: true,
         indexed: true,
         default_value: None,
-        validation: r_data_core::entity::field::FieldValidation::default(),
-        ui_settings: r_data_core::entity::field::ui::UiSettings::default(),
+        validation: r_data_core_core::field::FieldValidation::default(),
+        ui_settings: r_data_core_core::field::ui::UiSettings::default(),
         constraints: std::collections::HashMap::new(),
     };
     fields.push(name_field);

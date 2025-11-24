@@ -18,9 +18,11 @@ pub struct CsvOptions {
 }
 
 impl CsvOptions {
+    #[allow(dead_code)] // Used by serde default
     pub fn default_header() -> bool {
         true
     }
+    #[allow(dead_code)] // Used by serde default
     pub fn default_delimiter() -> String {
         ",".to_string()
     }

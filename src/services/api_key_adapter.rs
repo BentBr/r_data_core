@@ -1,7 +1,6 @@
-use crate::entity::admin_user::repository::ApiKeyRepository;
-use crate::entity::admin_user::repository_trait::ApiKeyRepositoryTrait;
-use crate::entity::admin_user::ApiKey;
-use crate::error::Result;
+use crate::entity::admin_user::{ApiKeyRepository, ApiKeyRepositoryTrait};
+use r_data_core_core::admin_user::ApiKey;
+use r_data_core_core::error::Result;
 use async_trait::async_trait;
 use uuid::Uuid;
 

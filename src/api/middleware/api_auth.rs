@@ -14,11 +14,13 @@ use crate::api::middleware::{ApiKeyInfo, AuthMiddlewareService};
 use crate::api::ApiState;
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct ApiKeyClaims {
     pub user_uuid: i64,
     pub api_key_uuid: i64,
 }
 
+#[allow(dead_code)] // Middleware type for future use
 pub struct ApiAuth;
 
 impl Default for ApiAuth {
@@ -28,6 +30,7 @@ impl Default for ApiAuth {
 }
 
 impl ApiAuth {
+    #[allow(dead_code)] // Middleware method for future use
     pub fn new() -> Self {
         ApiAuth
     }
@@ -52,6 +55,7 @@ where
     }
 }
 
+#[allow(dead_code)] // Middleware type for future use
 pub struct ApiAuthMiddleware<S> {
     service: Rc<S>,
 }
@@ -76,7 +80,7 @@ where
 
         Box::pin(async move {
             // Handle state extraction
-            let state = match state_result {
+            let _state = match state_result {
                 Some(state) => state,
                 None => return Err(ErrorUnauthorized("Missing application state")),
             };

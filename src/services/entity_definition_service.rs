@@ -1,7 +1,7 @@
-use crate::cache::CacheManager;
-use crate::entity::entity_definition::definition::EntityDefinition;
-use crate::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
-use crate::error::{Error, Result};
+use r_data_core_core::cache::CacheManager;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
+use r_data_core_core::error::Result;
 use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -105,7 +105,7 @@ impl EntityDefinitionService {
         // Cache miss - query repository
         let definition = self.repository.get_by_uuid(uuid).await?;
         let definition = definition.ok_or_else(|| {
-            Error::NotFound(format!("Entity definition with UUID {} not found", uuid))
+            r_data_core_core::error::Error::NotFound(format!("Entity definition with UUID {} not found", uuid))
         })?;
 
         // Cache the result (no TTL - cache until explicitly invalidated)
@@ -130,7 +130,7 @@ impl EntityDefinitionService {
         // Cache miss - query repository
         let definition = self.repository.get_by_entity_type(entity_type).await?;
         let definition = definition.ok_or_else(|| {
-            Error::NotFound(format!(
+            r_data_core_core::error::Error::NotFound(format!(
                 "Entity definition with entity type '{}' not found",
                 entity_type
             ))
@@ -164,7 +164,7 @@ impl EntityDefinitionService {
             .get_by_entity_type(&definition.entity_type)
             .await?;
         if existing.is_some() {
-            return Err(Error::ClassAlreadyExists(format!(
+            return Err(r_data_core_core::error::Error::ClassAlreadyExists(format!(
                 "Entity type '{}' already exists",
                 definition.entity_type
             )));
@@ -204,7 +204,7 @@ impl EntityDefinitionService {
             .as_ref()
             .map(|e| e.entity_type.clone())
             .ok_or_else(|| {
-                Error::NotFound(format!("Entity definition with UUID {} not found", uuid))
+                r_data_core_core::error::Error::NotFound(format!("Entity definition with UUID {} not found", uuid))
             })?;
 
         // Validate that entity type follows naming conventions
@@ -261,7 +261,7 @@ impl EntityDefinitionService {
                 let record_count = self.repository.count_view_records(&table_name).await?;
 
                 if record_count > 0 {
-                    return Err(Error::Validation(format!(
+                    return Err(r_data_core_core::error::Error::Validation(format!(
                         "Cannot delete entity definition that has {} entities. Delete all entities first.",
                         record_count
                     )));
@@ -277,7 +277,7 @@ impl EntityDefinitionService {
 
             Ok(())
         } else {
-            Err(Error::NotFound(format!(
+            Err(r_data_core_core::error::Error::NotFound(format!(
                 "Entity definition with UUID {} not found",
                 uuid
             )))
@@ -290,7 +290,7 @@ impl EntityDefinitionService {
         let valid_pattern = regex::Regex::new(r"^[a-zA-Z][a-zA-Z0-9_]*$").unwrap();
 
         if !valid_pattern.is_match(entity_type) {
-            return Err(Error::Validation(format!(
+            return Err(r_data_core_core::error::Error::Validation(format!(
                 "Entity type '{}' must start with a letter and contain only letters, numbers, and underscores",
                 entity_type
             )));
@@ -302,7 +302,7 @@ impl EntityDefinitionService {
         ];
 
         if reserved_words.contains(&entity_type.to_lowercase().as_str()) {
-            return Err(Error::Validation(format!(
+            return Err(r_data_core_core::error::Error::Validation(format!(
                 "Entity type '{}' is a reserved word",
                 entity_type
             )));
@@ -318,7 +318,7 @@ impl EntityDefinitionService {
 
         for field in &definition.fields {
             if let Some(existing) = field_names.get(&field.name.to_lowercase()) {
-                return Err(Error::Validation(format!(
+                return Err(r_data_core_core::error::Error::Validation(format!(
                     "Duplicate field name '{}' (previously defined at position {})",
                     field.name, existing
                 )));
@@ -333,7 +333,7 @@ impl EntityDefinitionService {
         // Validate each field
         for field in &definition.fields {
             if !valid_pattern.is_match(&field.name) {
-                return Err(Error::Validation(format!(
+                return Err(r_data_core_core::error::Error::Validation(format!(
                     "Field name '{}' must start with a letter and contain only letters, numbers, and underscores",
                     field.name
                 )));
@@ -490,9 +490,9 @@ impl EntityDefinitionService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entity::entity_definition::schema::Schema;
-    use crate::entity::field::types::FieldType;
-    use crate::entity::field::FieldDefinition;
+    use r_data_core_core::entity_definition::schema::Schema;
+    use r_data_core_core::field::types::FieldType;
+    use r_data_core_core::field::FieldDefinition;
     use async_trait::async_trait;
     use mockall::mock;
     use mockall::predicate::{self, eq};
@@ -505,20 +505,20 @@ mod tests {
         pub EntityDefinitionRepo {}
 
         #[async_trait]
-        impl EntityDefinitionRepositoryTrait for EntityDefinitionRepo {
-            async fn list(&self, limit: i64, offset: i64) -> Result<Vec<EntityDefinition>>;
-            async fn count(&self) -> Result<i64>;
-            async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<EntityDefinition>>;
-            async fn get_by_entity_type(&self, entity_type: &str) -> Result<Option<EntityDefinition>>;
-            async fn create(&self, definition: &EntityDefinition) -> Result<Uuid>;
-            async fn update(&self, uuid: &Uuid, definition: &EntityDefinition) -> Result<()>;
-            async fn delete(&self, uuid: &Uuid) -> Result<()>;
-            async fn apply_schema(&self, schema_sql: &str) -> Result<()>;
-            async fn update_entity_view_for_entity_definition(&self, entity_definition: &EntityDefinition) -> Result<()>;
-            async fn check_view_exists(&self, view_name: &str) -> Result<bool>;
-            async fn get_view_columns_with_types(&self, view_name: &str) -> Result<HashMap<String, String>>;
-            async fn count_view_records(&self, view_name: &str) -> Result<i64>;
-            async fn cleanup_unused_entity_view(&self) -> Result<()>;
+        impl r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait for EntityDefinitionRepo {
+            async fn list(&self, limit: i64, offset: i64) -> r_data_core_core::error::Result<Vec<EntityDefinition>>;
+            async fn count(&self) -> r_data_core_core::error::Result<i64>;
+            async fn get_by_uuid(&self, uuid: &Uuid) -> r_data_core_core::error::Result<Option<EntityDefinition>>;
+            async fn get_by_entity_type(&self, entity_type: &str) -> r_data_core_core::error::Result<Option<EntityDefinition>>;
+            async fn create(&self, definition: &EntityDefinition) -> r_data_core_core::error::Result<Uuid>;
+            async fn update(&self, uuid: &Uuid, definition: &EntityDefinition) -> r_data_core_core::error::Result<()>;
+            async fn delete(&self, uuid: &Uuid) -> r_data_core_core::error::Result<()>;
+            async fn apply_schema(&self, schema_sql: &str) -> r_data_core_core::error::Result<()>;
+            async fn update_entity_view_for_entity_definition(&self, entity_definition: &EntityDefinition) -> r_data_core_core::error::Result<()>;
+            async fn check_view_exists(&self, view_name: &str) -> r_data_core_core::error::Result<bool>;
+            async fn get_view_columns_with_types(&self, view_name: &str) -> r_data_core_core::error::Result<HashMap<String, String>>;
+            async fn count_view_records(&self, view_name: &str) -> r_data_core_core::error::Result<i64>;
+            async fn cleanup_unused_entity_view(&self) -> r_data_core_core::error::Result<()>;
         }
     }
 
@@ -619,7 +619,7 @@ mod tests {
         let result = service.get_entity_definition(&uuid).await;
 
         assert!(result.is_err());
-        if let Err(Error::NotFound(msg)) = result {
+        if let Err(r_data_core_core::error::Error::NotFound(msg)) = result {
             assert!(msg.contains(&uuid.to_string()));
         } else {
             panic!("Expected NotFound error");
@@ -668,7 +668,7 @@ mod tests {
         let result = service.create_entity_definition(&definition).await;
 
         assert!(result.is_err());
-        if let Err(Error::Validation(msg)) = result {
+        if let Err(r_data_core_core::error::Error::Validation(msg)) = result {
             assert!(msg.contains("must start with a letter"));
         } else {
             panic!("Expected Validation error");
@@ -687,7 +687,7 @@ mod tests {
         let result = service.create_entity_definition(&definition).await;
 
         assert!(result.is_err());
-        if let Err(Error::Validation(msg)) = result {
+        if let Err(r_data_core_core::error::Error::Validation(msg)) = result {
             assert!(msg.contains("reserved word"));
         } else {
             panic!("Expected Validation error");
@@ -720,7 +720,7 @@ mod tests {
         let result = service.create_entity_definition(&definition).await;
 
         assert!(result.is_err());
-        if let Err(Error::Validation(msg)) = result {
+        if let Err(r_data_core_core::error::Error::Validation(msg)) = result {
             assert!(msg.contains("Duplicate field name"));
         } else {
             panic!("Expected Validation error");
@@ -748,7 +748,7 @@ mod tests {
         let result = service.delete_entity_definition(&uuid).await;
 
         assert!(result.is_err());
-        if let Err(Error::Validation(msg)) = result {
+        if let Err(r_data_core_core::error::Error::Validation(msg)) = result {
             assert!(msg.contains("Cannot delete entity definition that has 10 entities"));
         } else {
             panic!("Expected Validation error");
@@ -876,7 +876,7 @@ mod tests {
             .await;
 
         assert!(result.is_err());
-        if let Err(Error::NotFound(msg)) = result {
+        if let Err(r_data_core_core::error::Error::NotFound(msg)) = result {
             assert!(msg.contains(entity_type));
         } else {
             panic!("Expected NotFound error");
@@ -932,7 +932,7 @@ mod tests {
         let result = service.update_entity_definition(&uuid, &definition).await;
 
         assert!(result.is_err());
-        if let Err(Error::NotFound(msg)) = result {
+        if let Err(r_data_core_core::error::Error::NotFound(msg)) = result {
             assert!(msg.contains(&uuid.to_string()));
         } else {
             panic!("Expected NotFound error");
@@ -967,7 +967,7 @@ mod tests {
             .await;
 
         assert!(result.is_err());
-        if let Err(Error::Validation(msg)) = result {
+        if let Err(r_data_core_core::error::Error::Validation(msg)) = result {
             assert!(msg.contains("must start with a letter"));
         } else {
             panic!("Expected Validation error");

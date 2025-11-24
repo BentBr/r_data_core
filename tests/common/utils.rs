@@ -1,13 +1,13 @@
 use dotenv;
 use lazy_static::lazy_static;
 use log::{debug, info, warn};
-use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
-use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
-use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
-use r_data_core::entity::entity_definition::definition::EntityDefinition;
-use r_data_core::entity::field::ui::UiSettings;
-use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
-use r_data_core::error::{Error, Result};
+use r_data_core_persistence::EntityDefinitionRepository;
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::DynamicEntityRepository;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::field::ui::UiSettings;
+use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
+use r_data_core::error::Error; use r_data_core_core::error::Result;
 use r_data_core::services::{
     DynamicEntityService, EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService,
 };
@@ -124,7 +124,7 @@ pub async fn create_test_entity(
     entity_type: &str,
     name: &str,
     email: &str,
-) -> Result<Uuid> {
+    ) -> Result<Uuid> {
     // Acquire a lock for database operations
     let _guard = GLOBAL_TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
 
@@ -184,7 +184,7 @@ pub async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
     // Acquire a lock for database operations
     let _guard = GLOBAL_TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
 
-    use r_data_core::entity::admin_user::model::ApiKey;
+    use r_data_core_core::admin_user::ApiKey;
 
     // Create an admin user first with unique values
     let admin_uuid = Uuid::now_v7();
@@ -204,13 +204,13 @@ pub async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
         .bind(created_by)
         .execute(pool)
         .await
-        .map_err(Error::Database)?;
+        .map_err(r_data_core_core::error::Error::Database)?;
 
     // Create an API key
     let key_uuid = Uuid::now_v7();
 
     // Hash the API key properly
-    let key_hash = ApiKey::hash_api_key(&api_key).map_err(|e| Error::Unknown(e.to_string()))?;
+    let key_hash = ApiKey::hash_api_key(&api_key).map_err(|e| r_data_core_core::error::Error::Unknown(e.to_string()))?;
 
     sqlx::query(
         "INSERT INTO api_keys (uuid, user_uuid, name, key_hash, is_active, created_at, created_by, published)
@@ -223,7 +223,7 @@ pub async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
         .bind(created_by)
         .execute(pool)
         .await
-        .map_err(Error::Database)?;
+        .map_err(r_data_core_core::error::Error::Database)?;
 
     Ok(())
 }
@@ -491,11 +491,11 @@ pub async fn create_entity_definition_from_json(pool: &PgPool, json_path: &str) 
 
     // Read the JSON file
     let json_content = std::fs::read_to_string(json_path)
-        .map_err(|e| Error::Unknown(format!("Failed to read JSON file {}: {}", json_path, e)))?;
+        .map_err(|e| r_data_core_core::error::Error::Unknown(format!("Failed to read JSON file {}: {}", json_path, e)))?;
 
     // Parse the JSON into a EntityDefinition
     let mut entity_def: EntityDefinition = serde_json::from_str(&json_content)
-        .map_err(|e| Error::Unknown(format!("Failed to parse JSON file {}: {}", json_path, e)))?;
+        .map_err(|e| r_data_core_core::error::Error::Unknown(format!("Failed to parse JSON file {}: {}", json_path, e)))?;
 
     // Make the entity type unique to avoid test conflicts
     let unique_entity_type = unique_entity_type(&entity_def.entity_type);

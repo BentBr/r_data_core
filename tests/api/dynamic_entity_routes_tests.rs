@@ -1,11 +1,11 @@
 use actix_web::{test, web, App};
-use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
+use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core::api::{configure_app, ApiState};
-use r_data_core::cache::CacheManager;
+use r_data_core_core::cache::CacheManager;
 use r_data_core::config::CacheConfig;
-use r_data_core::entity::admin_user::repository::{AdminUserRepository, ApiKeyRepository};
-use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
-use r_data_core::error::Result;
+use r_data_core::entity::admin_user::{AdminUserRepository, ApiKeyRepository};
+use r_data_core_persistence::DynamicEntityRepository;
+use r_data_core_core::error::Result;
 use r_data_core::services::{
     AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
 };
@@ -102,7 +102,20 @@ mod dynamic_entity_api_tests {
         // Create app state
         let app_state = web::Data::new(ApiState {
             db_pool: pool.clone(),
-            jwt_secret: "test_secret".to_string(),
+            api_config: r_data_core_core::config::ApiConfig {
+                host: "0.0.0.0".to_string(),
+                port: 8888,
+                use_tls: false,
+                jwt_secret: "test_secret".to_string(),
+                jwt_expiration: 3600,
+                enable_docs: true,
+                cors_origins: vec![],
+            },
+            permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                pool.clone(),
+                cache_manager.clone(),
+                Some(0),
+            ),
             cache_manager,
             api_key_service,
             admin_user_service,

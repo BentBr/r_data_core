@@ -16,18 +16,6 @@ doctest = false  # Disable doc tests as they can run in parallel
 name = "r_data_core"
 path = "src/main.rs"
 
-[[bin]]
-name = "run_migrations"
-path = "src/bin/run_migrations.rs"
-
-[[bin]]
-name = "apply_schema"
-path = "src/bin/apply_schema.rs"
-
-[[bin]]
-name = "clear_cache"
-path = "src/bin/clear_cache.rs"
-
 # Use serial_test crate effectively
 [dev-dependencies]
 mockall = "0.12"
@@ -46,6 +34,9 @@ actix-cors = "0.7"
 actix-rt = "2.9"
 actix-multipart = "0.6"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+r_data_core_api = { path = "crates/api" }
+r_data_core_core = { path = "crates/core" }
+r_data_core_persistence = { path = "crates/persistence" }
 
 # Database
 sqlx = { version = "0.8.4", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }
@@ -114,3 +105,13 @@ clap = "3.2"
 base64 = "0.22.1"
 hex = "0.4"
 chrono = "0.4.42"
+
+[workspace]
+members = [
+  "crates/core",
+  "crates/persistence",
+  "crates/api",
+  "crates/worker",
+  "crates/test-support",
+]
+resolver = "2"

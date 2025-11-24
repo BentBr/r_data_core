@@ -100,13 +100,18 @@ impl From<uuid::Error> for Error {
     }
 }
 
+impl From<r_data_core_core::error::Error> for Error {
+    fn from(err: r_data_core_core::error::Error) -> Self {
+        Error::Unknown(err.to_string())
+    }
+}
+
 impl ResponseError for Error {
     fn status_code(&self) -> actix_web::http::StatusCode {
         actix_web::http::StatusCode::INTERNAL_SERVER_ERROR
     }
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
 
 // Extension trait to convert sqlx errors to our database errors
 pub trait SqlxErrorExt: Sized {

@@ -1,0 +1,67 @@
+[package]
+name = "r_data_core_api"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[dependencies]
+# Web framework
+actix-web = "4.5"
+actix-cors = "0.7"
+actix-multipart = "0.6"
+
+# Core dependencies
+r_data_core_core = { path = "../core" }
+r_data_core_persistence = { path = "../persistence" }
+# Note: Cannot depend on r_data_core due to circular dependency
+# Entities/services will be migrated to core/persistence crates
+
+# Database
+sqlx = { version = "0.8.4", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }
+
+# Authentication
+jsonwebtoken = "9.2"
+argon2 = "0.5"
+sha2 = "0.10.8"
+base64 = "0.22"
+hex = "0.4"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Async
+futures = "0.3"
+futures-util = "0.3"
+async-trait = "0.1"
+
+# Unique IDs
+uuid = { version = "1.6", features = ["v7", "serde"] }
+
+# Time handling
+time = { version = "0.3", features = ["serde", "formatting", "parsing", "macros"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Logging
+log = "0.4"
+
+# API documentation
+utoipa = { version = "4.1.0", features = ["actix_extras"] }
+utoipa-swagger-ui = { version = "5.0", features = ["actix-web", "debug-embed"] }
+
+# Jobs & scheduling
+apalis = { version = "0.7.3", default-features = false, features = ["retry"] }
+apalis-redis = "0.7.3"
+
+# CSV/bytes
+csv = "1.3"
+bytes = "1.6"
+
+# Validation
+validator = { version = "0.18", features = ["derive"] }
+regex = "1.10"
+
+

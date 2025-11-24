@@ -6,11 +6,9 @@ use actix_web::{
 use log::{debug, error};
 use uuid::Uuid;
 
+use r_data_core_api::jwt::{verify_jwt, AuthUserClaims};
 use crate::{
-    api::{
-        jwt::{verify_jwt, AuthUserClaims},
-        ApiState,
-    },
+    api::ApiState,
     entity::admin_user::ApiKey,
 };
 

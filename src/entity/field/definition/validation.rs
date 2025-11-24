@@ -3,16 +3,16 @@ use serde_json::Value;
 use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
-use crate::entity::field::definition::FieldDefinition;
-use crate::entity::field::types::FieldType;
-use crate::error::{Error, Result};
+use r_data_core_core::field::definition::FieldDefinition;
+use r_data_core_core::field::types::FieldType;
+use r_data_core_core::error::Result;
 
 impl FieldDefinition {
     /// Validate a field value against this definition
     pub fn validate_value(&self, value: &Value) -> Result<()> {
         // Check if required
         if self.required && value.is_null() {
-            return Err(Error::Validation(format!(
+            return Err(r_data_core_core::error::Error::Validation(format!(
                 "Field '{}' is required",
                 self.name
             )));
@@ -28,7 +28,7 @@ impl FieldDefinition {
             FieldType::String | FieldType::Text | FieldType::Wysiwyg => {
                 // Validate string type
                 if !value.is_string() {
-                    return Err(Error::Validation(format!(
+                    return Err(r_data_core_core::error::Error::Validation(format!(
                         "Field '{}' must be a string",
                         self.name
                     )));
@@ -39,7 +39,7 @@ impl FieldDefinition {
                 // Check min length
                 if let Some(min_length) = self.validation.min_length {
                     if s.len() < min_length {
-                        return Err(Error::Validation(format!(
+                        return Err(r_data_core_core::error::Error::Validation(format!(
                             "Field '{}' must be at least {} characters",
                             self.name, min_length
                         )));
@@ -49,7 +49,7 @@ impl FieldDefinition {
                 // Check max length
                 if let Some(max_length) = self.validation.max_length {
                     if s.len() > max_length {
-                        return Err(Error::Validation(format!(
+                        return Err(r_data_core_core::error::Error::Validation(format!(
                             "Field '{}' must be at most {} characters",
                             self.name, max_length
                         )));
@@ -65,14 +65,14 @@ impl FieldDefinition {
                         match Regex::new(pattern) {
                             Ok(re) => {
                                 if !re.is_match(s) {
-                                    return Err(Error::Validation(format!(
+                                    return Err(r_data_core_core::error::Error::Validation(format!(
                                         "Field '{}' does not match pattern",
                                         self.name
                                     )));
                                 }
                             }
                             Err(_) => {
-                                return Err(Error::Validation(format!(
+                                return Err(r_data_core_core::error::Error::Validation(format!(
                                     "Invalid pattern for field '{}'",
                                     self.name
                                 )))
@@ -83,14 +83,14 @@ impl FieldDefinition {
 
                 // Check enum options if present
                 if let Some(options_source) = &self.validation.options_source {
-                    if let crate::entity::field::options::OptionsSource::Fixed { options } =
+                    if let r_data_core_core::field::options::OptionsSource::Fixed { options } =
                         options_source
                     {
                         let valid_options: Vec<&String> =
                             options.iter().map(|opt| &opt.value).collect();
 
                         if !valid_options.contains(&&s.to_string()) {
-                            return Err(Error::Validation(format!(
+                            return Err(r_data_core_core::error::Error::Validation(format!(
                                 "Field '{}' value must be one of {:?}",
                                 self.name, valid_options
                             )));
@@ -105,13 +105,13 @@ impl FieldDefinition {
                         // Try to parse as integer
                         let s = value.as_str().unwrap();
                         if s.parse::<i64>().is_err() {
-                            return Err(Error::Validation(format!(
+                            return Err(r_data_core_core::error::Error::Validation(format!(
                                 "Field '{}' must be an integer",
                                 self.name
                             )));
                         }
                     } else {
-                        return Err(Error::Validation(format!(
+                        return Err(r_data_core_core::error::Error::Validation(format!(
                             "Field '{}' must be an integer",
                             self.name
                         )));
@@ -131,7 +131,7 @@ impl FieldDefinition {
                 if let Some(min_value) = &self.validation.min_value {
                     if let Some(min) = min_value.as_f64() {
                         if n < min {
-                            return Err(Error::Validation(format!(
+                            return Err(r_data_core_core::error::Error::Validation(format!(
                                 "Field '{}' must be at least {}",
                                 self.name, min
                             )));
@@ -143,7 +143,7 @@ impl FieldDefinition {
                 if let Some(max_value) = &self.validation.max_value {
                     if let Some(max) = max_value.as_f64() {
                         if n > max {
-                            return Err(Error::Validation(format!(
+                            return Err(r_data_core_core::error::Error::Validation(format!(
                                 "Field '{}' must be at most {}",
                                 self.name, max
                             )));
@@ -154,7 +154,7 @@ impl FieldDefinition {
                 // Check positive only
                 if let Some(positive_only) = self.validation.positive_only {
                     if positive_only && n < 0.0 {
-                        return Err(Error::Validation(format!(
+                        return Err(r_data_core_core::error::Error::Validation(format!(
                             "Field '{}' must be positive",
                             self.name
                         )));
@@ -168,13 +168,13 @@ impl FieldDefinition {
                         // Try to parse as float
                         let s = value.as_str().unwrap();
                         if s.parse::<f64>().is_err() {
-                            return Err(Error::Validation(format!(
+                            return Err(r_data_core_core::error::Error::Validation(format!(
                                 "Field '{}' must be a number",
                                 self.name
                             )));
                         }
                     } else {
-                        return Err(Error::Validation(format!(
+                        return Err(r_data_core_core::error::Error::Validation(format!(
                             "Field '{}' must be a number",
                             self.name
                         )));
@@ -196,7 +196,7 @@ impl FieldDefinition {
                 if let Some(min_value) = &self.validation.min_value {
                     if let Some(min) = min_value.as_f64() {
                         if n < min {
-                            return Err(Error::Validation(format!(
+                            return Err(r_data_core_core::error::Error::Validation(format!(
                                 "Field '{}' must be at least {}",
                                 self.name, min
                             )));
@@ -208,7 +208,7 @@ impl FieldDefinition {
                 if let Some(max_value) = &self.validation.max_value {
                     if let Some(max) = max_value.as_f64() {
                         if n > max {
-                            return Err(Error::Validation(format!(
+                            return Err(r_data_core_core::error::Error::Validation(format!(
                                 "Field '{}' must be at most {}",
                                 self.name, max
                             )));
@@ -219,7 +219,7 @@ impl FieldDefinition {
                 // Check positive only
                 if let Some(positive_only) = self.validation.positive_only {
                     if positive_only && n < 0.0 {
-                        return Err(Error::Validation(format!(
+                        return Err(r_data_core_core::error::Error::Validation(format!(
                             "Field '{}' must be positive",
                             self.name
                         )));
@@ -233,7 +233,7 @@ impl FieldDefinition {
                         // Allow string booleans
                         let s = value.as_str().unwrap().to_lowercase();
                         if s != "true" && s != "false" && s != "1" && s != "0" {
-                            return Err(Error::Validation(format!(
+                            return Err(r_data_core_core::error::Error::Validation(format!(
                                 "Field '{}' must be a boolean",
                                 self.name
                             )));
@@ -249,13 +249,13 @@ impl FieldDefinition {
                         };
 
                         if n != 0 && n != 1 {
-                            return Err(Error::Validation(format!(
+                            return Err(r_data_core_core::error::Error::Validation(format!(
                                 "Field '{}' must be a boolean",
                                 self.name
                             )));
                         }
                     } else {
-                        return Err(Error::Validation(format!(
+                        return Err(r_data_core_core::error::Error::Validation(format!(
                             "Field '{}' must be a boolean",
                             self.name
                         )));
@@ -265,7 +265,7 @@ impl FieldDefinition {
             FieldType::DateTime | FieldType::Date => {
                 // Validate date type
                 if !value.is_string() {
-                    return Err(Error::Validation(format!(
+                    return Err(r_data_core_core::error::Error::Validation(format!(
                         "Field '{}' must be a date string",
                         self.name
                     )));
@@ -275,7 +275,7 @@ impl FieldDefinition {
 
                 // Try to parse the date
                 if let Err(_) = time::OffsetDateTime::parse(date_str, &Rfc3339) {
-                    return Err(Error::Validation(format!(
+                    return Err(r_data_core_core::error::Error::Validation(format!(
                         "Field '{}' must be a valid date in RFC3339 format",
                         self.name
                     )));
@@ -286,7 +286,7 @@ impl FieldDefinition {
                     if let Ok(min) = time::OffsetDateTime::parse(min_date, &Rfc3339) {
                         if let Ok(date) = time::OffsetDateTime::parse(date_str, &Rfc3339) {
                             if date < min {
-                                return Err(Error::Validation(format!(
+                                return Err(r_data_core_core::error::Error::Validation(format!(
                                     "Field '{}' must be after {}",
                                     self.name, min_date
                                 )));
@@ -300,7 +300,7 @@ impl FieldDefinition {
                     if let Ok(max) = time::OffsetDateTime::parse(max_date, &Rfc3339) {
                         if let Ok(date) = time::OffsetDateTime::parse(date_str, &Rfc3339) {
                             if date > max {
-                                return Err(Error::Validation(format!(
+                                return Err(r_data_core_core::error::Error::Validation(format!(
                                     "Field '{}' must be before {}",
                                     self.name, max_date
                                 )));
@@ -312,7 +312,7 @@ impl FieldDefinition {
             FieldType::Uuid => {
                 // Validate UUID type
                 if !value.is_string() {
-                    return Err(Error::Validation(format!(
+                    return Err(r_data_core_core::error::Error::Validation(format!(
                         "Field '{}' must be a UUID string",
                         self.name
                     )));
@@ -322,7 +322,7 @@ impl FieldDefinition {
 
                 // Try to parse the UUID
                 if let Err(_) = Uuid::parse_str(uuid_str) {
-                    return Err(Error::Validation(format!(
+                    return Err(r_data_core_core::error::Error::Validation(format!(
                         "Field '{}' must be a valid UUID",
                         self.name
                     )));
@@ -331,7 +331,7 @@ impl FieldDefinition {
             FieldType::Select => {
                 // Validate select type
                 if !value.is_string() {
-                    return Err(Error::Validation(format!(
+                    return Err(r_data_core_core::error::Error::Validation(format!(
                         "Field '{}' must be a string",
                         self.name
                     )));
@@ -342,12 +342,12 @@ impl FieldDefinition {
                 // Check if selected value is in options
                 if let Some(source) = &self.validation.options_source {
                     match source {
-                        crate::entity::field::options::OptionsSource::Fixed { options } => {
+                        r_data_core_core::field::options::OptionsSource::Fixed { options } => {
                             let valid_options: Vec<&String> =
                                 options.iter().map(|opt| &opt.value).collect();
 
                             if !valid_options.contains(&&selected.to_string()) {
-                                return Err(Error::Validation(format!(
+                                return Err(r_data_core_core::error::Error::Validation(format!(
                                     "Field '{}' value must be one of {:?}",
                                     self.name, valid_options
                                 )));
@@ -362,7 +362,7 @@ impl FieldDefinition {
             FieldType::MultiSelect => {
                 // Validate multiselect type
                 if !value.is_array() {
-                    return Err(Error::Validation(format!(
+                    return Err(r_data_core_core::error::Error::Validation(format!(
                         "Field '{}' must be an array",
                         self.name
                     )));
@@ -373,7 +373,7 @@ impl FieldDefinition {
                 // Check if all selected values are strings
                 for item in selected {
                     if !item.is_string() {
-                        return Err(Error::Validation(format!(
+                        return Err(r_data_core_core::error::Error::Validation(format!(
                             "Field '{}' must contain only string values",
                             self.name
                         )));
@@ -383,14 +383,14 @@ impl FieldDefinition {
                 // Check if selected values are in options
                 if let Some(source) = &self.validation.options_source {
                     match source {
-                        crate::entity::field::options::OptionsSource::Fixed { options } => {
+                        r_data_core_core::field::options::OptionsSource::Fixed { options } => {
                             let valid_options: Vec<&String> =
                                 options.iter().map(|opt| &opt.value).collect();
 
                             for item in selected {
                                 let item_str = item.as_str().unwrap();
                                 if !valid_options.contains(&&item_str.to_string()) {
-                                    return Err(Error::Validation(format!(
+                                    return Err(r_data_core_core::error::Error::Validation(format!(
                                         "Field '{}' values must be one of {:?}",
                                         self.name, valid_options
                                     )));
@@ -406,7 +406,7 @@ impl FieldDefinition {
             FieldType::Array => {
                 // Validate array type
                 if !value.is_array() {
-                    return Err(Error::Validation(format!(
+                    return Err(r_data_core_core::error::Error::Validation(format!(
                         "Field '{}' must be an array",
                         self.name
                     )));
@@ -415,7 +415,7 @@ impl FieldDefinition {
             FieldType::Object | FieldType::Json => {
                 // Validate object type
                 if !value.is_object() {
-                    return Err(Error::Validation(format!(
+                    return Err(r_data_core_core::error::Error::Validation(format!(
                         "Field '{}' must be an object",
                         self.name
                     )));
@@ -432,12 +432,12 @@ impl FieldDefinition {
     pub fn validate(&self) -> Result<()> {
         // Check if the field has a valid name
         if self.name.is_empty() {
-            return Err(Error::Validation("Field name cannot be empty".to_string()));
+            return Err(r_data_core_core::error::Error::Validation("Field name cannot be empty".to_string()));
         }
 
         // Check for valid display name
         if self.display_name.is_empty() {
-            return Err(Error::Validation(
+            return Err(r_data_core_core::error::Error::Validation(
                 "Field display name cannot be empty".to_string(),
             ));
         }
@@ -535,7 +535,7 @@ impl FieldDefinition {
         ];
 
         if reserved_keywords.contains(&self.name.to_lowercase().as_str()) {
-            return Err(Error::Validation(format!(
+            return Err(r_data_core_core::error::Error::Validation(format!(
                 "Field name '{}' is a reserved SQL keyword and cannot be used",
                 self.name
             )));

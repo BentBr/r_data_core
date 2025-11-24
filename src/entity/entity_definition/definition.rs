@@ -9,9 +9,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::schema::Schema;
-use crate::entity::field::FieldDefinition;
-use crate::entity::field::FieldType;
-use crate::error::{Error, Result};
+use r_data_core_core::field::FieldDefinition;
+use r_data_core_core::field::FieldType;
+use r_data_core_core::error::Result;
 
 /// Function to serialize/deserialize OffsetDateTime with defaults
 mod datetime_serde {
@@ -205,7 +205,7 @@ impl EntityDefinition {
     /// Add field definition
     pub fn add_field(&mut self, field_definition: FieldDefinition) -> Result<()> {
         if self.get_field(&field_definition.name).is_some() {
-            return Err(Error::FieldAlreadyExists(field_definition.name));
+            return Err(r_data_core_core::error::Error::FieldAlreadyExists(field_definition.name));
         }
         self.fields.push(field_definition);
         Ok(())
@@ -223,7 +223,7 @@ impl EntityDefinition {
                 self.fields[idx] = field_definition;
                 Ok(())
             }
-            None => Err(Error::FieldNotFound(field_definition.name)),
+            None => Err(r_data_core_core::error::Error::FieldNotFound(field_definition.name)),
         }
     }
 
@@ -236,7 +236,7 @@ impl EntityDefinition {
                 self.fields.remove(idx);
                 Ok(())
             }
-            None => Err(Error::FieldNotFound(name.to_string())),
+            None => Err(r_data_core_core::error::Error::FieldNotFound(name.to_string())),
         }
     }
 
@@ -244,7 +244,7 @@ impl EntityDefinition {
     pub fn validate(&self) -> Result<()> {
         // Check for required fields
         if self.entity_type.is_empty() {
-            return Err(Error::ValidationFailed(
+            return Err(r_data_core_core::error::Error::ValidationFailed(
                 "Entity type cannot be empty".to_string(),
             ));
         }
@@ -252,13 +252,13 @@ impl EntityDefinition {
         // Check that entity_type only contains alphanumeric characters and underscores
         let name_pattern = regex::Regex::new(r"^[a-zA-Z0-9_]+$").unwrap();
         if !name_pattern.is_match(&self.entity_type) {
-            return Err(Error::ValidationFailed(
+            return Err(r_data_core_core::error::Error::ValidationFailed(
                 "Entity type must contain only alphanumeric characters and underscores (no spaces, hyphens, or special characters)".to_string(),
             ));
         }
 
         if self.display_name.is_empty() {
-            return Err(Error::ValidationFailed(
+            return Err(r_data_core_core::error::Error::ValidationFailed(
                 "Display name cannot be empty".to_string(),
             ));
         }
@@ -267,7 +267,7 @@ impl EntityDefinition {
         let mut field_names = std::collections::HashSet::new();
         for field in &self.fields {
             if !field_names.insert(&field.name) {
-                return Err(Error::ValidationFailed(format!(
+                return Err(r_data_core_core::error::Error::ValidationFailed(format!(
                     "Duplicate field name: {}",
                     field.name
                 )));
@@ -314,11 +314,11 @@ impl EntityDefinition {
             }
 
             // Use the field's get_sql_type method to determine the SQL type
-            let sql_type = crate::entity::field::types::get_sql_type_for_field(
+            let sql_type = r_data_core_core::field::types::get_sql_type_for_field(
                 &field.field_type,
                 field.validation.max_length,
                 field.validation.options_source.as_ref().and_then(|os| {
-                    if let crate::entity::field::OptionsSource::Enum { enum_name } = os {
+                    if let r_data_core_core::field::OptionsSource::Enum { enum_name } = os {
                         Some(enum_name.as_str())
                     } else {
                         None

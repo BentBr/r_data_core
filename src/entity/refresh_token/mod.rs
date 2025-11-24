@@ -1,7 +1,4 @@
-pub mod model;
-pub mod repository;
-pub mod repository_trait;
-
-pub use model::RefreshToken;
-pub use repository::RefreshTokenRepository;
-pub use repository_trait::RefreshTokenRepositoryTrait;
+// Re-export repository and trait from persistence crate
+pub use r_data_core_persistence::{
+    RefreshTokenRepository, RefreshTokenRepositoryTrait,
+};

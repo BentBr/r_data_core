@@ -1,5 +1,22 @@
 # R Data Core
 
+## Workspace Layout
+
+This repository is organized as a Cargo workspace:
+
+- `crates/core` — domain models, versioning, permissions, prelude
+- `crates/persistence` — SQLx repositories and DB utilities
+- `crates/api` — Actix Web API (admin/public), middleware
+- `crates/worker` — background workers
+- `crates/test-support` — shared test helpers
+
+Clippy is enforced strictly across the workspace:
+
+```bash
+cargo clippy --workspace --all-targets --all-features -- \
+  -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery
+```
+
 A robust backend for flexible data management with dynamic entity system, workflow management, API authentication, Redis caching, PostgreSQL database support, and migration system.
 
 ## Features
@@ -408,6 +425,17 @@ Swagger:
 - uuid refactoring -> all in db
 - toDef ->update action -> by key -> dropdown of existing one
 - push all path / params / post body usages to dependency injection
+- permission scheme testing and creation
+  - entities: publish
+  - workflows: activate
+  - entity_definitions: publish
+  - versions -> are included in read permissions
+  - FE must react to those permissions
+- notification / message system
+  - messages
+  - update on successfully run workflows
+  - user requests permission(s)
+  - default admin user not changed
 
 Check DSL:
 

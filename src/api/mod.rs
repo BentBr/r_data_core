@@ -2,7 +2,6 @@ pub mod admin;
 pub mod auth;
 pub mod docs;
 pub mod health;
-pub mod jwt;
 pub mod middleware;
 pub mod models;
 pub mod public;
@@ -14,11 +13,12 @@ use sqlx::PgPool;
 use std::sync::Arc;
 
 pub use crate::api::response::ApiResponse;
-use crate::cache::CacheManager;
+use r_data_core_core::cache::CacheManager;
 use crate::services::AdminUserService;
 use crate::services::ApiKeyService;
 use crate::services::DynamicEntityService;
 use crate::services::EntityDefinitionService;
+use crate::services::PermissionSchemeService;
 use crate::services::WorkflowService;
 use crate::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
@@ -27,8 +27,8 @@ pub struct ApiState {
     /// Database connection pool
     pub db_pool: PgPool,
 
-    /// JWT secret for authentication
-    pub jwt_secret: String,
+    /// API configuration (includes JWT secret and expiration)
+    pub api_config: r_data_core_core::config::ApiConfig,
 
     /// Cache manager
     pub cache_manager: Arc<CacheManager>,
@@ -47,8 +47,27 @@ pub struct ApiState {
 
     /// Workflow service (data import/export workflows)
     pub workflow_service: WorkflowService,
+
+    /// Permission scheme service
+    pub permission_scheme_service: PermissionSchemeService,
+
     /// Queue client for producing jobs
     pub queue: Arc<ApalisRedisQueue>,
+}
+
+// Implement ApiStateTrait for ApiState to allow API crate routes to use it
+impl r_data_core_api::api_state::ApiStateTrait for ApiState {
+    fn db_pool(&self) -> &PgPool {
+        &self.db_pool
+    }
+
+    fn jwt_secret(&self) -> &str {
+        &self.api_config.jwt_secret
+    }
+
+    fn api_key_service_ref(&self) -> &dyn std::any::Any {
+        &self.api_key_service
+    }
 }
 
 // 404 handler for API routes within scope
@@ -119,6 +138,3 @@ pub fn configure_app_with_options(cfg: &mut web::ServiceConfig, options: ApiConf
 
     log::debug!("All routes registered");
 }
-
-// Add query export to the public API
-pub use query::StandardQuery;

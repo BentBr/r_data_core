@@ -39,7 +39,7 @@ async fn query_entities(
     match repository.query_entities(&entity_type, &query).await {
         Ok(entities) => HttpResponse::Ok().json(entities),
         Err(e) => match e {
-            crate::error::Error::NotFound(msg) => HttpResponse::NotFound().json(json!({
+            r_data_core_core::error::Error::NotFound(msg) => HttpResponse::NotFound().json(json!({
                 "error": msg
             })),
             _ => HttpResponse::InternalServerError().json(json!({

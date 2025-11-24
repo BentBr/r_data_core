@@ -1,6 +1,6 @@
-use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
-use r_data_core::entity::entity_definition::definition::EntityDefinition;
-use r_data_core::error::{Error, Result};
+use r_data_core_core::DynamicEntity;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::error::Result;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fs;
@@ -15,27 +15,27 @@ mod validation_tests {
     fn load_json_example(filename: &str) -> Result<Value> {
         let path = format!(".example_files/json_examples/{}", filename);
         let content = fs::read_to_string(&path)
-            .map_err(|e| Error::Validation(format!("Failed to read {}: {}", path, e)))?;
+            .map_err(|e| r_data_core_core::error::Error::Validation(format!("Failed to read {}: {}", path, e)))?;
         serde_json::from_str(&content)
-            .map_err(|e| Error::Validation(format!("Failed to parse {}: {}", path, e)))
+            .map_err(|e| r_data_core_core::error::Error::Validation(format!("Failed to parse {}: {}", path, e)))
     }
 
-    /// Load a JSON example file from trigger_validation subfolder
+    /// Load a JSON example file from the trigger_validation subfolder
     fn load_trigger_validation_example(filename: &str) -> Result<Value> {
         let path = format!(
             ".example_files/json_examples/trigger_validation/{}",
             filename
         );
         let content = fs::read_to_string(&path)
-            .map_err(|e| Error::Validation(format!("Failed to read {}: {}", path, e)))?;
+            .map_err(|e| r_data_core_core::error::Error::Validation(format!("Failed to read {}: {}", path, e)))?;
         serde_json::from_str(&content)
-            .map_err(|e| Error::Validation(format!("Failed to parse {}: {}", path, e)))
+            .map_err(|e| r_data_core_core::error::Error::Validation(format!("Failed to parse {}: {}", path, e)))
     }
 
-    /// Create a entity definition from JSON
+    /// Create an entity definition from JSON
     fn create_entity_definition_from_json(json_data: Value) -> Result<EntityDefinition> {
         serde_json::from_value(json_data).map_err(|e| {
-            Error::Validation(format!("Failed to deserialize entity definition: {}", e))
+            r_data_core_core::error::Error::Validation(format!("Failed to deserialize entity definition: {}", e))
         })
     }
 
@@ -591,6 +591,27 @@ mod validation_tests {
             result.is_err(),
             "Product with multiple validation errors should fail"
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_load_trigger_validation_examples() -> Result<()> {
+        // Test loading trigger validation example files
+        let email_patterns = load_trigger_validation_example("invalid_email_patterns.json")?;
+        let entity_def = create_entity_definition_from_json(email_patterns)?;
+        assert_eq!(entity_def.entity_type, "user");
+        assert_eq!(entity_def.fields.len(), 4);
+
+        let enum_values = load_trigger_validation_example("invalid_enum_values.json")?;
+        let entity_def = create_entity_definition_from_json(enum_values)?;
+        assert_eq!(entity_def.entity_type, "product");
+        assert!(entity_def.fields.iter().any(|f| f.name == "tax_category"));
+
+        let numeric_ranges = load_trigger_validation_example("invalid_numeric_ranges.json")?;
+        let entity_def = create_entity_definition_from_json(numeric_ranges)?;
+        assert_eq!(entity_def.entity_type, "product");
+        assert!(entity_def.fields.iter().any(|f| f.name == "price"));
 
         Ok(())
     }

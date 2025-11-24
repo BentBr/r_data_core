@@ -13,6 +13,7 @@ use crate::api::middleware::AuthMiddlewareService;
 use crate::api::ApiState;
 
 /// Combined Authentication middleware for JWT and API Keys
+#[allow(dead_code)] // Middleware type for future use
 pub struct CombinedAuth;
 
 impl Default for CombinedAuth {
@@ -23,12 +24,14 @@ impl Default for CombinedAuth {
 
 impl CombinedAuth {
     /// Create a new instance of the combined authentication middleware
+    #[allow(dead_code)] // Middleware method for future use
     pub fn new() -> Self {
         Self {}
     }
 }
 
 /// Middleware service for combined auth
+#[allow(dead_code)] // Middleware type for future use
 pub struct CombinedAuthMiddleware<S> {
     service: Rc<S>,
 }
@@ -85,7 +88,7 @@ where
             };
 
             // Try JWT authentication first
-            let jwt_result = extract_and_validate_jwt(&request, &state.jwt_secret).await;
+            let jwt_result = extract_and_validate_jwt(&request, &state.api_config.jwt_secret).await;
             match jwt_result {
                 Ok(Some(claims)) => {
                     // Add user claims to request extensions
@@ -111,7 +114,9 @@ where
             }
 
             // Try API key authentication if JWT failed
-            let api_key_result = extract_and_validate_api_key(&request).await;
+            // Note: extract_and_validate_api_key needs access to ApiState from the request
+            // We need to use req.request() which has access to app_data
+            let api_key_result = extract_and_validate_api_key(req.request()).await;
             match api_key_result {
                 Ok(Some((key, user_uuid))) => {
                     let key_uuid = key.uuid;
@@ -142,17 +147,10 @@ where
                 }
             }
 
-            // Authentication failed, return an error that will be handled by the global error handler
-            // This ensures proper handling by the standard Actix error handlers
-            let error_message =
-                "Authentication required. Please provide a valid JWT token or API key.";
-            log::debug!(
-                "Authentication failed for path {}: {}",
-                request.path(),
-                error_message
-            );
-
-            Err(ErrorUnauthorized(error_message))
+            // Authentication failed, but allow the request to proceed to the handler
+            // The handler will decide whether to return an error or allow the request
+            // This matches the behavior of JwtAuthMiddleware
+            service_clone.call(req).await
         })
     }
 }
@@ -181,6 +179,7 @@ where
 
 /// Authentication method used for this request
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)] // Enum for future use
 pub enum AuthMethod {
     Jwt,
     ApiKey,

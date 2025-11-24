@@ -1,3 +1,6 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+#![allow(dead_code)] // Temporary during refactor
+
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
@@ -6,27 +9,22 @@ use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 
 mod api;
-mod cache;
 mod config;
-mod db;
 mod entity;
 mod error;
 mod notification;
 mod services;
-mod system_settings;
-mod utils;
-mod versioning;
 mod workflow;
 
 // Todo: These modules will be implemented later
 // mod notification;
 
-use crate::api::admin::entity_definitions::repository::EntityDefinitionRepository;
+use r_data_core_persistence::EntityDefinitionRepository;
 use crate::api::{ApiResponse, ApiState};
-use crate::cache::CacheManager;
-use crate::config::AppConfig;
+use r_data_core_core::cache::CacheManager;
+use crate::config::load_app_config;
 use crate::entity::admin_user::{AdminUserRepository, ApiKeyRepository};
-use crate::entity::dynamic_entity::repository::DynamicEntityRepository;
+use r_data_core_persistence::DynamicEntityRepository;
 use crate::services::adapters::{
     AdminUserRepositoryAdapter, DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter,
 };
@@ -35,6 +33,7 @@ use crate::services::ApiKeyRepositoryAdapter;
 use crate::services::ApiKeyService;
 use crate::services::DynamicEntityService;
 use crate::services::EntityDefinitionService;
+use crate::services::PermissionSchemeService;
 use crate::services::WorkflowRepositoryAdapter;
 use crate::services::WorkflowService;
 use crate::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
@@ -48,7 +47,7 @@ async fn default_404_handler() -> impl actix_web::Responder {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Load environment variables and configure the application
-    let config = match AppConfig::from_env() {
+    let config = match load_app_config() {
         Ok(cfg) => {
             debug!("Loaded conf: {:?}", cfg);
             info!("Configuration loaded successfully");
@@ -150,6 +149,13 @@ async fn main() -> std::io::Result<()> {
     let workflow_repo = WorkflowRepository::new(pool.clone());
     let workflow_adapter = WorkflowRepositoryAdapter::new(workflow_repo);
     let workflow_service = WorkflowService::new(Arc::new(workflow_adapter));
+
+    // Initialize permission scheme service
+    let permission_scheme_service = PermissionSchemeService::new(
+        pool.clone(),
+        cache_manager.clone(),
+        Some(config.cache.entity_definition_ttl), // Use entity_definition_ttl for scheme caching
+    );
     // Initialize mandatory queue client (fail fast if invalid)
     let queue_client = Arc::new(
         ApalisRedisQueue::from_parts(
@@ -163,13 +169,14 @@ async fn main() -> std::io::Result<()> {
 
     let app_state = web::Data::new(ApiState {
         db_pool: pool,
-        jwt_secret: config.api.jwt_secret.clone(),
+        api_config: config.api.clone(),
         cache_manager: cache_manager.clone(),
         api_key_service,
         admin_user_service,
         entity_definition_service,
         dynamic_entity_service: Some(Arc::new(dynamic_entity_service)),
         workflow_service,
+        permission_scheme_service,
         queue: queue_client.clone(),
     });
 
@@ -186,7 +193,7 @@ async fn main() -> std::io::Result<()> {
             .expose_headers(vec!["content-disposition"])
             .max_age(3600);
 
-        let api_config = api::ApiConfiguration {
+        let api_config = crate::api::ApiConfiguration {
             enable_auth: false,  // Todo
             enable_admin: true,  // Todo
             enable_public: true, // Todo

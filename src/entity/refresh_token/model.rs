@@ -1,4 +1,4 @@
-use crate::error::Result;
+use r_data_core_core::error::Result;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use time::OffsetDateTime;
@@ -75,10 +75,12 @@ impl RefreshToken {
 
     /// Generate a secure random token
     pub fn generate_token() -> String {
+        use base64::engine::general_purpose::STANDARD_NO_PAD;
+        use base64::Engine;
         use rand::Rng;
         let mut rng = rand::rng();
         let token_bytes: [u8; 32] = rng.random();
-        base64::encode(token_bytes)
+        STANDARD_NO_PAD.encode(token_bytes)
     }
 
     /// Hash a token for storage

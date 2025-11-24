@@ -1,3 +1,18 @@
+### Linting (Rust)
+
+- Minimum toolchain: Rust 1.92.0 nightly in CI
+- Strict clippy for all crates:
+
+```bash
+cargo clippy --workspace --all-targets --all-features -- \
+  -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery
+```
+
+Place crate-level denies at the top of `lib.rs`/`main.rs`:
+
+```rust
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+```
 # API Standards
 
 This document outlines the standards for the r_data_core API, including endpoint naming, request/response formats, and common patterns.

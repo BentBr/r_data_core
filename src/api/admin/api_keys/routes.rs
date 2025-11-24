@@ -1,16 +1,13 @@
 use actix_web::{delete, get, post, put, web, Responder};
 use log::error;
-use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
-use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::api::auth::auth_enum;
 use crate::api::query::PaginationQuery;
 use crate::api::response::ApiResponse;
 use crate::api::ApiState;
-use crate::entity::admin_user::repository::ApiKeyRepository;
-use crate::entity::admin_user::repository_trait::ApiKeyRepositoryTrait;
+use crate::entity::admin_user::{ApiKeyRepository, ApiKeyRepositoryTrait};
+use super::models::{ApiKeyCreatedResponse, ApiKeyResponse, CreateApiKeyRequest, ReassignApiKeyRequest};
 use std::sync::Arc;
 
 /// Register API key routes
@@ -19,80 +16,6 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
         .service(list_api_keys)
         .service(revoke_api_key)
         .service(reassign_api_key);
-}
-
-// API Keys
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct CreateApiKeyRequest {
-    /// Name of the API key
-    pub name: String,
-    /// Optional description for the API key
-    pub description: Option<String>,
-    /// Number of days until expiration (default: 365)
-    #[serde(default)]
-    pub expires_in_days: Option<i64>,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct ApiKeyResponse {
-    /// UUID of the API key
-    pub uuid: Uuid,
-    /// Name of the API key
-    pub name: String,
-    /// Description of the API key
-    pub description: Option<String>,
-    /// Whether the API key is active
-    pub is_active: bool,
-    /// When the API key was created
-    #[serde(with = "time::serde::rfc3339")]
-    pub created_at: OffsetDateTime,
-    /// When the API key expires (if applicable)
-    #[serde(with = "time::serde::rfc3339::option")]
-    pub expires_at: Option<OffsetDateTime>,
-    /// When the API key was last used
-    #[serde(with = "time::serde::rfc3339::option")]
-    pub last_used_at: Option<OffsetDateTime>,
-    /// UUID of the user who created this key
-    pub created_by: Uuid,
-    /// UUID of the user to whom this key is assigned
-    pub user_uuid: Uuid,
-    /// Whether the key is published
-    pub published: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct ApiKeyCreatedResponse {
-    /// UUID of the API key
-    pub uuid: Uuid,
-    /// Name of the API key
-    pub name: String,
-    /// The actual API key value (only shown once at creation)
-    pub api_key: String,
-    /// Description of the API key
-    pub description: Option<String>,
-    /// Whether the API key is active
-    pub is_active: bool,
-    /// When the API key was created
-    #[serde(with = "time::serde::rfc3339")]
-    pub created_at: OffsetDateTime,
-    /// When the API key expires (if applicable)
-    #[serde(with = "time::serde::rfc3339::option")]
-    pub expires_at: Option<OffsetDateTime>,
-    /// UUID of the user who created this key
-    pub created_by: Uuid,
-    /// UUID of the user to whom this key is assigned
-    pub user_uuid: Uuid,
-    /// Whether the key is published
-    pub published: bool,
-    /// When the API key was last used
-    #[serde(with = "time::serde::rfc3339::option")]
-    pub last_used_at: Option<OffsetDateTime>,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct ReassignApiKeyRequest {
-    /// UUID of the user to reassign the API key to
-    pub user_uuid: Uuid,
 }
 
 /// List API keys for the authenticated user with pagination

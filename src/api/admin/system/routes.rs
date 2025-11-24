@@ -1,13 +1,10 @@
 use actix_web::{get, put, web, Responder};
-use serde::{Deserialize, Serialize};
 
-#[allow(unused_imports)] // Required for utoipa macros
-use crate::api::admin::system::models::EntityVersioningSettingsDto;
+use crate::api::admin::system::models::{EntityVersioningSettingsDto, UpdateSettingsBody};
 use crate::api::auth::auth_enum::RequiredAuth;
 use crate::api::response::ApiResponse;
 use crate::api::ApiState;
 use crate::services::settings_service::SettingsService;
-use utoipa::ToSchema;
 
 /// Register system routes
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
@@ -20,7 +17,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
     path = "/admin/api/v1/system/settings/entity-versioning",
     tag = "system",
     responses(
-        (status = 200, description = "Get entity versioning settings", body = EntityVersioningSettingsDto),
+        (status = 200, description = "Get entity versioning settings", body = crate::api::admin::system::models::EntityVersioningSettingsDto),
         (status = 401, description = "Unauthorized"),
         (status = 500, description = "Server error")
     ),
@@ -33,7 +30,7 @@ pub async fn get_entity_versioning_settings(
 ) -> impl Responder {
     let service = SettingsService::new(data.db_pool.clone(), data.cache_manager.clone());
     match service.get_entity_versioning_settings().await {
-        Ok(settings) => ApiResponse::ok(settings),
+        Ok(settings) => ApiResponse::ok(EntityVersioningSettingsDto::from(settings)),
         Err(e) => {
             log::error!("Failed to load settings: {}", e);
             ApiResponse::<()>::internal_error("Failed to load settings")
@@ -41,12 +38,6 @@ pub async fn get_entity_versioning_settings(
     }
 }
 
-#[derive(Deserialize, Serialize, ToSchema)]
-pub struct UpdateSettingsBody {
-    enabled: Option<bool>,
-    max_versions: Option<i32>,
-    max_age_days: Option<i32>,
-}
 
 #[utoipa::path(
     put,
@@ -54,7 +45,7 @@ pub struct UpdateSettingsBody {
     tag = "system",
     request_body = UpdateSettingsBody,
     responses(
-        (status = 200, description = "Updated entity versioning settings", body = EntityVersioningSettingsDto),
+        (status = 200, description = "Updated entity versioning settings", body = crate::api::admin::system::models::EntityVersioningSettingsDto),
         (status = 401, description = "Unauthorized"),
         (status = 500, description = "Server error")
     ),
@@ -99,7 +90,7 @@ pub async fn update_entity_versioning_settings(
         .update_entity_versioning_settings(&current, updated_by)
         .await
     {
-        Ok(()) => ApiResponse::ok(current),
+        Ok(()) => ApiResponse::ok(EntityVersioningSettingsDto::from(current)),
         Err(e) => {
             log::error!("Failed to update settings: {}", e);
             ApiResponse::<()>::internal_error("Failed to update settings")

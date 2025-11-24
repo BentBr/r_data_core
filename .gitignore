@@ -5,3 +5,6 @@ server.log
 logs
 
 /fe/coverage
+
+# Mac-specific
+.DS_Store

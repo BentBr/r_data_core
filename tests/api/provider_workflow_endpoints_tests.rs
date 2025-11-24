@@ -1,10 +1,9 @@
 use actix_web::{test, web, App};
 use r_data_core::api::{configure_app, ApiState};
-use r_data_core::cache::CacheManager;
+use r_data_core_core::cache::CacheManager;
 use r_data_core::config::CacheConfig;
-use r_data_core::entity::admin_user::model::AdminUser;
-use r_data_core::entity::admin_user::repository::{AdminUserRepository, ApiKeyRepository};
-use r_data_core::entity::admin_user::repository_trait::ApiKeyRepositoryTrait;
+use r_data_core_core::admin_user::AdminUser;
+use r_data_core::entity::admin_user::{AdminUserRepository, ApiKeyRepository, ApiKeyRepositoryTrait};
 use r_data_core::services::{
     AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
     WorkflowRepositoryAdapter,
@@ -46,15 +45,15 @@ async fn setup_app_with_entities() -> anyhow::Result<(
     let admin_user_service = AdminUserService::new(admin_user_repository);
 
     let entity_definition_service = EntityDefinitionService::new_without_cache(Arc::new(
-        r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
+        r_data_core_persistence::EntityDefinitionRepository::new(
             pool.clone(),
         ),
     ));
 
     // Create dynamic entity service
     let de_repo =
-        r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool.clone());
-    let de_adapter = r_data_core::services::DynamicEntityRepositoryAdapter::new(de_repo);
+        r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
+    let de_adapter = r_data_core::services::adapters::DynamicEntityRepositoryAdapter::new(de_repo);
     let dynamic_entity_service = Arc::new(DynamicEntityService::new(
         Arc::new(de_adapter),
         Arc::new(entity_definition_service.clone()),
@@ -71,7 +70,20 @@ async fn setup_app_with_entities() -> anyhow::Result<(
     let jwt_secret = "test_secret".to_string();
     let app_state = web::Data::new(ApiState {
         db_pool: pool.clone(),
-        jwt_secret: jwt_secret.clone(),
+        api_config: r_data_core_core::config::ApiConfig {
+            host: "0.0.0.0".to_string(),
+            port: 8888,
+            use_tls: false,
+            jwt_secret: jwt_secret.clone(),
+            jwt_expiration: 3600,
+            enable_docs: true,
+            cors_origins: vec![],
+        },
+        permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+            pool.clone(),
+            cache_manager.clone(),
+            Some(0),
+        ),
         cache_manager,
         api_key_service,
         admin_user_service,
@@ -94,7 +106,16 @@ async fn setup_app_with_entities() -> anyhow::Result<(
         .bind(user_uuid)
         .fetch_one(&pool)
         .await?;
-    let token = r_data_core::api::jwt::generate_access_token(&user, &jwt_secret)?;
+    let api_config = r_data_core_core::config::ApiConfig {
+        host: "0.0.0.0".to_string(),
+        port: 8888,
+        use_tls: false,
+        jwt_secret: jwt_secret.clone(),
+        jwt_expiration: 3600,
+        enable_docs: true,
+        cors_origins: vec![],
+    };
+    let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, None)?;
 
     // Create API key for testing - we need to use the repository directly to get the key value
     let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));

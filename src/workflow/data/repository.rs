@@ -6,7 +6,7 @@ use uuid::Uuid;
 use super::repository_trait::WorkflowRepositoryTrait;
 use super::{Workflow, WorkflowKind};
 use crate::api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
-use crate::workflow::data::versioning::snapshot_workflow_pre_update;
+use r_data_core_persistence::WorkflowVersioningRepository;
 use std::str::FromStr;
 
 pub struct WorkflowRepository {
@@ -24,11 +24,11 @@ impl WorkflowRepository {
 
     pub async fn get_by_uuid(&self, uuid: Uuid) -> anyhow::Result<Option<Workflow>> {
         let row = sqlx::query(
-            r#"
+            "
             SELECT uuid, name, description, kind::text, enabled, schedule_cron, config, versioning_disabled
             FROM workflows
             WHERE uuid = $1
-            "#,
+            ",
         )
         .bind(uuid)
         .fetch_optional(&self.pool)
@@ -66,11 +66,11 @@ impl WorkflowRepository {
         created_by: Uuid,
     ) -> anyhow::Result<Uuid> {
         let row = sqlx::query(
-            r#"
+            "
             INSERT INTO workflows (name, description, kind, enabled, schedule_cron, config, versioning_disabled, created_by)
             VALUES ($1, $2, $3::workflow_kind, $4, $5, $6, $7, $8)
             RETURNING uuid
-            "#,
+            ",
         )
         .bind(&req.name)
         .bind(req.description.as_deref())
@@ -94,15 +94,17 @@ impl WorkflowRepository {
         updated_by: Uuid,
     ) -> anyhow::Result<()> {
         // Pre-update snapshot of current workflow row
-        snapshot_workflow_pre_update(&self.pool, uuid, Some(updated_by)).await?;
+        let versioning_repo = WorkflowVersioningRepository::new(self.pool.clone());
+        versioning_repo.snapshot_pre_update(uuid).await
+            .map_err(|e| anyhow::anyhow!("Failed to snapshot workflow: {}", e))?;
 
         sqlx::query(
-            r#"
+            "
             UPDATE workflows
             SET name = $2, description = $3, kind = $4::workflow_kind, enabled = $5,
                 schedule_cron = $6, config = $7, versioning_disabled = $8, updated_by = $9, version = version + 1, updated_at = NOW()
             WHERE uuid = $1
-            "#,
+            ",
         )
         .bind(uuid)
         .bind(&req.name)
@@ -130,11 +132,11 @@ impl WorkflowRepository {
 
     pub async fn list_all(&self) -> anyhow::Result<Vec<Workflow>> {
         let rows = sqlx::query(
-            r#"
+            "
             SELECT uuid, name, description, kind::text, enabled, schedule_cron, config, versioning_disabled
             FROM workflows
             ORDER BY name
-            "#,
+            ",
         )
         .fetch_all(&self.pool)
         .await
@@ -166,12 +168,12 @@ impl WorkflowRepository {
 
     pub async fn list_paginated(&self, limit: i64, offset: i64) -> anyhow::Result<Vec<Workflow>> {
         let rows = sqlx::query(
-            r#"
+            "
             SELECT uuid, name, description, kind::text, enabled, schedule_cron, config, versioning_disabled
             FROM workflows
             ORDER BY name
             LIMIT $1 OFFSET $2
-            "#,
+            ",
         )
         .bind(limit)
         .bind(offset)
@@ -248,7 +250,7 @@ impl WorkflowRepository {
     pub async fn list_scheduled_consumers(&self) -> anyhow::Result<Vec<(Uuid, String)>> {
         // Fetch workflows with their config to check for from.api source type
         let rows = sqlx::query(
-            r#"SELECT uuid, schedule_cron, config FROM workflows WHERE enabled = true AND kind = 'consumer'::workflow_kind AND schedule_cron IS NOT NULL"#,
+            "SELECT uuid, schedule_cron, config FROM workflows WHERE enabled = true AND kind = 'consumer'::workflow_kind AND schedule_cron IS NOT NULL",
         )
         .fetch_all(&self.pool)
         .await
@@ -274,7 +276,7 @@ impl WorkflowRepository {
         trigger_id: Uuid,
     ) -> anyhow::Result<Uuid> {
         let row = sqlx::query(
-            r#"INSERT INTO workflow_runs (workflow_uuid, status, trigger_id) VALUES ($1, 'queued', $2) RETURNING uuid"#,
+            "INSERT INTO workflow_runs (workflow_uuid, status, trigger_id) VALUES ($1, 'queued', $2) RETURNING uuid",
         )
         .bind(workflow_uuid)
         .bind(trigger_id)
@@ -285,7 +287,7 @@ impl WorkflowRepository {
     }
 
     pub async fn list_queued_runs(&self, limit: i64) -> anyhow::Result<Vec<Uuid>> {
-        let rows = sqlx::query(r#"SELECT uuid FROM workflow_runs WHERE status = 'queued' ORDER BY queued_at ASC LIMIT $1"#)
+        let rows = sqlx::query("SELECT uuid FROM workflow_runs WHERE status = 'queued' ORDER BY queued_at ASC LIMIT $1")
             .bind(limit)
             .fetch_all(&self.pool)
             .await
@@ -298,7 +300,7 @@ impl WorkflowRepository {
     }
 
     pub async fn mark_run_running(&self, run_uuid: Uuid) -> anyhow::Result<()> {
-        sqlx::query(r#"UPDATE workflow_runs SET status = 'running', started_at = NOW() WHERE uuid = $1 AND status = 'queued'"#)
+        sqlx::query("UPDATE workflow_runs SET status = 'running', started_at = NOW() WHERE uuid = $1 AND status = 'queued'")
             .bind(run_uuid)
             .execute(&self.pool)
             .await
@@ -312,7 +314,7 @@ impl WorkflowRepository {
         processed: i64,
         failed: i64,
     ) -> anyhow::Result<()> {
-        sqlx::query(r#"UPDATE workflow_runs SET status = 'success', finished_at = NOW(), processed_items = $2, failed_items = $3 WHERE uuid = $1"#)
+        sqlx::query("UPDATE workflow_runs SET status = 'success', finished_at = NOW(), processed_items = $2, failed_items = $3 WHERE uuid = $1")
             .bind(run_uuid)
             .bind(processed)
             .bind(failed)
@@ -323,7 +325,7 @@ impl WorkflowRepository {
     }
 
     pub async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
-        sqlx::query(r#"UPDATE workflow_runs SET status = 'failed', finished_at = NOW(), error = $2 WHERE uuid = $1"#)
+        sqlx::query("UPDATE workflow_runs SET status = 'failed', finished_at = NOW(), error = $2 WHERE uuid = $1")
             .bind(run_uuid)
             .bind(message)
             .execute(&self.pool)
@@ -339,7 +341,7 @@ impl WorkflowRepository {
         message: &str,
         meta: Option<serde_json::Value>,
     ) -> anyhow::Result<()> {
-        sqlx::query(r#"INSERT INTO workflow_run_logs (run_uuid, level, message, meta) VALUES ($1, $2, $3, $4)"#)
+        sqlx::query("INSERT INTO workflow_run_logs (run_uuid, level, message, meta) VALUES ($1, $2, $3, $4)")
             .bind(run_uuid)
             .bind(level)
             .bind(message)
@@ -358,7 +360,7 @@ impl WorkflowRepository {
     ) -> anyhow::Result<i64> {
         // Determine next sequence number for this run
         let start_seq: i64 = sqlx::query_scalar(
-            r#"SELECT COALESCE(MAX(seq_no), 0) FROM workflow_raw_items WHERE workflow_run_uuid = $1"#,
+            "SELECT COALESCE(MAX(seq_no), 0) FROM workflow_raw_items WHERE workflow_run_uuid = $1",
         )
         .bind(run_uuid)
         .fetch_one(&self.pool)
@@ -369,10 +371,10 @@ impl WorkflowRepository {
         for (idx, payload) in payloads.into_iter().enumerate() {
             let seq_no = start_seq + (idx as i64) + 1;
             sqlx::query(
-                r#"
+                "
                 INSERT INTO workflow_raw_items (workflow_run_uuid, seq_no, payload, status)
                 VALUES ($1, $2, $3, 'queued')
-                "#,
+                ",
             )
             .bind(run_uuid)
             .bind(seq_no)
@@ -387,7 +389,7 @@ impl WorkflowRepository {
 
     pub async fn count_raw_items_for_run(&self, run_uuid: Uuid) -> anyhow::Result<i64> {
         let row = sqlx::query(
-            r#"SELECT COUNT(*) AS cnt FROM workflow_raw_items WHERE workflow_run_uuid = $1"#,
+            "SELECT COUNT(*) AS cnt FROM workflow_raw_items WHERE workflow_run_uuid = $1",
         )
         .bind(run_uuid)
         .fetch_one(&self.pool)
@@ -397,7 +399,7 @@ impl WorkflowRepository {
     }
 
     pub async fn mark_raw_items_processed(&self, run_uuid: Uuid) -> anyhow::Result<()> {
-        sqlx::query(r#"UPDATE workflow_raw_items SET status = 'processed' WHERE workflow_run_uuid = $1 AND status = 'queued'"#)
+        sqlx::query("UPDATE workflow_raw_items SET status = 'processed' WHERE workflow_run_uuid = $1 AND status = 'queued'")
             .bind(run_uuid)
             .execute(&self.pool)
             .await
@@ -411,13 +413,13 @@ impl WorkflowRepository {
         limit: i64,
     ) -> anyhow::Result<Vec<(Uuid, serde_json::Value)>> {
         let rows = sqlx::query(
-            r#"
+            "
             SELECT uuid, payload
             FROM workflow_raw_items
             WHERE workflow_run_uuid = $1 AND status = 'queued'
             ORDER BY seq_no ASC
             LIMIT $2
-            "#,
+            ",
         )
         .bind(run_uuid)
         .bind(limit)
@@ -440,11 +442,11 @@ impl WorkflowRepository {
         error: Option<&str>,
     ) -> anyhow::Result<()> {
         sqlx::query(
-            r#"
+            "
             UPDATE workflow_raw_items
             SET status = $2::data_raw_item_status, error = $3
             WHERE uuid = $1
-            "#,
+            ",
         )
         .bind(item_uuid)
         .bind(status)

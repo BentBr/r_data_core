@@ -1,13 +1,14 @@
 use log::warn;
-use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
-use r_data_core::api::public::entities::models::{BrowseKind, BrowseNode};
+use r_data_core_persistence::EntityDefinitionRepository;
+use r_data_core::api::public::entities::models::BrowseKind;
+use r_data_core_core::error::Result;
 use r_data_core::api::public::entities::repository::EntityRepository;
-use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
-use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
-use r_data_core::entity::entity_definition::definition::EntityDefinition;
-use r_data_core::entity::field::ui::UiSettings;
-use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
-use r_data_core::error::{Error, Result};
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::DynamicEntityRepository;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::field::ui::UiSettings;
+use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
+use r_data_core::error::Error;
 use r_data_core::services::{DynamicEntityService, EntityDefinitionService};
 use serde_json::json;
 use sqlx::PgPool;
@@ -218,7 +219,7 @@ mod dynamic_entity_tests {
 
     // Helper to get UUID from entity's field_data
     fn get_entity_uuid(entity: &DynamicEntity) -> Option<Uuid> {
-        r_data_core::entity::dynamic_entity::utils::extract_uuid_from_entity_field_data(
+        r_data_core_persistence::dynamic_entity_utils::extract_uuid_from_entity_field_data(
             &entity.field_data,
             "uuid",
         )
@@ -231,13 +232,13 @@ mod dynamic_entity_tests {
     ) -> Result<(String, EntityDefinition, Uuid)> {
         // Read the JSON file
         let json_content = std::fs::read_to_string(json_path).map_err(|e| {
-            Error::Unknown(format!("Failed to read JSON file {}: {}", json_path, e))
+            r_data_core_core::error::Error::Unknown(format!("Failed to read JSON file {}: {}", json_path, e))
         })?;
 
         // Parse the JSON into a EntityDefinition
         let mut entity_def: EntityDefinition =
             serde_json::from_str(&json_content).map_err(|e| {
-                Error::Unknown(format!("Failed to parse JSON file {}: {}", json_path, e))
+                r_data_core_core::error::Error::Unknown(format!("Failed to parse JSON file {}: {}", json_path, e))
             })?;
 
         // Make the entity type unique to avoid test conflicts
@@ -270,7 +271,7 @@ mod dynamic_entity_tests {
         .bind(uuid)
         .fetch_one(pool)
         .await
-        .map_err(Error::Database)?;
+        .map_err(r_data_core_core::error::Error::Database)?;
 
         if !published {
             // If not published, update it directly
@@ -278,7 +279,7 @@ mod dynamic_entity_tests {
                 .bind(uuid)
                 .execute(pool)
                 .await
-                .map_err(Error::Database)?;
+                .map_err(r_data_core_core::error::Error::Database)?;
 
             // Wait a moment for the update to take effect
             tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -302,7 +303,7 @@ mod dynamic_entity_tests {
         .bind(entity_type)
         .execute(pool)
         .await
-        .map_err(Error::Database)?;
+        .map_err(r_data_core_core::error::Error::Database)?;
 
         if result.rows_affected() == 0 {
             warn!("No rows were updated when marking entity as published");
@@ -882,10 +883,10 @@ mod dynamic_entity_tests {
 
         // Create a simple field definition
         let mut fields = Vec::new();
-        let field = r_data_core::entity::field::FieldDefinition::new(
+        let field = r_data_core_core::field::FieldDefinition::new(
             "name".to_string(),
             "Name".to_string(),
-            r_data_core::entity::field::types::FieldType::String,
+            r_data_core_core::field::types::FieldType::String,
         );
         fields.push(field);
         entity_def.fields = fields;
@@ -946,7 +947,7 @@ mod dynamic_entity_tests {
 
         // Retrieve the entity
         let entity_uuid = Uuid::parse_str(&entity.field_data["uuid"].as_str().unwrap())
-            .map_err(|e| r_data_core::error::Error::Conversion(e.to_string()))?;
+            .map_err(|e| r_data_core_core::error::Error::Conversion(e.to_string()))?;
         let retrieved = dynamic_service
             .get_entity_by_uuid(&entity_type, &entity_uuid, None)
             .await?;
@@ -980,10 +981,10 @@ mod dynamic_entity_tests {
         entity_def.created_by = Uuid::now_v7();
         entity_def.published = true;
 
-        let field = r_data_core::entity::field::FieldDefinition::new(
+        let field = r_data_core_core::field::FieldDefinition::new(
             "name".to_string(),
             "Name".to_string(),
-            r_data_core::entity::field::types::FieldType::String,
+            r_data_core_core::field::types::FieldType::String,
         );
         entity_def.fields = vec![field];
 
@@ -1136,10 +1137,10 @@ mod dynamic_entity_tests {
         entity_def.created_by = Uuid::now_v7();
         entity_def.published = true;
 
-        let field = r_data_core::entity::field::FieldDefinition::new(
+        let field = r_data_core_core::field::FieldDefinition::new(
             "name".to_string(),
             "Name".to_string(),
-            r_data_core::entity::field::types::FieldType::String,
+            r_data_core_core::field::types::FieldType::String,
         );
         entity_def.fields = vec![field];
 

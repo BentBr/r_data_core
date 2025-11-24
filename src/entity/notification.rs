@@ -1,4 +1,6 @@
-use crate::error::{Error, Result};
+#![allow(dead_code)]
+
+use r_data_core_core::error::Result;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
@@ -203,7 +205,7 @@ impl Notification {
         match self.notification_type {
             NotificationType::Email => {
                 if self.recipient_email.is_none() && self.recipient_uuid.is_none() {
-                    return Err(Error::Validation(
+                    return Err(r_data_core_core::error::Error::Validation(
                         "Email notification requires either recipient_email or recipient_uuid"
                             .to_string(),
                     ));
@@ -211,7 +213,7 @@ impl Notification {
             }
             NotificationType::SMS => {
                 if self.recipient_phone.is_none() && self.recipient_uuid.is_none() {
-                    return Err(Error::Validation(
+                    return Err(r_data_core_core::error::Error::Validation(
                         "SMS notification requires either recipient_phone or recipient_uuid"
                             .to_string(),
                     ));
@@ -219,7 +221,7 @@ impl Notification {
             }
             NotificationType::System => {
                 if self.recipient_uuid.is_none() {
-                    return Err(Error::Validation(
+                    return Err(r_data_core_core::error::Error::Validation(
                         "System notification requires recipient_uuid".to_string(),
                     ));
                 }

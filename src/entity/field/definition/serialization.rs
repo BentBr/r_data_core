@@ -2,11 +2,11 @@ use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 use std::collections::HashMap;
 
-use crate::entity::field::definition::FieldDefinition;
-use crate::entity::field::options::FieldValidation;
-use crate::entity::field::options::{OptionsSource, SelectOption};
-use crate::entity::field::types::FieldType;
-use crate::entity::field::ui::UiSettings;
+use r_data_core_core::field::definition::FieldDefinition;
+use r_data_core_core::field::options::FieldValidation;
+use r_data_core_core::field::options::{OptionsSource, SelectOption};
+use r_data_core_core::field::types::FieldType;
+use r_data_core_core::field::ui::UiSettings;
 
 // Manual implementation of Deserialize for FieldDefinition to handle constraints
 impl<'de> Deserialize<'de> for FieldDefinition {

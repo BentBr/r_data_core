@@ -2,8 +2,9 @@ use async_trait::async_trait;
 use mockall::{mock, predicate::*};
 use r_data_core::{
     entity::admin_user::{ApiKey, ApiKeyRepositoryTrait},
-    error::{Error, Result},
+    error::Error,
 };
+use r_data_core_core::error::Result;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -144,7 +145,7 @@ mod tests {
             .expect_create_new_api_key()
             .with(eq(""), eq("Test description"), eq(user_uuid), eq(30))
             .returning(|_, _, _, _| {
-                Err(Error::Validation(
+                Err(r_data_core_core::error::Error::Validation(
                     "API key name cannot be empty".to_string(),
                 ))
             });
@@ -154,7 +155,7 @@ mod tests {
             .await;
 
         assert!(result.is_err());
-        if let Err(Error::Validation(msg)) = result {
+        if let Err(r_data_core_core::error::Error::Validation(msg)) = result {
             assert!(msg.contains("empty"));
         } else {
             panic!("Expected validation error");
@@ -170,7 +171,7 @@ mod tests {
                 eq(-1),
             )
             .returning(|_, _, _, _| {
-                Err(Error::Validation(
+                Err(r_data_core_core::error::Error::Validation(
                     "Expiration days cannot be negative".to_string(),
                 ))
             });
@@ -180,7 +181,7 @@ mod tests {
             .await;
 
         assert!(result.is_err());
-        if let Err(Error::Validation(msg)) = result {
+        if let Err(r_data_core_core::error::Error::Validation(msg)) = result {
             assert!(msg.contains("negative"));
         } else {
             panic!("Expected validation error");

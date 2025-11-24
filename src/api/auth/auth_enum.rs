@@ -1,5 +1,5 @@
 use crate::api::auth::extract_and_validate_api_key;
-use crate::api::jwt::AuthUserClaims;
+use r_data_core_api::jwt::AuthUserClaims;
 use crate::api::middleware::ApiKeyInfo;
 use crate::api::ApiState;
 use actix_web::{
@@ -37,7 +37,7 @@ fn extract_jwt_from_request(req: &HttpRequest) -> Option<AuthUserClaims> {
             if let Ok(auth_str) = auth_header.to_str() {
                 if auth_str.starts_with("Bearer ") {
                     let token = &auth_str[7..]; // Remove "Bearer " prefix
-                    match crate::api::jwt::verify_jwt(token, &state.jwt_secret) {
+                    match r_data_core_api::jwt::verify_jwt(token, &state.api_config.jwt_secret) {
                         Ok(claims) => {
                             debug!("JWT validation successful for user: {}", claims.name);
                             return Some(claims);

@@ -6,13 +6,16 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use r_data_core::{
-    entity::entity_definition::definition::EntityDefinition,
-    entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait,
-    entity::entity_definition::schema::Schema,
-    entity::field::definition::FieldDefinition,
-    entity::field::types::FieldType,
-    error::{Error, Result},
+    error::Error,
     services::EntityDefinitionService,
+};
+use r_data_core_core::error::Result;
+use r_data_core_core::{
+    entity_definition::definition::EntityDefinition,
+    entity_definition::repository_trait::EntityDefinitionRepositoryTrait,
+    entity_definition::schema::Schema,
+    field::definition::FieldDefinition,
+    field::types::FieldType,
 };
 
 // Create a mock for EntityDefinitionRepositoryTrait
@@ -20,7 +23,7 @@ mockall::mock! {
     pub EntityDefRepository {}
 
     #[async_trait]
-    impl EntityDefinitionRepositoryTrait for EntityDefRepository {
+    impl r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait for EntityDefRepository {
         async fn list(&self, limit: i64, offset: i64) -> Result<Vec<EntityDefinition>>;
         async fn count(&self) -> Result<i64>;
         async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<EntityDefinition>>;
@@ -178,7 +181,7 @@ async fn test_get_entity_definition_by_uuid_not_found() -> Result<()> {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::NotFound(_)) => {}
+        Err(r_data_core_core::error::Error::NotFound(_)) => {}
         _ => panic!("Expected not found error"),
     }
 
@@ -243,7 +246,7 @@ async fn test_create_entity_definition_duplicate_entity_type() -> Result<()> {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::ClassAlreadyExists(e)) => {
+        Err(r_data_core_core::error::Error::ClassAlreadyExists(e)) => {
             assert!(
                 e.contains("already exists"),
                 "Error should mention duplicate entity type: {}",
@@ -273,7 +276,7 @@ async fn test_create_entity_definition_invalid_entity_type() -> Result<()> {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::Validation(e)) => {
+        Err(r_data_core_core::error::Error::Validation(e)) => {
             assert!(
                 e.contains("must start with a letter") && e.contains("Entity type"),
                 "Error should mention invalid entity type format: {}",
@@ -302,7 +305,7 @@ async fn test_create_entity_definition_duplicate_field_names() -> Result<()> {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::Validation(e)) => {
+        Err(r_data_core_core::error::Error::Validation(e)) => {
             assert!(
                 e.contains("Duplicate"),
                 "Error should mention duplicate field names"
@@ -378,7 +381,7 @@ async fn test_update_entity_definition_not_found() -> Result<()> {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::NotFound(_)) => {}
+        Err(r_data_core_core::error::Error::NotFound(_)) => {}
         _ => panic!("Expected not found error"),
     }
 
@@ -449,7 +452,7 @@ async fn test_delete_entity_definition_with_records() -> Result<()> {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::Validation(e)) => {
+        Err(r_data_core_core::error::Error::Validation(e)) => {
             assert!(
                 e.contains("entities"),
                 "Error should mention existing records"
@@ -481,7 +484,7 @@ async fn test_delete_entity_definition_not_found() -> Result<()> {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::NotFound(_)) => {}
+        Err(r_data_core_core::error::Error::NotFound(_)) => {}
         _ => panic!("Expected not found error"),
     }
 

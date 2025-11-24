@@ -5,11 +5,13 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use r_data_core::{
-    entity::entity_definition::definition::EntityDefinition,
-    entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait,
-    entity::entity_definition::schema::Schema, entity::field::definition::FieldDefinition,
-    entity::field::types::FieldType, error::Result,
+use r_data_core_core::error::Result;
+use r_data_core_core::{
+    entity_definition::definition::EntityDefinition,
+    entity_definition::repository_trait::EntityDefinitionRepositoryTrait,
+    entity_definition::schema::Schema,
+    field::definition::FieldDefinition,
+    field::types::FieldType,
 };
 
 // Create a trait-based mock for testing
@@ -17,7 +19,7 @@ mockall::mock! {
     pub EntityDefRepository { }
 
     #[async_trait]
-    impl EntityDefinitionRepositoryTrait for EntityDefRepository {
+    impl r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait for EntityDefRepository {
         async fn list(&self, limit: i64, offset: i64) -> Result<Vec<EntityDefinition>>;
         async fn count(&self) -> Result<i64>;
         async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<EntityDefinition>>;

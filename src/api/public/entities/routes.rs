@@ -9,7 +9,7 @@ use super::repository::EntityRepository;
 use crate::api::auth::auth_enum::CombinedRequiredAuth;
 use crate::api::response::ApiResponse;
 use crate::api::ApiState;
-use crate::entity::dynamic_entity::repository::DynamicEntityRepository;
+use r_data_core_persistence::DynamicEntityRepository;
 use crate::entity::version_repository::VersionRepository;
 use crate::services::VersionService;
 

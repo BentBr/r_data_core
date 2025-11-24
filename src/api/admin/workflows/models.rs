@@ -86,3 +86,21 @@ pub struct WorkflowRunUpload {
     #[schema(value_type = String, format = Binary)]
     pub file: String,
 }
+
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct WorkflowVersionMeta {
+    pub version_number: i32,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: time::OffsetDateTime,
+    pub created_by: Option<Uuid>,
+    pub created_by_name: Option<String>,
+}
+
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct WorkflowVersionPayload {
+    pub version_number: i32,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: time::OffsetDateTime,
+    pub created_by: Option<Uuid>,
+    pub data: serde_json::Value,
+}

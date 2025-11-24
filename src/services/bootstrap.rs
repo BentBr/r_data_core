@@ -3,8 +3,8 @@ use std::sync::Arc;
 use log::info;
 use sqlx::postgres::PgPoolOptions;
 
-use crate::cache::CacheManager;
-use crate::config::CacheConfig;
+use r_data_core_core::cache::CacheManager;
+use r_data_core_core::config::CacheConfig;
 
 pub fn init_logger_with_default(default_level: &str) {
     let env = env_logger::Env::new().default_filter_or(default_level);
@@ -38,7 +38,7 @@ pub async fn init_cache_manager(
                     m
                 }
                 Err(e) => {
-                    info!("Failed to initialize Redis cache ({}), using in-memory", e);
+                    info!("Failed to initialize Redis cache ({e}), using in-memory");
                     CacheManager::new(cache_cfg)
                 }
             }

@@ -1,18 +1,22 @@
 use crate::api::auth::auth_enum;
+use crate::api::auth::permission_check;
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use log::{debug, error, info};
+use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
 use serde::Serialize;
 use serde_json::json;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::models::ApplySchemaRequest;
-use super::models::PathUuid;
-use super::versioning_repository::EntityDefinitionVersioningRepository;
+use super::models::{
+    ApplySchemaRequest, EntityDefinitionVersionMeta, EntityDefinitionVersionPayload, PathUuid,
+};
+use r_data_core_persistence::EntityDefinitionVersioningRepository;
 use crate::api::query::PaginationQuery;
 use crate::api::response::ApiResponse;
 use crate::api::ApiState;
-use crate::entity::EntityDefinition;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use super::conversions::entity_definition_to_schema_model;
 use utoipa::ToSchema;
 
 /// List entity definitions with pagination
@@ -40,8 +44,19 @@ use utoipa::ToSchema;
 async fn list_entity_definitions(
     data: web::Data<ApiState>,
     query: web::Query<PaginationQuery>,
-    _: auth_enum::RequiredAuth,
+    auth: auth_enum::RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::check_permission_with_log(
+        &auth.0,
+        &ResourceNamespace::EntityDefinitions,
+        &PermissionType::Read,
+        None,
+        "List entity definitions",
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to list entity definitions");
+    }
+
     let (limit, offset) = query.to_limit_offset(20, 100);
     let page = query.get_page(1);
     let per_page = query.get_per_page(20, 100);
@@ -58,7 +73,7 @@ async fn list_entity_definitions(
             // Convert to schema models
             let schema_definitions = definitions
                 .iter()
-                .map(|def| def.to_schema_model())
+                .map(entity_definition_to_schema_model)
                 .collect::<Vec<_>>();
 
             ApiResponse::ok_paginated(schema_definitions, total, page, per_page)
@@ -96,8 +111,18 @@ async fn list_entity_definitions(
 async fn get_entity_definition(
     data: web::Data<ApiState>,
     path: web::Path<PathUuid>,
-    _: auth_enum::RequiredAuth,
+    auth: auth_enum::RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::check_permission_with_log(
+        &auth.0,
+        &ResourceNamespace::EntityDefinitions,
+        &PermissionType::Read,
+        None,
+        "Get entity definition",
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to get entity definition");
+    }
     match data
         .entity_definition_service
         .get_entity_definition(&path.uuid)
@@ -105,10 +130,10 @@ async fn get_entity_definition(
     {
         Ok(definition) => {
             // Convert to schema model
-            let schema_definition = definition.to_schema_model();
+            let schema_definition = entity_definition_to_schema_model(&definition);
             ApiResponse::ok(schema_definition)
         }
-        Err(crate::error::Error::NotFound(_)) => ApiResponse::<()>::not_found("Entity definition"),
+        Err(r_data_core_core::error::Error::NotFound(_)) => ApiResponse::<()>::not_found("Entity definition"),
         Err(e) => {
             error!("Failed to retrieve entity definition: {}", e);
             ApiResponse::<()>::internal_error("Failed to retrieve entity definition")
@@ -139,6 +164,17 @@ async fn create_entity_definition(
     definition: web::Json<EntityDefinition>,
     auth: auth_enum::RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::check_permission_with_log(
+        &auth.0,
+        &ResourceNamespace::EntityDefinitions,
+        &PermissionType::Create,
+        None,
+        "Create entity definition",
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to create entity definition");
+    }
+
     // Get authentication info from the RequiredAuth extractor
     let creator_uuid = match Uuid::parse_str(&auth.0.sub) {
         Ok(uuid) => {
@@ -184,7 +220,7 @@ async fn create_entity_definition(
             "entity_type".to_string(),
             serde_json::Value::String(entity_def.entity_type.clone()),
         );
-        entity_def.schema = crate::entity::entity_definition::schema::Schema::new(properties);
+        entity_def.schema = r_data_core_core::entity_definition::schema::Schema::new(properties);
         debug!(
             "Schema initialized with entity_type: {}",
             entity_def.entity_type
@@ -221,11 +257,11 @@ async fn create_entity_definition(
                 "message": "Class definition created successfully"
             }))
         }
-        Err(crate::error::Error::ClassAlreadyExists(msg)) => {
+        Err(r_data_core_core::error::Error::ClassAlreadyExists(msg)) => {
             error!("Entity type already exists: {}", msg);
             ApiResponse::<()>::conflict(&msg)
         }
-        Err(crate::error::Error::Validation(msg)) => {
+        Err(r_data_core_core::error::Error::Validation(msg)) => {
             error!("Validation error when creating entity definition: {}", msg);
             ApiResponse::<()>::unprocessable_entity(&msg)
         }
@@ -295,7 +331,7 @@ async fn update_entity_definition(
         .await
     {
         Ok(def) => def,
-        Err(crate::error::Error::NotFound(_)) => {
+        Err(r_data_core_core::error::Error::NotFound(_)) => {
             return HttpResponse::NotFound().json(json!({
                 "error": "Class definition not found"
             }));
@@ -334,7 +370,7 @@ async fn update_entity_definition(
             "message": "Class definition updated successfully",
             "uuid": path.uuid
         })),
-        Err(crate::error::Error::Validation(msg)) => ApiResponse::<()>::bad_request(&msg),
+        Err(r_data_core_core::error::Error::Validation(msg)) => ApiResponse::<()>::bad_request(&msg),
         Err(e) => {
             error!("Failed to update entity definition: {}", e);
             ApiResponse::<()>::internal_error(&format!("Failed to update entity definition: {}", e))
@@ -375,8 +411,8 @@ async fn delete_entity_definition(
         Ok(_) => ApiResponse::ok(json!({
             "message": "Class definition deleted successfully"
         })),
-        Err(crate::error::Error::NotFound(_)) => ApiResponse::<()>::not_found("Entity definition"),
-        Err(crate::error::Error::Validation(msg)) => ApiResponse::<()>::bad_request(&msg),
+        Err(r_data_core_core::error::Error::NotFound(_)) => ApiResponse::<()>::not_found("Entity definition"),
+        Err(r_data_core_core::error::Error::Validation(msg)) => ApiResponse::<()>::bad_request(&msg),
         Err(e) => {
             error!("Failed to delete entity definition: {}", e);
             ApiResponse::<()>::internal_error(&format!("Failed to delete entity definition: {}", e))
@@ -443,7 +479,7 @@ async fn apply_entity_definition_schema(
                 }
             }
         }
-        Err(crate::error::Error::NotFound(_)) => ApiResponse::<()>::not_found("Entity definition"),
+        Err(r_data_core_core::error::Error::NotFound(_)) => ApiResponse::<()>::not_found("Entity definition"),
         Err(e) => {
             error!("Failed to apply schema: {}", e);
             ApiResponse::<()>::internal_error(&format!("Failed to apply schema: {}", e))
@@ -508,19 +544,11 @@ async fn list_entity_fields_by_type(
                 .collect::<Vec<EntityFieldInfo>>();
             ApiResponse::ok(api_items)
         }
-        Err(crate::error::Error::NotFound(_)) => ApiResponse::<()>::not_found("Entity definition"),
+        Err(r_data_core_core::error::Error::NotFound(_)) => ApiResponse::<()>::not_found("Entity definition"),
         Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to load fields: {}", e)),
     }
 }
 
-#[derive(serde::Serialize, ToSchema)]
-pub struct EntityDefinitionVersionMeta {
-    version_number: i32,
-    #[serde(with = "time::serde::rfc3339")]
-    created_at: time::OffsetDateTime,
-    created_by: Option<Uuid>,
-    created_by_name: Option<String>,
-}
 
 /// List versions of an entity definition
 #[utoipa::path(
@@ -602,14 +630,6 @@ pub async fn list_entity_definition_versions(
     ApiResponse::ok(out)
 }
 
-#[derive(serde::Serialize, ToSchema)]
-pub struct EntityDefinitionVersionPayload {
-    version_number: i32,
-    #[serde(with = "time::serde::rfc3339")]
-    created_at: time::OffsetDateTime,
-    created_by: Option<Uuid>,
-    data: serde_json::Value,
-}
 
 /// Get a specific version snapshot of an entity definition
 #[utoipa::path(
@@ -680,7 +700,7 @@ pub async fn get_entity_definition_version(
                             };
                             return ApiResponse::ok(payload);
                         }
-                        Err(crate::error::Error::NotFound(_)) => {}
+                        Err(r_data_core_core::error::Error::NotFound(_)) => {}
                         Err(e) => {
                             error!("Failed to get entity definition: {}", e);
                             return ApiResponse::<()>::internal_error(

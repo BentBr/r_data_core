@@ -1,6 +1,6 @@
-use r_data_core::entity::entity_definition::definition::EntityDefinition;
-use r_data_core::entity::field::definition::FieldDefinition;
-use r_data_core::entity::field::types::FieldType;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::field::definition::FieldDefinition;
+use r_data_core_core::field::types::FieldType;
 use r_data_core::services::workflow::value_formatting::{
     build_normalized_field_data, cast_field_value, coerce_published_field, is_protected_field,
     is_reserved_field, normalize_field_data_by_type, normalize_path, process_reserved_field,

@@ -1,7 +1,5 @@
-use crate::{
-    entity::admin_user::{AdminUser, AdminUserRepositoryTrait},
-    error::{Error, Result},
-};
+use crate::entity::admin_user::{AdminUser, AdminUserRepositoryTrait};
+use r_data_core_core::error::Result;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -30,7 +28,7 @@ impl AdminUserService {
         password: &str,
     ) -> Result<Option<AdminUser>> {
         if username_or_email.is_empty() || password.is_empty() {
-            return Err(Error::Validation(
+            return Err(r_data_core_core::error::Error::Validation(
                 "Username/email and password are required".to_string(),
             ));
         }
@@ -52,7 +50,7 @@ impl AdminUserService {
 
         // Check if user is active
         if !user.is_active {
-            return Err(Error::Auth("Account is not active".to_string()));
+            return Err(r_data_core_core::error::Error::Auth("Account is not active".to_string()));
         }
 
         // Update last login time
@@ -75,13 +73,13 @@ impl AdminUserService {
     ) -> Result<Uuid> {
         // Basic validation
         if username.is_empty() || email.is_empty() || password.is_empty() {
-            return Err(Error::Validation(
+            return Err(r_data_core_core::error::Error::Validation(
                 "Username, email, and password are required".to_string(),
             ));
         }
 
         if password.len() < 8 {
-            return Err(Error::Validation(
+            return Err(r_data_core_core::error::Error::Validation(
                 "Password must be at least 8 characters".to_string(),
             ));
         }
@@ -89,12 +87,12 @@ impl AdminUserService {
         // Check if username or email already exists
         let existing_user = self.repository.find_by_username_or_email(username).await?;
         if existing_user.is_some() {
-            return Err(Error::Validation("Username already exists".to_string()));
+            return Err(r_data_core_core::error::Error::Validation("Username already exists".to_string()));
         }
 
         let existing_user = self.repository.find_by_username_or_email(email).await?;
         if existing_user.is_some() {
-            return Err(Error::Validation("Email already in use".to_string()));
+            return Err(r_data_core_core::error::Error::Validation("Email already in use".to_string()));
         }
 
         // Create the user
@@ -122,7 +120,7 @@ impl AdminUserService {
         // Check if the user exists
         let existing_user = self.repository.find_by_uuid(&user.uuid).await?;
         if existing_user.is_none() {
-            return Err(Error::NotFound(format!(
+            return Err(r_data_core_core::error::Error::NotFound(format!(
                 "User with UUID {} not found",
                 user.uuid
             )));
@@ -136,7 +134,7 @@ impl AdminUserService {
         // Check if the user exists
         let existing_user = self.repository.find_by_uuid(uuid).await?;
         if existing_user.is_none() {
-            return Err(Error::NotFound(format!(
+            return Err(r_data_core_core::error::Error::NotFound(format!(
                 "User with UUID {} not found",
                 uuid
             )));
@@ -158,7 +156,7 @@ impl AdminUserService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entity::admin_user::{UserRole, UserStatus};
+    use r_data_core_core::admin_user::{UserRole, UserStatus};
     use crate::entity::AbstractRDataEntity;
     use async_trait::async_trait;
     use mockall::mock;
@@ -203,7 +201,7 @@ mod tests {
             email: "test@example.com".to_string(),
             password_hash: "$argon2id$v=19$m=19456,t=2,p=1$c29tZXNhbHQ$WwD1am7XJrm2JAMuY4QQVGRBfFmLwUJX7p4NCZEw9MU".to_string(), // Hash for "password123"
             full_name: "Test User".to_string(),
-            role: UserRole::Admin,
+            role: UserRole::Custom("Admin".to_string()),
             status: UserStatus::Active,
             last_login: None,
             failed_login_attempts: 0,
@@ -302,7 +300,7 @@ mod tests {
             email: "existing@example.com".to_string(),
             password_hash: "$argon2id$v=19$m=19456,t=2,p=1$c29tZXNhbHQ$WwD1am7XJrm2JAMuY4QQVGRBfFmLwUJX7p4NCZEw9MU".to_string(),
             full_name: "Existing User".to_string(),
-            role: UserRole::Admin,
+            role: UserRole::Custom("Admin".to_string()),
             status: UserStatus::Active,
             last_login: None,
             failed_login_attempts: 0,
@@ -339,7 +337,7 @@ mod tests {
 
         assert!(result.is_err());
         match result {
-            Err(Error::Validation(msg)) => {
+            Err(r_data_core_core::error::Error::Validation(msg)) => {
                 assert_eq!(msg, "Username already exists");
             }
             _ => panic!("Expected validation error"),

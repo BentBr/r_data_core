@@ -1,5 +1,5 @@
-use crate::entity::entity_definition::definition::EntityDefinition;
-use crate::error::Result;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::error::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use uuid::Uuid;

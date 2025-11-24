@@ -1,3 +1,5 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
 use log::{debug, error, info};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -5,14 +7,14 @@ use tokio::sync::Mutex;
 use tokio_cron_scheduler::{Job, JobScheduler};
 use uuid::Uuid;
 
-use r_data_core::config::WorkerConfig;
+use r_data_core::config::load_worker_config;
 use r_data_core::services::adapters::EntityDefinitionRepositoryAdapter;
 use r_data_core::services::bootstrap::{
     init_cache_manager, init_logger_with_default, init_pg_pool,
 };
 use r_data_core::services::{
-    worker::compute_reconcile_actions, DynamicEntityRepositoryAdapter, DynamicEntityService,
-    EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService,
+    adapters::DynamicEntityRepositoryAdapter, worker::compute_reconcile_actions,
+    DynamicEntityService, EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService,
 };
 use r_data_core::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 use r_data_core::workflow::data::job_queue::JobQueue;
@@ -26,7 +28,7 @@ async fn main() -> anyhow::Result<()> {
 
     info!("Starting data workflow worker");
 
-    let config = match WorkerConfig::from_env() {
+    let config = match load_worker_config() {
         Ok(cfg) => {
             debug!("Loaded conf: {:?}", cfg);
             info!("Configuration loaded successfully");
@@ -268,9 +270,9 @@ async fn main() -> anyhow::Result<()> {
                         let wf_adapter = WorkflowRepositoryAdapter::new(WorkflowRepository::new(
                             pool_for_consumer.clone(),
                         ));
-                        let de_repo = r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool_for_consumer.clone());
+                        let de_repo = r_data_core_persistence::DynamicEntityRepository::new(pool_for_consumer.clone());
                         let de_adapter = DynamicEntityRepositoryAdapter::new(de_repo);
-                        let ed_repo = r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(pool_for_consumer.clone());
+                        let ed_repo = r_data_core_persistence::EntityDefinitionRepository::new(pool_for_consumer.clone());
                         let ed_adapter = EntityDefinitionRepositoryAdapter::new(ed_repo);
                         // Use cache manager for entity definitions (shared with main API server via Redis)
                         let ed_service = EntityDefinitionService::new(

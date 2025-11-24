@@ -1,9 +1,9 @@
 use actix_web::{test, web, App};
 use r_data_core::api::{configure_app, ApiState};
-use r_data_core::cache::CacheManager;
+use r_data_core_core::cache::CacheManager;
 use r_data_core::config::CacheConfig;
-use r_data_core::entity::admin_user::model::AdminUser;
-use r_data_core::entity::admin_user::repository::{AdminUserRepository, ApiKeyRepository};
+use r_data_core_core::admin_user::AdminUser;
+use r_data_core::entity::admin_user::{AdminUserRepository, ApiKeyRepository};
 use r_data_core::services::{
     AdminUserService, ApiKeyService, EntityDefinitionService, WorkflowRepositoryAdapter,
 };
@@ -48,7 +48,7 @@ async fn setup_app_and_token() -> anyhow::Result<(
     let admin_user_service = AdminUserService::new(admin_user_repository);
 
     let entity_definition_service =
-        EntityDefinitionService::new_without_cache(Arc::new(r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(pool.clone())));
+        EntityDefinitionService::new_without_cache(Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(pool.clone())));
 
     let wf_repo = WorkflowRepository::new(pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
@@ -57,7 +57,18 @@ async fn setup_app_and_token() -> anyhow::Result<(
     let jwt_secret = "test_secret".to_string();
     let app_state = web::Data::new(ApiState {
         db_pool: pool.clone(),
-        jwt_secret: jwt_secret.clone(),
+        api_config: r_data_core_core::config::ApiConfig {
+            host: "0.0.0.0".to_string(),
+            port: 8888,
+            use_tls: false,
+            jwt_secret: jwt_secret.clone(),
+            jwt_expiration: 3600,
+            enable_docs: true,
+            cors_origins: vec![],
+        },
+        cache_manager.clone(),
+            Some(0),
+        ),
         cache_manager,
         api_key_service,
         admin_user_service,
@@ -75,7 +86,27 @@ async fn setup_app_and_token() -> anyhow::Result<(
         .bind(user_uuid)
         .fetch_one(&pool)
         .await?;
-    let token = r_data_core::api::jwt::generate_access_token(&user, &jwt_secret)?;
+    let api_config = r_data_core_core::config::ApiConfig {
+        host: "0.0.0.0".to_string(),
+        port: 8888,
+        use_tls: false,
+        api_config: r_data_core_core::config::ApiConfig {
+                host: "0.0.0.0".to_string(),
+                port: 8888,
+                use_tls: false,
+                jwt_secret: jwt_secret.clone(),
+                jwt_expiration: 3600,
+                enable_docs: true,
+                cors_origins: vec![],
+            },
+            cache_manager.clone(),
+                Some(0),
+            ),
+        jwt_expiration: 3600,
+        enable_docs: true,
+        cors_origins: vec![],
+    };
+    let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, None)?;
 
     Ok((app, pool, token))
 }

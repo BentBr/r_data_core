@@ -3,9 +3,9 @@ use serde_json::Value;
 use time::{macros::format_description, Date, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::entity::field::{FieldDefinition, FieldType};
-use crate::entity::EntityDefinition;
-use crate::error::{Error, Result};
+use r_data_core_core::field::{FieldDefinition, FieldType};
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::error::Result;
 
 // Create a ValidationContext struct to encapsulate common validation parameters
 pub struct ValidationContext<'a> {
@@ -35,8 +35,8 @@ impl<'a> ValidationContext<'a> {
         }
     }
 
-    pub fn create_validation_error(&self, message: &str) -> Error {
-        Error::Validation(format!("Field '{}' {}", self.field_name, message))
+    pub fn create_validation_error(&self, message: &str) -> r_data_core_core::error::Error {
+        r_data_core_core::error::Error::Validation(format!("Field '{}' {}", self.field_name, message))
     }
 
     pub fn validate_number_range(&self, num_value: f64) -> Result<()> {
@@ -363,7 +363,7 @@ impl DynamicEntityValidator {
 
         // Validate against options if present
         if let Some(options_source) = &ctx.field_def.validation.options_source {
-            if let crate::entity::field::OptionsSource::Fixed { options } = options_source {
+            if let r_data_core_core::field::OptionsSource::Fixed { options } = options_source {
                 let valid_options: Vec<String> =
                     options.iter().map(|opt| opt.value.clone()).collect();
 
@@ -397,7 +397,7 @@ impl DynamicEntityValidator {
 
         // Validate against options if present
         if let Some(options_source) = &ctx.field_def.validation.options_source {
-            if let crate::entity::field::OptionsSource::Fixed { options } = options_source {
+            if let r_data_core_core::field::OptionsSource::Fixed { options } = options_source {
                 let valid_options: Vec<String> =
                     options.iter().map(|opt| opt.value.clone()).collect();
 
@@ -428,12 +428,12 @@ pub fn validate_field(field_def: &Value, value: &Value, field_name: &str) -> Res
     let field_type = field_def
         .get("type")
         .and_then(Value::as_str)
-        .ok_or_else(|| Error::Validation(format!("Missing type for field {}", field_name)))?;
+        .ok_or_else(|| r_data_core_core::error::Error::Validation(format!("Missing type for field {}", field_name)))?;
 
     match field_type {
         "string" => {
             if !value.is_string() {
-                return Err(Error::Validation(format!(
+                return Err(r_data_core_core::error::Error::Validation(format!(
                     "Field {} must be a string",
                     field_name
                 )));
@@ -442,7 +442,7 @@ pub fn validate_field(field_def: &Value, value: &Value, field_name: &str) -> Res
         }
         "number" | "integer" => {
             if !value.is_number() {
-                return Err(Error::Validation(format!(
+                return Err(r_data_core_core::error::Error::Validation(format!(
                     "Field {} must be a number",
                     field_name
                 )));
@@ -451,7 +451,7 @@ pub fn validate_field(field_def: &Value, value: &Value, field_name: &str) -> Res
         }
         "boolean" => {
             if !value.is_boolean() {
-                return Err(Error::Validation(format!(
+                return Err(r_data_core_core::error::Error::Validation(format!(
                     "Field {} must be a boolean",
                     field_name
                 )));
@@ -460,7 +460,7 @@ pub fn validate_field(field_def: &Value, value: &Value, field_name: &str) -> Res
         }
         "array" => {
             if !value.is_array() {
-                return Err(Error::Validation(format!(
+                return Err(r_data_core_core::error::Error::Validation(format!(
                     "Field {} must be an array",
                     field_name
                 )));
@@ -469,7 +469,7 @@ pub fn validate_field(field_def: &Value, value: &Value, field_name: &str) -> Res
         }
         "object" => {
             if !value.is_object() {
-                return Err(Error::Validation(format!(
+                return Err(r_data_core_core::error::Error::Validation(format!(
                     "Field {} must be an object",
                     field_name
                 )));
@@ -490,7 +490,7 @@ pub struct FieldViolation {
 pub fn validate_entity(entity: &Value, entity_def: &EntityDefinition) -> Result<()> {
     let violations = validate_entity_with_violations(entity, entity_def)?;
     if !violations.is_empty() {
-        return Err(Error::Validation(format!(
+        return Err(r_data_core_core::error::Error::Validation(format!(
             "Validation failed with the following errors: {}",
             violations
                 .iter()
@@ -512,10 +512,10 @@ pub fn validate_entity_with_violations(
     let entity_type = entity
         .get("entity_type")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| Error::Validation("Entity must have an entity_type field".to_string()))?;
+        .ok_or_else(|| r_data_core_core::error::Error::Validation("Entity must have an entity_type field".to_string()))?;
 
     if entity_type != entity_def.entity_type {
-        return Err(Error::Validation(format!(
+        return Err(r_data_core_core::error::Error::Validation(format!(
             "Entity type '{}' does not match entity definition type '{}'",
             entity_type, entity_def.entity_type
         )));
@@ -524,7 +524,7 @@ pub fn validate_entity_with_violations(
     let field_data = entity
         .get("field_data")
         .and_then(|v| v.as_object())
-        .ok_or_else(|| Error::Validation("Entity must have a field_data object".to_string()))?;
+        .ok_or_else(|| r_data_core_core::error::Error::Validation("Entity must have a field_data object".to_string()))?;
 
     // Check required fields
     for field_def in &entity_def.fields {

@@ -1,9 +1,10 @@
 use super::models::AdvancedEntityQuery;
-use crate::entity::DynamicEntity;
-use crate::error::Result;
+use r_data_core_core::DynamicEntity;
+use r_data_core_core::error::Result;
 use sqlx::PgPool;
 
 pub struct QueryRepository {
+    #[allow(dead_code)]
     db_pool: PgPool,
 }
 
@@ -14,8 +15,8 @@ impl QueryRepository {
 
     pub async fn query_entities(
         &self,
-        entity_type: &str,
-        query: &AdvancedEntityQuery,
+        _entity_type: &str,
+        _query: &AdvancedEntityQuery,
     ) -> Result<Vec<DynamicEntity>> {
         // This would be implemented with complex query building logic
         // For now, we'll return a stub implementation

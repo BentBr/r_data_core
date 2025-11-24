@@ -5,12 +5,11 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use r_data_core::entity::class::definition::EntityDefinition;
-use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
-use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
-use r_data_core::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
-use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
-use r_data_core::entity::field::ui::UiSettings;
-use r_data_core::error::Result;
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
+use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
+use r_data_core_core::field::ui::UiSettings;
+use Result;
 
 // Import common module for test setup
 #[path = "../common/mod.rs"]

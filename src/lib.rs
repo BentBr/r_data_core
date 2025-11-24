@@ -1,15 +1,13 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
 pub mod api;
-pub mod cache;
 pub mod config;
-pub mod db;
 pub mod entity;
 pub mod error;
-pub mod maintenance;
 pub mod notification;
 pub mod services;
-pub mod system_settings;
-pub mod utils;
-pub mod versioning;
+pub use r_data_core_core::utils;
+pub use r_data_core_core::versioning;
 pub mod workflow;
 
 /// The version of the library
@@ -22,7 +20,8 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const DESCRIPTION: &str = env!("CARGO_PKG_DESCRIPTION");
 
 /// Re-export common types
-pub use error::{Error, Result};
+pub use error::Error;
+pub use r_data_core_core::error::Result;
 
 /// API state that can be shared across handlers
 pub use api::ApiState;
@@ -33,7 +32,7 @@ pub use crate::services::{AdminUserService, ApiKeyService, EntityDefinitionServi
 use log::info;
 
 /// Initialize the r_data_core library
-pub fn init() -> Result<()> {
+pub fn init() -> r_data_core_core::error::Result<()> {
     info!("Initializing r_data_core...");
     Ok(())
 }

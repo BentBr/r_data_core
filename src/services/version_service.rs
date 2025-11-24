@@ -1,8 +1,8 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::entity::version_repository::VersionRepository;
-use crate::error::Result;
+use r_data_core_persistence::version_repository::VersionRepository;
+use r_data_core_core::error::Result;
 
 /// Service for managing entity versions with business logic
 pub struct VersionService {

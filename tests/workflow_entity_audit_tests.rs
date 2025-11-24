@@ -1,10 +1,9 @@
-use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
+use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core::api::admin::workflows::models::CreateWorkflowRequest;
-use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
-use r_data_core::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
+use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
 use r_data_core::services::adapters::EntityDefinitionRepositoryAdapter;
 use r_data_core::services::{
-    DynamicEntityRepositoryAdapter, DynamicEntityService, EntityDefinitionService,
+    adapters::DynamicEntityRepositoryAdapter, DynamicEntityService, EntityDefinitionService,
     WorkflowRepositoryAdapter, WorkflowService,
 };
 use r_data_core::workflow::data::repository::WorkflowRepository;
@@ -214,7 +213,7 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     let entity_def = ed_service
         .get_entity_definition_by_entity_type(&entity_type)
         .await?;
-    let entity = r_data_core::entity::dynamic_entity::entity::DynamicEntity {
+    let entity = r_data_core_core::DynamicEntity {
         entity_type: entity_type.clone(),
         field_data,
         definition: Arc::new(entity_def),
@@ -332,7 +331,7 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
 
     // Verify entity was updated with run_uuid as updated_by
     let de_repo_check = DynamicEntityRepository::new(pool.clone());
-    let entity_opt: Option<r_data_core::entity::dynamic_entity::entity::DynamicEntity> =
+    let entity_opt: Option<r_data_core_core::DynamicEntity> =
         de_repo_check
             .get_by_type(&entity_type, &entity_uuid, None)
             .await?;

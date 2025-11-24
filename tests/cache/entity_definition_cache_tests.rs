@@ -2,11 +2,11 @@ use super::create_test_cache_manager;
 use async_trait::async_trait;
 use mockall::mock;
 use mockall::predicate::*;
-use r_data_core::entity::entity_definition::definition::EntityDefinition;
-use r_data_core::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
-use r_data_core::entity::field::types::FieldType;
-use r_data_core::entity::field::FieldDefinition;
-use r_data_core::error::Result;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
+use r_data_core_core::field::types::FieldType;
+use r_data_core_core::field::FieldDefinition;
+use r_data_core_core::error::Result;
 use r_data_core::services::EntityDefinitionService;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -17,7 +17,7 @@ mock! {
     pub EntityDefinitionRepo {}
 
     #[async_trait]
-    impl EntityDefinitionRepositoryTrait for EntityDefinitionRepo {
+    impl r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait for EntityDefinitionRepo {
         async fn list(&self, limit: i64, offset: i64) -> Result<Vec<EntityDefinition>>;
         async fn count(&self) -> Result<i64>;
         async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<EntityDefinition>>;
@@ -69,7 +69,7 @@ fn create_test_entity_definition() -> EntityDefinition {
         allow_children: false,
         icon: None,
         fields: field_definitions,
-        schema: r_data_core::entity::entity_definition::schema::Schema::new(properties),
+        schema: r_data_core_core::entity_definition::schema::Schema::new(properties),
         created_at: now,
         updated_at: now,
         created_by: creator_id,

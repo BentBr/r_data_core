@@ -5,13 +5,13 @@
 mod tests {
     use r_data_core::{
         entity::admin_user::{AdminUserRepository, AdminUserRepositoryTrait},
-        error::Result,
     };
+    use r_data_core_core::error::Result;
     use std::sync::Arc;
     use uuid::Uuid;
 
     #[tokio::test]
-    async fn test_admin_user_last_login_update() -> Result<()> {
+    async fn test_admin_user_last_login_update() -> r_data_core_core::error::Result<()> {
         // Setup test database
         let pool = crate::common::utils::setup_test_db().await;
 

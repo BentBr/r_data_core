@@ -1,5 +1,5 @@
 use super::models::{BrowseKind, BrowseNode, EntityTypeInfo};
-use crate::error::Result;
+use r_data_core_core::error::Result;
 use sqlx::PgPool;
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
@@ -15,12 +15,12 @@ impl EntityRepository {
 
     pub async fn list_available_entities(&self) -> Result<Vec<EntityTypeInfo>> {
         let rows = sqlx::query!(
-            r#"
+            "
             SELECT entity_type as name, display_name, description,
                    uuid as entity_definition_uuid
             FROM entity_definitions
             WHERE published = true
-            "#,
+            ",
         )
         .fetch_all(&self.db_pool)
         .await?;
@@ -35,11 +35,11 @@ impl EntityRepository {
 
             // Count fields for each entity
             let field_count: i64 = match sqlx::query_scalar!(
-                r#"
+                "
                 SELECT COUNT(*) as count
                 FROM entity_definitions
                 WHERE entity_type = $1
-                "#,
+                ",
                 row.name
             )
             .fetch_one(&self.db_pool)
@@ -92,13 +92,13 @@ impl EntityRepository {
 
         let rows: Vec<RowRec> = if prefix == "/" {
             sqlx::query_as::<_, RowRec>(
-                r#"SELECT uuid, entity_type, path, entity_key FROM entities_registry WHERE path = '/' OR path LIKE '/%'"#,
+                "SELECT uuid, entity_type, path, entity_key FROM entities_registry WHERE path = '/' OR path LIKE '/%'",
             )
             .fetch_all(&self.db_pool)
             .await?
         } else {
             sqlx::query_as::<_, RowRec>(
-                r#"SELECT uuid, entity_type, path, entity_key FROM entities_registry WHERE path = $1 OR path LIKE $1 || '/%'"#,
+                "SELECT uuid, entity_type, path, entity_key FROM entities_registry WHERE path = $1 OR path LIKE $1 || '/%'",
             )
             .bind(&prefix)
             .fetch_all(&self.db_pool)

@@ -1,4 +1,5 @@
 pub mod auth_enum;
+pub mod permission_check;
 pub mod utils;
 
 // Re-export common types and functions

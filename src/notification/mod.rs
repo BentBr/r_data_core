@@ -1,5 +1,5 @@
 // Basic notification module - to be expanded in future
-use crate::error::Result;
+use r_data_core_core::error::Result;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;

@@ -1,8 +1,8 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::error::Result;
-use crate::workflow::data::versioning_repository::WorkflowVersioningRepository;
+use r_data_core_core::error::Result;
+use r_data_core_persistence::WorkflowVersioningRepository;
 
 pub async fn snapshot_workflow_pre_update(
     pool: &PgPool,
@@ -11,4 +11,5 @@ pub async fn snapshot_workflow_pre_update(
 ) -> Result<()> {
     let repo = WorkflowVersioningRepository::new(pool.clone());
     repo.snapshot_pre_update(uuid).await
+        .map_err(|e| r_data_core_core::error::Error::Workflow(format!("Failed to snapshot workflow: {}", e)))
 }

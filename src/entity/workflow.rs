@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 use sqlx::encode::{Encode, IsNull};
 use sqlx::postgres::PgArgumentBuffer;
@@ -9,7 +11,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use super::AbstractRDataEntity;
-use crate::error::{Error, Result};
+use r_data_core_core::error::Result;
 
 /// Trigger types for starting a workflow
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
@@ -220,7 +222,7 @@ impl WorkflowEntity {
     pub fn add_step(&mut self, step: WorkflowStep) -> Result<()> {
         // Check if the step ID already exists
         if self.steps.0.iter().any(|s| s.uuid == step.uuid) {
-            return Err(Error::Workflow(format!(
+            return Err(r_data_core_core::error::Error::Workflow(format!(
                 "Step with UUID {} already exists",
                 step.uuid
             )));
@@ -229,7 +231,7 @@ impl WorkflowEntity {
         // Validate transitions against existing steps
         for transition in &step.next_steps {
             if !self.steps.0.iter().any(|s| s.uuid == *transition) && *transition != step.uuid {
-                return Err(Error::Workflow(format!(
+                return Err(r_data_core_core::error::Error::Workflow(format!(
                     "Transition target step UUID {} does not exist",
                     *transition
                 )));
@@ -254,7 +256,7 @@ impl WorkflowEntity {
             // Check if any other steps reference this step in transitions
             for step in &self.steps.0 {
                 if step.uuid != uuid && step.next_steps.iter().any(|t| t == &uuid) {
-                    return Err(Error::Workflow(format!(
+                    return Err(r_data_core_core::error::Error::Workflow(format!(
                         "Cannot remove step {} because step {} has a transition to it",
                         uuid, step.uuid
                     )));
@@ -264,7 +266,7 @@ impl WorkflowEntity {
             self.steps.0.remove(idx);
             Ok(())
         } else {
-            Err(Error::Workflow(format!(
+            Err(r_data_core_core::error::Error::Workflow(format!(
                 "Step with UUID {} not found",
                 uuid
             )))
@@ -275,7 +277,7 @@ impl WorkflowEntity {
     pub fn validate(&self) -> Result<()> {
         // Ensure we have at least one step
         if self.steps.0.is_empty() {
-            return Err(Error::Workflow(
+            return Err(r_data_core_core::error::Error::Workflow(
                 "Workflow must have at least one step".to_string(),
             ));
         }
@@ -283,7 +285,7 @@ impl WorkflowEntity {
         // Ensure we have a valid initial step
         if let Some(first_uuid) = self.first_step {
             if !self.steps.0.iter().any(|s| s.uuid == first_uuid) {
-                return Err(Error::Workflow(format!(
+                return Err(r_data_core_core::error::Error::Workflow(format!(
                     "Initial step UUID {} does not exist in steps",
                     first_uuid
                 )));
@@ -294,7 +296,7 @@ impl WorkflowEntity {
         for step in &self.steps.0 {
             for &next_uuid in &step.next_steps {
                 if !self.steps.0.iter().any(|s| s.uuid == next_uuid) {
-                    return Err(Error::Workflow(format!(
+                    return Err(r_data_core_core::error::Error::Workflow(format!(
                         "Transition in step {} points to non-existent step {}",
                         step.uuid, next_uuid
                     )));

@@ -5,8 +5,8 @@ pub mod entity_definition_repository_tests;
 pub mod refresh_token_repository_tests;
 
 use crate::common::utils::setup_test_db;
-use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
-use r_data_core::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
+use r_data_core_persistence::EntityDefinitionRepository;
+use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use sqlx::PgPool;
 use std::sync::Arc;
 

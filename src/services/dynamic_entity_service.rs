@@ -5,11 +5,11 @@ use log::debug;
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
-use crate::entity::dynamic_entity::entity::DynamicEntity;
-use crate::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
-use crate::entity::entity_definition::definition::EntityDefinition;
-use crate::entity::field::types::FieldType;
-use crate::error::{Error, Result};
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::DynamicEntityRepositoryTrait;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::field::types::FieldType;
+use r_data_core_core::error::Result;
 use crate::services::EntityDefinitionService;
 
 /// Service for managing dynamic entities with validation based on entity definitions
@@ -52,7 +52,7 @@ impl DynamicEntityService {
             .await?;
 
         if !entity_definition.published {
-            return Err(Error::NotFound(format!(
+            return Err(r_data_core_core::error::Error::NotFound(format!(
                 "Entity type '{}' not found or not published",
                 entity_type
             )));
@@ -190,7 +190,7 @@ impl DynamicEntityService {
 
         // If we've collected any errors, return them all as one validation error
         if !validation_errors.is_empty() {
-            return Err(Error::Validation(format!(
+            return Err(r_data_core_core::error::Error::Validation(format!(
                 "Validation failed with the following errors: {}",
                 validation_errors.join("; ")
             )));
@@ -394,8 +394,8 @@ impl DynamicEntityService {
             .await
         {
             Ok(entity_def) => entity_def,
-            Err(Error::NotFound(_)) => {
-                return Err(Error::NotFound(format!(
+            Err(r_data_core_core::error::Error::NotFound(_)) => {
+                return Err(r_data_core_core::error::Error::NotFound(format!(
                     "Entity type '{}' not found",
                     entity_type
                 )));
@@ -405,7 +405,7 @@ impl DynamicEntityService {
 
         // Ensure the class is published
         if !entity_def.published {
-            return Err(Error::ValidationFailed(format!(
+            return Err(r_data_core_core::error::Error::ValidationFailed(format!(
                 "Entity type '{}' is not published",
                 entity_type
             )));
@@ -414,6 +414,7 @@ impl DynamicEntityService {
         Ok(entity_def)
     }
 
+    #[allow(dead_code)]
     async fn get_entities_with_filters(
         &self,
         entity_type: &str,
@@ -485,27 +486,27 @@ mod tests {
         pub EntityDefinitionRepo {}
 
         #[async_trait]
-        impl crate::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait for EntityDefinitionRepo {
-            async fn list(&self, limit: i64, offset: i64) -> Result<Vec<EntityDefinition>>;
-            async fn count(&self) -> Result<i64>;
-            async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<EntityDefinition>>;
-            async fn get_by_entity_type(&self, entity_type: &str) -> Result<Option<EntityDefinition>>;
-            async fn create(&self, definition: &EntityDefinition) -> Result<Uuid>;
-            async fn update(&self, uuid: &Uuid, definition: &EntityDefinition) -> Result<()>;
-            async fn delete(&self, uuid: &Uuid) -> Result<()>;
-            async fn apply_schema(&self, schema_sql: &str) -> Result<()>;
-            async fn update_entity_view_for_entity_definition(&self, entity_definition: &EntityDefinition) -> Result<()>;
-            async fn check_view_exists(&self, view_name: &str) -> Result<bool>;
-            async fn get_view_columns_with_types(&self, view_name: &str) -> Result<HashMap<String, String>>;
-            async fn count_view_records(&self, view_name: &str) -> Result<i64>;
-            async fn cleanup_unused_entity_view(&self) -> Result<()>;
+        impl r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait for EntityDefinitionRepo {
+            async fn list(&self, limit: i64, offset: i64) -> r_data_core_core::error::Result<Vec<EntityDefinition>>;
+            async fn count(&self) -> r_data_core_core::error::Result<i64>;
+            async fn get_by_uuid(&self, uuid: &Uuid) -> r_data_core_core::error::Result<Option<EntityDefinition>>;
+            async fn get_by_entity_type(&self, entity_type: &str) -> r_data_core_core::error::Result<Option<EntityDefinition>>;
+            async fn create(&self, definition: &EntityDefinition) -> r_data_core_core::error::Result<Uuid>;
+            async fn update(&self, uuid: &Uuid, definition: &EntityDefinition) -> r_data_core_core::error::Result<()>;
+            async fn delete(&self, uuid: &Uuid) -> r_data_core_core::error::Result<()>;
+            async fn apply_schema(&self, schema_sql: &str) -> r_data_core_core::error::Result<()>;
+            async fn update_entity_view_for_entity_definition(&self, entity_definition: &EntityDefinition) -> r_data_core_core::error::Result<()>;
+            async fn check_view_exists(&self, view_name: &str) -> r_data_core_core::error::Result<bool>;
+            async fn get_view_columns_with_types(&self, view_name: &str) -> r_data_core_core::error::Result<HashMap<String, String>>;
+            async fn count_view_records(&self, view_name: &str) -> r_data_core_core::error::Result<i64>;
+            async fn cleanup_unused_entity_view(&self) -> r_data_core_core::error::Result<()>;
         }
     }
 
     fn create_test_entity_definition() -> EntityDefinition {
-        use crate::entity::entity_definition::schema::Schema;
-        use crate::entity::field::types::FieldType;
-        use crate::entity::field::FieldDefinition;
+        use r_data_core_core::entity_definition::schema::Schema;
+        use r_data_core_core::field::types::FieldType;
+        use r_data_core_core::field::FieldDefinition;
         use time::OffsetDateTime;
 
         EntityDefinition {
@@ -709,7 +710,7 @@ mod tests {
         // Check that we got a validation error
         assert!(result.is_err());
         match result {
-            Err(Error::Validation(msg)) => {
+            Err(r_data_core_core::error::Error::Validation(msg)) => {
                 assert!(msg.contains("Required field 'name' is missing"));
             }
             _ => panic!("Expected validation error, got: {:?}", result),

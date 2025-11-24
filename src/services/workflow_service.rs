@@ -46,6 +46,7 @@ impl WorkflowService {
         )
     }
 
+    #[allow(dead_code)]
     fn input_uri_from_config(cfg: &serde_json::Value) -> Option<String> {
         cfg.pointer("/input/source/uri")
             .and_then(|v| v.as_str())

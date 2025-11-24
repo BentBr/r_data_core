@@ -7,7 +7,7 @@ pub async fn get_provider_config(
     uuid: Uuid,
 ) -> anyhow::Result<Option<serde_json::Value>> {
     let row = sqlx::query(
-        r#"SELECT config FROM workflows WHERE uuid = $1 AND kind = 'provider'::workflow_kind AND enabled = true"#,
+        "SELECT config FROM workflows WHERE uuid = $1 AND kind = 'provider'::workflow_kind AND enabled = true",
     )
     .bind(uuid)
     .fetch_optional(pool)

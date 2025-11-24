@@ -1,7 +1,8 @@
-pub mod model;
-pub mod repository;
-pub mod repository_trait;
+// Re-export models from core
+pub use r_data_core_core::admin_user::AdminUser;
+pub use r_data_core_core::admin_user::ApiKey;
 
-pub use model::{AdminUser, ApiKey, UserRole, UserStatus};
-pub use repository::{AdminUserRepository, ApiKeyRepository};
-pub use repository_trait::{is_key_valid, AdminUserRepositoryTrait, ApiKeyRepositoryTrait};
+// Re-export repositories and traits from persistence crate
+pub use r_data_core_persistence::{
+    AdminUserRepository, AdminUserRepositoryTrait, ApiKeyRepository, ApiKeyRepositoryTrait,
+};

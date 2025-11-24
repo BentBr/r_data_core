@@ -7,10 +7,10 @@ use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::entity::entity_definition::definition::EntityDefinition;
-use crate::entity::field::FieldDefinition;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::field::FieldDefinition;
 use crate::entity::DynamicFields;
-use crate::error::{Error, Result};
+use r_data_core_core::error::Result;
 
 // Define traits locally since value module is missing
 pub trait FromValue: Sized {
@@ -29,7 +29,7 @@ impl FromValue for String {
             JsonValue::Number(n) => Ok(n.to_string()),
             JsonValue::Bool(b) => Ok(b.to_string()),
             JsonValue::Null => Ok("".to_string()),
-            _ => Err(Error::Conversion(format!(
+            _ => Err(r_data_core_core::error::Error::Conversion(format!(
                 "Cannot convert {:?} to String",
                 value
             ))),
@@ -42,11 +42,11 @@ impl FromValue for i64 {
         match value {
             JsonValue::Number(n) => n
                 .as_i64()
-                .ok_or_else(|| Error::Conversion(format!("Cannot convert {:?} to i64", value))),
+                .ok_or_else(|| r_data_core_core::error::Error::Conversion(format!("Cannot convert {:?} to i64", value))),
             JsonValue::String(s) => s
                 .parse::<i64>()
-                .map_err(|_| Error::Conversion(format!("Cannot convert string '{}' to i64", s))),
-            _ => Err(Error::Conversion(format!(
+                .map_err(|_| r_data_core_core::error::Error::Conversion(format!("Cannot convert string '{}' to i64", s))),
+            _ => Err(r_data_core_core::error::Error::Conversion(format!(
                 "Cannot convert {:?} to i64",
                 value
             ))),
@@ -60,7 +60,7 @@ impl FromValue for bool {
             JsonValue::Bool(b) => Ok(*b),
             JsonValue::Number(n) => Ok(n.as_i64().map(|x| x != 0).unwrap_or(false)),
             JsonValue::String(s) => Ok(s.to_lowercase() == "true" || s == "1"),
-            _ => Err(Error::Conversion(format!(
+            _ => Err(r_data_core_core::error::Error::Conversion(format!(
                 "Cannot convert {:?} to bool",
                 value
             ))),
@@ -78,8 +78,8 @@ impl FromValue for Uuid {
     fn from_value(value: &JsonValue) -> Result<Self> {
         match value {
             JsonValue::String(s) => Uuid::parse_str(s)
-                .map_err(|_| Error::Conversion(format!("Cannot convert string '{}' to Uuid", s))),
-            _ => Err(Error::Conversion(format!(
+                .map_err(|_| r_data_core_core::error::Error::Conversion(format!("Cannot convert string '{}' to Uuid", s))),
+            _ => Err(r_data_core_core::error::Error::Conversion(format!(
                 "Cannot convert {:?} to Uuid",
                 value
             ))),
@@ -177,7 +177,7 @@ impl DynamicEntity {
         let value = self
             .field_data
             .get(field)
-            .ok_or_else(|| Error::FieldNotFound(field.to_string()))?;
+            .ok_or_else(|| r_data_core_core::error::Error::FieldNotFound(field.to_string()))?;
         T::from_value(value)
     }
 
@@ -189,7 +189,7 @@ impl DynamicEntity {
         if let Some(field_def) = self.definition.get_field(field) {
             // Validate field value against definition
             if let Err(e) = field_def.validate_value(&entity_value) {
-                return Err(Error::Validation(e.to_string()));
+                return Err(r_data_core_core::error::Error::Validation(e.to_string()));
             }
         }
 
@@ -198,7 +198,7 @@ impl DynamicEntity {
             "uuid" | "created_at" => {
                 // These fields are read-only after creation
                 if self.field_data.contains_key(field) {
-                    return Err(Error::ReadOnlyField(field.to_string()));
+                    return Err(r_data_core_core::error::Error::ReadOnlyField(field.to_string()));
                 }
             }
             "updated_at" => {
@@ -222,7 +222,7 @@ impl DynamicEntity {
     pub fn validate(&self) -> Result<()> {
         for field in &self.definition.fields {
             if field.required && !self.field_data.contains_key(&field.name) {
-                return Err(Error::Validation(format!(
+                return Err(r_data_core_core::error::Error::Validation(format!(
                     "Required field '{}' is missing",
                     field.name
                 )));
@@ -230,7 +230,7 @@ impl DynamicEntity {
 
             if let Some(value) = self.field_data.get(&field.name) {
                 if let Err(e) = field.validate_value(value) {
-                    return Err(Error::Validation(e.to_string()));
+                    return Err(r_data_core_core::error::Error::Validation(e.to_string()));
                 }
             }
         }
@@ -280,7 +280,7 @@ impl DynamicFields for DynamicEntity {
         self.field_data.get(field_name).cloned()
     }
 
-    fn set_field(&mut self, field_name: &str, value: serde_json::Value) -> Result<()> {
+    fn set_field(&mut self, field_name: &str, value: serde_json::Value) -> r_data_core_core::error::Result<()> {
         self.field_data.insert(field_name.to_string(), value);
         Ok(())
     }
@@ -289,11 +289,14 @@ impl DynamicFields for DynamicEntity {
         self.field_data.clone()
     }
 
-    fn validate(&self, entity_def: &EntityDefinition) -> Result<()> {
+    fn validate(&self, schema_properties: Option<&serde_json::Value>) -> r_data_core_core::error::Result<()> {
+        // For DynamicEntity, we need the full EntityDefinition, so we use the definition field
+        // This is a compatibility layer - the trait signature is generic but DynamicEntity needs EntityDefinition
+        let def = self.definition.as_ref();
         // Basic validation - ensure all required fields are present
-        for field in &entity_def.fields {
+        for field in &def.fields {
             if field.required && !self.field_data.contains_key(&field.name) {
-                return Err(Error::Validation(format!(
+                return Err(r_data_core_core::error::Error::Validation(format!(
                     "Required field '{}' is missing",
                     field.name
                 )));
@@ -301,7 +304,25 @@ impl DynamicFields for DynamicEntity {
 
             if let Some(value) = self.field_data.get(&field.name) {
                 if let Err(e) = field.validate_value(value) {
-                    return Err(Error::Validation(e.to_string()));
+                    return Err(r_data_core_core::error::Error::Validation(format!("{}", e)));
+                }
+            }
+        }
+
+        // Fallback to generic validation if schema_properties provided (for compatibility)
+        if let Some(properties) = schema_properties {
+            // Fallback to generic validation if definition is not available
+            if let Some(props) = properties.as_object() {
+                for (field_name, field_def) in props {
+                    if let Some(required) = field_def.get("required") {
+                        if required.as_bool() == Some(true)
+                            && !self.field_data.contains_key(field_name)
+                        {
+                            return Err(r_data_core_core::error::Error::Validation(format!(
+                                "Required field '{field_name}' is missing",
+                            )));
+                        }
+                    }
                 }
             }
         }

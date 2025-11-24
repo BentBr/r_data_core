@@ -2,50 +2,67 @@ use actix_web::{
     http::{header, StatusCode},
     test, web, App,
 };
-use jsonwebtoken::{encode, EncodingKey, Header};
 use r_data_core::{
     api::ApiState,
-    cache::CacheManager,
     config::CacheConfig,
     entity::admin_user::{AdminUserRepository, ApiKeyRepository},
-    entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait,
-    error::Result,
     services::{AdminUserService, ApiKeyService, EntityDefinitionService},
 };
-use serde::{Deserialize, Serialize};
+use r_data_core_core::error::Result;
+use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
+use r_data_core_api::jwt::AuthUserClaims;
+use r_data_core_core::cache::CacheManager;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
-
-#[derive(Debug, Serialize, Deserialize)]
-struct AuthUserClaims {
-    pub sub: String,    // User UUID as string
-    pub name: String,   // Username
-    pub email: String,  // Email
-    pub is_admin: bool, // Admin flag
-    pub role: String,   // User role
-    pub exp: usize,     // Expiration timestamp
-    pub iat: usize,     // Issued at timestamp
-}
 
 fn create_test_jwt_token(user_uuid: &Uuid, secret: &str) -> String {
     let now = OffsetDateTime::now_utc();
     let exp = now + Duration::hours(1);
 
+    // SuperAdmin gets all permissions
+    let permissions = vec![
+        "workflows:read".to_string(),
+        "workflows:create".to_string(),
+        "workflows:update".to_string(),
+        "workflows:delete".to_string(),
+        "workflows:execute".to_string(),
+        "entities:read".to_string(),
+        "entities:create".to_string(),
+        "entities:update".to_string(),
+        "entities:delete".to_string(),
+        "entity_definitions:read".to_string(),
+        "entity_definitions:create".to_string(),
+        "entity_definitions:update".to_string(),
+        "entity_definitions:delete".to_string(),
+        "api_keys:read".to_string(),
+        "api_keys:create".to_string(),
+        "api_keys:update".to_string(),
+        "api_keys:delete".to_string(),
+        "permission_schemes:read".to_string(),
+        "permission_schemes:create".to_string(),
+        "permission_schemes:update".to_string(),
+        "permission_schemes:delete".to_string(),
+        "system:read".to_string(),
+        "system:create".to_string(),
+        "system:update".to_string(),
+        "system:delete".to_string(),
+    ];
+
     let claims = AuthUserClaims {
         sub: user_uuid.to_string(),
         name: "test_user".to_string(),
         email: "test@example.com".to_string(),
-        is_admin: true,
-        role: "Admin".to_string(),
+        role: "SuperAdmin".to_string(),
+        permissions,
         exp: exp.unix_timestamp() as usize,
         iat: now.unix_timestamp() as usize,
     };
 
-    encode(
-        &Header::default(),
+    jsonwebtoken::encode(
+        &jsonwebtoken::Header::default(),
         &claims,
-        &EncodingKey::from_secret(secret.as_ref()),
+        &jsonwebtoken::EncodingKey::from_secret(secret.as_ref()),
     )
     .expect("Failed to create JWT token")
 }
@@ -65,13 +82,13 @@ mod tests {
 
         // Create multiple entity definitions
         let entity_def_repo = Arc::new(
-            r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
+            r_data_core_persistence::EntityDefinitionRepository::new(
                 pool.clone(),
             ),
         );
 
         for i in 1..=25 {
-            let entity_def = r_data_core::entity::entity_definition::definition::EntityDefinition {
+            let entity_def = r_data_core_core::entity_definition::definition::EntityDefinition {
                 uuid: Uuid::now_v7(),
                 entity_type: format!("test_entity_{}", i),
                 display_name: format!("Test Entity {}", i),
@@ -80,7 +97,7 @@ mod tests {
                 allow_children: false,
                 icon: Some("mdi-test".to_string()),
                 fields: vec![],
-                schema: r_data_core::entity::entity_definition::schema::Schema::default(),
+                schema: r_data_core_core::entity_definition::schema::Schema::default(),
                 created_at: OffsetDateTime::now_utc(),
                 updated_at: OffsetDateTime::now_utc(),
                 created_by: user_uuid,
@@ -104,12 +121,27 @@ mod tests {
             max_size: 1000,
         };
 
+        let cache_manager = Arc::new(CacheManager::new(cache_config));
+
         let app = test::init_service(
             App::new()
                 .app_data(web::Data::new(ApiState {
                     db_pool: pool.clone(),
-                    jwt_secret: "test_secret".to_string(),
-                    cache_manager: Arc::new(CacheManager::new(cache_config)),
+                    api_config: r_data_core_core::config::ApiConfig {
+                        host: "0.0.0.0".to_string(),
+                        port: 8888,
+                        use_tls: false,
+                        jwt_secret: "test_secret".to_string(),
+                        jwt_expiration: 3600,
+                        enable_docs: true,
+                        cors_origins: vec![],
+                    },
+                    permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                        pool.clone(),
+                        cache_manager.clone(),
+                        Some(0),
+                    ),
+                    cache_manager: cache_manager.clone(),
                     api_key_service: ApiKeyService::from_repository(api_key_repo),
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
                     entity_definition_service: EntityDefinitionService::new_without_cache(

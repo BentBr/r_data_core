@@ -1,16 +1,17 @@
 use actix_web::{test, web, App};
-use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
+use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core::api::{configure_app, ApiState};
-use r_data_core::cache::CacheManager;
+use r_data_core_core::cache::CacheManager;
 use r_data_core::config::CacheConfig;
-use r_data_core::entity::admin_user::repository::{AdminUserRepository, ApiKeyRepository};
-use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
-use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
-use r_data_core::entity::entity_definition::definition::EntityDefinition;
-use r_data_core::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
-use r_data_core::entity::field::ui::UiSettings;
-use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
-use r_data_core::error::{Error, Result};
+use r_data_core::entity::admin_user::{AdminUserRepository, ApiKeyRepository};
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::DynamicEntityRepository;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
+use r_data_core_core::field::ui::UiSettings;
+use r_data_core_core::field::{FieldDefinition, FieldType};
+use r_data_core_core::field::options::FieldValidation;
+use r_data_core::error::Error; use r_data_core_core::error::Result;
 use r_data_core::services::{
     AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, WorkflowService,
 };
@@ -39,7 +40,7 @@ async fn clear_test_db(pool: &PgPool) -> Result<()> {
         sqlx::query(&format!("DELETE FROM {}", table))
             .execute(pool)
             .await
-            .map_err(|e| Error::Database(e))?;
+            .map_err(r_data_core_core::error::Error::Database)?;
     }
 
     Ok(())
@@ -104,7 +105,7 @@ async fn create_test_entity_definition(pool: &PgPool, entity_type: &str) -> Resu
     sqlx::query(&trigger_sql)
         .execute(pool)
         .await
-        .map_err(|e| Error::Database(e))?;
+        .map_err(r_data_core_core::error::Error::Database)?;
 
     // Wait a moment for the trigger
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -174,7 +175,7 @@ async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
     .bind(created_by)
     .execute(pool)
     .await
-    .map_err(Error::Database)?;
+    .map_err(r_data_core_core::error::Error::Database)?;
 
     // Create API key
     let key_uuid = Uuid::now_v7();
@@ -193,14 +194,14 @@ async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
     .bind(created_by)
     .execute(pool)
     .await
-    .map_err(Error::Database)?;
+    .map_err(r_data_core_core::error::Error::Database)?;
 
     Ok(())
 }
 
 // Helper function to hash API key or use a fallback mechanism when testing
 fn use_api_key_hash_or_fallback(api_key: &str) -> String {
-    use r_data_core::entity::admin_user::model::ApiKey;
+    use r_data_core_core::admin_user::ApiKey;
 
     match ApiKey::hash_api_key(api_key) {
         Ok(hash) => hash,
@@ -255,7 +256,20 @@ async fn create_test_app(
     // Create app state
     let app_state = web::Data::new(ApiState {
         db_pool: pool.clone(),
-        jwt_secret: "test_secret".to_string(),
+        api_config: r_data_core_core::config::ApiConfig {
+            host: "0.0.0.0".to_string(),
+            port: 8888,
+            use_tls: false,
+            jwt_secret: "test_secret".to_string(),
+            jwt_expiration: 3600,
+            enable_docs: true,
+            cors_origins: vec![],
+        },
+        permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+            pool.clone(),
+            cache_manager.clone(),
+            Some(0),
+        ),
         cache_manager,
         api_key_service,
         admin_user_service,

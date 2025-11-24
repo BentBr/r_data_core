@@ -2,52 +2,69 @@ use actix_web::{
     http::{header, StatusCode},
     test, web, App, HttpMessage, HttpRequest, HttpResponse,
 };
-use jsonwebtoken::{encode, EncodingKey, Header};
 use r_data_core::{
     api::{
         middleware::{ApiAuth, ApiKeyInfo},
         ApiState,
     },
-    cache::CacheManager,
     config::CacheConfig,
     entity::admin_user::{AdminUserRepository, ApiKeyRepository, ApiKeyRepositoryTrait},
-    error::Result,
     services::{AdminUserService, ApiKeyService, EntityDefinitionService},
 };
-use serde::{Deserialize, Serialize};
+use r_data_core_core::error::Result;
+use r_data_core_api::jwt::AuthUserClaims;
+use r_data_core_core::cache::CacheManager;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
-
-#[derive(Debug, Serialize, Deserialize)]
-struct AuthUserClaims {
-    sub: String,    // User UUID as string
-    name: String,   // Username
-    email: String,  // Email
-    is_admin: bool, // Admin flag
-    role: String,   // User role
-    exp: usize,     // Expiration timestamp
-    iat: usize,     // Issued at timestamp
-}
 
 fn create_test_jwt_token(user_uuid: &Uuid, secret: &str) -> String {
     let now = OffsetDateTime::now_utc();
     let exp = now + Duration::hours(1);
 
+    // SuperAdmin gets all permissions
+    let permissions = vec![
+        "workflows:read".to_string(),
+        "workflows:create".to_string(),
+        "workflows:update".to_string(),
+        "workflows:delete".to_string(),
+        "workflows:execute".to_string(),
+        "entities:read".to_string(),
+        "entities:create".to_string(),
+        "entities:update".to_string(),
+        "entities:delete".to_string(),
+        "entity_definitions:read".to_string(),
+        "entity_definitions:create".to_string(),
+        "entity_definitions:update".to_string(),
+        "entity_definitions:delete".to_string(),
+        "api_keys:read".to_string(),
+        "api_keys:create".to_string(),
+        "api_keys:update".to_string(),
+        "api_keys:delete".to_string(),
+        "permission_schemes:read".to_string(),
+        "permission_schemes:create".to_string(),
+        "permission_schemes:update".to_string(),
+        "permission_schemes:delete".to_string(),
+        "system:read".to_string(),
+        "system:create".to_string(),
+        "system:update".to_string(),
+        "system:delete".to_string(),
+    ];
+
     let claims = AuthUserClaims {
         sub: user_uuid.to_string(),
         name: "test_user".to_string(),
         email: "test@example.com".to_string(),
-        is_admin: true,
-        role: "Admin".to_string(),
+        role: "SuperAdmin".to_string(),
+        permissions,
         exp: exp.unix_timestamp() as usize,
         iat: now.unix_timestamp() as usize,
     };
 
-    encode(
-        &Header::default(),
+    jsonwebtoken::encode(
+        &jsonwebtoken::Header::default(),
         &claims,
-        &EncodingKey::from_secret(secret.as_ref()),
+        &jsonwebtoken::EncodingKey::from_secret(secret.as_ref()),
     )
     .expect("Failed to create JWT token")
 }
@@ -79,7 +96,7 @@ mod tests {
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let entity_def_repo = Arc::new(
-            r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
+            r_data_core_persistence::EntityDefinitionRepository::new(
                 pool.clone(),
             ),
         );
@@ -92,6 +109,8 @@ mod tests {
             max_size: 1000,
         };
 
+        let cache_manager = Arc::new(CacheManager::new(cache_config));
+
         // Clone the UUIDs to move into the closure
         let key1_uuid_clone = key1_uuid;
         let key2_uuid_clone = key2_uuid;
@@ -100,9 +119,22 @@ mod tests {
             App::new()
                 .app_data(web::Data::new(ApiState {
                     db_pool: pool.clone(),
-                    jwt_secret: "test_secret".to_string(),
-                    cache_manager: Arc::new(CacheManager::new(cache_config)),
-                    api_key_service: ApiKeyService::from_repository(api_key_repo),
+                    api_config: r_data_core_core::config::ApiConfig {
+                        host: "0.0.0.0".to_string(),
+                        port: 8888,
+                        use_tls: false,
+                        jwt_secret: "test_secret".to_string(),
+                        jwt_expiration: 3600,
+                        enable_docs: true,
+                        cors_origins: vec![],
+                    },
+                    permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                        pool.clone(),
+                        cache_manager.clone(),
+                        Some(0),
+                    ),
+                    cache_manager: cache_manager.clone(),
+            api_key_service: ApiKeyService::from_repository(api_key_repo),
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
                     entity_definition_service: EntityDefinitionService::new_without_cache(
                         entity_def_repo,
@@ -171,7 +203,7 @@ mod tests {
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let entity_def_repo = Arc::new(
-            r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
+            r_data_core_persistence::EntityDefinitionRepository::new(
                 pool.clone(),
             ),
         );
@@ -184,6 +216,8 @@ mod tests {
             max_size: 1000,
         };
 
+        let cache_manager = Arc::new(CacheManager::new(cache_config));
+
         // Wrap the repo in Arc for sharing
         let repo_arc = Arc::new(repo);
         let repo_for_handler = repo_arc.clone();
@@ -192,9 +226,22 @@ mod tests {
             App::new()
                 .app_data(web::Data::new(ApiState {
                     db_pool: pool.clone(),
-                    jwt_secret: "test_secret".to_string(),
-                    cache_manager: Arc::new(CacheManager::new(cache_config)),
-                    api_key_service: ApiKeyService::from_repository(api_key_repo),
+                    api_config: r_data_core_core::config::ApiConfig {
+                        host: "0.0.0.0".to_string(),
+                        port: 8888,
+                        use_tls: false,
+                        jwt_secret: "test_secret".to_string(),
+                        jwt_expiration: 3600,
+                        enable_docs: true,
+                        cors_origins: vec![],
+                    },
+                    permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                        pool.clone(),
+                        cache_manager.clone(),
+                        Some(0),
+                    ),
+                    cache_manager: cache_manager.clone(),
+            api_key_service: ApiKeyService::from_repository(api_key_repo),
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
                     entity_definition_service: EntityDefinitionService::new_without_cache(
                         entity_def_repo,
@@ -282,7 +329,7 @@ mod tests {
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let entity_def_repo = Arc::new(
-            r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
+            r_data_core_persistence::EntityDefinitionRepository::new(
                 pool.clone(),
             ),
         );
@@ -295,14 +342,29 @@ mod tests {
             max_size: 1000,
         };
 
+        let cache_manager = Arc::new(CacheManager::new(cache_config));
+
         let app =
             test::init_service(
                 App::new()
                     .app_data(web::Data::new(ApiState {
                         db_pool: pool.clone(),
-                        jwt_secret: "test_secret".to_string(),
-                        cache_manager: Arc::new(CacheManager::new(cache_config)),
-                        api_key_service: ApiKeyService::from_repository(api_key_repo),
+                        api_config: r_data_core_core::config::ApiConfig {
+                            host: "0.0.0.0".to_string(),
+                            port: 8888,
+                            use_tls: false,
+                            jwt_secret: "test_secret".to_string(),
+                            jwt_expiration: 3600,
+                            enable_docs: true,
+                            cors_origins: vec![],
+                        },
+                        permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                            pool.clone(),
+                            cache_manager.clone(),
+                            Some(0),
+                        ),
+                        cache_manager: cache_manager.clone(),
+            api_key_service: ApiKeyService::from_repository(api_key_repo),
                         admin_user_service: AdminUserService::from_repository(admin_user_repo),
                         entity_definition_service: EntityDefinitionService::new_without_cache(
                             entity_def_repo,
@@ -368,7 +430,7 @@ mod tests {
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let entity_def_repo = Arc::new(
-            r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
+            r_data_core_persistence::EntityDefinitionRepository::new(
                 pool.clone(),
             ),
         );
@@ -381,14 +443,29 @@ mod tests {
             max_size: 1000,
         };
 
+        let cache_manager = Arc::new(CacheManager::new(cache_config));
+
         let app =
             test::init_service(
                 App::new()
                     .app_data(web::Data::new(ApiState {
                         db_pool: pool.clone(),
-                        jwt_secret: "test_secret".to_string(),
-                        cache_manager: Arc::new(CacheManager::new(cache_config)),
-                        api_key_service: ApiKeyService::from_repository(api_key_repo),
+                        api_config: r_data_core_core::config::ApiConfig {
+                            host: "0.0.0.0".to_string(),
+                            port: 8888,
+                            use_tls: false,
+                            jwt_secret: "test_secret".to_string(),
+                            jwt_expiration: 3600,
+                            enable_docs: true,
+                            cors_origins: vec![],
+                        },
+                        permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                            pool.clone(),
+                            cache_manager.clone(),
+                            Some(0),
+                        ),
+                        cache_manager: cache_manager.clone(),
+            api_key_service: ApiKeyService::from_repository(api_key_repo),
                         admin_user_service: AdminUserService::from_repository(admin_user_repo),
                         entity_definition_service: EntityDefinitionService::new_without_cache(
                             entity_def_repo,
@@ -461,7 +538,7 @@ mod tests {
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let entity_def_repo = Arc::new(
-            r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
+            r_data_core_persistence::EntityDefinitionRepository::new(
                 pool.clone(),
             ),
         );
@@ -474,14 +551,29 @@ mod tests {
             max_size: 1000,
         };
 
+        let cache_manager = Arc::new(CacheManager::new(cache_config));
+
         let app =
             test::init_service(
                 App::new()
                     .app_data(web::Data::new(ApiState {
                         db_pool: pool.clone(),
-                        jwt_secret: "test_secret".to_string(),
-                        cache_manager: Arc::new(CacheManager::new(cache_config)),
-                        api_key_service: ApiKeyService::from_repository(api_key_repo),
+                        api_config: r_data_core_core::config::ApiConfig {
+                            host: "0.0.0.0".to_string(),
+                            port: 8888,
+                            use_tls: false,
+                            jwt_secret: "test_secret".to_string(),
+                            jwt_expiration: 3600,
+                            enable_docs: true,
+                            cors_origins: vec![],
+                        },
+                        permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                            pool.clone(),
+                            cache_manager.clone(),
+                            Some(0),
+                        ),
+                        cache_manager: cache_manager.clone(),
+            api_key_service: ApiKeyService::from_repository(api_key_repo),
                         admin_user_service: AdminUserService::from_repository(admin_user_repo),
                         entity_definition_service: EntityDefinitionService::new_without_cache(
                             entity_def_repo,
@@ -602,7 +694,7 @@ mod tests {
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let entity_def_repo = Arc::new(
-            r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
+            r_data_core_persistence::EntityDefinitionRepository::new(
                 pool.clone(),
             ),
         );
@@ -615,14 +707,29 @@ mod tests {
             max_size: 1000,
         };
 
+        let cache_manager = Arc::new(CacheManager::new(cache_config));
+
         let app =
             test::init_service(
                 App::new()
                     .app_data(web::Data::new(ApiState {
                         db_pool: pool.clone(),
-                        jwt_secret: "test_secret".to_string(),
-                        cache_manager: Arc::new(CacheManager::new(cache_config)),
-                        api_key_service: ApiKeyService::from_repository(api_key_repo),
+                        api_config: r_data_core_core::config::ApiConfig {
+                            host: "0.0.0.0".to_string(),
+                            port: 8888,
+                            use_tls: false,
+                            jwt_secret: "test_secret".to_string(),
+                            jwt_expiration: 3600,
+                            enable_docs: true,
+                            cors_origins: vec![],
+                        },
+                        permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                            pool.clone(),
+                            cache_manager.clone(),
+                            Some(0),
+                        ),
+                        cache_manager: cache_manager.clone(),
+            api_key_service: ApiKeyService::from_repository(api_key_repo),
                         admin_user_service: AdminUserService::from_repository(admin_user_repo),
                         entity_definition_service: EntityDefinitionService::new_without_cache(
                             entity_def_repo,
@@ -746,7 +853,7 @@ mod tests {
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let entity_def_repo = Arc::new(
-            r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
+            r_data_core_persistence::EntityDefinitionRepository::new(
                 pool.clone(),
             ),
         );
@@ -759,13 +866,28 @@ mod tests {
             max_size: 1000,
         };
 
+        let cache_manager = Arc::new(CacheManager::new(cache_config));
+
         let app = test::init_service(
             App::new()
                 .app_data(web::Data::new(ApiState {
                     db_pool: pool.clone(),
-                    jwt_secret: "test_secret".to_string(),
-                    cache_manager: Arc::new(CacheManager::new(cache_config)),
-                    api_key_service: ApiKeyService::from_repository(api_key_repo),
+                    api_config: r_data_core_core::config::ApiConfig {
+                        host: "0.0.0.0".to_string(),
+                        port: 8888,
+                        use_tls: false,
+                        jwt_secret: "test_secret".to_string(),
+                        jwt_expiration: 3600,
+                        enable_docs: true,
+                        cors_origins: vec![],
+                    },
+                    permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                        pool.clone(),
+                        cache_manager.clone(),
+                        Some(0),
+                    ),
+                    cache_manager: cache_manager.clone(),
+            api_key_service: ApiKeyService::from_repository(api_key_repo),
                     admin_user_service: AdminUserService::from_repository(admin_user_repo),
                     entity_definition_service: EntityDefinitionService::new_without_cache(
                         entity_def_repo,

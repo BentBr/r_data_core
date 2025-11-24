@@ -3,11 +3,10 @@ use std::sync::Arc;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::cache::CacheManager;
-use crate::error::Result;
-use crate::system_settings::entity_versioning::EntityVersioningSettings;
-use crate::system_settings::keys::SystemSettingKey;
-use crate::system_settings::repository::SystemSettingsRepository;
+use r_data_core_core::cache::CacheManager;
+use r_data_core_core::error::Result;
+use r_data_core_core::settings::{EntityVersioningSettings, SystemSettingKey};
+use r_data_core_persistence::SystemSettingsRepository;
 
 pub struct SettingsService {
     pub pool: PgPool,

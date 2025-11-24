@@ -5,15 +5,13 @@ use std::collections::HashMap;
 use super::options::FieldValidation;
 use super::types::FieldType;
 use super::ui::UiSettings;
-use crate::error::Result;
+use r_data_core_core::error::Result;
 
 // Module re-exports
 mod constraints;
 mod schema;
 mod serialization;
 mod validation;
-
-pub use constraints::*;
 
 /// Definition of a field in a class
 #[derive(Debug, Clone, Serialize)]

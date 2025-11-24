@@ -10,9 +10,8 @@ use crate::api::auth::auth_enum::CombinedRequiredAuth;
 use crate::api::query::StandardQuery;
 use crate::api::response::{ApiResponse, ValidationViolation};
 use crate::api::ApiState;
-use crate::entity::dynamic_entity::entity::DynamicEntity;
-use crate::entity::dynamic_entity::{validate_entity_with_violations, FieldViolation};
-use crate::error::Error;
+use r_data_core_core::DynamicEntity;
+use crate::entity::dynamic_entity::validate_entity_with_violations;
 
 /// Register routes for dynamic entities
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
@@ -140,7 +139,7 @@ async fn list_entities(
     let sort_direction = Some(query.sorting.get_sort_direction());
 
     // Handle filters and also accept a "path" query param for folder-style browsing
-    let mut filter = query.filter.parse_filter();
+    let filter = query.filter.parse_filter();
     // Also honor a "folder" shorthand via sorting.sort_by when set to "path" or explicit path in query.q with prefix "path:"
     // Prefer JSON filter {"path": "/..."} from clients.
     let search_query = query.filter.q.clone();
@@ -283,7 +282,7 @@ async fn create_entity(
                     }
                     Err(e) => {
                         // Map unique violation to 409
-                        if let Error::ValidationFailed(msg) = &e {
+                        if let r_data_core_core::error::Error::ValidationFailed(msg) = &e {
                             if msg.contains("same key") {
                                 return ApiResponse::<()>::conflict(msg);
                             }
@@ -331,7 +330,7 @@ async fn get_entity(
 ) -> HttpResponse {
     let (entity_type, uuid_str) = path.into_inner();
     let fields = query.fields.get_fields();
-    let includes = query.include.get_includes();
+    let _includes = query.include.get_includes();
 
     // Validate requested fields
     if let Err(response) = validate_requested_fields(&data, &entity_type, &fields).await {
@@ -435,7 +434,7 @@ async fn update_entity(
                         ApiResponse::ok(response_data)
                     }
                     Err(e) => {
-                        if let Error::ValidationFailed(msg) = &e {
+                        if let r_data_core_core::error::Error::ValidationFailed(msg) = &e {
                             if msg.contains("same key") {
                                 return ApiResponse::<()>::conflict(msg);
                             }
@@ -498,14 +497,14 @@ async fn delete_entity(
 }
 
 /// Helper function to handle entity-related errors
-fn handle_entity_error(error: Error, entity_type: &str) -> HttpResponse {
+fn handle_entity_error(error: r_data_core_core::error::Error, entity_type: &str) -> HttpResponse {
     match error {
-        Error::NotFound(_) => ApiResponse::<()>::not_found(&format!(
+        r_data_core_core::error::Error::NotFound(_) => ApiResponse::<()>::not_found(&format!(
             "Entity type '{}' not found or not published",
             entity_type
         )),
-        Error::Validation(msg) => ApiResponse::<()>::unprocessable_entity(&msg),
-        Error::Database(_) => {
+        r_data_core_core::error::Error::Validation(msg) => ApiResponse::<()>::unprocessable_entity(&msg),
+        r_data_core_core::error::Error::Database(_) => {
             error!("Database error: {}", error);
             ApiResponse::<()>::internal_error("Database error")
         }

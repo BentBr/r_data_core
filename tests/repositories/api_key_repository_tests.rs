@@ -1,8 +1,9 @@
 use crate::common::utils;
 use r_data_core::{
     entity::admin_user::{ApiKeyRepository, ApiKeyRepositoryTrait},
-    error::{Error, Result},
+    error::Error,
 };
+use r_data_core_core::error::Result;
 use serial_test::serial;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
@@ -89,7 +90,7 @@ async fn test_create_api_key_with_non_existent_user() -> Result<()> {
     // Verify the operation fails with a foreign key constraint error
     assert!(result.is_err());
     match result {
-        Err(Error::Database(db_error)) => {
+        Err(r_data_core_core::error::Error::Database(db_error)) => {
             // Verify it's a foreign key constraint violation
             assert!(
                 db_error.to_string().contains("foreign key constraint"),

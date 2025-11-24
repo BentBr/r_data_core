@@ -3,17 +3,16 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 use uuid::Uuid;
 use r_data_core::api::{ApiState, configure_app};
-use r_data_core::cache::CacheManager;
+use r_data_core_core::cache::CacheManager;
 use r_data_core::entity::class::definition::EntityDefinition;
-use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
-use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
-use r_data_core::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
-use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
-use r_data_core::entity::field::ui::UiSettings;
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
+use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
+use r_data_core_core::field::ui::UiSettings;
 use r_data_core::services::{
     AdminUserService, ApiKeyService, EntityDefinitionService, DynamicEntityService,
 };
-use r_data_core::error::Result;
+use Result;
 use std::collections::HashMap;
 
 // Import the common module from tests
@@ -244,7 +243,20 @@ mod dynamic_entity_api_tests {
         // Create app state
         let app_state = web::Data::new(ApiState {
             db_pool: db_pool.clone(),
-            jwt_secret: "test_secret".to_string(),
+            api_config: r_data_core_core::config::ApiConfig {
+                host: "0.0.0.0".to_string(),
+                port: 8888,
+                use_tls: false,
+                api_config: r_data_core_core::config::ApiConfig { host: "0.0.0.0".to_string(), port: 8888, use_tls: false, jwt_secret: "test_secret".to_string(), jwt_expiration: 3600, enable_docs: true, cors_origins: vec![], }, permission_scheme_service: r_data_core::services::PermissionSchemeService::new(pool.clone(), cache_manager.clone(), Some(0)),
+                jwt_expiration: 3600,
+                enable_docs: true,
+                cors_origins: vec![],
+            },
+            permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                db_pool.clone(),
+                cache_manager.clone(),
+                Some(0),
+            ),
             cache_manager,
             api_key_service,
             admin_user_service,

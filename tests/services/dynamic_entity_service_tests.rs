@@ -6,12 +6,13 @@ use mockall::predicate;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
-use r_data_core::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
-use r_data_core::entity::entity_definition::definition::EntityDefinition;
-use r_data_core::entity::field::ui::UiSettings;
-use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
-use r_data_core::error::{Error, Result};
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::DynamicEntityRepositoryTrait;
+use r_data_core_core::error::Result;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::field::ui::UiSettings;
+use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
+use r_data_core::error::Error;
 
 // Create a struct to represent DynamicFields since we can't use the trait directly
 #[derive(Default)]
@@ -76,7 +77,7 @@ impl MockEntityDefinitionService {
         entity_type: &str,
     ) -> Result<EntityDefinition> {
         if !self.entity_type_exists {
-            return Err(Error::NotFound(format!(
+            return Err(r_data_core_core::error::Error::NotFound(format!(
                 "Class definition for entity type '{}' not found",
                 entity_type
             )));
@@ -170,7 +171,7 @@ impl MockEntityDefinitionService {
 
     async fn _get_entity_definition(&self, _uuid: &Uuid) -> Result<EntityDefinition> {
         if !self.entity_type_exists {
-            return Err(Error::NotFound("Class definition not found".to_string()));
+            return Err(r_data_core_core::error::Error::NotFound("Class definition not found".to_string()));
         }
 
         let mut definition = EntityDefinition::default();
@@ -236,7 +237,7 @@ impl TestService {
             .await?;
 
         if !entity_def.published {
-            return Err(Error::NotFound(format!(
+            return Err(r_data_core_core::error::Error::NotFound(format!(
                 "Entity type '{}' not found or not published",
                 entity_type
             )));
@@ -255,7 +256,7 @@ impl TestService {
             .await?;
 
         if !entity_def.published {
-            return Err(Error::NotFound(format!(
+            return Err(r_data_core_core::error::Error::NotFound(format!(
                 "Entity type '{}' not found or not published",
                 entity.entity_type
             )));
@@ -264,7 +265,7 @@ impl TestService {
         // Very basic validation - check for required fields
         for field in &entity_def.fields {
             if field.required && !entity.field_data.contains_key(&field.name) {
-                return Err(Error::Validation(format!(
+                  return Err(r_data_core_core::error::Error::Validation(format!(
                     "Required field '{}' is missing",
                     field.name
                 )));
@@ -317,7 +318,7 @@ async fn test_list_entities_nonexistent_type() {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::NotFound(_)) => (),
+        Err(r_data_core_core::error::Error::NotFound(_)) => (),
         _ => panic!("Expected NotFound error"),
     }
 }
@@ -333,7 +334,7 @@ async fn test_list_entities_unpublished_type() {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::NotFound(_)) => (),
+        Err(r_data_core_core::error::Error::NotFound(_)) => (),
         _ => panic!("Expected NotFound error"),
     }
 }
@@ -374,7 +375,7 @@ async fn test_create_entity_missing_required_field() {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::Validation(_)) => (),
+        Err(r_data_core_core::error::Error::Validation(_)) => (),
         _ => panic!("Expected Validation error"),
     }
 }

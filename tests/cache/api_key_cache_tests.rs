@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use mockall::mock;
 use mockall::predicate::*;
 use r_data_core::entity::admin_user::{ApiKey, ApiKeyRepositoryTrait};
-use r_data_core::error::Result;
+use r_data_core_core::error::Result;
 use r_data_core::services::ApiKeyService;
 use std::sync::Arc;
 use time::OffsetDateTime;

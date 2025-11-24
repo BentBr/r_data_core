@@ -1,7 +1,8 @@
 use crate::{
     entity::AbstractRDataEntity,
-    error::{Error, Result},
+    error::Error,
 };
+use r_data_core_core::error::Result;
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
@@ -228,7 +229,7 @@ impl AdminUser {
     /// Set password, hashing it with Argon2
     pub fn set_password(&mut self, password: &str) -> Result<()> {
         if password.len() < 8 {
-            return Err(Error::Validation(
+            return Err(r_data_core_core::error::Error::Validation(
                 "Password must be at least 8 characters long".to_string(),
             ));
         }
@@ -331,13 +332,15 @@ impl ApiKey {
 
     /// Generate a secure random API key
     pub fn generate_key() -> String {
+        use base64::engine::general_purpose::STANDARD_NO_PAD;
+        use base64::Engine;
         use rand::{rng, RngCore};
 
         let mut bytes = [0u8; 32];
         rng().fill_bytes(&mut bytes);
 
         // Use base64 without padding for a URL-safe token
-        base64::encode(&bytes)
+        STANDARD_NO_PAD.encode(&bytes)
     }
 
     /// Hash an API key for storage

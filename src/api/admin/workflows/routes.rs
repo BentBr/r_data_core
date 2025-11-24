@@ -1,14 +1,13 @@
-use crate::utils::cron;
+use r_data_core_core::utils;
 use actix_web::{delete, get, post, put, web, Responder};
-use chrono::{DateTime, Utc};
 use log::{error, info};
 use serde_json::Value;
-use std::str::FromStr;
 use uuid::Uuid;
 
 use crate::api::admin::workflows::models::{
     CreateWorkflowRequest, CreateWorkflowResponse, UpdateWorkflowRequest, WorkflowDetail,
-    WorkflowRunLogDto, WorkflowRunSummary, WorkflowSummary,
+    WorkflowRunLogDto, WorkflowRunSummary, WorkflowSummary, WorkflowVersionMeta,
+    WorkflowVersionPayload,
 };
 use crate::api::auth::auth_enum;
 use crate::api::query::PaginationQuery;
@@ -17,7 +16,7 @@ use crate::api::ApiResponse;
 use crate::api::ApiState;
 use crate::workflow::data::job_queue::JobQueue;
 use crate::workflow::data::jobs::FetchAndStageJob;
-use crate::workflow::data::versioning_repository::WorkflowVersioningRepository;
+use r_data_core_persistence::WorkflowVersioningRepository;
 use actix_multipart::Multipart;
 use futures_util::StreamExt;
 
@@ -94,7 +93,7 @@ pub async fn cron_preview(
         _ => return ApiResponse::<()>::unprocessable_entity("Missing expr parameter"),
     };
 
-    match cron::preview_next(&expr, 5) {
+    match utils::preview_next(&expr, 5) {
         Ok(next) => ApiResponse::ok(next),
         Err(e) => ApiResponse::<()>::unprocessable_entity(&format!("Invalid cron: {}", e)),
     }
@@ -268,7 +267,7 @@ pub async fn create_workflow(
 ) -> impl Responder {
     // Validate cron format early to return Symfony-style 422
     if let Some(cron_str) = &body.schedule_cron {
-        if let Err(e) = cron::validate_cron(cron_str) {
+        if let Err(e) = utils::validate_cron(cron_str) {
             return ApiResponse::<()>::unprocessable_entity_with_violations(
                 &format!("Invalid cron schedule: {}", e),
                 vec![ValidationViolation {
@@ -334,7 +333,7 @@ pub async fn update_workflow(
     };
     // Validate cron format early to return Symfony-style 422
     if let Some(cron_str) = &body.schedule_cron {
-        if let Err(e) = cron::validate_cron(cron_str) {
+        if let Err(e) = utils::validate_cron(cron_str) {
             return ApiResponse::<()>::unprocessable_entity_with_violations(
                 &format!("Invalid cron schedule: {}", e),
                 vec![ValidationViolation {
@@ -655,14 +654,6 @@ pub async fn list_workflow_run_logs(
     }
 }
 
-#[derive(serde::Serialize, utoipa::ToSchema)]
-pub struct WorkflowVersionMeta {
-    version_number: i32,
-    #[serde(with = "time::serde::rfc3339")]
-    created_at: time::OffsetDateTime,
-    created_by: Option<Uuid>,
-    created_by_name: Option<String>,
-}
 
 /// List versions of a workflow
 #[utoipa::path(
@@ -741,14 +732,6 @@ pub async fn list_workflow_versions(
     ApiResponse::ok(out)
 }
 
-#[derive(serde::Serialize, utoipa::ToSchema)]
-pub struct WorkflowVersionPayload {
-    version_number: i32,
-    #[serde(with = "time::serde::rfc3339")]
-    created_at: time::OffsetDateTime,
-    created_by: Option<Uuid>,
-    data: serde_json::Value,
-}
 
 /// Get a specific version snapshot of a workflow
 #[utoipa::path(

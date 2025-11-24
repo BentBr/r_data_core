@@ -1,8 +1,6 @@
-use crate::cache::CacheManager;
-use crate::{
-    entity::admin_user::{ApiKey, ApiKeyRepository, ApiKeyRepositoryTrait},
-    error::{Error, Result},
-};
+use r_data_core_core::cache::CacheManager;
+use crate::entity::admin_user::{ApiKey, ApiKeyRepository, ApiKeyRepositoryTrait};
+use r_data_core_core::error::Result;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -60,13 +58,13 @@ impl ApiKeyService {
     ) -> Result<(Uuid, String)> {
         // Validation
         if name.is_empty() {
-            return Err(Error::Validation(
+            return Err(r_data_core_core::error::Error::Validation(
                 "API key name cannot be empty".to_string(),
             ));
         }
 
         if expires_in_days < 0 {
-            return Err(Error::Validation(
+            return Err(r_data_core_core::error::Error::Validation(
                 "Expiration days cannot be negative".to_string(),
             ));
         }
@@ -159,10 +157,10 @@ impl ApiKeyService {
 
                 result
             }
-            Some(_) => Err(Error::Forbidden(
+            Some(_) => Err(r_data_core_core::error::Error::Forbidden(
                 "You don't have permission to revoke this API key".to_string(),
             )),
-            None => Err(Error::NotFound("API key not found".to_string())),
+            None => Err(r_data_core_core::error::Error::NotFound("API key not found".to_string())),
         }
     }
 
@@ -176,7 +174,7 @@ impl ApiKeyService {
         // Verify the key exists
         let key = self.get_key(key_uuid).await?;
         if key.is_none() {
-            return Err(Error::NotFound(format!(
+            return Err(r_data_core_core::error::Error::NotFound(format!(
                 "API key with UUID {} not found",
                 key_uuid
             )));
@@ -261,7 +259,7 @@ mod tests {
 
         assert!(result.is_err());
         match result {
-            Err(Error::Validation(msg)) => {
+            Err(r_data_core_core::error::Error::Validation(msg)) => {
                 assert_eq!(msg, "API key name cannot be empty");
             }
             _ => panic!("Expected validation error"),
@@ -423,7 +421,7 @@ mod tests {
         // Verify we get a NotFound error
         assert!(result.is_err());
         match result {
-            Err(Error::NotFound(msg)) => {
+            Err(r_data_core_core::error::Error::NotFound(msg)) => {
                 assert!(
                     msg.contains("not found"),
                     "Expected 'not found' in error message"

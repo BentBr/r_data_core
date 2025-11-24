@@ -1,9 +1,9 @@
 use regex::Regex;
 use serde_json::Value;
 
-use crate::entity::field::definition::FieldDefinition;
-use crate::entity::field::types::FieldType;
-use crate::error::{Error, Result};
+use r_data_core_core::field::definition::FieldDefinition;
+use r_data_core_core::field::types::FieldType;
+use r_data_core_core::error::Result;
 
 impl FieldDefinition {
     /// Handle a constraint validation for a field definition
@@ -24,7 +24,7 @@ impl FieldDefinition {
                         // Test if pattern is a valid regex
                         let pattern = constraint_value.as_str().unwrap();
                         if let Err(e) = Regex::new(pattern) {
-                            return Err(Error::Validation(format!("Invalid regex pattern: {}", e)));
+                            return Err(r_data_core_core::error::Error::Validation(format!("Invalid regex pattern: {}", e)));
                         }
                     }
                     _ => {}
@@ -94,101 +94,10 @@ impl FieldDefinition {
     }
 }
 
-/// Validate a constraint value for a field
-pub fn handle_constraint(
-    field_type: &FieldType,
-    constraint_name: &str,
-    constraint_value: &Value,
-) -> Result<()> {
-    match field_type {
-        FieldType::String | FieldType::Text | FieldType::Wysiwyg => {
-            // String constraints
-            match constraint_name {
-                "min_length" => {
-                    validate_number_constraint(constraint_value)?;
-                }
-                "max_length" => {
-                    validate_number_constraint(constraint_value)?;
-                }
-                "pattern" => {
-                    validate_string_constraint(constraint_value)?;
-
-                    // Test if pattern is a valid regex
-                    let pattern = constraint_value.as_str().unwrap();
-                    if let Err(e) = Regex::new(pattern) {
-                        return Err(Error::Validation(format!("Invalid regex pattern: {}", e)));
-                    }
-                }
-                _ => {}
-            }
-        }
-        FieldType::Integer | FieldType::Float => {
-            // Numeric constraints
-            match constraint_name {
-                "min" => {
-                    validate_number_constraint(constraint_value)?;
-                }
-                "max" => {
-                    validate_number_constraint(constraint_value)?;
-                }
-                "precision" => {
-                    validate_number_constraint(constraint_value)?;
-                }
-                "positive_only" => {
-                    validate_boolean_constraint(constraint_value)?;
-                }
-                _ => {}
-            }
-        }
-        FieldType::DateTime | FieldType::Date => {
-            // Date constraints
-            match constraint_name {
-                "min_date" => {
-                    validate_string_constraint(constraint_value)?;
-                }
-                "max_date" => {
-                    validate_string_constraint(constraint_value)?;
-                }
-                _ => {}
-            }
-        }
-        FieldType::Select | FieldType::MultiSelect => {
-            // Select constraints
-            match constraint_name {
-                "options" => {
-                    validate_array_constraint(constraint_value)?;
-                }
-                _ => {}
-            }
-        }
-        FieldType::ManyToOne | FieldType::ManyToMany => {
-            // Relation constraints
-            match constraint_name {
-                "target_class" => {
-                    validate_string_constraint(constraint_value)?;
-                }
-                _ => {}
-            }
-        }
-        FieldType::Object | FieldType::Array | FieldType::Json => {
-            // Schema constraints
-            match constraint_name {
-                "schema" => {
-                    validate_object_constraint(constraint_value)?;
-                }
-                _ => {}
-            }
-        }
-        _ => {}
-    }
-
-    Ok(())
-}
-
 /// Validate that a constraint value is a valid number
 pub fn validate_number_constraint(constraint_value: &Value) -> Result<()> {
     if !constraint_value.is_number() {
-        return Err(Error::Validation(
+        return Err(r_data_core_core::error::Error::Validation(
             "Number constraint must be a number".to_string(),
         ));
     }
@@ -199,7 +108,7 @@ pub fn validate_number_constraint(constraint_value: &Value) -> Result<()> {
 /// Validate that a constraint value is a valid string
 pub fn validate_string_constraint(constraint_value: &Value) -> Result<()> {
     if !constraint_value.is_string() {
-        return Err(Error::Validation(
+        return Err(r_data_core_core::error::Error::Validation(
             "String constraint must be a string".to_string(),
         ));
     }
@@ -210,7 +119,7 @@ pub fn validate_string_constraint(constraint_value: &Value) -> Result<()> {
 /// Validate that a constraint value is a valid boolean
 pub fn validate_boolean_constraint(constraint_value: &Value) -> Result<()> {
     if !constraint_value.is_boolean() {
-        return Err(Error::Validation(
+        return Err(r_data_core_core::error::Error::Validation(
             "Boolean constraint must be a boolean".to_string(),
         ));
     }
@@ -221,7 +130,7 @@ pub fn validate_boolean_constraint(constraint_value: &Value) -> Result<()> {
 /// Validate that a constraint value is a valid array
 pub fn validate_array_constraint(constraint_value: &Value) -> Result<()> {
     if !constraint_value.is_array() {
-        return Err(Error::Validation(
+        return Err(r_data_core_core::error::Error::Validation(
             "Array constraint must be an array".to_string(),
         ));
     }
@@ -232,7 +141,7 @@ pub fn validate_array_constraint(constraint_value: &Value) -> Result<()> {
 /// Validate that a constraint value is a valid object
 pub fn validate_object_constraint(constraint_value: &Value) -> Result<()> {
     if !constraint_value.is_object() {
-        return Err(Error::Validation(
+        return Err(r_data_core_core::error::Error::Validation(
             "Object constraint must be an object".to_string(),
         ));
     }

@@ -2,20 +2,17 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::api::admin::entity_definitions::repository::EntityDefinitionRepository;
-use crate::entity::dynamic_entity::entity::DynamicEntity;
-use crate::entity::dynamic_entity::repository::DynamicEntityRepository;
-use crate::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
-use crate::entity::entity_definition::definition::EntityDefinition;
-use crate::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
-use crate::error::Result;
+use r_data_core_persistence::EntityDefinitionRepository;
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
+use r_data_core_core::error::Result;
 use crate::workflow::data::repository::WorkflowRepository;
-use crate::workflow::data::repository_trait::WorkflowRepositoryTrait;
 use serde_json::Value as JsonValue;
 // Workflow data repository adapter
 use crate::api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use crate::workflow::data::repository_trait::WorkflowRepositoryTrait as WorkflowRepositoryTraitDef;
-use crate::workflow::data::WorkflowKind;
 
 pub struct WorkflowRepositoryAdapter {
     inner: WorkflowRepository,
@@ -359,13 +356,13 @@ impl DynamicEntityRepositoryAdapter {
 #[async_trait]
 impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
     /// Create a new entity
-    async fn create(&self, entity: &DynamicEntity) -> Result<()> {
-        self.inner.create(entity).await
+    async fn create(&self, entity: &DynamicEntity) -> r_data_core_core::error::Result<()> {
+        self.inner.create(entity).await.map_err(Into::into)
     }
 
     /// Update an existing entity
-    async fn update(&self, entity: &DynamicEntity) -> Result<()> {
-        self.inner.update(entity).await
+    async fn update(&self, entity: &DynamicEntity) -> r_data_core_core::error::Result<()> {
+        self.inner.update(entity).await.map_err(Into::into)
     }
 
     /// Get a dynamic entity by type and UUID
@@ -374,10 +371,11 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
         entity_type: &str,
         uuid: &Uuid,
         exclusive_fields: Option<Vec<String>>,
-    ) -> Result<Option<DynamicEntity>> {
+    ) -> r_data_core_core::error::Result<Option<DynamicEntity>> {
         self.inner
             .get_by_type(entity_type, uuid, exclusive_fields)
             .await
+            .map_err(Into::into)
     }
 
     /// Get all entities of a specific type with pagination
@@ -387,15 +385,16 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
         limit: i64,
         offset: i64,
         exclusive_fields: Option<Vec<String>>,
-    ) -> Result<Vec<DynamicEntity>> {
+    ) -> r_data_core_core::error::Result<Vec<DynamicEntity>> {
         self.inner
             .get_all_by_type(entity_type, limit, offset, exclusive_fields)
             .await
+            .map_err(Into::into)
     }
 
     /// Delete an entity by type and UUID
-    async fn delete_by_type(&self, entity_type: &str, uuid: &Uuid) -> Result<()> {
-        self.inner.delete_by_type(entity_type, uuid).await
+    async fn delete_by_type(&self, entity_type: &str, uuid: &Uuid) -> r_data_core_core::error::Result<()> {
+        self.inner.delete_by_type(entity_type, uuid).await.map_err(Into::into)
     }
 
     /// Filter entities by field values with advanced options
@@ -408,61 +407,63 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
         search: Option<(String, Vec<String>)>,
         sort: Option<(String, String)>,
         fields: Option<Vec<String>>,
-    ) -> Result<Vec<DynamicEntity>> {
+    ) -> r_data_core_core::error::Result<Vec<DynamicEntity>> {
         self.inner
             .filter_entities(entity_type, limit, offset, filters, search, sort, fields)
             .await
+            .map_err(Into::into)
     }
 
     /// Count entities of a specific type
-    async fn count_entities(&self, entity_type: &str) -> Result<i64> {
-        self.inner.count_entities(entity_type).await
+    async fn count_entities(&self, entity_type: &str) -> r_data_core_core::error::Result<i64> {
+        self.inner.count_entities(entity_type).await.map_err(Into::into)
     }
 }
 
 /// Repository adapter for AdminUserRepository
 pub struct AdminUserRepositoryAdapter {
-    inner: crate::entity::admin_user::repository::AdminUserRepository,
+    inner: crate::entity::admin_user::AdminUserRepository,
 }
 
 impl AdminUserRepositoryAdapter {
     /// Create a new adapter that wraps the repository implementation
-    pub fn new(repository: crate::entity::admin_user::repository::AdminUserRepository) -> Self {
+    pub fn new(repository: crate::entity::admin_user::AdminUserRepository) -> Self {
         Self { inner: repository }
     }
 }
 
 #[async_trait]
-impl crate::entity::admin_user::repository_trait::AdminUserRepositoryTrait
+impl crate::entity::admin_user::AdminUserRepositoryTrait
     for AdminUserRepositoryAdapter
 {
     async fn find_by_username_or_email(
         &self,
         username_or_email: &str,
-    ) -> Result<Option<crate::entity::admin_user::AdminUser>> {
+    ) -> r_data_core_core::error::Result<Option<r_data_core_core::admin_user::AdminUser>> {
         log::debug!("AdminUserRepositoryAdapter::find_by_username_or_email called with username_or_email: {}", username_or_email);
         self.inner
             .find_by_username_or_email(username_or_email)
             .await
+            .map_err(Into::into)
     }
 
     async fn find_by_uuid(
         &self,
         uuid: &Uuid,
-    ) -> Result<Option<crate::entity::admin_user::AdminUser>> {
+    ) -> r_data_core_core::error::Result<Option<r_data_core_core::admin_user::AdminUser>> {
         log::debug!(
             "AdminUserRepositoryAdapter::find_by_uuid called with uuid: {}",
             uuid
         );
-        self.inner.find_by_uuid(uuid).await
+        self.inner.find_by_uuid(uuid).await.map_err(Into::into)
     }
 
-    async fn update_last_login(&self, uuid: &Uuid) -> Result<()> {
+    async fn update_last_login(&self, uuid: &Uuid) -> r_data_core_core::error::Result<()> {
         log::debug!(
             "AdminUserRepositoryAdapter::update_last_login called with uuid: {}",
             uuid
         );
-        self.inner.update_last_login(uuid).await
+        self.inner.update_last_login(uuid).await.map_err(Into::into)
     }
 
     async fn create_admin_user<'a>(
@@ -475,7 +476,7 @@ impl crate::entity::admin_user::repository_trait::AdminUserRepositoryTrait
         role: Option<&'a str>,
         is_active: bool,
         creator_uuid: Uuid,
-    ) -> Result<Uuid> {
+    ) -> r_data_core_core::error::Result<Uuid> {
         log::debug!(
             "AdminUserRepositoryAdapter::create_admin_user called with username: {}",
             username
@@ -492,14 +493,15 @@ impl crate::entity::admin_user::repository_trait::AdminUserRepositoryTrait
                 creator_uuid,
             )
             .await
+            .map_err(Into::into)
     }
 
-    async fn update_admin_user(&self, user: &crate::entity::admin_user::AdminUser) -> Result<()> {
+    async fn update_admin_user(&self, user: &r_data_core_core::admin_user::AdminUser) -> Result<()> {
         log::debug!(
             "AdminUserRepositoryAdapter::update_admin_user called for user uuid: {}",
             user.uuid
         );
-        self.inner.update_admin_user(user).await
+        self.inner.update_admin_user(user).await.map_err(Into::into)
     }
 
     async fn delete_admin_user(&self, uuid: &Uuid) -> Result<()> {
@@ -507,19 +509,19 @@ impl crate::entity::admin_user::repository_trait::AdminUserRepositoryTrait
             "AdminUserRepositoryAdapter::delete_admin_user called with uuid: {}",
             uuid
         );
-        self.inner.delete_admin_user(uuid).await
+        self.inner.delete_admin_user(uuid).await.map_err(Into::into)
     }
 
     async fn list_admin_users(
         &self,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<crate::entity::admin_user::AdminUser>> {
+    ) -> r_data_core_core::error::Result<Vec<r_data_core_core::admin_user::AdminUser>> {
         log::debug!(
             "AdminUserRepositoryAdapter::list_admin_users called with limit: {}, offset: {}",
             limit,
             offset
         );
-        self.inner.list_admin_users(limit, offset).await
+        self.inner.list_admin_users(limit, offset).await.map_err(Into::into)
     }
 }
