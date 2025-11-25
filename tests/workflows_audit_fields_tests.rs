@@ -35,7 +35,7 @@ async fn create_sets_created_by_and_fk_enforced() -> anyhow::Result<()> {
     let req = CreateWorkflowRequest {
         name: format!("wf-create-{}", Uuid::now_v7()),
         description: Some("audit test".to_string()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: cfg,
@@ -91,7 +91,7 @@ async fn update_sets_updated_by_and_fk_enforced() -> anyhow::Result<()> {
     let create_req = CreateWorkflowRequest {
         name: format!("wf-update-{}", Uuid::now_v7()),
         description: Some("audit test".to_string()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: cfg.clone(),
@@ -103,7 +103,7 @@ async fn update_sets_updated_by_and_fk_enforced() -> anyhow::Result<()> {
     let update_req = UpdateWorkflowRequest {
         name: format!("wf-update-{}-edited", Uuid::now_v7()),
         description: Some("edited".to_string()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: false,
         schedule_cron: Some("*/5 * * * *".to_string()),
         config: cfg,

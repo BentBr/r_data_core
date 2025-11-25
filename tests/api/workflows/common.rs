@@ -147,7 +147,7 @@ pub async fn create_consumer_workflow(
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("consumer-wf-{}", Uuid::now_v7()),
         description: Some("Consumer workflow test".to_string()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled,
         schedule_cron,
         config,
@@ -165,7 +165,7 @@ pub async fn create_provider_workflow(
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("provider-wf-{}", Uuid::now_v7()),
         description: Some("Provider workflow test".to_string()),
-        kind: format!("{:?}", WorkflowKind::Provider),
+        kind: WorkflowKind::Provider.to_string(),
         enabled: true,
         schedule_cron: None, // Provider workflows ignore cron
         config,

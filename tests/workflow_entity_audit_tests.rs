@@ -70,7 +70,7 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
     let req = CreateWorkflowRequest {
         name: format!("wf-entity-test-{}", Uuid::now_v7()),
         description: Some("test".to_string()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: cfg,
@@ -263,7 +263,7 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     let req = CreateWorkflowRequest {
         name: format!("wf-update-test-{}", Uuid::now_v7()),
         description: Some("test".to_string()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: cfg,

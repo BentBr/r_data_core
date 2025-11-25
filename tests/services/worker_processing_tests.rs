@@ -31,7 +31,7 @@ async fn run_now_creates_queued_run_and_worker_marks_success() {
     let req = CreateWorkflowRequest {
         name: format!("test-wf-{}", Uuid::now_v7()),
         description: Some("test".into()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: serde_json::json!({

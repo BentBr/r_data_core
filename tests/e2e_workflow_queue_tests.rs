@@ -76,7 +76,7 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("e2e-wf-{}", Uuid::now_v7()),
         description: Some("e2e workflow".to_string()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: cfg,

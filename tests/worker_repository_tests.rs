@@ -24,7 +24,7 @@ async fn get_workflow_uuid_for_run_round_trip() -> anyhow::Result<()> {
     let req = CreateWorkflowRequest {
         name: format!("worker-test-{}", Uuid::now_v7()),
         description: Some("worker test".to_string()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: Some("*/5 * * * *".to_string()),
         config: serde_json::json!({

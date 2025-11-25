@@ -134,7 +134,7 @@ async fn create_provider_workflow(
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("provider-wf-{}", Uuid::now_v7()),
         description: Some("Provider workflow test".to_string()),
-        kind: format!("{:?}", WorkflowKind::Provider),
+        kind: WorkflowKind::Provider.to_string(),
         enabled: true,
         schedule_cron: None,
         config,
@@ -152,7 +152,7 @@ async fn create_consumer_workflow_with_api_source(
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("consumer-api-wf-{}", Uuid::now_v7()),
         description: Some("Consumer workflow with API source".to_string()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config,
@@ -596,7 +596,7 @@ async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("consumer-api-disabled-{}", Uuid::now_v7()),
         description: Some("Consumer workflow with API source (disabled)".to_string()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: false, // Disabled
         schedule_cron: None,
         config,
@@ -673,7 +673,7 @@ async fn test_provider_endpoint_returns_404_for_consumer_workflow() -> anyhow::R
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("consumer-wf-{}", Uuid::now_v7()),
         description: Some("Consumer workflow".to_string()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config,

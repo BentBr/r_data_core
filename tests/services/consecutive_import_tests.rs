@@ -133,7 +133,7 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
     let req = CreateWorkflowRequest {
         name: workflow_name.clone(),
         description: Some("test consecutive imports".into()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: workflow_config,

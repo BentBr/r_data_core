@@ -95,7 +95,7 @@ async fn test_workflow_update_creates_snapshot_and_increments_version() {
     let req = CreateWorkflowRequest {
         name: "wf1".to_string(),
         description: Some("desc".to_string()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: serde_json::json!({"steps": []}),
@@ -114,7 +114,7 @@ async fn test_workflow_update_creates_snapshot_and_increments_version() {
     let upd = UpdateWorkflowRequest {
         name: "wf1-upd".to_string(),
         description: Some("desc2".to_string()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: serde_json::json!({"steps": []}),

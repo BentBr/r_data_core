@@ -175,7 +175,7 @@ async fn update_workflow_sets_updated_by() -> anyhow::Result<()> {
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("wf-route-update-{}", Uuid::now_v7()),
         description: Some("route test".to_string()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: serde_json::json!({
@@ -352,7 +352,7 @@ async fn update_workflow_validates_dsl_config() -> anyhow::Result<()> {
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("wf-update-validate-{}", Uuid::now_v7()),
         description: Some("test".to_string()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: serde_json::json!({
@@ -408,7 +408,7 @@ async fn run_workflow_now_enqueues_job_to_redis_if_available() -> anyhow::Result
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("wf-run-now-test-{}", Uuid::now_v7()),
         description: Some("test".to_string()),
-        kind: format!("{:?}", WorkflowKind::Consumer),
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: serde_json::json!({
