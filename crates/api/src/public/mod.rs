@@ -2,9 +2,9 @@
 
 pub mod entities;
 pub mod queries;
+pub mod workflows;
 pub mod dynamic_entities;
 
-// Routes remain in src/api/public/*/routes.rs in the main crate
-// as they need access to concrete ApiState and service types
-// This module provides the structure and models for public routes
+// Dynamic entities routes remain in src/api/public/dynamic_entities/routes.rs
+// as they need access to validator functions from the main crate
 

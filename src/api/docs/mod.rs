@@ -16,7 +16,7 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         r_data_core_api::admin::auth::routes::admin_logout,
         r_data_core_api::admin::auth::routes::admin_refresh_token,
         r_data_core_api::admin::auth::routes::admin_revoke_all_tokens,
-        crate::api::health::admin_health_check,
+        r_data_core_api::health::admin_health_check,
         r_data_core_api::admin::entity_definitions::routes::list_entity_definitions,
         r_data_core_api::admin::entity_definitions::routes::get_entity_definition,
         r_data_core_api::admin::entity_definitions::routes::create_entity_definition,
@@ -264,20 +264,20 @@ impl Modify for JsonValueSchemaAddon {
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        crate::api::health::public_health_check,
-        crate::api::public::entities::routes::list_available_entities,
-        crate::api::public::entities::routes::list_by_path,
-        crate::api::public::queries::routes::query_entities,
+        r_data_core_api::health::public_health_check,
+        r_data_core_api::public::entities::routes::list_available_entities,
+        r_data_core_api::public::entities::routes::list_by_path,
+        r_data_core_api::public::queries::routes::query_entities,
         crate::api::public::dynamic_entities::routes::list_entities,
         crate::api::public::dynamic_entities::routes::create_entity,
         crate::api::public::dynamic_entities::routes::get_entity,
         crate::api::public::dynamic_entities::routes::update_entity,
         crate::api::public::dynamic_entities::routes::delete_entity,
-        crate::api::public::workflows::routes::get_workflow_data,
-        crate::api::public::workflows::routes::get_workflow_stats,
-        crate::api::public::workflows::routes::post_workflow_ingest,
-        crate::api::public::entities::routes::list_entity_versions,
-        crate::api::public::entities::routes::get_entity_version
+        r_data_core_api::public::workflows::routes::get_workflow_data,
+        r_data_core_api::public::workflows::routes::get_workflow_stats,
+        r_data_core_api::public::workflows::routes::post_workflow_ingest,
+        r_data_core_api::public::entities::routes::list_entity_versions,
+        r_data_core_api::public::entities::routes::get_entity_version
     ),
     components(
         schemas(

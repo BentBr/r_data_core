@@ -12,6 +12,7 @@ pub trait ApiStateTrait: Send + Sync + 'static {
     fn permission_scheme_service_ref(&self) -> &dyn std::any::Any;
     fn api_config_ref(&self) -> &dyn std::any::Any;
     fn entity_definition_service_ref(&self) -> &dyn std::any::Any;
+    fn dynamic_entity_service_ref(&self) -> Option<&dyn std::any::Any>;
     fn cache_manager_ref(&self) -> &dyn std::any::Any;
     fn workflow_service_ref(&self) -> &dyn std::any::Any;
     fn queue_ref(&self) -> &dyn std::any::Any;
@@ -56,6 +57,20 @@ pub trait ApiStateTrait: Send + Sync + 'static {
         self.queue_ref()
             .downcast_ref::<std::sync::Arc<r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue>>()
             .expect("ApiState must provide ApalisRedisQueue")
+    }
+    
+    /// Get API key service - helper method that downcasts from api_key_service_ref
+    fn api_key_service(&self) -> &r_data_core_services::ApiKeyService {
+        self.api_key_service_ref()
+            .downcast_ref::<r_data_core_services::ApiKeyService>()
+            .expect("ApiState must provide ApiKeyService")
+    }
+    
+    /// Get dynamic entity service - helper method that downcasts from dynamic_entity_service_ref
+    /// Returns None if the service is not available
+    fn dynamic_entity_service(&self) -> Option<&std::sync::Arc<r_data_core_services::DynamicEntityService>> {
+        self.dynamic_entity_service_ref()?
+            .downcast_ref::<std::sync::Arc<r_data_core_services::DynamicEntityService>>()
     }
 }
 

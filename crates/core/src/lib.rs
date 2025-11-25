@@ -9,6 +9,7 @@ pub mod error;
 pub mod field;
 pub mod maintenance;
 pub mod permissions;
+pub mod public_api;
 pub mod refresh_token;
 pub mod settings;
 pub mod utils;

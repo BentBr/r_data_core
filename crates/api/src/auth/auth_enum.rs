@@ -1,12 +1,15 @@
 use actix_web::{
-    dev::Payload, Error, FromRequest, HttpMessage, HttpRequest,
+    dev::Payload, error::ErrorUnauthorized, web, Error, FromRequest, HttpMessage, HttpRequest,
 };
 use futures::future::{ready, Ready};
 use log::debug;
+use std::future::Future;
+use std::pin::Pin;
 use uuid::Uuid;
 
 use crate::jwt::AuthUserClaims;
 use crate::api_state::ApiStateTrait;
+use crate::auth::{ApiKeyInfo, extract_and_validate_api_key};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AuthMethod {
@@ -87,5 +90,116 @@ impl FromRequest for OptionalAuth {
         // Return option based on whether claims were found
         let claims = get_or_validate_jwt(req);
         ready(Ok(OptionalAuth(claims)))
+    }
+}
+
+/// Extractor for combined required authentication (JWT, API key, or pre-shared key)
+pub struct CombinedRequiredAuth {
+    pub jwt_claims: Option<AuthUserClaims>,
+    pub api_key_info: Option<ApiKeyInfo>,
+    pub pre_shared_key_valid: bool,
+}
+
+impl FromRequest for CombinedRequiredAuth {
+    type Error = Error;
+    type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
+
+    fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
+        debug!("Handling combined required authentication FromRequest");
+
+        let req = req.clone();
+
+        Box::pin(async move {
+            // Check for JWT auth first
+            if let Some(jwt_claims) = get_or_validate_jwt(&req) {
+                return Ok(CombinedRequiredAuth {
+                    jwt_claims: Some(jwt_claims),
+                    api_key_info: None,
+                    pre_shared_key_valid: false,
+                });
+            }
+
+            // Check for API key in extensions
+            if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
+                return Ok(CombinedRequiredAuth {
+                    jwt_claims: None,
+                    api_key_info: Some(api_key_info.clone()),
+                    pre_shared_key_valid: false,
+                });
+            }
+
+            // Try API key authentication from headers
+            if req.app_data::<web::Data<dyn ApiStateTrait>>().is_some() {
+                // Check for an API key in the X-API-Key header
+                if let Some(_) = req.headers().get("X-API-Key").and_then(|h| h.to_str().ok()) {
+                    // Try to validate an API key
+                    match extract_and_validate_api_key(&req).await {
+                        Ok(Some((key, user_uuid))) => {
+                            let key_uuid = key.uuid;
+                            req.extensions_mut().insert(ApiKeyInfo {
+                                uuid: key_uuid,
+                                user_uuid,
+                                name: key.name.clone(),
+                                created_at: key.created_at,
+                                expires_at: key.expires_at,
+                            });
+
+                            return Ok(CombinedRequiredAuth {
+                                jwt_claims: None,
+                                api_key_info: Some(ApiKeyInfo {
+                                    uuid: key_uuid,
+                                    user_uuid,
+                                    name: key.name.clone(),
+                                    created_at: key.created_at,
+                                    expires_at: key.expires_at,
+                                }),
+                                pre_shared_key_valid: false,
+                            });
+                        }
+                        Ok(None) => {
+                            debug!("API key not found or invalid");
+                        }
+                        Err(e) => {
+                            debug!("API key validation error: {:?}", e);
+                        }
+                    }
+                }
+            }
+
+            // Check for pre-shared key in extensions (set by middleware or route handler)
+            if let Some(valid) = req.extensions().get::<bool>() {
+                if *valid {
+                    return Ok(CombinedRequiredAuth {
+                        jwt_claims: None,
+                        api_key_info: None,
+                        pre_shared_key_valid: true,
+                    });
+                }
+            }
+
+            // All authentication methods failed
+            Err(ErrorUnauthorized(
+                "Authentication required. Please provide a valid JWT token, API key, or pre-shared key.",
+            ))
+        })
+    }
+}
+
+impl CombinedRequiredAuth {
+    /// Get user UUID from either JWT claims or API key info
+    pub fn get_user_uuid(&self) -> Option<Uuid> {
+        // Extract from API key information
+        if let Some(api_key_info) = &self.api_key_info {
+            return Some(api_key_info.user_uuid);
+        }
+
+        // Or extract from JWT claims
+        if let Some(claims) = &self.jwt_claims {
+            if let Ok(uuid) = Uuid::parse_str(&claims.sub) {
+                return Some(uuid);
+            }
+        }
+
+        None
     }
 }

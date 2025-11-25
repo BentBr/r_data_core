@@ -1,7 +1,7 @@
-pub mod admin;
+// Admin routes moved to r_data_core_api::admin
 pub mod auth;
 pub mod docs;
-pub mod health;
+// Health routes moved to r_data_core_api::health
 pub mod middleware;
 pub mod public;
 
@@ -73,6 +73,10 @@ impl r_data_core_api::api_state::ApiStateTrait for ApiState {
         &self.entity_definition_service
     }
 
+    fn dynamic_entity_service_ref(&self) -> Option<&dyn std::any::Any> {
+        self.dynamic_entity_service.as_ref().map(|s| s as &dyn std::any::Any)
+    }
+
     fn cache_manager_ref(&self) -> &dyn std::any::Any {
         &*self.cache_manager
     }
@@ -124,14 +128,14 @@ pub fn configure_app(cfg: &mut web::ServiceConfig) {
 // Configure app with customizable options
 pub fn configure_app_with_options(cfg: &mut web::ServiceConfig, options: ApiConfiguration) {
     // Add health check endpoints
-    cfg.service(health::admin_health_check)
-        .service(health::public_health_check);
+    cfg.service(r_data_core_api::health::admin_health_check)
+        .service(r_data_core_api::health::public_health_check);
 
     let mut scope = web::scope("").wrap(middleware::ErrorHandler); // Add our error handler middleware
 
     if options.enable_admin {
         log::debug!("Registering admin routes");
-        scope = scope.configure(admin::register_routes);
+        scope = scope.configure(r_data_core_api::admin::register_routes);
     }
 
     if options.enable_public {

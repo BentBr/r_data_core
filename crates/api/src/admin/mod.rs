@@ -8,7 +8,23 @@ pub mod permissions;
 pub mod system;
 pub mod workflows;
 
-// Routes remain in src/api/admin/*/routes.rs in the main crate
-// as they need access to concrete ApiState and service types
-// This module provides the structure and models for admin routes
+use actix_web::web;
+
+/// Register all admin API routes
+pub fn register_routes(cfg: &mut web::ServiceConfig) {
+    cfg.service(
+        web::scope("/admin/api/v1")
+            .configure(auth::register_routes)
+            // Module routes
+            .service(
+                web::scope("/entity-definitions")
+                    .configure(entity_definitions::register_routes),
+            )
+            .service(web::scope("/workflows").configure(workflows::register_routes))
+            .service(web::scope("/dsl").configure(dsl::register_routes))
+            .service(web::scope("/api-keys").configure(api_keys::register_routes))
+            .service(web::scope("/permissions").configure(permissions::register_routes))
+            .service(web::scope("/system").configure(system::register_routes)),
+    );
+}
 
