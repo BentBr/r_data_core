@@ -44,7 +44,7 @@ impl MaintenanceTask for VersionPurgerTask {
         // Get settings service
         // TODO: Move SettingsService to appropriate crate
         let cache_manager = r_data_core::cache::CacheManager::new(
-            r_data_core::config::CacheConfig {
+            r_data_core_core::config::CacheConfig {
                 entity_definition_ttl: 3600,
                 api_key_ttl: 600,
                 enabled: true,
@@ -86,7 +86,7 @@ impl MaintenanceTask for VersionPurgerTask {
 
         // Initialize all three version repositories
         // TODO: Move these to persistence crate
-        let entity_repo = r_data_core::entity::version_repository::VersionRepository::new(pool.clone());
+        let entity_repo = r_data_core_persistence::VersionRepository::new(pool.clone());
         let workflow_repo = r_data_core::workflow::data::versioning_repository::WorkflowVersioningRepository::new(pool.clone());
         let definition_repo = r_data_core::api::admin::entity_definitions::versioning_repository::EntityDefinitionVersioningRepository::new(pool.clone());
 

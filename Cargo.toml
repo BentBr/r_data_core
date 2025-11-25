@@ -38,6 +38,7 @@ r_data_core_api = { path = "crates/api" }
 r_data_core_core = { path = "crates/core" }
 r_data_core_persistence = { path = "crates/persistence" }
 r_data_core_services = { path = "crates/services" }
+r_data_core_workflow = { path = "crates/workflow" }
 
 # Database
 sqlx = { version = "0.8.4", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }

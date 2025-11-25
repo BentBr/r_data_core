@@ -13,7 +13,7 @@ pub use r_data_core_api::response::ApiResponse;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_services::{AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, PermissionSchemeService};
 use crate::services::WorkflowService;
-use crate::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
+use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
 /// Shared application state
 pub struct ApiState {

@@ -8,7 +8,6 @@ pub mod notification;
 pub mod services;
 pub use r_data_core_core::utils;
 pub use r_data_core_core::versioning;
-pub mod workflow;
 
 /// The version of the library
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

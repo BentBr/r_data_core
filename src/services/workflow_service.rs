@@ -3,8 +3,8 @@ use r_data_core_services::DynamicEntityService;
 use crate::services::workflow::entity_persistence::{
     create_entity, create_or_update_entity, update_entity, PersistenceContext,
 };
-use crate::workflow::data::repository_trait::WorkflowRepositoryTrait;
-use crate::workflow::data::Workflow;
+use r_data_core_persistence::WorkflowRepositoryTrait;
+use r_data_core_workflow::data::Workflow;
 use cron::Schedule;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -71,7 +71,7 @@ impl WorkflowService {
                 .map_err(|e| anyhow::anyhow!("Invalid cron schedule: {}", e))?;
         }
         // Strict DSL: parse and validate
-        let program = crate::workflow::dsl::DslProgram::from_config(&req.config)?;
+        let program = r_data_core_workflow::dsl::DslProgram::from_config(&req.config)?;
         program.validate()?;
         self.repo.create(req, created_by).await
     }
@@ -87,7 +87,7 @@ impl WorkflowService {
                 .map_err(|e| anyhow::anyhow!("Invalid cron schedule: {}", e))?;
         }
         // Strict DSL: parse and validate
-        let program = crate::workflow::dsl::DslProgram::from_config(&req.config)?;
+        let program = r_data_core_workflow::dsl::DslProgram::from_config(&req.config)?;
         program.validate()?;
         self.repo.update(uuid, req, updated_by).await
     }
@@ -217,9 +217,9 @@ impl WorkflowService {
         let inline = String::from_utf8_lossy(bytes).to_string();
         let payloads = match input_type.as_str() {
             "csv" => {
-                use crate::workflow::data::adapters::format::FormatHandler;
+                use r_data_core_workflow::data::adapters::format::FormatHandler;
                 let format_cfg = Self::csv_format_from_config(&wf.config);
-                crate::workflow::data::adapters::format::csv::CsvFormatHandler::new()
+                r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new()
                     .parse(inline.as_bytes(), &format_cfg)?
             }
             "ndjson" => inline
@@ -275,12 +275,12 @@ impl WorkflowService {
             .ok_or_else(|| anyhow::anyhow!("Workflow not found"))?;
 
         // Try to infer format from DSL
-        let program = crate::workflow::dsl::DslProgram::from_config(&wf.config)?;
+        let program = r_data_core_workflow::dsl::DslProgram::from_config(&wf.config)?;
         let format_type = program
             .steps
             .first()
             .and_then(|step| {
-                if let crate::workflow::dsl::FromDef::Format { format, .. } = &step.from {
+                if let r_data_core_workflow::dsl::FromDef::Format { format, .. } = &step.from {
                     Some(format.format_type.clone())
                 } else {
                     None
@@ -294,7 +294,7 @@ impl WorkflowService {
                     .steps
                     .first()
                     .and_then(|step| {
-                        if let crate::workflow::dsl::FromDef::Format { format, .. } = &step.from {
+                        if let r_data_core_workflow::dsl::FromDef::Format { format, .. } = &step.from {
                             Some(format.options.clone())
                         } else {
                             None
@@ -302,8 +302,8 @@ impl WorkflowService {
                     })
                     .unwrap_or_else(|| serde_json::json!({}));
                 {
-                    use crate::workflow::data::adapters::format::FormatHandler;
-                    crate::workflow::data::adapters::format::csv::CsvFormatHandler::new()
+                    use r_data_core_workflow::data::adapters::format::FormatHandler;
+                    r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new()
                         .parse(bytes, &format_cfg)?
                 }
             }
@@ -312,7 +312,7 @@ impl WorkflowService {
                     .steps
                     .first()
                     .and_then(|step| {
-                        if let crate::workflow::dsl::FromDef::Format { format, .. } = &step.from {
+                        if let r_data_core_workflow::dsl::FromDef::Format { format, .. } = &step.from {
                             Some(format.options.clone())
                         } else {
                             None
@@ -320,8 +320,8 @@ impl WorkflowService {
                     })
                     .unwrap_or_else(|| serde_json::json!({}));
                 {
-                    use crate::workflow::data::adapters::format::FormatHandler;
-                    crate::workflow::data::adapters::format::json::JsonFormatHandler::new()
+                    use r_data_core_workflow::data::adapters::format::FormatHandler;
+                    r_data_core_workflow::data::adapters::format::json::JsonFormatHandler::new()
                         .parse(bytes, &format_cfg)?
                 }
             }
@@ -369,13 +369,13 @@ impl WorkflowService {
             .ok_or_else(|| anyhow::anyhow!("Workflow not found"))?;
 
         // Parse DSL program to get FromDef steps
-        let program = crate::workflow::dsl::DslProgram::from_config(&wf.config)
+        let program = r_data_core_workflow::dsl::DslProgram::from_config(&wf.config)
             .map_err(|e| anyhow::anyhow!("Failed to parse DSL for fetch: {}", e))?;
 
         // Find Format-based FromDef steps that need fetching
         let mut total_staged = 0_i64;
         for step in &program.steps {
-            if let crate::workflow::dsl::FromDef::Format { source, format, .. } = &step.from {
+            if let r_data_core_workflow::dsl::FromDef::Format { source, format, .. } = &step.from {
                 // Skip "api" source type (handled by POST endpoint)
                 if source.source_type == "api" {
                     continue;
@@ -386,21 +386,21 @@ impl WorkflowService {
                     .auth
                     .as_ref()
                     .map(|auth_cfg| {
-                        crate::workflow::data::adapters::auth::create_auth_provider(auth_cfg)
+                        r_data_core_workflow::data::adapters::auth::create_auth_provider(auth_cfg)
                     })
                     .transpose()?;
 
                 // Create source context
-                let source_ctx = crate::workflow::data::adapters::source::SourceContext {
+                let source_ctx = r_data_core_workflow::data::adapters::source::SourceContext {
                     auth: auth_provider,
                     config: source.config.clone(),
                 };
 
                 // Get appropriate source based on source_type
-                let source_adapter: Box<dyn crate::workflow::data::adapters::source::DataSource> =
+                let source_adapter: Box<dyn r_data_core_workflow::data::adapters::source::DataSource> =
                     match source.source_type.as_str() {
                         "uri" => {
-                            Box::new(crate::workflow::data::adapters::source::uri::UriSource::new())
+                            Box::new(r_data_core_workflow::data::adapters::source::uri::UriSource::new())
                         }
                         _ => {
                             return Err(anyhow::anyhow!(
@@ -421,13 +421,13 @@ impl WorkflowService {
 
                 // Get format handler
                 let format_handler: Box<
-                    dyn crate::workflow::data::adapters::format::FormatHandler,
+                    dyn r_data_core_workflow::data::adapters::format::FormatHandler,
                 > = match format.format_type.as_str() {
                     "csv" => Box::new(
-                        crate::workflow::data::adapters::format::csv::CsvFormatHandler::new(),
+                        r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new(),
                     ),
                     "json" => Box::new(
-                        crate::workflow::data::adapters::format::json::JsonFormatHandler::new(),
+                        r_data_core_workflow::data::adapters::format::json::JsonFormatHandler::new(),
                     ),
                     _ => {
                         return Err(anyhow::anyhow!(
@@ -478,7 +478,7 @@ impl WorkflowService {
             .ok_or_else(|| anyhow::anyhow!("Workflow not found"))?;
 
         // Build DSL program from config; require presence and validation
-        let program = match crate::workflow::dsl::DslProgram::from_config(&wf.config) {
+        let program = match r_data_core_workflow::dsl::DslProgram::from_config(&wf.config) {
             Ok(p) => {
                 if let Err(e) = p.validate() {
                     return self
@@ -511,23 +511,23 @@ impl WorkflowService {
                         let mut entity_ops_ok = true;
                         for (to_def, produced) in outputs {
                             // Handle Format outputs with Push mode
-                            if let crate::workflow::dsl::ToDef::Format { output, format, .. } =
+                            if let r_data_core_workflow::dsl::ToDef::Format { output, format, .. } =
                                 &to_def
                             {
-                                if let crate::workflow::dsl::OutputMode::Push {
+                                if let r_data_core_workflow::dsl::OutputMode::Push {
                                     destination,
                                     method,
                                 } = output
                                 {
                                     // Serialize data using format handler
                                     let format_handler: Box<
-                                        dyn crate::workflow::data::adapters::format::FormatHandler,
+                                        dyn r_data_core_workflow::data::adapters::format::FormatHandler,
                                     > = match format.format_type.as_str() {
                                         "csv" => Box::new(
-                                            crate::workflow::data::adapters::format::csv::CsvFormatHandler::new(),
+                                            r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new(),
                                         ),
                                         "json" => Box::new(
-                                            crate::workflow::data::adapters::format::json::JsonFormatHandler::new(),
+                                            r_data_core_workflow::data::adapters::format::json::JsonFormatHandler::new(),
                                         ),
                                         _ => {
                                             let _ = self
@@ -575,12 +575,12 @@ impl WorkflowService {
                                         .auth
                                         .as_ref()
                                         .map(|auth_cfg| {
-                                            crate::workflow::data::adapters::auth::create_auth_provider(auth_cfg)
+                                            r_data_core_workflow::data::adapters::auth::create_auth_provider(auth_cfg)
                                         })
                                         .transpose()?;
 
                                     // Create destination context
-                                    let dest_ctx = crate::workflow::data::adapters::destination::DestinationContext {
+                                    let dest_ctx = r_data_core_workflow::data::adapters::destination::DestinationContext {
                                         auth: auth_provider,
                                         method: *method,
                                         config: destination.config.clone(),
@@ -588,10 +588,10 @@ impl WorkflowService {
 
                                     // Get appropriate destination based on destination_type
                                     let dest_adapter: Box<
-                                        dyn crate::workflow::data::adapters::destination::DataDestination,
+                                        dyn r_data_core_workflow::data::adapters::destination::DataDestination,
                                     > = match destination.destination_type.as_str() {
                                         "uri" => Box::new(
-                                            crate::workflow::data::adapters::destination::uri::UriDestination::new(),
+                                            r_data_core_workflow::data::adapters::destination::uri::UriDestination::new(),
                                         ),
                                         _ => {
                                             let _ = self
@@ -633,7 +633,7 @@ impl WorkflowService {
                             }
 
                             // Handle Entity outputs
-                            if let crate::workflow::dsl::ToDef::Entity {
+                            if let r_data_core_workflow::dsl::ToDef::Entity {
                                 entity_definition,
                                 path,
                                 mode,
@@ -646,8 +646,8 @@ impl WorkflowService {
                                     // For update mode, merge payload into produced to ensure update_key is available
                                     let produced_for_update = if matches!(
                                         mode,
-                                        crate::workflow::dsl::EntityWriteMode::Update
-                                            | crate::workflow::dsl::EntityWriteMode::CreateOrUpdate
+                                        r_data_core_workflow::dsl::EntityWriteMode::Update
+                                            | r_data_core_workflow::dsl::EntityWriteMode::CreateOrUpdate
                                     ) {
                                         let mut merged = produced.clone();
                                         if let (Some(merged_obj), Some(payload_obj)) =
@@ -680,7 +680,7 @@ impl WorkflowService {
                                     };
 
                                     let result = match mode {
-                                        crate::workflow::dsl::EntityWriteMode::Create => {
+                                        r_data_core_workflow::dsl::EntityWriteMode::Create => {
                                             let create_ctx = PersistenceContext {
                                                 entity_type: entity_definition.clone(),
                                                 produced: produced.clone(),
@@ -691,22 +691,22 @@ impl WorkflowService {
                                             };
                                             create_entity(de_service, &create_ctx).await
                                         }
-                                        crate::workflow::dsl::EntityWriteMode::Update => {
+                                        r_data_core_workflow::dsl::EntityWriteMode::Update => {
                                             update_entity(de_service, &ctx).await
                                         }
-                                        crate::workflow::dsl::EntityWriteMode::CreateOrUpdate => {
+                                        r_data_core_workflow::dsl::EntityWriteMode::CreateOrUpdate => {
                                             create_or_update_entity(de_service, &ctx).await
                                         }
                                     };
                                     if let Err(e) = result {
                                         let operation = match mode {
-                                            crate::workflow::dsl::EntityWriteMode::Create => {
+                                            r_data_core_workflow::dsl::EntityWriteMode::Create => {
                                                 "create"
                                             }
-                                            crate::workflow::dsl::EntityWriteMode::Update => {
+                                            r_data_core_workflow::dsl::EntityWriteMode::Update => {
                                                 "update"
                                             }
-                                            crate::workflow::dsl::EntityWriteMode::CreateOrUpdate => {
+                                            r_data_core_workflow::dsl::EntityWriteMode::CreateOrUpdate => {
                                                 "create_or_update"
                                             }
                                         };

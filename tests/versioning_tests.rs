@@ -1,7 +1,7 @@
 use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core_api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
-use r_data_core::entity::version_repository::VersionRepository;
+use r_data_core_persistence::VersionRepository;
 use r_data_core_services::{EntityDefinitionService, VersionService};
 use r_data_core::workflow::data::repository::WorkflowRepository;
 use r_data_core::workflow::data::WorkflowKind;

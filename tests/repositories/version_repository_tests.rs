@@ -1,4 +1,4 @@
-use r_data_core::entity::version_repository::VersionRepository;
+use r_data_core_persistence::VersionRepository;
 use sqlx::Row;
 use uuid::Uuid;
 

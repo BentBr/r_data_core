@@ -8,11 +8,11 @@ use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTr
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use r_data_core_core::error::Result;
-use crate::workflow::data::repository::WorkflowRepository;
+use r_data_core_persistence::WorkflowRepository;
 use serde_json::Value as JsonValue;
 // Workflow data repository adapter
 use r_data_core_api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
-use crate::workflow::data::repository_trait::WorkflowRepositoryTrait as WorkflowRepositoryTraitDef;
+use r_data_core_persistence::WorkflowRepositoryTrait as WorkflowRepositoryTraitDef;
 
 pub struct WorkflowRepositoryAdapter {
     inner: WorkflowRepository,
@@ -26,7 +26,7 @@ impl WorkflowRepositoryAdapter {
 
 #[async_trait]
 impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
-    async fn list_all(&self) -> anyhow::Result<Vec<crate::workflow::data::Workflow>> {
+    async fn list_all(&self) -> anyhow::Result<Vec<r_data_core_workflow::data::Workflow>> {
         self.inner.list_all().await
     }
 
@@ -34,7 +34,7 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         &self,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<Vec<crate::workflow::data::Workflow>> {
+    ) -> anyhow::Result<Vec<r_data_core_workflow::data::Workflow>> {
         self.inner.list_paginated(limit, offset).await
     }
 
@@ -45,7 +45,7 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
     async fn get_by_uuid(
         &self,
         uuid: Uuid,
-    ) -> anyhow::Result<Option<crate::workflow::data::Workflow>> {
+    ) -> anyhow::Result<Option<r_data_core_workflow::data::Workflow>> {
         self.inner.get_by_uuid(uuid).await
     }
 
@@ -422,18 +422,18 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
 
 /// Repository adapter for AdminUserRepository
 pub struct AdminUserRepositoryAdapter {
-    inner: crate::entity::admin_user::AdminUserRepository,
+    inner: r_data_core_persistence::AdminUserRepository,
 }
 
 impl AdminUserRepositoryAdapter {
     /// Create a new adapter that wraps the repository implementation
-    pub fn new(repository: crate::entity::admin_user::AdminUserRepository) -> Self {
+    pub fn new(repository: r_data_core_persistence::AdminUserRepository) -> Self {
         Self { inner: repository }
     }
 }
 
 #[async_trait]
-impl crate::entity::admin_user::AdminUserRepositoryTrait
+impl r_data_core_persistence::AdminUserRepositoryTrait
     for AdminUserRepositoryAdapter
 {
     async fn find_by_username_or_email(

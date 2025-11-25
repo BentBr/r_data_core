@@ -3,7 +3,7 @@
 use actix_web::{test, web, App};
 use r_data_core::api::{configure_app, ApiState};
 use r_data_core_core::cache::CacheManager;
-use r_data_core::config::CacheConfig;
+use r_data_core_core::config::CacheConfig;
 use r_data_core_core::admin_user::AdminUser;
 use r_data_core::entity::admin_user::{AdminUserRepository, ApiKeyRepository};
 use r_data_core_persistence::ApiKeyRepositoryTrait;

@@ -2,7 +2,7 @@ use actix_web::{get, post, web, Responder};
 
 use crate::api::auth::auth_enum;
 use r_data_core_api::response::{ApiResponse, ValidationViolation};
-use crate::workflow::dsl::{
+use r_data_core_workflow::dsl::{
     ArithmeticOp, ArithmeticTransform, ConcatTransform, DslProgram, DslStep, EntityFilter,
     EntityWriteMode, FormatConfig, FromDef, Operand, OutputMode, SourceConfig, StringOperand,
     ToDef, Transform,

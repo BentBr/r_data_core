@@ -7,7 +7,7 @@ use tokio::sync::Mutex;
 use tokio_cron_scheduler::{Job, JobScheduler};
 use uuid::Uuid;
 
-use r_data_core::config::load_worker_config;
+use r_data_core_core::config::load_worker_config;
 use r_data_core::services::adapters::EntityDefinitionRepositoryAdapter;
 use r_data_core::services::bootstrap::{
     init_cache_manager, init_logger_with_default, init_pg_pool,
@@ -17,10 +17,10 @@ use r_data_core::services::{
     WorkflowRepositoryAdapter, WorkflowService,
 };
 use r_data_core_services::{DynamicEntityService, EntityDefinitionService};
-use r_data_core::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
-use r_data_core::workflow::data::job_queue::JobQueue;
-use r_data_core::workflow::data::jobs::FetchAndStageJob;
-use r_data_core::workflow::data::repository::WorkflowRepository;
+use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
+use r_data_core_workflow::data::job_queue::JobQueue;
+use r_data_core_workflow::data::jobs::FetchAndStageJob;
+use r_data_core_persistence::WorkflowRepository;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -70,7 +70,7 @@ async fn main() -> anyhow::Result<()> {
                         workflow_id: Uuid,
                         cron: String,
                         pool: sqlx::Pool<sqlx::Postgres>,
-                        queue_cfg: Arc<r_data_core::config::QueueConfig>|
+                        queue_cfg: Arc<r_data_core_core::config::QueueConfig>|
      -> std::pin::Pin<
         Box<dyn std::future::Future<Output = anyhow::Result<Uuid>> + Send>,
     > {

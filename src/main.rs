@@ -14,7 +14,6 @@ mod entity;
 mod error;
 mod notification;
 mod services;
-mod workflow;
 
 // Todo: These modules will be implemented later
 // mod notification;
@@ -23,7 +22,7 @@ use r_data_core_persistence::EntityDefinitionRepository;
 use crate::api::{ApiResponse, ApiState};
 use r_data_core_core::cache::CacheManager;
 use crate::config::load_app_config;
-use crate::entity::admin_user::{AdminUserRepository, ApiKeyRepository};
+use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
 use r_data_core_persistence::DynamicEntityRepository;
 use crate::services::adapters::{
     AdminUserRepositoryAdapter, DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter,
@@ -32,8 +31,8 @@ use r_data_core_services::{AdminUserService, ApiKeyService, DynamicEntityService
 use crate::services::ApiKeyRepositoryAdapter;
 use crate::services::WorkflowRepositoryAdapter;
 use crate::services::WorkflowService;
-use crate::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
-use crate::workflow::data::repository::WorkflowRepository;
+use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
+use r_data_core_persistence::WorkflowRepository;
 
 // 404 handler function
 async fn default_404_handler() -> impl actix_web::Responder {

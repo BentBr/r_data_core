@@ -5,9 +5,9 @@ use uuid::Uuid;
 
 use crate::api::auth::auth_enum::CombinedRequiredAuth;
 use crate::api::ApiState;
-use crate::workflow::data::adapters::auth::{AuthConfig, KeyLocation};
-use crate::workflow::data::adapters::format::FormatHandler;
-use crate::workflow::dsl::DslProgram;
+use r_data_core_workflow::data::adapters::auth::{AuthConfig, KeyLocation};
+use r_data_core_workflow::data::adapters::format::FormatHandler;
+use r_data_core_workflow::dsl::DslProgram;
 
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
@@ -59,7 +59,7 @@ pub async fn get_workflow_data(
     };
 
     // Only provider workflows can be accessed via GET
-    if workflow.kind != crate::workflow::data::WorkflowKind::Provider {
+    if workflow.kind != r_data_core_workflow::data::WorkflowKind::Provider {
         return HttpResponse::NotFound().json(json!({"error": "Workflow not found"}));
     }
 
@@ -114,7 +114,7 @@ pub async fn get_workflow_data(
 
     // Check if workflow has from.entity sources
     for step in &program.steps {
-        if let crate::workflow::dsl::FromDef::Entity {
+        if let r_data_core_workflow::dsl::FromDef::Entity {
             entity_definition,
             filter,
             ..
@@ -192,8 +192,8 @@ pub async fn get_workflow_data(
     let mut format_outputs = Vec::new();
     let mut format_config = None;
     for (to_def, data) in all_outputs {
-        if let crate::workflow::dsl::ToDef::Format { format, output, .. } = to_def {
-            if matches!(output, crate::workflow::dsl::OutputMode::Api) {
+        if let r_data_core_workflow::dsl::ToDef::Format { format, output, .. } = to_def {
+            if matches!(output, r_data_core_workflow::dsl::OutputMode::Api) {
                 if format_config.is_none() {
                     format_config = Some(format.clone());
                 }
@@ -213,7 +213,7 @@ pub async fn get_workflow_data(
     // Serialize based on format
     match format.format_type.as_str() {
         "csv" => {
-            let handler = crate::workflow::data::adapters::format::csv::CsvFormatHandler::new();
+            let handler = r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new();
             match handler.serialize(&all_data, &format.options) {
                 Ok(bytes) => {
                     return HttpResponse::Ok().content_type("text/csv").body(bytes);
@@ -226,7 +226,7 @@ pub async fn get_workflow_data(
             }
         }
         "json" => {
-            let handler = crate::workflow::data::adapters::format::json::JsonFormatHandler::new();
+            let handler = r_data_core_workflow::data::adapters::format::json::JsonFormatHandler::new();
             match handler.serialize(&all_data, &format.options) {
                 Ok(bytes) => {
                     return HttpResponse::Ok()
@@ -304,7 +304,7 @@ pub async fn get_workflow_stats(
 
     for step in &program.steps {
         // Check from format
-        if let crate::workflow::dsl::FromDef::Format { format, source, .. } = &step.from {
+        if let r_data_core_workflow::dsl::FromDef::Format { format, source, .. } = &step.from {
             formats.push(format.format_type.clone());
             if let Some(auth_config) = &source.auth {
                 auth_required = true;
@@ -317,9 +317,9 @@ pub async fn get_workflow_stats(
             }
         }
         // Check to format
-        if let crate::workflow::dsl::ToDef::Format { format, output, .. } = &step.to {
+        if let r_data_core_workflow::dsl::ToDef::Format { format, output, .. } = &step.to {
             formats.push(format.format_type.clone());
-            if matches!(output, crate::workflow::dsl::OutputMode::Api) {
+            if matches!(output, r_data_core_workflow::dsl::OutputMode::Api) {
                 // Provider workflow endpoint - check for pre-shared key requirement
                 if extract_provider_auth_config(&workflow.config).is_some() {
                     auth_required = true;
@@ -380,7 +380,7 @@ pub async fn post_workflow_ingest(
     };
 
     // Only consumer workflows can accept POST
-    if workflow.kind != crate::workflow::data::WorkflowKind::Consumer {
+    if workflow.kind != r_data_core_workflow::data::WorkflowKind::Consumer {
         return HttpResponse::MethodNotAllowed()
             .json(json!({"error": "This endpoint only accepts POST for consumer workflows"}));
     }
@@ -408,7 +408,7 @@ pub async fn post_workflow_ingest(
 
     // Check for from.api source WITHOUT endpoint field (accepts POST)
     let has_api_source_accepting_post = program.steps.iter().any(|step| {
-        if let crate::workflow::dsl::FromDef::Format { source, .. } = &step.from {
+        if let r_data_core_workflow::dsl::FromDef::Format { source, .. } = &step.from {
             source.source_type == "api" && source.config.get("endpoint").is_none()
         } else {
             false

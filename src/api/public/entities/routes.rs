@@ -11,7 +11,7 @@ use crate::api::auth::auth_enum::CombinedRequiredAuth;
 use r_data_core_api::response::ApiResponse;
 use crate::api::ApiState;
 use r_data_core_persistence::DynamicEntityRepository;
-use crate::entity::version_repository::VersionRepository;
+use r_data_core_persistence::VersionRepository;
 use r_data_core_services::VersionService;
 
 /// List all available entity types

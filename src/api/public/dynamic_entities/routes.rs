@@ -9,7 +9,7 @@ use r_data_core_api::query::StandardQuery;
 use r_data_core_api::response::{ApiResponse, ValidationViolation};
 use crate::api::ApiState;
 use r_data_core_core::DynamicEntity;
-use crate::entity::dynamic_entity::validate_entity_with_violations;
+use crate::entity::dynamic_entity::validator::{validate_entity_with_violations, FieldViolation};
 
 /// Register routes for dynamic entities
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
@@ -234,7 +234,7 @@ async fn create_entity(
                     "field_data": field_data
                 });
 
-                let validation_result = validate_entity_with_violations(&entity_json, &entity_def);
+                let validation_result: Result<Vec<FieldViolation>, _> = validate_entity_with_violations(&entity_json, &entity_def);
                 match validation_result {
                     Ok(ref violations) if !violations.is_empty() => {
                         // Convert to Symfony-style violations

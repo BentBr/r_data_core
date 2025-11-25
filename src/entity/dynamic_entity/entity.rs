@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::field::FieldDefinition;
-use crate::entity::DynamicFields;
+use r_data_core_core::domain::DynamicFields;
 use r_data_core_core::error::Result;
 
 // Define traits locally since value module is missing
