@@ -5,10 +5,8 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use r_data_core::{
-    error::Error,
-    services::EntityDefinitionService,
-};
+use r_data_core::error::Error;
+use r_data_core_services::EntityDefinitionService;
 use r_data_core_core::error::Result;
 use r_data_core_core::{
     entity_definition::definition::EntityDefinition,

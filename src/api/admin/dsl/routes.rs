@@ -1,14 +1,14 @@
 use actix_web::{get, post, web, Responder};
 
 use crate::api::auth::auth_enum;
-use crate::api::response::{ApiResponse, ValidationViolation};
+use r_data_core_api::response::{ApiResponse, ValidationViolation};
 use crate::workflow::dsl::{
-    ArithmeticOp, ArithmeticTransform, ConcatTransform, DslProgram, EntityFilter,
+    ArithmeticOp, ArithmeticTransform, ConcatTransform, DslProgram, DslStep, EntityFilter,
     EntityWriteMode, FormatConfig, FromDef, Operand, OutputMode, SourceConfig, StringOperand,
     ToDef, Transform,
 };
 
-use super::models::{
+use r_data_core_api::admin::dsl::models::{
     DslFieldSpec, DslOptionsAndExamplesResponse, DslOptionsResponse, DslTypeSpec,
     DslValidateRequest, DslValidateResponse,
 };
@@ -31,8 +31,14 @@ pub async fn validate_dsl(
     payload: web::Json<DslValidateRequest>,
     _: auth_enum::RequiredAuth,
 ) -> impl Responder {
+    // Convert Vec<Value> to Vec<DslStep> for validation
+    // This is a temporary workaround until workflow is migrated to a crate
+    let steps: Result<Vec<DslStep>, _> = payload.steps.iter().map(|v| serde_json::from_value(v.clone())).collect();
+    let Ok(steps) = steps else {
+        return ApiResponse::<()>::unprocessable_entity("Invalid DSL steps format");
+    };
     let program = DslProgram {
-        steps: payload.steps.clone(),
+        steps,
     };
     match program.validate() {
         Ok(()) => ApiResponse::ok(DslValidateResponse { valid: true }),

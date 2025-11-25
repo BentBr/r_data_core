@@ -7,7 +7,7 @@ use futures_util::future::{ok, LocalBoxFuture, Ready};
 use log::{error, warn};
 use uuid::Uuid;
 
-use crate::api::response::{ApiResponse, ResponseMeta, Status};
+use r_data_core_api::response::{ApiResponse, ResponseMeta, Status};
 
 /// Error handler middleware to ensure all responses follow our API standards
 pub struct ErrorHandler;

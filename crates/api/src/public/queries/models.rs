@@ -1,3 +1,5 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -14,3 +16,4 @@ pub struct AdvancedEntityQuery {
     pub include_related: Option<bool>,
     pub fields: Option<Vec<String>>,
 }
+

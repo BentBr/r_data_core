@@ -1,6 +1,4 @@
-use r_data_core::{
-    entity::refresh_token::{RefreshTokenRepository, RefreshTokenRepositoryTrait},
-};
+use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
 use r_data_core_core::error::Result;
 use serial_test::serial;
 use std::sync::Arc;

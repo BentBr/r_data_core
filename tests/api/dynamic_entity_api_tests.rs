@@ -252,7 +252,7 @@ mod dynamic_entity_api_tests {
                 enable_docs: true,
                 cors_origins: vec![],
             },
-            permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
                 db_pool.clone(),
                 cache_manager.clone(),
                 Some(0),

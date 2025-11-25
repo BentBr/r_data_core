@@ -8,12 +8,12 @@ use serde_json::json;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::models::{
+use r_data_core_api::admin::entity_definitions::models::{
     ApplySchemaRequest, EntityDefinitionVersionMeta, EntityDefinitionVersionPayload, PathUuid,
 };
 use r_data_core_persistence::EntityDefinitionVersioningRepository;
-use crate::api::query::PaginationQuery;
-use crate::api::response::ApiResponse;
+use r_data_core_api::admin::entity_definitions::models::PaginationQuery;
+use r_data_core_api::response::ApiResponse;
 use crate::api::ApiState;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use super::conversions::entity_definition_to_schema_model;

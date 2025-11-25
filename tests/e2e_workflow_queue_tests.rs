@@ -1,9 +1,9 @@
 use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core_persistence::DynamicEntityRepositoryTrait;
 use r_data_core_core::DynamicEntity;
+use r_data_core_services::EntityDefinitionService;
 use r_data_core::services::{
     adapters::{DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter},
-    EntityDefinitionService,
     WorkflowRepositoryAdapter,
     WorkflowService,
 };
@@ -73,10 +73,10 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
         ]
     });
 
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("e2e-wf-{}", Uuid::now_v7()),
         description: Some("e2e workflow".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: format!("{:?}", WorkflowKind::Consumer),
         enabled: true,
         schedule_cron: None,
         config: cfg,
@@ -122,7 +122,7 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
     let ed_repo = EntityDefinitionRepository::new(pool.clone());
     let ed_adapter = EntityDefinitionRepositoryAdapter::new(ed_repo);
     let ed_service = EntityDefinitionService::new_without_cache(Arc::new(ed_adapter));
-    let de_service = r_data_core::services::DynamicEntityService::new(
+    let de_service = r_data_core_services::DynamicEntityService::new(
         Arc::new(de_adapter),
         Arc::new(ed_service),
     );

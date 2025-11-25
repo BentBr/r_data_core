@@ -8,9 +8,10 @@ use r_data_core::{
         ApiState,
     },
     config::CacheConfig,
-    entity::admin_user::{AdminUserRepository, ApiKeyRepository, ApiKeyRepositoryTrait},
-    services::{AdminUserService, ApiKeyService, EntityDefinitionService},
+    entity::admin_user::{AdminUserRepository, ApiKeyRepository},
 };
+use r_data_core_persistence::ApiKeyRepositoryTrait;
+use r_data_core_services::{AdminUserService, ApiKeyService, EntityDefinitionService};
 use r_data_core_core::error::Result;
 use r_data_core_api::jwt::AuthUserClaims;
 use r_data_core_core::cache::CacheManager;
@@ -128,7 +129,7 @@ mod tests {
                         enable_docs: true,
                         cors_origins: vec![],
                     },
-                    permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                    permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
                         pool.clone(),
                         cache_manager.clone(),
                         Some(0),
@@ -235,7 +236,7 @@ mod tests {
                         enable_docs: true,
                         cors_origins: vec![],
                     },
-                    permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                    permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
                         pool.clone(),
                         cache_manager.clone(),
                         Some(0),
@@ -358,7 +359,7 @@ mod tests {
                             enable_docs: true,
                             cors_origins: vec![],
                         },
-                        permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                        permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
                             pool.clone(),
                             cache_manager.clone(),
                             Some(0),
@@ -459,7 +460,7 @@ mod tests {
                             enable_docs: true,
                             cors_origins: vec![],
                         },
-                        permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                        permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
                             pool.clone(),
                             cache_manager.clone(),
                             Some(0),
@@ -567,7 +568,7 @@ mod tests {
                             enable_docs: true,
                             cors_origins: vec![],
                         },
-                        permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                        permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
                             pool.clone(),
                             cache_manager.clone(),
                             Some(0),
@@ -723,7 +724,7 @@ mod tests {
                             enable_docs: true,
                             cors_origins: vec![],
                         },
-                        permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                        permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
                             pool.clone(),
                             cache_manager.clone(),
                             Some(0),
@@ -881,7 +882,7 @@ mod tests {
                         enable_docs: true,
                         cors_origins: vec![],
                     },
-                    permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                    permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
                         pool.clone(),
                         cache_manager.clone(),
                         Some(0),

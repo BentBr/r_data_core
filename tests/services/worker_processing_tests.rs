@@ -1,7 +1,7 @@
 use r_data_core::services::workflow_service::WorkflowService;
 use r_data_core::workflow::data::repository::WorkflowRepository;
 use r_data_core::services::WorkflowRepositoryAdapter;
-use r_data_core::api::admin::workflows::models::CreateWorkflowRequest;
+use r_data_core_api::admin::workflows::models::CreateWorkflowRequest;
 use r_data_core::workflow::data::WorkflowKind;
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
@@ -31,7 +31,7 @@ async fn run_now_creates_queued_run_and_worker_marks_success() {
     let req = CreateWorkflowRequest {
         name: format!("test-wf-{}", Uuid::now_v7()),
         description: Some("test".into()),
-        kind: WorkflowKind::Consumer,
+        kind: format!("{:?}", WorkflowKind::Consumer),
         enabled: true,
         schedule_cron: None,
         config: serde_json::json!({

@@ -1,3 +1,5 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
 use std::sync::Arc;
 
 use sqlx::PgPool;
@@ -8,16 +10,29 @@ use r_data_core_core::error::Result;
 use r_data_core_core::settings::{EntityVersioningSettings, SystemSettingKey};
 use r_data_core_persistence::SystemSettingsRepository;
 
+/// Service for managing system settings with caching
 pub struct SettingsService {
+    /// Database connection pool
     pub pool: PgPool,
+    /// Cache manager for settings
     pub cache: Arc<CacheManager>,
 }
 
 impl SettingsService {
-    pub fn new(pool: PgPool, cache: Arc<CacheManager>) -> Self {
+    /// Create a new settings service
+    ///
+    /// # Arguments
+    /// * `pool` - Database connection pool
+    /// * `cache` - Cache manager
+    #[must_use]
+    pub const fn new(pool: PgPool, cache: Arc<CacheManager>) -> Self {
         Self { pool, cache }
     }
 
+    /// Get entity versioning settings with caching
+    ///
+    /// # Errors
+    /// Returns an error if database query fails or cache operation fails
     pub async fn get_entity_versioning_settings(&self) -> Result<EntityVersioningSettings> {
         let cache_key = SystemSettingKey::EntityVersioning.cache_key();
         if let Some(cached) = self
@@ -37,19 +52,27 @@ impl SettingsService {
                 None => EntityVersioningSettings::default(),
             };
 
-        // cache
+        // Cache the settings
         let _ = self
             .cache
             .set(&cache_key, &settings, None)
             .await
             .map_err(|e| {
-                log::warn!("Failed to cache settings: {}", e);
+                log::warn!("Failed to cache settings: {e}");
                 e
             });
 
         Ok(settings)
     }
 
+    /// Update entity versioning settings
+    ///
+    /// # Arguments
+    /// * `new_settings` - New versioning settings
+    /// * `updated_by` - UUID of user updating the settings
+    ///
+    /// # Errors
+    /// Returns an error if database update fails
     pub async fn update_entity_versioning_settings(
         &self,
         new_settings: &EntityVersioningSettings,
@@ -68,3 +91,4 @@ impl SettingsService {
         Ok(())
     }
 }
+

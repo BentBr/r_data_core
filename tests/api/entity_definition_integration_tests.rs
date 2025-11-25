@@ -6,8 +6,8 @@ use r_data_core::{
     api::ApiState,
     config::CacheConfig,
     entity::admin_user::{AdminUserRepository, ApiKeyRepository},
-    services::{AdminUserService, ApiKeyService, EntityDefinitionService},
 };
+use r_data_core_services::{AdminUserService, ApiKeyService, EntityDefinitionService};
 use r_data_core_core::error::Result;
 use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use r_data_core_api::jwt::AuthUserClaims;
@@ -136,7 +136,7 @@ mod tests {
                         enable_docs: true,
                         cors_origins: vec![],
                     },
-                    permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+                    permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
                         pool.clone(),
                         cache_manager.clone(),
                         Some(0),

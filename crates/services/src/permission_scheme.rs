@@ -2,12 +2,13 @@
 
 use std::sync::Arc;
 
+use sqlx::PgPool;
+use uuid::Uuid;
+
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::error::Result;
 use r_data_core_core::permissions::permission_scheme::PermissionScheme;
 use r_data_core_persistence::PermissionSchemeRepository;
-use sqlx::PgPool;
-use uuid::Uuid;
 
 /// Service for managing permission schemes with caching
 pub struct PermissionSchemeService {
@@ -22,9 +23,9 @@ impl PermissionSchemeService {
     /// # Arguments
     /// * `pool` - Database connection pool
     /// * `cache_manager` - Cache manager for caching schemes
-    /// * `cache_ttl` - Optional cache TTL in seconds (uses entity_definition_ttl if None)
+    /// * `cache_ttl` - Optional cache TTL in seconds (uses `entity_definition_ttl` if None)
     #[must_use]
-    pub fn new(
+    pub const fn new(
         pool: PgPool,
         cache_manager: Arc<CacheManager>,
         cache_ttl: Option<u64>,
@@ -38,7 +39,7 @@ impl PermissionSchemeService {
 
     /// Generate cache key for permission scheme
     fn cache_key(&self, uuid: &Uuid) -> String {
-        format!("permission_scheme:{}", uuid)
+        format!("permission_scheme:{uuid}")
     }
 
     /// Get a permission scheme by UUID with caching
@@ -63,7 +64,7 @@ impl PermissionSchemeService {
         if let Some(ref scheme) = scheme {
             let ttl = self.cache_ttl;
             if let Err(e) = self.cache_manager.set(&cache_key, scheme, ttl).await {
-                log::warn!("Failed to cache permission scheme {}: {}", uuid, e);
+                log::warn!("Failed to cache permission scheme {uuid}: {e}");
             }
         }
 
@@ -84,7 +85,7 @@ impl PermissionSchemeService {
     /// Get permission scheme for a user
     ///
     /// If user has no scheme assigned, returns None (empty permissions).
-    /// SuperAdmin always has all permissions (handled at application level).
+    /// `SuperAdmin` always has all permissions (handled at application level).
     ///
     /// # Arguments
     /// * `scheme_uuid` - Optional scheme UUID from user
@@ -120,7 +121,7 @@ impl PermissionSchemeService {
         let cache_key = self.cache_key(&uuid);
         let ttl = self.cache_ttl;
         if let Err(e) = self.cache_manager.set(&cache_key, scheme, ttl).await {
-            log::warn!("Failed to cache new permission scheme {}: {}", uuid, e);
+            log::warn!("Failed to cache new permission scheme {uuid}: {e}");
         }
 
         Ok(uuid)
@@ -144,7 +145,11 @@ impl PermissionSchemeService {
         // Invalidate cache
         let cache_key = self.cache_key(&scheme.base.uuid);
         if let Err(e) = self.cache_manager.delete(&cache_key).await {
-            log::warn!("Failed to invalidate cache for permission scheme {}: {}", scheme.base.uuid, e);
+            log::warn!(
+                "Failed to invalidate cache for permission scheme {}: {}",
+                scheme.base.uuid,
+                e
+            );
         }
 
         Ok(())
@@ -163,7 +168,7 @@ impl PermissionSchemeService {
         // Invalidate cache
         let cache_key = self.cache_key(&uuid);
         if let Err(e) = self.cache_manager.delete(&cache_key).await {
-            log::warn!("Failed to invalidate cache for permission scheme {}: {}", uuid, e);
+            log::warn!("Failed to invalidate cache for permission scheme {uuid}: {e}");
         }
 
         Ok(())

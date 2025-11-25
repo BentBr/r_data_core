@@ -2,9 +2,10 @@ use super::create_test_cache_manager;
 use async_trait::async_trait;
 use mockall::mock;
 use mockall::predicate::*;
-use r_data_core::entity::admin_user::{ApiKey, ApiKeyRepositoryTrait};
+use r_data_core_core::admin_user::ApiKey;
+use r_data_core_persistence::ApiKeyRepositoryTrait;
 use r_data_core_core::error::Result;
-use r_data_core::services::ApiKeyService;
+use r_data_core_services::ApiKeyService;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -39,7 +40,7 @@ fn create_test_api_key() -> (ApiKey, Uuid) {
     let key_uuid = Uuid::now_v7();
     // Use the actual hash of "test_api_key_12345" to match what validate_api_key will compute
     let api_key_str = "test_api_key_12345";
-    let key_hash = r_data_core::entity::admin_user::ApiKey::hash_api_key(api_key_str)
+    let key_hash = r_data_core_core::admin_user::ApiKey::hash_api_key(api_key_str)
         .unwrap_or_else(|_| "test_hash".to_string());
     let api_key = ApiKey {
         uuid: key_uuid,

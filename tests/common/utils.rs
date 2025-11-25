@@ -7,10 +7,9 @@ use r_data_core_persistence::DynamicEntityRepository;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::field::ui::UiSettings;
 use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
-use r_data_core::error::Error; use r_data_core_core::error::Result;
-use r_data_core::services::{
-    DynamicEntityService, EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService,
-};
+use r_data_core_core::error::Result;
+use r_data_core_services::EntityDefinitionService;
+use r_data_core::services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 use r_data_core::workflow::data::repository::WorkflowRepository;
 use serde_json::json;

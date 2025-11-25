@@ -11,7 +11,7 @@ use r_data_core_core::error::Result;
 use crate::workflow::data::repository::WorkflowRepository;
 use serde_json::Value as JsonValue;
 // Workflow data repository adapter
-use crate::api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
+use r_data_core_api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use crate::workflow::data::repository_trait::WorkflowRepositoryTrait as WorkflowRepositoryTraitDef;
 
 pub struct WorkflowRepositoryAdapter {

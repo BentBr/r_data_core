@@ -12,7 +12,6 @@ use r_data_core_core::error::Result;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::field::ui::UiSettings;
 use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
-use r_data_core::error::Error;
 
 // Create a struct to represent DynamicFields since we can't use the trait directly
 #[derive(Default)]

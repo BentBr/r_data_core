@@ -1,6 +1,6 @@
 use r_data_core_core::DynamicEntity;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
-use crate::services::dynamic_entity_service::DynamicEntityService;
+use r_data_core_services::DynamicEntityService;
 use crate::services::workflow::value_formatting::{
     build_normalized_field_data, normalize_field_data_by_type, normalize_path,
 };

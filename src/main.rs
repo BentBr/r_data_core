@@ -28,12 +28,8 @@ use r_data_core_persistence::DynamicEntityRepository;
 use crate::services::adapters::{
     AdminUserRepositoryAdapter, DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter,
 };
-use crate::services::AdminUserService;
+use r_data_core_services::{AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, PermissionSchemeService};
 use crate::services::ApiKeyRepositoryAdapter;
-use crate::services::ApiKeyService;
-use crate::services::DynamicEntityService;
-use crate::services::EntityDefinitionService;
-use crate::services::PermissionSchemeService;
 use crate::services::WorkflowRepositoryAdapter;
 use crate::services::WorkflowService;
 use crate::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;

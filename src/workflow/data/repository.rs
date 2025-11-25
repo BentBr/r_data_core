@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use super::repository_trait::WorkflowRepositoryTrait;
 use super::{Workflow, WorkflowKind};
-use crate::api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
+use r_data_core_api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use r_data_core_persistence::WorkflowVersioningRepository;
 use std::str::FromStr;
 
@@ -74,7 +74,7 @@ impl WorkflowRepository {
         )
         .bind(&req.name)
         .bind(req.description.as_deref())
-        .bind(req.kind.to_string())
+        .bind(&req.kind) // req.kind is already a String
         .bind(req.enabled)
         .bind(req.schedule_cron.as_deref())
         .bind(&req.config)
@@ -109,7 +109,7 @@ impl WorkflowRepository {
         .bind(uuid)
         .bind(&req.name)
         .bind(req.description.as_deref())
-        .bind(req.kind.to_string())
+        .bind(&req.kind) // req.kind is already a String
         .bind(req.enabled)
         .bind(req.schedule_cron.as_deref())
         .bind(&req.config)

@@ -1,4 +1,5 @@
-use crate::entity::admin_user::{AdminUser, AdminUserRepositoryTrait};
+use r_data_core_core::admin_user::AdminUser;
+use r_data_core_persistence::AdminUserRepositoryTrait;
 use r_data_core_core::error::Result;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -135,8 +136,7 @@ impl AdminUserService {
         let existing_user = self.repository.find_by_uuid(uuid).await?;
         if existing_user.is_none() {
             return Err(r_data_core_core::error::Error::NotFound(format!(
-                "User with UUID {} not found",
-                uuid
+                "User with UUID {uuid} not found"
             )));
         }
 
@@ -157,7 +157,7 @@ impl AdminUserService {
 mod tests {
     use super::*;
     use r_data_core_core::admin_user::{UserRole, UserStatus};
-    use crate::entity::AbstractRDataEntity;
+    use r_data_core_core::domain::AbstractRDataEntity;
     use async_trait::async_trait;
     use mockall::mock;
     use mockall::predicate::*;

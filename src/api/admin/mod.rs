@@ -9,6 +9,9 @@ pub mod workflows;
 use actix_web::web;
 
 /// Register all admin API routes
+/// 
+/// Route handlers remain in the main crate as they need access to concrete ApiState
+/// and service types. Models are in the API crate (r_data_core_api::admin::*).
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/admin/api/v1")

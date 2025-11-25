@@ -7,7 +7,7 @@ use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepos
 use r_data_core_core::field::types::FieldType;
 use r_data_core_core::field::FieldDefinition;
 use r_data_core_core::error::Result;
-use r_data_core::services::EntityDefinitionService;
+use r_data_core_services::EntityDefinitionService;
 use std::collections::HashMap;
 use std::sync::Arc;
 use time::OffsetDateTime;

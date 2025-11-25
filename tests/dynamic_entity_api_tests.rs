@@ -1,6 +1,6 @@
 use log::warn;
 use r_data_core_persistence::EntityDefinitionRepository;
-use r_data_core::api::public::entities::models::BrowseKind;
+use r_data_core_api::public::entities::models::BrowseKind;
 use r_data_core_core::error::Result;
 use r_data_core::api::public::entities::repository::EntityRepository;
 use r_data_core_core::DynamicEntity;
@@ -8,8 +8,7 @@ use r_data_core_persistence::DynamicEntityRepository;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::field::ui::UiSettings;
 use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
-use r_data_core::error::Error;
-use r_data_core::services::{DynamicEntityService, EntityDefinitionService};
+use r_data_core_services::{DynamicEntityService, EntityDefinitionService};
 use serde_json::json;
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -1091,7 +1090,7 @@ mod dynamic_entity_tests {
 
         // Test 2: Query entities at "/" - should return parent entity with has_children=true
         let pub_repo = EntityRepository::new(pool.clone());
-        let (items, total) = pub_repo.browse_by_path("/", 100, 0).await?;
+        let (items, _total) = pub_repo.browse_by_path("/", 100, 0).await?;
 
         let parent_item = items.iter().find(|item| item.name == "test");
         assert!(parent_item.is_some(), "Should find parent entity at /");

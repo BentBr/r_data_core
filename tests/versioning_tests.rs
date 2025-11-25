@@ -1,8 +1,8 @@
 use r_data_core_persistence::EntityDefinitionRepository;
-use r_data_core::api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
+use r_data_core_api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use r_data_core::entity::version_repository::VersionRepository;
-use r_data_core::services::{EntityDefinitionService, VersionService};
+use r_data_core_services::{EntityDefinitionService, VersionService};
 use r_data_core::workflow::data::repository::WorkflowRepository;
 use r_data_core::workflow::data::WorkflowKind;
 use sqlx::Row;
@@ -95,7 +95,7 @@ async fn test_workflow_update_creates_snapshot_and_increments_version() {
     let req = CreateWorkflowRequest {
         name: "wf1".to_string(),
         description: Some("desc".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: format!("{:?}", WorkflowKind::Consumer),
         enabled: true,
         schedule_cron: None,
         config: serde_json::json!({"steps": []}),
@@ -114,7 +114,7 @@ async fn test_workflow_update_creates_snapshot_and_increments_version() {
     let upd = UpdateWorkflowRequest {
         name: "wf1-upd".to_string(),
         description: Some("desc2".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: format!("{:?}", WorkflowKind::Consumer),
         enabled: true,
         schedule_cron: None,
         config: serde_json::json!({"steps": []}),

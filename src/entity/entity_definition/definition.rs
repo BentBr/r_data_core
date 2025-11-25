@@ -430,8 +430,8 @@ impl EntityDefinition {
     /// Convert to API schema model
     pub fn to_schema_model(
         &self,
-    ) -> crate::api::admin::entity_definitions::models::EntityDefinitionSchema {
-        use crate::api::admin::entity_definitions::models::EntityDefinitionSchema;
+    ) -> r_data_core_api::admin::entity_definitions::models::EntityDefinitionSchema {
+        use r_data_core_api::admin::entity_definitions::models::EntityDefinitionSchema;
 
         EntityDefinitionSchema {
             uuid: Some(self.uuid),

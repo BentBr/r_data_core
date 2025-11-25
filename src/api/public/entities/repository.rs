@@ -1,4 +1,4 @@
-use super::models::{BrowseKind, BrowseNode, EntityTypeInfo};
+use r_data_core_api::public::entities::models::{BrowseKind, BrowseNode, EntityTypeInfo};
 use r_data_core_core::error::Result;
 use sqlx::PgPool;
 use std::collections::{HashMap, HashSet};

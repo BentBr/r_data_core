@@ -1,4 +1,4 @@
-use r_data_core::api::admin::workflows::models::CreateWorkflowRequest;
+use r_data_core_api::admin::workflows::models::CreateWorkflowRequest;
 use r_data_core::workflow::data::repository::WorkflowRepository;
 use r_data_core::workflow::data::WorkflowKind;
 use uuid::Uuid;
@@ -24,7 +24,7 @@ async fn get_workflow_uuid_for_run_round_trip() -> anyhow::Result<()> {
     let req = CreateWorkflowRequest {
         name: format!("worker-test-{}", Uuid::now_v7()),
         description: Some("worker test".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: format!("{:?}", WorkflowKind::Consumer),
         enabled: true,
         schedule_cron: Some("*/5 * * * *".to_string()),
         config: serde_json::json!({

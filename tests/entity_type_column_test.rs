@@ -11,10 +11,11 @@ use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepos
 use r_data_core_core::field::ui::UiSettings;
 use r_data_core_core::field::{FieldDefinition, FieldType};
 use r_data_core_core::field::options::FieldValidation;
-use r_data_core::error::Error; use r_data_core_core::error::Result;
-use r_data_core::services::{
-    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, WorkflowService,
+use r_data_core_core::error::Result;
+use r_data_core_services::{
+    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
 };
+use r_data_core::services::WorkflowService;
 use r_data_core::workflow::data::repository::WorkflowRepository;
 use serde_json::json;
 use sqlx::PgPool;
@@ -265,7 +266,7 @@ async fn create_test_app(
             enable_docs: true,
             cors_origins: vec![],
         },
-        permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+        permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
             pool.clone(),
             cache_manager.clone(),
             Some(0),

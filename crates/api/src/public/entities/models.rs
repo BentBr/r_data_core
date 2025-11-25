@@ -1,3 +1,5 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -25,11 +27,6 @@ pub struct EntityQuery {
     pub sort_direction: Option<String>,
 }
 
-/// Helper function to convert a JSON value
-pub fn convert_value(value: &serde_json::Value) -> serde_json::Value {
-    value.clone()
-}
-
 /// Kind of browse node
 #[derive(Debug, Serialize, Deserialize, ToSchema, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -55,3 +52,39 @@ pub struct BrowseNode {
     /// Whether the folder has children (only meaningful when kind = folder)
     pub has_children: Option<bool>,
 }
+
+/// Version metadata for entity versions
+#[derive(Debug, Serialize, ToSchema)]
+pub struct VersionMeta {
+    pub version_number: i32,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: time::OffsetDateTime,
+    pub created_by: Option<Uuid>,
+    pub created_by_name: Option<String>,
+}
+
+/// Version payload containing the actual entity data
+#[derive(Debug, Serialize, ToSchema)]
+pub struct VersionPayload {
+    pub version_number: i32,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: time::OffsetDateTime,
+    pub created_by: Option<Uuid>,
+    pub data: serde_json::Value,
+}
+
+/// Request body for querying entities
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct EntityQueryRequest {
+    /// Entity type to query
+    pub entity_type: String,
+    /// Filter by parent UUID
+    pub parent_uuid: Option<Uuid>,
+    /// Filter by exact path
+    pub path: Option<String>,
+    /// Maximum number of results (default: 20, max: 100)
+    pub limit: Option<i64>,
+    /// Number of results to skip (default: 0)
+    pub offset: Option<i64>,
+}
+

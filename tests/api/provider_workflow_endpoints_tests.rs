@@ -3,11 +3,10 @@ use r_data_core::api::{configure_app, ApiState};
 use r_data_core_core::cache::CacheManager;
 use r_data_core::config::CacheConfig;
 use r_data_core_core::admin_user::AdminUser;
-use r_data_core::entity::admin_user::{AdminUserRepository, ApiKeyRepository, ApiKeyRepositoryTrait};
-use r_data_core::services::{
-    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
-    WorkflowRepositoryAdapter,
-};
+use r_data_core::entity::admin_user::{AdminUserRepository, ApiKeyRepository};
+use r_data_core_persistence::ApiKeyRepositoryTrait;
+use r_data_core_services::{AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService};
+use r_data_core::services::WorkflowRepositoryAdapter;
 use r_data_core::workflow::data::repository::WorkflowRepository;
 use r_data_core::workflow::data::WorkflowKind;
 use std::sync::Arc;
@@ -79,7 +78,7 @@ async fn setup_app_with_entities() -> anyhow::Result<(
             enable_docs: true,
             cors_origins: vec![],
         },
-        permission_scheme_service: r_data_core::services::PermissionSchemeService::new(
+        permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
             pool.clone(),
             cache_manager.clone(),
             Some(0),
@@ -132,10 +131,10 @@ async fn create_provider_workflow(
     config: serde_json::Value,
 ) -> anyhow::Result<Uuid> {
     let repo = WorkflowRepository::new(pool.clone());
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("provider-wf-{}", Uuid::now_v7()),
         description: Some("Provider workflow test".to_string()),
-        kind: WorkflowKind::Provider,
+        kind: format!("{:?}", WorkflowKind::Provider),
         enabled: true,
         schedule_cron: None,
         config,
@@ -150,10 +149,10 @@ async fn create_consumer_workflow_with_api_source(
     config: serde_json::Value,
 ) -> anyhow::Result<Uuid> {
     let repo = WorkflowRepository::new(pool.clone());
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("consumer-api-wf-{}", Uuid::now_v7()),
         description: Some("Consumer workflow with API source".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: format!("{:?}", WorkflowKind::Consumer),
         enabled: true,
         schedule_cron: None,
         config,
@@ -594,10 +593,10 @@ async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
 
     // Create workflow as disabled
     let repo = WorkflowRepository::new(pool.clone());
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("consumer-api-disabled-{}", Uuid::now_v7()),
         description: Some("Consumer workflow with API source (disabled)".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: format!("{:?}", WorkflowKind::Consumer),
         enabled: false, // Disabled
         schedule_cron: None,
         config,
@@ -671,10 +670,10 @@ async fn test_provider_endpoint_returns_404_for_consumer_workflow() -> anyhow::R
     });
 
     let repo = WorkflowRepository::new(pool.clone());
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("consumer-wf-{}", Uuid::now_v7()),
         description: Some("Consumer workflow".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: format!("{:?}", WorkflowKind::Consumer),
         enabled: true,
         schedule_cron: None,
         config,

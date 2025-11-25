@@ -1,25 +1,25 @@
-use crate::api::auth::auth_enum;
+use crate::api::auth::auth_enum::OptionalAuth;
 use actix_web::{post, web, HttpMessage, HttpRequest, Responder};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
-use validator::Validate;
 
 use r_data_core_api::jwt::{
     generate_access_token, AuthUserClaims, ACCESS_TOKEN_EXPIRY_SECONDS,
     REFRESH_TOKEN_EXPIRY_SECONDS,
 };
-use crate::api::response::ApiResponse;
+use r_data_core_api::response::ApiResponse;
 use crate::api::ApiState;
-use crate::entity::admin_user::{AdminUserRepository, AdminUserRepositoryTrait};
-use crate::entity::refresh_token::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
+use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
+use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
 use r_data_core_core::admin_user::UserRole;
 use r_data_core_core::refresh_token::RefreshToken;
 use std::sync::Arc;
 
-use crate::api::admin::auth::models::{
+use r_data_core_api::admin::auth::models::{
     AdminLoginRequest, AdminLoginResponse, AdminRegisterRequest, LogoutRequest,
     RefreshTokenRequest, RefreshTokenResponse,
 };
+use validator::Validate;
 
 /// Login endpoint for admin users
 #[utoipa::path(
@@ -42,20 +42,22 @@ pub async fn admin_login(
     data: web::Data<ApiState>,
     login_req: Option<web::Json<AdminLoginRequest>>,
 ) -> impl Responder {
-    // Check if JSON body is provided
+    // Check if JSON body is provided and validate
     let login_req = match login_req {
-        Some(req) => req,
+        Some(req) => {
+            let inner = req.into_inner();
+            // Validate the request data using the Validate trait
+            if let Err(errors) = inner.validate() {
+                // Format validation errors into a readable message
+                let error_message = format!("Validation error: {}", errors);
+                return ApiResponse::unprocessable_entity(&error_message);
+            }
+            inner
+        }
         None => {
             return ApiResponse::bad_request("Missing or invalid JSON body");
         }
     };
-
-    // Validate the request data using the Validate trait
-    if let Err(errors) = login_req.validate() {
-        // Format validation errors into a readable message
-        let error_message = format!("Validation error: {}", errors);
-        return ApiResponse::unprocessable_entity(&error_message);
-    }
 
     // Create repository
     let repo = AdminUserRepository::new(Arc::new(data.db_pool.clone()));
@@ -214,7 +216,7 @@ pub async fn admin_login(
 pub async fn admin_register(
     data: web::Data<ApiState>,
     register_req: Option<web::Json<AdminRegisterRequest>>,
-    auth: auth_enum::OptionalAuth,
+    auth: OptionalAuth,
 ) -> impl Responder {
     // Check if JSON body is provided
     let register_req = match register_req {
@@ -225,6 +227,7 @@ pub async fn admin_register(
     };
 
     // Validate the request data using the Validate trait
+    let register_req = register_req.into_inner();
     if let Err(errors) = register_req.validate() {
         // Format validation errors into a readable message
         let error_message = format!("Validation error: {}", errors);

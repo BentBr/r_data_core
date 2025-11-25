@@ -1,10 +1,10 @@
 use actix_web::{get, put, web, Responder};
 
-use crate::api::admin::system::models::{EntityVersioningSettingsDto, UpdateSettingsBody};
+use r_data_core_api::admin::system::models::{EntityVersioningSettingsDto, UpdateSettingsBody};
 use crate::api::auth::auth_enum::RequiredAuth;
-use crate::api::response::ApiResponse;
+use r_data_core_api::response::ApiResponse;
 use crate::api::ApiState;
-use crate::services::settings_service::SettingsService;
+use r_data_core_services::SettingsService;
 
 /// Register system routes
 pub fn register_routes(cfg: &mut web::ServiceConfig) {

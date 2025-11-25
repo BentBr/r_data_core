@@ -3,7 +3,7 @@ use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::api::models::HealthData;
+use r_data_core_api::models::HealthData;
 
 /// Common health check handler for both admin and public API routes
 pub async fn health_check_handler(req: HttpRequest) -> impl Responder {

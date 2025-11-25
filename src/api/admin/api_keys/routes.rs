@@ -3,11 +3,11 @@ use log::error;
 use uuid::Uuid;
 
 use crate::api::auth::auth_enum;
-use crate::api::query::PaginationQuery;
-use crate::api::response::ApiResponse;
+use r_data_core_api::query::PaginationQuery;
+use r_data_core_api::response::ApiResponse;
 use crate::api::ApiState;
-use crate::entity::admin_user::{ApiKeyRepository, ApiKeyRepositoryTrait};
-use super::models::{ApiKeyCreatedResponse, ApiKeyResponse, CreateApiKeyRequest, ReassignApiKeyRequest};
+use r_data_core_persistence::{ApiKeyRepository, ApiKeyRepositoryTrait};
+use r_data_core_api::admin::api_keys::models::{ApiKeyCreatedResponse, ApiKeyResponse, CreateApiKeyRequest, ReassignApiKeyRequest};
 use std::sync::Arc;
 
 /// Register API key routes

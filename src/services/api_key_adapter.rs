@@ -1,4 +1,4 @@
-use crate::entity::admin_user::{ApiKeyRepository, ApiKeyRepositoryTrait};
+use r_data_core_persistence::{ApiKeyRepository, ApiKeyRepositoryTrait};
 use r_data_core_core::admin_user::ApiKey;
 use r_data_core_core::error::Result;
 use async_trait::async_trait;

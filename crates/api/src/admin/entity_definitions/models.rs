@@ -1,10 +1,12 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-// Re-export PaginationQuery from the main query module
-pub use crate::api::query::PaginationQuery;
+// Re-export PaginationQuery from the API crate's query module
+pub use crate::query::PaginationQuery;
 
 /// Path parameter for endpoints that accept a UUID in the URL
 #[derive(Debug, Deserialize, ToSchema)]
@@ -290,7 +292,7 @@ pub struct ApplySchemaRequest {
     pub uuid: Option<Uuid>,
 }
 
-#[derive(serde::Serialize, ToSchema)]
+#[derive(Serialize, ToSchema)]
 pub struct EntityDefinitionVersionMeta {
     pub version_number: i32,
     #[serde(with = "time::serde::rfc3339")]
@@ -299,7 +301,7 @@ pub struct EntityDefinitionVersionMeta {
     pub created_by_name: Option<String>,
 }
 
-#[derive(serde::Serialize, ToSchema)]
+#[derive(Serialize, ToSchema)]
 pub struct EntityDefinitionVersionPayload {
     pub version_number: i32,
     #[serde(with = "time::serde::rfc3339")]
@@ -307,3 +309,4 @@ pub struct EntityDefinitionVersionPayload {
     pub created_by: Option<Uuid>,
     pub data: serde_json::Value,
 }
+

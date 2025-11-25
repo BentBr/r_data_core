@@ -172,10 +172,10 @@ async fn update_workflow_sets_updated_by() -> anyhow::Result<()> {
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
         .fetch_one(&pool)
         .await?;
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("wf-route-update-{}", Uuid::now_v7()),
         description: Some("route test".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: format!("{:?}", WorkflowKind::Consumer),
         enabled: true,
         schedule_cron: None,
         config: serde_json::json!({
@@ -349,10 +349,10 @@ async fn update_workflow_validates_dsl_config() -> anyhow::Result<()> {
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
         .fetch_one(&pool)
         .await?;
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("wf-update-validate-{}", Uuid::now_v7()),
         description: Some("test".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: format!("{:?}", WorkflowKind::Consumer),
         enabled: true,
         schedule_cron: None,
         config: serde_json::json!({
@@ -405,10 +405,10 @@ async fn run_workflow_now_enqueues_job_to_redis_if_available() -> anyhow::Result
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
         .fetch_one(&pool)
         .await?;
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("wf-run-now-test-{}", Uuid::now_v7()),
         description: Some("test".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: format!("{:?}", WorkflowKind::Consumer),
         enabled: true,
         schedule_cron: None,
         config: serde_json::json!({

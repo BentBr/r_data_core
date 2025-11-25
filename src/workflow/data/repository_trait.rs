@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use uuid::Uuid;
 
 use super::Workflow;
-use crate::api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
+use r_data_core_api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
 
 #[async_trait]
 pub trait WorkflowRepositoryTrait: Send + Sync {

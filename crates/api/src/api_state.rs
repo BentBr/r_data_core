@@ -9,6 +9,10 @@ pub trait ApiStateTrait: Send + Sync + 'static {
     fn db_pool(&self) -> &PgPool;
     fn jwt_secret(&self) -> &str;
     fn api_key_service_ref(&self) -> &dyn std::any::Any;
+    fn permission_scheme_service_ref(&self) -> &dyn std::any::Any;
+    fn api_config_ref(&self) -> &dyn std::any::Any;
+    fn entity_definition_service_ref(&self) -> &dyn std::any::Any;
+    fn cache_manager_ref(&self) -> &dyn std::any::Any;
 }
 
 pub struct ApiConfiguration {

@@ -4,15 +4,15 @@ use log::{error, info};
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::api::admin::workflows::models::{
+use r_data_core_api::admin::workflows::models::{
     CreateWorkflowRequest, CreateWorkflowResponse, UpdateWorkflowRequest, WorkflowDetail,
     WorkflowRunLogDto, WorkflowRunSummary, WorkflowSummary, WorkflowVersionMeta,
     WorkflowVersionPayload,
 };
 use crate::api::auth::auth_enum;
-use crate::api::query::PaginationQuery;
-use crate::api::response::ValidationViolation;
-use crate::api::ApiResponse;
+use r_data_core_api::query::PaginationQuery;
+use r_data_core_api::response::ValidationViolation;
+use r_data_core_api::response::ApiResponse;
 use crate::api::ApiState;
 use crate::workflow::data::job_queue::JobQueue;
 use crate::workflow::data::jobs::FetchAndStageJob;
@@ -191,7 +191,7 @@ pub async fn list_workflows(
                     WorkflowSummary {
                         uuid: workflow.uuid,
                         name: workflow.name,
-                        kind: workflow.kind,
+                        kind: format!("{:?}", workflow.kind),
                         enabled: workflow.enabled,
                         schedule_cron: workflow.schedule_cron,
                         has_api_endpoint,
@@ -231,7 +231,7 @@ pub async fn get_workflow_details(
                 uuid: workflow.uuid,
                 name: workflow.name,
                 description: workflow.description,
-                kind: workflow.kind,
+                kind: format!("{:?}", workflow.kind),
                 enabled: workflow.enabled,
                 schedule_cron: workflow.schedule_cron,
                 config: workflow.config,
@@ -446,7 +446,7 @@ pub async fn run_workflow_now(
     tag = "workflows",
     params(("uuid" = Uuid, Path, description = "Workflow UUID")),
     request_body(
-        content = inline(crate::api::admin::workflows::models::WorkflowRunUpload),
+        content = inline(r_data_core_api::admin::workflows::models::WorkflowRunUpload),
         content_type = "multipart/form-data",
         description = "CSV file uploaded as multipart/form-data with field name 'file'"
     ),

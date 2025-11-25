@@ -1,3 +1,5 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -37,9 +39,14 @@ impl From<EntityVersioningSettingsDto> for EntityVersioningSettings {
     }
 }
 
+/// Request body for updating settings
 #[derive(Deserialize, Serialize, ToSchema)]
 pub struct UpdateSettingsBody {
+    /// Whether versioning is enabled
     pub enabled: Option<bool>,
+    /// Maximum number of versions to keep
     pub max_versions: Option<i32>,
+    /// Maximum age in days
     pub max_age_days: Option<i32>,
 }
+

@@ -37,6 +37,7 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 r_data_core_api = { path = "crates/api" }
 r_data_core_core = { path = "crates/core" }
 r_data_core_persistence = { path = "crates/persistence" }
+r_data_core_services = { path = "crates/services" }
 
 # Database
 sqlx = { version = "0.8.4", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }
@@ -110,6 +111,7 @@ chrono = "0.4.42"
 members = [
   "crates/core",
   "crates/persistence",
+  "crates/services",
   "crates/api",
   "crates/worker",
   "crates/test-support",

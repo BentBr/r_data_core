@@ -1,7 +1,10 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
 use sqlx::PgPool;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
-use r_data_core_persistence::version_repository::VersionRepository;
+use r_data_core_persistence::VersionRepository;
 use r_data_core_core::error::Result;
 
 /// Service for managing entity versions with business logic
@@ -10,6 +13,11 @@ pub struct VersionService {
 }
 
 impl VersionService {
+    /// Create a new version service
+    ///
+    /// # Arguments
+    /// * `pool` - Database connection pool
+    #[must_use]
     pub fn new(pool: PgPool) -> Self {
         Self {
             version_repo: VersionRepository::new(pool),
@@ -18,6 +26,12 @@ impl VersionService {
 
     /// List all versions for an entity, including the current version if not in versions table.
     /// Creator names are resolved via SQL JOINs in the repository.
+    ///
+    /// # Arguments
+    /// * `entity_uuid` - UUID of the entity
+    ///
+    /// # Errors
+    /// Returns an error if database query fails
     pub async fn list_entity_versions_with_metadata(
         &self,
         entity_uuid: Uuid,
@@ -66,8 +80,13 @@ impl VersionService {
 /// Version metadata with resolved creator name
 #[derive(Debug, Clone)]
 pub struct VersionMetaWithName {
+    /// Version number
     pub version_number: i32,
-    pub created_at: time::OffsetDateTime,
+    /// Creation timestamp
+    pub created_at: OffsetDateTime,
+    /// Creator UUID
     pub created_by: Option<Uuid>,
+    /// Creator name (resolved from `admin_users` table)
     pub created_by_name: Option<String>,
 }
+

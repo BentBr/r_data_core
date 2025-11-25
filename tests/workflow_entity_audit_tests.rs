@@ -1,9 +1,10 @@
 use r_data_core_persistence::EntityDefinitionRepository;
-use r_data_core::api::admin::workflows::models::CreateWorkflowRequest;
+use r_data_core_api::admin::workflows::models::CreateWorkflowRequest;
 use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
 use r_data_core::services::adapters::EntityDefinitionRepositoryAdapter;
+use r_data_core_services::{DynamicEntityService, EntityDefinitionService};
 use r_data_core::services::{
-    adapters::DynamicEntityRepositoryAdapter, DynamicEntityService, EntityDefinitionService,
+    adapters::DynamicEntityRepositoryAdapter,
     WorkflowRepositoryAdapter, WorkflowService,
 };
 use r_data_core::workflow::data::repository::WorkflowRepository;
@@ -69,7 +70,7 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
     let req = CreateWorkflowRequest {
         name: format!("wf-entity-test-{}", Uuid::now_v7()),
         description: Some("test".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: format!("{:?}", WorkflowKind::Consumer),
         enabled: true,
         schedule_cron: None,
         config: cfg,
@@ -262,7 +263,7 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     let req = CreateWorkflowRequest {
         name: format!("wf-update-test-{}", Uuid::now_v7()),
         description: Some("test".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: format!("{:?}", WorkflowKind::Consumer),
         enabled: true,
         schedule_cron: None,
         config: cfg,

@@ -86,7 +86,7 @@ fn create_test_dynamic_entity(entity_definition: &EntityDefinition) -> DynamicEn
 #[tokio::test]
 async fn test_dynamic_entity_crud() -> Result<()> {
     use r_data_core_persistence::EntityDefinitionRepository;
-    use r_data_core::services::EntityDefinitionService;
+    use r_data_core_services::EntityDefinitionService;
 
     // In a real test with a database:
     let pool = setup_test_db().await;
@@ -148,7 +148,7 @@ async fn test_dynamic_entity_crud() -> Result<()> {
 #[tokio::test]
 async fn test_list_entities_by_type() -> Result<()> {
     use r_data_core_persistence::EntityDefinitionRepository;
-    use r_data_core::services::EntityDefinitionService;
+    use r_data_core_services::EntityDefinitionService;
 
     // In a real test with a database:
     let pool = setup_test_db().await;
@@ -191,7 +191,7 @@ async fn test_list_entities_by_type() -> Result<()> {
 #[tokio::test]
 async fn test_list_entities_by_parent() -> Result<()> {
     use r_data_core_persistence::EntityDefinitionRepository;
-    use r_data_core::services::EntityDefinitionService;
+    use r_data_core_services::EntityDefinitionService;
 
     // In a real test with a database:
     let pool = setup_test_db().await;
@@ -246,7 +246,7 @@ async fn test_list_entities_by_parent() -> Result<()> {
 #[tokio::test]
 async fn test_filter_entities() -> Result<()> {
     use r_data_core_persistence::EntityDefinitionRepository;
-    use r_data_core::services::EntityDefinitionService;
+    use r_data_core_services::EntityDefinitionService;
 
     // In a real test with a database:
     let pool = setup_test_db().await;
@@ -302,7 +302,7 @@ async fn test_filter_entities() -> Result<()> {
 #[tokio::test]
 async fn test_count_entities() -> Result<()> {
     use r_data_core_persistence::EntityDefinitionRepository;
-    use r_data_core::services::EntityDefinitionService;
+    use r_data_core_services::EntityDefinitionService;
 
     // In a real test with a database:
     let pool = setup_test_db().await;
@@ -348,7 +348,7 @@ async fn test_count_entities() -> Result<()> {
 async fn test_field_name_case_handling() -> Result<()> {
     use common::utils::{setup_test_db, unique_entity_type};
     use r_data_core_persistence::EntityDefinitionRepository;
-    use r_data_core::services::EntityDefinitionService;
+    use r_data_core_services::EntityDefinitionService;
     use sqlx::Row;
 
     let pool = setup_test_db().await;

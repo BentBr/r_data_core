@@ -1,14 +1,12 @@
 use actix_web::{web, HttpResponse};
 use log::{error, info};
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::api::auth::auth_enum::CombinedRequiredAuth;
-use crate::api::query::StandardQuery;
-use crate::api::response::{ApiResponse, ValidationViolation};
+use r_data_core_api::query::StandardQuery;
+use r_data_core_api::response::{ApiResponse, ValidationViolation};
 use crate::api::ApiState;
 use r_data_core_core::DynamicEntity;
 use crate::entity::dynamic_entity::validate_entity_with_violations;
@@ -26,27 +24,15 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
     );
 }
 
-/// Schema for dynamic entity serialization
-#[derive(Serialize, Deserialize, ToSchema)]
-pub struct DynamicEntityResponse {
-    pub entity_type: String,
-    pub field_data: HashMap<String, Value>,
-}
+use r_data_core_api::public::dynamic_entities::models::{DynamicEntityResponse, EntityResponse};
 
-impl From<DynamicEntity> for DynamicEntityResponse {
-    fn from(entity: DynamicEntity) -> Self {
-        Self {
-            entity_type: entity.entity_type,
-            field_data: entity.field_data,
-        }
+// Helper function to convert DynamicEntity to DynamicEntityResponse
+// Cannot use From trait since DynamicEntity is from another crate
+fn to_dynamic_entity_response(entity: DynamicEntity) -> DynamicEntityResponse {
+    DynamicEntityResponse {
+        entity_type: entity.entity_type,
+        field_data: entity.field_data,
     }
-}
-
-/// Response for entity creation/update
-#[derive(Serialize, Deserialize, ToSchema)]
-pub struct EntityResponse {
-    pub uuid: Uuid,
-    pub entity_type: String,
 }
 
 /// Helper to validate requested fields against entity definition
@@ -167,7 +153,7 @@ async fn list_entities(
             Ok((entities, total)) => {
                 let entity_responses: Vec<DynamicEntityResponse> = entities
                     .into_iter()
-                    .map(DynamicEntityResponse::from)
+                    .map(to_dynamic_entity_response)
                     .collect();
 
                 let page = query.pagination.get_page(1);
@@ -351,7 +337,7 @@ async fn get_entity(
             .await
         {
             Ok(Some(entity)) => {
-                let response = DynamicEntityResponse::from(entity);
+                let response = to_dynamic_entity_response(entity);
                 ApiResponse::ok(response)
             }
             Ok(None) => ApiResponse::<()>::not_found(&format!(

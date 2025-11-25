@@ -1,7 +1,7 @@
 use actix_web::{post, web, HttpResponse, Responder};
 use serde_json::json;
 
-use super::models::AdvancedEntityQuery;
+use r_data_core_api::public::queries::models::AdvancedEntityQuery;
 use super::repository::QueryRepository;
 use crate::api::auth::auth_enum::CombinedRequiredAuth;
 use crate::api::ApiState;
@@ -36,7 +36,7 @@ async fn query_entities(
     let entity_type = path.into_inner();
     let repository = QueryRepository::new(data.db_pool.clone());
 
-    match repository.query_entities(&entity_type, &query).await {
+    match repository.query_entities(&entity_type, &query.into_inner()).await {
         Ok(entities) => HttpResponse::Ok().json(entities),
         Err(e) => match e {
             r_data_core_core::error::Error::NotFound(msg) => HttpResponse::NotFound().json(json!({

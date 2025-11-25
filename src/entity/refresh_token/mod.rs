@@ -1,4 +1,2 @@
 // Re-export repository and trait from persistence crate
-pub use r_data_core_persistence::{
-    RefreshTokenRepository, RefreshTokenRepositoryTrait,
-};
+// These are used directly from r_data_core_persistence in routes

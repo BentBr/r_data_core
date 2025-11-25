@@ -1,12 +1,13 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
+pub mod admin;
 pub mod api_state;
-
 pub mod auth;
 pub mod health;
 pub mod jwt;
 pub mod middleware;
 pub mod models;
+pub mod public;
 pub mod query;
 pub mod response;
 

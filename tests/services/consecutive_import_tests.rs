@@ -1,10 +1,11 @@
 use r_data_core_persistence::EntityDefinitionRepository;
-use r_data_core::api::admin::workflows::models::CreateWorkflowRequest;
+use r_data_core_api::admin::workflows::models::CreateWorkflowRequest;
 use r_data_core_persistence::DynamicEntityRepository;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core::services::adapters::EntityDefinitionRepositoryAdapter;
+use r_data_core_services::{DynamicEntityService, EntityDefinitionService};
 use r_data_core::services::{
-    adapters::DynamicEntityRepositoryAdapter, DynamicEntityService, EntityDefinitionService,
+    adapters::DynamicEntityRepositoryAdapter,
     WorkflowRepositoryAdapter, WorkflowService,
 };
 use r_data_core::workflow::data::repository::WorkflowRepository;
@@ -132,7 +133,7 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
     let req = CreateWorkflowRequest {
         name: workflow_name.clone(),
         description: Some("test consecutive imports".into()),
-        kind: WorkflowKind::Consumer,
+        kind: format!("{:?}", WorkflowKind::Consumer),
         enabled: true,
         schedule_cron: None,
         config: workflow_config,

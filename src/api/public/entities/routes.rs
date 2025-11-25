@@ -1,17 +1,18 @@
 use actix_web::{get, post, web, HttpResponse, Responder};
 use serde::Deserialize;
 use serde_json::json;
-use utoipa::ToSchema;
 use uuid::Uuid;
 
-use super::models::BrowseNode;
+#[allow(unused_imports)] // Used in utoipa attributes for OpenAPI docs
+use r_data_core_api::public::entities::models::{BrowseNode, EntityQueryRequest, EntityTypeInfo, VersionMeta, VersionPayload};
+use r_data_core_api::public::dynamic_entities::models::DynamicEntityResponse;
 use super::repository::EntityRepository;
 use crate::api::auth::auth_enum::CombinedRequiredAuth;
-use crate::api::response::ApiResponse;
+use r_data_core_api::response::ApiResponse;
 use crate::api::ApiState;
 use r_data_core_persistence::DynamicEntityRepository;
 use crate::entity::version_repository::VersionRepository;
-use crate::services::VersionService;
+use r_data_core_services::VersionService;
 
 /// List all available entity types
 #[utoipa::path(
@@ -100,7 +101,7 @@ async fn list_by_path(
         )
         .await
     {
-        Ok((nodes, total)) => ApiResponse::<Vec<BrowseNode>>::ok_paginated(
+        Ok((nodes, total)) => ApiResponse::ok_paginated(
             nodes,
             total,
             (offset / limit) as i64 + 1,
@@ -113,14 +114,6 @@ async fn list_by_path(
     }
 }
 
-#[derive(serde::Serialize, ToSchema)]
-pub struct VersionMeta {
-    version_number: i32,
-    #[serde(with = "time::serde::rfc3339")]
-    created_at: time::OffsetDateTime,
-    created_by: Option<Uuid>,
-    created_by_name: Option<String>,
-}
 
 /// List versions of a dynamic entity
 #[utoipa::path(
@@ -175,14 +168,6 @@ async fn list_entity_versions(
     }
 }
 
-#[derive(serde::Serialize, ToSchema)]
-pub struct VersionPayload {
-    version_number: i32,
-    #[serde(with = "time::serde::rfc3339")]
-    created_at: time::OffsetDateTime,
-    created_by: Option<Uuid>,
-    data: serde_json::Value,
-}
 
 /// Get a specific version snapshot of a dynamic entity
 #[utoipa::path(
@@ -258,20 +243,6 @@ async fn get_entity_version(
     ApiResponse::<()>::not_found("Version not found")
 }
 
-/// Request body for querying entities
-#[derive(Debug, Deserialize, ToSchema)]
-struct EntityQueryRequest {
-    /// Entity type to query
-    entity_type: String,
-    /// Filter by parent UUID
-    parent_uuid: Option<Uuid>,
-    /// Filter by exact path
-    path: Option<String>,
-    /// Maximum number of results (default: 20, max: 100)
-    limit: Option<i64>,
-    /// Number of results to skip (default: 0)
-    offset: Option<i64>,
-}
 
 /// Query entities by parent or path
 #[utoipa::path(
@@ -316,10 +287,12 @@ async fn query_entities(
     {
         Ok(entities) => {
             // Convert DynamicEntity to DynamicEntityResponse
-            use crate::api::public::dynamic_entities::routes::DynamicEntityResponse;
             let responses: Vec<DynamicEntityResponse> = entities
                 .into_iter()
-                .map(DynamicEntityResponse::from)
+                .map(|e| DynamicEntityResponse {
+                    entity_type: e.entity_type,
+                    field_data: e.field_data,
+                })
                 .collect();
 
             ApiResponse::ok(responses)

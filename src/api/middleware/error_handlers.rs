@@ -6,7 +6,7 @@ use actix_web::{
     HttpResponse,
 };
 
-use crate::api::response::ApiResponse;
+use r_data_core_api::response::ApiResponse;
 use crate::error::Error;
 
 pub struct AppErrorHandlers;

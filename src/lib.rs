@@ -27,7 +27,7 @@ pub use r_data_core_core::error::Result;
 pub use api::ApiState;
 
 /// Re-export services
-pub use crate::services::{AdminUserService, ApiKeyService, EntityDefinitionService};
+pub use r_data_core_services::{AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService};
 
 use log::info;
 

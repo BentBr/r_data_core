@@ -3,22 +3,15 @@ pub mod auth;
 pub mod docs;
 pub mod health;
 pub mod middleware;
-pub mod models;
 pub mod public;
-pub mod query;
-pub mod response;
 
 use actix_web::{get, web, Responder};
 use sqlx::PgPool;
 use std::sync::Arc;
 
-pub use crate::api::response::ApiResponse;
+pub use r_data_core_api::response::ApiResponse;
 use r_data_core_core::cache::CacheManager;
-use crate::services::AdminUserService;
-use crate::services::ApiKeyService;
-use crate::services::DynamicEntityService;
-use crate::services::EntityDefinitionService;
-use crate::services::PermissionSchemeService;
+use r_data_core_services::{AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, PermissionSchemeService};
 use crate::services::WorkflowService;
 use crate::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
@@ -67,6 +60,22 @@ impl r_data_core_api::api_state::ApiStateTrait for ApiState {
 
     fn api_key_service_ref(&self) -> &dyn std::any::Any {
         &self.api_key_service
+    }
+
+    fn permission_scheme_service_ref(&self) -> &dyn std::any::Any {
+        &self.permission_scheme_service
+    }
+
+    fn api_config_ref(&self) -> &dyn std::any::Any {
+        &self.api_config
+    }
+
+    fn entity_definition_service_ref(&self) -> &dyn std::any::Any {
+        &self.entity_definition_service
+    }
+
+    fn cache_manager_ref(&self) -> &dyn std::any::Any {
+        &*self.cache_manager
     }
 }
 

@@ -1,8 +1,9 @@
 use crate::common::utils;
 use r_data_core::{
-    entity::admin_user::{ApiKeyRepository, ApiKeyRepositoryTrait},
+    entity::admin_user::ApiKeyRepository,
     error::Error,
 };
+use r_data_core_persistence::ApiKeyRepositoryTrait;
 use r_data_core_core::error::Result;
 use serial_test::serial;
 use std::sync::Arc;
@@ -207,7 +208,7 @@ async fn test_expired_api_key() -> Result<()> {
     // Insert directly with SQL to bypass the normal creation logic
     let key_uuid = Uuid::now_v7();
     let key_value = "test_expired_key_value";
-    let key_hash = r_data_core::entity::admin_user::ApiKey::hash_api_key(key_value)?;
+    let key_hash = r_data_core_core::admin_user::ApiKey::hash_api_key(key_value)?;
 
     sqlx::query!(
         r#"

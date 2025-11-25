@@ -1,5 +1,6 @@
 use r_data_core_core::cache::CacheManager;
-use crate::entity::admin_user::{ApiKey, ApiKeyRepository, ApiKeyRepositoryTrait};
+use r_data_core_core::admin_user::ApiKey;
+use r_data_core_persistence::{ApiKeyRepository, ApiKeyRepositoryTrait};
 use r_data_core_core::error::Result;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -35,6 +36,7 @@ impl ApiKeyService {
     }
 
     /// Create a new API key service from a concrete repository
+    #[must_use] 
     pub fn from_repository(repository: ApiKeyRepository) -> Self {
         Self {
             repository: Arc::new(repository),
@@ -45,7 +47,7 @@ impl ApiKeyService {
 
     /// Generate cache key for API key by hash
     fn cache_key_by_hash(&self, key_hash: &str) -> String {
-        format!("api_key:hash:{}", key_hash)
+        format!("api_key:hash:{key_hash}")
     }
 
     /// Create a new API key
@@ -84,7 +86,7 @@ impl ApiKeyService {
         let key_hash = match ApiKey::hash_api_key(api_key) {
             Ok(hash) => hash,
             Err(e) => {
-                log::warn!("Failed to hash API key for cache: {}", e);
+                log::warn!("Failed to hash API key for cache: {e}");
                 // Fall back to repository lookup
                 return self.repository.find_api_key_for_auth(api_key).await;
             }
@@ -113,7 +115,7 @@ impl ApiKeyService {
                     None // No expiration
                 };
                 if let Err(e) = cache.set(&cache_key, &(key.clone(), *user_uuid), ttl).await {
-                    log::warn!("Failed to cache API key validation result: {}", e);
+                    log::warn!("Failed to cache API key validation result: {e}");
                 }
             }
         }
@@ -150,7 +152,7 @@ impl ApiKeyService {
                     if let Some(cache) = &self.cache_manager {
                         let cache_key = self.cache_key_by_hash(&key.key_hash);
                         if let Err(e) = cache.delete(&cache_key).await {
-                            log::warn!("Failed to invalidate API key cache: {}", e);
+                            log::warn!("Failed to invalidate API key cache: {e}");
                         }
                     }
                 }
@@ -175,8 +177,7 @@ impl ApiKeyService {
         let key = self.get_key(key_uuid).await?;
         if key.is_none() {
             return Err(r_data_core_core::error::Error::NotFound(format!(
-                "API key with UUID {} not found",
-                key_uuid
+                "API key with UUID {key_uuid} not found"
             )));
         }
 

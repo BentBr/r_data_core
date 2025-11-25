@@ -1,5 +1,4 @@
 pub mod conversions;
-pub mod models;
 pub mod routes;
 
 use actix_web::web;

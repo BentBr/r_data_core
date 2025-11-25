@@ -3,11 +3,10 @@ use mockall::{
     mock,
     predicate::{self, eq},
 };
-use r_data_core::{
-    entity::admin_user::{ApiKey, ApiKeyRepositoryTrait},
-    error::Error,
-    services::ApiKeyService,
-};
+use r_data_core::error::Error;
+use r_data_core_core::admin_user::ApiKey;
+use r_data_core_persistence::ApiKeyRepositoryTrait;
+use r_data_core_services::ApiKeyService;
 use r_data_core_core::error::Result;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};

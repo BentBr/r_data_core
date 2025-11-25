@@ -1,14 +1,17 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
 use serde::{Deserialize, Serialize};
 #[allow(unused_imports)] // json! macro is used in attribute macro
 use serde_json::{json, Value};
 use utoipa::ToSchema;
 
-use crate::workflow::dsl::DslStep;
-
+// Note: DslStep is imported from the main crate's workflow module
+// This is a temporary dependency until workflow is migrated to a crate
+// For now, we use serde_json::Value to represent the steps
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct DslValidateRequest {
     /// The DSL steps array (JSON). Example: { "steps": [ { "from": { ... }, "transform": { ... }, "to": { ... } } ] }
-    #[schema(value_type = Vec<DslStep>, example = json!([
+    #[schema(value_type = Vec<Value>, example = json!([
         {
             "from": {
                 "type": "format",
@@ -41,7 +44,7 @@ pub struct DslValidateRequest {
             }
         }
     ]))]
-    pub steps: Vec<DslStep>,
+    pub steps: Vec<Value>, // Will be Vec<DslStep> once workflow is migrated
 }
 
 #[derive(Debug, Serialize, ToSchema)]
