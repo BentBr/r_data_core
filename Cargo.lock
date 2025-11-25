@@ -3092,6 +3092,7 @@ dependencies = [
  "log",
  "r_data_core_core",
  "r_data_core_persistence",
+ "r_data_core_workflow",
  "regex",
  "serde",
  "serde_json",
@@ -3136,10 +3137,12 @@ dependencies = [
 name = "r_data_core_persistence"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "argon2",
  "async-trait",
  "log",
  "r_data_core_core",
+ "r_data_core_workflow",
  "serde",
  "serde_json",
  "sqlx",
@@ -3189,6 +3192,31 @@ dependencies = [
  "r_data_core_persistence",
  "sqlx",
  "tokio",
+]
+
+[[package]]
+name = "r_data_core_workflow"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "anyhow",
+ "apalis",
+ "apalis-redis",
+ "async-trait",
+ "bytes",
+ "csv",
+ "futures",
+ "log",
+ "r_data_core_core",
+ "redis 0.25.4",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "time",
+ "utoipa",
+ "uuid",
 ]
 
 [[package]]

@@ -16,6 +16,8 @@ pub mod repository;
 pub mod settings_repository;
 pub mod version_repository;
 pub mod workflow_versioning_repository;
+pub mod workflow_repository;
+pub mod workflow_repository_trait;
 pub use r_data_core_core as core;
 
 // Re-export commonly used types
@@ -36,3 +38,5 @@ pub use repository::{EntityRepository, PgPoolExtension};
 pub use settings_repository::SystemSettingsRepository;
 pub use version_repository::VersionRepository;
 pub use workflow_versioning_repository::{WorkflowVersioningRepository, WorkflowVersionMeta, WorkflowVersionPayload};
+pub use workflow_repository::WorkflowRepository;
+pub use workflow_repository_trait::WorkflowRepositoryTrait;

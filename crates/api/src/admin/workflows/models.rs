@@ -35,36 +35,16 @@ pub struct WorkflowDetail {
     pub versioning_disabled: bool,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct CreateWorkflowRequest {
-    pub name: String,
-    pub description: Option<String>,
-    #[serde(rename = "kind")]
-    pub kind: String, // Will be WorkflowKind once migrated
-    pub enabled: bool,
-    pub schedule_cron: Option<String>,
-    pub config: serde_json::Value,
-    #[serde(default)]
-    pub versioning_disabled: bool,
-}
+// Re-export from workflow crate
+pub use r_data_core_workflow::data::requests::CreateWorkflowRequest;
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct CreateWorkflowResponse {
     pub uuid: Uuid,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct UpdateWorkflowRequest {
-    pub name: String,
-    pub description: Option<String>,
-    #[serde(rename = "kind")]
-    pub kind: String, // Will be WorkflowKind once migrated
-    pub enabled: bool,
-    pub schedule_cron: Option<String>,
-    pub config: serde_json::Value,
-    #[serde(default)]
-    pub versioning_disabled: bool,
-}
+// Re-export from workflow crate
+pub use r_data_core_workflow::data::requests::UpdateWorkflowRequest;
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct WorkflowRunSummary {
