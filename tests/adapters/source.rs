@@ -1,6 +1,6 @@
-use r_data_core::workflow::data::adapters::auth::{create_auth_provider, AuthConfig};
-use r_data_core::workflow::data::adapters::source::uri::UriSource;
-use r_data_core::workflow::data::adapters::source::{DataSource, SourceContext};
+use r_data_core_workflow::data::adapters::auth::{create_auth_provider, AuthConfig};
+use r_data_core_workflow::data::adapters::source::uri::UriSource;
+use r_data_core_workflow::data::adapters::source::{DataSource, SourceContext};
 use serde_json::json;
 
 #[tokio::test]

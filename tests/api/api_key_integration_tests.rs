@@ -7,9 +7,9 @@ use r_data_core::{
         middleware::{ApiAuth, ApiKeyInfo},
         ApiState,
     },
-    config::CacheConfig,
-    entity::admin_user::{AdminUserRepository, ApiKeyRepository},
 };
+use r_data_core_core::config::CacheConfig;
+use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
 use r_data_core_persistence::ApiKeyRepositoryTrait;
 use r_data_core_services::{AdminUserService, ApiKeyService, EntityDefinitionService};
 use r_data_core_core::error::Result;

@@ -15,11 +15,7 @@ use actix_web::web;
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/admin/api/v1")
-            .service(auth::routes::admin_login)
-            .service(auth::routes::admin_register)
-            .service(auth::routes::admin_logout)
-            .service(auth::routes::admin_refresh_token)
-            .service(auth::routes::admin_revoke_all_tokens)
+            .configure(r_data_core_api::admin::auth::register_routes)
             // Module routes
             .service(
                 web::scope("/entity-definitions")
@@ -27,8 +23,8 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
             )
             .service(web::scope("/workflows").configure(workflows::routes::register_routes))
             .service(web::scope("/dsl").configure(dsl::routes::register_routes))
-            .service(web::scope("/api-keys").configure(api_keys::routes::register_routes))
+            .service(web::scope("/api-keys").configure(r_data_core_api::admin::api_keys::register_routes))
             .service(web::scope("/permissions").configure(permissions::routes::register_routes))
-            .service(web::scope("/system").configure(system::routes::register_routes)),
+            .service(web::scope("/system").configure(r_data_core_api::admin::system::register_routes)),
     );
 }

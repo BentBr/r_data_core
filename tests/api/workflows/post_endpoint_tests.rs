@@ -546,7 +546,7 @@ async fn test_from_api_workflow_excluded_from_cron_scheduling() -> anyhow::Resul
     );
 
     // Now test that list_scheduled_consumers excludes the from.api workflow
-    use r_data_core::workflow::data::repository::WorkflowRepository;
+    use r_data_core_persistence::WorkflowRepository;
     let repo = WorkflowRepository::new(pool.clone());
     let scheduled = repo.list_scheduled_consumers().await?;
 

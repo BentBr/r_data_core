@@ -3,8 +3,8 @@ use r_data_core_api::admin::workflows::models::{CreateWorkflowRequest, UpdateWor
 use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use r_data_core_persistence::VersionRepository;
 use r_data_core_services::{EntityDefinitionService, VersionService};
-use r_data_core::workflow::data::repository::WorkflowRepository;
-use r_data_core::workflow::data::WorkflowKind;
+use r_data_core_persistence::WorkflowRepository;
+use r_data_core_workflow::data::WorkflowKind;
 use sqlx::Row;
 use uuid::Uuid;
 

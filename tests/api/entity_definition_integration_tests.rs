@@ -4,9 +4,9 @@ use actix_web::{
 };
 use r_data_core::{
     api::ApiState,
-    config::CacheConfig,
-    entity::admin_user::{AdminUserRepository, ApiKeyRepository},
 };
+use r_data_core_core::config::CacheConfig;
+use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
 use r_data_core_services::{AdminUserService, ApiKeyService, EntityDefinitionService};
 use r_data_core_core::error::Result;
 use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
@@ -150,7 +150,7 @@ mod tests {
                     dynamic_entity_service: None,
                     workflow_service: r_data_core::services::WorkflowService::new(Arc::new(
                         r_data_core::services::WorkflowRepositoryAdapter::new(
-                            r_data_core::workflow::data::repository::WorkflowRepository::new(
+                            r_data_core_persistence::WorkflowRepository::new(
                                 pool.clone(),
                             ),
                         ),

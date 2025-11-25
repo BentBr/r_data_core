@@ -53,11 +53,11 @@ async fn test_expose_data_via_api_endpoint_csv_ignores_cron() -> anyhow::Result<
     });
 
     // Even if we try to set a cron, provider workflows should ignore it
-    let repo = r_data_core::workflow::data::repository::WorkflowRepository::new(pool.clone());
+    let repo = r_data_core_persistence::WorkflowRepository::new(pool.clone());
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("provider-csv-{}", Uuid::now_v7()),
         description: Some("Provider workflow CSV".to_string()),
-        kind: r_data_core::workflow::data::WorkflowKind::Provider.to_string(),
+        kind: r_data_core_workflow::data::WorkflowKind::Provider.to_string(),
         enabled: true,
         schedule_cron: Some("*/5 * * * *".to_string()), // This should be ignored
         config,
@@ -132,11 +132,11 @@ async fn test_expose_data_via_api_endpoint_json_ignores_cron() -> anyhow::Result
         ]
     });
 
-    let repo = r_data_core::workflow::data::repository::WorkflowRepository::new(pool.clone());
+    let repo = r_data_core_persistence::WorkflowRepository::new(pool.clone());
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("provider-json-{}", Uuid::now_v7()),
         description: Some("Provider workflow JSON".to_string()),
-        kind: r_data_core::workflow::data::WorkflowKind::Provider.to_string(),
+        kind: r_data_core_workflow::data::WorkflowKind::Provider.to_string(),
         enabled: true,
         schedule_cron: Some("*/10 * * * *".to_string()), // This should be ignored
         config,

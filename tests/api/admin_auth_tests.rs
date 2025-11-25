@@ -3,9 +3,7 @@
 
 #[cfg(test)]
 mod tests {
-    use r_data_core::{
-        entity::admin_user::{AdminUserRepository, AdminUserRepositoryTrait},
-    };
+    use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
     use r_data_core_core::error::Result;
     use std::sync::Arc;
     use uuid::Uuid;

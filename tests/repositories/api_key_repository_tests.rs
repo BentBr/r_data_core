@@ -1,8 +1,6 @@
 use crate::common::utils;
-use r_data_core::{
-    entity::admin_user::ApiKeyRepository,
-    error::Error,
-};
+use r_data_core_persistence::ApiKeyRepository;
+use r_data_core_core::error::Error;
 use r_data_core_persistence::ApiKeyRepositoryTrait;
 use r_data_core_core::error::Result;
 use serial_test::serial;

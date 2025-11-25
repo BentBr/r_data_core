@@ -8,8 +8,8 @@ use r_data_core::services::{
     adapters::DynamicEntityRepositoryAdapter,
     WorkflowRepositoryAdapter, WorkflowService,
 };
-use r_data_core::workflow::data::repository::WorkflowRepository;
-use r_data_core::workflow::data::WorkflowKind;
+use r_data_core_persistence::WorkflowRepository;
+use r_data_core_workflow::data::WorkflowKind;
 use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
@@ -162,8 +162,8 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
         "has_header": true,
         "delimiter": ","
     });
-    use r_data_core::workflow::data::adapters::format::FormatHandler;
-    let payloads = r_data_core::workflow::data::adapters::format::csv::CsvFormatHandler::new()
+    use r_data_core_workflow::data::adapters::format::FormatHandler;
+    let payloads = r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new()
         .parse(csv_data.as_bytes(), &format_cfg)
         .expect("parse CSV");
 

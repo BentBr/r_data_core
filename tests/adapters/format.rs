@@ -1,6 +1,6 @@
-use r_data_core::workflow::data::adapters::format::csv::CsvFormatHandler;
-use r_data_core::workflow::data::adapters::format::json::JsonFormatHandler;
-use r_data_core::workflow::data::adapters::format::FormatHandler;
+use r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler;
+use r_data_core_workflow::data::adapters::format::json::JsonFormatHandler;
+use r_data_core_workflow::data::adapters::format::FormatHandler;
 use serde_json::json;
 
 #[test]

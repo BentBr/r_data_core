@@ -7,8 +7,8 @@ use r_data_core::services::{
     adapters::DynamicEntityRepositoryAdapter,
     WorkflowRepositoryAdapter, WorkflowService,
 };
-use r_data_core::workflow::data::repository::WorkflowRepository;
-use r_data_core::workflow::data::WorkflowKind;
+use r_data_core_persistence::WorkflowRepository;
+use r_data_core_workflow::data::WorkflowKind;
 use serde_json::json;
 use sqlx::Row;
 use std::collections::HashMap;

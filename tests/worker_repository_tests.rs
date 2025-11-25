@@ -1,6 +1,6 @@
 use r_data_core_api::admin::workflows::models::CreateWorkflowRequest;
-use r_data_core::workflow::data::repository::WorkflowRepository;
-use r_data_core::workflow::data::WorkflowKind;
+use r_data_core_persistence::WorkflowRepository;
+use r_data_core_workflow::data::WorkflowKind;
 use uuid::Uuid;
 
 // Import the common module from tests

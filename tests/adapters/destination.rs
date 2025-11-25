@@ -1,7 +1,7 @@
 use bytes::Bytes;
-use r_data_core::workflow::data::adapters::auth::{create_auth_provider, AuthConfig};
-use r_data_core::workflow::data::adapters::destination::uri::UriDestination;
-use r_data_core::workflow::data::adapters::destination::{
+use r_data_core_workflow::data::adapters::auth::{create_auth_provider, AuthConfig};
+use r_data_core_workflow::data::adapters::destination::uri::UriDestination;
+use r_data_core_workflow::data::adapters::destination::{
     DataDestination, DestinationContext, HttpMethod,
 };
 use serde_json::json;

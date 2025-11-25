@@ -1,6 +1,6 @@
-use r_data_core::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
-use r_data_core::workflow::data::job_queue::JobQueue;
-use r_data_core::workflow::data::jobs::{FetchAndStageJob, ProcessRawItemJob};
+use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
+use r_data_core_workflow::data::job_queue::JobQueue;
+use r_data_core_workflow::data::jobs::{FetchAndStageJob, ProcessRawItemJob};
 use uuid::Uuid;
 
 fn get_test_queue() -> Option<ApalisRedisQueue> {

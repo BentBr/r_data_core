@@ -3,7 +3,7 @@ use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core::api::{configure_app, ApiState};
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
-use r_data_core::entity::admin_user::{AdminUserRepository, ApiKeyRepository};
+use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
 use r_data_core_persistence::DynamicEntityRepository;
 use r_data_core_core::error::Result;
 use r_data_core_services::{

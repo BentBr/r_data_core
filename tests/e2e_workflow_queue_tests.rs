@@ -7,11 +7,11 @@ use r_data_core::services::{
     WorkflowRepositoryAdapter,
     WorkflowService,
 };
-use r_data_core::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
-use r_data_core::workflow::data::job_queue::JobQueue;
-use r_data_core::workflow::data::jobs::FetchAndStageJob;
-use r_data_core::workflow::data::repository::WorkflowRepository;
-use r_data_core::workflow::data::WorkflowKind;
+use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
+use r_data_core_workflow::data::job_queue::JobQueue;
+use r_data_core_workflow::data::jobs::FetchAndStageJob;
+use r_data_core_persistence::WorkflowRepository;
+use r_data_core_workflow::data::WorkflowKind;
 use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;

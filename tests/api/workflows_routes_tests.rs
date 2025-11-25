@@ -7,8 +7,8 @@ use r_data_core::entity::admin_user::{AdminUserRepository, ApiKeyRepository};
 use r_data_core::services::{
     AdminUserService, ApiKeyService, EntityDefinitionService, WorkflowRepositoryAdapter,
 };
-use r_data_core::workflow::data::repository::WorkflowRepository;
-use r_data_core::workflow::data::WorkflowKind;
+use r_data_core_persistence::WorkflowRepository;
+use r_data_core_workflow::data::WorkflowKind;
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 use uuid::Uuid;
