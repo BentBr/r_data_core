@@ -8,6 +8,7 @@ license = "MIT"
 # Core dependencies
 r_data_core_core = { path = "../core" }
 r_data_core_persistence = { path = "../persistence" }
+r_data_core_workflow = { path = "../workflow" }
 
 # External dependencies
 async-trait = "0.1"
@@ -20,4 +21,6 @@ anyhow = "1.0"
 cron = "0.12"
 time = { version = "0.3", features = ["serde", "formatting", "parsing", "macros"] }
 regex = "1.10"
+futures = "0.3"
+tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
 

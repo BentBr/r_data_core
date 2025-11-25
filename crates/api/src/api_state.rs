@@ -13,6 +13,8 @@ pub trait ApiStateTrait: Send + Sync + 'static {
     fn api_config_ref(&self) -> &dyn std::any::Any;
     fn entity_definition_service_ref(&self) -> &dyn std::any::Any;
     fn cache_manager_ref(&self) -> &dyn std::any::Any;
+    fn workflow_service_ref(&self) -> &dyn std::any::Any;
+    fn queue_ref(&self) -> &dyn std::any::Any;
     
     /// Get API config - helper method that downcasts from api_config_ref
     fn api_config(&self) -> &r_data_core_core::config::ApiConfig {
@@ -40,6 +42,20 @@ pub trait ApiStateTrait: Send + Sync + 'static {
         self.cache_manager_ref()
             .downcast_ref::<std::sync::Arc<r_data_core_core::cache::CacheManager>>()
             .expect("ApiState must provide CacheManager")
+    }
+    
+    /// Get workflow service - helper method that downcasts from workflow_service_ref
+    fn workflow_service(&self) -> &r_data_core_services::WorkflowService {
+        self.workflow_service_ref()
+            .downcast_ref::<r_data_core_services::WorkflowService>()
+            .expect("ApiState must provide WorkflowService")
+    }
+    
+    /// Get queue - helper method that downcasts from queue_ref
+    fn queue(&self) -> &std::sync::Arc<r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue> {
+        self.queue_ref()
+            .downcast_ref::<std::sync::Arc<r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue>>()
+            .expect("ApiState must provide ApalisRedisQueue")
     }
 }
 

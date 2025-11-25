@@ -1,5 +1,7 @@
-use crate::api::auth::auth_enum;
-use crate::api::auth::permission_check;
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
+use crate::auth::auth_enum::RequiredAuth;
+use crate::auth::permission_check;
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use log::{debug, error, info};
 use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
@@ -8,15 +10,15 @@ use serde_json::json;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use r_data_core_api::admin::entity_definitions::models::{
+use crate::admin::entity_definitions::models::{
     ApplySchemaRequest, EntityDefinitionVersionMeta, EntityDefinitionVersionPayload, PathUuid,
 };
 use r_data_core_persistence::EntityDefinitionVersioningRepository;
-use r_data_core_api::admin::entity_definitions::models::PaginationQuery;
-use r_data_core_api::response::ApiResponse;
-use crate::api::ApiState;
+use crate::admin::entity_definitions::models::PaginationQuery;
+use crate::response::ApiResponse;
+use crate::api_state::ApiStateTrait;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
-use super::conversions::entity_definition_to_schema_model;
+use crate::admin::entity_definitions::conversions::entity_definition_to_schema_model;
 use utoipa::ToSchema;
 
 /// List entity definitions with pagination
@@ -42,9 +44,9 @@ use utoipa::ToSchema;
 )]
 #[get("")]
 async fn list_entity_definitions(
-    data: web::Data<ApiState>,
+    data: web::Data<dyn ApiStateTrait>,
     query: web::Query<PaginationQuery>,
-    auth: auth_enum::RequiredAuth,
+    auth: RequiredAuth,
 ) -> impl Responder {
     // Check permission
     if !permission_check::check_permission_with_log(
@@ -63,9 +65,9 @@ async fn list_entity_definitions(
 
     // Get both the entity definitions and the total count
     let (definitions_result, count_result) = tokio::join!(
-        data.entity_definition_service
+        data.entity_definition_service()
             .list_entity_definitions(limit, offset),
-        data.entity_definition_service.count_entity_definitions()
+        data.entity_definition_service().count_entity_definitions()
     );
 
     match (definitions_result, count_result) {
@@ -109,9 +111,9 @@ async fn list_entity_definitions(
 )]
 #[get("/{uuid}")]
 async fn get_entity_definition(
-    data: web::Data<ApiState>,
+    data: web::Data<dyn ApiStateTrait>,
     path: web::Path<PathUuid>,
-    auth: auth_enum::RequiredAuth,
+    auth: RequiredAuth,
 ) -> impl Responder {
     // Check permission
     if !permission_check::check_permission_with_log(
@@ -124,7 +126,7 @@ async fn get_entity_definition(
         return ApiResponse::<()>::forbidden("Insufficient permissions to get entity definition");
     }
     match data
-        .entity_definition_service
+        .entity_definition_service()
         .get_entity_definition(&path.uuid)
         .await
     {
@@ -160,9 +162,9 @@ async fn get_entity_definition(
 )]
 #[post("")]
 async fn create_entity_definition(
-    data: web::Data<ApiState>,
+    data: web::Data<dyn ApiStateTrait>,
     definition: web::Json<EntityDefinition>,
-    auth: auth_enum::RequiredAuth,
+    auth: RequiredAuth,
 ) -> impl Responder {
     // Check permission
     if !permission_check::check_permission_with_log(
@@ -241,7 +243,7 @@ async fn create_entity_definition(
 
     // Create the entity definition using the service
     match data
-        .entity_definition_service
+        .entity_definition_service()
         .create_entity_definition(&entity_def)
         .await
     {
@@ -304,10 +306,10 @@ async fn create_entity_definition(
 )]
 #[put("/{uuid}")]
 async fn update_entity_definition(
-    data: web::Data<ApiState>,
+    data: web::Data<dyn ApiStateTrait>,
     path: web::Path<PathUuid>,
     definition: web::Json<EntityDefinition>,
-    auth: auth_enum::RequiredAuth,
+    auth: RequiredAuth,
 ) -> impl Responder {
     // Get authentication info from the RequiredAuth extractor
     let updater_uuid = match Uuid::parse_str(&auth.0.sub) {
@@ -326,7 +328,7 @@ async fn update_entity_definition(
 
     // First, get the existing definition to preserve system fields
     let existing_def = match data
-        .entity_definition_service
+        .entity_definition_service()
         .get_entity_definition(&path.uuid)
         .await
     {
@@ -362,7 +364,7 @@ async fn update_entity_definition(
 
     // Update the entity definition
     match data
-        .entity_definition_service
+        .entity_definition_service()
         .update_entity_definition(&path.uuid, &updated_def)
         .await
     {
@@ -399,12 +401,12 @@ async fn update_entity_definition(
 )]
 #[delete("/{uuid}")]
 async fn delete_entity_definition(
-    data: web::Data<ApiState>,
+    data: web::Data<dyn ApiStateTrait>,
     path: web::Path<PathUuid>,
-    _: auth_enum::RequiredAuth,
+    _: RequiredAuth,
 ) -> impl Responder {
     match data
-        .entity_definition_service
+        .entity_definition_service()
         .delete_entity_definition(&path.uuid)
         .await
     {
@@ -438,14 +440,14 @@ async fn delete_entity_definition(
 )]
 #[post("/apply-schema")]
 async fn apply_entity_definition_schema(
-    data: web::Data<ApiState>,
+    data: web::Data<dyn ApiStateTrait>,
     body: web::Json<ApplySchemaRequest>,
-    _: auth_enum::RequiredAuth,
+    _: RequiredAuth,
 ) -> impl Responder {
     let uuid_option = body.uuid.as_ref();
 
     match data
-        .entity_definition_service
+        .entity_definition_service()
         .apply_schema(uuid_option)
         .await
     {
@@ -522,13 +524,13 @@ struct EntityFieldInfo {
 )]
 #[get("/{entity_type}/fields")]
 async fn list_entity_fields_by_type(
-    data: web::Data<ApiState>,
+    data: web::Data<dyn ApiStateTrait>,
     path: web::Path<String>,
-    _: auth_enum::RequiredAuth,
+    _: RequiredAuth,
 ) -> impl Responder {
     let entity_type = path.into_inner();
     match data
-        .entity_definition_service
+        .entity_definition_service()
         .list_fields_with_system_by_entity_type(&entity_type)
         .await
     {
@@ -568,12 +570,12 @@ async fn list_entity_fields_by_type(
 )]
 #[get("/{uuid}/versions")]
 pub async fn list_entity_definition_versions(
-    data: web::Data<ApiState>,
+    data: web::Data<dyn ApiStateTrait>,
     path: web::Path<Uuid>,
-    _: auth_enum::RequiredAuth,
+    _: RequiredAuth,
 ) -> impl Responder {
     let definition_uuid = path.into_inner();
-    let versioning_repo = EntityDefinitionVersioningRepository::new(data.db_pool.clone());
+    let versioning_repo = EntityDefinitionVersioningRepository::new(data.db_pool().clone());
 
     // Get historical versions
     let rows = match versioning_repo
@@ -650,12 +652,12 @@ pub async fn list_entity_definition_versions(
 )]
 #[get("/{uuid}/versions/{version_number}")]
 pub async fn get_entity_definition_version(
-    data: web::Data<ApiState>,
+    data: web::Data<dyn ApiStateTrait>,
     path: web::Path<(Uuid, i32)>,
-    _: auth_enum::RequiredAuth,
+    _: RequiredAuth,
 ) -> impl Responder {
     let (definition_uuid, version_number) = path.into_inner();
-    let versioning_repo = EntityDefinitionVersioningRepository::new(data.db_pool.clone());
+    let versioning_repo = EntityDefinitionVersioningRepository::new(data.db_pool().clone());
 
     // First try to get from versions table
     match versioning_repo
@@ -685,7 +687,7 @@ pub async fn get_entity_definition_version(
                 if current_version == version_number {
                     // This is the current version, fetch from entity_definitions table
                     match data
-                        .entity_definition_service
+                        .entity_definition_service()
                         .get_entity_definition(&definition_uuid)
                         .await
                     {
@@ -719,3 +721,4 @@ pub async fn get_entity_definition_version(
 
     ApiResponse::<()>::not_found("Version not found")
 }
+

@@ -11,8 +11,7 @@ use std::sync::Arc;
 
 pub use r_data_core_api::response::ApiResponse;
 use r_data_core_core::cache::CacheManager;
-use r_data_core_services::{AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, PermissionSchemeService};
-use crate::services::WorkflowService;
+use r_data_core_services::{AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, PermissionSchemeService, WorkflowService};
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
 /// Shared application state
@@ -76,6 +75,14 @@ impl r_data_core_api::api_state::ApiStateTrait for ApiState {
 
     fn cache_manager_ref(&self) -> &dyn std::any::Any {
         &*self.cache_manager
+    }
+
+    fn workflow_service_ref(&self) -> &dyn std::any::Any {
+        &self.workflow_service
+    }
+
+    fn queue_ref(&self) -> &dyn std::any::Any {
+        &*self.queue
     }
 }
 

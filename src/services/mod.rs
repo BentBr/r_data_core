@@ -2,9 +2,7 @@ pub mod adapters;
 pub mod api_key_adapter;
 pub mod bootstrap;
 pub mod worker;
-pub mod workflow;
-pub mod workflow_service;
+// workflow module and WorkflowService moved to r_data_core_services
+// WorkflowRepositoryAdapter moved to r_data_core_services
 
-pub use adapters::WorkflowRepositoryAdapter;
 pub use api_key_adapter::ApiKeyRepositoryAdapter;
-pub use workflow_service::WorkflowService;

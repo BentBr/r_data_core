@@ -1,18 +1,19 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
 use actix_web::{get, post, web, Responder};
 
-use crate::api::auth::auth_enum;
-use r_data_core_api::response::{ApiResponse, ValidationViolation};
+use crate::auth::auth_enum::RequiredAuth;
+use crate::response::{ApiResponse, ValidationViolation};
 use r_data_core_workflow::dsl::{
     ArithmeticOp, ArithmeticTransform, ConcatTransform, DslProgram, DslStep, EntityFilter,
     EntityWriteMode, FormatConfig, FromDef, Operand, OutputMode, SourceConfig, StringOperand,
     ToDef, Transform,
 };
 
-use r_data_core_api::admin::dsl::models::{
+use crate::admin::dsl::models::{
     DslFieldSpec, DslOptionsAndExamplesResponse, DslOptionsResponse, DslTypeSpec,
     DslValidateRequest, DslValidateResponse,
 };
-
 
 #[utoipa::path(
     post,
@@ -29,10 +30,9 @@ use r_data_core_api::admin::dsl::models::{
 #[post("/validate")]
 pub async fn validate_dsl(
     payload: web::Json<DslValidateRequest>,
-    _: auth_enum::RequiredAuth,
+    _: RequiredAuth,
 ) -> impl Responder {
     // Convert Vec<Value> to Vec<DslStep> for validation
-    // This is a temporary workaround until workflow is migrated to a crate
     let steps: Result<Vec<DslStep>, _> = payload.steps.iter().map(|v| serde_json::from_value(v.clone())).collect();
     let Ok(steps) = steps else {
         return ApiResponse::<()>::unprocessable_entity("Invalid DSL steps format");
@@ -58,13 +58,13 @@ pub async fn validate_dsl(
     path = "/admin/api/v1/dsl/from/options",
     tag = "DSL",
     responses(
-        (status = 200, description = "Available FROM types and field specs", body = DslOptionsResponse),
+        (status = 200, description = "Available FROM types and field specs", body = DslOptionsAndExamplesResponse),
         (status = 500, description = "Internal server error")
     ),
     security(("jwt" = []))
 )]
 #[get("/from/options")]
-pub async fn list_from_options(_: auth_enum::RequiredAuth) -> impl Responder {
+pub async fn list_from_options(_: RequiredAuth) -> impl Responder {
     let types = DslOptionsResponse {
         types: vec![
             DslTypeSpec {
@@ -223,13 +223,13 @@ pub async fn list_from_options(_: auth_enum::RequiredAuth) -> impl Responder {
     path = "/admin/api/v1/dsl/to/options",
     tag = "DSL",
     responses(
-        (status = 200, description = "Available TO types and field specs", body = DslOptionsResponse),
+        (status = 200, description = "Available TO types and field specs", body = DslOptionsAndExamplesResponse),
         (status = 500, description = "Internal server error")
     ),
     security(("jwt" = []))
 )]
 #[get("/to/options")]
-pub async fn list_to_options(_: auth_enum::RequiredAuth) -> impl Responder {
+pub async fn list_to_options(_: RequiredAuth) -> impl Responder {
     let types = DslOptionsResponse {
         types: vec![
             DslTypeSpec {
@@ -408,13 +408,13 @@ pub async fn list_to_options(_: auth_enum::RequiredAuth) -> impl Responder {
     path = "/admin/api/v1/dsl/transform/options",
     tag = "DSL",
     responses(
-        (status = 200, description = "Available TRANSFORM types and field specs", body = DslOptionsResponse),
+        (status = 200, description = "Available TRANSFORM types and field specs", body = DslOptionsAndExamplesResponse),
         (status = 500, description = "Internal server error")
     ),
     security(("jwt" = []))
 )]
 #[get("/transform/options")]
-pub async fn list_transform_options(_: auth_enum::RequiredAuth) -> impl Responder {
+pub async fn list_transform_options(_: RequiredAuth) -> impl Responder {
     let types = DslOptionsResponse {
         types: vec![
             DslTypeSpec {

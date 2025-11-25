@@ -1,6 +1,8 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::field::FieldDefinition;
-use r_data_core_api::admin::entity_definitions::models::{
+use crate::admin::entity_definitions::models::{
     DateTimeConstraints, EntityDefinitionSchema, FieldConstraints, FieldDefinitionSchema,
     FieldTypeSchema, NumericConstraints, RelationConstraints, SchemaConstraints,
     SelectConstraints, StringConstraints, UiSettingsSchema,

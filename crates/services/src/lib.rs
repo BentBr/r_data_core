@@ -7,6 +7,7 @@ pub mod entity_definition;
 pub mod permission_scheme;
 pub mod settings;
 pub mod version;
+pub mod workflow;
 
 // Re-exports
 pub use admin_user::AdminUserService;
@@ -16,4 +17,5 @@ pub use entity_definition::{EntityDefinitionService, ServiceEntityFieldInfo};
 pub use permission_scheme::PermissionSchemeService;
 pub use settings::SettingsService;
 pub use version::{VersionMetaWithName, VersionService};
+pub use workflow::{WorkflowService, WorkflowRepositoryAdapter};
 

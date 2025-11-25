@@ -3163,14 +3163,17 @@ dependencies = [
  "anyhow",
  "async-trait",
  "cron",
+ "futures",
  "log",
  "r_data_core_core",
  "r_data_core_persistence",
+ "r_data_core_workflow",
  "regex",
  "serde",
  "serde_json",
  "sqlx",
  "time",
+ "tokio",
  "uuid",
 ]
 

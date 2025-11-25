@@ -29,8 +29,7 @@ use crate::services::adapters::{
 };
 use r_data_core_services::{AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, PermissionSchemeService};
 use crate::services::ApiKeyRepositoryAdapter;
-use crate::services::WorkflowRepositoryAdapter;
-use crate::services::WorkflowService;
+use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 use r_data_core_persistence::WorkflowRepository;
 

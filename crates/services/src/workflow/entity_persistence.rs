@@ -1,7 +1,7 @@
 use r_data_core_core::DynamicEntity;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
-use r_data_core_services::DynamicEntityService;
-use crate::services::workflow::value_formatting::{
+use crate::dynamic_entity::DynamicEntityService;
+use crate::workflow::value_formatting::{
     build_normalized_field_data, normalize_field_data_by_type, normalize_path,
 };
 use serde_json::Value;
@@ -80,7 +80,7 @@ pub async fn find_existing_entity(
             .await
         {
             if let Some(entity) = entities.first() {
-                return Ok(EntityLookupResult::Found(entity.clone()));
+                return Ok(EntityLookupResult::Found(entity.clone() as DynamicEntity));
             }
         }
     }
@@ -149,7 +149,7 @@ pub async fn ensure_entity_key(
     field_data: &mut HashMap<String, Value>,
 ) {
     if !field_data.contains_key("entity_key") {
-        let existing_count = de_service.count_entities(entity_type).await.unwrap_or(0);
+        let existing_count: i64 = de_service.count_entities(entity_type).await.unwrap_or(0);
         let rand = Uuid::now_v7().to_string();
         let short = &rand[..8];
         let key = format!("{}-{}-{}", entity_type, existing_count + 1, short);

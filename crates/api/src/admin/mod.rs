@@ -4,6 +4,7 @@ pub mod api_keys;
 pub mod auth;
 pub mod dsl;
 pub mod entity_definitions;
+pub mod permissions;
 pub mod system;
 pub mod workflows;
 

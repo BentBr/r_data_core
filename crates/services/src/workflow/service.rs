@@ -1,6 +1,6 @@
-use r_data_core_api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
-use r_data_core_services::DynamicEntityService;
-use crate::services::workflow::entity_persistence::{
+use r_data_core_workflow::data::requests::{CreateWorkflowRequest, UpdateWorkflowRequest};
+use crate::dynamic_entity::DynamicEntityService;
+use crate::workflow::entity_persistence::{
     create_entity, create_or_update_entity, update_entity, PersistenceContext,
 };
 use r_data_core_persistence::WorkflowRepositoryTrait;
