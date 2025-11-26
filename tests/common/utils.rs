@@ -9,7 +9,14 @@ use r_data_core_core::field::ui::UiSettings;
 use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core_core::error::Result;
 use r_data_core_services::EntityDefinitionService;
-use r_data_core::services::{WorkflowRepositoryAdapter, WorkflowService};
+use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
+use r_data_core_api::ApiStateWrapper;
+use r_data_core::api::ApiState;
+
+/// Helper function to wrap ApiState for use in tests
+pub fn wrap_api_state(state: ApiState) -> ApiStateWrapper {
+    ApiStateWrapper::new(state)
+}
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 use r_data_core_persistence::WorkflowRepository;
 use serde_json::json;

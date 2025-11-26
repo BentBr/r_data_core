@@ -1,5 +1,5 @@
 use r_data_core_api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
-use r_data_core::services::WorkflowRepositoryAdapter;
+use r_data_core_services::WorkflowRepositoryAdapter;
 use r_data_core_persistence::WorkflowRepository;
 use r_data_core_workflow::data::WorkflowKind;
 use sqlx::Row;
@@ -19,7 +19,7 @@ async fn create_sets_created_by_and_fk_enforced() -> anyhow::Result<()> {
 
     let repo = WorkflowRepository::new(pool.clone());
     let adapter = WorkflowRepositoryAdapter::new(repo);
-    let _svc = r_data_core::services::workflow_service::WorkflowService::new(Arc::new(adapter));
+    let _svc = r_data_core_services::WorkflowService::new(Arc::new(adapter));
 
     // Minimal valid DSL config
     let cfg = serde_json::json!({

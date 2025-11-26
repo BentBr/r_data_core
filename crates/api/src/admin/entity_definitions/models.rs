@@ -262,7 +262,7 @@ pub struct EntityDefinitionSchema {
     pub icon: Option<String>,
     /// Field definitions for this entity type
     pub fields: Vec<FieldDefinitionSchema>,
-    /// Published state (whether visible to users)
+    /// Published &**state (whether visible to users)
     pub published: Option<bool>,
     /// Created at timestamp
     #[serde(skip_serializing_if = "Option::is_none")]

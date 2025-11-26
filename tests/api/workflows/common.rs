@@ -2,6 +2,7 @@
 
 use actix_web::{test, web, App};
 use r_data_core::api::{configure_app, ApiState};
+use r_data_core_api::ApiStateWrapper;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
 use r_data_core_core::admin_user::AdminUser;
@@ -60,13 +61,13 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
     let wf_repo = WorkflowRepository::new(pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
     let workflow_service =
-        r_data_core::services::workflow_service::WorkflowService::new_with_entities(
+        r_data_core_services::WorkflowService::new_with_entities(
             Arc::new(wf_adapter),
             dynamic_entity_service.clone(),
         );
 
     let jwt_secret = "test_secret".to_string();
-    let app_state = web::Data::new(ApiState {
+    let api_state = ApiState {
         db_pool: pool.clone(),
         api_config: r_data_core_core::config::ApiConfig {
             host: "0.0.0.0".to_string(),
@@ -89,7 +90,9 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
         dynamic_entity_service: Some(dynamic_entity_service),
         workflow_service,
         queue: common::utils::test_queue_client_async().await,
-    });
+    };
+
+    let app_state = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));
 
     let app = test::init_service(
         App::new()

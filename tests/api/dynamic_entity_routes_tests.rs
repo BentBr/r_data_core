@@ -100,7 +100,7 @@ mod dynamic_entity_api_tests {
         ));
 
         // Create app state
-        let app_state = web::Data::new(ApiState {
+        let api_state = ApiState {
             db_pool: pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
                 host: "0.0.0.0".to_string(),
@@ -123,7 +123,9 @@ mod dynamic_entity_api_tests {
             dynamic_entity_service: Some(dynamic_entity_service),
             workflow_service: crate::common::utils::make_workflow_service(&pool),
             queue: crate::common::utils::test_queue_client_async().await,
-        });
+        };
+
+        let app_state = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));
 
         // Build test app
         let app = test::init_service(

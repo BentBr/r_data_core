@@ -5,7 +5,7 @@ use actix_web::{get, put, web, Responder};
 use crate::admin::system::models::{EntityVersioningSettingsDto, UpdateSettingsBody};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::response::ApiResponse;
-use crate::api_state::ApiStateTrait;
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use r_data_core_services::SettingsService;
 
 /// Register system routes
@@ -27,7 +27,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
 )]
 #[get("/settings/entity-versioning")]
 pub async fn get_entity_versioning_settings(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     _: RequiredAuth,
 ) -> impl Responder {
     let service = SettingsService::new(data.db_pool().clone(), data.cache_manager().clone());
@@ -54,7 +54,7 @@ pub async fn get_entity_versioning_settings(
 )]
 #[put("/settings/entity-versioning")]
 pub async fn update_entity_versioning_settings(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     body: web::Json<UpdateSettingsBody>,
     auth: RequiredAuth,
 ) -> impl Responder {

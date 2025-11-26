@@ -3,10 +3,8 @@ use r_data_core::api::{configure_app, ApiState};
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
 use r_data_core_core::admin_user::AdminUser;
-use r_data_core::entity::admin_user::{AdminUserRepository, ApiKeyRepository};
-use r_data_core::services::{
-    AdminUserService, ApiKeyService, EntityDefinitionService, WorkflowRepositoryAdapter,
-};
+use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
+use r_data_core_services::{AdminUserService, ApiKeyService, EntityDefinitionService, WorkflowRepositoryAdapter};
 use r_data_core_persistence::WorkflowRepository;
 use r_data_core_workflow::data::WorkflowKind;
 use sqlx::postgres::PgPoolOptions;
@@ -52,10 +50,10 @@ async fn setup_app_and_token() -> anyhow::Result<(
 
     let wf_repo = WorkflowRepository::new(pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
-    let workflow_service = r_data_core::services::workflow_service::WorkflowService::new(Arc::new(wf_adapter));
+    let workflow_service = r_data_core_services::WorkflowService::new(Arc::new(wf_adapter));
 
     let jwt_secret = "test_secret".to_string();
-    let app_state = web::Data::new(ApiState {
+    let app_state = let api_state = ApiState {
         db_pool: pool.clone(),
         api_config: r_data_core_core::config::ApiConfig {
             host: "0.0.0.0".to_string(),

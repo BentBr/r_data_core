@@ -10,7 +10,7 @@ use crate::jwt::{
     REFRESH_TOKEN_EXPIRY_SECONDS,
 };
 use crate::response::ApiResponse;
-use crate::api_state::ApiStateTrait;
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::OptionalAuth;
 use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
 use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
@@ -41,7 +41,7 @@ use validator::Validate;
 )]
 #[post("/auth/login")]
 pub async fn admin_login(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     login_req: Option<web::Json<AdminLoginRequest>>,
 ) -> impl Responder {
     // Check if JSON body is provided and validate
@@ -216,7 +216,7 @@ pub async fn admin_login(
 )]
 #[post("/auth/register")]
 pub async fn admin_register(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     register_req: Option<web::Json<AdminRegisterRequest>>,
     auth: OptionalAuth,
 ) -> impl Responder {
@@ -342,7 +342,7 @@ pub async fn admin_register(
 )]
 #[post("/auth/logout")]
 pub async fn admin_logout(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     request: web::Json<LogoutRequest>,
 ) -> impl Responder {
     let refresh_repo = RefreshTokenRepository::new(data.db_pool().clone());
@@ -384,7 +384,7 @@ pub async fn admin_logout(
 )]
 #[post("/auth/refresh")]
 pub async fn admin_refresh_token(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     request: web::Json<RefreshTokenRequest>,
 ) -> impl Responder {
     let refresh_repo = RefreshTokenRepository::new(data.db_pool().clone());
@@ -542,7 +542,7 @@ pub async fn admin_refresh_token(
 )]
 #[post("/auth/revoke-all")]
 pub async fn admin_revoke_all_tokens(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     req: HttpRequest,
 ) -> impl Responder {
     // Extract user claims from JWT

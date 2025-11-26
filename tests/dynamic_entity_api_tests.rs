@@ -1,8 +1,8 @@
 use log::warn;
 use r_data_core_persistence::EntityDefinitionRepository;
-use r_data_core_api::public::entities::models::BrowseKind;
+use r_data_core_core::public_api::BrowseKind;
 use r_data_core_core::error::Result;
-use r_data_core::api::public::entities::repository::EntityRepository;
+use r_data_core_persistence::DynamicEntityPublicRepository;
 use r_data_core_core::DynamicEntity;
 use r_data_core_persistence::DynamicEntityRepository;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
@@ -1089,7 +1089,7 @@ mod dynamic_entity_tests {
         );
 
         // Test 2: Query entities at "/" - should return parent entity with has_children=true
-        let pub_repo = EntityRepository::new(pool.clone());
+        let pub_repo = DynamicEntityPublicRepository::new(pool.clone());
         let (items, _total) = pub_repo.browse_by_path("/", 100, 0).await?;
 
         let parent_item = items.iter().find(|item| item.name == "test");
@@ -1232,7 +1232,7 @@ mod dynamic_entity_tests {
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
         // Test 1: Get-by-path "/" must return "some-folder" as type folder with has_children=true
-        let pub_repo = EntityRepository::new(pool.clone());
+        let pub_repo = DynamicEntityPublicRepository::new(pool.clone());
         let (root_items, _) = pub_repo.browse_by_path("/", 100, 0).await?;
 
         let folder_node = root_items.iter().find(|item| item.name == "some-folder");

@@ -3,10 +3,8 @@ use r_data_core_api::admin::workflows::models::CreateWorkflowRequest;
 use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
 use r_data_core::services::adapters::EntityDefinitionRepositoryAdapter;
 use r_data_core_services::{DynamicEntityService, EntityDefinitionService};
-use r_data_core::services::{
-    adapters::DynamicEntityRepositoryAdapter,
-    WorkflowRepositoryAdapter, WorkflowService,
-};
+use r_data_core::services::adapters::DynamicEntityRepositoryAdapter;
+use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_persistence::WorkflowRepository;
 use r_data_core_workflow::data::WorkflowKind;
 use serde_json::json;

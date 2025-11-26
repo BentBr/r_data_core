@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::api::auth::auth_enum::CombinedRequiredAuth;
 use r_data_core_api::query::StandardQuery;
 use r_data_core_api::response::{ApiResponse, ValidationViolation};
-use crate::api::ApiState;
+use r_data_core_api::api_state::{ApiStateTrait, ApiStateWrapper};
 use r_data_core_core::DynamicEntity;
 use crate::entity::dynamic_entity::validator::{validate_entity_with_violations, FieldViolation};
 
@@ -37,12 +37,12 @@ fn to_dynamic_entity_response(entity: DynamicEntity) -> DynamicEntityResponse {
 
 /// Helper to validate requested fields against entity definition
 async fn validate_requested_fields(
-    data: &web::Data<ApiState>,
+    data: &web::Data<ApiStateWrapper>,
     entity_type: &str,
     fields: &Option<Vec<String>>,
 ) -> Result<(), HttpResponse> {
     if let Some(fields) = fields {
-        let entity_def_service = &data.entity_definition_service;
+        let entity_def_service = data.entity_definition_service();
         match entity_def_service
             .get_entity_definition_by_entity_type(entity_type)
             .await
@@ -113,7 +113,7 @@ async fn validate_requested_fields(
     )
 )]
 async fn list_entities(
-    data: web::Data<ApiState>,
+    data: web::Data<ApiStateWrapper>,
     path: web::Path<String>,
     query: web::Query<StandardQuery>,
     _: CombinedRequiredAuth,
@@ -135,7 +135,7 @@ async fn list_entities(
         return response;
     }
 
-    if let Some(service) = &data.dynamic_entity_service {
+    if let Some(service) = data.dynamic_entity_service() {
         // If validation passed, proceed with the query
         match service
             .list_entities_with_filters(
@@ -189,7 +189,7 @@ async fn list_entities(
     )
 )]
 async fn create_entity(
-    data: web::Data<ApiState>,
+    data: web::Data<ApiStateWrapper>,
     path: web::Path<String>,
     entity: web::Json<HashMap<String, Value>>,
     auth: CombinedRequiredAuth,
@@ -206,9 +206,9 @@ async fn create_entity(
         }
     };
 
-    if let Some(service) = &data.dynamic_entity_service {
+    if let Some(service) = data.dynamic_entity_service() {
         // First, we need to find the entity definition to create the entity
-        let entity_def_service = &data.entity_definition_service;
+        let entity_def_service = data.entity_definition_service();
         match entity_def_service
             .get_entity_definition_by_entity_type(&entity_type)
             .await
@@ -309,7 +309,7 @@ async fn create_entity(
     )
 )]
 async fn get_entity(
-    data: web::Data<ApiState>,
+    data: web::Data<ApiStateWrapper>,
     path: web::Path<(String, String)>,
     query: web::Query<StandardQuery>,
     _: CombinedRequiredAuth,
@@ -331,7 +331,7 @@ async fn get_entity(
         }
     };
 
-    if let Some(service) = &data.dynamic_entity_service {
+    if let Some(service) = data.dynamic_entity_service() {
         match service
             .get_entity_by_uuid(&entity_type, &uuid, fields)
             .await
@@ -373,7 +373,7 @@ async fn get_entity(
     )
 )]
 async fn update_entity(
-    data: web::Data<ApiState>,
+    data: web::Data<ApiStateWrapper>,
     path: web::Path<(String, String)>,
     entity_data: web::Json<HashMap<String, Value>>,
     auth: CombinedRequiredAuth,
@@ -396,7 +396,7 @@ async fn update_entity(
         }
     };
 
-    if let Some(service) = &data.dynamic_entity_service {
+    if let Some(service) = data.dynamic_entity_service() {
         // First, we need to get the existing entity
         match service.get_entity_by_uuid(&entity_type, &uuid, None).await {
             Ok(Some(mut existing_entity)) => {
@@ -460,7 +460,7 @@ async fn update_entity(
     )
 )]
 async fn delete_entity(
-    data: web::Data<ApiState>,
+    data: web::Data<ApiStateWrapper>,
     path: web::Path<(String, String)>,
     _: CombinedRequiredAuth,
 ) -> HttpResponse {
@@ -472,7 +472,7 @@ async fn delete_entity(
         }
     };
 
-    if let Some(service) = &data.dynamic_entity_service {
+    if let Some(service) = data.dynamic_entity_service() {
         match service.delete_entity(&entity_type, &uuid).await {
             Ok(_) => ApiResponse::<()>::message("Successfully deleted the entity"),
             Err(e) => handle_entity_error(e, &entity_type),

@@ -10,7 +10,7 @@ use crate::admin::workflows::models::{
 use crate::auth::auth_enum::RequiredAuth;
 use crate::response::ValidationViolation;
 use crate::response::ApiResponse;
-use crate::api_state::ApiStateTrait;
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use r_data_core_core::utils;
 
 /// Get details for one workflow by UUID
@@ -28,7 +28,7 @@ use r_data_core_core::utils;
 )]
 #[get("/{uuid}")]
 pub async fn get_workflow_details(
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
     _: RequiredAuth,
 ) -> impl Responder {
@@ -69,7 +69,7 @@ pub async fn get_workflow_details(
 )]
 #[post("")]
 pub async fn create_workflow(
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
     body: web::Json<CreateWorkflowRequest>,
     auth: RequiredAuth,
 ) -> impl Responder {
@@ -129,7 +129,7 @@ pub async fn create_workflow(
 )]
 #[put("/{uuid}")]
 pub async fn update_workflow(
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
     body: web::Json<UpdateWorkflowRequest>,
     auth: RequiredAuth,
@@ -177,7 +177,7 @@ pub async fn update_workflow(
 )]
 #[delete("/{uuid}")]
 pub async fn delete_workflow(
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
     _: RequiredAuth,
 ) -> impl Responder {

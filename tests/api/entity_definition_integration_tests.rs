@@ -123,43 +123,45 @@ mod tests {
 
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
+        let api_state = ApiState {
+            db_pool: pool.clone(),
+            api_config: r_data_core_core::config::ApiConfig {
+                host: "0.0.0.0".to_string(),
+                port: 8888,
+                use_tls: false,
+                jwt_secret: "test_secret".to_string(),
+                jwt_expiration: 3600,
+                enable_docs: true,
+                cors_origins: vec![],
+            },
+            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+                pool.clone(),
+                cache_manager.clone(),
+                Some(0),
+            ),
+            cache_manager: cache_manager.clone(),
+            api_key_service: ApiKeyService::from_repository(api_key_repo),
+            admin_user_service: AdminUserService::from_repository(admin_user_repo),
+            entity_definition_service: EntityDefinitionService::new_without_cache(
+                entity_def_repo,
+            ),
+            dynamic_entity_service: None,
+            workflow_service: r_data_core_services::WorkflowService::new(Arc::new(
+                r_data_core_services::WorkflowRepositoryAdapter::new(
+                    r_data_core_persistence::WorkflowRepository::new(
+                        pool.clone(),
+                    ),
+                ),
+            )),
+            queue: crate::common::utils::test_queue_client_async().await,
+        };
+
         let app = test::init_service(
             App::new()
-                .app_data(web::Data::new(ApiState {
-                    db_pool: pool.clone(),
-                    api_config: r_data_core_core::config::ApiConfig {
-                        host: "0.0.0.0".to_string(),
-                        port: 8888,
-                        use_tls: false,
-                        jwt_secret: "test_secret".to_string(),
-                        jwt_expiration: 3600,
-                        enable_docs: true,
-                        cors_origins: vec![],
-                    },
-                    permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
-                        pool.clone(),
-                        cache_manager.clone(),
-                        Some(0),
-                    ),
-                    cache_manager: cache_manager.clone(),
-                    api_key_service: ApiKeyService::from_repository(api_key_repo),
-                    admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    entity_definition_service: EntityDefinitionService::new_without_cache(
-                        entity_def_repo,
-                    ),
-                    dynamic_entity_service: None,
-                    workflow_service: r_data_core::services::WorkflowService::new(Arc::new(
-                        r_data_core::services::WorkflowRepositoryAdapter::new(
-                            r_data_core_persistence::WorkflowRepository::new(
-                                pool.clone(),
-                            ),
-                        ),
-                    )),
-                    queue: crate::common::utils::test_queue_client_async().await,
-                }))
+                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
                 .service(web::scope("/admin/api/v1").service(
                     web::scope("/entity-definitions").configure(
-                        r_data_core::api::admin::entity_definitions::routes::register_routes,
+                        r_data_core_api::admin::entity_definitions::routes::register_routes,
                     ),
                 )),
         )

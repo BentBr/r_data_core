@@ -12,5 +12,5 @@ pub mod query;
 pub mod response;
 
 // Re-export commonly used types
-pub use api_state::{ApiConfiguration, ApiStateTrait, configure_app, configure_app_with_options};
+pub use api_state::{ApiConfiguration, ApiStateTrait, ApiStateWrapper, configure_app, configure_app_with_options};
 pub use response::ApiResponse;

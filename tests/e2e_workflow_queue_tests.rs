@@ -2,11 +2,8 @@ use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core_persistence::DynamicEntityRepositoryTrait;
 use r_data_core_core::DynamicEntity;
 use r_data_core_services::EntityDefinitionService;
-use r_data_core::services::{
-    adapters::{DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter},
-    WorkflowRepositoryAdapter,
-    WorkflowService,
-};
+use r_data_core::services::adapters::{DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter};
+use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::FetchAndStageJob;

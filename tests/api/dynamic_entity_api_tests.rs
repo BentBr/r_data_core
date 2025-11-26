@@ -4,7 +4,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 use r_data_core::api::{ApiState, configure_app};
 use r_data_core_core::cache::CacheManager;
-use r_data_core::entity::class::definition::EntityDefinition;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::DynamicEntity;
 use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
 use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
@@ -217,19 +217,19 @@ mod dynamic_entity_api_tests {
         let cache_manager = Arc::new(CacheManager::new_mock());
 
         let api_key_service = ApiKeyService::new(
-            Arc::new(r_data_core::entity::api_key::repository::ApiKeyRepository::new(
+            Arc::new(r_data_core_persistence::ApiKeyRepository::new(
                 db_pool.clone(),
             )),
         );
 
         let admin_user_service = AdminUserService::new(
-            Arc::new(r_data_core::entity::admin_user::AdminUserRepository::new(
+            Arc::new(r_data_core_persistence::AdminUserRepository::new(
                 Arc::new(db_pool.clone()),
             )),
         );
 
         let entity_definition_service = EntityDefinitionService::new(
-            Arc::new(r_data_core::entity::class::repository::EntityDefinitionRepository::new(
+            Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
                 db_pool.clone(),
             )),
         );
@@ -241,7 +241,7 @@ mod dynamic_entity_api_tests {
         ));
 
         // Create app state
-        let app_state = web::Data::new(ApiState {
+        let app_state = let api_state = ApiState {
             db_pool: db_pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
                 host: "0.0.0.0".to_string(),

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use r_data_core::entity::class::definition::EntityDefinition;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::DynamicEntity;
 use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
 use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};

@@ -3,7 +3,7 @@ use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core::api::{configure_app, ApiState};
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
-use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
+use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository, ApiKeyRepositoryTrait};
 use r_data_core_core::DynamicEntity;
 use r_data_core_persistence::DynamicEntityRepository;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
@@ -15,7 +15,7 @@ use r_data_core_core::error::Result;
 use r_data_core_services::{
     AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
 };
-use r_data_core::services::WorkflowService;
+use r_data_core_services::WorkflowService;
 use r_data_core_persistence::WorkflowRepository;
 use serde_json::json;
 use sqlx::PgPool;
@@ -224,6 +224,18 @@ async fn create_test_app(
     Response = actix_web::dev::ServiceResponse,
     Error = actix_web::Error,
 > {
+    let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+    create_test_app_with_api_key_repo(pool, api_key_repo).await
+}
+
+async fn create_test_app_with_api_key_repo(
+    pool: &PgPool,
+    api_key_repo: ApiKeyRepository,
+) -> impl actix_web::dev::Service<
+    actix_http::Request,
+    Response = actix_web::dev::ServiceResponse,
+    Error = actix_web::Error,
+> {
     // Create a cache manager
     let cache_config = CacheConfig {
         entity_definition_ttl: 0, // No expiration
@@ -235,8 +247,9 @@ async fn create_test_app(
     let cache_manager = Arc::new(CacheManager::new(cache_config));
 
     // Create repositories and services
-    let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.clone())));
-    let api_key_service = ApiKeyService::new(api_key_repository);
+    // Use from_repository to match the pattern in authentication_tests.rs
+    // Note: We don't use cache for API keys in tests to avoid cache-related issues
+    let api_key_service = ApiKeyService::from_repository(api_key_repo);
 
     let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.clone())));
     let admin_user_service = AdminUserService::new(admin_user_repository);
@@ -255,7 +268,7 @@ async fn create_test_app(
     let workflow_service = WorkflowService::new(workflow_repository);
 
     // Create app state
-    let app_state = web::Data::new(ApiState {
+    let api_state = ApiState {
         db_pool: pool.clone(),
         api_config: r_data_core_core::config::ApiConfig {
             host: "0.0.0.0".to_string(),
@@ -278,7 +291,9 @@ async fn create_test_app(
         dynamic_entity_service: Some(dynamic_entity_service),
         workflow_service,
         queue: crate::common::utils::test_queue_client_async().await,
-    });
+    };
+
+    let app_state = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));
 
     // Build test app
     test::init_service(App::new().app_data(app_state).configure(configure_app)).await
@@ -305,12 +320,21 @@ async fn test_fixed_entity_type_column_issue() -> Result<()> {
         .await?;
     }
 
-    // Create an API key
-    let api_key = "test_api_key_12345";
-    create_test_api_key(&pool, api_key.to_string()).await?;
-
-    // Build test app with DynamicEntityService, etc.
-    let app = create_test_app(&pool).await;
+    // Create an admin user first
+    let user_uuid = common::utils::create_test_admin_user(&pool).await?;
+    
+    // Create an API key repository and key BEFORE creating the app (like in authentication_tests.rs)
+    let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+    let (key_uuid, api_key) = api_key_repo
+        .create_new_api_key("Test API Key", "Test Description", user_uuid, 30)
+        .await?;
+    
+    // Verify the API key can be found (debug check)
+    let auth_check = api_key_repo.find_api_key_for_auth(&api_key).await?;
+    assert!(auth_check.is_some(), "API key should be findable immediately after creation");
+    
+    // Build test app with DynamicEntityService, etc., using the same API key repository
+    let app = create_test_app_with_api_key_repo(&pool, api_key_repo).await;
 
     // Test the endpoint that previously failed due to the entity_type column
     let req = test::TestRequest::get()

@@ -9,7 +9,7 @@ use log::{debug, error};
 use uuid::Uuid;
 
 use crate::jwt::{verify_jwt, AuthUserClaims};
-use crate::api_state::ApiStateTrait;
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use r_data_core_core::admin_user::ApiKey;
 
 use std::result::Result as StdResult;
@@ -63,7 +63,7 @@ pub async fn extract_and_validate_api_key(
     // Try API key header
     if let Some(api_key) = req.headers().get("X-API-Key").and_then(|h| h.to_str().ok()) {
         // Get ApiState from request - should always be available
-        if let Some(state) = req.app_data::<web::Data<dyn ApiStateTrait>>() {
+        if let Some(state) = req.app_data::<web::Data<ApiStateWrapper>>() {
             // Use ApiKeyService which handles caching (cache hit) or DB query (cache miss)
             match state.api_key_service().validate_api_key(api_key).await {
                 Ok(Some((key, user_uuid))) => {

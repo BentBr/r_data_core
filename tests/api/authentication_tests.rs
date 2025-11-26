@@ -49,36 +49,38 @@ mod tests {
 
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
+        let api_state = ApiState {
+            db_pool: pool.clone(),
+            api_config: r_data_core_core::config::ApiConfig {
+                host: "0.0.0.0".to_string(),
+                port: 8888,
+                use_tls: false,
+                jwt_secret: "test_secret".to_string(),
+                jwt_expiration: 3600,
+                enable_docs: true,
+                cors_origins: vec![],
+            },
+            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+                pool.clone(),
+                cache_manager.clone(),
+                Some(0),
+            ),
+            cache_manager: cache_manager.clone(),
+            api_key_service: ApiKeyService::from_repository(api_key_repo),
+            admin_user_service: AdminUserService::from_repository(admin_user_repo),
+            entity_definition_service: EntityDefinitionService::new_without_cache(
+                entity_def_repo,
+            ),
+            dynamic_entity_service: None,
+            workflow_service: utils::make_workflow_service(&pool),
+            queue: utils::test_queue_client_async().await,
+        };
+
         // Create test app with API key authentication middleware
         let app = test::init_service(
             App::new()
                 .wrap(r_data_core::api::middleware::create_error_handlers())
-                .app_data(web::Data::new(ApiState {
-                    db_pool: pool.clone(),
-                    api_config: r_data_core_core::config::ApiConfig {
-                        host: "0.0.0.0".to_string(),
-                        port: 8888,
-                        use_tls: false,
-                        jwt_secret: "test_secret".to_string(),
-                        jwt_expiration: 3600,
-                        enable_docs: true,
-                        cors_origins: vec![],
-                    },
-                    permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
-                        pool.clone(),
-                        cache_manager.clone(),
-                        Some(0),
-                    ),
-                    cache_manager: cache_manager.clone(),
-            api_key_service: ApiKeyService::from_repository(api_key_repo),
-                    admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    entity_definition_service: EntityDefinitionService::new_without_cache(
-                        entity_def_repo,
-                    ),
-                    dynamic_entity_service: None,
-                    workflow_service: utils::make_workflow_service(&pool),
-                    queue: utils::test_queue_client_async().await,
-                }))
+                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
                 .service(
                     web::resource("/test")
                         .wrap(r_data_core::api::middleware::ApiAuth)
@@ -143,56 +145,57 @@ mod tests {
 
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
-        // Create test app with API key authentication middleware
-        let app =
-            test::init_service(
-                App::new()
-                    .wrap(r_data_core::api::middleware::create_error_handlers())
-                    .app_data(web::Data::new(ApiState {
-                        db_pool: pool.clone(),
-                        api_config: r_data_core_core::config::ApiConfig {
-                        host: "0.0.0.0".to_string(),
-                        port: 8888,
-                        use_tls: false,
-                        jwt_secret: "test_secret".to_string(),
-                        jwt_expiration: 3600,
-                        enable_docs: true,
-                        cors_origins: vec![],
-                    },
-                        permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
-                            pool.clone(),
-                            cache_manager.clone(),
-                            Some(0),
-                        ),
-                        cache_manager: cache_manager.clone(),
+        let api_state = ApiState {
+            db_pool: pool.clone(),
+            api_config: r_data_core_core::config::ApiConfig {
+                host: "0.0.0.0".to_string(),
+                port: 8888,
+                use_tls: false,
+                jwt_secret: "test_secret".to_string(),
+                jwt_expiration: 3600,
+                enable_docs: true,
+                cors_origins: vec![],
+            },
+            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+                pool.clone(),
+                cache_manager.clone(),
+                Some(0),
+            ),
+            cache_manager: cache_manager.clone(),
             api_key_service: ApiKeyService::from_repository(api_key_repo),
-                        admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                        entity_definition_service: EntityDefinitionService::new_without_cache(
-                            entity_def_repo,
-                        ),
-                        dynamic_entity_service: None,
-                        workflow_service: crate::common::utils::make_workflow_service(&pool),
-                        queue: crate::common::utils::test_queue_client_async().await,
-                    }))
-                    .service(web::resource("/test").wrap(ApiAuth).to(
-                        |req: HttpRequest| async move {
-                            // Check if API key info was added to request extensions
-                            if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
-                                HttpResponse::Ok().json(serde_json::json!({
-                                    "status": "success",
-                                    "api_key_uuid": api_key_info.uuid,
-                                    "user_uuid": api_key_info.user_uuid
-                                }))
-                            } else {
-                                HttpResponse::Unauthorized().json(serde_json::json!({
-                                    "status": "error",
-                                    "message": "No API key found"
-                                }))
-                            }
-                        },
-                    )),
-            )
-            .await;
+            admin_user_service: AdminUserService::from_repository(admin_user_repo),
+            entity_definition_service: EntityDefinitionService::new_without_cache(
+                entity_def_repo,
+            ),
+            dynamic_entity_service: None,
+            workflow_service: crate::common::utils::make_workflow_service(&pool),
+            queue: crate::common::utils::test_queue_client_async().await,
+        };
+
+        // Create test app with API key authentication middleware
+        let app = test::init_service(
+            App::new()
+                .wrap(r_data_core::api::middleware::create_error_handlers())
+                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
+                .service(web::resource("/test").wrap(ApiAuth).to(
+                    |req: HttpRequest| async move {
+                        // Check if API key info was added to request extensions
+                        if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
+                            HttpResponse::Ok().json(serde_json::json!({
+                                "status": "success",
+                                "api_key_uuid": api_key_info.uuid,
+                                "user_uuid": api_key_info.user_uuid
+                            }))
+                        } else {
+                            HttpResponse::Unauthorized().json(serde_json::json!({
+                                "status": "error",
+                                "message": "No API key found"
+                            }))
+                        }
+                    },
+                )),
+        )
+        .await;
 
         // Test with invalid API key
         let req = test::TestRequest::get()
@@ -231,35 +234,37 @@ mod tests {
 
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
+        let api_state = ApiState {
+            db_pool: pool.clone(),
+            api_config: r_data_core_core::config::ApiConfig {
+                host: "0.0.0.0".to_string(),
+                port: 8888,
+                use_tls: false,
+                jwt_secret: "test_secret".to_string(),
+                jwt_expiration: 3600,
+                enable_docs: true,
+                cors_origins: vec![],
+            },
+            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+                pool.clone(),
+                cache_manager.clone(),
+                Some(0),
+            ),
+            cache_manager: cache_manager.clone(),
+            api_key_service: ApiKeyService::from_repository(api_key_repo),
+            admin_user_service: AdminUserService::from_repository(admin_user_repo),
+            entity_definition_service: EntityDefinitionService::new_without_cache(
+                entity_def_repo,
+            ),
+            dynamic_entity_service: None,
+            workflow_service: crate::common::utils::make_workflow_service(&pool),
+            queue: crate::common::utils::test_queue_client_async().await,
+        };
+
         // Create test app with API key authentication middleware
         let app = test::init_service(
             App::new()
-                .app_data(web::Data::new(ApiState {
-                    db_pool: pool.clone(),
-                    api_config: r_data_core_core::config::ApiConfig {
-                        host: "0.0.0.0".to_string(),
-                        port: 8888,
-                        use_tls: false,
-                        jwt_secret: "test_secret".to_string(),
-                        jwt_expiration: 3600,
-                        enable_docs: true,
-                        cors_origins: vec![],
-                    },
-                    permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
-                        pool.clone(),
-                        cache_manager.clone(),
-                        Some(0),
-                    ),
-                    cache_manager: cache_manager.clone(),
-            api_key_service: ApiKeyService::from_repository(api_key_repo),
-                    admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    entity_definition_service: EntityDefinitionService::new_without_cache(
-                        entity_def_repo,
-                    ),
-                    dynamic_entity_service: None,
-                    workflow_service: crate::common::utils::make_workflow_service(&pool),
-                    queue: crate::common::utils::test_queue_client_async().await,
-                }))
+                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
                 .service(
                     web::resource("/test")
                         .wrap(r_data_core::api::middleware::ApiAuth)
@@ -325,35 +330,37 @@ mod tests {
 
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
+        let api_state = ApiState {
+            db_pool: pool.clone(),
+            api_config: r_data_core_core::config::ApiConfig {
+                host: "0.0.0.0".to_string(),
+                port: 8888,
+                use_tls: false,
+                jwt_secret: "test_secret".to_string(),
+                jwt_expiration: 3600,
+                enable_docs: true,
+                cors_origins: vec![],
+            },
+            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+                pool.clone(),
+                cache_manager.clone(),
+                Some(0),
+            ),
+            cache_manager: cache_manager.clone(),
+            api_key_service: ApiKeyService::from_repository(api_key_repo),
+            admin_user_service: AdminUserService::from_repository(admin_user_repo),
+            entity_definition_service: EntityDefinitionService::new_without_cache(
+                entity_def_repo,
+            ),
+            dynamic_entity_service: None,
+            workflow_service: crate::common::utils::make_workflow_service(&pool),
+            queue: crate::common::utils::test_queue_client_async().await,
+        };
+
         // Create test app with combined authentication middleware
         let app = test::init_service(
             App::new()
-                .app_data(web::Data::new(ApiState {
-                    db_pool: pool.clone(),
-                    api_config: r_data_core_core::config::ApiConfig {
-                        host: "0.0.0.0".to_string(),
-                        port: 8888,
-                        use_tls: false,
-                        jwt_secret: "test_secret".to_string(),
-                        jwt_expiration: 3600,
-                        enable_docs: true,
-                        cors_origins: vec![],
-                    },
-                    permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
-                        pool.clone(),
-                        cache_manager.clone(),
-                        Some(0),
-                    ),
-                    cache_manager: cache_manager.clone(),
-            api_key_service: ApiKeyService::from_repository(api_key_repo),
-                    admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    entity_definition_service: EntityDefinitionService::new_without_cache(
-                        entity_def_repo,
-                    ),
-                    dynamic_entity_service: None,
-                    workflow_service: crate::common::utils::make_workflow_service(&pool),
-                    queue: crate::common::utils::test_queue_client_async().await,
-                }))
+                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
                 .service(
                     web::resource("/test")
                         .wrap(r_data_core::api::middleware::CombinedAuth)
@@ -436,41 +443,43 @@ mod tests {
 
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
+        let api_state = ApiState {
+            db_pool: pool.clone(),
+            api_config: r_data_core_core::config::ApiConfig {
+                host: "0.0.0.0".to_string(),
+                port: 8888,
+                use_tls: false,
+                jwt_secret: "test_secret".to_string(),
+                jwt_expiration: 3600,
+                enable_docs: true,
+                cors_origins: vec![],
+            },
+            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+                pool.clone(),
+                cache_manager.clone(),
+                Some(0),
+            ),
+            cache_manager: cache_manager.clone(),
+            api_key_service: ApiKeyService::from_repository(api_key_repo),
+            admin_user_service: AdminUserService::from_repository(admin_user_repo),
+            entity_definition_service: EntityDefinitionService::new_without_cache(
+                entity_def_repo,
+            ),
+            dynamic_entity_service: None,
+            workflow_service: r_data_core_services::WorkflowService::new(Arc::new(
+                r_data_core_services::WorkflowRepositoryAdapter::new(
+                    r_data_core_persistence::WorkflowRepository::new(
+                        pool.clone(),
+                    ),
+                ),
+            )),
+            queue: crate::common::utils::test_queue_client_async().await,
+        };
+
         // Create test app with combined authentication middleware
         let app = test::init_service(
             App::new()
-                .app_data(web::Data::new(ApiState {
-                    db_pool: pool.clone(),
-                    api_config: r_data_core_core::config::ApiConfig {
-                        host: "0.0.0.0".to_string(),
-                        port: 8888,
-                        use_tls: false,
-                        jwt_secret: "test_secret".to_string(),
-                        jwt_expiration: 3600,
-                        enable_docs: true,
-                        cors_origins: vec![],
-                    },
-                    permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
-                        pool.clone(),
-                        cache_manager.clone(),
-                        Some(0),
-                    ),
-                    cache_manager: cache_manager.clone(),
-            api_key_service: ApiKeyService::from_repository(api_key_repo),
-                    admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    entity_definition_service: EntityDefinitionService::new_without_cache(
-                        entity_def_repo,
-                    ),
-                    dynamic_entity_service: None,
-                    workflow_service: r_data_core::services::WorkflowService::new(Arc::new(
-                        r_data_core::services::WorkflowRepositoryAdapter::new(
-                            r_data_core_persistence::WorkflowRepository::new(
-                                pool.clone(),
-                            ),
-                        ),
-                    )),
-                    queue: crate::common::utils::test_queue_client_async().await,
-                }))
+                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
                 .service(
                     web::resource("/test")
                         .wrap(r_data_core::api::middleware::CombinedAuth)
@@ -554,41 +563,43 @@ mod tests {
 
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
+        let api_state = ApiState {
+            db_pool: pool.clone(),
+            api_config: r_data_core_core::config::ApiConfig {
+                host: "0.0.0.0".to_string(),
+                port: 8888,
+                use_tls: false,
+                jwt_secret: "test_secret".to_string(),
+                jwt_expiration: 3600,
+                enable_docs: true,
+                cors_origins: vec![],
+            },
+            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+                pool.clone(),
+                cache_manager.clone(),
+                Some(0),
+            ),
+            cache_manager: cache_manager.clone(),
+            api_key_service: ApiKeyService::from_repository(api_key_repo),
+            admin_user_service: AdminUserService::from_repository(admin_user_repo),
+            entity_definition_service: EntityDefinitionService::new_without_cache(
+                entity_def_repo,
+            ),
+            dynamic_entity_service: None,
+            workflow_service: r_data_core_services::WorkflowService::new(Arc::new(
+                r_data_core_services::WorkflowRepositoryAdapter::new(
+                    r_data_core_persistence::WorkflowRepository::new(
+                        pool.clone(),
+                    ),
+                ),
+            )),
+            queue: crate::common::utils::test_queue_client_async().await,
+        };
+
         // Create test app with API key authentication middleware
         let app = test::init_service(
             App::new()
-                .app_data(web::Data::new(ApiState {
-                    db_pool: pool.clone(),
-                    api_config: r_data_core_core::config::ApiConfig {
-                        host: "0.0.0.0".to_string(),
-                        port: 8888,
-                        use_tls: false,
-                        jwt_secret: "test_secret".to_string(),
-                        jwt_expiration: 3600,
-                        enable_docs: true,
-                        cors_origins: vec![],
-                    },
-                    permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
-                        pool.clone(),
-                        cache_manager.clone(),
-                        Some(0),
-                    ),
-                    cache_manager: cache_manager.clone(),
-            api_key_service: ApiKeyService::from_repository(api_key_repo),
-                    admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    entity_definition_service: EntityDefinitionService::new_without_cache(
-                        entity_def_repo,
-                    ),
-                    dynamic_entity_service: None,
-                    workflow_service: r_data_core::services::WorkflowService::new(Arc::new(
-                        r_data_core::services::WorkflowRepositoryAdapter::new(
-                            r_data_core_persistence::WorkflowRepository::new(
-                                pool.clone(),
-                            ),
-                        ),
-                    )),
-                    queue: crate::common::utils::test_queue_client_async().await,
-                }))
+                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
                 .service(
                     web::resource("/test")
                         .wrap(r_data_core::api::middleware::ApiAuth)
@@ -657,55 +668,56 @@ mod tests {
 
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
-        // Create test app with API key authentication middleware
-        let app =
-            test::init_service(
-                App::new()
-                    .app_data(web::Data::new(ApiState {
-                        db_pool: pool.clone(),
-                        api_config: r_data_core_core::config::ApiConfig {
-                        host: "0.0.0.0".to_string(),
-                        port: 8888,
-                        use_tls: false,
-                        jwt_secret: "test_secret".to_string(),
-                        jwt_expiration: 3600,
-                        enable_docs: true,
-                        cors_origins: vec![],
-                    },
-                        permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
-                            pool.clone(),
-                            cache_manager.clone(),
-                            Some(0),
-                        ),
-                        cache_manager: cache_manager.clone(),
+        let api_state = ApiState {
+            db_pool: pool.clone(),
+            api_config: r_data_core_core::config::ApiConfig {
+                host: "0.0.0.0".to_string(),
+                port: 8888,
+                use_tls: false,
+                jwt_secret: "test_secret".to_string(),
+                jwt_expiration: 3600,
+                enable_docs: true,
+                cors_origins: vec![],
+            },
+            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+                pool.clone(),
+                cache_manager.clone(),
+                Some(0),
+            ),
+            cache_manager: cache_manager.clone(),
             api_key_service: ApiKeyService::from_repository(api_key_repo),
-                        admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                        entity_definition_service: EntityDefinitionService::new_without_cache(
-                            entity_def_repo,
-                        ),
-                        dynamic_entity_service: None,
-                        workflow_service: utils::make_workflow_service(&pool),
-                        queue: utils::test_queue_client_async().await,
-                    }))
-                    .service(web::resource("/test").wrap(ApiAuth).to(
-                        |req: HttpRequest| async move {
-                            // Check if API key info was added to request extensions
-                            if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
-                                HttpResponse::Ok().json(serde_json::json!({
-                                    "status": "success",
-                                    "api_key_uuid": api_key_info.uuid,
-                                    "user_uuid": api_key_info.user_uuid
-                                }))
-                            } else {
-                                HttpResponse::Unauthorized().json(serde_json::json!({
-                                    "status": "error",
-                                    "message": "No API key found"
-                                }))
-                            }
-                        },
-                    )),
-            )
-            .await;
+            admin_user_service: AdminUserService::from_repository(admin_user_repo),
+            entity_definition_service: EntityDefinitionService::new_without_cache(
+                entity_def_repo,
+            ),
+            dynamic_entity_service: None,
+            workflow_service: utils::make_workflow_service(&pool),
+            queue: utils::test_queue_client_async().await,
+        };
+
+        // Create test app with API key authentication middleware
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
+                .service(web::resource("/test").wrap(ApiAuth).to(
+                    |req: HttpRequest| async move {
+                        // Check if API key info was added to request extensions
+                        if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
+                            HttpResponse::Ok().json(serde_json::json!({
+                                "status": "success",
+                                "api_key_uuid": api_key_info.uuid,
+                                "user_uuid": api_key_info.user_uuid
+                            }))
+                        } else {
+                            HttpResponse::Unauthorized().json(serde_json::json!({
+                                "status": "error",
+                                "message": "No API key found"
+                            }))
+                        }
+                    },
+                )),
+        )
+        .await;
 
         // Test with revoked API key
         let req = test::TestRequest::get()
@@ -760,48 +772,39 @@ mod tests {
         let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, None)
             .expect("Failed to generate JWT token");
 
+        let api_state = ApiState {
+            db_pool: pool.clone(),
+            api_config: api_config.clone(),
+            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+                pool.clone(),
+                cache_manager.clone(),
+                Some(0),
+            ),
+            cache_manager: cache_manager.clone(),
+            api_key_service: ApiKeyService::from_repository(api_key_repo),
+            admin_user_service: AdminUserService::from_repository(admin_user_repo),
+            entity_definition_service: EntityDefinitionService::new_without_cache(
+                entity_def_repo,
+            ),
+            dynamic_entity_service: None,
+            workflow_service: utils::make_workflow_service(&pool),
+            queue: utils::test_queue_client_async().await,
+        };
+
         // Create test app with JWT authentication middleware
         let app = test::init_service(
             App::new()
                 .wrap(r_data_core::api::middleware::create_error_handlers())
-                .app_data(web::Data::new(ApiState {
-                    db_pool: pool.clone(),
-                    api_config: api_config.clone(),
-                    permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
-                        pool.clone(),
-                        cache_manager.clone(),
-                        Some(0),
-                    ),
-                    cache_manager: cache_manager.clone(),
-                    api_key_service: ApiKeyService::from_repository(api_key_repo),
-                    admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    entity_definition_service: EntityDefinitionService::new_without_cache(
-                        entity_def_repo,
-                    ),
-                    dynamic_entity_service: None,
-                    workflow_service: utils::make_workflow_service(&pool),
-                    queue: utils::test_queue_client_async().await,
-                }))
+                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
                 .service(
                     web::resource("/test")
-                        .wrap(r_data_core::api::middleware::CombinedAuth)
-                        .to(|req: HttpRequest| async move {
-                            // Check if JWT claims were added to request extensions by middleware
-                            if let Some(claims) = req.extensions().get::<AuthUserClaims>() {
-                                HttpResponse::Ok().json(serde_json::json!({
-                                    "status": "success",
-                                    "auth_method": "jwt",
-                                    "user_uuid": claims.sub,
-                                    "username": claims.name,
-                                    "email": claims.email,
-                                    "role": claims.role
-                                }))
-                            } else {
-                                HttpResponse::Unauthorized().json(serde_json::json!({
-                                    "status": "error",
-                                    "message": "No JWT claims found in extensions"
-                                }))
-                            }
+                        .to(|auth: r_data_core_api::auth::auth_enum::RequiredAuth| async move {
+                            // RequiredAuth extractor ensures JWT is valid
+                            HttpResponse::Ok().json(serde_json::json!({
+                                "status": "success",
+                                "auth_method": "jwt",
+                                "user_uuid": auth.0.sub
+                            }))
                         }),
                 ),
         )
@@ -821,192 +824,6 @@ mod tests {
         assert_eq!(response["status"], "success");
         assert_eq!(response["auth_method"], "jwt");
         assert_eq!(response["user_uuid"], user_uuid.to_string());
-        assert_eq!(response["username"], user.username);
-        assert_eq!(response["email"], user.email);
-
-        utils::clear_test_db(&pool).await?;
-        Ok(())
-    }
-
-    /// Test JWT authentication middleware with invalid token
-    #[tokio::test]
-    #[serial]
-    async fn test_jwt_middleware_invalid_token() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let entity_def_repo = Arc::new(
-            r_data_core_persistence::EntityDefinitionRepository::new(
-                pool.clone(),
-            ),
-        );
-
-        // Create cache config
-        let cache_config = CacheConfig {
-            entity_definition_ttl: 0,
-            api_key_ttl: 600,
-            enabled: true,
-            ttl: 3600,
-            max_size: 1000,
-        };
-
-        let cache_manager = Arc::new(CacheManager::new(cache_config));
-        let jwt_secret = "test_secret";
-
-        // Create test app with JWT authentication middleware
-        let app = test::init_service(
-            App::new()
-                .wrap(r_data_core::api::middleware::create_error_handlers())
-                .app_data(web::Data::new(ApiState {
-                    db_pool: pool.clone(),
-                    api_config: r_data_core_core::config::ApiConfig {
-                        host: "0.0.0.0".to_string(),
-                        port: 8888,
-                        use_tls: false,
-                        jwt_secret: jwt_secret.to_string(),
-                        jwt_expiration: 3600,
-                        enable_docs: true,
-                        cors_origins: vec![],
-                    },
-                    permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
-                        pool.clone(),
-                        cache_manager.clone(),
-                        Some(0),
-                    ),
-                    cache_manager: cache_manager.clone(),
-                    api_key_service: ApiKeyService::from_repository(api_key_repo),
-                    admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    entity_definition_service: EntityDefinitionService::new_without_cache(
-                        entity_def_repo,
-                    ),
-                    dynamic_entity_service: None,
-                    workflow_service: utils::make_workflow_service(&pool),
-                    queue: utils::test_queue_client_async().await,
-                }))
-                .service(
-                    web::resource("/test")
-                        .wrap(r_data_core::api::middleware::CombinedAuth)
-                        .to(|req: HttpRequest| async move {
-                            // Check if JWT claims were added to request extensions by middleware
-                            if let Some(claims) = req.extensions().get::<AuthUserClaims>() {
-                                HttpResponse::Ok().json(serde_json::json!({
-                                    "status": "success",
-                                    "auth_method": "jwt"
-                                }))
-                            } else {
-                                HttpResponse::Unauthorized().json(serde_json::json!({
-                                    "status": "error",
-                                    "message": "No JWT claims found"
-                                }))
-                            }
-                        }),
-                ),
-        )
-        .await;
-
-        // Test with invalid JWT token
-        let req = test::TestRequest::get()
-            .uri("/test")
-            .insert_header((header::AUTHORIZATION, "Bearer invalid_token_here"))
-            .to_request();
-
-        let resp = test::call_service(&app, req).await;
-        // Middleware should not add claims for invalid token, so handler returns unauthorized
-        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-
-        let body = test::read_body(resp).await;
-        let response: serde_json::Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(response["status"], "Error");
-
-        utils::clear_test_db(&pool).await?;
-        Ok(())
-    }
-
-    /// Test JWT authentication middleware with missing token
-    #[tokio::test]
-    #[serial]
-    async fn test_jwt_middleware_missing_token() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let entity_def_repo = Arc::new(
-            r_data_core_persistence::EntityDefinitionRepository::new(
-                pool.clone(),
-            ),
-        );
-
-        // Create cache config
-        let cache_config = CacheConfig {
-            entity_definition_ttl: 0,
-            api_key_ttl: 600,
-            enabled: true,
-            ttl: 3600,
-            max_size: 1000,
-        };
-
-        let cache_manager = Arc::new(CacheManager::new(cache_config));
-
-        // Create test app with JWT authentication middleware
-        let app = test::init_service(
-            App::new()
-                .wrap(r_data_core::api::middleware::create_error_handlers())
-                .app_data(web::Data::new(ApiState {
-                    db_pool: pool.clone(),
-                    api_config: r_data_core_core::config::ApiConfig {
-                        host: "0.0.0.0".to_string(),
-                        port: 8888,
-                        use_tls: false,
-                        jwt_secret: "test_secret".to_string(),
-                        jwt_expiration: 3600,
-                        enable_docs: true,
-                        cors_origins: vec![],
-                    },
-                    permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
-                        pool.clone(),
-                        cache_manager.clone(),
-                        Some(0),
-                    ),
-                    cache_manager: cache_manager.clone(),
-                    api_key_service: ApiKeyService::from_repository(api_key_repo),
-                    admin_user_service: AdminUserService::from_repository(admin_user_repo),
-                    entity_definition_service: EntityDefinitionService::new_without_cache(
-                        entity_def_repo,
-                    ),
-                    dynamic_entity_service: None,
-                    workflow_service: utils::make_workflow_service(&pool),
-                    queue: utils::test_queue_client_async().await,
-                }))
-                .service(
-                    web::resource("/test")
-                        .wrap(r_data_core::api::middleware::CombinedAuth)
-                        .to(|req: HttpRequest| async move {
-                            // Check if JWT claims were added to request extensions by middleware
-                            if let Some(claims) = req.extensions().get::<AuthUserClaims>() {
-                                HttpResponse::Ok().json(serde_json::json!({
-                                    "status": "success",
-                                    "auth_method": "jwt"
-                                }))
-                            } else {
-                                HttpResponse::Unauthorized().json(serde_json::json!({
-                                    "status": "error",
-                                    "message": "No JWT claims found"
-                                }))
-                            }
-                        }),
-                ),
-        )
-        .await;
-
-        // Test with no Authorization header
-        let req = test::TestRequest::get().uri("/test").to_request();
-
-        let resp = test::call_service(&app, req).await;
-        // Middleware should not add claims when no token is present
-        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-
-        let body = test::read_body(resp).await;
-        let response: serde_json::Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(response["status"], "Error");
 
         utils::clear_test_db(&pool).await?;
         Ok(())

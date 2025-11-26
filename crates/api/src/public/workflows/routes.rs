@@ -6,7 +6,7 @@ use std::result::Result;
 use uuid::Uuid;
 
 use crate::auth::auth_enum::CombinedRequiredAuth;
-use crate::api_state::ApiStateTrait;
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use r_data_core_workflow::data::adapters::auth::{AuthConfig, KeyLocation};
 use r_data_core_workflow::data::adapters::format::FormatHandler;
 use r_data_core_workflow::dsl::DslProgram;
@@ -45,7 +45,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
 pub async fn get_workflow_data(
     path: web::Path<Uuid>,
     req: HttpRequest,
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
 ) -> impl Responder {
     let uuid = path.into_inner();
 
@@ -66,7 +66,7 @@ pub async fn get_workflow_data(
     }
 
     // Validate pre-shared key if configured (sets extension for CombinedRequiredAuth)
-    if let Err(e) = validate_provider_auth(&req, &workflow.config, state.as_ref()).await {
+    if let Err(e) = validate_provider_auth(&req, &workflow.config, &**state).await {
         log::debug!("Provider pre-shared key auth failed: {}", e);
         return HttpResponse::Unauthorized().json(json!({"error": "Authentication required"}));
     }
@@ -271,7 +271,7 @@ pub async fn get_workflow_data(
 #[get("/{uuid}/stats")]
 pub async fn get_workflow_stats(
     path: web::Path<Uuid>,
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
     _: CombinedRequiredAuth,
 ) -> impl Responder {
     let uuid = path.into_inner();
@@ -366,7 +366,7 @@ pub async fn get_workflow_stats(
 pub async fn post_workflow_ingest(
     path: web::Path<Uuid>,
     body: web::Bytes,
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
 ) -> impl Responder {
     let uuid = path.into_inner();
 

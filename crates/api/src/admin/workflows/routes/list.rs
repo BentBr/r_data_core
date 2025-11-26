@@ -8,7 +8,7 @@ use crate::admin::workflows::models::{WorkflowRunSummary, WorkflowSummary};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::query::PaginationQuery;
 use crate::response::ApiResponse;
-use crate::api_state::ApiStateTrait;
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use super::utils::check_has_api_endpoint;
 
 /// List all workflow runs across all workflows
@@ -25,7 +25,7 @@ use super::utils::check_has_api_endpoint;
 )]
 #[get("/runs")]
 pub async fn list_all_workflow_runs(
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
     query: web::Query<PaginationQuery>,
     _: RequiredAuth,
 ) -> impl Responder {
@@ -86,7 +86,7 @@ pub async fn list_all_workflow_runs(
 )]
 #[get("")]
 pub async fn list_workflows(
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
     _: RequiredAuth,
     query: web::Query<PaginationQuery>,
 ) -> impl Responder {
@@ -133,7 +133,7 @@ pub async fn list_workflows(
 )]
 #[get("/{uuid}/runs")]
 pub async fn list_workflow_runs(
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
     query: web::Query<PaginationQuery>,
     _: RequiredAuth,

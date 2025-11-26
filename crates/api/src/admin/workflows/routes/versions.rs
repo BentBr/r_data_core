@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::admin::workflows::models::{WorkflowVersionMeta, WorkflowVersionPayload};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::response::ApiResponse;
-use crate::api_state::ApiStateTrait;
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use r_data_core_persistence::WorkflowVersioningRepository;
 
 /// List versions of a workflow
@@ -28,7 +28,7 @@ use r_data_core_persistence::WorkflowVersioningRepository;
 )]
 #[get("/{uuid}/versions")]
 pub async fn list_workflow_versions(
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
     _: RequiredAuth,
 ) -> impl Responder {
@@ -106,7 +106,7 @@ pub async fn list_workflow_versions(
 )]
 #[get("/{uuid}/versions/{version_number}")]
 pub async fn get_workflow_version(
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
     path: web::Path<(Uuid, i32)>,
     _: RequiredAuth,
 ) -> impl Responder {

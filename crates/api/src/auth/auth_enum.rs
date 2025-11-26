@@ -8,7 +8,7 @@ use std::pin::Pin;
 use uuid::Uuid;
 
 use crate::jwt::AuthUserClaims;
-use crate::api_state::ApiStateTrait;
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::{ApiKeyInfo, extract_and_validate_api_key};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -19,7 +19,7 @@ pub enum AuthMethod {
 
 /// Extract and verify JWT from the Authorization header
 fn extract_jwt_from_request(req: &HttpRequest) -> Option<AuthUserClaims> {
-    if let Some(state) = req.app_data::<actix_web::web::Data<dyn ApiStateTrait>>() {
+    if let Some(state) = req.app_data::<actix_web::web::Data<ApiStateWrapper>>() {
         if let Some(auth_header) = req.headers().get("Authorization") {
             if let Ok(auth_str) = auth_header.to_str() {
                 if auth_str.starts_with("Bearer ") {
@@ -129,7 +129,7 @@ impl FromRequest for CombinedRequiredAuth {
             }
 
             // Try API key authentication from headers
-            if req.app_data::<web::Data<dyn ApiStateTrait>>().is_some() {
+            if req.app_data::<web::Data<ApiStateWrapper>>().is_some() {
                 // Check for an API key in the X-API-Key header
                 if let Some(_) = req.headers().get("X-API-Key").and_then(|h| h.to_str().ok()) {
                     // Try to validate an API key

@@ -7,10 +7,8 @@ use log::{debug, error};
 use uuid::Uuid;
 
 use r_data_core_api::jwt::{verify_jwt, AuthUserClaims};
-use crate::{
-    api::ApiState,
-    entity::admin_user::ApiKey,
-};
+use r_data_core_api::api_state::ApiStateTrait;
+use crate::entity::admin_user::ApiKey;
 
 use std::result::Result as StdResult;
 
@@ -63,8 +61,27 @@ pub async fn extract_and_validate_api_key(
     // Try API key header
     if let Some(api_key) = req.headers().get("X-API-Key").and_then(|h| h.to_str().ok()) {
         // Get ApiState from request - should always be available
-        if let Some(state) = req.app_data::<web::Data<ApiState>>() {
+        // Try ApiStateWrapper first (for migrated routes), then fall back to ApiState (for old routes)
+        if let Some(state) = req.app_data::<web::Data<r_data_core_api::ApiStateWrapper>>() {
             // Use ApiKeyService which handles caching (cache hit) or DB query (cache miss)
+            // ApiStateTrait provides the api_key_service() method
+            match state.api_key_service().validate_api_key(api_key).await {
+                Ok(Some((key, user_uuid))) => {
+                    debug!("API key authentication successful");
+                    return Ok(Some((key, user_uuid)));
+                }
+                Ok(None) => {
+                    debug!("API key not found or inactive");
+                }
+                Err(e) => {
+                    error!("API key validation error: {}", e);
+                    return Err(ErrorUnauthorized(
+                        "Internal server error during API key validation",
+                    ));
+                }
+            }
+        } else if let Some(state) = req.app_data::<web::Data<crate::api::ApiState>>() {
+            // Fallback for old routes that still use ApiState directly
             match state.api_key_service.validate_api_key(api_key).await {
                 Ok(Some((key, user_uuid))) => {
                     debug!("API key authentication successful");

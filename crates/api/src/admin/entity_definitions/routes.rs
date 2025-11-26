@@ -16,7 +16,7 @@ use crate::admin::entity_definitions::models::{
 use r_data_core_persistence::EntityDefinitionVersioningRepository;
 use crate::admin::entity_definitions::models::PaginationQuery;
 use crate::response::ApiResponse;
-use crate::api_state::ApiStateTrait;
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use crate::admin::entity_definitions::conversions::entity_definition_to_schema_model;
 use utoipa::ToSchema;
@@ -44,7 +44,7 @@ use utoipa::ToSchema;
 )]
 #[get("")]
 async fn list_entity_definitions(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     query: web::Query<PaginationQuery>,
     auth: RequiredAuth,
 ) -> impl Responder {
@@ -111,7 +111,7 @@ async fn list_entity_definitions(
 )]
 #[get("/{uuid}")]
 async fn get_entity_definition(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     path: web::Path<PathUuid>,
     auth: RequiredAuth,
 ) -> impl Responder {
@@ -162,7 +162,7 @@ async fn get_entity_definition(
 )]
 #[post("")]
 async fn create_entity_definition(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     definition: web::Json<EntityDefinition>,
     auth: RequiredAuth,
 ) -> impl Responder {
@@ -306,7 +306,7 @@ async fn create_entity_definition(
 )]
 #[put("/{uuid}")]
 async fn update_entity_definition(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     path: web::Path<PathUuid>,
     definition: web::Json<EntityDefinition>,
     auth: RequiredAuth,
@@ -401,7 +401,7 @@ async fn update_entity_definition(
 )]
 #[delete("/{uuid}")]
 async fn delete_entity_definition(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     path: web::Path<PathUuid>,
     _: RequiredAuth,
 ) -> impl Responder {
@@ -440,7 +440,7 @@ async fn delete_entity_definition(
 )]
 #[post("/apply-schema")]
 async fn apply_entity_definition_schema(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     body: web::Json<ApplySchemaRequest>,
     _: RequiredAuth,
 ) -> impl Responder {
@@ -524,7 +524,7 @@ struct EntityFieldInfo {
 )]
 #[get("/{entity_type}/fields")]
 async fn list_entity_fields_by_type(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     path: web::Path<String>,
     _: RequiredAuth,
 ) -> impl Responder {
@@ -570,7 +570,7 @@ async fn list_entity_fields_by_type(
 )]
 #[get("/{uuid}/versions")]
 pub async fn list_entity_definition_versions(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
     _: RequiredAuth,
 ) -> impl Responder {
@@ -652,7 +652,7 @@ pub async fn list_entity_definition_versions(
 )]
 #[get("/{uuid}/versions/{version_number}")]
 pub async fn get_entity_definition_version(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     path: web::Path<(Uuid, i32)>,
     _: RequiredAuth,
 ) -> impl Responder {

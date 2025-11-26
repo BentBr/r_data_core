@@ -74,6 +74,67 @@ pub trait ApiStateTrait: Send + Sync + 'static {
     }
 }
 
+/// Wrapper type to allow web::Data extraction for ApiStateTrait
+/// This is needed because web::Data<dyn Trait> cannot be extracted from web::Data<ConcreteType>
+pub struct ApiStateWrapper(Box<dyn ApiStateTrait>);
+
+impl ApiStateTrait for ApiStateWrapper {
+    fn db_pool(&self) -> &PgPool {
+        self.0.db_pool()
+    }
+
+    fn jwt_secret(&self) -> &str {
+        self.0.jwt_secret()
+    }
+
+    fn api_key_service_ref(&self) -> &dyn std::any::Any {
+        self.0.api_key_service_ref()
+    }
+
+    fn permission_scheme_service_ref(&self) -> &dyn std::any::Any {
+        self.0.permission_scheme_service_ref()
+    }
+
+    fn api_config_ref(&self) -> &dyn std::any::Any {
+        self.0.api_config_ref()
+    }
+
+    fn entity_definition_service_ref(&self) -> &dyn std::any::Any {
+        self.0.entity_definition_service_ref()
+    }
+
+    fn dynamic_entity_service_ref(&self) -> Option<&dyn std::any::Any> {
+        self.0.dynamic_entity_service_ref()
+    }
+
+    fn cache_manager_ref(&self) -> &dyn std::any::Any {
+        self.0.cache_manager_ref()
+    }
+
+    fn workflow_service_ref(&self) -> &dyn std::any::Any {
+        self.0.workflow_service_ref()
+    }
+
+    fn queue_ref(&self) -> &dyn std::any::Any {
+        self.0.queue_ref()
+    }
+}
+
+// Note: We can't implement From<T: ApiStateTrait> for ApiStateWrapper because
+// ApiStateWrapper itself implements ApiStateTrait, creating a conflict.
+// Instead, we provide a constructor function.
+impl ApiStateWrapper {
+    /// Create a new ApiStateWrapper from any ApiStateTrait implementation
+    pub fn new<T: ApiStateTrait + 'static>(state: T) -> Self {
+        Self(Box::new(state))
+    }
+}
+
+/// Helper function for tests to wrap ApiState for use with web::Data<ApiStateWrapper>
+pub fn wrap_api_state<T: ApiStateTrait + 'static>(state: T) -> ApiStateWrapper {
+    ApiStateWrapper::new(state)
+}
+
 pub struct ApiConfiguration {
     pub enable_auth: bool,
     pub enable_admin: bool,

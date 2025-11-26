@@ -12,7 +12,7 @@ use crate::public::dynamic_entities::models::DynamicEntityResponse;
 use r_data_core_persistence::DynamicEntityPublicRepository;
 use crate::auth::auth_enum::CombinedRequiredAuth;
 use crate::response::ApiResponse;
-use crate::api_state::ApiStateTrait;
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use r_data_core_persistence::DynamicEntityRepository;
 use r_data_core_persistence::VersionRepository;
 use r_data_core_services::VersionService;
@@ -34,7 +34,7 @@ use r_data_core_services::VersionService;
 )]
 #[get("/entities")]
 pub async fn list_available_entities(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     _: CombinedRequiredAuth,
 ) -> impl Responder {
     let repository = DynamicEntityPublicRepository::new(data.db_pool().clone());
@@ -88,7 +88,7 @@ struct BrowseQuery {
 )]
 #[get("/entities/by-path")]
 pub async fn list_by_path(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     query: web::Query<BrowseQuery>,
     _: CombinedRequiredAuth,
 ) -> impl Responder {
@@ -140,7 +140,7 @@ pub async fn list_by_path(
 )]
 #[get("/entities/{entity_type}/{uuid}/versions")]
 pub async fn list_entity_versions(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     path: web::Path<(String, Uuid)>,
     _: CombinedRequiredAuth,
 ) -> impl Responder {
@@ -195,7 +195,7 @@ pub async fn list_entity_versions(
 )]
 #[get("/entities/{entity_type}/{uuid}/versions/{version_number}")]
 pub async fn get_entity_version(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     path: web::Path<(String, Uuid, i32)>,
     _: CombinedRequiredAuth,
 ) -> impl Responder {
@@ -269,7 +269,7 @@ pub async fn get_entity_version(
 )]
 #[post("/entities/query")]
 pub async fn query_entities(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     body: web::Json<EntityQueryRequest>,
     _: CombinedRequiredAuth,
 ) -> impl Responder {

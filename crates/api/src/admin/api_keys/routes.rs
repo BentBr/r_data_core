@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::auth::auth_enum::RequiredAuth;
 use crate::query::PaginationQuery;
 use crate::response::ApiResponse;
-use crate::api_state::ApiStateTrait;
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use r_data_core_persistence::{ApiKeyRepository, ApiKeyRepositoryTrait};
 use crate::admin::api_keys::models::{ApiKeyCreatedResponse, ApiKeyResponse, CreateApiKeyRequest, ReassignApiKeyRequest};
 
@@ -43,7 +43,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
 )]
 #[get("")]
 pub async fn list_api_keys(
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
     auth: RequiredAuth,
     query: web::Query<PaginationQuery>,
 ) -> impl Responder {
@@ -111,12 +111,18 @@ pub async fn list_api_keys(
 )]
 #[post("")]
 pub async fn create_api_key(
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
     req: web::Json<CreateApiKeyRequest>,
     auth: RequiredAuth,
 ) -> impl Responder {
     let pool = Arc::new(state.db_pool().clone());
-    let creator_uuid = Uuid::parse_str(&auth.0.sub).expect("Invalid UUID in auth token");
+    let creator_uuid = match Uuid::parse_str(&auth.0.sub) {
+        Ok(uuid) => uuid,
+        Err(e) => {
+            error!("Invalid UUID in auth token: {} - {}", auth.0.sub, e);
+            return ApiResponse::<()>::internal_error("Invalid authentication token");
+        }
+    };
     let user_uuid = creator_uuid; // Assign to the authenticated user by default
 
     // First, check if the user already has a key with this name
@@ -199,7 +205,7 @@ pub async fn create_api_key(
 )]
 #[delete("/{uuid}")]
 pub async fn revoke_api_key(
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
     auth: RequiredAuth,
 ) -> impl Responder {
@@ -258,13 +264,19 @@ pub async fn revoke_api_key(
 )]
 #[put("/{uuid}/reassign")]
 pub async fn reassign_api_key(
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
     req: web::Json<ReassignApiKeyRequest>,
     auth: RequiredAuth,
 ) -> impl Responder {
     let pool = Arc::new(state.db_pool().clone());
-    let user_uuid = Uuid::parse_str(&auth.0.sub).expect("Invalid UUID in auth token");
+    let user_uuid = match Uuid::parse_str(&auth.0.sub) {
+        Ok(uuid) => uuid,
+        Err(e) => {
+            error!("Invalid UUID in auth token: {} - {}", auth.0.sub, e);
+            return ApiResponse::<()>::internal_error("Invalid authentication token");
+        }
+    };
     let api_key_uuid = path.into_inner();
     let new_user_uuid = req.user_uuid;
 

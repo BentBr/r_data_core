@@ -6,7 +6,7 @@ use serde_json::json;
 use r_data_core_core::public_api::AdvancedEntityQuery;
 use r_data_core_persistence::DynamicEntityQueryRepository;
 use crate::auth::auth_enum::CombinedRequiredAuth;
-use crate::api_state::ApiStateTrait;
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 
 /// Advanced query for dynamic entities with more complex filtering
 #[utoipa::path(
@@ -30,7 +30,7 @@ use crate::api_state::ApiStateTrait;
 )]
 #[post("/{entity_type}/query")]
 pub async fn query_entities(
-    data: web::Data<dyn ApiStateTrait>,
+    data: web::Data<ApiStateWrapper>,
     path: web::Path<String>,
     query: web::Json<AdvancedEntityQuery>,
     _: CombinedRequiredAuth,

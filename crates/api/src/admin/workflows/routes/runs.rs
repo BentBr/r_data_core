@@ -10,7 +10,7 @@ use crate::admin::workflows::models::WorkflowRunLogDto;
 use crate::auth::auth_enum::RequiredAuth;
 use crate::query::PaginationQuery;
 use crate::response::ApiResponse;
-use crate::api_state::ApiStateTrait;
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::FetchAndStageJob;
 
@@ -30,7 +30,7 @@ use r_data_core_workflow::data::jobs::FetchAndStageJob;
 )]
 #[post("/{uuid}/run")]
 pub async fn run_workflow_now(
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
     _: RequiredAuth,
 ) -> impl Responder {
@@ -92,7 +92,7 @@ pub async fn run_workflow_now(
 )]
 #[post("/{uuid}/run/upload")]
 pub async fn run_workflow_now_upload(
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
     mut payload: Multipart,
     _: RequiredAuth,
@@ -189,7 +189,7 @@ pub async fn run_workflow_now_upload(
 )]
 #[get("/runs/{run_uuid}/logs")]
 pub async fn list_workflow_run_logs(
-    state: web::Data<dyn ApiStateTrait>,
+    state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
     query: web::Query<PaginationQuery>,
     _: RequiredAuth,
