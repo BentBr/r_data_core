@@ -1,9 +1,7 @@
 use actix_web::{http::{header, StatusCode}, test, web, App, HttpMessage, HttpRequest, HttpResponse};
-use r_data_core::{
-    api::{
-        middleware::{ApiAuth, ApiKeyInfo},
-        ApiState,
-    },
+use r_data_core_api::{
+    middleware::{ApiAuth, ApiKeyInfo},
+    ApiState,
 };
 use r_data_core_core::config::CacheConfig;
 use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait, ApiKeyRepository, ApiKeyRepositoryTrait};

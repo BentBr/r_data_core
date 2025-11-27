@@ -14,6 +14,7 @@ use r_data_core_api::ApiStateWrapper;
 use r_data_core_api::ApiState;
 
 /// Helper function to wrap ApiState for use in tests
+#[allow(dead_code)] // Used by test files but compiler doesn't detect cross-file usage
 pub fn wrap_api_state(state: ApiState) -> ApiStateWrapper {
     ApiStateWrapper::new(state)
 }

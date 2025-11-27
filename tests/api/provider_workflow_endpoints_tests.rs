@@ -1,5 +1,5 @@
 use actix_web::{test, web, App};
-use r_data_core::api::{configure_app, ApiState};
+use r_data_core_api::{configure_app, ApiState};
 use r_data_core_api::ApiStateWrapper;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
@@ -50,7 +50,7 @@ async fn setup_app_with_entities() -> anyhow::Result<(
     // Create dynamic entity service
     let de_repo =
         r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
-    let de_adapter = r_data_core::services::adapters::DynamicEntityRepositoryAdapter::new(de_repo);
+    let de_adapter = r_data_core_services::adapters::DynamicEntityRepositoryAdapter::new(de_repo);
     let dynamic_entity_service = Arc::new(DynamicEntityService::new(
         Arc::new(de_adapter),
         Arc::new(entity_definition_service.clone()),

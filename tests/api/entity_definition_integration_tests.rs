@@ -2,9 +2,7 @@ use actix_web::{
     http::{header, StatusCode},
     test, web, App,
 };
-use r_data_core::{
-    api::ApiState,
-};
+use r_data_core_api::ApiState;
 use r_data_core_core::config::CacheConfig;
 use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
 use r_data_core_services::{AdminUserService, ApiKeyService, EntityDefinitionService};

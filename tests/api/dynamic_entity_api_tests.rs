@@ -2,14 +2,14 @@ use actix_web::{test, App, web};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use uuid::Uuid;
-use r_data_core::api::{ApiState, configure_app};
+use r_data_core_api::{ApiState, configure_app};
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::DynamicEntity;
 use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
 use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core_core::field::ui::UiSettings;
-use r_data_core::services::{
+use r_data_core_services::{
     AdminUserService, ApiKeyService, EntityDefinitionService, DynamicEntityService,
 };
 use Result;
@@ -247,7 +247,7 @@ mod dynamic_entity_api_tests {
                 host: "0.0.0.0".to_string(),
                 port: 8888,
                 use_tls: false,
-                api_config: r_data_core_core::config::ApiConfig { host: "0.0.0.0".to_string(), port: 8888, use_tls: false, jwt_secret: "test_secret".to_string(), jwt_expiration: 3600, enable_docs: true, cors_origins: vec![], }, permission_scheme_service: r_data_core::services::PermissionSchemeService::new(pool.clone(), cache_manager.clone(), Some(0)),
+                api_config: r_data_core_core::config::ApiConfig { host: "0.0.0.0".to_string(), port: 8888, use_tls: false, jwt_secret: "test_secret".to_string(), jwt_expiration: 3600, enable_docs: true, cors_origins: vec![], }, permission_scheme_service: r_data_core_services::PermissionSchemeService::new(pool.clone(), cache_manager.clone(), Some(0)),
                 jwt_expiration: 3600,
                 enable_docs: true,
                 cors_origins: vec![],
