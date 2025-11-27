@@ -11,7 +11,7 @@ use r_data_core_core::error::Result;
 use r_data_core_services::EntityDefinitionService;
 use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_api::ApiStateWrapper;
-use r_data_core::api::ApiState;
+use r_data_core_api::ApiState;
 
 /// Helper function to wrap ApiState for use in tests
 pub fn wrap_api_state(state: ApiState) -> ApiStateWrapper {

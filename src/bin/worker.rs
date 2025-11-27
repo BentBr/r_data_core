@@ -12,7 +12,7 @@ use r_data_core_services::adapters::{DynamicEntityRepositoryAdapter, EntityDefin
 use r_data_core_services::bootstrap::{
     init_cache_manager, init_logger_with_default, init_pg_pool,
 };
-use r_data_core::services::worker::compute_reconcile_actions;
+use r_data_core_services::compute_reconcile_actions;
 use r_data_core_services::{DynamicEntityService, EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 use r_data_core_workflow::data::job_queue::JobQueue;

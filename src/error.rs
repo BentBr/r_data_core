@@ -2,6 +2,7 @@ use actix_web::ResponseError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+#[allow(dead_code)] // Public API - exported from lib.rs for external use
 pub enum Error {
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
@@ -114,6 +115,7 @@ impl ResponseError for Error {
 
 
 // Extension trait to convert sqlx errors to our database errors
+#[allow(dead_code)] // Public API - exported from lib.rs for external use
 pub trait SqlxErrorExt: Sized {
     fn into_db_error(self) -> std::result::Result<sqlx::Error, Self>;
 }

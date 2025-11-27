@@ -1,10 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-pub mod api;
-pub mod entity;
 pub mod error;
-pub mod notification;
-pub mod services;
 pub use r_data_core_core::utils;
 pub use r_data_core_core::versioning;
 
@@ -21,8 +17,7 @@ pub const DESCRIPTION: &str = env!("CARGO_PKG_DESCRIPTION");
 pub use error::Error;
 pub use r_data_core_core::error::Result;
 
-/// API state that can be shared across handlers
-pub use api::ApiState;
+// API state moved to r_data_core_api::ApiState
 
 /// Re-export services
 pub use r_data_core_services::{AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService};

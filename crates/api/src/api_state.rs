@@ -157,11 +157,29 @@ pub fn configure_app(cfg: &mut web::ServiceConfig) {
     configure_app_with_options(cfg, ApiConfiguration::default());
 }
 
-pub fn configure_app_with_options(cfg: &mut web::ServiceConfig, _options: ApiConfiguration) {
+pub fn configure_app_with_options(cfg: &mut web::ServiceConfig, options: ApiConfiguration) {
+    // Add health check endpoints
     cfg.service(health::admin_health_check)
         .service(health::public_health_check);
 
-    let scope = web::scope("").wrap(middleware::ErrorHandler);
+    let mut scope = web::scope("").wrap(middleware::ErrorHandler);
+
+    if options.enable_admin {
+        log::debug!("Registering admin routes");
+        scope = scope.configure(crate::admin::register_routes);
+    }
+
+    if options.enable_public {
+        log::debug!("Registering public routes");
+        scope = scope.configure(crate::public::register_routes);
+    }
+
+    if options.enable_docs {
+        log::debug!("Registering documentation routes");
+        scope = scope.configure(crate::docs::register_routes);
+    } else {
+        log::warn!("Documentation routes are DISABLED");
+    }
 
     async fn not_found_handler() -> impl actix_web::Responder {
         ApiResponse::<()>::not_found("API resource not found")
@@ -169,4 +187,6 @@ pub fn configure_app_with_options(cfg: &mut web::ServiceConfig, _options: ApiCon
     let scope = scope.default_service(web::route().to(not_found_handler));
 
     cfg.service(scope);
+
+    log::debug!("All routes registered");
 }

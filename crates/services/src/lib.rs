@@ -10,6 +10,7 @@ pub mod permission_scheme;
 pub mod settings;
 pub mod version;
 pub mod workflow;
+pub mod worker;
 
 // Re-exports
 pub use adapters::{AdminUserRepositoryAdapter, ApiKeyRepositoryAdapter, DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter};
@@ -22,4 +23,5 @@ pub use permission_scheme::PermissionSchemeService;
 pub use settings::SettingsService;
 pub use version::{VersionMetaWithName, VersionService};
 pub use workflow::{WorkflowService, WorkflowRepositoryAdapter};
+pub use worker::compute_reconcile_actions;
 

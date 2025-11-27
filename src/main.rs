@@ -7,17 +7,14 @@ use log::{debug, error, info};
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 
-mod api;
-mod entity;
 mod error;
-mod notification;
-mod services;
 
 // Todo: These modules will be implemented later
 // mod notification;
 
 use r_data_core_persistence::EntityDefinitionRepository;
-use crate::api::{ApiResponse, ApiState};
+use r_data_core_api::ApiResponse;
+use r_data_core_api::ApiState;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::load_app_config;
 use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
@@ -185,7 +182,7 @@ async fn main() -> std::io::Result<()> {
             .expose_headers(vec!["content-disposition"])
             .max_age(3600);
 
-        let api_config = crate::api::ApiConfiguration {
+        let api_config = r_data_core_api::ApiConfiguration {
             enable_auth: false,  // Todo
             enable_admin: true,  // Todo
             enable_public: true, // Todo
@@ -197,7 +194,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(r_data_core_api::middleware::create_error_handlers())
             .wrap(Logger::new("%a %{User-Agent}i %r %s %D"))
             .wrap(cors)
-            .configure(move |cfg| api::configure_app_with_options(cfg, api_config))
+            .configure(move |cfg| r_data_core_api::configure_app_with_options(cfg, api_config))
             .default_service(web::route().to(default_404_handler))
     })
     .bind(bind_address)?

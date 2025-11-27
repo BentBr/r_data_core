@@ -1,10 +1,11 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
 use std::collections::HashMap;
 use uuid::Uuid;
 
 /// Compute reconcile actions between existing scheduler map (wf_id -> cron)
 /// and the current set from DB (wf_id -> cron).
 /// Returns (workflows_to_remove, workflows_to_add_or_update)
-#[allow(dead_code)] // Used in worker.rs but compiler doesn't detect cross-crate usage
 pub fn compute_reconcile_actions(
     existing: &HashMap<Uuid, String>,
     current: &HashMap<Uuid, String>,
@@ -57,3 +58,4 @@ mod tests {
         assert!(!to_remove.contains(&a)); // unchanged
     }
 }
+
