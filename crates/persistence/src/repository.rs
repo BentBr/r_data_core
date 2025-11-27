@@ -16,7 +16,7 @@ pub trait PgPoolExtension {
             + Unpin
             + for<'r> sqlx::FromRow<'r, sqlx::postgres::PgRow>
             + serde::Serialize
-            + serde::de::DeserializeOwned
+            + DeserializeOwned
             + 'static;
 
     /// Get a repository for a specific entity type with a specified table name
@@ -27,7 +27,7 @@ pub trait PgPoolExtension {
             + Unpin
             + for<'r> sqlx::FromRow<'r, sqlx::postgres::PgRow>
             + serde::Serialize
-            + serde::de::DeserializeOwned
+            + DeserializeOwned
             + 'static;
 }
 
@@ -39,7 +39,7 @@ impl PgPoolExtension for PgPool {
             + Unpin
             + for<'r> sqlx::FromRow<'r, sqlx::postgres::PgRow>
             + serde::Serialize
-            + serde::de::DeserializeOwned
+            + DeserializeOwned
             + 'static,
     {
         // Use a default table name based on T (placeholder)
@@ -53,7 +53,7 @@ impl PgPoolExtension for PgPool {
             + Unpin
             + for<'r> sqlx::FromRow<'r, sqlx::postgres::PgRow>
             + serde::Serialize
-            + serde::de::DeserializeOwned
+            + DeserializeOwned
             + 'static,
     {
         EntityRepository::new(self.clone(), table_name)
@@ -190,7 +190,7 @@ where
 
         // Basic insert query with common fields
         let query = format!(
-            "INSERT INTO {} (uuid, path, created_at, updated_at, created_by, updated_by, published, version, custom_fields) 
+            "INSERT INTO {} (uuid, path, created_at, updated_at, created_by, updated_by, published, version, custom_fields)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING uuid",
             self.table_name
         );

@@ -6,7 +6,7 @@ use uuid::Uuid;
 #[allow(unused_imports)] // Used in utoipa attributes for OpenAPI docs
 use r_data_core_api::public::entities::models::{BrowseNode, EntityQueryRequest, EntityTypeInfo, VersionMeta, VersionPayload};
 use r_data_core_api::public::dynamic_entities::models::DynamicEntityResponse;
-use super::repository::EntityRepository;
+use r_data_core_api::public::entities::repository::EntityRepository;
 use r_data_core_api::auth::auth_enum::CombinedRequiredAuth;
 use r_data_core_api::response::ApiResponse;
 use r_data_core_api::api_state::ApiStateWrapper;

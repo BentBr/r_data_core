@@ -2,7 +2,7 @@ use actix_web::{post, web, HttpResponse, Responder};
 use serde_json::json;
 
 use r_data_core_api::public::queries::models::AdvancedEntityQuery;
-use super::repository::QueryRepository;
+use r_data_core_api::public::queries::repository::QueryRepository;
 use r_data_core_api::auth::auth_enum::CombinedRequiredAuth;
 use r_data_core_api::api_state::ApiStateWrapper;
 

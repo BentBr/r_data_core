@@ -1,4 +1,6 @@
-use r_data_core_api::public::queries::models::AdvancedEntityQuery;
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
+use crate::public::queries::models::AdvancedEntityQuery;
 use r_data_core_core::DynamicEntity;
 use r_data_core_core::error::Result;
 use sqlx::PgPool;
@@ -24,3 +26,4 @@ impl QueryRepository {
         Ok(Vec::new())
     }
 }
+

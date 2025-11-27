@@ -1,4 +1,6 @@
-use r_data_core_api::public::entities::models::{BrowseKind, BrowseNode, EntityTypeInfo};
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
+use crate::public::entities::models::{BrowseKind, BrowseNode, EntityTypeInfo};
 use r_data_core_core::error::Result;
 use sqlx::PgPool;
 use std::collections::{HashMap, HashSet};
@@ -276,3 +278,4 @@ async fn get_entity_count(pool: &PgPool, entity_type: &str) -> Result<i64> {
 
     Ok(count)
 }
+
