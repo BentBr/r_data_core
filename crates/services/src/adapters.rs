@@ -1,3 +1,5 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
 use async_trait::async_trait;
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -9,7 +11,6 @@ use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use r_data_core_core::error::Result;
 use serde_json::Value as JsonValue;
-// WorkflowRepositoryAdapter moved to r_data_core_services::workflow::adapter
 
 /// Repository adapter for EntityDefinitionRepository
 pub struct EntityDefinitionRepositoryAdapter {
@@ -18,6 +19,7 @@ pub struct EntityDefinitionRepositoryAdapter {
 
 impl EntityDefinitionRepositoryAdapter {
     /// Create a new adapter that wraps the repository implementation
+    #[must_use]
     pub fn new(repository: EntityDefinitionRepository) -> Self {
         Self { inner: repository }
     }
@@ -145,11 +147,13 @@ pub struct DynamicEntityRepositoryAdapter {
 
 impl DynamicEntityRepositoryAdapter {
     /// Create a new adapter
+    #[must_use]
     pub fn new(inner: DynamicEntityRepository) -> Self {
         Self { inner }
     }
 
     /// Adapt a concrete repository implementation to a trait
+    #[must_use]
     pub fn from_repository(repository: DynamicEntityRepository) -> Self {
         Self { inner: repository }
     }
@@ -229,6 +233,7 @@ pub struct AdminUserRepositoryAdapter {
 
 impl AdminUserRepositoryAdapter {
     /// Create a new adapter that wraps the repository implementation
+    #[must_use]
     pub fn new(repository: r_data_core_persistence::AdminUserRepository) -> Self {
         Self { inner: repository }
     }
@@ -327,3 +332,4 @@ impl r_data_core_persistence::AdminUserRepositoryTrait
         self.inner.list_admin_users(limit, offset).await.map_err(Into::into)
     }
 }
+

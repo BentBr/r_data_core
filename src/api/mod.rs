@@ -1,8 +1,6 @@
 // Admin routes moved to r_data_core_api::admin
-pub mod auth;
 pub mod docs;
 // Health routes moved to r_data_core_api::health
-pub mod middleware;
 pub mod public;
 
 use actix_web::{get, web, Responder};
@@ -131,7 +129,7 @@ pub fn configure_app_with_options(cfg: &mut web::ServiceConfig, options: ApiConf
     cfg.service(r_data_core_api::health::admin_health_check)
         .service(r_data_core_api::health::public_health_check);
 
-    let mut scope = web::scope("").wrap(middleware::ErrorHandler); // Add our error handler middleware
+    let mut scope = web::scope("").wrap(r_data_core_api::middleware::ErrorHandler); // Add our error handler middleware
 
     if options.enable_admin {
         log::debug!("Registering admin routes");

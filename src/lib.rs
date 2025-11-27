@@ -1,7 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 pub mod api;
-pub mod config;
 pub mod entity;
 pub mod error;
 pub mod notification;

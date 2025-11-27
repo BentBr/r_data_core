@@ -1,3 +1,2 @@
 //! Dynamic entity module provides interfaces for working with dynamic data
-
-pub mod validator;
+// Validator moved to r_data_core_core::domain::dynamic_entity::validator

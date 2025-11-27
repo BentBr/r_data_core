@@ -1,5 +1,4 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
-#![allow(dead_code)] // Temporary during refactor
 
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
@@ -9,7 +8,6 @@ use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 
 mod api;
-mod config;
 mod entity;
 mod error;
 mod notification;
@@ -21,14 +19,14 @@ mod services;
 use r_data_core_persistence::EntityDefinitionRepository;
 use crate::api::{ApiResponse, ApiState};
 use r_data_core_core::cache::CacheManager;
-use crate::config::load_app_config;
+use r_data_core_core::config::load_app_config;
 use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
 use r_data_core_persistence::DynamicEntityRepository;
-use crate::services::adapters::{
+use r_data_core_services::adapters::{
     AdminUserRepositoryAdapter, DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter,
 };
 use r_data_core_services::{AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, PermissionSchemeService};
-use crate::services::ApiKeyRepositoryAdapter;
+use r_data_core_services::adapters::ApiKeyRepositoryAdapter;
 use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 use r_data_core_persistence::WorkflowRepository;
@@ -196,7 +194,7 @@ async fn main() -> std::io::Result<()> {
 
         App::new()
             .app_data(app_state.clone())
-            .wrap(api::middleware::create_error_handlers())
+            .wrap(r_data_core_api::middleware::create_error_handlers())
             .wrap(Logger::new("%a %{User-Agent}i %r %s %D"))
             .wrap(cors)
             .configure(move |cfg| api::configure_app_with_options(cfg, api_config))
