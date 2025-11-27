@@ -1,3 +1,5 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse},
     error::ErrorUnauthorized,
@@ -6,9 +8,9 @@ use actix_web::{
 use futures::future::LocalBoxFuture;
 use std::rc::Rc;
 
-use crate::api::auth::extract_and_validate_jwt;
-use crate::api::middleware::AuthMiddlewareService;
-use r_data_core_api::api_state::{ApiStateTrait, ApiStateWrapper};
+use crate::auth::extract_and_validate_jwt;
+use crate::middleware::base_auth::AuthMiddlewareService;
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 
 /// Middleware service for JWT auth
 #[allow(dead_code)]
@@ -83,3 +85,4 @@ where
         self.process_auth(req, self.service.clone())
     }
 }
+

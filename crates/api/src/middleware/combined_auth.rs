@@ -1,3 +1,5 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     error::ErrorUnauthorized,
@@ -8,9 +10,9 @@ use std::rc::Rc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::api::auth::{extract_and_validate_api_key, extract_and_validate_jwt};
-use crate::api::middleware::AuthMiddlewareService;
-use r_data_core_api::api_state::{ApiStateTrait, ApiStateWrapper};
+use crate::auth::{extract_and_validate_api_key, extract_and_validate_jwt};
+use crate::middleware::base_auth::AuthMiddlewareService;
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 
 /// Combined Authentication middleware for JWT and API Keys
 #[allow(dead_code)] // Middleware type for future use
@@ -194,3 +196,4 @@ pub struct ApiKeyInfo {
     pub created_at: OffsetDateTime,
     pub expires_at: Option<OffsetDateTime>,
 }
+

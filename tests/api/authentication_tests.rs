@@ -79,11 +79,11 @@ mod tests {
         // Create test app with API key authentication middleware
         let app = test::init_service(
             App::new()
-                .wrap(r_data_core::api::middleware::create_error_handlers())
+                .wrap(r_data_core_api::middleware::create_error_handlers())
                 .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
                 .service(
                     web::resource("/test")
-                        .wrap(r_data_core::api::middleware::ApiAuth)
+                        .wrap(r_data_core_api::middleware::ApiAuth)
                         .to(|req: HttpRequest| async move {
                             // Check if API key info was added to request extensions
                             if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
@@ -175,7 +175,7 @@ mod tests {
         // Create test app with API key authentication middleware
         let app = test::init_service(
             App::new()
-                .wrap(r_data_core::api::middleware::create_error_handlers())
+                .wrap(r_data_core_api::middleware::create_error_handlers())
                 .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
                 .service(web::resource("/test").wrap(ApiAuth).to(
                     |req: HttpRequest| async move {
@@ -267,7 +267,7 @@ mod tests {
                 .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
                 .service(
                     web::resource("/test")
-                        .wrap(r_data_core::api::middleware::ApiAuth)
+                        .wrap(r_data_core_api::middleware::ApiAuth)
                         .to(|req: HttpRequest| async move {
                             // Check if API key info was added to request extensions
                             if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
@@ -363,7 +363,7 @@ mod tests {
                 .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
                 .service(
                     web::resource("/test")
-                        .wrap(r_data_core::api::middleware::CombinedAuth)
+                        .wrap(r_data_core_api::middleware::CombinedAuth)
                         .to(|req: HttpRequest| async move {
                             // Check if authentication info was added to request extensions
                             if let Some(claims) = req.extensions().get::<AuthUserClaims>() {
@@ -482,7 +482,7 @@ mod tests {
                 .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
                 .service(
                     web::resource("/test")
-                        .wrap(r_data_core::api::middleware::CombinedAuth)
+                        .wrap(r_data_core_api::middleware::CombinedAuth)
                         .to(|req: HttpRequest| async move {
                             // Check if authentication info was added to request extensions
                             if let Some(claims) = req.extensions().get::<AuthUserClaims>() {
@@ -602,7 +602,7 @@ mod tests {
                 .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
                 .service(
                     web::resource("/test")
-                        .wrap(r_data_core::api::middleware::ApiAuth)
+                        .wrap(r_data_core_api::middleware::ApiAuth)
                         .to(|req: HttpRequest| async move {
                             // Check if API key info was added to request extensions
                             if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
@@ -794,7 +794,7 @@ mod tests {
         // Create test app with JWT authentication middleware
         let app = test::init_service(
             App::new()
-                .wrap(r_data_core::api::middleware::create_error_handlers())
+                .wrap(r_data_core_api::middleware::create_error_handlers())
                 .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
                 .service(
                     web::resource("/test")

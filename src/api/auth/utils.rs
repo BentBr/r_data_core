@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use r_data_core_api::jwt::{verify_jwt, AuthUserClaims};
 use r_data_core_api::api_state::ApiStateTrait;
-use crate::entity::admin_user::ApiKey;
+use r_data_core_core::admin_user::ApiKey;
 
 use std::result::Result as StdResult;
 
