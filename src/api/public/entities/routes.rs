@@ -6,7 +6,7 @@ use uuid::Uuid;
 #[allow(unused_imports)] // Used in utoipa attributes for OpenAPI docs
 use r_data_core_api::public::entities::models::{BrowseNode, EntityQueryRequest, EntityTypeInfo, VersionMeta, VersionPayload};
 use r_data_core_api::public::dynamic_entities::models::DynamicEntityResponse;
-use r_data_core_api::public::entities::repository::EntityRepository;
+use r_data_core_persistence::DynamicEntityPublicRepository;
 use r_data_core_api::auth::auth_enum::CombinedRequiredAuth;
 use r_data_core_api::response::ApiResponse;
 use r_data_core_api::api_state::ApiStateWrapper;
@@ -34,9 +34,9 @@ async fn list_available_entities(
     data: web::Data<ApiStateWrapper>,
     _: CombinedRequiredAuth,
 ) -> impl Responder {
-    let repository = EntityRepository::new(data.db_pool().clone());
+    let repository = DynamicEntityPublicRepository::new(data.db_pool().clone());
 
-    match repository.list_available_entities().await {
+    match repository.list_available_entity_types().await {
         Ok(entities) => HttpResponse::Ok().json(entities),
         Err(e) => HttpResponse::InternalServerError().json(json!({
             "error": format!("Failed to list entities: {}", e)

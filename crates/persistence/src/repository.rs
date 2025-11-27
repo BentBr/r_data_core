@@ -250,10 +250,11 @@ where
     ///
     /// # Errors
     /// Returns an error if entity not found, serialization fails, or database operation fails
+    ///
+    /// # Note
+    /// Versioning is handled by specific repositories (e.g., `DynamicEntityRepository` uses
+    /// `VersionRepository::snapshot_pre_update_tx`). This generic repository does not handle versioning.
     pub async fn update(&self, uuid: &Uuid, entity: &T) -> Result<()> {
-        // Create a version snapshot first
-        self.create_version_snapshot(uuid, entity).await?;
-
         // Serialize entity to JSON for update
         let json = serde_json::to_value(entity).map_err(Error::Serialization)?;
 
@@ -320,13 +321,6 @@ where
             .await
             .map_err(Error::Database)?;
 
-        Ok(())
-    }
-
-    /// Create a version snapshot of the entity before updating
-    #[allow(clippy::unused_async)] // TODO: Implement version snapshot creation
-    async fn create_version_snapshot(&self, _uuid: &Uuid, _entity: &T) -> Result<()> {
-        // TODO: Implement version snapshot creation
         Ok(())
     }
 

@@ -4,10 +4,10 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use r_data_core_api::auth::auth_enum::CombinedRequiredAuth;
-use r_data_core_api::query::StandardQuery;
-use r_data_core_api::response::{ApiResponse, ValidationViolation};
-use r_data_core_api::api_state::{ApiStateTrait, ApiStateWrapper};
+use crate::auth::auth_enum::CombinedRequiredAuth;
+use crate::query::StandardQuery;
+use crate::response::{ApiResponse, ValidationViolation};
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use r_data_core_core::DynamicEntity;
 use r_data_core_core::domain::dynamic_entity::validator::{validate_entity_with_violations, FieldViolation};
 
@@ -24,7 +24,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
     );
 }
 
-use r_data_core_api::public::dynamic_entities::models::{DynamicEntityResponse, EntityResponse};
+use crate::public::dynamic_entities::models::{DynamicEntityResponse, EntityResponse};
 
 // Helper function to convert DynamicEntity to DynamicEntityResponse
 // Cannot use From trait since DynamicEntity is from another crate
@@ -112,7 +112,7 @@ async fn validate_requested_fields(
         ("apiKey" = [])
     )
 )]
-async fn list_entities(
+pub async fn list_entities(
     data: web::Data<ApiStateWrapper>,
     path: web::Path<String>,
     query: web::Query<StandardQuery>,
@@ -188,7 +188,7 @@ async fn list_entities(
         ("apiKey" = [])
     )
 )]
-async fn create_entity(
+pub async fn create_entity(
     data: web::Data<ApiStateWrapper>,
     path: web::Path<String>,
     entity: web::Json<HashMap<String, Value>>,
@@ -308,7 +308,7 @@ async fn create_entity(
         ("apiKey" = [])
     )
 )]
-async fn get_entity(
+pub async fn get_entity(
     data: web::Data<ApiStateWrapper>,
     path: web::Path<(String, String)>,
     query: web::Query<StandardQuery>,
@@ -372,7 +372,7 @@ async fn get_entity(
         ("apiKey" = [])
     )
 )]
-async fn update_entity(
+pub async fn update_entity(
     data: web::Data<ApiStateWrapper>,
     path: web::Path<(String, String)>,
     entity_data: web::Json<HashMap<String, Value>>,
@@ -459,7 +459,7 @@ async fn update_entity(
         ("apiKey" = [])
     )
 )]
-async fn delete_entity(
+pub async fn delete_entity(
     data: web::Data<ApiStateWrapper>,
     path: web::Path<(String, String)>,
     _: CombinedRequiredAuth,
