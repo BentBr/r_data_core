@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::api::auth::{extract_and_validate_api_key, extract_and_validate_jwt};
 use crate::api::middleware::AuthMiddlewareService;
-use crate::api::ApiState;
+use r_data_core_api::api_state::{ApiStateTrait, ApiStateWrapper};
 
 /// Combined Authentication middleware for JWT and API Keys
 #[allow(dead_code)] // Middleware type for future use
@@ -71,7 +71,7 @@ where
         let path = request.path().to_string();
 
         // Get the API state
-        let state_result = req.app_data::<web::Data<ApiState>>().cloned();
+        let state_result = req.app_data::<web::Data<ApiStateWrapper>>().cloned();
         let service_clone = service.clone();
 
         Box::pin(async move {
@@ -88,7 +88,7 @@ where
             };
 
             // Try JWT authentication first
-            let jwt_result = extract_and_validate_jwt(&request, &state.api_config.jwt_secret).await;
+            let jwt_result = extract_and_validate_jwt(&request, state.jwt_secret()).await;
             match jwt_result {
                 Ok(Some(claims)) => {
                     // Add user claims to request extensions

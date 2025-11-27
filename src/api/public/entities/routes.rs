@@ -7,9 +7,9 @@ use uuid::Uuid;
 use r_data_core_api::public::entities::models::{BrowseNode, EntityQueryRequest, EntityTypeInfo, VersionMeta, VersionPayload};
 use r_data_core_api::public::dynamic_entities::models::DynamicEntityResponse;
 use super::repository::EntityRepository;
-use crate::api::auth::auth_enum::CombinedRequiredAuth;
+use r_data_core_api::auth::auth_enum::CombinedRequiredAuth;
 use r_data_core_api::response::ApiResponse;
-use crate::api::ApiState;
+use r_data_core_api::api_state::ApiStateWrapper;
 use r_data_core_persistence::DynamicEntityRepository;
 use r_data_core_persistence::VersionRepository;
 use r_data_core_services::VersionService;
@@ -31,10 +31,10 @@ use r_data_core_services::VersionService;
 )]
 #[get("/entities")]
 async fn list_available_entities(
-    data: web::Data<ApiState>,
+    data: web::Data<ApiStateWrapper>,
     _: CombinedRequiredAuth,
 ) -> impl Responder {
-    let repository = EntityRepository::new(data.db_pool.clone());
+    let repository = EntityRepository::new(data.db_pool().clone());
 
     match repository.list_available_entities().await {
         Ok(entities) => HttpResponse::Ok().json(entities),
@@ -85,11 +85,11 @@ struct BrowseQuery {
 )]
 #[get("/entities/by-path")]
 async fn list_by_path(
-    data: web::Data<ApiState>,
+    data: web::Data<ApiStateWrapper>,
     query: web::Query<BrowseQuery>,
     _: CombinedRequiredAuth,
 ) -> impl Responder {
-    let repository = EntityRepository::new(data.db_pool.clone());
+    let repository = EntityRepository::new(data.db_pool().clone());
     let limit = query.limit.unwrap_or(20).clamp(1, 100);
     let offset = query.offset.unwrap_or(0).max(0);
 
@@ -137,13 +137,13 @@ async fn list_by_path(
 )]
 #[get("/entities/{entity_type}/{uuid}/versions")]
 async fn list_entity_versions(
-    data: web::Data<ApiState>,
+    data: web::Data<ApiStateWrapper>,
     path: web::Path<(String, Uuid)>,
     _: CombinedRequiredAuth,
 ) -> impl Responder {
     let (_entity_type, uuid) = path.into_inner();
 
-    let version_service = VersionService::new(data.db_pool.clone());
+    let version_service = VersionService::new(data.db_pool().clone());
 
     match version_service
         .list_entity_versions_with_metadata(uuid)
@@ -192,13 +192,13 @@ async fn list_entity_versions(
 )]
 #[get("/entities/{entity_type}/{uuid}/versions/{version_number}")]
 async fn get_entity_version(
-    data: web::Data<ApiState>,
+    data: web::Data<ApiStateWrapper>,
     path: web::Path<(String, Uuid, i32)>,
     _: CombinedRequiredAuth,
 ) -> impl Responder {
     let (entity_type, uuid, version_number) = path.into_inner();
 
-    let repo = VersionRepository::new(data.db_pool.clone());
+    let repo = VersionRepository::new(data.db_pool().clone());
 
     // First try to get from versions table
     match repo.get_entity_version(uuid, version_number).await {
@@ -266,11 +266,11 @@ async fn get_entity_version(
 )]
 #[post("/entities/query")]
 async fn query_entities(
-    data: web::Data<ApiState>,
+    data: web::Data<ApiStateWrapper>,
     body: web::Json<EntityQueryRequest>,
     _: CombinedRequiredAuth,
 ) -> impl Responder {
-    let repository = DynamicEntityRepository::new(data.db_pool.clone());
+    let repository = DynamicEntityRepository::new(data.db_pool().clone());
 
     let limit = body.limit.unwrap_or(20).clamp(1, 100);
     let offset = body.offset.unwrap_or(0).max(0);

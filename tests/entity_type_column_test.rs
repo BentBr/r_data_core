@@ -325,16 +325,19 @@ async fn test_fixed_entity_type_column_issue() -> Result<()> {
     
     // Create an API key repository and key BEFORE creating the app (like in authentication_tests.rs)
     let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-    let (key_uuid, api_key) = api_key_repo
+    let (_key_uuid, api_key) = api_key_repo
         .create_new_api_key("Test API Key", "Test Description", user_uuid, 30)
         .await?;
     
-    // Verify the API key can be found (debug check)
-    let auth_check = api_key_repo.find_api_key_for_auth(&api_key).await?;
-    assert!(auth_check.is_some(), "API key should be findable immediately after creation");
-    
     // Build test app with DynamicEntityService, etc., using the same API key repository
+    // This matches the pattern in authentication_tests.rs exactly
     let app = create_test_app_with_api_key_repo(&pool, api_key_repo).await;
+
+    // Directly test that the API key service in the app can validate the key
+    // This helps debug if there's an issue with the service setup
+    let test_service = ApiKeyService::from_repository(ApiKeyRepository::new(Arc::new(pool.clone())));
+    let service_validation = test_service.validate_api_key(&api_key).await?;
+    assert!(service_validation.is_some(), "API key service should be able to validate the key directly");
 
     // Test the endpoint that previously failed due to the entity_type column
     let req = test::TestRequest::get()
@@ -344,12 +347,17 @@ async fn test_fixed_entity_type_column_issue() -> Result<()> {
 
     let resp = test::call_service(&app, req).await;
 
-    // Verify that the request now succeeds (before it would fail with DB error)
-    assert!(
-        resp.status().is_success(),
-        "API request failed with status: {}",
-        resp.status()
-    );
+    // If the request fails, print the response body for debugging
+    let status = resp.status();
+    if !status.is_success() {
+        let body = test::read_body(resp).await;
+        let body_str = String::from_utf8_lossy(&body);
+        panic!(
+            "API request failed with status: {}. Response body: {}",
+            status,
+            body_str
+        );
+    }
 
     // Parse and verify response
     let body: serde_json::Value = test::read_body_json(resp).await;

@@ -80,26 +80,9 @@ pub async fn extract_and_validate_api_key(
                     ));
                 }
             }
-        } else if let Some(state) = req.app_data::<web::Data<crate::api::ApiState>>() {
-            // Fallback for old routes that still use ApiState directly
-            match state.api_key_service.validate_api_key(api_key).await {
-                Ok(Some((key, user_uuid))) => {
-                    debug!("API key authentication successful");
-                    return Ok(Some((key, user_uuid)));
-                }
-                Ok(None) => {
-                    debug!("API key not found or inactive");
-                }
-                Err(e) => {
-                    error!("API key validation error: {}", e);
-                    return Err(ErrorUnauthorized(
-                        "Internal server error during API key validation",
-                    ));
-                }
-            }
         } else {
             // This should not happen in normal operation, but provide fallback for safety
-            error!("ApiState not available - this indicates a configuration issue");
+            error!("ApiStateWrapper not available in app_data - this indicates a configuration issue");
             return Err(ErrorUnauthorized(
                 "API authentication not properly configured",
             ));

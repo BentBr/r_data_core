@@ -11,7 +11,7 @@ use serde::Deserialize;
 
 use crate::api::auth::extract_and_validate_api_key;
 use crate::api::middleware::{ApiKeyInfo, AuthMiddlewareService};
-use crate::api::ApiState;
+use r_data_core_api::api_state::ApiStateWrapper;
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
@@ -75,7 +75,7 @@ where
         let request = req.request().clone();
 
         // Get the API state before moving into the future
-        let state_result = req.app_data::<web::Data<ApiState>>().cloned();
+        let state_result = req.app_data::<web::Data<ApiStateWrapper>>().cloned();
         let service_clone = service.clone();
 
         Box::pin(async move {

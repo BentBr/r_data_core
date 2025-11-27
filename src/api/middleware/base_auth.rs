@@ -5,7 +5,7 @@ use actix_web::{
 use futures::future::LocalBoxFuture;
 use std::rc::Rc;
 
-use crate::api::ApiState;
+use r_data_core_api::api_state::ApiStateWrapper;
 
 /// Base Authentication Middleware Service
 /// Provides common functionality for authentication middleware
@@ -16,12 +16,12 @@ where
     B: 'static,
 {
     /// Get API state from the request
-    fn get_state(&self, req: &ServiceRequest) -> Result<web::Data<ApiState>, Error> {
+    fn get_state(&self, req: &ServiceRequest) -> Result<web::Data<ApiStateWrapper>, Error> {
         log::debug!(
             "AuthMiddlewareService::get_state called for path: {}",
             req.path()
         );
-        let state = req.app_data::<web::Data<ApiState>>().cloned();
+        let state = req.app_data::<web::Data<ApiStateWrapper>>().cloned();
 
         if let Some(ref s) = state {
             log::debug!("API state found successfully");

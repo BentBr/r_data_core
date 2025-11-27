@@ -3,8 +3,8 @@ use serde_json::json;
 
 use r_data_core_api::public::queries::models::AdvancedEntityQuery;
 use super::repository::QueryRepository;
-use crate::api::auth::auth_enum::CombinedRequiredAuth;
-use crate::api::ApiState;
+use r_data_core_api::auth::auth_enum::CombinedRequiredAuth;
+use r_data_core_api::api_state::ApiStateWrapper;
 
 /// Advanced query for entities with more complex filtering
 #[utoipa::path(
@@ -28,13 +28,13 @@ use crate::api::ApiState;
 )]
 #[post("/{entity_type}/query")]
 async fn query_entities(
-    data: web::Data<ApiState>,
+    data: web::Data<ApiStateWrapper>,
     path: web::Path<String>,
     query: web::Json<AdvancedEntityQuery>,
     _: CombinedRequiredAuth,
 ) -> impl Responder {
     let entity_type = path.into_inner();
-    let repository = QueryRepository::new(data.db_pool.clone());
+    let repository = QueryRepository::new(data.db_pool().clone());
 
     match repository.query_entities(&entity_type, &query.into_inner()).await {
         Ok(entities) => HttpResponse::Ok().json(entities),

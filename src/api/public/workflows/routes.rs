@@ -3,8 +3,8 @@ use serde_json::json;
 use std::result::Result;
 use uuid::Uuid;
 
-use crate::api::auth::auth_enum::CombinedRequiredAuth;
-use crate::api::ApiState;
+use r_data_core_api::auth::auth_enum::CombinedRequiredAuth;
+use r_data_core_api::api_state::ApiStateWrapper;
 use r_data_core_workflow::data::adapters::auth::{AuthConfig, KeyLocation};
 use r_data_core_workflow::data::adapters::format::FormatHandler;
 use r_data_core_workflow::dsl::DslProgram;
@@ -43,12 +43,12 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
 pub async fn get_workflow_data(
     path: web::Path<Uuid>,
     req: HttpRequest,
-    state: web::Data<ApiState>,
+    state: web::Data<ApiStateWrapper>,
 ) -> impl Responder {
     let uuid = path.into_inner();
 
     // Get workflow config
-    let workflow = match state.workflow_service.get(uuid).await {
+    let workflow = match state.workflow_service().get(uuid).await {
         Ok(Some(wf)) => wf,
         Ok(None) => return HttpResponse::NotFound().json(json!({"error": "Workflow not found"})),
         Err(e) => {
@@ -76,7 +76,7 @@ pub async fn get_workflow_data(
     if !has_pre_shared_key {
         // Try to validate via CombinedRequiredAuth (JWT/API key)
         // We'll create a temporary request to use the extractor
-        use crate::api::auth::auth_enum::CombinedRequiredAuth;
+        use r_data_core_api::auth::auth_enum::CombinedRequiredAuth;
         use actix_web::FromRequest;
         let mut payload = actix_web::dev::Payload::None;
         match CombinedRequiredAuth::from_request(&req, &mut payload).await {
@@ -269,12 +269,12 @@ pub async fn get_workflow_data(
 #[get("/{uuid}/stats")]
 pub async fn get_workflow_stats(
     path: web::Path<Uuid>,
-    state: web::Data<ApiState>,
+    state: web::Data<ApiStateWrapper>,
     _: CombinedRequiredAuth,
 ) -> impl Responder {
     let uuid = path.into_inner();
 
-    let workflow = match state.workflow_service.get(uuid).await {
+    let workflow = match state.workflow_service().get(uuid).await {
         Ok(Some(wf)) => wf,
         Ok(None) => return HttpResponse::NotFound().json(json!({"error": "Workflow not found"})),
         Err(e) => {
@@ -364,12 +364,12 @@ pub async fn get_workflow_stats(
 pub async fn post_workflow_ingest(
     path: web::Path<Uuid>,
     body: web::Bytes,
-    state: web::Data<ApiState>,
+    state: web::Data<ApiStateWrapper>,
 ) -> impl Responder {
     let uuid = path.into_inner();
 
     // Get workflow
-    let workflow = match state.workflow_service.get(uuid).await {
+    let workflow = match state.workflow_service().get(uuid).await {
         Ok(Some(wf)) => wf,
         Ok(None) => return HttpResponse::NotFound().json(json!({"error": "Workflow not found"})),
         Err(e) => {

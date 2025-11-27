@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 use crate::api::auth::extract_and_validate_jwt;
 use crate::api::middleware::AuthMiddlewareService;
-use crate::api::ApiState;
+use r_data_core_api::api_state::{ApiStateTrait, ApiStateWrapper};
 
 /// Middleware service for JWT auth
 #[allow(dead_code)]
@@ -28,7 +28,7 @@ where
         service: Rc<S>,
     ) -> LocalBoxFuture<'static, Result<ServiceResponse<B>, Error>> {
         let request = req.request().clone();
-        let state_result = req.app_data::<web::Data<ApiState>>().cloned();
+        let state_result = req.app_data::<web::Data<ApiStateWrapper>>().cloned();
         let service_clone = service.clone();
 
         Box::pin(async move {
@@ -40,7 +40,7 @@ where
                 }
             };
 
-            let jwt_secret = &state.api_config.jwt_secret;
+            let jwt_secret = state.jwt_secret();
 
             match extract_and_validate_jwt(&request, jwt_secret).await {
                 Ok(Some(claims)) => {

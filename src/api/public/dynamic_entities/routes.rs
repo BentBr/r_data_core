@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::api::auth::auth_enum::CombinedRequiredAuth;
+use r_data_core_api::auth::auth_enum::CombinedRequiredAuth;
 use r_data_core_api::query::StandardQuery;
 use r_data_core_api::response::{ApiResponse, ValidationViolation};
 use r_data_core_api::api_state::{ApiStateTrait, ApiStateWrapper};

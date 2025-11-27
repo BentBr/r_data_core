@@ -62,16 +62,21 @@ pub async fn extract_and_validate_api_key(
 ) -> StdResult<Option<(ApiKey, Uuid)>, ActixError> {
     // Try API key header
     if let Some(api_key) = req.headers().get("X-API-Key").and_then(|h| h.to_str().ok()) {
+        // Trim any whitespace that might have been added
+        let api_key = api_key.trim();
+        debug!("Found X-API-Key header, attempting validation (length: {})", api_key.len());
         // Get ApiState from request - should always be available
         if let Some(state) = req.app_data::<web::Data<ApiStateWrapper>>() {
+            debug!("Found ApiStateWrapper in app_data");
             // Use ApiKeyService which handles caching (cache hit) or DB query (cache miss)
-            match state.api_key_service().validate_api_key(api_key).await {
+            let validation_result = state.api_key_service().validate_api_key(api_key).await;
+            match validation_result {
                 Ok(Some((key, user_uuid))) => {
-                    debug!("API key authentication successful");
+                    debug!("API key authentication successful for user: {}", user_uuid);
                     return Ok(Some((key, user_uuid)));
                 }
                 Ok(None) => {
-                    debug!("API key not found or inactive");
+                    debug!("API key not found or inactive: key length = {}", api_key.len());
                 }
                 Err(e) => {
                     error!("API key validation error: {}", e);
@@ -82,11 +87,13 @@ pub async fn extract_and_validate_api_key(
             }
         } else {
             // This should not happen in normal operation, but provide fallback for safety
-            error!("ApiState not available - this indicates a configuration issue");
+            error!("ApiStateWrapper not available in app_data - this indicates a configuration issue");
             return Err(ErrorUnauthorized(
                 "API authentication not properly configured",
             ));
         }
+    } else {
+        debug!("No X-API-Key header found");
     }
 
     Ok(None)
