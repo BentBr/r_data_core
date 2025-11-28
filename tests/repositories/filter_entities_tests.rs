@@ -9,7 +9,7 @@ use r_data_core_core::DynamicEntity;
 use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
 use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core_core::field::ui::UiSettings;
-use Result;
+use r_data_core_core::error::Result;
 
 // Import common module for test setup
 #[path = "../common/mod.rs"]
@@ -115,7 +115,7 @@ mod filter_entities_tests {
             .bind(entity_def.published)
             .fetch_one(db_pool)
             .await
-            .map_err(|e| r_data_core::error::Error::Database(e))?;
+            .map_err(r_data_core_core::error::Error::from)?;
 
         // Execute SQL to trigger the view creation directly
         let trigger_sql = format!(
@@ -126,7 +126,7 @@ mod filter_entities_tests {
         sqlx::query(&trigger_sql)
             .execute(db_pool)
             .await
-            .map_err(|e| r_data_core::error::Error::Database(e))?;
+            .map_err(r_data_core_core::error::Error::from)?;
 
         // Wait a moment for the trigger to create the view
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -145,6 +145,7 @@ mod filter_entities_tests {
 
             let mut field_data = HashMap::new();
             field_data.insert("uuid".to_string(), json!(uuid.to_string()));
+            field_data.insert("entity_key".to_string(), json!(format!("test-entity-{}", i)));
             field_data.insert("name".to_string(), json!(format!("Test Entity {}", i)));
             field_data.insert("email".to_string(), json!(format!("test{}@example.com", i)));
             field_data.insert("age".to_string(), json!(20 + i));
@@ -172,8 +173,8 @@ mod filter_entities_tests {
     #[tokio::test]
     async fn test_filter_entities_by_active() -> Result<()> {
         // Setup database
-        let db_pool = common::setup_test_db().await;
-        common::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        let db_pool = common::utils::setup_test_db().await;
+        common::utils::clear_test_db(&db_pool).await.expect("Failed to clear test database");
 
         // Create a test entity definition with a unique entity type
         let entity_type = unique_entity_type("testentity");
@@ -219,8 +220,8 @@ mod filter_entities_tests {
     #[tokio::test]
     async fn test_filter_entities_by_age() -> Result<()> {
         // Setup database
-        let db_pool = common::setup_test_db().await;
-        common::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        let db_pool = common::utils::setup_test_db().await;
+        common::utils::clear_test_db(&db_pool).await.expect("Failed to clear test database");
 
         // Create a test entity definition with a unique entity type
         let entity_type = unique_entity_type("testentity");
@@ -262,8 +263,8 @@ mod filter_entities_tests {
     #[tokio::test]
     async fn test_filter_entities_with_search() -> Result<()> {
         // Setup database
-        let db_pool = common::setup_test_db().await;
-        common::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        let db_pool = common::utils::setup_test_db().await;
+        common::utils::clear_test_db(&db_pool).await.expect("Failed to clear test database");
 
         // Create a test entity definition with a unique entity type
         let entity_type = unique_entity_type("testentity");
@@ -300,8 +301,8 @@ mod filter_entities_tests {
     #[tokio::test]
     async fn test_filter_entities_with_sort() -> Result<()> {
         // Setup database
-        let db_pool = common::setup_test_db().await;
-        common::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        let db_pool = common::utils::setup_test_db().await;
+        common::utils::clear_test_db(&db_pool).await.expect("Failed to clear test database");
 
         // Create a test entity definition with a unique entity type
         let entity_type = unique_entity_type("testentity");
@@ -341,8 +342,8 @@ mod filter_entities_tests {
     #[tokio::test]
     async fn test_filter_entities_with_field_selection() -> Result<()> {
         // Setup database
-        let db_pool = common::setup_test_db().await;
-        common::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        let db_pool = common::utils::setup_test_db().await;
+        common::utils::clear_test_db(&db_pool).await.expect("Failed to clear test database");
 
         // Create a test entity definition with a unique entity type
         let entity_type = unique_entity_type("testentity");
@@ -378,8 +379,8 @@ mod filter_entities_tests {
     #[tokio::test]
     async fn test_filter_entities_with_pagination() -> Result<()> {
         // Setup database
-        let db_pool = common::setup_test_db().await;
-        common::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        let db_pool = common::utils::setup_test_db().await;
+        common::utils::clear_test_db(&db_pool).await.expect("Failed to clear test database");
 
         // Create a test entity definition with a unique entity type
         let entity_type = unique_entity_type("testentity");

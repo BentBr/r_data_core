@@ -3,32 +3,19 @@ use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::{FetchAndStageJob, ProcessRawItemJob};
 use uuid::Uuid;
 
-fn get_test_queue() -> Option<ApalisRedisQueue> {
+async fn get_test_queue() -> Option<ApalisRedisQueue> {
     let url = std::env::var("REDIS_URL").ok()?;
     let fetch_key = std::env::var("QUEUE_FETCH_KEY")
         .unwrap_or_else(|_| format!("test_queue:fetch:{}", Uuid::now_v7()));
     let process_key = std::env::var("QUEUE_PROCESS_KEY")
         .unwrap_or_else(|_| format!("test_queue:process:{}", Uuid::now_v7()));
 
-    // Use tokio runtime to call async function
-    tokio::runtime::Handle::try_current()
-        .ok()
-        .and_then(|handle| {
-            handle
-                .block_on(ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key))
-                .ok()
-        })
-        .or_else(|| {
-            tokio::runtime::Runtime::new().ok().and_then(|rt| {
-                rt.block_on(ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key))
-                    .ok()
-            })
-        })
+    ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key).await.ok()
 }
 
 #[tokio::test]
 async fn enqueue_and_pop_fetch_job_round_trip_if_redis_available() {
-    let queue = match get_test_queue() {
+    let queue = match get_test_queue().await {
         Some(q) => q,
         None => {
             println!("Skipping test: REDIS_URL not set");
@@ -59,7 +46,7 @@ async fn enqueue_and_pop_fetch_job_round_trip_if_redis_available() {
 
 #[tokio::test]
 async fn enqueue_process_job_if_redis_available() {
-    let queue = match get_test_queue() {
+    let queue = match get_test_queue().await {
         Some(q) => q,
         None => {
             println!("Skipping test: REDIS_URL not set");
@@ -105,7 +92,7 @@ async fn enqueue_process_job_if_redis_available() {
 
 #[tokio::test]
 async fn enqueue_multiple_jobs_fifo_ordering_if_redis_available() {
-    let queue = match get_test_queue() {
+    let queue = match get_test_queue().await {
         Some(q) => q,
         None => {
             println!("Skipping test: REDIS_URL not set");
@@ -148,7 +135,7 @@ async fn queue_initialization_fails_with_invalid_redis_url() {
 
 #[tokio::test]
 async fn enqueue_fetch_without_trigger_id_if_redis_available() {
-    let queue = match get_test_queue() {
+    let queue = match get_test_queue().await {
         Some(q) => q,
         None => {
             println!("Skipping test: REDIS_URL not set");

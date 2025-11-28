@@ -54,7 +54,18 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
     let cfg = serde_json::json!({
         "steps": [
             {
-                "from": { "type": "csv", "uri": "inline://provided-by-staging", "mapping": {} },
+                "from": {
+                    "type": "format",
+                    "source": {
+                        "source_type": "uri",
+                        "config": { "uri": "http://example.com/staging-data.csv" }
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": {}
+                    },
+                    "mapping": {}
+                },
                 "transform": { "type": "none" },
                 "to": {
                     "type": "entity",

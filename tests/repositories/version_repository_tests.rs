@@ -2,6 +2,7 @@ use r_data_core_persistence::VersionRepository;
 use sqlx::Row;
 use uuid::Uuid;
 
+#[path = "../common/mod.rs"]
 mod common;
 use common::utils::setup_test_db;
 
@@ -10,6 +11,20 @@ async fn test_version_repository_list_and_get() {
     let pool = setup_test_db().await;
     let repo = VersionRepository::new(pool.clone());
     let entity_uuid = Uuid::now_v7();
+
+    // First create the entity in entities_registry (required for foreign key)
+    let created_by = Uuid::now_v7();
+    sqlx::query(
+        "INSERT INTO entities_registry (uuid, entity_type, entity_key, path, created_at, created_by) VALUES ($1, $2, $3, $4, NOW(), $5) ON CONFLICT DO NOTHING",
+    )
+    .bind(entity_uuid)
+    .bind("dynamic_entity")
+    .bind(format!("test-entity-{}", entity_uuid.simple()))
+    .bind("/")
+    .bind(created_by)
+    .execute(&pool)
+    .await
+    .unwrap();
 
     // Seed two versions
     for v in 1..=2 {

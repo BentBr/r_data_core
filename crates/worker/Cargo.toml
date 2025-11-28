@@ -4,14 +4,27 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 
+[[bin]]
+name = "worker"
+path = "src/bin/worker.rs"
+
+[[bin]]
+name = "r_data_core_worker"
+path = "src/main.rs"
+
 [dependencies]
 log = "0.4"
 tokio = { version = "1.35", features = ["full"] }
 async-trait = "0.1"
 sqlx = { version = "0.8.4", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }
+anyhow = "1.0"
+futures = "0.3"
+tokio-cron-scheduler = "0.9"
+uuid = { version = "1.0", features = ["v7"] }
+serde_json = "1.0"
 r_data_core_core = { path = "../core" }
 r_data_core_persistence = { path = "../persistence" }
-# Temporary dependency on root crate until services/repositories are fully refactored
-r_data_core = { path = "../.." }
+r_data_core_services = { path = "../services" }
+r_data_core_workflow = { path = "../workflow" }
 
 

@@ -37,12 +37,32 @@ async fn run_now_creates_queued_run_and_worker_marks_success() {
         config: serde_json::json!({
             "steps": [
                 {
-                    "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} },
+                    "from": {
+                        "type": "format",
+                        "source": {
+                            "source_type": "uri",
+                            "config": { "uri": "http://example.com/data.csv" }
+                        },
+                        "format": {
+                            "format_type": "csv",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    },
                     "transform": { "type": "none" },
-                    "to": { "type": "json", "output": "api", "mapping": {} }
+                    "to": {
+                        "type": "format",
+                        "output": { "mode": "api" },
+                        "format": {
+                            "format_type": "json",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    }
                 }
             ]
         }),
+        versioning_disabled: false,
     };
     let wf_uuid = service.create(&req, creator_uuid).await.expect("create workflow");
 
@@ -64,14 +84,14 @@ async fn run_now_creates_queued_run_and_worker_marks_success() {
 
     // Assert run is marked success
     let row = sqlx::query!(
-        r#"SELECT status FROM workflow_runs WHERE workflow_uuid = $1 ORDER BY queued_at DESC LIMIT 1"#,
+        r#"SELECT status::text AS status FROM workflow_runs WHERE workflow_uuid = $1 ORDER BY queued_at DESC LIMIT 1"#,
         wf_uuid
     )
     .fetch_one(&pool)
     .await
     .expect("fetch run");
 
-    assert_eq!(row.status.unwrap_or_default(), "success");
+    assert_eq!(row.status.as_deref(), Some("success"));
 }
 
 

@@ -8,6 +8,7 @@ use r_data_core_workflow::data::WorkflowKind;
 use sqlx::Row;
 use uuid::Uuid;
 
+#[path = "common/mod.rs"]
 mod common;
 use common::utils::{
     create_test_entity, create_test_entity_definition, setup_test_db, unique_entity_type,

@@ -71,6 +71,8 @@ impl ApiStateTrait for ApiState {
     }
 
     fn dynamic_entity_service_ref(&self) -> Option<&dyn std::any::Any> {
+        // Return a reference to the Arc itself, not the inner service
+        // This allows downcasting back to &Arc<DynamicEntityService>
         self.dynamic_entity_service.as_ref().map(|s| s as &dyn std::any::Any)
     }
 
@@ -83,7 +85,7 @@ impl ApiStateTrait for ApiState {
     }
 
     fn queue_ref(&self) -> &dyn std::any::Any {
-        &*self.queue
+        &self.queue
     }
 }
 

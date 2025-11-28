@@ -25,9 +25,28 @@ async fn create_sets_created_by_and_fk_enforced() -> anyhow::Result<()> {
     let cfg = serde_json::json!({
         "steps": [
             {
-                "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} },
+                "from": {
+                    "type": "format",
+                    "source": {
+                        "source_type": "uri",
+                        "config": { "uri": "http://example.com/data.csv" }
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": {}
+                    },
+                    "mapping": {}
+                },
                 "transform": { "type": "none" },
-                "to": { "type": "json", "output": "api", "mapping": {} }
+                "to": {
+                    "type": "format",
+                    "output": { "mode": "api" },
+                    "format": {
+                        "format_type": "json",
+                        "options": {}
+                    },
+                    "mapping": {}
+                }
             }
         ]
     });
@@ -80,9 +99,28 @@ async fn update_sets_updated_by_and_fk_enforced() -> anyhow::Result<()> {
     let cfg = serde_json::json!({
         "steps": [
             {
-                "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} },
+                "from": {
+                    "type": "format",
+                    "source": {
+                        "source_type": "uri",
+                        "config": { "uri": "http://example.com/data.csv" }
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": {}
+                    },
+                    "mapping": {}
+                },
                 "transform": { "type": "none" },
-                "to": { "type": "json", "output": "api", "mapping": {} }
+                "to": {
+                    "type": "format",
+                    "output": { "mode": "api" },
+                    "format": {
+                        "format_type": "json",
+                        "options": {}
+                    },
+                    "mapping": {}
+                }
             }
         ]
     });
