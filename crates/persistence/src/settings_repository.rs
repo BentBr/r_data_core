@@ -1,8 +1,10 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
+use async_trait::async_trait;
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
+use crate::settings_repository_trait::SettingsRepositoryTrait;
 use r_data_core_core::error::{Error, Result};
 use r_data_core_core::settings::SystemSettingKey;
 
@@ -71,5 +73,21 @@ impl SystemSettingsRepository {
         .await
         .map_err(Error::Database)?;
         Ok(())
+    }
+}
+
+#[async_trait]
+impl SettingsRepositoryTrait for SystemSettingsRepository {
+    async fn get_value(&self, key: SystemSettingKey) -> Result<Option<serde_json::Value>> {
+        Self::get_value(self, key).await
+    }
+
+    async fn upsert_value(
+        &self,
+        key: SystemSettingKey,
+        value: &serde_json::Value,
+        updated_by: Uuid,
+    ) -> Result<()> {
+        Self::upsert_value(self, key, value, updated_by).await
     }
 }

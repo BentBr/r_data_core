@@ -1,5 +1,8 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
+use async_trait::async_trait;
+
+use crate::dynamic_entity_query_repository_trait::DynamicEntityQueryRepositoryTrait;
 use r_data_core_core::error::Result;
 use r_data_core_core::public_api::AdvancedEntityQuery;
 use r_data_core_core::DynamicEntity;
@@ -34,5 +37,16 @@ impl DynamicEntityQueryRepository {
         // For now, we'll return a stub implementation
 
         Ok(Vec::new())
+    }
+}
+
+#[async_trait]
+impl DynamicEntityQueryRepositoryTrait for DynamicEntityQueryRepository {
+    async fn query_entities(
+        &self,
+        entity_type: &str,
+        query: &AdvancedEntityQuery,
+    ) -> Result<Vec<DynamicEntity>> {
+        Self::query_entities(self, entity_type, query).await
     }
 }

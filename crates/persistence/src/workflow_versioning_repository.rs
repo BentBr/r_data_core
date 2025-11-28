@@ -2,11 +2,13 @@
 
 use async_trait::async_trait;
 use sqlx::{PgPool, Row};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::core::error::Error;
 use crate::core::error::Result;
 use crate::core::versioning::purger_trait::VersionPurger;
+use crate::workflow_versioning_repository_trait::WorkflowVersioningRepositoryTrait;
 
 /// Repository for workflow versioning operations
 pub struct WorkflowVersioningRepository {
@@ -258,6 +260,43 @@ impl WorkflowVersioningRepository {
         .await
         .map_err(Error::Database)?;
         Ok(res.rows_affected())
+    }
+}
+
+#[async_trait]
+impl WorkflowVersioningRepositoryTrait for WorkflowVersioningRepository {
+    async fn snapshot_pre_update(&self, workflow_uuid: Uuid) -> Result<()> {
+        Self::snapshot_pre_update(self, workflow_uuid).await
+    }
+
+    async fn list_workflow_versions(
+        &self,
+        workflow_uuid: Uuid,
+    ) -> Result<Vec<WorkflowVersionMeta>> {
+        Self::list_workflow_versions(self, workflow_uuid).await
+    }
+
+    async fn get_workflow_version(
+        &self,
+        workflow_uuid: Uuid,
+        version_number: i32,
+    ) -> Result<Option<WorkflowVersionPayload>> {
+        Self::get_workflow_version(self, workflow_uuid, version_number).await
+    }
+
+    async fn get_current_workflow_metadata(
+        &self,
+        workflow_uuid: Uuid,
+    ) -> Result<Option<(i32, OffsetDateTime, Option<Uuid>, Option<String>)>> {
+        Self::get_current_workflow_metadata(self, workflow_uuid).await
+    }
+
+    async fn prune_older_than_days(&self, days: i32) -> Result<u64> {
+        Self::prune_older_than_days(self, days).await
+    }
+
+    async fn prune_keep_latest_per_workflow(&self, keep: i32) -> Result<u64> {
+        Self::prune_keep_latest_per_workflow(self, keep).await
     }
 }
 

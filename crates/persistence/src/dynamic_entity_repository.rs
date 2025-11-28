@@ -754,9 +754,11 @@ impl DynamicEntityRepository {
             }
         }
 
-        // Bind search parameters
-        if let Some((search_term, _)) = &search {
-            sql = sql.bind(format!("%{}%", search_term));
+        // Bind search parameters - bind once for each search field
+        if let Some((search_term, search_fields)) = &search {
+            for _field in search_fields {
+                sql = sql.bind(format!("%{}%", search_term));
+            }
         }
 
         let rows = sql.fetch_all(&self.pool).await.map_err(|e| {

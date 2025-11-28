@@ -3,6 +3,7 @@ use sqlx::{PgPool, Postgres, Row, Transaction};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::version_repository_trait::VersionRepositoryTrait;
 use r_data_core_core::error::{Error, Result};
 use r_data_core_core::versioning::purger_trait::VersionPurger;
 
@@ -401,6 +402,56 @@ impl VersionRepository {
         }
 
         Ok(())
+    }
+}
+
+#[async_trait]
+impl VersionRepositoryTrait for VersionRepository {
+    async fn list_entity_versions(&self, entity_uuid: Uuid) -> Result<Vec<EntityVersionMeta>> {
+        Self::list_entity_versions(self, entity_uuid).await
+    }
+
+    async fn get_entity_version(
+        &self,
+        entity_uuid: Uuid,
+        version_number: i32,
+    ) -> Result<Option<EntityVersionPayload>> {
+        Self::get_entity_version(self, entity_uuid, version_number).await
+    }
+
+    async fn insert_snapshot(
+        &self,
+        entity_uuid: Uuid,
+        entity_type: &str,
+        version_number: i32,
+        data: serde_json::Value,
+        created_by: Option<Uuid>,
+    ) -> Result<()> {
+        Self::insert_snapshot(self, entity_uuid, entity_type, version_number, data, created_by)
+            .await
+    }
+
+    async fn prune_older_than_days(&self, days: i32) -> Result<u64> {
+        Self::prune_older_than_days(self, days).await
+    }
+
+    async fn prune_keep_latest_per_entity(&self, keep: i32) -> Result<u64> {
+        Self::prune_keep_latest_per_entity(self, keep).await
+    }
+
+    async fn get_current_entity_metadata(
+        &self,
+        entity_uuid: Uuid,
+    ) -> Result<Option<(i32, OffsetDateTime, Option<Uuid>, Option<String>)>> {
+        Self::get_current_entity_metadata(self, entity_uuid).await
+    }
+
+    async fn get_current_entity_data(
+        &self,
+        entity_uuid: Uuid,
+        entity_type: &str,
+    ) -> Result<Option<serde_json::Value>> {
+        Self::get_current_entity_data(self, entity_uuid, entity_type).await
     }
 }
 

@@ -93,6 +93,7 @@ impl PaginationQuery {
     }
 
     /// Get the page number (for response metadata)
+    #[must_use]
     pub fn get_page(&self, default: i64) -> i64 {
         if let Some(page) = self.page {
             page.max(1)
@@ -103,6 +104,18 @@ impl PaginationQuery {
             } else {
                 default
             }
+        } else if let Some(limit) = self.limit {
+            // If only limit is provided, use offset or default to 0
+            let offset = self.offset.unwrap_or(0);
+            if limit > 0 {
+                (offset / limit) + 1
+            } else {
+                default
+            }
+        } else if let Some(_per_page) = self.per_page {
+            // If per_page is provided, calculate from page or use default
+            let page = self.page.unwrap_or(default);
+            page.max(1)
         } else {
             default
         }

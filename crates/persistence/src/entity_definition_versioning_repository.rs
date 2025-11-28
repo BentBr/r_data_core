@@ -1,7 +1,9 @@
 use async_trait::async_trait;
 use sqlx::{PgPool, Postgres, Row, Transaction};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::entity_definition_versioning_repository_trait::EntityDefinitionVersioningRepositoryTrait;
 use r_data_core_core::error::Error;
 use r_data_core_core::error::Result;
 use r_data_core_core::versioning::purger_trait::VersionPurger;
@@ -263,6 +265,43 @@ impl EntityDefinitionVersioningRepository {
         .await
         .map_err(Error::Database)?;
         Ok(res.rows_affected())
+    }
+}
+
+#[async_trait]
+impl EntityDefinitionVersioningRepositoryTrait for EntityDefinitionVersioningRepository {
+    async fn snapshot_pre_update(&self, definition_uuid: Uuid) -> Result<()> {
+        Self::snapshot_pre_update(self, definition_uuid).await
+    }
+
+    async fn list_definition_versions(
+        &self,
+        definition_uuid: Uuid,
+    ) -> Result<Vec<EntityDefinitionVersionMeta>> {
+        Self::list_definition_versions(self, definition_uuid).await
+    }
+
+    async fn get_definition_version(
+        &self,
+        definition_uuid: Uuid,
+        version_number: i32,
+    ) -> Result<Option<EntityDefinitionVersionPayload>> {
+        Self::get_definition_version(self, definition_uuid, version_number).await
+    }
+
+    async fn get_current_definition_metadata(
+        &self,
+        definition_uuid: Uuid,
+    ) -> Result<Option<(i32, OffsetDateTime, Option<Uuid>, Option<String>)>> {
+        Self::get_current_definition_metadata(self, definition_uuid).await
+    }
+
+    async fn prune_older_than_days(&self, days: i32) -> Result<u64> {
+        Self::prune_older_than_days(self, days).await
+    }
+
+    async fn prune_keep_latest_per_definition(&self, keep: i32) -> Result<u64> {
+        Self::prune_keep_latest_per_definition(self, keep).await
     }
 }
 

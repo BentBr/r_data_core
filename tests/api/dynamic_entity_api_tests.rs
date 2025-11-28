@@ -1,13 +1,12 @@
 use actix_web::{test, web, App};
 use r_data_core_api::{configure_app, ApiState};
 use r_data_core_core::cache::CacheManager;
-use r_data_core_core::config::CacheConfig;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::error::Result;
 use r_data_core_core::field::ui::UiSettings;
 use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core_core::DynamicEntity;
-use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
+use r_data_core_persistence::DynamicEntityRepository;
 use r_data_core_services::{
     AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
 };
@@ -462,16 +461,17 @@ mod dynamic_entity_api_tests {
 
         // Check that only requested fields are returned
         let first_user = &body["data"][0];
+        // Fields are nested in field_data
         assert!(
-            first_user.get("name").is_some(),
+            first_user["field_data"].get("name").is_some(),
             "Name field should be present"
         );
         assert!(
-            first_user.get("email").is_some(),
+            first_user["field_data"].get("email").is_some(),
             "Email field should be present"
         );
         assert!(
-            first_user.get("age").is_none(),
+            first_user["field_data"].get("age").is_none(),
             "Age field should not be present"
         );
 
@@ -499,7 +499,8 @@ mod dynamic_entity_api_tests {
         let users = body["data"].as_array().unwrap();
         let mut last_age = i64::MAX;
         for user in users {
-            let age = user["age"].as_i64().unwrap();
+            // Fields are nested in field_data
+            let age = user["field_data"]["age"].as_i64().unwrap();
             assert!(
                 age <= last_age,
                 "Users should be sorted by age in descending order"

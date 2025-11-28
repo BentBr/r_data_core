@@ -1,10 +1,12 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
+use async_trait::async_trait;
 use sqlx::{postgres::PgRow, PgPool, Row};
 use uuid::Uuid;
 
 use crate::core::error::{Error, Result};
 use crate::core::permissions::permission_scheme::PermissionScheme;
+use crate::permission_scheme_repository_trait::PermissionSchemeRepositoryTrait;
 
 /// Repository for permission scheme operations
 pub struct PermissionSchemeRepository {
@@ -166,6 +168,29 @@ impl PermissionSchemeRepository {
             .map_err(Error::Database)?;
 
         Ok(())
+    }
+}
+
+#[async_trait]
+impl PermissionSchemeRepositoryTrait for PermissionSchemeRepository {
+    async fn get_by_uuid(&self, uuid: Uuid) -> Result<Option<PermissionScheme>> {
+        Self::get_by_uuid(self, uuid).await
+    }
+
+    async fn get_by_name(&self, name: &str) -> Result<Option<PermissionScheme>> {
+        Self::get_by_name(self, name).await
+    }
+
+    async fn create(&self, scheme: &PermissionScheme, created_by: Uuid) -> Result<Uuid> {
+        Self::create(self, scheme, created_by).await
+    }
+
+    async fn update(&self, scheme: &PermissionScheme, updated_by: Uuid) -> Result<()> {
+        Self::update(self, scheme, updated_by).await
+    }
+
+    async fn delete(&self, uuid: Uuid) -> Result<()> {
+        Self::delete(self, uuid).await
     }
 }
 
