@@ -3,10 +3,10 @@
 use actix_web::{post, web, HttpResponse, Responder};
 use serde_json::json;
 
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
+use crate::auth::auth_enum::CombinedRequiredAuth;
 use r_data_core_core::public_api::AdvancedEntityQuery;
 use r_data_core_persistence::DynamicEntityQueryRepository;
-use crate::auth::auth_enum::CombinedRequiredAuth;
-use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 
 /// Advanced query for dynamic entities with more complex filtering
 #[utoipa::path(
@@ -38,7 +38,10 @@ pub async fn query_entities(
     let entity_type = path.into_inner();
     let repository = DynamicEntityQueryRepository::new(data.db_pool().clone());
 
-    match repository.query_entities(&entity_type, &query.into_inner()).await {
+    match repository
+        .query_entities(&entity_type, &query.into_inner())
+        .await
+    {
         Ok(entities) => HttpResponse::Ok().json(entities),
         Err(e) => match e {
             r_data_core_core::error::Error::NotFound(msg) => HttpResponse::NotFound().json(json!({
@@ -55,4 +58,3 @@ pub async fn query_entities(
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(query_entities);
 }
-

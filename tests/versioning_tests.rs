@@ -1,9 +1,9 @@
-use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core_api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
+use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core_persistence::VersionRepository;
-use r_data_core_services::{EntityDefinitionService, VersionService};
 use r_data_core_persistence::WorkflowRepository;
+use r_data_core_services::{EntityDefinitionService, VersionService};
 use r_data_core_workflow::data::WorkflowKind;
 use sqlx::Row;
 use uuid::Uuid;
@@ -44,8 +44,7 @@ async fn test_dynamic_entity_update_creates_snapshot() {
         "updated_by": Uuid::now_v7().to_string()
     });
     // Use the view to validate after update
-    let repo =
-        r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
+    let repo = r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
     // We need definition for validation; load from service
     let def_repo = EntityDefinitionRepository::new(pool.clone());
     let def_svc = EntityDefinitionService::new_without_cache(std::sync::Arc::new(def_repo));
@@ -171,10 +170,7 @@ async fn test_entity_definition_update_creates_snapshot_and_increments_version()
             .unwrap();
 
     // Update via repository (service .update calls repository.update)
-    let repo =
-        r_data_core_persistence::EntityDefinitionRepository::new(
-            pool.clone(),
-        );
+    let repo = r_data_core_persistence::EntityDefinitionRepository::new(pool.clone());
     let mut updated = def_service
         .get_entity_definition_by_entity_type(&entity_type)
         .await
@@ -312,8 +308,7 @@ async fn test_version_creation_and_endpoint_output() {
         "updated_by": updated_by.to_string()
     });
 
-    let repo =
-        r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
+    let repo = r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
     let def_repo = EntityDefinitionRepository::new(pool.clone());
     let def_svc = EntityDefinitionService::new_without_cache(std::sync::Arc::new(def_repo));
     let def = def_svc
@@ -467,8 +462,7 @@ async fn test_version_creator_names_in_json_response() {
         "updated_by": updater1.to_string()
     });
 
-    let repo =
-        r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
+    let repo = r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
     let def_repo = EntityDefinitionRepository::new(pool.clone());
     let def_svc = EntityDefinitionService::new_without_cache(std::sync::Arc::new(def_repo));
     let def = def_svc

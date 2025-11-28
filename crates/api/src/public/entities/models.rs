@@ -87,4 +87,3 @@ pub struct EntityQueryRequest {
     /// Number of results to skip (default: 0)
     pub offset: Option<i64>,
 }
-

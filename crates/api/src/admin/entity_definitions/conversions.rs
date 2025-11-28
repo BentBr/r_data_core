@@ -1,12 +1,12 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use r_data_core_core::entity_definition::definition::EntityDefinition;
-use r_data_core_core::field::FieldDefinition;
 use crate::admin::entity_definitions::models::{
     DateTimeConstraints, EntityDefinitionSchema, FieldConstraints, FieldDefinitionSchema,
-    FieldTypeSchema, NumericConstraints, RelationConstraints, SchemaConstraints,
-    SelectConstraints, StringConstraints, UiSettingsSchema,
+    FieldTypeSchema, NumericConstraints, RelationConstraints, SchemaConstraints, SelectConstraints,
+    StringConstraints, UiSettingsSchema,
 };
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::field::FieldDefinition;
 use r_data_core_core::field::FieldType;
 use time::format_description::well_known::Rfc3339;
 
@@ -20,7 +20,11 @@ pub fn entity_definition_to_schema_model(def: &EntityDefinition) -> EntityDefini
         group_name: def.group_name.clone(),
         allow_children: def.allow_children,
         icon: def.icon.clone(),
-        fields: def.fields.iter().map(field_definition_to_schema_model).collect(),
+        fields: def
+            .fields
+            .iter()
+            .map(field_definition_to_schema_model)
+            .collect(),
         published: Some(def.published),
         created_at: Some(def.created_at.format(&Rfc3339).unwrap_or_default()),
         updated_at: Some(def.updated_at.format(&Rfc3339).unwrap_or_default()),
@@ -41,28 +45,22 @@ pub fn field_definition_to_schema_model(field: &FieldDefinition) -> FieldDefinit
                 error_message: None,
             })
         }
-        FieldType::Integer => {
-            FieldConstraints::Integer(NumericConstraints {
-                min: field.validation.min_value.as_ref().and_then(|v| v.as_f64()),
-                max: field.validation.max_value.as_ref().and_then(|v| v.as_f64()),
-                precision: None,
-                positive_only: field.validation.positive_only,
-            })
-        }
-        FieldType::Float => {
-            FieldConstraints::Float(NumericConstraints {
-                min: field.validation.min_value.as_ref().and_then(|v| v.as_f64()),
-                max: field.validation.max_value.as_ref().and_then(|v| v.as_f64()),
-                precision: None,
-                positive_only: field.validation.positive_only,
-            })
-        }
-        FieldType::DateTime | FieldType::Date => {
-            FieldConstraints::DateTime(DateTimeConstraints {
-                min_date: field.validation.min_date.clone(),
-                max_date: field.validation.max_date.clone(),
-            })
-        }
+        FieldType::Integer => FieldConstraints::Integer(NumericConstraints {
+            min: field.validation.min_value.as_ref().and_then(|v| v.as_f64()),
+            max: field.validation.max_value.as_ref().and_then(|v| v.as_f64()),
+            precision: None,
+            positive_only: field.validation.positive_only,
+        }),
+        FieldType::Float => FieldConstraints::Float(NumericConstraints {
+            min: field.validation.min_value.as_ref().and_then(|v| v.as_f64()),
+            max: field.validation.max_value.as_ref().and_then(|v| v.as_f64()),
+            precision: None,
+            positive_only: field.validation.positive_only,
+        }),
+        FieldType::DateTime | FieldType::Date => FieldConstraints::DateTime(DateTimeConstraints {
+            min_date: field.validation.min_date.clone(),
+            max_date: field.validation.max_date.clone(),
+        }),
         FieldType::ManyToOne | FieldType::ManyToMany => {
             FieldConstraints::Relation(RelationConstraints {
                 target_class: field.validation.target_class.clone().unwrap_or_default(),
@@ -70,30 +68,32 @@ pub fn field_definition_to_schema_model(field: &FieldDefinition) -> FieldDefinit
         }
         FieldType::Select => {
             // Extract options from OptionsSource if it's Fixed
-            let options = field
-                .validation
-                .options_source
-                .as_ref()
-                .and_then(|source| match source {
-                    r_data_core_core::field::options::OptionsSource::Fixed { options } => {
-                        Some(options.iter().map(|opt| opt.value.clone()).collect())
-                    }
-                    _ => None,
-                });
+            let options =
+                field
+                    .validation
+                    .options_source
+                    .as_ref()
+                    .and_then(|source| match source {
+                        r_data_core_core::field::options::OptionsSource::Fixed { options } => {
+                            Some(options.iter().map(|opt| opt.value.clone()).collect())
+                        }
+                        _ => None,
+                    });
             FieldConstraints::Select(SelectConstraints { options })
         }
         FieldType::MultiSelect => {
             // Extract options from OptionsSource if it's Fixed
-            let options = field
-                .validation
-                .options_source
-                .as_ref()
-                .and_then(|source| match source {
-                    r_data_core_core::field::options::OptionsSource::Fixed { options } => {
-                        Some(options.iter().map(|opt| opt.value.clone()).collect())
-                    }
-                    _ => None,
-                });
+            let options =
+                field
+                    .validation
+                    .options_source
+                    .as_ref()
+                    .and_then(|source| match source {
+                        r_data_core_core::field::options::OptionsSource::Fixed { options } => {
+                            Some(options.iter().map(|opt| opt.value.clone()).collect())
+                        }
+                        _ => None,
+                    });
             FieldConstraints::MultiSelect(SelectConstraints { options })
         }
         _ => FieldConstraints::Schema(SchemaConstraints {
@@ -148,4 +148,3 @@ fn field_type_to_schema(field_type: FieldType) -> FieldTypeSchema {
         FieldType::File => FieldTypeSchema::File,
     }
 }
-

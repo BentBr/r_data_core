@@ -9,11 +9,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use r_data_core_core::DynamicEntity;
+use crate::entity_definition::EntityDefinitionService;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::error::Result;
+use r_data_core_core::DynamicEntity;
 use r_data_core_persistence::DynamicEntityRepositoryTrait;
-use crate::entity_definition::EntityDefinitionService;
 
 mock! {
     pub DynamicEntityRepo {}
@@ -338,4 +338,3 @@ async fn test_get_entity_by_type() -> Result<()> {
 
     Ok(())
 }
-

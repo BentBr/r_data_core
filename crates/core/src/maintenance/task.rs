@@ -15,7 +15,10 @@ pub trait MaintenanceTask: Send + Sync {
     ///
     /// # Errors
     /// Returns an error if task execution fails
-    async fn execute(&self, context: &dyn TaskContext) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+    async fn execute(
+        &self,
+        context: &dyn TaskContext,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
 }
 
 /// Context provided to maintenance tasks for execution
@@ -28,4 +31,3 @@ pub trait TaskContext: Send + Sync {
     /// A reference to the `PostgresSQL` connection pool
     fn pool(&self) -> &sqlx::PgPool;
 }
-

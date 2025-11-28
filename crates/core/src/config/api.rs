@@ -26,4 +26,3 @@ pub struct ApiConfig {
     /// CORS allowed origins
     pub cors_origins: Vec<String>,
 }
-

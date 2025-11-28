@@ -1,12 +1,12 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
+use r_data_core_core::error::Result;
 use r_data_core_core::public_api::AdvancedEntityQuery;
 use r_data_core_core::DynamicEntity;
-use r_data_core_core::error::Result;
 use sqlx::PgPool;
 
 /// Repository for public API advanced query operations on dynamic entities
-/// 
+///
 /// Provides advanced querying capabilities for dynamic entity instances.
 pub struct DynamicEntityQueryRepository {
     #[allow(dead_code)]
@@ -36,4 +36,3 @@ impl DynamicEntityQueryRepository {
         Ok(Vec::new())
     }
 }
-

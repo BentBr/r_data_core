@@ -20,7 +20,9 @@ pub use r_data_core_core::error::Result;
 // API state moved to r_data_core_api::ApiState
 
 /// Re-export services
-pub use r_data_core_services::{AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService};
+pub use r_data_core_services::{
+    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
+};
 
 use log::info;
 

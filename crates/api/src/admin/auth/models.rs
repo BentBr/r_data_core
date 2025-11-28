@@ -119,4 +119,3 @@ pub struct AdminRegisterResponse {
     /// Message
     pub message: String,
 }
-

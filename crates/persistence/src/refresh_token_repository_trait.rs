@@ -1,6 +1,6 @@
-use r_data_core_core::refresh_token::RefreshToken;
-use r_data_core_core::error::Result;
 use async_trait::async_trait;
+use r_data_core_core::error::Result;
+use r_data_core_core::refresh_token::RefreshToken;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -42,4 +42,3 @@ pub trait RefreshTokenRepositoryTrait: Send + Sync {
     /// Delete a refresh token by ID
     async fn delete_by_id(&self, id: Uuid) -> Result<()>;
 }
-

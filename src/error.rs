@@ -113,7 +113,6 @@ impl ResponseError for Error {
     }
 }
 
-
 // Extension trait to convert sqlx errors to our database errors
 #[allow(dead_code)] // Public API - exported from lib.rs for external use
 pub trait SqlxErrorExt: Sized {

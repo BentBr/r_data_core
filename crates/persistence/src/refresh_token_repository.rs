@@ -1,7 +1,7 @@
 use crate::refresh_token_repository_trait::RefreshTokenRepositoryTrait;
-use r_data_core_core::refresh_token::RefreshToken;
-use r_data_core_core::error::Result;
 use async_trait::async_trait;
+use r_data_core_core::error::Result;
+use r_data_core_core::refresh_token::RefreshToken;
 use sqlx::PgPool;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -177,4 +177,3 @@ impl RefreshTokenRepositoryTrait for RefreshTokenRepository {
         Ok(())
     }
 }
-

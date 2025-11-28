@@ -17,4 +17,3 @@ pub async fn snapshot_pre_update(
         .await
         .map_err(|e| r_data_core_core::error::Error::Unknown(e.to_string()))
 }
-

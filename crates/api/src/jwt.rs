@@ -107,9 +107,7 @@ pub fn generate_jwt(
         &claims,
         &EncodingKey::from_secret(config.jwt_secret.as_bytes()),
     )
-    .map_err(|e| {
-        r_data_core_core::error::Error::Auth(format!("Token generation error: {e}"))
-    })?;
+    .map_err(|e| r_data_core_core::error::Error::Auth(format!("Token generation error: {e}")))?;
 
     Ok(token)
 }

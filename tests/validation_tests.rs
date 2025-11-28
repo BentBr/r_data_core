@@ -1,6 +1,6 @@
-use r_data_core_core::DynamicEntity;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::error::Result;
+use r_data_core_core::DynamicEntity;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fs;
@@ -14,10 +14,12 @@ mod validation_tests {
     /// Load a JSON example file
     fn load_json_example(filename: &str) -> Result<Value> {
         let path = format!(".example_files/json_examples/{}", filename);
-        let content = fs::read_to_string(&path)
-            .map_err(|e| r_data_core_core::error::Error::Validation(format!("Failed to read {}: {}", path, e)))?;
-        serde_json::from_str(&content)
-            .map_err(|e| r_data_core_core::error::Error::Validation(format!("Failed to parse {}: {}", path, e)))
+        let content = fs::read_to_string(&path).map_err(|e| {
+            r_data_core_core::error::Error::Validation(format!("Failed to read {}: {}", path, e))
+        })?;
+        serde_json::from_str(&content).map_err(|e| {
+            r_data_core_core::error::Error::Validation(format!("Failed to parse {}: {}", path, e))
+        })
     }
 
     /// Load a JSON example file from the trigger_validation subfolder
@@ -26,16 +28,21 @@ mod validation_tests {
             ".example_files/json_examples/trigger_validation/{}",
             filename
         );
-        let content = fs::read_to_string(&path)
-            .map_err(|e| r_data_core_core::error::Error::Validation(format!("Failed to read {}: {}", path, e)))?;
-        serde_json::from_str(&content)
-            .map_err(|e| r_data_core_core::error::Error::Validation(format!("Failed to parse {}: {}", path, e)))
+        let content = fs::read_to_string(&path).map_err(|e| {
+            r_data_core_core::error::Error::Validation(format!("Failed to read {}: {}", path, e))
+        })?;
+        serde_json::from_str(&content).map_err(|e| {
+            r_data_core_core::error::Error::Validation(format!("Failed to parse {}: {}", path, e))
+        })
     }
 
     /// Create an entity definition from JSON
     fn create_entity_definition_from_json(json_data: Value) -> Result<EntityDefinition> {
         serde_json::from_value(json_data).map_err(|e| {
-            r_data_core_core::error::Error::Validation(format!("Failed to deserialize entity definition: {}", e))
+            r_data_core_core::error::Error::Validation(format!(
+                "Failed to deserialize entity definition: {}",
+                e
+            ))
         })
     }
 

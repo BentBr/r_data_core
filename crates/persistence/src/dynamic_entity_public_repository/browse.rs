@@ -1,7 +1,7 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use r_data_core_core::public_api::{BrowseKind, BrowseNode};
 use r_data_core_core::error::Result;
+use r_data_core_core::public_api::{BrowseKind, BrowseNode};
 use sqlx::PgPool;
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
@@ -15,7 +15,7 @@ struct RowRec {
 }
 
 /// Browse dynamic entities by virtual path
-/// 
+///
 /// Returns folders (first) and files directly under the path, representing the hierarchical
 /// structure of dynamic entities in the entities_registry.
 pub async fn browse_by_path(
@@ -35,12 +35,8 @@ pub async fn browse_by_path(
 
     // Build first-level folders and files
     let base_len = if prefix == "/" { 1 } else { prefix.len() + 1 };
-    let (folder_map, files, _file_names) = build_files_and_folders(
-        &rows,
-        &prefix,
-        base_len,
-        &exact,
-    );
+    let (folder_map, files, _file_names) =
+        build_files_and_folders(&rows, &prefix, base_len, &exact);
 
     // Sort folders and files alphabetically by name (case-insensitive)
     let mut all = sort_and_combine(folder_map, files);
@@ -102,7 +98,11 @@ fn build_files_and_folders(
     prefix: &str,
     base_len: usize,
     exact: &HashMap<String, (Uuid, String)>,
-) -> (HashMap<String, BrowseNode>, Vec<BrowseNode>, HashSet<String>) {
+) -> (
+    HashMap<String, BrowseNode>,
+    Vec<BrowseNode>,
+    HashSet<String>,
+) {
     let mut folder_map: HashMap<String, BrowseNode> = HashMap::new();
     let mut files: Vec<BrowseNode> = Vec::new();
     let mut file_names: HashSet<String> = HashSet::new();
@@ -240,4 +240,3 @@ fn paginate_results(all: Vec<BrowseNode>, offset: i64, limit: i64) -> Vec<Browse
         all[start..all.len().min(end)].to_vec()
     }
 }
-

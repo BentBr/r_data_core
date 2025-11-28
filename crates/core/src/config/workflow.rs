@@ -14,4 +14,3 @@ pub struct WorkflowConfig {
     /// Max concurrent workflows
     pub max_concurrent: u32,
 }
-

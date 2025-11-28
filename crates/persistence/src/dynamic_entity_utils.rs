@@ -1,7 +1,7 @@
 use r_data_core_core::cache::CacheManager;
-use r_data_core_core::field::FieldDefinition;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::error::Result;
+use r_data_core_core::field::FieldDefinition;
 use serde_json::{self, Value as JsonValue};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
@@ -42,19 +42,28 @@ pub async fn get_entity_definition(
     // If the entity definition doesn't exist, return NotFound error
     if let Some(row) = entity_def {
         // Parse the entity definition from the row
-        let fields: Vec<FieldDefinition> =
-            serde_json::from_value(row.try_get("field_definitions").map_err(r_data_core_core::error::Error::Database)?)
-                .map_err(r_data_core_core::error::Error::Serialization)?;
+        let fields: Vec<FieldDefinition> = serde_json::from_value(
+            row.try_get("field_definitions")
+                .map_err(r_data_core_core::error::Error::Database)?,
+        )
+        .map_err(r_data_core_core::error::Error::Serialization)?;
 
         let definition = EntityDefinition::new(
-            row.try_get("entity_type").map_err(r_data_core_core::error::Error::Database)?,
-            row.try_get("display_name").map_err(r_data_core_core::error::Error::Database)?,
-            row.try_get("description").map_err(r_data_core_core::error::Error::Database)?,
-            row.try_get("group_name").map_err(r_data_core_core::error::Error::Database)?,
-            row.try_get("allow_children").map_err(r_data_core_core::error::Error::Database)?,
-            row.try_get("icon").map_err(r_data_core_core::error::Error::Database)?,
+            row.try_get("entity_type")
+                .map_err(r_data_core_core::error::Error::Database)?,
+            row.try_get("display_name")
+                .map_err(r_data_core_core::error::Error::Database)?,
+            row.try_get("description")
+                .map_err(r_data_core_core::error::Error::Database)?,
+            row.try_get("group_name")
+                .map_err(r_data_core_core::error::Error::Database)?,
+            row.try_get("allow_children")
+                .map_err(r_data_core_core::error::Error::Database)?,
+            row.try_get("icon")
+                .map_err(r_data_core_core::error::Error::Database)?,
             fields,
-            row.try_get("created_by").map_err(r_data_core_core::error::Error::Database)?,
+            row.try_get("created_by")
+                .map_err(r_data_core_core::error::Error::Database)?,
         );
 
         // Cache the result if cache manager is provided
@@ -161,4 +170,3 @@ pub fn extract_uuid_from_entity_field_data(
 ) -> Option<Uuid> {
     field_data.get(field_name).and_then(extract_uuid_from_json)
 }
-

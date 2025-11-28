@@ -1,11 +1,13 @@
 use actix_web::{test, web, App};
 use r_data_core_api::{configure_app, ApiState, ApiStateWrapper};
+use r_data_core_core::admin_user::AdminUser;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
-use r_data_core_core::admin_user::AdminUser;
-use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
-use r_data_core_services::{AdminUserService, ApiKeyService, EntityDefinitionService, WorkflowRepositoryAdapter};
 use r_data_core_persistence::WorkflowRepository;
+use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
+use r_data_core_services::{
+    AdminUserService, ApiKeyService, EntityDefinitionService, WorkflowRepositoryAdapter,
+};
 use r_data_core_workflow::data::WorkflowKind;
 use sqlx::{postgres::PgPoolOptions, Row};
 use std::sync::Arc;
@@ -42,8 +44,9 @@ async fn setup_app_and_token() -> anyhow::Result<(
     let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.clone())));
     let admin_user_service = AdminUserService::new(admin_user_repository);
 
-    let entity_definition_service =
-        EntityDefinitionService::new_without_cache(Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(pool.clone())));
+    let entity_definition_service = EntityDefinitionService::new_without_cache(Arc::new(
+        r_data_core_persistence::EntityDefinitionRepository::new(pool.clone()),
+    ));
 
     let wf_repo = WorkflowRepository::new(pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
@@ -76,7 +79,12 @@ async fn setup_app_and_token() -> anyhow::Result<(
     };
 
     let app_state = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));
-    let app = test::init_service(App::new().app_data(app_state.clone()).configure(configure_app)).await;
+    let app = test::init_service(
+        App::new()
+            .app_data(app_state.clone())
+            .configure(configure_app),
+    )
+    .await;
 
     // Ensure a test admin user exists and produce a JWT
     let user_uuid = utils::create_test_admin_user(&pool).await?;
@@ -150,7 +158,12 @@ async fn create_workflow_uses_required_auth_and_sets_created_by() -> anyhow::Res
 
     let body = test::read_body(resp).await;
     let v: serde_json::Value = serde_json::from_slice(&body)?;
-    let wf_uuid = Uuid::parse_str(v.get("data").and_then(|d| d.get("uuid")).and_then(|s| s.as_str()).unwrap())?;
+    let wf_uuid = Uuid::parse_str(
+        v.get("data")
+            .and_then(|d| d.get("uuid"))
+            .and_then(|s| s.as_str())
+            .unwrap(),
+    )?;
 
     // Verify created_by equals JWT user
     let row = sqlx::query("SELECT created_by FROM workflows WHERE uuid = $1")
@@ -339,7 +352,10 @@ async fn create_workflow_accepts_valid_complex_dsl_config() -> anyhow::Result<()
         .to_request();
 
     let resp = test::call_service(&app, req).await;
-    assert!(resp.status().is_success(), "Should accept valid complex DSL config");
+    assert!(
+        resp.status().is_success(),
+        "Should accept valid complex DSL config"
+    );
 
     Ok(())
 }
@@ -380,7 +396,10 @@ async fn create_workflow_rejects_invalid_dsl_config_missing_from() -> anyhow::Re
         .to_request();
 
     let resp = test::call_service(&app, req).await;
-    assert!(!resp.status().is_success(), "Should reject invalid DSL config with missing 'from'");
+    assert!(
+        !resp.status().is_success(),
+        "Should reject invalid DSL config with missing 'from'"
+    );
 
     Ok(())
 }
@@ -408,7 +427,10 @@ async fn create_workflow_rejects_invalid_dsl_config_empty_steps() -> anyhow::Res
         .to_request();
 
     let resp = test::call_service(&app, req).await;
-    assert!(!resp.status().is_success(), "Should reject invalid DSL config with empty steps");
+    assert!(
+        !resp.status().is_success(),
+        "Should reject invalid DSL config with empty steps"
+    );
 
     Ok(())
 }
@@ -495,7 +517,10 @@ async fn update_workflow_validates_dsl_config() -> anyhow::Result<()> {
         .set_json(update_payload)
         .to_request();
     let resp = test::call_service(&app, req).await;
-    assert!(!resp.status().is_success(), "Should reject update with invalid DSL config");
+    assert!(
+        !resp.status().is_success(),
+        "Should reject update with invalid DSL config"
+    );
 
     Ok(())
 }
@@ -559,16 +584,16 @@ async fn run_workflow_now_enqueues_job_to_redis_if_available() -> anyhow::Result
         .to_request();
     let resp = test::call_service(&app, req).await;
 
-    assert!(resp.status().is_success(), "run_workflow_now should succeed");
+    assert!(
+        resp.status().is_success(),
+        "run_workflow_now should succeed"
+    );
 
     // If Redis is available, verify job was enqueued
     if let Some(url) = redis_url {
         let client = redis::Client::open(url).ok();
         if let Some(client) = client {
-            let mut conn = client
-                .get_multiplexed_async_connection()
-                .await
-                .ok();
+            let mut conn = client.get_multiplexed_async_connection().await.ok();
             if let Some(mut conn) = conn {
                 let len: i64 = redis::cmd("LLEN")
                     .arg(&fetch_key)
@@ -582,15 +607,12 @@ async fn run_workflow_now_enqueues_job_to_redis_if_available() -> anyhow::Result
     }
 
     // Verify run was created in database
-    let run_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM workflow_runs WHERE workflow_uuid = $1"
-    )
-        .bind(wf_uuid)
-        .fetch_one(&pool)
-        .await?;
+    let run_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM workflow_runs WHERE workflow_uuid = $1")
+            .bind(wf_uuid)
+            .fetch_one(&pool)
+            .await?;
     assert!(run_count > 0, "At least one run should be created");
 
     Ok(())
 }
-
-

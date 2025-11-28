@@ -1,11 +1,11 @@
-use r_data_core_workflow::data::requests::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use crate::dynamic_entity::DynamicEntityService;
 use crate::workflow::entity_persistence::{
     create_entity, create_or_update_entity, update_entity, PersistenceContext,
 };
-use r_data_core_persistence::WorkflowRepositoryTrait;
-use r_data_core_workflow::data::Workflow;
 use cron::Schedule;
+use r_data_core_persistence::WorkflowRepositoryTrait;
+use r_data_core_workflow::data::requests::{CreateWorkflowRequest, UpdateWorkflowRequest};
+use r_data_core_workflow::data::Workflow;
 use std::str::FromStr;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -294,7 +294,9 @@ impl WorkflowService {
                     .steps
                     .first()
                     .and_then(|step| {
-                        if let r_data_core_workflow::dsl::FromDef::Format { format, .. } = &step.from {
+                        if let r_data_core_workflow::dsl::FromDef::Format { format, .. } =
+                            &step.from
+                        {
                             Some(format.options.clone())
                         } else {
                             None
@@ -312,7 +314,9 @@ impl WorkflowService {
                     .steps
                     .first()
                     .and_then(|step| {
-                        if let r_data_core_workflow::dsl::FromDef::Format { format, .. } = &step.from {
+                        if let r_data_core_workflow::dsl::FromDef::Format { format, .. } =
+                            &step.from
+                        {
                             Some(format.options.clone())
                         } else {
                             None
@@ -397,18 +401,19 @@ impl WorkflowService {
                 };
 
                 // Get appropriate source based on source_type
-                let source_adapter: Box<dyn r_data_core_workflow::data::adapters::source::DataSource> =
-                    match source.source_type.as_str() {
-                        "uri" => {
-                            Box::new(r_data_core_workflow::data::adapters::source::uri::UriSource::new())
-                        }
-                        _ => {
-                            return Err(anyhow::anyhow!(
-                                "Unsupported source type: {}",
-                                source.source_type
-                            ));
-                        }
-                    };
+                let source_adapter: Box<
+                    dyn r_data_core_workflow::data::adapters::source::DataSource,
+                > = match source.source_type.as_str() {
+                    "uri" => Box::new(
+                        r_data_core_workflow::data::adapters::source::uri::UriSource::new(),
+                    ),
+                    _ => {
+                        return Err(anyhow::anyhow!(
+                            "Unsupported source type: {}",
+                            source.source_type
+                        ));
+                    }
+                };
 
                 // Fetch data
                 let mut stream = source_adapter.fetch(&source_ctx).await?;
@@ -427,7 +432,8 @@ impl WorkflowService {
                         r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new(),
                     ),
                     "json" => Box::new(
-                        r_data_core_workflow::data::adapters::format::json::JsonFormatHandler::new(),
+                        r_data_core_workflow::data::adapters::format::json::JsonFormatHandler::new(
+                        ),
                     ),
                     _ => {
                         return Err(anyhow::anyhow!(
@@ -511,8 +517,9 @@ impl WorkflowService {
                         let mut entity_ops_ok = true;
                         for (to_def, produced) in outputs {
                             // Handle Format outputs with Push mode
-                            if let r_data_core_workflow::dsl::ToDef::Format { output, format, .. } =
-                                &to_def
+                            if let r_data_core_workflow::dsl::ToDef::Format {
+                                output, format, ..
+                            } = &to_def
                             {
                                 if let r_data_core_workflow::dsl::OutputMode::Push {
                                     destination,

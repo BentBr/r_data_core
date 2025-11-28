@@ -2,10 +2,10 @@
 
 use actix_web::web;
 
+pub mod dynamic_entities;
 pub mod entities;
 pub mod queries;
 pub mod workflows;
-pub mod dynamic_entities;
 
 /// Register all public API routes
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
@@ -17,4 +17,3 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
             .configure(dynamic_entities::register_routes),
     );
 }
-

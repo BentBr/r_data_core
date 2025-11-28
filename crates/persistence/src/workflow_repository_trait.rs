@@ -1,6 +1,5 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-
 use async_trait::async_trait;
 use uuid::Uuid;
 
@@ -293,4 +292,3 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
     /// Returns an error if database query fails
     async fn get_workflow_uuid_for_run(&self, run_uuid: Uuid) -> anyhow::Result<Option<Uuid>>;
 }
-

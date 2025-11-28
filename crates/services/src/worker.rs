@@ -58,4 +58,3 @@ mod tests {
         assert!(!to_remove.contains(&a)); // unchanged
     }
 }
-

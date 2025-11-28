@@ -6,13 +6,13 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use r_data_core_core::cache::CacheManager;
-use r_data_core_core::DynamicEntity;
 use crate::dynamic_entity_mapper;
 use crate::dynamic_entity_repository_trait::DynamicEntityRepositoryTrait;
 use crate::dynamic_entity_utils;
 use crate::dynamic_entity_versioning;
+use r_data_core_core::cache::CacheManager;
 use r_data_core_core::error::Result;
+use r_data_core_core::DynamicEntity;
 
 /// Repository for managing dynamic entities
 pub struct DynamicEntityRepository {
@@ -55,8 +55,13 @@ impl DynamicEntityRepository {
         entity.validate()?;
 
         // Extract UUID from the entity
-        let uuid = dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "uuid")
-            .ok_or_else(|| r_data_core_core::error::Error::Validation("Entity is missing a valid UUID".to_string()))?;
+        let uuid =
+            dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "uuid")
+                .ok_or_else(|| {
+                r_data_core_core::error::Error::Validation(
+                    "Entity is missing a valid UUID".to_string(),
+                )
+            })?;
 
         // Extract the path (default root) and mandatory key
         let mut path = entity
@@ -71,11 +76,17 @@ impl DynamicEntityRepository {
             .and_then(|v| v.as_str())
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
-            .ok_or_else(|| r_data_core_core::error::Error::Validation("Missing required field 'entity_key'".to_string()))?;
+            .ok_or_else(|| {
+                r_data_core_core::error::Error::Validation(
+                    "Missing required field 'entity_key'".to_string(),
+                )
+            })?;
 
         // Resolve parent_uuid, and validate/normalize path consistency
-        let mut resolved_parent_uuid =
-            dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "parent_uuid");
+        let mut resolved_parent_uuid = dynamic_entity_utils::extract_uuid_from_entity_field_data(
+            &entity.field_data,
+            "parent_uuid",
+        );
 
         // If no explicit parent given, try to infer it from the provided path by
         // checking if there exists an entity whose full path (parent.path + '/' + parent.key)
@@ -117,7 +128,9 @@ impl DynamicEntityRepository {
                     path = expected_path;
                 }
             } else {
-                return Err(r_data_core_core::error::Error::Validation("Parent entity not found".to_string()));
+                return Err(r_data_core_core::error::Error::Validation(
+                    "Parent entity not found".to_string(),
+                ));
             }
         }
 
@@ -153,11 +166,15 @@ impl DynamicEntityRepository {
             })
             .unwrap_or_else(OffsetDateTime::now_utc);
 
-        let created_by =
-            dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "created_by");
+        let created_by = dynamic_entity_utils::extract_uuid_from_entity_field_data(
+            &entity.field_data,
+            "created_by",
+        );
 
-        let updated_by =
-            dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "updated_by");
+        let updated_by = dynamic_entity_utils::extract_uuid_from_entity_field_data(
+            &entity.field_data,
+            "updated_by",
+        );
 
         let published = entity
             .field_data
@@ -299,8 +316,13 @@ impl DynamicEntityRepository {
         entity.validate()?;
 
         // Extract UUID from the entity
-        let uuid = dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "uuid")
-            .ok_or_else(|| r_data_core_core::error::Error::Validation("Entity is missing a valid UUID".to_string()))?;
+        let uuid =
+            dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "uuid")
+                .ok_or_else(|| {
+                r_data_core_core::error::Error::Validation(
+                    "Entity is missing a valid UUID".to_string(),
+                )
+            })?;
 
         // Start a transaction
         let mut tx = self.pool.begin().await?;
@@ -312,14 +334,13 @@ impl DynamicEntityRepository {
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
         // Extract updated_by if present for snapshot attribution
-        let updated_by =
-            dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "updated_by");
+        let updated_by = dynamic_entity_utils::extract_uuid_from_entity_field_data(
+            &entity.field_data,
+            "updated_by",
+        );
         if !skip_versioning {
             // Create snapshot BEFORE incrementing version - must be within transaction
-            dynamic_entity_versioning::snapshot_pre_update(
-                &mut tx, uuid, updated_by,
-            )
-            .await?;
+            dynamic_entity_versioning::snapshot_pre_update(&mut tx, uuid, updated_by).await?;
         }
 
         // 1. Update entities_registry table
@@ -351,8 +372,10 @@ impl DynamicEntityRepository {
             param_index += 1;
         }
 
-        let updated_by =
-            dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "updated_by");
+        let updated_by = dynamic_entity_utils::extract_uuid_from_entity_field_data(
+            &entity.field_data,
+            "updated_by",
+        );
 
         if let Some(item) = updated_by {
             update_clauses.push(format!("updated_by = ${}", param_index));
@@ -425,7 +448,9 @@ impl DynamicEntityRepository {
         let current_table_name = if let Some(ref current_type) = current_entity_type {
             dynamic_entity_utils::get_table_name(current_type)
         } else {
-            return Err(r_data_core_core::error::Error::Database(sqlx::Error::RowNotFound));
+            return Err(r_data_core_core::error::Error::Database(
+                sqlx::Error::RowNotFound,
+            ));
         };
         let table_name = current_table_name;
 
@@ -684,9 +709,12 @@ impl DynamicEntityRepository {
         debug!("Executing filter query: {}", query);
 
         // Get the entity definition for mapping
-        let entity_def =
-            dynamic_entity_utils::get_entity_definition(&self.pool, entity_type, self.cache_manager.clone())
-                .await?;
+        let entity_def = dynamic_entity_utils::get_entity_definition(
+            &self.pool,
+            entity_type,
+            self.cache_manager.clone(),
+        )
+        .await?;
 
         // Prepare and execute the query with proper parameter binding
         let mut sql = sqlx::query(&query);
@@ -795,9 +823,12 @@ impl DynamicEntityRepository {
         offset: i64,
     ) -> Result<Vec<DynamicEntity>> {
         let table_name = dynamic_entity_utils::get_table_name(entity_type);
-        let entity_def =
-            dynamic_entity_utils::get_entity_definition(&self.pool, entity_type, self.cache_manager.clone())
-                .await?;
+        let entity_def = dynamic_entity_utils::get_entity_definition(
+            &self.pool,
+            entity_type,
+            self.cache_manager.clone(),
+        )
+        .await?;
 
         // Build the query
         let mut query = format!(
@@ -893,9 +924,12 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
         debug!("Getting entity of type {} with UUID {}", entity_type, uuid);
 
         // Get the entity definition to understand entity structure
-        let entity_def =
-            dynamic_entity_utils::get_entity_definition(&self.pool, entity_type, self.cache_manager.clone())
-                .await?;
+        let entity_def = dynamic_entity_utils::get_entity_definition(
+            &self.pool,
+            entity_type,
+            self.cache_manager.clone(),
+        )
+        .await?;
 
         // Get the view name
         let view_name = dynamic_entity_utils::get_view_name(entity_type);
@@ -960,9 +994,12 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
         debug!("Getting all entities of type {}", entity_type);
 
         // Get the entity definition to understand entity structure
-        let entity_def =
-            dynamic_entity_utils::get_entity_definition(&self.pool, entity_type, self.cache_manager.clone())
-                .await?;
+        let entity_def = dynamic_entity_utils::get_entity_definition(
+            &self.pool,
+            entity_type,
+            self.cache_manager.clone(),
+        )
+        .await?;
 
         // Get the view name
         let view_name = dynamic_entity_utils::get_view_name(entity_type);
@@ -1073,4 +1110,3 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
         self.count_entities(entity_type).await
     }
 }
-

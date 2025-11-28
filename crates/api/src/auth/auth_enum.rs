@@ -7,9 +7,9 @@ use std::future::Future;
 use std::pin::Pin;
 use uuid::Uuid;
 
-use crate::jwt::AuthUserClaims;
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
-use crate::auth::{ApiKeyInfo, extract_and_validate_api_key};
+use crate::auth::{extract_and_validate_api_key, ApiKeyInfo};
+use crate::jwt::AuthUserClaims;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AuthMethod {
@@ -67,7 +67,9 @@ impl FromRequest for RequiredAuth {
 
         match get_or_validate_jwt(req) {
             Some(claims) => ready(Ok(RequiredAuth(claims))),
-            None => ready(Err(actix_web::error::ErrorUnauthorized("Authentication required"))),
+            None => ready(Err(actix_web::error::ErrorUnauthorized(
+                "Authentication required",
+            ))),
         }
     }
 }
@@ -105,7 +107,10 @@ impl FromRequest for CombinedRequiredAuth {
     type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
 
     fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
-        debug!("Handling combined required authentication FromRequest for path: {}", req.path());
+        debug!(
+            "Handling combined required authentication FromRequest for path: {}",
+            req.path()
+        );
 
         let req = req.clone();
 
@@ -132,7 +137,9 @@ impl FromRequest for CombinedRequiredAuth {
             if req.app_data::<web::Data<ApiStateWrapper>>().is_some() {
                 debug!("Found ApiStateWrapper in app_data");
                 // Check for an API key in the X-API-Key header
-                if let Some(api_key_header) = req.headers().get("X-API-Key").and_then(|h| h.to_str().ok()) {
+                if let Some(api_key_header) =
+                    req.headers().get("X-API-Key").and_then(|h| h.to_str().ok())
+                {
                     debug!("Found X-API-Key header, length: {}", api_key_header.len());
                     // Try to validate an API key
                     match extract_and_validate_api_key(&req).await {

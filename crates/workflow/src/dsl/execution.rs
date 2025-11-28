@@ -105,4 +105,3 @@ fn merge_objects(target: &mut Value, addition: &Value) {
         }
     }
 }
-

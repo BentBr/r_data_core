@@ -1,6 +1,6 @@
 use r_data_core_api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
-use r_data_core_services::WorkflowRepositoryAdapter;
 use r_data_core_persistence::WorkflowRepository;
+use r_data_core_services::WorkflowRepositoryAdapter;
 use r_data_core_workflow::data::WorkflowKind;
 use sqlx::Row;
 use std::sync::Arc;

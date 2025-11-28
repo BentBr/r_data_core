@@ -59,4 +59,3 @@ pub struct MaintenanceConfig {
     /// Redis URL for cache usage (mandatory)
     pub redis_url: String,
 }
-

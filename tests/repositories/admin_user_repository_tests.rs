@@ -1,6 +1,6 @@
 use crate::common::utils;
-use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
 use r_data_core_core::error::Result;
+use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
 use serial_test::serial;
 use std::sync::Arc;
 

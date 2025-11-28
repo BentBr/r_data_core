@@ -18,4 +18,3 @@ pub struct ProcessRawItemJob {
     /// Raw item UUID
     pub raw_item_id: Uuid,
 }
-

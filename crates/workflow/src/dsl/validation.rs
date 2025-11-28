@@ -31,4 +31,3 @@ pub fn validate_mapping(
     }
     Ok(())
 }
-

@@ -44,11 +44,8 @@ impl AppErrorHandlers {
             StatusCode::NOT_FOUND => ApiResponse::<()>::not_found("API resource not found"),
             StatusCode::BAD_REQUEST if is_deserialization_error => {
                 // Handle deserialization errors specifically
-                let response = ApiResponse::<()>::error_with_meta(
-                    &error,
-                    "DESERIALIZATION_ERROR",
-                    None,
-                );
+                let response =
+                    ApiResponse::<()>::error_with_meta(&error, "DESERIALIZATION_ERROR", None);
                 HttpResponse::build(StatusCode::BAD_REQUEST).json(response)
             }
             status_code if status_code.is_client_error() => ApiResponse::<()>::bad_request(&error),

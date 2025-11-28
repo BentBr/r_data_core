@@ -22,4 +22,3 @@ pub struct EntityResponse {
 
 // Note: From<DynamicEntity> implementation must be in the main crate
 // since DynamicEntity is defined in r_data_core_core
-

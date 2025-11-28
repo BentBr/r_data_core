@@ -36,22 +36,24 @@ impl MaintenanceTask for VersionPurgerTask {
         &self.cron
     }
 
-    async fn execute(&self, context: &dyn r_data_core_core::maintenance::TaskContext) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(
+        &self,
+        context: &dyn r_data_core_core::maintenance::TaskContext,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         info!("[version_purger] Starting version purging task");
 
         let pool = context.pool();
 
         // Get settings service
         // TODO: Move SettingsService to appropriate crate
-        let cache_manager = r_data_core::cache::CacheManager::new(
-            r_data_core_core::config::CacheConfig {
+        let cache_manager =
+            r_data_core::cache::CacheManager::new(r_data_core_core::config::CacheConfig {
                 entity_definition_ttl: 3600,
                 api_key_ttl: 600,
                 enabled: true,
                 ttl: 3600,
                 max_size: 10000,
-            },
-        );
+            });
         let settings_service = r_data_core::services::settings_service::SettingsService::new(
             pool.clone(),
             std::sync::Arc::new(cache_manager),
@@ -87,7 +89,10 @@ impl MaintenanceTask for VersionPurgerTask {
         // Initialize all three version repositories
         // TODO: Move these to persistence crate
         let entity_repo = r_data_core_persistence::VersionRepository::new(pool.clone());
-        let workflow_repo = r_data_core::workflow::data::versioning_repository::WorkflowVersioningRepository::new(pool.clone());
+        let workflow_repo =
+            r_data_core::workflow::data::versioning_repository::WorkflowVersioningRepository::new(
+                pool.clone(),
+            );
         let definition_repo = r_data_core::api::admin::entity_definitions::versioning_repository::EntityDefinitionVersioningRepository::new(pool.clone());
 
         let repositories: Vec<Box<dyn VersionPurger>> = vec![

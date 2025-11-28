@@ -1,5 +1,5 @@
-use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
 use r_data_core_core::error::Result;
+use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
 use serial_test::serial;
 use std::sync::Arc;
 use time::OffsetDateTime;

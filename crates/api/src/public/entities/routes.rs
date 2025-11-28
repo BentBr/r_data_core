@@ -5,14 +5,14 @@ use serde::Deserialize;
 use serde_json::json;
 use uuid::Uuid;
 
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
+use crate::auth::auth_enum::CombinedRequiredAuth;
+use crate::public::dynamic_entities::models::DynamicEntityResponse;
+use crate::public::entities::models::{EntityQueryRequest, VersionMeta, VersionPayload};
+use crate::response::ApiResponse;
 #[allow(unused_imports)] // Used in utoipa attributes for OpenAPI docs
 use r_data_core_core::public_api::{BrowseNode, EntityTypeInfo};
-use crate::public::entities::models::{EntityQueryRequest, VersionMeta, VersionPayload};
-use crate::public::dynamic_entities::models::DynamicEntityResponse;
 use r_data_core_persistence::DynamicEntityPublicRepository;
-use crate::auth::auth_enum::CombinedRequiredAuth;
-use crate::response::ApiResponse;
-use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use r_data_core_persistence::DynamicEntityRepository;
 use r_data_core_persistence::VersionRepository;
 use r_data_core_services::VersionService;
@@ -104,19 +104,15 @@ pub async fn list_by_path(
         )
         .await
     {
-        Ok((nodes, total)) => ApiResponse::ok_paginated(
-            nodes,
-            total,
-            (offset / limit) as i64 + 1,
-            limit,
-        ),
+        Ok((nodes, total)) => {
+            ApiResponse::ok_paginated(nodes, total, (offset / limit) as i64 + 1, limit)
+        }
         Err(e) => HttpResponse::InternalServerError().json(json!({
             "status": "Error",
             "message": format!("Server error: {}", e),
         })),
     }
 }
-
 
 /// List versions of a dynamic entity
 #[utoipa::path(
@@ -170,7 +166,6 @@ pub async fn list_entity_versions(
         }
     }
 }
-
 
 /// Get a specific version snapshot of a dynamic entity
 #[utoipa::path(
@@ -246,7 +241,6 @@ pub async fn get_entity_version(
     ApiResponse::<()>::not_found("Version not found")
 }
 
-
 /// Query entities by parent or path
 #[utoipa::path(
     post,
@@ -306,4 +300,3 @@ pub async fn query_entities(
         })),
     }
 }
-

@@ -3,8 +3,8 @@ pub mod entity_definition_cache_tests;
 
 /// Helper function to create a CacheManager with in-memory cache for tests
 pub fn create_test_cache_manager() -> std::sync::Arc<r_data_core_core::cache::CacheManager> {
+    use r_data_core_core::cache::CacheManager;
     use r_data_core_core::config::CacheConfig;
-use r_data_core_core::cache::CacheManager;
     let config = CacheConfig {
         entity_definition_ttl: 0, // No expiration
         api_key_ttl: 600,         // 10 minutes for tests

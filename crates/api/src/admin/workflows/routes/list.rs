@@ -4,12 +4,12 @@ use actix_web::{get, web, Responder};
 use log::error;
 use uuid::Uuid;
 
+use super::utils::check_has_api_endpoint;
 use crate::admin::workflows::models::{WorkflowRunSummary, WorkflowSummary};
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::query::PaginationQuery;
 use crate::response::ApiResponse;
-use crate::api_state::{ApiStateTrait, ApiStateWrapper};
-use super::utils::check_has_api_endpoint;
 
 /// List all workflow runs across all workflows
 #[utoipa::path(
@@ -173,4 +173,3 @@ pub async fn list_workflow_runs(
         }
     }
 }
-

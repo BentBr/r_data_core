@@ -111,10 +111,10 @@ impl DslProgram {
                     }
                 }
                 Transform::Concat(ct) => {
-                    let left = execution::eval_string_operand(&normalized, &ct.left)
-                        .unwrap_or_default();
-                    let right = execution::eval_string_operand(&normalized, &ct.right)
-                        .unwrap_or_default();
+                    let left =
+                        execution::eval_string_operand(&normalized, &ct.left).unwrap_or_default();
+                    let right =
+                        execution::eval_string_operand(&normalized, &ct.right).unwrap_or_default();
                     let sep = ct.separator.clone().unwrap_or_default();
                     let combined = if sep.is_empty() {
                         format!("{}{}", left, right)
@@ -198,10 +198,10 @@ impl DslProgram {
                     }
                 }
                 Transform::Concat(ct) => {
-                    let left = execution::eval_string_operand(&normalized, &ct.left)
-                        .unwrap_or_default();
-                    let right = execution::eval_string_operand(&normalized, &ct.right)
-                        .unwrap_or_default();
+                    let left =
+                        execution::eval_string_operand(&normalized, &ct.left).unwrap_or_default();
+                    let right =
+                        execution::eval_string_operand(&normalized, &ct.right).unwrap_or_default();
                     let sep = ct.separator.clone().unwrap_or_default();
                     let combined = if sep.is_empty() {
                         format!("{}{}", left, right)
@@ -231,4 +231,3 @@ impl DslProgram {
         Ok(last)
     }
 }
-

@@ -36,4 +36,3 @@ pub fn preview_next(expr: &str, count: usize) -> Result<Vec<String>, String> {
         .collect();
     Ok(times)
 }
-

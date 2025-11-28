@@ -6,15 +6,13 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use r_data_core::error::Error;
-use r_data_core_services::EntityDefinitionService;
 use r_data_core_core::error::Result;
 use r_data_core_core::{
     entity_definition::definition::EntityDefinition,
     entity_definition::repository_trait::EntityDefinitionRepositoryTrait,
-    entity_definition::schema::Schema,
-    field::definition::FieldDefinition,
-    field::types::FieldType,
+    entity_definition::schema::Schema, field::definition::FieldDefinition, field::types::FieldType,
 };
+use r_data_core_services::EntityDefinitionService;
 
 // Create a mock for EntityDefinitionRepositoryTrait
 mockall::mock! {

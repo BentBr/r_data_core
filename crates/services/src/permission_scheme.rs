@@ -110,11 +110,7 @@ impl PermissionSchemeService {
     ///
     /// # Errors
     /// Returns an error if database insert fails
-    pub async fn create_scheme(
-        &self,
-        scheme: &PermissionScheme,
-        created_by: Uuid,
-    ) -> Result<Uuid> {
+    pub async fn create_scheme(&self, scheme: &PermissionScheme, created_by: Uuid) -> Result<Uuid> {
         let uuid = self.repository.create(scheme, created_by).await?;
 
         // Cache the new scheme
@@ -135,11 +131,7 @@ impl PermissionSchemeService {
     ///
     /// # Errors
     /// Returns an error if database update fails
-    pub async fn update_scheme(
-        &self,
-        scheme: &PermissionScheme,
-        updated_by: Uuid,
-    ) -> Result<()> {
+    pub async fn update_scheme(&self, scheme: &PermissionScheme, updated_by: Uuid) -> Result<()> {
         self.repository.update(scheme, updated_by).await?;
 
         // Invalidate cache
@@ -174,4 +166,3 @@ impl PermissionSchemeService {
         Ok(())
     }
 }
-

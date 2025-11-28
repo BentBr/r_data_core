@@ -5,9 +5,9 @@ use mockall::{
 };
 use r_data_core::error::Error;
 use r_data_core_core::admin_user::ApiKey;
+use r_data_core_core::error::Result;
 use r_data_core_persistence::ApiKeyRepositoryTrait;
 use r_data_core_services::ApiKeyService;
-use r_data_core_core::error::Result;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -49,7 +49,9 @@ async fn test_create_api_key_with_invalid_user_uuid() -> Result<()> {
         .returning(|_, _, _, _| {
             // Create a custom error message for the foreign key violation
             let error_message = "foreign key constraint violation".to_string();
-            Err(r_data_core_core::error::Error::Database(sqlx::Error::Protocol(error_message)))
+            Err(r_data_core_core::error::Error::Database(
+                sqlx::Error::Protocol(error_message),
+            ))
         });
 
     let service = ApiKeyService::new(Arc::new(mock_repo));
@@ -122,9 +124,11 @@ async fn test_create_api_key_with_long_name() -> Result<()> {
         )
         .returning(|_, _, _, _| {
             // Use a Protocol error instead of trying to construct a PgDatabaseError
-            Err(r_data_core_core::error::Error::Database(sqlx::Error::Protocol(
-                "ERROR: value too long for type character varying(255)".to_string(),
-            )))
+            Err(r_data_core_core::error::Error::Database(
+                sqlx::Error::Protocol(
+                    "ERROR: value too long for type character varying(255)".to_string(),
+                ),
+            ))
         });
 
     let service = ApiKeyService::new(Arc::new(mock_repo));

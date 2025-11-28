@@ -76,4 +76,3 @@ pub struct Workflow {
     /// Whether versioning is disabled
     pub versioning_disabled: bool,
 }
-

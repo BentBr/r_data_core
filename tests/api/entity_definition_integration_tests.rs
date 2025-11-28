@@ -2,14 +2,14 @@ use actix_web::{
     http::{header, StatusCode},
     test, web, App,
 };
+use r_data_core_api::jwt::AuthUserClaims;
 use r_data_core_api::ApiState;
+use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
+use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
+use r_data_core_core::error::Result;
 use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
 use r_data_core_services::{AdminUserService, ApiKeyService, EntityDefinitionService};
-use r_data_core_core::error::Result;
-use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
-use r_data_core_api::jwt::AuthUserClaims;
-use r_data_core_core::cache::CacheManager;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -79,11 +79,9 @@ mod tests {
         let user_uuid = utils::create_test_admin_user(&pool).await?;
 
         // Create multiple entity definitions
-        let entity_def_repo = Arc::new(
-            r_data_core_persistence::EntityDefinitionRepository::new(
-                pool.clone(),
-            ),
-        );
+        let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
+            pool.clone(),
+        ));
 
         for i in 1..=25 {
             let entity_def = r_data_core_core::entity_definition::definition::EntityDefinition {
@@ -140,15 +138,11 @@ mod tests {
             cache_manager: cache_manager.clone(),
             api_key_service: ApiKeyService::from_repository(api_key_repo),
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
-            entity_definition_service: EntityDefinitionService::new_without_cache(
-                entity_def_repo,
-            ),
+            entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
             workflow_service: r_data_core_services::WorkflowService::new(Arc::new(
                 r_data_core_services::WorkflowRepositoryAdapter::new(
-                    r_data_core_persistence::WorkflowRepository::new(
-                        pool.clone(),
-                    ),
+                    r_data_core_persistence::WorkflowRepository::new(pool.clone()),
                 ),
             )),
             queue: crate::common::utils::test_queue_client_async().await,
@@ -156,7 +150,9 @@ mod tests {
 
         let app = test::init_service(
             App::new()
-                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
+                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(
+                    api_state,
+                )))
                 .service(web::scope("/admin/api/v1").service(
                     web::scope("/entity-definitions").configure(
                         r_data_core_api::admin::entity_definitions::routes::register_routes,

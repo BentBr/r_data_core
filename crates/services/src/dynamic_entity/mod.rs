@@ -9,8 +9,8 @@ mod tests;
 
 use std::sync::Arc;
 
-use r_data_core_persistence::DynamicEntityRepositoryTrait;
 use crate::entity_definition::EntityDefinitionService;
+use r_data_core_persistence::DynamicEntityRepositoryTrait;
 
 /// Service for managing dynamic entities with validation based on entity definitions
 #[derive(Clone)]
@@ -48,4 +48,3 @@ impl DynamicEntityService {
         self.entity_definition_service.clone()
     }
 }
-

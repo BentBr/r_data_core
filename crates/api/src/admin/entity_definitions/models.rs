@@ -309,4 +309,3 @@ pub struct EntityDefinitionVersionPayload {
     pub created_by: Option<Uuid>,
     pub data: serde_json::Value,
 }
-

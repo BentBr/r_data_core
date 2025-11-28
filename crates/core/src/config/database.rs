@@ -14,4 +14,3 @@ pub struct DatabaseConfig {
     /// Connection timeout in seconds
     pub connection_timeout: u64,
 }
-

@@ -12,4 +12,3 @@ pub struct ApiKeyInfo {
     pub created_at: OffsetDateTime,
     pub expires_at: Option<OffsetDateTime>,
 }
-

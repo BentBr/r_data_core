@@ -17,8 +17,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
             .configure(auth::register_routes)
             // Module routes
             .service(
-                web::scope("/entity-definitions")
-                    .configure(entity_definitions::register_routes),
+                web::scope("/entity-definitions").configure(entity_definitions::register_routes),
             )
             .service(web::scope("/workflows").configure(workflows::register_routes))
             .service(web::scope("/dsl").configure(dsl::register_routes))
@@ -27,4 +26,3 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
             .service(web::scope("/system").configure(system::register_routes)),
     );
 }
-

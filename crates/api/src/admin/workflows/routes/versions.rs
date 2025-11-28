@@ -5,9 +5,9 @@ use log::error;
 use uuid::Uuid;
 
 use crate::admin::workflows::models::{WorkflowVersionMeta, WorkflowVersionPayload};
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::response::ApiResponse;
-use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use r_data_core_persistence::WorkflowVersioningRepository;
 
 /// List versions of a workflow
@@ -162,4 +162,3 @@ pub async fn get_workflow_version(
 
     ApiResponse::<()>::not_found("Version not found")
 }
-

@@ -1,20 +1,20 @@
-use actix_web::{test, App, web};
-use serde_json::{json, Value};
-use std::sync::Arc;
-use uuid::Uuid;
-use r_data_core_api::{ApiState, configure_app};
+use actix_web::{test, web, App};
+use r_data_core_api::{configure_app, ApiState};
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::error::Result;
+use r_data_core_core::field::ui::UiSettings;
+use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core_core::DynamicEntity;
 use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
-use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
-use r_data_core_core::field::ui::UiSettings;
 use r_data_core_services::{
-    AdminUserService, ApiKeyService, EntityDefinitionService, DynamicEntityService,
+    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
 };
-use r_data_core_core::error::Result;
+use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::sync::Arc;
+use uuid::Uuid;
 
 // Import the common module from tests
 #[path = "../common/mod.rs"]
@@ -174,7 +174,7 @@ mod dynamic_entity_api_tests {
     async fn create_test_api_key(db_pool: &sqlx::PgPool) -> Result<String> {
         use r_data_core_persistence::{ApiKeyRepository, ApiKeyRepositoryTrait};
         use std::sync::Arc;
-        
+
         // Create admin user for API key
         let admin_uuid = Uuid::now_v7();
         let created_by = Uuid::now_v7();
@@ -195,7 +195,12 @@ mod dynamic_entity_api_tests {
         // Use the repository to create a proper API key
         let repo = ApiKeyRepository::new(Arc::new(db_pool.clone()));
         let (_key_uuid, key_value) = repo
-            .create_new_api_key("test_key", "Test API key for dynamic entity tests", admin_uuid, 30)
+            .create_new_api_key(
+                "test_key",
+                "Test API key for dynamic entity tests",
+                admin_uuid,
+                30,
+            )
             .await
             .map_err(r_data_core_core::error::Error::from)?;
 
@@ -203,7 +208,9 @@ mod dynamic_entity_api_tests {
     }
 
     // Helper to create app test services
-    async fn create_test_app(db_pool: sqlx::PgPool) -> impl actix_web::dev::Service<
+    async fn create_test_app(
+        db_pool: sqlx::PgPool,
+    ) -> impl actix_web::dev::Service<
         actix_http::Request,
         Response = actix_web::dev::ServiceResponse,
         Error = actix_web::Error,
@@ -218,17 +225,13 @@ mod dynamic_entity_api_tests {
         };
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
-        let api_key_service = ApiKeyService::new(
-            Arc::new(r_data_core_persistence::ApiKeyRepository::new(
-                Arc::new(db_pool.clone()),
-            )),
-        );
+        let api_key_service = ApiKeyService::new(Arc::new(
+            r_data_core_persistence::ApiKeyRepository::new(Arc::new(db_pool.clone())),
+        ));
 
-        let admin_user_service = AdminUserService::new(
-            Arc::new(r_data_core_persistence::AdminUserRepository::new(
-                Arc::new(db_pool.clone()),
-            )),
-        );
+        let admin_user_service = AdminUserService::new(Arc::new(
+            r_data_core_persistence::AdminUserRepository::new(Arc::new(db_pool.clone())),
+        ));
 
         let entity_definition_service = EntityDefinitionService::new(
             Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
@@ -271,19 +274,16 @@ mod dynamic_entity_api_tests {
 
         // Build test app
         let app_state = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));
-        test::init_service(
-            App::new()
-                .app_data(app_state)
-                .configure(configure_app),
-        )
-        .await
+        test::init_service(App::new().app_data(app_state).configure(configure_app)).await
     }
 
     #[actix_web::test]
     async fn test_get_users_api() -> Result<()> {
         // Setup database
         let db_pool = common::utils::setup_test_db().await;
-        common::utils::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        common::utils::clear_test_db(&db_pool)
+            .await
+            .expect("Failed to clear test database");
 
         // Create entity definition for user entity
         let _entity_uuid = create_user_entity_definition(&db_pool).await?;
@@ -308,27 +308,58 @@ mod dynamic_entity_api_tests {
         if !status.is_success() {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
-            panic!("API call failed with status: {}. Response body: {}", status, body_str);
+            panic!(
+                "API call failed with status: {}. Response body: {}",
+                status, body_str
+            );
         }
 
         // Parse response body
         let body: Value = test::read_body_json(resp).await;
 
-        println!("Response body: {}", serde_json::to_string_pretty(&body).unwrap());
+        println!(
+            "Response body: {}",
+            serde_json::to_string_pretty(&body).unwrap()
+        );
 
         // Check response structure
-        assert_eq!(body["status"], "Success", "Response status should be Success");
+        assert_eq!(
+            body["status"], "Success",
+            "Response status should be Success"
+        );
         assert!(body["data"].is_array(), "Response data should be an array");
-        assert_eq!(body["data"].as_array().unwrap().len(), 5, "Should return 5 users");
+        assert_eq!(
+            body["data"].as_array().unwrap().len(),
+            5,
+            "Should return 5 users"
+        );
 
         // Check pagination
-        assert!(body["meta"]["pagination"].is_object(), "Response should include pagination metadata");
+        assert!(
+            body["meta"]["pagination"].is_object(),
+            "Response should include pagination metadata"
+        );
         assert_eq!(body["meta"]["pagination"]["page"], 1, "Should be page 1");
-        assert_eq!(body["meta"]["pagination"]["per_page"], 5, "Should have 5 items per page");
-        assert_eq!(body["meta"]["pagination"]["total"], 20, "Should have 20 total users");
-        assert_eq!(body["meta"]["pagination"]["total_pages"], 4, "Should have 4 total pages");
-        assert_eq!(body["meta"]["pagination"]["has_next"], true, "Should have next page");
-        assert_eq!(body["meta"]["pagination"]["has_previous"], false, "Should not have previous page");
+        assert_eq!(
+            body["meta"]["pagination"]["per_page"], 5,
+            "Should have 5 items per page"
+        );
+        assert_eq!(
+            body["meta"]["pagination"]["total"], 20,
+            "Should have 20 total users"
+        );
+        assert_eq!(
+            body["meta"]["pagination"]["total_pages"], 4,
+            "Should have 4 total pages"
+        );
+        assert_eq!(
+            body["meta"]["pagination"]["has_next"], true,
+            "Should have next page"
+        );
+        assert_eq!(
+            body["meta"]["pagination"]["has_previous"], false,
+            "Should not have previous page"
+        );
 
         // Test Page 2
         let req = test::TestRequest::get()
@@ -341,7 +372,10 @@ mod dynamic_entity_api_tests {
         if !status.is_success() {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
-            panic!("API call failed with status: {}. Response body: {}", status, body_str);
+            panic!(
+                "API call failed with status: {}. Response body: {}",
+                status, body_str
+            );
         }
 
         // Parse response body
@@ -349,8 +383,14 @@ mod dynamic_entity_api_tests {
 
         // Check pagination for page 2
         assert_eq!(body["meta"]["pagination"]["page"], 2, "Should be page 2");
-        assert_eq!(body["meta"]["pagination"]["has_next"], true, "Should have next page");
-        assert_eq!(body["meta"]["pagination"]["has_previous"], true, "Should have previous page");
+        assert_eq!(
+            body["meta"]["pagination"]["has_next"], true,
+            "Should have next page"
+        );
+        assert_eq!(
+            body["meta"]["pagination"]["has_previous"], true,
+            "Should have previous page"
+        );
 
         // Test filtering - active=true
         let req = test::TestRequest::get()
@@ -363,7 +403,10 @@ mod dynamic_entity_api_tests {
         if !status.is_success() {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
-            panic!("API call failed with status: {}. Response body: {}", status, body_str);
+            panic!(
+                "API call failed with status: {}. Response body: {}",
+                status, body_str
+            );
         }
 
         // Parse response body
@@ -372,7 +415,10 @@ mod dynamic_entity_api_tests {
         // Check filtered results
         let users = body["data"].as_array().unwrap();
         for user in users {
-            assert_eq!(user["field_data"]["active"], true, "Filtered users should all be active");
+            assert_eq!(
+                user["field_data"]["active"], true,
+                "Filtered users should all be active"
+            );
         }
 
         // Test search functionality
@@ -382,25 +428,17 @@ mod dynamic_entity_api_tests {
             .to_request();
 
         let resp = test::call_service(&app, req).await;
-        let status = resp.status();
-        
-        // Search functionality may have database implementation issues, so we accept both success and 500 errors
-        // If it's a 500, log it but don't fail the test (search may not be fully implemented)
-        if status.is_success() {
-            let body: Value = test::read_body_json(resp).await;
-            // Check searched results
-            let users = body["data"].as_array().unwrap();
-            // Search may return 0 results if no matches, which is valid
-            // Just verify the response structure is correct
-            assert!(users.len() >= 0, "Search should return a valid array (may be empty)");
-        } else if status.as_u16() == 500 {
-            // Search functionality may have database issues, skip this assertion
-            println!("Search functionality returned 500, skipping search test (search may not be fully implemented in database layer)");
-        } else {
-            let body = test::read_body(resp).await;
-            let body_str = String::from_utf8_lossy(&body);
-            panic!("API call failed with status: {}. Response body: {}", status, body_str);
-        }
+        assert!(resp.status().is_success(), "API call should succeed");
+
+        // Parse response body
+        let body: Value = test::read_body_json(resp).await;
+
+        // Check searched results
+        let users = body["data"].as_array().unwrap();
+        assert!(
+            users.len() >= 1,
+            "Should find at least one user matching search"
+        );
 
         // Check field selection
         let req = test::TestRequest::get()
@@ -413,7 +451,10 @@ mod dynamic_entity_api_tests {
         if !status.is_success() {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
-            panic!("API call failed with status: {}. Response body: {}", status, body_str);
+            panic!(
+                "API call failed with status: {}. Response body: {}",
+                status, body_str
+            );
         }
 
         // Parse response body
@@ -421,9 +462,18 @@ mod dynamic_entity_api_tests {
 
         // Check that only requested fields are returned
         let first_user = &body["data"][0];
-        assert!(first_user.get("name").is_some(), "Name field should be present");
-        assert!(first_user.get("email").is_some(), "Email field should be present");
-        assert!(first_user.get("age").is_none(), "Age field should not be present");
+        assert!(
+            first_user.get("name").is_some(),
+            "Name field should be present"
+        );
+        assert!(
+            first_user.get("email").is_some(),
+            "Email field should be present"
+        );
+        assert!(
+            first_user.get("age").is_none(),
+            "Age field should not be present"
+        );
 
         // Test sorting functionality
         let req = test::TestRequest::get()
@@ -436,7 +486,10 @@ mod dynamic_entity_api_tests {
         if !status.is_success() {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
-            panic!("API call failed with status: {}. Response body: {}", status, body_str);
+            panic!(
+                "API call failed with status: {}. Response body: {}",
+                status, body_str
+            );
         }
 
         // Parse response body
@@ -447,7 +500,10 @@ mod dynamic_entity_api_tests {
         let mut last_age = i64::MAX;
         for user in users {
             let age = user["age"].as_i64().unwrap();
-            assert!(age <= last_age, "Users should be sorted by age in descending order");
+            assert!(
+                age <= last_age,
+                "Users should be sorted by age in descending order"
+            );
             last_age = age;
         }
 
@@ -458,7 +514,9 @@ mod dynamic_entity_api_tests {
     async fn test_get_single_user_api() -> Result<()> {
         // Setup database
         let db_pool = common::utils::setup_test_db().await;
-        common::utils::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        common::utils::clear_test_db(&db_pool)
+            .await
+            .expect("Failed to clear test database");
 
         // Create entity definition for user entity
         let _entity_uuid = create_user_entity_definition(&db_pool).await?;
@@ -484,19 +542,38 @@ mod dynamic_entity_api_tests {
         if !status.is_success() {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
-            panic!("API call failed with status: {}. Response body: {}", status, body_str);
+            panic!(
+                "API call failed with status: {}. Response body: {}",
+                status, body_str
+            );
         }
 
         // Parse response body
         let body: Value = test::read_body_json(resp).await;
 
         // Check response structure
-        assert_eq!(body["status"], "Success", "Response status should be Success");
-        assert!(body["data"].is_object(), "Response data should be an object");
+        assert_eq!(
+            body["status"], "Success",
+            "Response status should be Success"
+        );
+        assert!(
+            body["data"].is_object(),
+            "Response data should be an object"
+        );
         // UUID is in field_data, not at top level
-        assert_eq!(body["data"]["field_data"]["uuid"], user_id.to_string(), "UUID should match");
-        assert_eq!(body["data"]["field_data"]["name"], "User 1", "Name should match");
-        assert_eq!(body["data"]["field_data"]["email"], "user1@example.com", "Email should match");
+        assert_eq!(
+            body["data"]["field_data"]["uuid"],
+            user_id.to_string(),
+            "UUID should match"
+        );
+        assert_eq!(
+            body["data"]["field_data"]["name"], "User 1",
+            "Name should match"
+        );
+        assert_eq!(
+            body["data"]["field_data"]["email"], "user1@example.com",
+            "Email should match"
+        );
 
         // Test with a non-existent UUID
         let fake_id = Uuid::now_v7();
@@ -506,7 +583,11 @@ mod dynamic_entity_api_tests {
             .to_request();
 
         let resp = test::call_service(&app, req).await;
-        assert_eq!(resp.status(), 404, "Should return 404 for non-existent entity");
+        assert_eq!(
+            resp.status(),
+            404,
+            "Should return 404 for non-existent entity"
+        );
 
         Ok(())
     }
@@ -515,7 +596,9 @@ mod dynamic_entity_api_tests {
     async fn test_fixed_entity_type_column_issue() -> Result<()> {
         // Setup database
         let db_pool = common::utils::setup_test_db().await;
-        common::utils::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        common::utils::clear_test_db(&db_pool)
+            .await
+            .expect("Failed to clear test database");
 
         // Create entity definition for user entity
         let _entity_uuid = create_user_entity_definition(&db_pool).await?;
@@ -548,7 +631,10 @@ mod dynamic_entity_api_tests {
         let body: Value = test::read_body_json(resp).await;
 
         // Check response structure
-        assert_eq!(body["status"], "Success", "Response status should be Success");
+        assert_eq!(
+            body["status"], "Success",
+            "Response status should be Success"
+        );
         assert!(body["data"].is_array(), "Response data should be an array");
 
         // Test with filter parameter (previously would also fail)
@@ -571,10 +657,16 @@ mod dynamic_entity_api_tests {
         let body: Value = test::read_body_json(resp).await;
 
         // Check filtered results
-        assert_eq!(body["status"], "Success", "Response status should be Success");
+        assert_eq!(
+            body["status"], "Success",
+            "Response status should be Success"
+        );
         let users = body["data"].as_array().unwrap();
         assert_eq!(users.len(), 1, "Should return exactly 1 filtered user");
-        assert_eq!(users[0]["field_data"]["name"], "User 1", "Should return User 1");
+        assert_eq!(
+            users[0]["field_data"]["name"], "User 1",
+            "Should return User 1"
+        );
 
         Ok(())
     }

@@ -1,9 +1,9 @@
 use regex::Regex;
 use serde_json::Value;
 
+use crate::error::{Error, Result};
 use crate::field::definition::FieldDefinition;
 use crate::field::types::FieldType;
-use crate::error::{Error, Result};
 
 impl FieldDefinition {
     /// Handle a constraint validation for a field definition

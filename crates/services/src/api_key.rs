@@ -1,7 +1,7 @@
-use r_data_core_core::cache::CacheManager;
 use r_data_core_core::admin_user::ApiKey;
-use r_data_core_persistence::{ApiKeyRepository, ApiKeyRepositoryTrait};
+use r_data_core_core::cache::CacheManager;
 use r_data_core_core::error::Result;
+use r_data_core_persistence::{ApiKeyRepository, ApiKeyRepositoryTrait};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -36,7 +36,7 @@ impl ApiKeyService {
     }
 
     /// Create a new API key service from a concrete repository
-    #[must_use] 
+    #[must_use]
     pub fn from_repository(repository: ApiKeyRepository) -> Self {
         Self {
             repository: Arc::new(repository),
@@ -162,7 +162,9 @@ impl ApiKeyService {
             Some(_) => Err(r_data_core_core::error::Error::Forbidden(
                 "You don't have permission to revoke this API key".to_string(),
             )),
-            None => Err(r_data_core_core::error::Error::NotFound("API key not found".to_string())),
+            None => Err(r_data_core_core::error::Error::NotFound(
+                "API key not found".to_string(),
+            )),
         }
     }
 

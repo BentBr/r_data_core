@@ -213,7 +213,8 @@ impl PermissionScheme {
         if permissions.contains(&permission) {
             return Err(Error::Entity(format!(
                 "Permission {}.{} already exists for role {role}",
-                permission.resource_type.as_str(), permission.permission_type
+                permission.resource_type.as_str(),
+                permission.permission_type
             )));
         }
 
@@ -257,7 +258,8 @@ impl PermissionScheme {
                 || {
                     Err(Error::Entity(format!(
                         "Permission {}.{} not found for role {role}",
-                        resource_type.as_str(), permission_type
+                        resource_type.as_str(),
+                        permission_type
                     )))
                 },
                 |perm_idx| {
@@ -294,30 +296,28 @@ impl PermissionScheme {
         permission_type: &PermissionType,
         path: Option<&str>,
     ) -> bool {
-        self.role_permissions
-            .get(role)
-            .is_some_and(|permissions| {
-                permissions.iter().any(|p| {
-                    // Check namespace matches
-                    if p.resource_type != *namespace {
-                        return false;
-                    }
+        self.role_permissions.get(role).is_some_and(|permissions| {
+            permissions.iter().any(|p| {
+                // Check namespace matches
+                if p.resource_type != *namespace {
+                    return false;
+                }
 
-                    // Check permission type matches
-                    if p.permission_type != *permission_type {
-                        return false;
-                    }
+                // Check permission type matches
+                if p.permission_type != *permission_type {
+                    return false;
+                }
 
-                    // For entities namespace, check path constraints if provided
-                    if matches!(namespace, ResourceNamespace::Entities) {
-                        if let Some(requested_path) = path {
-                            return self.check_path_constraint(&p.constraints, requested_path);
-                        }
+                // For entities namespace, check path constraints if provided
+                if matches!(namespace, ResourceNamespace::Entities) {
+                    if let Some(requested_path) = path {
+                        return self.check_path_constraint(&p.constraints, requested_path);
                     }
+                }
 
-                    true
-                })
+                true
             })
+        })
     }
 
     /// Check if a path constraint allows access to the requested path
@@ -423,7 +423,12 @@ impl PermissionScheme {
                 if let Some(constraints) = &perm.constraints {
                     if let Some(path_value) = constraints.get("path") {
                         if let Some(path) = path_value.as_str() {
-                            result.push(format!("{}:{}:{}", perm.resource_type.as_str(), path, perm_str_lower));
+                            result.push(format!(
+                                "{}:{}:{}",
+                                perm.resource_type.as_str(),
+                                path,
+                                perm_str_lower
+                            ));
                             continue;
                         }
                     }
@@ -431,7 +436,11 @@ impl PermissionScheme {
             }
 
             // Standard format: namespace:permission
-            result.push(format!("{}:{}", perm.resource_type.as_str(), perm_str_lower));
+            result.push(format!(
+                "{}:{}",
+                perm.resource_type.as_str(),
+                perm_str_lower
+            ));
         }
 
         result
@@ -508,22 +517,72 @@ mod tests {
         let scheme = create_test_scheme();
 
         // Test workflow permissions
-        assert!(scheme.has_permission("MyRole", &ResourceNamespace::Workflows, &PermissionType::Read, None));
-        assert!(scheme.has_permission("MyRole", &ResourceNamespace::Workflows, &PermissionType::Create, None));
-        assert!(!scheme.has_permission("MyRole", &ResourceNamespace::Workflows, &PermissionType::Update, None));
-        assert!(!scheme.has_permission("MyRole", &ResourceNamespace::Workflows, &PermissionType::Delete, None));
+        assert!(scheme.has_permission(
+            "MyRole",
+            &ResourceNamespace::Workflows,
+            &PermissionType::Read,
+            None
+        ));
+        assert!(scheme.has_permission(
+            "MyRole",
+            &ResourceNamespace::Workflows,
+            &PermissionType::Create,
+            None
+        ));
+        assert!(!scheme.has_permission(
+            "MyRole",
+            &ResourceNamespace::Workflows,
+            &PermissionType::Update,
+            None
+        ));
+        assert!(!scheme.has_permission(
+            "MyRole",
+            &ResourceNamespace::Workflows,
+            &PermissionType::Delete,
+            None
+        ));
 
         // Test entity permissions without path (should fail - path required)
-        assert!(!scheme.has_permission("MyRole", &ResourceNamespace::Entities, &PermissionType::Read, None));
+        assert!(!scheme.has_permission(
+            "MyRole",
+            &ResourceNamespace::Entities,
+            &PermissionType::Read,
+            None
+        ));
 
         // Test entity permissions with matching path
-        assert!(scheme.has_permission("MyRole", &ResourceNamespace::Entities, &PermissionType::Read, Some("/projects")));
-        assert!(scheme.has_permission("MyRole", &ResourceNamespace::Entities, &PermissionType::Read, Some("/projects/sub")));
-        assert!(scheme.has_permission("MyRole", &ResourceNamespace::Entities, &PermissionType::Delete, Some("/projects")));
+        assert!(scheme.has_permission(
+            "MyRole",
+            &ResourceNamespace::Entities,
+            &PermissionType::Read,
+            Some("/projects")
+        ));
+        assert!(scheme.has_permission(
+            "MyRole",
+            &ResourceNamespace::Entities,
+            &PermissionType::Read,
+            Some("/projects/sub")
+        ));
+        assert!(scheme.has_permission(
+            "MyRole",
+            &ResourceNamespace::Entities,
+            &PermissionType::Delete,
+            Some("/projects")
+        ));
 
         // Test entity permissions with non-matching path
-        assert!(!scheme.has_permission("MyRole", &ResourceNamespace::Entities, &PermissionType::Read, Some("/other")));
-        assert!(!scheme.has_permission("MyRole", &ResourceNamespace::Entities, &PermissionType::Read, Some("/other/path")));
+        assert!(!scheme.has_permission(
+            "MyRole",
+            &ResourceNamespace::Entities,
+            &PermissionType::Read,
+            Some("/other")
+        ));
+        assert!(!scheme.has_permission(
+            "MyRole",
+            &ResourceNamespace::Entities,
+            &PermissionType::Read,
+            Some("/other/path")
+        ));
     }
 
     #[test]
@@ -550,7 +609,8 @@ mod tests {
         let wildcard_constraints = Some(serde_json::json!({"path": "/projects/*"}));
         assert!(scheme.check_path_constraint(&wildcard_constraints, "/projects/sub"));
         assert!(scheme.check_path_constraint(&wildcard_constraints, "/projects/sub/deep"));
-        assert!(!scheme.check_path_constraint(&wildcard_constraints, "/projects")); // Exact match still works
+        assert!(!scheme.check_path_constraint(&wildcard_constraints, "/projects"));
+        // Exact match still works
     }
 
     #[test]
@@ -580,7 +640,12 @@ mod tests {
         };
 
         assert!(scheme.add_permission(role, perm.clone()).is_ok());
-        assert!(scheme.has_permission(role, &ResourceNamespace::Workflows, &PermissionType::Read, None));
+        assert!(scheme.has_permission(
+            role,
+            &ResourceNamespace::Workflows,
+            &PermissionType::Read,
+            None
+        ));
 
         // Try to add duplicate
         assert!(scheme.add_permission(role, perm).is_err());
@@ -589,6 +654,11 @@ mod tests {
         assert!(scheme
             .remove_permission(role, &ResourceNamespace::Workflows, &PermissionType::Read)
             .is_ok());
-        assert!(!scheme.has_permission(role, &ResourceNamespace::Workflows, &PermissionType::Read, None));
+        assert!(!scheme.has_permission(
+            role,
+            &ResourceNamespace::Workflows,
+            &PermissionType::Read,
+            None
+        ));
     }
 }

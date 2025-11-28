@@ -80,4 +80,3 @@ pub struct DslOptionsAndExamplesResponse {
     /// Concrete serialized examples using the real DSL structs
     pub examples: Vec<Value>,
 }
-

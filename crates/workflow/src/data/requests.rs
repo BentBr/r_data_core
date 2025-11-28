@@ -45,4 +45,3 @@ pub struct UpdateWorkflowRequest {
     #[serde(default)]
     pub versioning_disabled: bool,
 }
-

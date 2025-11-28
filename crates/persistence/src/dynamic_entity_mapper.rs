@@ -6,8 +6,8 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use r_data_core_core::DynamicEntity;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::DynamicEntity;
 
 /// Extract field data from a database row based on column types
 pub fn extract_field_data(row: &PgRow) -> HashMap<String, JsonValue> {
@@ -239,4 +239,3 @@ pub fn map_row_to_entity(
         entity_def.clone(),
     )
 }
-

@@ -1,14 +1,14 @@
 use crate::admin_user_repository_trait::{
     is_key_valid, AdminUserRepositoryTrait, ApiKeyRepositoryTrait,
 };
-use r_data_core_core::admin_user::{AdminUser, ApiKey};
-use r_data_core_core::error::Result;
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
     Argon2,
 };
 use async_trait::async_trait;
 use log::error;
+use r_data_core_core::admin_user::{AdminUser, ApiKey};
+use r_data_core_core::error::Result;
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
@@ -504,4 +504,3 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         Ok(())
     }
 }
-

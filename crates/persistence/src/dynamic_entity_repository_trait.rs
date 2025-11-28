@@ -2,8 +2,8 @@ use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use r_data_core_core::DynamicEntity;
 use r_data_core_core::error::Result;
+use r_data_core_core::DynamicEntity;
 
 /// Trait defining the contract for dynamic entity repositories
 #[async_trait::async_trait]
@@ -49,4 +49,3 @@ pub trait DynamicEntityRepositoryTrait: Send + Sync {
     /// Count entities of a specific type
     async fn count_entities(&self, entity_type: &str) -> Result<i64>;
 }
-

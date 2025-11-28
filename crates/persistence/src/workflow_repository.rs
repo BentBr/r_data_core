@@ -6,9 +6,9 @@ use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
 use super::workflow_repository_trait::WorkflowRepositoryTrait;
-use r_data_core_workflow::data::{Workflow, WorkflowKind};
-use r_data_core_workflow::data::requests::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use super::workflow_versioning_repository::WorkflowVersioningRepository;
+use r_data_core_workflow::data::requests::{CreateWorkflowRequest, UpdateWorkflowRequest};
+use r_data_core_workflow::data::{Workflow, WorkflowKind};
 use std::str::FromStr;
 
 pub struct WorkflowRepository {
@@ -97,7 +97,9 @@ impl WorkflowRepository {
     ) -> anyhow::Result<()> {
         // Pre-update snapshot of current workflow row
         let versioning_repo = WorkflowVersioningRepository::new(self.pool.clone());
-        versioning_repo.snapshot_pre_update(uuid).await
+        versioning_repo
+            .snapshot_pre_update(uuid)
+            .await
             .map_err(|e| anyhow::anyhow!("Failed to snapshot workflow: {}", e))?;
 
         sqlx::query(

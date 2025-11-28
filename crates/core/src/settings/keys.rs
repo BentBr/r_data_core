@@ -31,4 +31,3 @@ impl SystemSettingKey {
         format!("{}{}", Self::CACHE_PREFIX, self.as_str())
     }
 }
-

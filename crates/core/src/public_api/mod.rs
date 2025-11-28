@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 /// Entity type information for dynamic entities
-/// 
+///
 /// Represents an entity definition that can be used to create dynamic entity instances.
 /// Entity types are defined by entity definitions.
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -38,7 +38,7 @@ pub enum BrowseKind {
 }
 
 /// Node returned when browsing dynamic entities by virtual path
-/// 
+///
 /// Represents either a folder (virtual path segment) or a file (dynamic entity instance)
 /// in the hierarchical structure of dynamic entities.
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -59,7 +59,7 @@ pub struct BrowseNode {
 }
 
 /// Advanced query for dynamic entities with complex filtering
-/// 
+///
 /// Used to query dynamic entity instances with advanced filtering capabilities.
 #[derive(Debug, Deserialize, Clone)]
 pub struct AdvancedEntityQuery {

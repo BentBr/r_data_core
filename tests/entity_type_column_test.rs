@@ -1,22 +1,22 @@
 use actix_web::{test, web, App};
-use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core_api::{configure_app, ApiState};
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
-use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository, ApiKeyRepositoryTrait};
-use r_data_core_core::DynamicEntity;
-use r_data_core_persistence::DynamicEntityRepository;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
+use r_data_core_core::error::Result;
+use r_data_core_core::field::options::FieldValidation;
 use r_data_core_core::field::ui::UiSettings;
 use r_data_core_core::field::{FieldDefinition, FieldType};
-use r_data_core_core::field::options::FieldValidation;
-use r_data_core_core::error::Result;
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::DynamicEntityRepository;
+use r_data_core_persistence::EntityDefinitionRepository;
+use r_data_core_persistence::WorkflowRepository;
+use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository, ApiKeyRepositoryTrait};
+use r_data_core_services::WorkflowService;
 use r_data_core_services::{
     AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
 };
-use r_data_core_services::WorkflowService;
-use r_data_core_persistence::WorkflowRepository;
 use serde_json::json;
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -322,22 +322,26 @@ async fn test_fixed_entity_type_column_issue() -> Result<()> {
 
     // Create an admin user first
     let user_uuid = common::utils::create_test_admin_user(&pool).await?;
-    
+
     // Create an API key repository and key BEFORE creating the app (like in authentication_tests.rs)
     let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
     let (_key_uuid, api_key) = api_key_repo
         .create_new_api_key("Test API Key", "Test Description", user_uuid, 30)
         .await?;
-    
+
     // Build test app with DynamicEntityService, etc., using the same API key repository
     // This matches the pattern in authentication_tests.rs exactly
     let app = create_test_app_with_api_key_repo(&pool, api_key_repo).await;
 
     // Directly test that the API key service in the app can validate the key
     // This helps debug if there's an issue with the service setup
-    let test_service = ApiKeyService::from_repository(ApiKeyRepository::new(Arc::new(pool.clone())));
+    let test_service =
+        ApiKeyService::from_repository(ApiKeyRepository::new(Arc::new(pool.clone())));
     let service_validation = test_service.validate_api_key(&api_key).await?;
-    assert!(service_validation.is_some(), "API key service should be able to validate the key directly");
+    assert!(
+        service_validation.is_some(),
+        "API key service should be able to validate the key directly"
+    );
 
     // Test the endpoint that previously failed due to the entity_type column
     let req = test::TestRequest::get()
@@ -354,8 +358,7 @@ async fn test_fixed_entity_type_column_issue() -> Result<()> {
         let body_str = String::from_utf8_lossy(&body);
         panic!(
             "API request failed with status: {}. Response body: {}",
-            status,
-            body_str
+            status, body_str
         );
     }
 

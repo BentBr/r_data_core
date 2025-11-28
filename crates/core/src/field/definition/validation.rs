@@ -3,9 +3,9 @@ use serde_json::Value;
 use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
+use crate::error::{Error, Result};
 use crate::field::definition::FieldDefinition;
 use crate::field::types::FieldType;
-use crate::error::{Error, Result};
 
 impl FieldDefinition {
     /// Validate a field value against this definition
@@ -83,8 +83,7 @@ impl FieldDefinition {
 
                 // Check enum options if present
                 if let Some(options_source) = &self.validation.options_source {
-                    if let crate::field::options::OptionsSource::Fixed { options } =
-                        options_source
+                    if let crate::field::options::OptionsSource::Fixed { options } = options_source
                     {
                         let valid_options: Vec<&String> =
                             options.iter().map(|opt| &opt.value).collect();

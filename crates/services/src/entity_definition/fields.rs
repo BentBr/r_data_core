@@ -2,8 +2,8 @@
 
 use r_data_core_core::error::Result;
 
-use super::ServiceEntityFieldInfo;
 use super::EntityDefinitionService;
+use super::ServiceEntityFieldInfo;
 
 impl EntityDefinitionService {
     /// List all fields for a given entity type including system fields
@@ -92,4 +92,3 @@ impl EntityDefinitionService {
         Ok(fields)
     }
 }
-

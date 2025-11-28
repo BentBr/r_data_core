@@ -7,10 +7,10 @@ use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::entity_definition::definition::EntityDefinition;
-use crate::field::FieldDefinition;
 use crate::domain::DynamicFields;
+use crate::entity_definition::definition::EntityDefinition;
 use crate::error::Result;
+use crate::field::FieldDefinition;
 
 // Define traits locally since value module is missing
 pub trait FromValue: Sized {
@@ -40,12 +40,12 @@ impl FromValue for String {
 impl FromValue for i64 {
     fn from_value(value: &JsonValue) -> Result<Self> {
         match value {
-            JsonValue::Number(n) => n
-                .as_i64()
-                .ok_or_else(|| crate::error::Error::Conversion(format!("Cannot convert {:?} to i64", value))),
-            JsonValue::String(s) => s
-                .parse::<i64>()
-                .map_err(|_| crate::error::Error::Conversion(format!("Cannot convert string '{}' to i64", s))),
+            JsonValue::Number(n) => n.as_i64().ok_or_else(|| {
+                crate::error::Error::Conversion(format!("Cannot convert {:?} to i64", value))
+            }),
+            JsonValue::String(s) => s.parse::<i64>().map_err(|_| {
+                crate::error::Error::Conversion(format!("Cannot convert string '{}' to i64", s))
+            }),
             _ => Err(crate::error::Error::Conversion(format!(
                 "Cannot convert {:?} to i64",
                 value
@@ -77,8 +77,9 @@ impl FromValue for JsonValue {
 impl FromValue for Uuid {
     fn from_value(value: &JsonValue) -> Result<Self> {
         match value {
-            JsonValue::String(s) => Uuid::parse_str(s)
-                .map_err(|_| crate::error::Error::Conversion(format!("Cannot convert string '{}' to Uuid", s))),
+            JsonValue::String(s) => Uuid::parse_str(s).map_err(|_| {
+                crate::error::Error::Conversion(format!("Cannot convert string '{}' to Uuid", s))
+            }),
             _ => Err(crate::error::Error::Conversion(format!(
                 "Cannot convert {:?} to Uuid",
                 value
@@ -280,7 +281,11 @@ impl DynamicFields for DynamicEntity {
         self.field_data.get(field_name).cloned()
     }
 
-    fn set_field(&mut self, field_name: &str, value: serde_json::Value) -> crate::error::Result<()> {
+    fn set_field(
+        &mut self,
+        field_name: &str,
+        value: serde_json::Value,
+    ) -> crate::error::Result<()> {
         self.field_data.insert(field_name.to_string(), value);
         Ok(())
     }
@@ -339,4 +344,3 @@ impl Default for DynamicEntity {
         }
     }
 }
-

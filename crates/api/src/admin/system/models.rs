@@ -49,4 +49,3 @@ pub struct UpdateSettingsBody {
     /// Maximum age in days
     pub max_age_days: Option<i32>,
 }
-

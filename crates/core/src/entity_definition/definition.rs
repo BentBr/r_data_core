@@ -8,9 +8,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::schema::Schema;
+use crate::error::{Error, Result};
 use crate::field::FieldDefinition;
 use crate::field::FieldType;
-use crate::error::{Error, Result};
 
 /// Function to serialize/deserialize OffsetDateTime with defaults
 mod datetime_serde {
@@ -425,6 +425,4 @@ impl EntityDefinition {
     pub fn generate_sql_schema(&self) -> String {
         self.generate_schema_sql()
     }
-
-
 }

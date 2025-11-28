@@ -12,4 +12,3 @@ pub struct QueueConfig {
     /// Redis key for process jobs
     pub process_key: String,
 }
-

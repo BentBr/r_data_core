@@ -8,16 +8,18 @@ use tokio_cron_scheduler::{Job, JobScheduler};
 use uuid::Uuid;
 
 use r_data_core_core::config::load_worker_config;
-use r_data_core_services::adapters::{DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter};
-use r_data_core_services::bootstrap::{
-    init_cache_manager, init_logger_with_default, init_pg_pool,
+use r_data_core_persistence::WorkflowRepository;
+use r_data_core_services::adapters::{
+    DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter,
 };
+use r_data_core_services::bootstrap::{init_cache_manager, init_logger_with_default, init_pg_pool};
 use r_data_core_services::compute_reconcile_actions;
-use r_data_core_services::{DynamicEntityService, EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService};
+use r_data_core_services::{
+    DynamicEntityService, EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService,
+};
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::FetchAndStageJob;
-use r_data_core_persistence::WorkflowRepository;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -268,9 +270,13 @@ async fn main() -> anyhow::Result<()> {
                         let wf_adapter = WorkflowRepositoryAdapter::new(WorkflowRepository::new(
                             pool_for_consumer.clone(),
                         ));
-                        let de_repo = r_data_core_persistence::DynamicEntityRepository::new(pool_for_consumer.clone());
+                        let de_repo = r_data_core_persistence::DynamicEntityRepository::new(
+                            pool_for_consumer.clone(),
+                        );
                         let de_adapter = DynamicEntityRepositoryAdapter::new(de_repo);
-                        let ed_repo = r_data_core_persistence::EntityDefinitionRepository::new(pool_for_consumer.clone());
+                        let ed_repo = r_data_core_persistence::EntityDefinitionRepository::new(
+                            pool_for_consumer.clone(),
+                        );
                         let ed_adapter = EntityDefinitionRepositoryAdapter::new(ed_repo);
                         // Use cache manager for entity definitions (shared with main API server via Redis)
                         let ed_service = EntityDefinitionService::new(
@@ -342,4 +348,3 @@ async fn main() -> anyhow::Result<()> {
     futures::future::pending::<()>().await;
     Ok(())
 }
-

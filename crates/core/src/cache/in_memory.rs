@@ -48,7 +48,9 @@ impl InMemoryCache {
 
     /// Check if an entry is expired
     fn is_expired(entry: &CacheEntry) -> bool {
-        entry.expires_at.is_some_and(|expires_at| Instant::now() > expires_at)
+        entry
+            .expires_at
+            .is_some_and(|expires_at| Instant::now() > expires_at)
     }
 }
 
@@ -159,4 +161,3 @@ impl CacheBackend for InMemoryCache {
         Ok(deleted)
     }
 }
-

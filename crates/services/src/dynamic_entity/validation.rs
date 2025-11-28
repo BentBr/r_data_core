@@ -1,8 +1,8 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use log::debug;
-use r_data_core_core::DynamicEntity;
 use r_data_core_core::error::Result;
+use r_data_core_core::DynamicEntity;
 
 use super::DynamicEntityService;
 
@@ -126,8 +126,7 @@ impl DynamicEntityService {
         for field in &entity.definition.fields {
             if let Some(value) = entity.field_data.get(&field.name) {
                 if let Err(e) = field.validate_value(value) {
-                    validation_errors
-                        .push(format!("Field '{}' validation error: {e}", field.name));
+                    validation_errors.push(format!("Field '{}' validation error: {e}", field.name));
                 }
             }
         }
@@ -139,4 +138,3 @@ impl DynamicEntityService {
         self.validate_entity(entity)
     }
 }
-

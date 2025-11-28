@@ -6,5 +6,6 @@ mod api_key_adapter;
 mod main_adapters;
 
 pub use api_key_adapter::ApiKeyRepositoryAdapter;
-pub use main_adapters::{EntityDefinitionRepositoryAdapter, DynamicEntityRepositoryAdapter, AdminUserRepositoryAdapter};
-
+pub use main_adapters::{
+    AdminUserRepositoryAdapter, DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter,
+};

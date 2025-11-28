@@ -1,7 +1,7 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use r_data_core_core::DynamicEntity;
 use r_data_core_core::error::Result;
+use r_data_core_core::DynamicEntity;
 use uuid::Uuid;
 
 use super::DynamicEntityService;
@@ -157,4 +157,3 @@ impl DynamicEntityService {
         self.repository.delete_by_type(entity_type, uuid).await
     }
 }
-

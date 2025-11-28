@@ -5,8 +5,8 @@ use serde_json::json;
 use std::result::Result;
 use uuid::Uuid;
 
-use crate::auth::auth_enum::CombinedRequiredAuth;
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
+use crate::auth::auth_enum::CombinedRequiredAuth;
 use r_data_core_workflow::data::adapters::auth::{AuthConfig, KeyLocation};
 use r_data_core_workflow::data::adapters::format::FormatHandler;
 use r_data_core_workflow::dsl::DslProgram;
@@ -215,7 +215,8 @@ pub async fn get_workflow_data(
     // Serialize based on format
     match format.format_type.as_str() {
         "csv" => {
-            let handler = r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new();
+            let handler =
+                r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new();
             match handler.serialize(&all_data, &format.options) {
                 Ok(bytes) => {
                     return HttpResponse::Ok().content_type("text/csv").body(bytes);
@@ -228,7 +229,8 @@ pub async fn get_workflow_data(
             }
         }
         "json" => {
-            let handler = r_data_core_workflow::data::adapters::format::json::JsonFormatHandler::new();
+            let handler =
+                r_data_core_workflow::data::adapters::format::json::JsonFormatHandler::new();
             match handler.serialize(&all_data, &format.options) {
                 Ok(bytes) => {
                     return HttpResponse::Ok()
@@ -493,4 +495,3 @@ fn extract_provider_auth_config(config: &serde_json::Value) -> Option<AuthConfig
         .get("provider_auth")
         .and_then(|v| serde_json::from_value::<AuthConfig>(v.clone()).ok())
 }
-

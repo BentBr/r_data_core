@@ -2,10 +2,10 @@
 
 use std::collections::HashMap;
 
-use r_data_core_core::DynamicEntity;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
-use r_data_core_core::field::types::FieldType;
 use r_data_core_core::error::Result;
+use r_data_core_core::field::types::FieldType;
+use r_data_core_core::DynamicEntity;
 use serde_json::Value as JsonValue;
 
 use super::DynamicEntityService;

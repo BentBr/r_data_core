@@ -4,7 +4,7 @@ use r_data_core_core::error::Result;
 use sqlx::PgPool;
 
 /// Get the count of dynamic entity instances for a given entity type
-/// 
+///
 /// The entity type corresponds to an entity definition name.
 pub async fn get_entity_count(pool: &PgPool, entity_type: &str) -> Result<i64> {
     let table_name = format!("{}_entities", entity_type.to_lowercase());
@@ -32,4 +32,3 @@ pub async fn get_entity_count(pool: &PgPool, entity_type: &str) -> Result<i64> {
 
     Ok(count)
 }
-

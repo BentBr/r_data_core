@@ -305,4 +305,3 @@ pub struct WorkflowVersionPayload {
     /// The workflow data at this version
     pub data: serde_json::Value,
 }
-

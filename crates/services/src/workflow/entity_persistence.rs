@@ -1,9 +1,9 @@
-use r_data_core_core::DynamicEntity;
-use r_data_core_core::entity_definition::definition::EntityDefinition;
 use crate::dynamic_entity::DynamicEntityService;
 use crate::workflow::value_formatting::{
     build_normalized_field_data, normalize_field_data_by_type, normalize_path,
 };
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::DynamicEntity;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;

@@ -58,4 +58,3 @@ pub async fn init_cache_manager(
     };
     Arc::new(manager)
 }
-

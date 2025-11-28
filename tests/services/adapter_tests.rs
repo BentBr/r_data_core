@@ -9,9 +9,7 @@ use r_data_core_core::error::Result;
 use r_data_core_core::{
     entity_definition::definition::EntityDefinition,
     entity_definition::repository_trait::EntityDefinitionRepositoryTrait,
-    entity_definition::schema::Schema,
-    field::definition::FieldDefinition,
-    field::types::FieldType,
+    entity_definition::schema::Schema, field::definition::FieldDefinition, field::types::FieldType,
 };
 
 // Create a trait-based mock for testing

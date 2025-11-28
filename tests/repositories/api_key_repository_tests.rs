@@ -1,8 +1,8 @@
 use crate::common::utils;
-use r_data_core_persistence::ApiKeyRepository;
 use r_data_core_core::error::Error;
-use r_data_core_persistence::ApiKeyRepositoryTrait;
 use r_data_core_core::error::Result;
+use r_data_core_persistence::ApiKeyRepository;
+use r_data_core_persistence::ApiKeyRepositoryTrait;
 use serial_test::serial;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};

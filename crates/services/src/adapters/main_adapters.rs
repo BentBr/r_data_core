@@ -4,12 +4,12 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use r_data_core_persistence::EntityDefinitionRepository;
-use r_data_core_core::DynamicEntity;
-use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use r_data_core_core::error::Result;
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::EntityDefinitionRepository;
+use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
 use serde_json::Value as JsonValue;
 
 /// Repository adapter for EntityDefinitionRepository
@@ -199,8 +199,15 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
     }
 
     /// Delete an entity by type and UUID
-    async fn delete_by_type(&self, entity_type: &str, uuid: &Uuid) -> r_data_core_core::error::Result<()> {
-        self.inner.delete_by_type(entity_type, uuid).await.map_err(Into::into)
+    async fn delete_by_type(
+        &self,
+        entity_type: &str,
+        uuid: &Uuid,
+    ) -> r_data_core_core::error::Result<()> {
+        self.inner
+            .delete_by_type(entity_type, uuid)
+            .await
+            .map_err(Into::into)
     }
 
     /// Filter entities by field values with advanced options
@@ -222,7 +229,10 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
 
     /// Count entities of a specific type
     async fn count_entities(&self, entity_type: &str) -> r_data_core_core::error::Result<i64> {
-        self.inner.count_entities(entity_type).await.map_err(Into::into)
+        self.inner
+            .count_entities(entity_type)
+            .await
+            .map_err(Into::into)
     }
 }
 
@@ -240,9 +250,7 @@ impl AdminUserRepositoryAdapter {
 }
 
 #[async_trait]
-impl r_data_core_persistence::AdminUserRepositoryTrait
-    for AdminUserRepositoryAdapter
-{
+impl r_data_core_persistence::AdminUserRepositoryTrait for AdminUserRepositoryAdapter {
     async fn find_by_username_or_email(
         &self,
         username_or_email: &str,
@@ -303,7 +311,10 @@ impl r_data_core_persistence::AdminUserRepositoryTrait
             .map_err(Into::into)
     }
 
-    async fn update_admin_user(&self, user: &r_data_core_core::admin_user::AdminUser) -> Result<()> {
+    async fn update_admin_user(
+        &self,
+        user: &r_data_core_core::admin_user::AdminUser,
+    ) -> Result<()> {
         log::debug!(
             "AdminUserRepositoryAdapter::update_admin_user called for user uuid: {}",
             user.uuid
@@ -329,7 +340,9 @@ impl r_data_core_persistence::AdminUserRepositoryTrait
             limit,
             offset
         );
-        self.inner.list_admin_users(limit, offset).await.map_err(Into::into)
+        self.inner
+            .list_admin_users(limit, offset)
+            .await
+            .map_err(Into::into)
     }
 }
-

@@ -1,6 +1,6 @@
+use async_trait::async_trait;
 use r_data_core_core::admin_user::{AdminUser, ApiKey};
 use r_data_core_core::error::Result;
-use async_trait::async_trait;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -98,4 +98,3 @@ pub fn is_key_valid(key: &ApiKey) -> bool {
 
     true
 }
-

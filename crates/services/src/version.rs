@@ -4,8 +4,8 @@ use sqlx::PgPool;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use r_data_core_persistence::VersionRepository;
 use r_data_core_core::error::Result;
+use r_data_core_persistence::VersionRepository;
 
 /// Service for managing entity versions with business logic
 pub struct VersionService {
@@ -89,4 +89,3 @@ pub struct VersionMetaWithName {
     /// Creator name (resolved from `admin_users` table)
     pub created_by_name: Option<String>,
 }
-

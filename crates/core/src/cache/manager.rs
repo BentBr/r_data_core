@@ -54,7 +54,10 @@ impl CacheManager {
     ///
     /// # Errors
     /// Returns an error if cache retrieval fails
-    pub async fn get<T: serde::de::DeserializeOwned + Send + Sync>(&self, key: &str) -> Result<Option<T>> {
+    pub async fn get<T: serde::de::DeserializeOwned + Send + Sync>(
+        &self,
+        key: &str,
+    ) -> Result<Option<T>> {
         if !self.config.enabled {
             return Ok(None);
         }
@@ -185,4 +188,3 @@ impl CacheManager {
         Ok(deleted_count)
     }
 }
-

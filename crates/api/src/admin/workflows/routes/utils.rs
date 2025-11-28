@@ -33,4 +33,3 @@ pub(crate) fn check_has_api_endpoint(config: &Value) -> bool {
     }
     false
 }
-

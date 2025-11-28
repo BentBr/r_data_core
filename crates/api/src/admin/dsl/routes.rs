@@ -33,13 +33,15 @@ pub async fn validate_dsl(
     _: RequiredAuth,
 ) -> impl Responder {
     // Convert Vec<Value> to Vec<DslStep> for validation
-    let steps: Result<Vec<DslStep>, _> = payload.steps.iter().map(|v| serde_json::from_value(v.clone())).collect();
+    let steps: Result<Vec<DslStep>, _> = payload
+        .steps
+        .iter()
+        .map(|v| serde_json::from_value(v.clone()))
+        .collect();
     let Ok(steps) = steps else {
         return ApiResponse::<()>::unprocessable_entity("Invalid DSL steps format");
     };
-    let program = DslProgram {
-        steps,
-    };
+    let program = DslProgram { steps };
     match program.validate() {
         Ok(()) => ApiResponse::ok(DslValidateResponse { valid: true }),
         Err(e) => ApiResponse::<()>::unprocessable_entity_with_violations(

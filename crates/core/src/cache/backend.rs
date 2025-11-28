@@ -54,4 +54,3 @@ pub trait CacheBackend: Send + Sync {
     /// Returns an error if cache deletion fails
     async fn delete_by_prefix(&self, prefix: &str) -> Result<usize>;
 }
-

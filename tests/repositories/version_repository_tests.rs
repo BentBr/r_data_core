@@ -47,7 +47,11 @@ async fn test_version_repository_list_and_get() {
     assert_eq!(list[1].version_number, 1);
 
     // Get specific version
-    let v1 = repo.get_entity_version(entity_uuid, 1).await.unwrap().unwrap();
+    let v1 = repo
+        .get_entity_version(entity_uuid, 1)
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(v1.version_number, 1);
     assert_eq!(v1.data.get("v").and_then(|x| x.as_i64()).unwrap(), 1);
 }

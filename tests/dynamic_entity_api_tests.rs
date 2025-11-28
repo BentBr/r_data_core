@@ -1,13 +1,13 @@
 use log::warn;
-use r_data_core_persistence::EntityDefinitionRepository;
-use r_data_core_core::public_api::BrowseKind;
-use r_data_core_core::error::Result;
-use r_data_core_persistence::DynamicEntityPublicRepository;
-use r_data_core_core::DynamicEntity;
-use r_data_core_persistence::DynamicEntityRepository;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::error::Result;
 use r_data_core_core::field::ui::UiSettings;
 use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
+use r_data_core_core::public_api::BrowseKind;
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::DynamicEntityPublicRepository;
+use r_data_core_persistence::DynamicEntityRepository;
+use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core_services::{DynamicEntityService, EntityDefinitionService};
 use serde_json::json;
 use sqlx::PgPool;
@@ -231,13 +231,19 @@ mod dynamic_entity_tests {
     ) -> Result<(String, EntityDefinition, Uuid)> {
         // Read the JSON file
         let json_content = std::fs::read_to_string(json_path).map_err(|e| {
-            r_data_core_core::error::Error::Unknown(format!("Failed to read JSON file {}: {}", json_path, e))
+            r_data_core_core::error::Error::Unknown(format!(
+                "Failed to read JSON file {}: {}",
+                json_path, e
+            ))
         })?;
 
         // Parse the JSON into a EntityDefinition
         let mut entity_def: EntityDefinition =
             serde_json::from_str(&json_content).map_err(|e| {
-                r_data_core_core::error::Error::Unknown(format!("Failed to parse JSON file {}: {}", json_path, e))
+                r_data_core_core::error::Error::Unknown(format!(
+                    "Failed to parse JSON file {}: {}",
+                    json_path, e
+                ))
             })?;
 
         // Make the entity type unique to avoid test conflicts

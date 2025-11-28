@@ -1,14 +1,19 @@
-use actix_web::{http::{header, StatusCode}, test, web, App, HttpMessage, HttpRequest, HttpResponse};
+use actix_web::{
+    http::{header, StatusCode},
+    test, web, App, HttpMessage, HttpRequest, HttpResponse,
+};
+use r_data_core_api::jwt::AuthUserClaims;
 use r_data_core_api::{
     middleware::{ApiAuth, ApiKeyInfo},
     ApiState,
 };
-use r_data_core_core::config::CacheConfig;
-use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait, ApiKeyRepository, ApiKeyRepositoryTrait};
-use r_data_core_services::{AdminUserService, ApiKeyService, EntityDefinitionService};
-use r_data_core_api::jwt::AuthUserClaims;
-use r_data_core_core::error::Result;
 use r_data_core_core::cache::CacheManager;
+use r_data_core_core::config::CacheConfig;
+use r_data_core_core::error::Result;
+use r_data_core_persistence::{
+    AdminUserRepository, AdminUserRepositoryTrait, ApiKeyRepository, ApiKeyRepositoryTrait,
+};
+use r_data_core_services::{AdminUserService, ApiKeyService, EntityDefinitionService};
 use std::sync::Arc;
 
 #[cfg(test)]
@@ -25,11 +30,9 @@ mod tests {
         let user_uuid = utils::create_test_admin_user(&pool).await?;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let entity_def_repo = Arc::new(
-            r_data_core_persistence::EntityDefinitionRepository::new(
-                pool.clone(),
-            ),
-        );
+        let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
+            pool.clone(),
+        ));
 
         // Create API key
         let (key_uuid, key_value) = api_key_repo
@@ -66,9 +69,7 @@ mod tests {
             cache_manager: cache_manager.clone(),
             api_key_service: ApiKeyService::from_repository(api_key_repo),
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
-            entity_definition_service: EntityDefinitionService::new_without_cache(
-                entity_def_repo,
-            ),
+            entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
             workflow_service: utils::make_workflow_service(&pool),
             queue: utils::test_queue_client_async().await,
@@ -78,7 +79,9 @@ mod tests {
         let app = test::init_service(
             App::new()
                 .wrap(r_data_core_api::middleware::create_error_handlers())
-                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
+                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(
+                    api_state,
+                )))
                 .service(
                     web::resource("/test")
                         .wrap(r_data_core_api::middleware::ApiAuth)
@@ -126,11 +129,9 @@ mod tests {
         let pool = utils::setup_test_db().await;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let entity_def_repo = Arc::new(
-            r_data_core_persistence::EntityDefinitionRepository::new(
-                pool.clone(),
-            ),
-        );
+        let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
+            pool.clone(),
+        ));
 
         // Create cache config
         let cache_config = CacheConfig {
@@ -162,38 +163,39 @@ mod tests {
             cache_manager: cache_manager.clone(),
             api_key_service: ApiKeyService::from_repository(api_key_repo),
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
-            entity_definition_service: EntityDefinitionService::new_without_cache(
-                entity_def_repo,
-            ),
+            entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
             workflow_service: crate::common::utils::make_workflow_service(&pool),
             queue: crate::common::utils::test_queue_client_async().await,
         };
 
         // Create test app with API key authentication middleware
-        let app = test::init_service(
-            App::new()
-                .wrap(r_data_core_api::middleware::create_error_handlers())
-                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
-                .service(web::resource("/test").wrap(ApiAuth).to(
-                    |req: HttpRequest| async move {
-                        // Check if API key info was added to request extensions
-                        if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
-                            HttpResponse::Ok().json(serde_json::json!({
-                                "status": "success",
-                                "api_key_uuid": api_key_info.uuid,
-                                "user_uuid": api_key_info.user_uuid
-                            }))
-                        } else {
-                            HttpResponse::Unauthorized().json(serde_json::json!({
-                                "status": "error",
-                                "message": "No API key found"
-                            }))
-                        }
-                    },
-                )),
-        )
-        .await;
+        let app =
+            test::init_service(
+                App::new()
+                    .wrap(r_data_core_api::middleware::create_error_handlers())
+                    .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(
+                        api_state,
+                    )))
+                    .service(web::resource("/test").wrap(ApiAuth).to(
+                        |req: HttpRequest| async move {
+                            // Check if API key info was added to request extensions
+                            if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
+                                HttpResponse::Ok().json(serde_json::json!({
+                                    "status": "success",
+                                    "api_key_uuid": api_key_info.uuid,
+                                    "user_uuid": api_key_info.user_uuid
+                                }))
+                            } else {
+                                HttpResponse::Unauthorized().json(serde_json::json!({
+                                    "status": "error",
+                                    "message": "No API key found"
+                                }))
+                            }
+                        },
+                    )),
+            )
+            .await;
 
         // Test with invalid API key
         let req = test::TestRequest::get()
@@ -215,11 +217,9 @@ mod tests {
         let pool = utils::setup_test_db().await;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let entity_def_repo = Arc::new(
-            r_data_core_persistence::EntityDefinitionRepository::new(
-                pool.clone(),
-            ),
-        );
+        let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
+            pool.clone(),
+        ));
 
         // Create cache config
         let cache_config = CacheConfig {
@@ -251,9 +251,7 @@ mod tests {
             cache_manager: cache_manager.clone(),
             api_key_service: ApiKeyService::from_repository(api_key_repo),
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
-            entity_definition_service: EntityDefinitionService::new_without_cache(
-                entity_def_repo,
-            ),
+            entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
             workflow_service: crate::common::utils::make_workflow_service(&pool),
             queue: crate::common::utils::test_queue_client_async().await,
@@ -262,7 +260,9 @@ mod tests {
         // Create test app with API key authentication middleware
         let app = test::init_service(
             App::new()
-                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
+                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(
+                    api_state,
+                )))
                 .service(
                     web::resource("/test")
                         .wrap(r_data_core_api::middleware::ApiAuth)
@@ -306,11 +306,9 @@ mod tests {
         let user_uuid = utils::create_test_admin_user(&pool).await?;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let entity_def_repo = Arc::new(
-            r_data_core_persistence::EntityDefinitionRepository::new(
-                pool.clone(),
-            ),
-        );
+        let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
+            pool.clone(),
+        ));
 
         // Create the API key
         let (_key_uuid, key_value) = api_key_repo
@@ -347,9 +345,7 @@ mod tests {
             cache_manager: cache_manager.clone(),
             api_key_service: ApiKeyService::from_repository(api_key_repo),
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
-            entity_definition_service: EntityDefinitionService::new_without_cache(
-                entity_def_repo,
-            ),
+            entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
             workflow_service: crate::common::utils::make_workflow_service(&pool),
             queue: crate::common::utils::test_queue_client_async().await,
@@ -358,7 +354,9 @@ mod tests {
         // Create test app with combined authentication middleware
         let app = test::init_service(
             App::new()
-                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
+                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(
+                    api_state,
+                )))
                 .service(
                     web::resource("/test")
                         .wrap(r_data_core_api::middleware::CombinedAuth)
@@ -414,11 +412,9 @@ mod tests {
         let pool = utils::setup_test_db().await;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let entity_def_repo = Arc::new(
-            r_data_core_persistence::EntityDefinitionRepository::new(
-                pool.clone(),
-            ),
-        );
+        let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
+            pool.clone(),
+        ));
 
         // Create API key
         let (_key_uuid, _key_value) = api_key_repo
@@ -460,15 +456,11 @@ mod tests {
             cache_manager: cache_manager.clone(),
             api_key_service: ApiKeyService::from_repository(api_key_repo),
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
-            entity_definition_service: EntityDefinitionService::new_without_cache(
-                entity_def_repo,
-            ),
+            entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
             workflow_service: r_data_core_services::WorkflowService::new(Arc::new(
                 r_data_core_services::WorkflowRepositoryAdapter::new(
-                    r_data_core_persistence::WorkflowRepository::new(
-                        pool.clone(),
-                    ),
+                    r_data_core_persistence::WorkflowRepository::new(pool.clone()),
                 ),
             )),
             queue: crate::common::utils::test_queue_client_async().await,
@@ -477,7 +469,9 @@ mod tests {
         // Create test app with combined authentication middleware
         let app = test::init_service(
             App::new()
-                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
+                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(
+                    api_state,
+                )))
                 .service(
                     web::resource("/test")
                         .wrap(r_data_core_api::middleware::CombinedAuth)
@@ -531,11 +525,9 @@ mod tests {
         let user_uuid = utils::create_test_admin_user(&pool).await?;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let entity_def_repo = Arc::new(
-            r_data_core_persistence::EntityDefinitionRepository::new(
-                pool.clone(),
-            ),
-        );
+        let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
+            pool.clone(),
+        ));
 
         // Create API key with no expiration
         let (key_uuid, key_value) = api_key_repo
@@ -580,15 +572,11 @@ mod tests {
             cache_manager: cache_manager.clone(),
             api_key_service: ApiKeyService::from_repository(api_key_repo),
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
-            entity_definition_service: EntityDefinitionService::new_without_cache(
-                entity_def_repo,
-            ),
+            entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
             workflow_service: r_data_core_services::WorkflowService::new(Arc::new(
                 r_data_core_services::WorkflowRepositoryAdapter::new(
-                    r_data_core_persistence::WorkflowRepository::new(
-                        pool.clone(),
-                    ),
+                    r_data_core_persistence::WorkflowRepository::new(pool.clone()),
                 ),
             )),
             queue: crate::common::utils::test_queue_client_async().await,
@@ -597,7 +585,9 @@ mod tests {
         // Create test app with API key authentication middleware
         let app = test::init_service(
             App::new()
-                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
+                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(
+                    api_state,
+                )))
                 .service(
                     web::resource("/test")
                         .wrap(r_data_core_api::middleware::ApiAuth)
@@ -641,11 +631,9 @@ mod tests {
         let user_uuid = utils::create_test_admin_user(&pool).await?;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let entity_def_repo = Arc::new(
-            r_data_core_persistence::EntityDefinitionRepository::new(
-                pool.clone(),
-            ),
-        );
+        let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
+            pool.clone(),
+        ));
 
         // Create API key
         let (key_uuid, key_value) = api_key_repo
@@ -685,37 +673,38 @@ mod tests {
             cache_manager: cache_manager.clone(),
             api_key_service: ApiKeyService::from_repository(api_key_repo),
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
-            entity_definition_service: EntityDefinitionService::new_without_cache(
-                entity_def_repo,
-            ),
+            entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
             workflow_service: utils::make_workflow_service(&pool),
             queue: utils::test_queue_client_async().await,
         };
 
         // Create test app with API key authentication middleware
-        let app = test::init_service(
-            App::new()
-                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
-                .service(web::resource("/test").wrap(ApiAuth).to(
-                    |req: HttpRequest| async move {
-                        // Check if API key info was added to request extensions
-                        if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
-                            HttpResponse::Ok().json(serde_json::json!({
-                                "status": "success",
-                                "api_key_uuid": api_key_info.uuid,
-                                "user_uuid": api_key_info.user_uuid
-                            }))
-                        } else {
-                            HttpResponse::Unauthorized().json(serde_json::json!({
-                                "status": "error",
-                                "message": "No API key found"
-                            }))
-                        }
-                    },
-                )),
-        )
-        .await;
+        let app =
+            test::init_service(
+                App::new()
+                    .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(
+                        api_state,
+                    )))
+                    .service(web::resource("/test").wrap(ApiAuth).to(
+                        |req: HttpRequest| async move {
+                            // Check if API key info was added to request extensions
+                            if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
+                                HttpResponse::Ok().json(serde_json::json!({
+                                    "status": "success",
+                                    "api_key_uuid": api_key_info.uuid,
+                                    "user_uuid": api_key_info.user_uuid
+                                }))
+                            } else {
+                                HttpResponse::Unauthorized().json(serde_json::json!({
+                                    "status": "error",
+                                    "message": "No API key found"
+                                }))
+                            }
+                        },
+                    )),
+            )
+            .await;
 
         // Test with revoked API key
         let req = test::TestRequest::get()
@@ -738,11 +727,9 @@ mod tests {
         let user_uuid = utils::create_test_admin_user(&pool).await?;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-        let entity_def_repo = Arc::new(
-            r_data_core_persistence::EntityDefinitionRepository::new(
-                pool.clone(),
-            ),
-        );
+        let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
+            pool.clone(),
+        ));
 
         // Create cache config
         let cache_config = CacheConfig {
@@ -781,9 +768,7 @@ mod tests {
             cache_manager: cache_manager.clone(),
             api_key_service: ApiKeyService::from_repository(api_key_repo),
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
-            entity_definition_service: EntityDefinitionService::new_without_cache(
-                entity_def_repo,
-            ),
+            entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
             workflow_service: utils::make_workflow_service(&pool),
             queue: utils::test_queue_client_async().await,
@@ -793,18 +778,19 @@ mod tests {
         let app = test::init_service(
             App::new()
                 .wrap(r_data_core_api::middleware::create_error_handlers())
-                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state)))
-                .service(
-                    web::resource("/test")
-                        .to(|auth: r_data_core_api::auth::auth_enum::RequiredAuth| async move {
-                            // RequiredAuth extractor ensures JWT is valid
-                            HttpResponse::Ok().json(serde_json::json!({
-                                "status": "success",
-                                "auth_method": "jwt",
-                                "user_uuid": auth.0.sub
-                            }))
-                        }),
-                ),
+                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(
+                    api_state,
+                )))
+                .service(web::resource("/test").to(
+                    |auth: r_data_core_api::auth::auth_enum::RequiredAuth| async move {
+                        // RequiredAuth extractor ensures JWT is valid
+                        HttpResponse::Ok().json(serde_json::json!({
+                            "status": "success",
+                            "auth_method": "jwt",
+                            "user_uuid": auth.0.sub
+                        }))
+                    },
+                )),
         )
         .await;
 

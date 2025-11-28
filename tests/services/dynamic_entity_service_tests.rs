@@ -6,12 +6,12 @@ use mockall::predicate;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use r_data_core_core::DynamicEntity;
-use r_data_core_persistence::DynamicEntityRepositoryTrait;
-use r_data_core_core::error::Result;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::error::Result;
 use r_data_core_core::field::ui::UiSettings;
 use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::DynamicEntityRepositoryTrait;
 
 // Create a struct to represent DynamicFields since we can't use the trait directly
 #[derive(Default)]
@@ -170,7 +170,9 @@ impl MockEntityDefinitionService {
 
     async fn _get_entity_definition(&self, _uuid: &Uuid) -> Result<EntityDefinition> {
         if !self.entity_type_exists {
-            return Err(r_data_core_core::error::Error::NotFound("Class definition not found".to_string()));
+            return Err(r_data_core_core::error::Error::NotFound(
+                "Class definition not found".to_string(),
+            ));
         }
 
         let mut definition = EntityDefinition::default();
@@ -264,7 +266,7 @@ impl TestService {
         // Very basic validation - check for required fields
         for field in &entity_def.fields {
             if field.required && !entity.field_data.contains_key(&field.name) {
-                  return Err(r_data_core_core::error::Error::Validation(format!(
+                return Err(r_data_core_core::error::Error::Validation(format!(
                     "Required field '{}' is missing",
                     field.name
                 )));

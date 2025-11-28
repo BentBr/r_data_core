@@ -91,4 +91,3 @@ pub struct WorkflowVersionPayload {
     pub created_by: Option<Uuid>,
     pub data: serde_json::Value,
 }
-

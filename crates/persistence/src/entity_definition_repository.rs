@@ -1,11 +1,11 @@
 use crate::entity_definition_versioning_repository::EntityDefinitionVersioningRepository;
 use crate::repository::PgPoolExtension;
+use async_trait::async_trait;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
-use r_data_core_core::field::types::FieldType;
 use r_data_core_core::error::Error;
 use r_data_core_core::error::Result;
-use async_trait::async_trait;
+use r_data_core_core::field::types::FieldType;
 use sqlx::PgPool;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -253,8 +253,7 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
         let group_name = definition.group_name.as_ref();
         let allow_children = definition.allow_children;
         let icon = definition.icon.as_ref();
-        let fields =
-            serde_json::to_value(&definition.fields).map_err(Error::Serialization)?;
+        let fields = serde_json::to_value(&definition.fields).map_err(Error::Serialization)?;
         let created_at = definition.created_at;
         let updated_at = definition.updated_at;
         let created_by: Uuid = definition.created_by;
@@ -321,8 +320,7 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
         let group_name = definition.group_name.as_ref();
         let allow_children = definition.allow_children;
         let icon = definition.icon.as_ref();
-        let fields =
-            serde_json::to_value(&definition.fields).map_err(Error::Serialization)?;
+        let fields = serde_json::to_value(&definition.fields).map_err(Error::Serialization)?;
         let updated_at = definition.updated_at;
         let updated_by = definition.updated_by;
         let published = definition.published;
@@ -553,4 +551,3 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
         EntityDefinitionRepository::check_view_exists(self, view_name).await
     }
 }
-

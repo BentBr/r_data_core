@@ -1,7 +1,7 @@
-use r_data_core_services::WorkflowService;
+use r_data_core_api::admin::workflows::models::CreateWorkflowRequest;
 use r_data_core_persistence::WorkflowRepository;
 use r_data_core_services::WorkflowRepositoryAdapter;
-use r_data_core_api::admin::workflows::models::CreateWorkflowRequest;
+use r_data_core_services::WorkflowService;
 use r_data_core_workflow::data::WorkflowKind;
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
@@ -64,7 +64,10 @@ async fn run_now_creates_queued_run_and_worker_marks_success() {
         }),
         versioning_disabled: false,
     };
-    let wf_uuid = service.create(&req, creator_uuid).await.expect("create workflow");
+    let wf_uuid = service
+        .create(&req, creator_uuid)
+        .await
+        .expect("create workflow");
 
     // Simulate run enqueue
     let repo_core = WorkflowRepository::new(pool.clone());
@@ -93,5 +96,3 @@ async fn run_now_creates_queued_run_and_worker_marks_success() {
 
     assert_eq!(row.status.as_deref(), Some("success"));
 }
-
-

@@ -1,21 +1,21 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use actix_web::{post, web, HttpMessage, HttpRequest, Responder};
+use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
-use std::sync::Arc;
 
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
+use crate::auth::auth_enum::OptionalAuth;
 use crate::jwt::{
     generate_access_token, AuthUserClaims, ACCESS_TOKEN_EXPIRY_SECONDS,
     REFRESH_TOKEN_EXPIRY_SECONDS,
 };
 use crate::response::ApiResponse;
-use crate::api_state::{ApiStateTrait, ApiStateWrapper};
-use crate::auth::auth_enum::OptionalAuth;
-use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
-use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
 use r_data_core_core::admin_user::UserRole;
 use r_data_core_core::refresh_token::RefreshToken;
+use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
+use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
 
 use crate::admin::auth::models::{
     AdminLoginRequest, AdminLoginResponse, AdminRegisterRequest, LogoutRequest,
@@ -118,10 +118,7 @@ pub async fn admin_login(
         {
             Ok(Some(s)) => Some(s),
             Ok(None) => {
-                log::debug!(
-                    "User {} has no permission scheme assigned",
-                    user.username
-                );
+                log::debug!("User {} has no permission scheme assigned", user.username);
                 None
             }
             Err(e) => {
@@ -462,7 +459,8 @@ pub async fn admin_refresh_token(
     // Use short-lived expiration for access tokens, but get secret from config
     let mut access_token_config = data.api_config().clone();
     access_token_config.jwt_expiration = ACCESS_TOKEN_EXPIRY_SECONDS;
-    let new_access_token = match generate_access_token(&user, &access_token_config, scheme.as_ref()) {
+    let new_access_token = match generate_access_token(&user, &access_token_config, scheme.as_ref())
+    {
         Ok(token) => token,
         Err(e) => {
             log::error!("Failed to generate new access token: {:?}", e);
@@ -588,4 +586,3 @@ pub fn register_routes(cfg: &mut actix_web::web::ServiceConfig) {
         .service(admin_refresh_token)
         .service(admin_revoke_all_tokens);
 }
-

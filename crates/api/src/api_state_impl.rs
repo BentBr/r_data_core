@@ -5,11 +5,14 @@ use std::sync::Arc;
 
 use crate::api_state::ApiStateTrait;
 use r_data_core_core::cache::CacheManager;
-use r_data_core_services::{AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, PermissionSchemeService, WorkflowService};
+use r_data_core_services::{
+    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
+    PermissionSchemeService, WorkflowService,
+};
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
 /// Shared application state
-/// 
+///
 /// This is the concrete implementation of ApiStateTrait used in the main application.
 /// It holds all the services and dependencies needed by the API routes.
 pub struct ApiState {
@@ -73,7 +76,9 @@ impl ApiStateTrait for ApiState {
     fn dynamic_entity_service_ref(&self) -> Option<&dyn std::any::Any> {
         // Return a reference to the Arc itself, not the inner service
         // This allows downcasting back to &Arc<DynamicEntityService>
-        self.dynamic_entity_service.as_ref().map(|s| s as &dyn std::any::Any)
+        self.dynamic_entity_service
+            .as_ref()
+            .map(|s| s as &dyn std::any::Any)
     }
 
     fn cache_manager_ref(&self) -> &dyn std::any::Any {
@@ -88,4 +93,3 @@ impl ApiStateTrait for ApiState {
         &self.queue
     }
 }
-

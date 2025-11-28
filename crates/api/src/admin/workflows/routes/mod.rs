@@ -27,4 +27,3 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
         .service(versions::list_workflow_versions)
         .service(versions::get_workflow_version);
 }
-

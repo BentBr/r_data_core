@@ -5,15 +5,13 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::common::utils::setup_test_db;
-use r_data_core_core::DynamicEntity;
-use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
 use r_data_core_core::error::Result;
+use r_data_core_core::DynamicEntity;
 use r_data_core_core::{
-    entity_definition::definition::EntityDefinition,
-    entity_definition::schema::Schema,
-    field::definition::FieldDefinition,
-    field::types::FieldType,
+    entity_definition::definition::EntityDefinition, entity_definition::schema::Schema,
+    field::definition::FieldDefinition, field::types::FieldType,
 };
+use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
 
 #[path = "../common/mod.rs"]
 mod common;
@@ -90,7 +88,8 @@ async fn test_dynamic_entity_crud() -> Result<()> {
 
     // In a real test with a database:
     let pool = setup_test_db().await;
-    let repo: Box<dyn DynamicEntityRepositoryTrait> = Box::new(DynamicEntityRepository::new(pool.clone()));
+    let repo: Box<dyn DynamicEntityRepositoryTrait> =
+        Box::new(DynamicEntityRepository::new(pool.clone()));
 
     // Create a test entity definition
     let mut entity_def = create_test_entity_definition();
@@ -131,7 +130,10 @@ async fn test_dynamic_entity_crud() -> Result<()> {
     repo.update(&updated_entity).await?;
 
     // Verify update
-    let retrieved = repo.get_by_type(&entity.entity_type, &uuid, None).await?.unwrap();
+    let retrieved = repo
+        .get_by_type(&entity.entity_type, &uuid, None)
+        .await?
+        .unwrap();
     assert_eq!(retrieved.get::<String>("name")?, "Jane Doe");
 
     // Test delete
@@ -152,7 +154,8 @@ async fn test_list_entities_by_type() -> Result<()> {
 
     // In a real test with a database:
     let pool = setup_test_db().await;
-    let repo: Box<dyn DynamicEntityRepositoryTrait> = Box::new(DynamicEntityRepository::new(pool.clone()));
+    let repo: Box<dyn DynamicEntityRepositoryTrait> =
+        Box::new(DynamicEntityRepository::new(pool.clone()));
 
     // Create a test entity definition
     let mut entity_def = create_test_entity_definition();
@@ -181,7 +184,9 @@ async fn test_list_entities_by_type() -> Result<()> {
     repo.create(&entity2).await?;
 
     // Test list by type
-    let entities = repo.get_all_by_type(&entity_def.entity_type, 100, 0, None).await?;
+    let entities = repo
+        .get_all_by_type(&entity_def.entity_type, 100, 0, None)
+        .await?;
     assert_eq!(entities.len(), 2);
 
     Ok(())
@@ -195,7 +200,8 @@ async fn test_list_entities_by_parent() -> Result<()> {
 
     // In a real test with a database:
     let pool = setup_test_db().await;
-    let repo: Box<dyn DynamicEntityRepositoryTrait> = Box::new(DynamicEntityRepository::new(pool.clone()));
+    let repo: Box<dyn DynamicEntityRepositoryTrait> =
+        Box::new(DynamicEntityRepository::new(pool.clone()));
 
     // Create a test entity definition
     let mut entity_def = create_test_entity_definition();
@@ -235,7 +241,15 @@ async fn test_list_entities_by_parent() -> Result<()> {
     // Test filter by parent - using filter_entities method
     let filters = HashMap::from([("parent_uuid".to_string(), json!(parent_uuid.to_string()))]);
     let children = repo
-        .filter_entities(&entity_def.entity_type, 10, 0, Some(filters), None, None, None)
+        .filter_entities(
+            &entity_def.entity_type,
+            10,
+            0,
+            Some(filters),
+            None,
+            None,
+            None,
+        )
         .await?;
     assert_eq!(children.len(), 2);
 
@@ -250,7 +264,8 @@ async fn test_filter_entities() -> Result<()> {
 
     // In a real test with a database:
     let pool = setup_test_db().await;
-    let repo: Box<dyn DynamicEntityRepositoryTrait> = Box::new(DynamicEntityRepository::new(pool.clone()));
+    let repo: Box<dyn DynamicEntityRepositoryTrait> =
+        Box::new(DynamicEntityRepository::new(pool.clone()));
 
     // Create a test entity definition
     let mut entity_def = create_test_entity_definition();
@@ -290,7 +305,15 @@ async fn test_filter_entities() -> Result<()> {
     // Test filtering with the filter_entities method
     let filters = HashMap::from([("age".to_string(), json!(30))]);
     let filtered = repo
-        .filter_entities(&entity_def.entity_type, 10, 0, Some(filters), None, None, None)
+        .filter_entities(
+            &entity_def.entity_type,
+            10,
+            0,
+            Some(filters),
+            None,
+            None,
+            None,
+        )
         .await?;
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].get::<String>("name")?, "Bob");
@@ -306,7 +329,8 @@ async fn test_count_entities() -> Result<()> {
 
     // In a real test with a database:
     let pool = setup_test_db().await;
-    let repo: Box<dyn DynamicEntityRepositoryTrait> = Box::new(DynamicEntityRepository::new(pool.clone()));
+    let repo: Box<dyn DynamicEntityRepositoryTrait> =
+        Box::new(DynamicEntityRepository::new(pool.clone()));
 
     // Create a test entity definition
     let mut entity_def = create_test_entity_definition();

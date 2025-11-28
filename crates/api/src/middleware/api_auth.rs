@@ -11,10 +11,10 @@ use actix_web::{
 use futures_util::future::LocalBoxFuture;
 use serde::Deserialize;
 
-use crate::auth::extract_and_validate_api_key;
-use crate::middleware::combined_auth::ApiKeyInfo;
-use crate::middleware::base_auth::AuthMiddlewareService;
 use crate::api_state::ApiStateWrapper;
+use crate::auth::extract_and_validate_api_key;
+use crate::middleware::base_auth::AuthMiddlewareService;
+use crate::middleware::combined_auth::ApiKeyInfo;
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
@@ -136,4 +136,3 @@ where
         self.process_auth(req, self.service.clone())
     }
 }
-

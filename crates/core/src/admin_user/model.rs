@@ -442,14 +442,12 @@ impl ApiKey {
         let now = OffsetDateTime::now_utc();
         self.last_used_at = Some(now);
 
-        sqlx::query(
-            "UPDATE api_keys SET last_used_at = $1 WHERE uuid = $2",
-        )
-        .bind(now)
-        .bind(self.uuid)
-        .execute(pool)
-        .await
-        .map_err(Error::Database)?;
+        sqlx::query("UPDATE api_keys SET last_used_at = $1 WHERE uuid = $2")
+            .bind(now)
+            .bind(self.uuid)
+            .execute(pool)
+            .await
+            .map_err(Error::Database)?;
 
         Ok(())
     }
@@ -458,7 +456,9 @@ impl ApiKey {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::permissions::permission_scheme::{AccessLevel, Permission, PermissionScheme, PermissionType};
+    use crate::permissions::permission_scheme::{
+        AccessLevel, Permission, PermissionScheme, PermissionType,
+    };
 
     #[test]
     fn test_user_role_as_str() {
@@ -494,12 +494,7 @@ mod tests {
         let scheme = PermissionScheme::new("Test".to_string());
 
         // SuperAdmin should have all permissions
-        assert!(user.has_permission(
-            &scheme,
-            "workflows",
-            &PermissionType::Read,
-            None
-        ));
+        assert!(user.has_permission(&scheme, "workflows", &PermissionType::Read, None));
         assert!(user.has_permission(
             &scheme,
             "entities",

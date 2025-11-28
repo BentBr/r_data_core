@@ -1,9 +1,9 @@
 use actix_web::web;
 use sqlx::PgPool;
 
-use crate::response::ApiResponse;
 use crate::health;
 use crate::middleware;
+use crate::response::ApiResponse;
 
 pub trait ApiStateTrait: Send + Sync + 'static {
     fn db_pool(&self) -> &PgPool;
@@ -16,59 +16,64 @@ pub trait ApiStateTrait: Send + Sync + 'static {
     fn cache_manager_ref(&self) -> &dyn std::any::Any;
     fn workflow_service_ref(&self) -> &dyn std::any::Any;
     fn queue_ref(&self) -> &dyn std::any::Any;
-    
+
     /// Get API config - helper method that downcasts from api_config_ref
     fn api_config(&self) -> &r_data_core_core::config::ApiConfig {
         self.api_config_ref()
             .downcast_ref::<r_data_core_core::config::ApiConfig>()
             .expect("ApiState must provide ApiConfig")
     }
-    
+
     /// Get permission scheme service - helper method that downcasts from permission_scheme_service_ref
     fn permission_scheme_service(&self) -> &r_data_core_services::PermissionSchemeService {
         self.permission_scheme_service_ref()
             .downcast_ref::<r_data_core_services::PermissionSchemeService>()
             .expect("ApiState must provide PermissionSchemeService")
     }
-    
+
     /// Get entity definition service - helper method that downcasts from entity_definition_service_ref
     fn entity_definition_service(&self) -> &r_data_core_services::EntityDefinitionService {
         self.entity_definition_service_ref()
             .downcast_ref::<r_data_core_services::EntityDefinitionService>()
             .expect("ApiState must provide EntityDefinitionService")
     }
-    
+
     /// Get cache manager - helper method that downcasts from cache_manager_ref
     fn cache_manager(&self) -> &std::sync::Arc<r_data_core_core::cache::CacheManager> {
         self.cache_manager_ref()
             .downcast_ref::<std::sync::Arc<r_data_core_core::cache::CacheManager>>()
             .expect("ApiState must provide CacheManager")
     }
-    
+
     /// Get workflow service - helper method that downcasts from workflow_service_ref
     fn workflow_service(&self) -> &r_data_core_services::WorkflowService {
         self.workflow_service_ref()
             .downcast_ref::<r_data_core_services::WorkflowService>()
             .expect("ApiState must provide WorkflowService")
     }
-    
+
     /// Get queue - helper method that downcasts from queue_ref
-    fn queue(&self) -> &std::sync::Arc<r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue> {
+    fn queue(
+        &self,
+    ) -> &std::sync::Arc<r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue>
+    {
         self.queue_ref()
             .downcast_ref::<std::sync::Arc<r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue>>()
             .expect("ApiState must provide ApalisRedisQueue")
     }
-    
+
     /// Get API key service - helper method that downcasts from api_key_service_ref
     fn api_key_service(&self) -> &r_data_core_services::ApiKeyService {
         self.api_key_service_ref()
             .downcast_ref::<r_data_core_services::ApiKeyService>()
             .expect("ApiState must provide ApiKeyService")
     }
-    
+
     /// Get dynamic entity service - helper method that downcasts from dynamic_entity_service_ref
     /// Returns None if the service is not available
-    fn dynamic_entity_service(&self) -> Option<&std::sync::Arc<r_data_core_services::DynamicEntityService>> {
+    fn dynamic_entity_service(
+        &self,
+    ) -> Option<&std::sync::Arc<r_data_core_services::DynamicEntityService>> {
         self.dynamic_entity_service_ref()?
             .downcast_ref::<std::sync::Arc<r_data_core_services::DynamicEntityService>>()
     }

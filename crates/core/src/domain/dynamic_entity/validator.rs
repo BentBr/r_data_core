@@ -5,9 +5,9 @@ use serde_json::Value;
 use time::{macros::format_description, Date, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::field::{FieldDefinition, FieldType};
 use crate::entity_definition::definition::EntityDefinition;
 use crate::error::Result;
+use crate::field::{FieldDefinition, FieldType};
 
 // Create a ValidationContext struct to encapsulate common validation parameters
 pub struct ValidationContext<'a> {
@@ -430,7 +430,9 @@ pub fn validate_field(field_def: &Value, value: &Value, field_name: &str) -> Res
     let field_type = field_def
         .get("type")
         .and_then(Value::as_str)
-        .ok_or_else(|| crate::error::Error::Validation(format!("Missing type for field {}", field_name)))?;
+        .ok_or_else(|| {
+            crate::error::Error::Validation(format!("Missing type for field {}", field_name))
+        })?;
 
     match field_type {
         "string" => {
@@ -514,7 +516,9 @@ pub fn validate_entity_with_violations(
     let entity_type = entity
         .get("entity_type")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| crate::error::Error::Validation("Entity must have an entity_type field".to_string()))?;
+        .ok_or_else(|| {
+            crate::error::Error::Validation("Entity must have an entity_type field".to_string())
+        })?;
 
     if entity_type != entity_def.entity_type {
         return Err(crate::error::Error::Validation(format!(
@@ -526,7 +530,9 @@ pub fn validate_entity_with_violations(
     let field_data = entity
         .get("field_data")
         .and_then(|v| v.as_object())
-        .ok_or_else(|| crate::error::Error::Validation("Entity must have a field_data object".to_string()))?;
+        .ok_or_else(|| {
+            crate::error::Error::Validation("Entity must have a field_data object".to_string())
+        })?;
 
     // Check required fields
     for field_def in &entity_def.fields {
@@ -611,4 +617,3 @@ pub fn validate_parent_path_consistency(
 
     Ok(violations)
 }
-

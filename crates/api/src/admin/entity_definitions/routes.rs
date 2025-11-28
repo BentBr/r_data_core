@@ -10,15 +10,15 @@ use serde_json::json;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::admin::entity_definitions::conversions::entity_definition_to_schema_model;
+use crate::admin::entity_definitions::models::PaginationQuery;
 use crate::admin::entity_definitions::models::{
     ApplySchemaRequest, EntityDefinitionVersionMeta, EntityDefinitionVersionPayload, PathUuid,
 };
-use r_data_core_persistence::EntityDefinitionVersioningRepository;
-use crate::admin::entity_definitions::models::PaginationQuery;
-use crate::response::ApiResponse;
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
+use crate::response::ApiResponse;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
-use crate::admin::entity_definitions::conversions::entity_definition_to_schema_model;
+use r_data_core_persistence::EntityDefinitionVersioningRepository;
 use utoipa::ToSchema;
 
 /// List entity definitions with pagination
@@ -135,7 +135,9 @@ async fn get_entity_definition(
             let schema_definition = entity_definition_to_schema_model(&definition);
             ApiResponse::ok(schema_definition)
         }
-        Err(r_data_core_core::error::Error::NotFound(_)) => ApiResponse::<()>::not_found("Entity definition"),
+        Err(r_data_core_core::error::Error::NotFound(_)) => {
+            ApiResponse::<()>::not_found("Entity definition")
+        }
         Err(e) => {
             error!("Failed to retrieve entity definition: {}", e);
             ApiResponse::<()>::internal_error("Failed to retrieve entity definition")
@@ -174,7 +176,9 @@ async fn create_entity_definition(
         None,
         "Create entity definition",
     ) {
-        return ApiResponse::<()>::forbidden("Insufficient permissions to create entity definition");
+        return ApiResponse::<()>::forbidden(
+            "Insufficient permissions to create entity definition",
+        );
     }
 
     // Get authentication info from the RequiredAuth extractor
@@ -372,7 +376,9 @@ async fn update_entity_definition(
             "message": "Class definition updated successfully",
             "uuid": path.uuid
         })),
-        Err(r_data_core_core::error::Error::Validation(msg)) => ApiResponse::<()>::bad_request(&msg),
+        Err(r_data_core_core::error::Error::Validation(msg)) => {
+            ApiResponse::<()>::bad_request(&msg)
+        }
         Err(e) => {
             error!("Failed to update entity definition: {}", e);
             ApiResponse::<()>::internal_error(&format!("Failed to update entity definition: {}", e))
@@ -413,8 +419,12 @@ async fn delete_entity_definition(
         Ok(_) => ApiResponse::ok(json!({
             "message": "Class definition deleted successfully"
         })),
-        Err(r_data_core_core::error::Error::NotFound(_)) => ApiResponse::<()>::not_found("Entity definition"),
-        Err(r_data_core_core::error::Error::Validation(msg)) => ApiResponse::<()>::bad_request(&msg),
+        Err(r_data_core_core::error::Error::NotFound(_)) => {
+            ApiResponse::<()>::not_found("Entity definition")
+        }
+        Err(r_data_core_core::error::Error::Validation(msg)) => {
+            ApiResponse::<()>::bad_request(&msg)
+        }
         Err(e) => {
             error!("Failed to delete entity definition: {}", e);
             ApiResponse::<()>::internal_error(&format!("Failed to delete entity definition: {}", e))
@@ -481,7 +491,9 @@ async fn apply_entity_definition_schema(
                 }
             }
         }
-        Err(r_data_core_core::error::Error::NotFound(_)) => ApiResponse::<()>::not_found("Entity definition"),
+        Err(r_data_core_core::error::Error::NotFound(_)) => {
+            ApiResponse::<()>::not_found("Entity definition")
+        }
         Err(e) => {
             error!("Failed to apply schema: {}", e);
             ApiResponse::<()>::internal_error(&format!("Failed to apply schema: {}", e))
@@ -546,11 +558,12 @@ async fn list_entity_fields_by_type(
                 .collect::<Vec<EntityFieldInfo>>();
             ApiResponse::ok(api_items)
         }
-        Err(r_data_core_core::error::Error::NotFound(_)) => ApiResponse::<()>::not_found("Entity definition"),
+        Err(r_data_core_core::error::Error::NotFound(_)) => {
+            ApiResponse::<()>::not_found("Entity definition")
+        }
         Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to load fields: {}", e)),
     }
 }
-
 
 /// List versions of an entity definition
 #[utoipa::path(
@@ -631,7 +644,6 @@ pub async fn list_entity_definition_versions(
 
     ApiResponse::ok(out)
 }
-
 
 /// Get a specific version snapshot of an entity definition
 #[utoipa::path(
@@ -721,4 +733,3 @@ pub async fn get_entity_definition_version(
 
     ApiResponse::<()>::not_found("Version not found")
 }
-

@@ -1,7 +1,7 @@
 use crate::common::utils;
-use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
 use r_data_core_core::error::Result;
 use r_data_core_core::refresh_token::RefreshToken;
+use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
 use serial_test::serial;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;

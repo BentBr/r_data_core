@@ -23,7 +23,5 @@ fn main() {
     println!("Password: {password}");
     println!("Hash: {hash}");
     println!("SQL:");
-    println!(
-        "UPDATE admin_users SET password_hash = '{hash}' WHERE username = '<USERNAME>';"
-    );
+    println!("UPDATE admin_users SET password_hash = '{hash}' WHERE username = '<USERNAME>';");
 }

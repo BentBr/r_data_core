@@ -18,18 +18,12 @@ impl TaskContext {
     /// Create a new task context with a database pool
     #[must_use]
     pub fn new(pool: PgPool) -> Self {
-        Self {
-            pool,
-            cache: None,
-        }
+        Self { pool, cache: None }
     }
 
     /// Create a new task context with a database pool and cache manager
     #[must_use]
-    pub fn with_cache(
-        pool: PgPool,
-        cache: Arc<dyn std::any::Any + Send + Sync>,
-    ) -> Self {
+    pub fn with_cache(pool: PgPool, cache: Arc<dyn std::any::Any + Send + Sync>) -> Self {
         Self {
             pool,
             cache: Some(cache),
@@ -42,4 +36,3 @@ impl TaskContextTrait for TaskContext {
         &self.pool
     }
 }
-

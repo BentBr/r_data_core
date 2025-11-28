@@ -1,7 +1,7 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use log::debug;
 use crate::jwt::AuthUserClaims;
+use log::debug;
 use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
 
 /// Check if a user has permission to perform an action
@@ -113,4 +113,3 @@ pub fn check_permission_with_log(
 
     has_perm
 }
-

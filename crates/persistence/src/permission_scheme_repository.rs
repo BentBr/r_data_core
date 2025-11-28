@@ -94,11 +94,7 @@ impl PermissionSchemeRepository {
     ///
     /// # Errors
     /// Returns an error if database insert fails
-    pub async fn create(
-        &self,
-        scheme: &PermissionScheme,
-        created_by: Uuid,
-    ) -> Result<Uuid> {
+    pub async fn create(&self, scheme: &PermissionScheme, created_by: Uuid) -> Result<Uuid> {
         let uuid = scheme.base.uuid;
         let rules_json = serde_json::to_value(&scheme.role_permissions)
             .map_err(|e| Error::Unknown(format!("Failed to serialize role_permissions: {e}")))?;
@@ -132,11 +128,7 @@ impl PermissionSchemeRepository {
     ///
     /// # Errors
     /// Returns an error if database update fails
-    pub async fn update(
-        &self,
-        scheme: &PermissionScheme,
-        updated_by: Uuid,
-    ) -> Result<()> {
+    pub async fn update(&self, scheme: &PermissionScheme, updated_by: Uuid) -> Result<()> {
         let rules_json = serde_json::to_value(&scheme.role_permissions)
             .map_err(|e| Error::Unknown(format!("Failed to serialize role_permissions: {e}")))?;
 
@@ -207,9 +199,12 @@ fn permission_scheme_from_row(row: &PgRow) -> std::result::Result<PermissionSche
 
     // Deserialize rules JSONB to role_permissions
     let rules_json: serde_json::Value = row.try_get("rules")?;
-    let role_permissions: HashMap<String, Vec<crate::core::permissions::permission_scheme::Permission>> =
-        serde_json::from_value(rules_json)
-            .map_err(|e| sqlx::Error::Decode(format!("Failed to deserialize role_permissions: {e}").into()))?;
+    let role_permissions: HashMap<
+        String,
+        Vec<crate::core::permissions::permission_scheme::Permission>,
+    > = serde_json::from_value(rules_json).map_err(|e| {
+        sqlx::Error::Decode(format!("Failed to deserialize role_permissions: {e}").into())
+    })?;
 
     Ok(PermissionScheme {
         base,
@@ -219,4 +214,3 @@ fn permission_scheme_from_row(row: &PgRow) -> std::result::Result<PermissionSche
         role_permissions,
     })
 }
-

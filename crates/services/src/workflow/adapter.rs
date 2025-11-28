@@ -4,8 +4,8 @@ use async_trait::async_trait;
 use uuid::Uuid;
 
 use r_data_core_persistence::WorkflowRepository;
-use r_data_core_workflow::data::requests::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use r_data_core_persistence::WorkflowRepositoryTrait as WorkflowRepositoryTraitDef;
+use r_data_core_workflow::data::requests::{CreateWorkflowRequest, UpdateWorkflowRequest};
 
 pub struct WorkflowRepositoryAdapter {
     inner: WorkflowRepository,
@@ -201,4 +201,3 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
             .await
     }
 }
-

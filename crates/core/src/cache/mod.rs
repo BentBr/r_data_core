@@ -9,4 +9,3 @@ pub use backend::CacheBackend;
 pub use in_memory::InMemoryCache;
 pub use manager::CacheManager;
 pub use redis::RedisCache;
-

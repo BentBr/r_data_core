@@ -1,11 +1,11 @@
-use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core_api::admin::workflows::models::CreateWorkflowRequest;
+use r_data_core_persistence::EntityDefinitionRepository;
+use r_data_core_persistence::WorkflowRepository;
 use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
+use r_data_core_services::adapters::DynamicEntityRepositoryAdapter;
 use r_data_core_services::adapters::EntityDefinitionRepositoryAdapter;
 use r_data_core_services::{DynamicEntityService, EntityDefinitionService};
-use r_data_core_services::adapters::DynamicEntityRepositoryAdapter;
 use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
-use r_data_core_persistence::WorkflowRepository;
 use r_data_core_workflow::data::WorkflowKind;
 use serde_json::json;
 use sqlx::Row;
@@ -330,10 +330,9 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
 
     // Verify entity was updated with run_uuid as updated_by
     let de_repo_check = DynamicEntityRepository::new(pool.clone());
-    let entity_opt: Option<r_data_core_core::DynamicEntity> =
-        de_repo_check
-            .get_by_type(&entity_type, &entity_uuid, None)
-            .await?;
+    let entity_opt: Option<r_data_core_core::DynamicEntity> = de_repo_check
+        .get_by_type(&entity_type, &entity_uuid, None)
+        .await?;
 
     assert!(entity_opt.is_some());
     let entity = entity_opt.unwrap();

@@ -7,10 +7,10 @@ use uuid::Uuid;
 use crate::admin::workflows::models::{
     CreateWorkflowRequest, CreateWorkflowResponse, UpdateWorkflowRequest, WorkflowDetail,
 };
-use crate::auth::auth_enum::RequiredAuth;
-use crate::response::ValidationViolation;
-use crate::response::ApiResponse;
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
+use crate::auth::auth_enum::RequiredAuth;
+use crate::response::ApiResponse;
+use crate::response::ValidationViolation;
 use r_data_core_core::utils;
 
 /// Get details for one workflow by UUID
@@ -188,4 +188,3 @@ pub async fn delete_workflow(
         Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to delete: {}", e)),
     }
 }
-

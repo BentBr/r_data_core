@@ -4,12 +4,14 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use uuid::Uuid;
 
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::CombinedRequiredAuth;
 use crate::query::StandardQuery;
 use crate::response::{ApiResponse, ValidationViolation};
-use crate::api_state::{ApiStateTrait, ApiStateWrapper};
+use r_data_core_core::domain::dynamic_entity::validator::{
+    validate_entity_with_violations, FieldViolation,
+};
 use r_data_core_core::DynamicEntity;
-use r_data_core_core::domain::dynamic_entity::validator::{validate_entity_with_violations, FieldViolation};
 
 /// Register routes for dynamic entities
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
@@ -234,7 +236,8 @@ pub async fn create_entity(
                     "field_data": field_data
                 });
 
-                let validation_result: Result<Vec<FieldViolation>, _> = validate_entity_with_violations(&entity_json, &entity_def);
+                let validation_result: Result<Vec<FieldViolation>, _> =
+                    validate_entity_with_violations(&entity_json, &entity_def);
                 match validation_result {
                     Ok(ref violations) if !violations.is_empty() => {
                         // Convert to Symfony-style violations
@@ -489,7 +492,9 @@ fn handle_entity_error(error: r_data_core_core::error::Error, entity_type: &str)
             "Entity type '{}' not found or not published",
             entity_type
         )),
-        r_data_core_core::error::Error::Validation(msg) => ApiResponse::<()>::unprocessable_entity(&msg),
+        r_data_core_core::error::Error::Validation(msg) => {
+            ApiResponse::<()>::unprocessable_entity(&msg)
+        }
         r_data_core_core::error::Error::Database(_) => {
             error!("Database error: {}", error);
             ApiResponse::<()>::internal_error("Database error")

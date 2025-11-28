@@ -2,15 +2,17 @@
 
 use actix_web::{delete, get, post, put, web, Responder};
 use log::error;
-use uuid::Uuid;
 use std::sync::Arc;
+use uuid::Uuid;
 
+use crate::admin::api_keys::models::{
+    ApiKeyCreatedResponse, ApiKeyResponse, CreateApiKeyRequest, ReassignApiKeyRequest,
+};
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::query::PaginationQuery;
 use crate::response::ApiResponse;
-use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use r_data_core_persistence::{ApiKeyRepository, ApiKeyRepositoryTrait};
-use crate::admin::api_keys::models::{ApiKeyCreatedResponse, ApiKeyResponse, CreateApiKeyRequest, ReassignApiKeyRequest};
 
 /// Register API key routes
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
@@ -321,4 +323,3 @@ pub async fn reassign_api_key(
         }
     }
 }
-

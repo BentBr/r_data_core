@@ -1,8 +1,8 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use actix_web::{get, web, Responder};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::response::ApiResponse;
+use actix_web::{get, web, Responder};
 use r_data_core_core::utils;
 
 /// Preview next run times for a cron expression
@@ -32,4 +32,3 @@ pub async fn cron_preview(
         Err(e) => ApiResponse::<()>::unprocessable_entity(&format!("Invalid cron: {}", e)),
     }
 }
-

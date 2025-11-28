@@ -1,7 +1,7 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use r_data_core_core::public_api::{BrowseNode, EntityTypeInfo};
 use r_data_core_core::error::Result;
+use r_data_core_core::public_api::{BrowseNode, EntityTypeInfo};
 use sqlx::PgPool;
 
 mod browse;
@@ -11,7 +11,7 @@ pub use browse::browse_by_path;
 pub use utils::get_entity_count;
 
 /// Repository for public API operations on dynamic entities
-/// 
+///
 /// This repository provides read-only access to dynamic entities and their entity definitions
 /// through the public API. Dynamic entities are instances defined by entity definitions.
 pub struct DynamicEntityPublicRepository {
@@ -26,7 +26,7 @@ impl DynamicEntityPublicRepository {
     }
 
     /// List all available entity types (entity definitions) with metadata
-    /// 
+    ///
     /// Returns entity definitions that are published and can be used to create dynamic entities.
     pub async fn list_available_entity_types(&self) -> Result<Vec<EntityTypeInfo>> {
         let rows = sqlx::query!(
@@ -78,7 +78,7 @@ impl DynamicEntityPublicRepository {
     }
 
     /// Browse dynamic entities by virtual path
-    /// 
+    ///
     /// Returns folders and files representing the hierarchical structure of dynamic entities.
     pub async fn browse_by_path(
         &self,

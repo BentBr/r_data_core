@@ -3,9 +3,9 @@
 use actix_web::{get, put, web, Responder};
 
 use crate::admin::system::models::{EntityVersioningSettingsDto, UpdateSettingsBody};
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::response::ApiResponse;
-use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use r_data_core_services::SettingsService;
 
 /// Register system routes
@@ -98,4 +98,3 @@ pub async fn update_entity_versioning_settings(
         }
     }
 }
-

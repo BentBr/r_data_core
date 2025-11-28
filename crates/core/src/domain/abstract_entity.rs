@@ -172,4 +172,3 @@ impl DynamicFields for AbstractRDataEntity {
         Ok(())
     }
 }
-

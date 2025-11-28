@@ -81,4 +81,3 @@ pub struct ReassignApiKeyRequest {
     /// UUID of the user to reassign the API key to
     pub user_uuid: Uuid,
 }
-

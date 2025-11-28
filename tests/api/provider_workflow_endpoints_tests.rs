@@ -1,11 +1,16 @@
 use actix_web::{test, web, App};
-use r_data_core_api::{configure_app, ApiState};
 use r_data_core_api::ApiStateWrapper;
+use r_data_core_api::{configure_app, ApiState};
+use r_data_core_core::admin_user::AdminUser;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
-use r_data_core_core::admin_user::AdminUser;
-use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository, ApiKeyRepositoryTrait, WorkflowRepository};
-use r_data_core_services::{AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, WorkflowRepositoryAdapter};
+use r_data_core_persistence::{
+    AdminUserRepository, ApiKeyRepository, ApiKeyRepositoryTrait, WorkflowRepository,
+};
+use r_data_core_services::{
+    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
+    WorkflowRepositoryAdapter,
+};
 use r_data_core_workflow::data::WorkflowKind;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -42,14 +47,11 @@ async fn setup_app_with_entities() -> anyhow::Result<(
     let admin_user_service = AdminUserService::new(admin_user_repository);
 
     let entity_definition_service = EntityDefinitionService::new_without_cache(Arc::new(
-        r_data_core_persistence::EntityDefinitionRepository::new(
-            pool.clone(),
-        ),
+        r_data_core_persistence::EntityDefinitionRepository::new(pool.clone()),
     ));
 
     // Create dynamic entity service
-    let de_repo =
-        r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
+    let de_repo = r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
     let de_adapter = r_data_core_services::adapters::DynamicEntityRepositoryAdapter::new(de_repo);
     let dynamic_entity_service = Arc::new(DynamicEntityService::new(
         Arc::new(de_adapter),
@@ -58,11 +60,10 @@ async fn setup_app_with_entities() -> anyhow::Result<(
 
     let wf_repo = WorkflowRepository::new(pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
-    let workflow_service =
-        r_data_core_services::WorkflowService::new_with_entities(
-            Arc::new(wf_adapter),
-            dynamic_entity_service.clone(),
-        );
+    let workflow_service = r_data_core_services::WorkflowService::new_with_entities(
+        Arc::new(wf_adapter),
+        dynamic_entity_service.clone(),
+    );
 
     let jwt_secret = "test_secret".to_string();
     let api_state = ApiState {

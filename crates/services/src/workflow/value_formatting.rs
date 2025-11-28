@@ -1,5 +1,5 @@
-use r_data_core_core::field::types::FieldType;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::field::types::FieldType;
 use serde_json::Value;
 use std::collections::HashMap;
 

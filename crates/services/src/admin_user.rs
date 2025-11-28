@@ -1,6 +1,6 @@
 use r_data_core_core::admin_user::AdminUser;
-use r_data_core_persistence::AdminUserRepositoryTrait;
 use r_data_core_core::error::Result;
+use r_data_core_persistence::AdminUserRepositoryTrait;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -51,7 +51,9 @@ impl AdminUserService {
 
         // Check if user is active
         if !user.is_active {
-            return Err(r_data_core_core::error::Error::Auth("Account is not active".to_string()));
+            return Err(r_data_core_core::error::Error::Auth(
+                "Account is not active".to_string(),
+            ));
         }
 
         // Update last login time
@@ -88,12 +90,16 @@ impl AdminUserService {
         // Check if username or email already exists
         let existing_user = self.repository.find_by_username_or_email(username).await?;
         if existing_user.is_some() {
-            return Err(r_data_core_core::error::Error::Validation("Username already exists".to_string()));
+            return Err(r_data_core_core::error::Error::Validation(
+                "Username already exists".to_string(),
+            ));
         }
 
         let existing_user = self.repository.find_by_username_or_email(email).await?;
         if existing_user.is_some() {
-            return Err(r_data_core_core::error::Error::Validation("Email already in use".to_string()));
+            return Err(r_data_core_core::error::Error::Validation(
+                "Email already in use".to_string(),
+            ));
         }
 
         // Create the user
@@ -156,11 +162,11 @@ impl AdminUserService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use r_data_core_core::admin_user::{UserRole, UserStatus};
-    use r_data_core_core::domain::AbstractRDataEntity;
     use async_trait::async_trait;
     use mockall::mock;
     use mockall::predicate::*;
+    use r_data_core_core::admin_user::{UserRole, UserStatus};
+    use r_data_core_core::domain::AbstractRDataEntity;
     use time::OffsetDateTime;
 
     mock! {

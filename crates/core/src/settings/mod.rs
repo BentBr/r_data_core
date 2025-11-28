@@ -5,4 +5,3 @@ pub mod keys;
 
 pub use entity_versioning::EntityVersioningSettings;
 pub use keys::SystemSettingKey;
-

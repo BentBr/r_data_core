@@ -10,7 +10,9 @@ async fn get_test_queue() -> Option<ApalisRedisQueue> {
     let process_key = std::env::var("QUEUE_PROCESS_KEY")
         .unwrap_or_else(|_| format!("test_queue:process:{}", Uuid::now_v7()));
 
-    ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key).await.ok()
+    ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key)
+        .await
+        .ok()
 }
 
 #[tokio::test]

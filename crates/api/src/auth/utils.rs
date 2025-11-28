@@ -8,8 +8,8 @@ use actix_web::{
 use log::{debug, error};
 use uuid::Uuid;
 
-use crate::jwt::{verify_jwt, AuthUserClaims};
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
+use crate::jwt::{verify_jwt, AuthUserClaims};
 use r_data_core_core::admin_user::ApiKey;
 
 use std::result::Result as StdResult;
@@ -64,7 +64,10 @@ pub async fn extract_and_validate_api_key(
     if let Some(api_key) = req.headers().get("X-API-Key").and_then(|h| h.to_str().ok()) {
         // Trim any whitespace that might have been added
         let api_key = api_key.trim();
-        debug!("Found X-API-Key header, attempting validation (length: {})", api_key.len());
+        debug!(
+            "Found X-API-Key header, attempting validation (length: {})",
+            api_key.len()
+        );
         // Get ApiState from request - should always be available
         if let Some(state) = req.app_data::<web::Data<ApiStateWrapper>>() {
             debug!("Found ApiStateWrapper in app_data");
@@ -76,7 +79,10 @@ pub async fn extract_and_validate_api_key(
                     return Ok(Some((key, user_uuid)));
                 }
                 Ok(None) => {
-                    debug!("API key not found or inactive: key length = {}", api_key.len());
+                    debug!(
+                        "API key not found or inactive: key length = {}",
+                        api_key.len()
+                    );
                 }
                 Err(e) => {
                     error!("API key validation error: {}", e);
@@ -87,7 +93,9 @@ pub async fn extract_and_validate_api_key(
             }
         } else {
             // This should not happen in normal operation, but provide fallback for safety
-            error!("ApiStateWrapper not available in app_data - this indicates a configuration issue");
+            error!(
+                "ApiStateWrapper not available in app_data - this indicates a configuration issue"
+            );
             return Err(ErrorUnauthorized(
                 "API authentication not properly configured",
             ));

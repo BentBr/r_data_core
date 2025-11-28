@@ -1,12 +1,12 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use super::*;
-use r_data_core_core::entity_definition::schema::Schema;
-use r_data_core_core::field::types::FieldType;
-use r_data_core_core::field::FieldDefinition;
 use async_trait::async_trait;
 use mockall::mock;
 use mockall::predicate::{self, eq};
+use r_data_core_core::entity_definition::schema::Schema;
+use r_data_core_core::field::types::FieldType;
+use r_data_core_core::field::FieldDefinition;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -504,4 +504,3 @@ async fn test_cleanup_unused_entity_tables() -> Result<()> {
 
     Ok(())
 }
-

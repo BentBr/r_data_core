@@ -101,4 +101,3 @@ impl RefreshToken {
         Ok(hex::encode(result))
     }
 }
-

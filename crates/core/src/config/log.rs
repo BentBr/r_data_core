@@ -11,4 +11,3 @@ pub struct LogConfig {
     /// Log to file
     pub file: Option<String>,
 }
-

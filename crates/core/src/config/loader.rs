@@ -3,7 +3,10 @@
 use dotenv::dotenv;
 use std::env;
 
-use crate::config::{ApiConfig, AppConfig, CacheConfig, DatabaseConfig, LogConfig, MaintenanceConfig, QueueConfig, WorkflowConfig, WorkerConfig};
+use crate::config::{
+    ApiConfig, AppConfig, CacheConfig, DatabaseConfig, LogConfig, MaintenanceConfig, QueueConfig,
+    WorkerConfig, WorkflowConfig,
+};
 use crate::error::Result;
 use crate::utils;
 
@@ -85,8 +88,9 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
     // Ensure .env is loaded for binaries that only use WorkerConfig
     dotenv().ok();
 
-    let interval_str = env::var("JOB_QUEUE_UPDATE_INTERVAL")
-        .map_err(|_| crate::error::Error::Config("JOB_QUEUE_UPDATE_INTERVAL not set".to_string()))?;
+    let interval_str = env::var("JOB_QUEUE_UPDATE_INTERVAL").map_err(|_| {
+        crate::error::Error::Config("JOB_QUEUE_UPDATE_INTERVAL not set".to_string())
+    })?;
     let job_queue_update_interval_secs = interval_str.parse::<u64>().map_err(|_| {
         crate::error::Error::Config(
             "JOB_QUEUE_UPDATE_INTERVAL must be a positive integer (seconds)".to_string(),
@@ -149,8 +153,9 @@ pub fn load_maintenance_config() -> Result<MaintenanceConfig> {
     let cron = env::var("MAINTENANCE_CRON")
         .map_err(|_| crate::error::Error::Config("MAINTENANCE_CRON not set".to_string()))?;
     // Validate cron expression using the same logic as cron preview
-    utils::validate_cron(&cron)
-        .map_err(|e| crate::error::Error::Config(format!("Invalid MAINTENANCE_CRON '{cron}': {e}")))?;
+    utils::validate_cron(&cron).map_err(|e| {
+        crate::error::Error::Config(format!("Invalid MAINTENANCE_CRON '{cron}': {e}"))
+    })?;
 
     let version_purger_cron = env::var("VERSION_PURGER_CRON")
         .map_err(|_| crate::error::Error::Config("VERSION_PURGER_CRON not set".to_string()))?;
@@ -181,8 +186,8 @@ pub fn load_maintenance_config() -> Result<MaintenanceConfig> {
     };
 
     let cache = get_cache_config();
-    let redis_url =
-        env::var("REDIS_URL").map_err(|_| crate::error::Error::Config("REDIS_URL not set".to_string()))?;
+    let redis_url = env::var("REDIS_URL")
+        .map_err(|_| crate::error::Error::Config("REDIS_URL not set".to_string()))?;
 
     Ok(MaintenanceConfig {
         cron,
@@ -230,4 +235,3 @@ fn get_queue_config() -> Result<QueueConfig> {
 
     Ok(config)
 }
-
