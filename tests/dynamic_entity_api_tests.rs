@@ -862,7 +862,6 @@ mod dynamic_entity_tests {
             assert_eq!(entity.entity_type, entity_type, "Entity type should match");
         }
 
-
         Ok(())
     }
 

@@ -26,8 +26,7 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
 
     // Create entity definition
     let entity_type = unique_entity_type("test_entity");
-    let _entity_def_uuid =
-create_test_entity_definition(&pool, &entity_type).await?;
+    let _entity_def_uuid = create_test_entity_definition(&pool, &entity_type).await?;
 
     // Create workflow
     let wf_repo = WorkflowRepository::new(pool.clone());
@@ -189,8 +188,7 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
 
     // Create entity definition
     let entity_type = unique_entity_type("test_entity");
-    let _entity_def_uuid =
-create_test_entity_definition(&pool, &entity_type).await?;
+    let _entity_def_uuid = create_test_entity_definition(&pool, &entity_type).await?;
 
     // Create an entity first
     let de_repo = DynamicEntityRepository::new(pool.clone());

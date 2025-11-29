@@ -13,7 +13,6 @@ use r_data_core_core::{
 use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
 use r_data_core_test_support::setup_test_db;
 
-
 // Helper function to create a test entity definition struct for dynamic entities
 fn create_test_entity_definition_struct() -> EntityDefinition {
     EntityDefinition {

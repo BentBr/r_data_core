@@ -12,16 +12,13 @@ use r_data_core_services::{
     AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
     WorkflowRepositoryAdapter,
 };
-use r_data_core_test_support::{
-    create_test_admin_user, setup_test_db, test_queue_client_async,
-};
+use r_data_core_test_support::{create_test_admin_user, setup_test_db, test_queue_client_async};
 
 // Re-export for convenience (used by workflow tests)
 pub use r_data_core_test_support::create_test_entity_definition;
 use r_data_core_workflow::data::WorkflowKind;
 use std::sync::Arc;
 use uuid::Uuid;
-
 
 pub async fn setup_app_with_entities() -> anyhow::Result<(
     impl actix_web::dev::Service<
@@ -129,7 +126,6 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
 
     Ok((app, pool, token, api_key_value))
 }
-
 
 pub async fn create_consumer_workflow(
     pool: &sqlx::PgPool,

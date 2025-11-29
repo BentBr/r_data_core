@@ -24,7 +24,6 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-
 /// Clear test database
 async fn clear_test_db(pool: &PgPool) -> Result<()> {
     // Clear the main tables in reverse dependency order

@@ -42,8 +42,7 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
 
     // Create a dynamic entity definition used by the workflow's "to" step
     let entity_type = unique_entity_type("e2e_entity");
-    let _entity_def_uuid =
-create_test_entity_definition(&pool, &entity_type).await?;
+    let _entity_def_uuid = create_test_entity_definition(&pool, &entity_type).await?;
 
     // Create a workflow that maps CSV to the dynamic entity
     let wf_repo = WorkflowRepository::new(pool.clone());
