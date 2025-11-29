@@ -427,8 +427,15 @@ impl VersionRepositoryTrait for VersionRepository {
         data: serde_json::Value,
         created_by: Option<Uuid>,
     ) -> Result<()> {
-        Self::insert_snapshot(self, entity_uuid, entity_type, version_number, data, created_by)
-            .await
+        Self::insert_snapshot(
+            self,
+            entity_uuid,
+            entity_type,
+            version_number,
+            data,
+            created_by,
+        )
+        .await
     }
 
     async fn prune_older_than_days(&self, days: i32) -> Result<u64> {

@@ -87,4 +87,3 @@ pub trait EntityDefinitionVersioningRepositoryTrait: Send + Sync {
     /// Returns an error if database operation fails
     async fn prune_keep_latest_per_definition(&self, keep: i32) -> Result<u64>;
 }
-

@@ -27,10 +27,8 @@ pub trait WorkflowVersioningRepositoryTrait: Send + Sync {
     ///
     /// # Errors
     /// Returns an error if database query fails
-    async fn list_workflow_versions(
-        &self,
-        workflow_uuid: Uuid,
-    ) -> Result<Vec<WorkflowVersionMeta>>;
+    async fn list_workflow_versions(&self, workflow_uuid: Uuid)
+        -> Result<Vec<WorkflowVersionMeta>>;
 
     /// Get a specific version of a workflow
     ///
@@ -85,4 +83,3 @@ pub trait WorkflowVersioningRepositoryTrait: Send + Sync {
     /// Returns an error if database operation fails
     async fn prune_keep_latest_per_workflow(&self, keep: i32) -> Result<u64>;
 }
-

@@ -1,10 +1,10 @@
-use crate::common::utils::clear_test_db;
 use crate::repositories::{get_entity_definition_repository_with_pool, TestRepository};
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use r_data_core_core::field::types::FieldType;
 use r_data_core_core::field::ui::UiSettings;
 use r_data_core_core::field::FieldDefinition;
+use r_data_core_test_support::clear_test_db;
 use serial_test::serial;
 use std::collections::HashMap;
 use uuid::Uuid;

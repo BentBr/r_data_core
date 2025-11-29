@@ -68,15 +68,17 @@ fn create_test_jwt_token(user_uuid: &Uuid, secret: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::utils;
+    use r_data_core_test_support::{
+        clear_test_db, create_test_admin_user, setup_test_db, test_queue_client_async,
+    };
     use serial_test::serial;
 
     /// Test HTTP API pagination functionality for entity definitions
     #[tokio::test]
     #[serial]
     async fn test_entity_definition_http_pagination() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let pool = setup_test_db().await;
+        let user_uuid = create_test_admin_user(&pool).await?;
 
         // Create multiple entity definitions
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
@@ -145,7 +147,7 @@ mod tests {
                     r_data_core_persistence::WorkflowRepository::new(pool.clone()),
                 ),
             )),
-            queue: crate::common::utils::test_queue_client_async().await,
+            queue: test_queue_client_async().await,
         };
 
         let app = test::init_service(
@@ -279,7 +281,7 @@ mod tests {
         assert_eq!(meta["has_previous"], false);
         assert_eq!(meta["has_next"], true);
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 }

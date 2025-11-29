@@ -3,7 +3,6 @@
 
 #[cfg(test)]
 mod tests {
-    use r_data_core_core::error::Result;
     use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
     use std::sync::Arc;
     use uuid::Uuid;
@@ -11,10 +10,12 @@ mod tests {
     #[tokio::test]
     async fn test_admin_user_last_login_update() -> r_data_core_core::error::Result<()> {
         // Setup test database
-        let pool = crate::common::utils::setup_test_db().await;
+        use r_data_core_test_support::{clear_test_db, setup_test_db};
+
+        let pool = setup_test_db().await;
 
         // Clear any existing data
-        crate::common::utils::clear_test_db(&pool)
+        clear_test_db(&pool)
             .await
             .expect("Failed to clear test database");
 

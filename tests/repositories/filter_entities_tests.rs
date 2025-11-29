@@ -11,9 +11,7 @@ use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core_core::DynamicEntity;
 use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
 
-// Import common module for test setup
-#[path = "../common/mod.rs"]
-mod common;
+use r_data_core_test_support::{clear_test_db, setup_test_db};
 
 #[cfg(test)]
 mod filter_entities_tests {
@@ -180,8 +178,8 @@ mod filter_entities_tests {
     #[tokio::test]
     async fn test_filter_entities_by_active() -> Result<()> {
         // Setup database
-        let db_pool = common::utils::setup_test_db().await;
-        common::utils::clear_test_db(&db_pool)
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
             .await
             .expect("Failed to clear test database");
 
@@ -226,8 +224,8 @@ mod filter_entities_tests {
     #[tokio::test]
     async fn test_filter_entities_by_age() -> Result<()> {
         // Setup database
-        let db_pool = common::utils::setup_test_db().await;
-        common::utils::clear_test_db(&db_pool)
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
             .await
             .expect("Failed to clear test database");
 
@@ -265,8 +263,8 @@ mod filter_entities_tests {
     #[tokio::test]
     async fn test_filter_entities_with_search() -> Result<()> {
         // Setup database
-        let db_pool = common::utils::setup_test_db().await;
-        common::utils::clear_test_db(&db_pool)
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
             .await
             .expect("Failed to clear test database");
 
@@ -313,8 +311,8 @@ mod filter_entities_tests {
     #[tokio::test]
     async fn test_filter_entities_with_sort() -> Result<()> {
         // Setup database
-        let db_pool = common::utils::setup_test_db().await;
-        common::utils::clear_test_db(&db_pool)
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
             .await
             .expect("Failed to clear test database");
 
@@ -358,8 +356,8 @@ mod filter_entities_tests {
     #[tokio::test]
     async fn test_filter_entities_with_field_selection() -> Result<()> {
         // Setup database
-        let db_pool = common::utils::setup_test_db().await;
-        common::utils::clear_test_db(&db_pool)
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
             .await
             .expect("Failed to clear test database");
 
@@ -408,8 +406,8 @@ mod filter_entities_tests {
     #[tokio::test]
     async fn test_filter_entities_with_pagination() -> Result<()> {
         // Setup database
-        let db_pool = common::utils::setup_test_db().await;
-        common::utils::clear_test_db(&db_pool)
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
             .await
             .expect("Failed to clear test database");
 

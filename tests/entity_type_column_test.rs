@@ -24,8 +24,6 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[path = "common/mod.rs"]
-mod common;
 
 /// Clear test database
 async fn clear_test_db(pool: &PgPool) -> Result<()> {
@@ -290,7 +288,7 @@ async fn create_test_app_with_api_key_repo(
         entity_definition_service,
         dynamic_entity_service: Some(dynamic_entity_service),
         workflow_service,
-        queue: crate::common::utils::test_queue_client_async().await,
+        queue: r_data_core_test_support::test_queue_client_async().await,
     };
 
     let app_state = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));
@@ -302,7 +300,8 @@ async fn create_test_app_with_api_key_repo(
 #[actix_web::test]
 async fn test_fixed_entity_type_column_issue() -> Result<()> {
     // Setup test database
-    let pool = common::utils::setup_test_db().await;
+    use r_data_core_test_support::setup_test_db;
+    let pool = setup_test_db().await;
 
     clear_test_db(&pool).await?;
 
@@ -321,7 +320,9 @@ async fn test_fixed_entity_type_column_issue() -> Result<()> {
     }
 
     // Create an admin user first
-    let user_uuid = common::utils::create_test_admin_user(&pool).await?;
+    use r_data_core_test_support::create_test_admin_user;
+
+    let user_uuid = create_test_admin_user(&pool).await?;
 
     // Create an API key repository and key BEFORE creating the app (like in authentication_tests.rs)
     let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));

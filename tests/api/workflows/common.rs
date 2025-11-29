@@ -1,8 +1,7 @@
 // Common test utilities for workflow E2E tests
 
 use actix_web::{test, web, App};
-use r_data_core_api::ApiStateWrapper;
-use r_data_core_api::{configure_app, ApiState};
+use r_data_core_api::{configure_app, ApiState, ApiStateWrapper};
 use r_data_core_core::admin_user::AdminUser;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
@@ -13,13 +12,16 @@ use r_data_core_services::{
     AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
     WorkflowRepositoryAdapter,
 };
+use r_data_core_test_support::{
+    create_test_admin_user, setup_test_db, test_queue_client_async,
+};
+
+// Re-export for convenience (used by workflow tests)
+pub use r_data_core_test_support::create_test_entity_definition;
 use r_data_core_workflow::data::WorkflowKind;
 use std::sync::Arc;
 use uuid::Uuid;
 
-// Import common test utilities
-#[path = "../../common/mod.rs"]
-mod common;
 
 pub async fn setup_app_with_entities() -> anyhow::Result<(
     impl actix_web::dev::Service<
@@ -31,7 +33,7 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
     String, // JWT token
     String, // API key value
 )> {
-    let pool = common::utils::setup_test_db().await;
+    let pool = setup_test_db().await;
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -90,10 +92,10 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
         entity_definition_service,
         dynamic_entity_service: Some(dynamic_entity_service),
         workflow_service,
-        queue: common::utils::test_queue_client_async().await,
+        queue: test_queue_client_async().await,
     };
 
-    let app_state = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));
+    let app_state = web::Data::new(ApiStateWrapper::new(api_state));
 
     let app = test::init_service(
         App::new()
@@ -103,7 +105,7 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
     .await;
 
     // Create test admin user and JWT
-    let user_uuid = common::utils::create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
     let user: AdminUser = sqlx::query_as("SELECT * FROM admin_users WHERE uuid = $1")
         .bind(user_uuid)
         .fetch_one(&pool)
@@ -128,14 +130,6 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
     Ok((app, pool, token, api_key_value))
 }
 
-pub async fn create_test_entity_definition(
-    pool: &sqlx::PgPool,
-    entity_type: &str,
-) -> anyhow::Result<Uuid> {
-    common::utils::create_test_entity_definition(pool, entity_type)
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to create entity definition: {}", e))
-}
 
 pub async fn create_consumer_workflow(
     pool: &sqlx::PgPool,

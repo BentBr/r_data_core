@@ -1,28 +1,28 @@
 use r_data_core_core::error::Result;
 use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
 use serial_test::serial;
-use std::sync::Arc;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::utils;
+    use r_data_core_test_support::{
+        clear_refresh_tokens, clear_test_db, create_test_admin_user, setup_test_db,
+    };
 
     #[tokio::test]
     #[serial]
     async fn test_refresh_token_creation_and_validation() -> Result<()> {
         // Setup test database with proper cleaning
-        let pool = utils::setup_test_db().await;
-        utils::clear_test_db(&pool).await?;
-        utils::clear_refresh_tokens(&pool).await?;
+        let pool = setup_test_db().await;
+        clear_test_db(&pool).await?;
+        clear_refresh_tokens(&pool).await?;
 
         // Create a repository to work with refresh tokens directly
         let repo = RefreshTokenRepository::new(pool.clone());
 
         // Create a test admin user
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let user_uuid = create_test_admin_user(&pool).await?;
 
         // Create a test refresh token
         let token_hash = "test_token_hash_123";
@@ -68,15 +68,15 @@ mod tests {
     #[serial]
     async fn test_refresh_token_expiration() -> Result<()> {
         // Setup test database with proper cleaning
-        let pool = utils::setup_test_db().await;
-        utils::clear_test_db(&pool).await?;
-        utils::clear_refresh_tokens(&pool).await?;
+        let pool = setup_test_db().await;
+        clear_test_db(&pool).await?;
+        clear_refresh_tokens(&pool).await?;
 
         // Create a repository to work with refresh tokens directly
         let repo = RefreshTokenRepository::new(pool.clone());
 
         // Create a test admin user
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let user_uuid = create_test_admin_user(&pool).await?;
 
         // Create a test refresh token with short expiration (1 day)
         let token_hash = "expired_token_hash";
@@ -110,15 +110,15 @@ mod tests {
     #[serial]
     async fn test_refresh_token_revocation() -> Result<()> {
         // Setup test database with proper cleaning
-        let pool = utils::setup_test_db().await;
-        utils::clear_test_db(&pool).await?;
-        utils::clear_refresh_tokens(&pool).await?;
+        let pool = setup_test_db().await;
+        clear_test_db(&pool).await?;
+        clear_refresh_tokens(&pool).await?;
 
         // Create a repository to work with refresh tokens directly
         let repo = RefreshTokenRepository::new(pool.clone());
 
         // Create a test admin user
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let user_uuid = create_test_admin_user(&pool).await?;
 
         // Create a test refresh token
         let token_hash = "revoked_token_hash";
@@ -145,15 +145,15 @@ mod tests {
     #[serial]
     async fn test_refresh_token_cleanup() -> Result<()> {
         // Setup test database with proper cleaning
-        let pool = utils::setup_test_db().await;
-        utils::clear_test_db(&pool).await?;
-        utils::clear_refresh_tokens(&pool).await?;
+        let pool = setup_test_db().await;
+        clear_test_db(&pool).await?;
+        clear_refresh_tokens(&pool).await?;
 
         // Create a repository to work with refresh tokens directly
         let repo = RefreshTokenRepository::new(pool.clone());
 
         // Create a test admin user
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let user_uuid = create_test_admin_user(&pool).await?;
 
         // Create multiple tokens
         let token1_hash = "token1_hash";
@@ -198,16 +198,16 @@ mod tests {
     #[serial]
     async fn test_refresh_token_user_association() -> Result<()> {
         // Setup test database with proper cleaning
-        let pool = utils::setup_test_db().await;
-        utils::clear_test_db(&pool).await?;
-        utils::clear_refresh_tokens(&pool).await?;
+        let pool = setup_test_db().await;
+        clear_test_db(&pool).await?;
+        clear_refresh_tokens(&pool).await?;
 
         // Create a repository to work with refresh tokens directly
         let repo = RefreshTokenRepository::new(pool.clone());
 
         // Create test admin users
-        let user1_uuid = utils::create_test_admin_user(&pool).await?;
-        let user2_uuid = utils::create_test_admin_user(&pool).await?;
+        let user1_uuid = create_test_admin_user(&pool).await?;
+        let user2_uuid = create_test_admin_user(&pool).await?;
 
         // Create tokens for both users
         let token1_hash = "user1_token_hash";

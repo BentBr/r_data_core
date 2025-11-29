@@ -7,22 +7,17 @@ use r_data_core_services::adapters::DynamicEntityRepositoryAdapter;
 use r_data_core_services::adapters::EntityDefinitionRepositoryAdapter;
 use r_data_core_services::{DynamicEntityService, EntityDefinitionService};
 use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
+use r_data_core_test_support::{create_test_admin_user, setup_test_db};
 use r_data_core_workflow::data::WorkflowKind;
 use serde_json::json;
-use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 use uuid::Uuid;
 
 /// Test that consecutive imports of the same file produce identical outcomes
 #[tokio::test]
 async fn test_consecutive_imports_produce_identical_outcomes() {
-    // Setup DB connection
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not set for tests");
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
-        .await
-        .expect("connect db");
+    // Setup test database
+    let pool = setup_test_db().await;
 
     // Create entity definition (must start with a letter)
     let entity_type = format!("TestCustomer{}", Uuid::now_v7().simple());
@@ -81,10 +76,10 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
     let wf_service = WorkflowService::new(Arc::new(wf_adapter));
 
-    let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+    // Create a test admin user
+    let creator_uuid = create_test_admin_user(&pool)
         .await
-        .expect("fetch admin user");
+        .expect("create test admin user");
 
     let workflow_name = format!("test-wf-{}", Uuid::now_v7());
     let workflow_config = json!({

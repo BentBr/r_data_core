@@ -12,8 +12,10 @@ use r_data_core_services::{
 use std::sync::Arc;
 
 // Import common test utilities
-#[path = "../common/mod.rs"]
-mod common;
+use r_data_core_test_support::{
+    clear_test_db, create_test_api_key, create_test_entity, create_test_entity_definition,
+    make_workflow_service, setup_test_db, test_queue_client_async,
+};
 
 #[cfg(test)]
 mod dynamic_entity_api_tests {
@@ -27,8 +29,8 @@ mod dynamic_entity_api_tests {
         >,
     > {
         // Setup database
-        let pool = common::utils::setup_test_db().await;
-        common::utils::clear_test_db(&pool).await?;
+        let pool = setup_test_db().await;
+        clear_test_db(&pool).await?;
 
         // Create required services
         let cache_config = CacheConfig {
@@ -41,11 +43,11 @@ mod dynamic_entity_api_tests {
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
         // Create user entity definition
-        let _ = common::utils::create_test_entity_definition(&pool, "user").await?;
+        let _ = create_test_entity_definition(&pool, "user").await?;
 
         // Create test users with paths to exercise folder browsing
         for i in 1..=3 {
-            let uuid = common::utils::create_test_entity(
+            let uuid = create_test_entity(
                 &pool,
                 "user",
                 &format!("Root User {}", i),
@@ -61,8 +63,7 @@ mod dynamic_entity_api_tests {
         }
 
         // Add users under /team and /team/dev
-        let u1 =
-            common::utils::create_test_entity(&pool, "user", "Alice", "alice@example.com").await?;
+        let u1 = create_test_entity(&pool, "user", "Alice", "alice@example.com").await?;
         sqlx::query(
             "UPDATE entities_registry SET path = '/team', entity_key = 'alice' WHERE uuid = $1",
         )
@@ -70,7 +71,7 @@ mod dynamic_entity_api_tests {
         .execute(&pool)
         .await?;
 
-        let u2 = common::utils::create_test_entity(&pool, "user", "Bob", "bob@example.com").await?;
+        let u2 = create_test_entity(&pool, "user", "Bob", "bob@example.com").await?;
         sqlx::query(
             "UPDATE entities_registry SET path = '/team/dev', entity_key = 'bob' WHERE uuid = $1",
         )
@@ -80,7 +81,7 @@ mod dynamic_entity_api_tests {
 
         // Create an API key
         let api_key = "test_api_key_12345";
-        common::utils::create_test_api_key(&pool, api_key.to_string()).await?;
+        create_test_api_key(&pool, api_key.to_string()).await?;
 
         // Create services
         let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.clone())));
@@ -121,8 +122,8 @@ mod dynamic_entity_api_tests {
             admin_user_service,
             entity_definition_service,
             dynamic_entity_service: Some(dynamic_entity_service),
-            workflow_service: crate::common::utils::make_workflow_service(&pool),
-            queue: crate::common::utils::test_queue_client_async().await,
+            workflow_service: make_workflow_service(&pool),
+            queue: test_queue_client_async().await,
         };
 
         let app_state = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));

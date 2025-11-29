@@ -37,4 +37,3 @@ pub trait SettingsRepositoryTrait: Send + Sync {
         updated_by: Uuid,
     ) -> Result<()>;
 }
-

@@ -17,9 +17,7 @@ use std::sync::Once;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-// Import the common module from tests
-#[path = "common/mod.rs"]
-mod common;
+use r_data_core_test_support::setup_test_db;
 
 // Force tests to run sequentially to avoid database contention
 #[cfg(test)]
@@ -39,7 +37,7 @@ mod dynamic_entity_tests {
 
     // Helper function to generate a unique entity type name
     fn unique_entity_type(base: &str) -> String {
-        common::utils::unique_entity_type(base)
+        r_data_core_test_support::unique_entity_type(base)
     }
 
     // Helper to create a test entity definition
@@ -325,7 +323,7 @@ mod dynamic_entity_tests {
         test_setup();
 
         // Setup test database
-        let pool = common::utils::setup_test_db().await;
+        let pool = setup_test_db().await;
 
         // Create a unique entity type for this test
         let entity_type = unique_entity_type("user");
@@ -382,7 +380,7 @@ mod dynamic_entity_tests {
         test_setup();
 
         // Setup test database
-        let pool = common::utils::setup_test_db().await;
+        let pool = setup_test_db().await;
 
         // Create a entity definition from the JSON example with a unique entity type
         let (entity_type, entity_def, _) = create_test_entity_definition_from_json(
@@ -520,7 +518,7 @@ mod dynamic_entity_tests {
         test_setup();
 
         // Setup test database
-        let pool = common::utils::setup_test_db().await;
+        let pool = setup_test_db().await;
 
         // Create a entity definition from the JSON example with a unique entity type
         let (entity_type, entity_def, _) = create_test_entity_definition_from_json(
@@ -659,7 +657,7 @@ mod dynamic_entity_tests {
         test_setup();
 
         // Setup test database
-        let pool = common::utils::setup_test_db().await;
+        let pool = setup_test_db().await;
 
         // Create a entity definition from the JSON example with a unique entity type
         let (entity_type, entity_def, _) = create_test_entity_definition_from_json(
@@ -761,7 +759,7 @@ mod dynamic_entity_tests {
         test_setup();
 
         // Setup test database
-        let pool = common::utils::setup_test_db().await;
+        let pool = setup_test_db().await;
 
         // Create a entity definition from the JSON example with a unique entity type
         let (entity_type, entity_def, _) = create_test_entity_definition_from_json(
@@ -864,8 +862,6 @@ mod dynamic_entity_tests {
             assert_eq!(entity.entity_type, entity_type, "Entity type should match");
         }
 
-        // Clean up all test resources at the end of tests
-        common::utils::cleanup_test_resources().await?;
 
         Ok(())
     }
@@ -873,7 +869,7 @@ mod dynamic_entity_tests {
     #[actix_web::test]
     async fn test_simple_entity_creation_optimized() -> Result<()> {
         // Set up the test database
-        let pool = common::utils::setup_test_db().await;
+        let pool = setup_test_db().await;
 
         // Create a simple entity definition
         let entity_type = format!("test_entity_{}", Uuid::now_v7().simple());
@@ -974,7 +970,7 @@ mod dynamic_entity_tests {
         test_setup();
 
         // Setup test database
-        let pool = common::utils::setup_test_db().await;
+        let pool = setup_test_db().await;
 
         // Create a simple entity definition
         let entity_type = unique_entity_type("test_file");
@@ -1130,7 +1126,7 @@ mod dynamic_entity_tests {
         test_setup();
 
         // Setup test database
-        let pool = common::utils::setup_test_db().await;
+        let pool = setup_test_db().await;
 
         // Create a simple entity definition
         let entity_type = unique_entity_type("test_file");

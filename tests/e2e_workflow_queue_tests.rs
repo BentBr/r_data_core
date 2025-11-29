@@ -15,9 +15,9 @@ use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
 
-// Import common test utilities
-#[path = "common/mod.rs"]
-mod common;
+use r_data_core_test_support::{
+    create_test_admin_user, create_test_entity_definition, setup_test_db, unique_entity_type,
+};
 
 #[tokio::test]
 async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> {
@@ -38,12 +38,12 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
         .expect("Failed to create Redis queue for e2e test");
 
     // DB setup
-    let pool: PgPool = common::utils::setup_test_db().await;
+    let pool: PgPool = setup_test_db().await;
 
     // Create a dynamic entity definition used by the workflow's "to" step
-    let entity_type = common::utils::unique_entity_type("e2e_entity");
+    let entity_type = unique_entity_type("e2e_entity");
     let _entity_def_uuid =
-        common::utils::create_test_entity_definition(&pool, &entity_type).await?;
+create_test_entity_definition(&pool, &entity_type).await?;
 
     // Create a workflow that maps CSV to the dynamic entity
     let wf_repo = WorkflowRepository::new(pool.clone());
@@ -51,7 +51,7 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
     let wf_service = WorkflowService::new(Arc::new(wf_adapter));
 
     // Resolve a creator (admin user) or use a generated UUID for created_by
-    let creator_uuid = common::utils::create_test_admin_user(&pool).await?;
+    let creator_uuid = create_test_admin_user(&pool).await?;
 
     let cfg = serde_json::json!({
         "steps": [

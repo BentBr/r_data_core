@@ -1,6 +1,5 @@
 use actix_web::{test, web, App};
-use r_data_core_api::ApiStateWrapper;
-use r_data_core_api::{configure_app, ApiState};
+use r_data_core_api::{configure_app, ApiState, ApiStateWrapper};
 use r_data_core_core::admin_user::AdminUser;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
@@ -16,8 +15,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 // Import common test utilities
-#[path = "../common/mod.rs"]
-mod common;
+use r_data_core_test_support::{create_test_admin_user, setup_test_db, test_queue_client_async};
 
 async fn setup_app_with_entities() -> anyhow::Result<(
     impl actix_web::dev::Service<
@@ -29,7 +27,7 @@ async fn setup_app_with_entities() -> anyhow::Result<(
     String, // JWT token
     String, // API key value
 )> {
-    let pool = common::utils::setup_test_db().await;
+    let pool = setup_test_db().await;
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -88,10 +86,10 @@ async fn setup_app_with_entities() -> anyhow::Result<(
         entity_definition_service,
         dynamic_entity_service: Some(dynamic_entity_service),
         workflow_service,
-        queue: crate::common::utils::test_queue_client_async().await,
+        queue: test_queue_client_async().await,
     };
 
-    let app_state = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));
+    let app_state = web::Data::new(ApiStateWrapper::new(api_state));
 
     let app = test::init_service(
         App::new()
@@ -101,7 +99,7 @@ async fn setup_app_with_entities() -> anyhow::Result<(
     .await;
 
     // Create test admin user and JWT
-    let user_uuid = common::utils::create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
     let user: AdminUser = sqlx::query_as("SELECT * FROM admin_users WHERE uuid = $1")
         .bind(user_uuid)
         .fetch_one(&pool)

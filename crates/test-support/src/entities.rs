@@ -245,3 +245,61 @@ pub async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
     Ok(())
 }
 
+/// Get the username for the test admin user
+#[must_use]
+pub fn get_test_user_username() -> String {
+    // Generate a consistent username for tests
+    // This should match the pattern used in create_test_admin_user
+    let uuid = Uuid::now_v7();
+    format!("test_admin_{}", uuid.simple())
+}
+
+/// Create an entity definition from a JSON file
+pub async fn create_entity_definition_from_json(pool: &PgPool, json_path: &str) -> Result<Uuid> {
+    // Acquire a lock for database operations
+    let _guard = GLOBAL_TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+
+    // Read the JSON file
+    let json_content = std::fs::read_to_string(json_path).map_err(|e| {
+        r_data_core_core::error::Error::Unknown(format!(
+            "Failed to read JSON file {}: {}",
+            json_path, e
+        ))
+    })?;
+
+    // Parse the JSON into a EntityDefinition
+    let mut entity_def: EntityDefinition = serde_json::from_str(&json_content).map_err(|e| {
+        r_data_core_core::error::Error::Unknown(format!(
+            "Failed to parse JSON file {}: {}",
+            json_path, e
+        ))
+    })?;
+
+    // Make the entity type unique to avoid test conflicts
+    let unique_entity_type = crate::database::unique_entity_type(&entity_def.entity_type);
+    entity_def.entity_type = unique_entity_type;
+
+    // Make sure we have a creator
+    if entity_def.created_by == Uuid::nil() {
+        entity_def.created_by = Uuid::now_v7();
+    }
+
+    // Set created_at and updated_at if not present
+    if entity_def.created_at == OffsetDateTime::UNIX_EPOCH {
+        entity_def.created_at = OffsetDateTime::now_utc();
+    }
+    if entity_def.updated_at == OffsetDateTime::UNIX_EPOCH {
+        entity_def.updated_at = OffsetDateTime::now_utc();
+    }
+
+    // Create the entity definition using the service
+    let repository = EntityDefinitionRepository::new(pool.clone());
+    let service = EntityDefinitionService::new_without_cache(Arc::new(repository));
+    let uuid = service.create_entity_definition(&entity_def).await?;
+
+    // The view creation should be handled by the service, but we'll add a small delay
+    // to ensure all database operations complete
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+    Ok(uuid)
+}

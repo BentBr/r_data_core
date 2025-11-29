@@ -23,4 +23,3 @@ pub trait DynamicEntityQueryRepositoryTrait: Send + Sync {
         query: &AdvancedEntityQuery,
     ) -> Result<Vec<DynamicEntity>>;
 }
-

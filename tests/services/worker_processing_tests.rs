@@ -2,30 +2,24 @@ use r_data_core_api::admin::workflows::models::CreateWorkflowRequest;
 use r_data_core_persistence::WorkflowRepository;
 use r_data_core_services::WorkflowRepositoryAdapter;
 use r_data_core_services::WorkflowService;
+use r_data_core_test_support::{create_test_admin_user, setup_test_db};
 use r_data_core_workflow::data::WorkflowKind;
-use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 use uuid::Uuid;
 
 #[tokio::test]
 async fn run_now_creates_queued_run_and_worker_marks_success() {
-    // Setup DB connection (requires test database env)
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not set for tests");
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
-        .await
-        .expect("connect db");
+    // Setup test database
+    let pool = setup_test_db().await;
 
     let repo = WorkflowRepository::new(pool.clone());
     let adapter = WorkflowRepositoryAdapter::new(repo);
     let service = WorkflowService::new(Arc::new(adapter));
 
-    // Resolve creator (admin user)
-    let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+    // Create a test admin user
+    let creator_uuid = create_test_admin_user(&pool)
         .await
-        .expect("fetch admin user");
+        .expect("create test admin user");
 
     // Create a consumer workflow (enabled, no cron) with minimal valid DSL config
     let req = CreateWorkflowRequest {

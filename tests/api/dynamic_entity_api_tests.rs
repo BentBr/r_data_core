@@ -15,10 +15,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
-// Import the common module from tests
-#[path = "../common/mod.rs"]
-mod common;
-
 #[cfg(test)]
 mod dynamic_entity_api_tests {
     use super::*;
@@ -267,8 +263,8 @@ mod dynamic_entity_api_tests {
             admin_user_service,
             entity_definition_service,
             dynamic_entity_service: Some(dynamic_entity_service),
-            workflow_service: crate::common::utils::make_workflow_service(&db_pool),
-            queue: crate::common::utils::test_queue_client_async().await,
+            workflow_service: r_data_core_test_support::make_workflow_service(&db_pool),
+            queue: r_data_core_test_support::test_queue_client_async().await,
         };
 
         // Build test app
@@ -279,8 +275,10 @@ mod dynamic_entity_api_tests {
     #[actix_web::test]
     async fn test_get_users_api() -> Result<()> {
         // Setup database
-        let db_pool = common::utils::setup_test_db().await;
-        common::utils::clear_test_db(&db_pool)
+        use r_data_core_test_support::{clear_test_db, setup_test_db};
+
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
             .await
             .expect("Failed to clear test database");
 
@@ -514,8 +512,10 @@ mod dynamic_entity_api_tests {
     #[actix_web::test]
     async fn test_get_single_user_api() -> Result<()> {
         // Setup database
-        let db_pool = common::utils::setup_test_db().await;
-        common::utils::clear_test_db(&db_pool)
+        use r_data_core_test_support::{clear_test_db, setup_test_db};
+
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
             .await
             .expect("Failed to clear test database");
 
@@ -596,8 +596,10 @@ mod dynamic_entity_api_tests {
     #[actix_web::test]
     async fn test_fixed_entity_type_column_issue() -> Result<()> {
         // Setup database
-        let db_pool = common::utils::setup_test_db().await;
-        common::utils::clear_test_db(&db_pool)
+        use r_data_core_test_support::{clear_test_db, setup_test_db};
+
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
             .await
             .expect("Failed to clear test database");
 

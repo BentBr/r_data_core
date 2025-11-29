@@ -8,10 +8,9 @@ use r_data_core_workflow::data::WorkflowKind;
 use sqlx::Row;
 use uuid::Uuid;
 
-#[path = "common/mod.rs"]
-mod common;
-use common::utils::{
-    create_test_entity, create_test_entity_definition, setup_test_db, unique_entity_type,
+use r_data_core_test_support::{
+    create_test_admin_user, create_test_entity, create_test_entity_definition, setup_test_db,
+    unique_entity_type,
 };
 
 #[tokio::test]
@@ -91,7 +90,7 @@ async fn test_workflow_update_creates_snapshot_and_increments_version() {
     let repo = WorkflowRepository::new(pool.clone());
 
     // Create workflow with a valid admin user as creator
-    let created_by = common::utils::create_test_admin_user(&pool).await.unwrap();
+    let created_by = create_test_admin_user(&pool).await.unwrap();
     let req = CreateWorkflowRequest {
         name: "wf1".to_string(),
         description: Some("desc".to_string()),
@@ -120,7 +119,7 @@ async fn test_workflow_update_creates_snapshot_and_increments_version() {
         config: serde_json::json!({"steps": []}),
         versioning_disabled: false,
     };
-    let updated_by = common::utils::create_test_admin_user(&pool).await.unwrap();
+    let updated_by = create_test_admin_user(&pool).await.unwrap();
     repo.update(wf_uuid, &upd, updated_by).await.unwrap();
 
     // Snapshot should be for pre-update version (workflows use workflow_versions table)
@@ -277,7 +276,7 @@ async fn test_version_creation_and_endpoint_output() {
         .unwrap();
 
     // Create entity with a creator
-    let creator = common::utils::create_test_admin_user(&pool).await.unwrap();
+    let creator = create_test_admin_user(&pool).await.unwrap();
     let entity_uuid = create_test_entity(&pool, &entity_type, "Bob", "bob@example.com")
         .await
         .unwrap();
@@ -300,7 +299,7 @@ async fn test_version_creation_and_endpoint_output() {
     assert_eq!(initial_version, 1);
 
     // Update entity to create a snapshot
-    let updated_by = common::utils::create_test_admin_user(&pool).await.unwrap();
+    let updated_by = create_test_admin_user(&pool).await.unwrap();
     let mut payload = serde_json::json!({
         "uuid": entity_uuid.to_string(),
         "name": "Bob Updated",
@@ -427,7 +426,7 @@ async fn test_version_creator_names_in_json_response() {
         .unwrap();
 
     // Create entity with creator1 (with unique name)
-    let creator1 = common::utils::create_test_admin_user(&pool).await.unwrap();
+    let creator1 = create_test_admin_user(&pool).await.unwrap();
     // Set first_name and last_name for creator1
     sqlx::query("UPDATE admin_users SET first_name = 'Creator', last_name = 'One' WHERE uuid = $1")
         .bind(creator1)
@@ -448,7 +447,7 @@ async fn test_version_creator_names_in_json_response() {
         .unwrap();
 
     // Update entity with updater1 (this creates snapshot of version 1)
-    let updater1 = common::utils::create_test_admin_user(&pool).await.unwrap();
+    let updater1 = create_test_admin_user(&pool).await.unwrap();
     // Set first_name and last_name for updater1
     sqlx::query("UPDATE admin_users SET first_name = 'Updater', last_name = 'One' WHERE uuid = $1")
         .bind(updater1)
@@ -482,7 +481,7 @@ async fn test_version_creator_names_in_json_response() {
     repo.update(&entity1).await.unwrap();
 
     // Update entity again with updater2 (this creates snapshot of version 2)
-    let updater2 = common::utils::create_test_admin_user(&pool).await.unwrap();
+    let updater2 = create_test_admin_user(&pool).await.unwrap();
     // Set first_name and last_name for updater2
     sqlx::query("UPDATE admin_users SET first_name = 'Updater', last_name = 'Two' WHERE uuid = $1")
         .bind(updater2)

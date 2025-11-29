@@ -4,7 +4,6 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::common::utils::setup_test_db;
 use r_data_core_core::error::Result;
 use r_data_core_core::DynamicEntity;
 use r_data_core_core::{
@@ -12,12 +11,11 @@ use r_data_core_core::{
     field::definition::FieldDefinition, field::types::FieldType,
 };
 use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
+use r_data_core_test_support::setup_test_db;
 
-#[path = "../common/mod.rs"]
-mod common;
 
-// Helper function to create a test entity definition for dynamic entities
-fn create_test_entity_definition() -> EntityDefinition {
+// Helper function to create a test entity definition struct for dynamic entities
+fn create_test_entity_definition_struct() -> EntityDefinition {
     EntityDefinition {
         uuid: Uuid::now_v7(),
         entity_type: "test_entity".to_string(),
@@ -92,7 +90,7 @@ async fn test_dynamic_entity_crud() -> Result<()> {
         Box::new(DynamicEntityRepository::new(pool.clone()));
 
     // Create a test entity definition
-    let mut entity_def = create_test_entity_definition();
+    let mut entity_def = create_test_entity_definition_struct();
     entity_def.published = true;
     entity_def.created_by = Uuid::now_v7();
 
@@ -158,7 +156,7 @@ async fn test_list_entities_by_type() -> Result<()> {
         Box::new(DynamicEntityRepository::new(pool.clone()));
 
     // Create a test entity definition
-    let mut entity_def = create_test_entity_definition();
+    let mut entity_def = create_test_entity_definition_struct();
     entity_def.published = true;
     entity_def.created_by = Uuid::now_v7();
 
@@ -204,7 +202,7 @@ async fn test_list_entities_by_parent() -> Result<()> {
         Box::new(DynamicEntityRepository::new(pool.clone()));
 
     // Create a test entity definition
-    let mut entity_def = create_test_entity_definition();
+    let mut entity_def = create_test_entity_definition_struct();
     entity_def.published = true;
     entity_def.created_by = Uuid::now_v7();
 
@@ -268,7 +266,7 @@ async fn test_filter_entities() -> Result<()> {
         Box::new(DynamicEntityRepository::new(pool.clone()));
 
     // Create a test entity definition
-    let mut entity_def = create_test_entity_definition();
+    let mut entity_def = create_test_entity_definition_struct();
     entity_def.published = true;
     entity_def.created_by = Uuid::now_v7();
 
@@ -333,7 +331,7 @@ async fn test_count_entities() -> Result<()> {
         Box::new(DynamicEntityRepository::new(pool.clone()));
 
     // Create a test entity definition
-    let mut entity_def = create_test_entity_definition();
+    let mut entity_def = create_test_entity_definition_struct();
     entity_def.published = true;
     entity_def.created_by = Uuid::now_v7();
 
@@ -370,9 +368,9 @@ async fn test_count_entities() -> Result<()> {
 /// - API returns in entity definition case (firstName, lastName)
 #[tokio::test]
 async fn test_field_name_case_handling() -> Result<()> {
-    use common::utils::{setup_test_db, unique_entity_type};
     use r_data_core_persistence::EntityDefinitionRepository;
     use r_data_core_services::EntityDefinitionService;
+    use r_data_core_test_support::{setup_test_db, unique_entity_type};
     use sqlx::Row;
 
     let pool = setup_test_db().await;

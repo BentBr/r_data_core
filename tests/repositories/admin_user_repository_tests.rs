@@ -1,6 +1,8 @@
-use crate::common::utils;
 use r_data_core_core::error::Result;
 use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
+use r_data_core_test_support::{
+    clear_test_db, create_test_admin_user, random_string, setup_test_db,
+};
 use serial_test::serial;
 use std::sync::Arc;
 
@@ -8,19 +10,19 @@ use std::sync::Arc;
 #[serial]
 async fn test_create_and_find_admin_user() -> Result<()> {
     // Setup
-    let pool = utils::setup_test_db().await;
-    utils::clear_test_db(&pool).await?;
+    let pool = setup_test_db().await;
+    clear_test_db(&pool).await?;
 
     let repo = AdminUserRepository::new(Arc::new(pool.clone()));
 
-    let username = utils::random_string("test_user");
+    let username = random_string("test_user");
     let email = format!("{}@example.com", username);
     let first_name = "Test";
     let last_name = "User";
     let password = "password123";
 
     // Create a user to serve as the creator
-    let creator_uuid = utils::create_test_admin_user(&pool).await?;
+    let creator_uuid = create_test_admin_user(&pool).await?;
 
     // Create the test user
     let user_uuid = repo

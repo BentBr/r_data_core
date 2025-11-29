@@ -27,6 +27,12 @@ pub fn unique_entity_type(base: &str) -> String {
     format!("{}_{}", base, count)
 }
 
+/// Generate a random string for testing
+#[must_use]
+pub fn random_string(prefix: &str) -> String {
+    format!("{}_{}", prefix, uuid::Uuid::now_v7())
+}
+
 /// Set up a test database connection
 #[must_use]
 pub async fn setup_test_db() -> PgPool {
@@ -214,4 +220,3 @@ pub async fn clear_refresh_tokens(pool: &PgPool) -> Result<()> {
         .await?;
     Ok(())
 }
-

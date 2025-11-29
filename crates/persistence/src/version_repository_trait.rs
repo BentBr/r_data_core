@@ -108,4 +108,3 @@ pub trait VersionRepositoryTrait: Send + Sync {
         entity_type: &str,
     ) -> Result<Option<serde_json::Value>>;
 }
-

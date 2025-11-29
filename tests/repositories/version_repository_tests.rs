@@ -2,9 +2,7 @@ use r_data_core_persistence::VersionRepository;
 use sqlx::Row;
 use uuid::Uuid;
 
-#[path = "../common/mod.rs"]
-mod common;
-use common::utils::setup_test_db;
+use r_data_core_test_support::setup_test_db;
 
 #[tokio::test]
 async fn test_version_repository_list_and_get() {

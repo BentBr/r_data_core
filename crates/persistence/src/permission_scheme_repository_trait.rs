@@ -56,4 +56,3 @@ pub trait PermissionSchemeRepositoryTrait: Send + Sync {
     /// Returns an error if database delete fails
     async fn delete(&self, uuid: Uuid) -> Result<()>;
 }
-

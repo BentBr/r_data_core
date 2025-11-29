@@ -71,15 +71,18 @@ fn create_test_jwt_token(user_uuid: &Uuid, secret: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::utils;
+    use r_data_core_test_support::{
+        clear_test_db, create_test_admin_user, make_workflow_service, setup_test_db,
+        test_queue_client_async,
+    };
     use serial_test::serial;
 
     /// Test listing API keys through the API
     #[tokio::test]
     #[serial]
     async fn test_list_api_keys_integration() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let pool = setup_test_db().await;
+        let user_uuid = create_test_admin_user(&pool).await?;
         let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
 
         // Create some API keys
@@ -133,8 +136,8 @@ mod tests {
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
-            workflow_service: crate::common::utils::make_workflow_service(&pool),
-            queue: crate::common::utils::test_queue_client_async().await,
+            workflow_service: make_workflow_service(&pool),
+            queue: test_queue_client_async().await,
         };
 
         let app = test::init_service(
@@ -177,7 +180,7 @@ mod tests {
         assert_eq!(response["status"], "success");
         assert_eq!(response["keys"].as_array().unwrap().len(), 2);
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 
@@ -185,8 +188,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_revoke_api_key_integration() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let pool = setup_test_db().await;
+        let user_uuid = create_test_admin_user(&pool).await?;
         let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
 
         // Create API key
@@ -240,8 +243,8 @@ mod tests {
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
-            workflow_service: crate::common::utils::make_workflow_service(&pool),
-            queue: crate::common::utils::test_queue_client_async().await,
+            workflow_service: make_workflow_service(&pool),
+            queue: test_queue_client_async().await,
         };
 
         let app = test::init_service(
@@ -307,7 +310,7 @@ mod tests {
         let auth_result = repo_arc.find_api_key_for_auth(&key_value).await?;
         assert!(auth_result.is_none());
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 
@@ -315,8 +318,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_api_key_protected_endpoint() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let pool = setup_test_db().await;
+        let user_uuid = create_test_admin_user(&pool).await?;
         let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
 
         // Create API key
@@ -362,8 +365,8 @@ mod tests {
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
-            workflow_service: crate::common::utils::make_workflow_service(&pool),
-            queue: crate::common::utils::test_queue_client_async().await,
+            workflow_service: make_workflow_service(&pool),
+            queue: test_queue_client_async().await,
         };
 
         let app =
@@ -400,7 +403,7 @@ mod tests {
         let resp = test::call_service(&app, req).await;
         assert_eq!(resp.status(), StatusCode::OK);
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 
@@ -408,8 +411,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_expired_api_key_integration() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let pool = setup_test_db().await;
+        let user_uuid = create_test_admin_user(&pool).await?;
         let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
 
         // Create API key with very short expiration (1 second)
@@ -463,8 +466,8 @@ mod tests {
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
-            workflow_service: crate::common::utils::make_workflow_service(&pool),
-            queue: crate::common::utils::test_queue_client_async().await,
+            workflow_service: make_workflow_service(&pool),
+            queue: test_queue_client_async().await,
         };
 
         let app =
@@ -501,7 +504,7 @@ mod tests {
         let result = test::try_call_service(&app, req).await;
         assert!(result.is_err(), "Expected an error for expired API key");
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 
@@ -509,8 +512,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_api_key_usage_tracking() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let pool = setup_test_db().await;
+        let user_uuid = create_test_admin_user(&pool).await?;
         let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
 
         // Create API key
@@ -571,8 +574,8 @@ mod tests {
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
-            workflow_service: crate::common::utils::make_workflow_service(&pool),
-            queue: crate::common::utils::test_queue_client_async().await,
+            workflow_service: make_workflow_service(&pool),
+            queue: test_queue_client_async().await,
         };
 
         let app =
@@ -613,7 +616,7 @@ mod tests {
         let final_key = repo.get_by_uuid(key_uuid).await?.unwrap();
         assert!(final_key.last_used_at > updated_last_used);
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 
@@ -621,8 +624,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_api_key_creation_validation() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let pool = setup_test_db().await;
+        let user_uuid = create_test_admin_user(&pool).await?;
         let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
 
         // Test empty name validation
@@ -643,7 +646,7 @@ mod tests {
             .await;
         assert!(result.is_ok());
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 
@@ -651,9 +654,9 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_api_key_reassignment() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let user1_uuid = utils::create_test_admin_user(&pool).await?;
-        let user2_uuid = utils::create_test_admin_user(&pool).await?;
+        let pool = setup_test_db().await;
+        let user1_uuid = create_test_admin_user(&pool).await?;
+        let user2_uuid = create_test_admin_user(&pool).await?;
         let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
 
         // Create API key for user1
@@ -672,7 +675,7 @@ mod tests {
         let updated_key = repo.get_by_uuid(key_uuid).await?.unwrap();
         assert_eq!(updated_key.user_uuid, user2_uuid);
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 
@@ -680,8 +683,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_concurrent_api_key_usage() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let pool = setup_test_db().await;
+        let user_uuid = create_test_admin_user(&pool).await?;
         let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
 
         // Create API key
@@ -727,8 +730,8 @@ mod tests {
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
-            workflow_service: crate::common::utils::make_workflow_service(&pool),
-            queue: crate::common::utils::test_queue_client_async().await,
+            workflow_service: make_workflow_service(&pool),
+            queue: test_queue_client_async().await,
         };
 
         let app =
@@ -771,7 +774,7 @@ mod tests {
         let auth_result = repo.find_api_key_for_auth(&key_value).await?;
         assert!(auth_result.is_some());
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 
@@ -779,8 +782,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_api_key_pagination() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let pool = setup_test_db().await;
+        let user_uuid = create_test_admin_user(&pool).await?;
         let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
 
         // Create multiple API keys
@@ -825,7 +828,7 @@ mod tests {
         let keys_page2_20 = repo.list_by_user(user_uuid, 20, 20).await?;
         assert_eq!(keys_page2_20.len(), 5);
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 
@@ -833,8 +836,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_api_key_http_pagination() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let pool = setup_test_db().await;
+        let user_uuid = create_test_admin_user(&pool).await?;
         let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
 
         // Create multiple API keys
@@ -886,8 +889,8 @@ mod tests {
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
-            workflow_service: crate::common::utils::make_workflow_service(&pool),
-            queue: crate::common::utils::test_queue_client_async().await,
+            workflow_service: make_workflow_service(&pool),
+            queue: test_queue_client_async().await,
         };
 
         let app = test::init_service(
@@ -1022,7 +1025,7 @@ mod tests {
         assert_eq!(meta["has_previous"], false);
         assert_eq!(meta["has_next"], true);
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 }

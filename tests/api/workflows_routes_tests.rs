@@ -9,12 +9,12 @@ use r_data_core_services::{
     AdminUserService, ApiKeyService, EntityDefinitionService, WorkflowRepositoryAdapter,
 };
 use r_data_core_workflow::data::WorkflowKind;
-use sqlx::{postgres::PgPoolOptions, Row};
+use sqlx::Row;
 use std::sync::Arc;
 use uuid::Uuid;
 
 // Import common test utilities
-use crate::common::utils;
+use r_data_core_test_support::{create_test_admin_user, setup_test_db, test_queue_client_async};
 
 async fn setup_app_and_token() -> anyhow::Result<(
     impl actix_web::dev::Service<
@@ -26,7 +26,7 @@ async fn setup_app_and_token() -> anyhow::Result<(
     String,
 )> {
     // DB
-    let pool = utils::setup_test_db().await;
+    let pool = setup_test_db().await;
 
     // Minimal services for configure_app
     let cache_config = CacheConfig {
@@ -75,10 +75,10 @@ async fn setup_app_and_token() -> anyhow::Result<(
         entity_definition_service,
         dynamic_entity_service: None,
         workflow_service,
-        queue: utils::test_queue_client_async().await,
+        queue: test_queue_client_async().await,
     };
 
-    let app_state = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));
+    let app_state = web::Data::new(ApiStateWrapper::new(api_state));
     let app = test::init_service(
         App::new()
             .app_data(app_state.clone())
@@ -87,7 +87,7 @@ async fn setup_app_and_token() -> anyhow::Result<(
     .await;
 
     // Ensure a test admin user exists and produce a JWT
-    let user_uuid = utils::create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
     let user: AdminUser = sqlx::query_as("SELECT * FROM admin_users WHERE uuid = $1")
         .bind(user_uuid)
         .fetch_one(&pool)

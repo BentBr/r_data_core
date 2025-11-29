@@ -8,10 +8,10 @@ async fn get_test_queue() -> Option<(ApalisRedisQueue, String, String)> {
     // Always use a unique queue key per test to ensure isolation
     // Append test ID even if env vars are set to prevent test interference
     let test_id = Uuid::now_v7();
-    let base_fetch = std::env::var("QUEUE_FETCH_KEY")
-        .unwrap_or_else(|_| "test_queue:fetch".to_string());
-    let base_process = std::env::var("QUEUE_PROCESS_KEY")
-        .unwrap_or_else(|_| "test_queue:process".to_string());
+    let base_fetch =
+        std::env::var("QUEUE_FETCH_KEY").unwrap_or_else(|_| "test_queue:fetch".to_string());
+    let base_process =
+        std::env::var("QUEUE_PROCESS_KEY").unwrap_or_else(|_| "test_queue:process".to_string());
     let fetch_key = format!("{}:{}", base_fetch, test_id);
     let process_key = format!("{}:{}", base_process, test_id);
 

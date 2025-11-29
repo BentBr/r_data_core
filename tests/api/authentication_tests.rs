@@ -19,15 +19,18 @@ use std::sync::Arc;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::utils;
+    use r_data_core_test_support::{
+        clear_test_db, create_test_admin_user, make_workflow_service, setup_test_db,
+        test_queue_client_async,
+    };
     use serial_test::serial;
 
     /// Test API key authentication with valid key
     #[tokio::test]
     #[serial]
     async fn test_api_key_authentication_valid() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let pool = setup_test_db().await;
+        let user_uuid = create_test_admin_user(&pool).await?;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
@@ -71,8 +74,8 @@ mod tests {
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
-            workflow_service: utils::make_workflow_service(&pool),
-            queue: utils::test_queue_client_async().await,
+            workflow_service: make_workflow_service(&pool),
+            queue: test_queue_client_async().await,
         };
 
         // Create test app with API key authentication middleware
@@ -118,7 +121,7 @@ mod tests {
         assert_eq!(response["status"], "success");
         assert_eq!(response["api_key_uuid"], key_uuid.to_string());
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 
@@ -126,7 +129,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_api_key_authentication_invalid() -> Result<()> {
-        let pool = utils::setup_test_db().await;
+        let pool = setup_test_db().await;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
@@ -165,8 +168,8 @@ mod tests {
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
-            workflow_service: crate::common::utils::make_workflow_service(&pool),
-            queue: crate::common::utils::test_queue_client_async().await,
+            workflow_service: make_workflow_service(&pool),
+            queue: test_queue_client_async().await,
         };
 
         // Create test app with API key authentication middleware
@@ -206,7 +209,7 @@ mod tests {
         let result = test::try_call_service(&app, req).await;
         assert!(result.is_err(), "Expected an error for invalid API key");
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 
@@ -214,7 +217,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_api_key_authentication_missing_header() -> Result<()> {
-        let pool = utils::setup_test_db().await;
+        let pool = setup_test_db().await;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
@@ -253,8 +256,8 @@ mod tests {
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
-            workflow_service: crate::common::utils::make_workflow_service(&pool),
-            queue: crate::common::utils::test_queue_client_async().await,
+            workflow_service: make_workflow_service(&pool),
+            queue: test_queue_client_async().await,
         };
 
         // Create test app with API key authentication middleware
@@ -294,7 +297,7 @@ mod tests {
             "Expected an error for missing API key header"
         );
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 
@@ -302,8 +305,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_combined_auth_api_key() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let pool = setup_test_db().await;
+        let user_uuid = create_test_admin_user(&pool).await?;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
@@ -347,8 +350,8 @@ mod tests {
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
-            workflow_service: crate::common::utils::make_workflow_service(&pool),
-            queue: crate::common::utils::test_queue_client_async().await,
+            workflow_service: make_workflow_service(&pool),
+            queue: test_queue_client_async().await,
         };
 
         // Create test app with combined authentication middleware
@@ -401,7 +404,7 @@ mod tests {
         assert_eq!(response["status"], "success");
         assert_eq!(response["auth_method"], "api_key");
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 
@@ -409,7 +412,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_combined_auth_no_credentials() -> Result<()> {
-        let pool = utils::setup_test_db().await;
+        let pool = setup_test_db().await;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
@@ -421,7 +424,7 @@ mod tests {
             .create_new_api_key(
                 "TestKey",
                 "Test Description",
-                utils::create_test_admin_user(&pool).await?,
+                create_test_admin_user(&pool).await?,
                 30,
             )
             .await?;
@@ -463,7 +466,7 @@ mod tests {
                     r_data_core_persistence::WorkflowRepository::new(pool.clone()),
                 ),
             )),
-            queue: crate::common::utils::test_queue_client_async().await,
+            queue: test_queue_client_async().await,
         };
 
         // Create test app with combined authentication middleware
@@ -513,7 +516,7 @@ mod tests {
         let response: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(response["status"], "Error");
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 
@@ -521,8 +524,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_expired_api_key_authentication() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let pool = setup_test_db().await;
+        let user_uuid = create_test_admin_user(&pool).await?;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
@@ -579,7 +582,7 @@ mod tests {
                     r_data_core_persistence::WorkflowRepository::new(pool.clone()),
                 ),
             )),
-            queue: crate::common::utils::test_queue_client_async().await,
+            queue: test_queue_client_async().await,
         };
 
         // Create test app with API key authentication middleware
@@ -619,7 +622,7 @@ mod tests {
         let result = test::try_call_service(&app, req).await;
         assert!(result.is_err(), "Expected an error for expired API key");
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 
@@ -627,8 +630,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_revoked_api_key_authentication() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let pool = setup_test_db().await;
+        let user_uuid = create_test_admin_user(&pool).await?;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
@@ -675,8 +678,8 @@ mod tests {
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
-            workflow_service: utils::make_workflow_service(&pool),
-            queue: utils::test_queue_client_async().await,
+            workflow_service: make_workflow_service(&pool),
+            queue: test_queue_client_async().await,
         };
 
         // Create test app with API key authentication middleware
@@ -715,7 +718,7 @@ mod tests {
         let result = test::try_call_service(&app, req).await;
         assert!(result.is_err(), "Expected an error for revoked API key");
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 
@@ -723,8 +726,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_jwt_middleware_valid_token() -> Result<()> {
-        let pool = utils::setup_test_db().await;
-        let user_uuid = utils::create_test_admin_user(&pool).await?;
+        let pool = setup_test_db().await;
+        let user_uuid = create_test_admin_user(&pool).await?;
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
@@ -770,8 +773,8 @@ mod tests {
             admin_user_service: AdminUserService::from_repository(admin_user_repo),
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
-            workflow_service: utils::make_workflow_service(&pool),
-            queue: utils::test_queue_client_async().await,
+            workflow_service: make_workflow_service(&pool),
+            queue: test_queue_client_async().await,
         };
 
         // Create test app with JWT authentication middleware
@@ -809,7 +812,7 @@ mod tests {
         assert_eq!(response["auth_method"], "jwt");
         assert_eq!(response["user_uuid"], user_uuid.to_string());
 
-        utils::clear_test_db(&pool).await?;
+        clear_test_db(&pool).await?;
         Ok(())
     }
 }

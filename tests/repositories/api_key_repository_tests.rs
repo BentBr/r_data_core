@@ -1,8 +1,10 @@
-use crate::common::utils;
 use r_data_core_core::error::Error;
 use r_data_core_core::error::Result;
 use r_data_core_persistence::ApiKeyRepository;
 use r_data_core_persistence::ApiKeyRepositoryTrait;
+use r_data_core_test_support::{
+    clear_test_db, create_test_admin_user, random_string, setup_test_db,
+};
 use serial_test::serial;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
@@ -12,13 +14,13 @@ use uuid::Uuid;
 #[serial]
 async fn test_create_and_find_api_key() -> Result<()> {
     // Setup and making sure to only work in transactions
-    let pool = utils::setup_test_db().await;
-    utils::clear_test_db(&pool).await?;
+    let pool = setup_test_db().await;
+    clear_test_db(&pool).await?;
 
     let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-    let name = utils::random_string("test_key");
+    let name = random_string("test_key");
 
-    let user_uuid = utils::create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
 
     // Create a new key
     let (key_uuid, key_value) = repo
@@ -57,11 +59,11 @@ async fn test_create_and_find_api_key() -> Result<()> {
 #[serial]
 async fn test_create_api_key_with_non_existent_user() -> Result<()> {
     // Setup
-    let pool = utils::setup_test_db().await;
-    utils::clear_test_db(&pool).await?;
+    let pool = setup_test_db().await;
+    clear_test_db(&pool).await?;
 
     let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-    let name = utils::random_string("test_key");
+    let name = random_string("test_key");
 
     // Generate a random UUID that doesn't exist in the database
     // Use a different timestamp for v7 to ensure it doesn't exist
@@ -108,13 +110,13 @@ async fn test_create_api_key_with_non_existent_user() -> Result<()> {
 #[serial]
 async fn test_api_key_last_used_update() -> Result<()> {
     // Setup
-    let pool = utils::setup_test_db().await;
-    utils::clear_test_db(&pool).await?;
+    let pool = setup_test_db().await;
+    clear_test_db(&pool).await?;
 
     let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-    let name = utils::random_string("test_key");
+    let name = random_string("test_key");
 
-    let user_uuid = utils::create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
 
     // Create a new key
     let (key_uuid, key_value) = repo
@@ -192,13 +194,13 @@ async fn test_api_key_last_used_update() -> Result<()> {
 #[serial]
 async fn test_expired_api_key() -> Result<()> {
     // Setup
-    let pool = utils::setup_test_db().await;
-    utils::clear_test_db(&pool).await?;
+    let pool = setup_test_db().await;
+    clear_test_db(&pool).await?;
 
     let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-    let name = utils::random_string("expired_key");
+    let name = random_string("expired_key");
 
-    let user_uuid = utils::create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
 
     // Create a key that expired yesterday
     let one_day_ago = OffsetDateTime::now_utc() - Duration::days(1);

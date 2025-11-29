@@ -13,20 +13,21 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
-#[path = "common/mod.rs"]
-mod common;
+use r_data_core_test_support::{
+    create_test_admin_user, create_test_entity_definition, setup_test_db, unique_entity_type,
+};
 
 #[tokio::test]
 async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result<()> {
-    let pool = common::utils::setup_test_db().await;
+    let pool = setup_test_db().await;
 
     // Create admin user
-    let creator_uuid = common::utils::create_test_admin_user(&pool).await?;
+    let creator_uuid = create_test_admin_user(&pool).await?;
 
     // Create entity definition
-    let entity_type = common::utils::unique_entity_type("test_entity");
+    let entity_type = unique_entity_type("test_entity");
     let _entity_def_uuid =
-        common::utils::create_test_entity_definition(&pool, &entity_type).await?;
+create_test_entity_definition(&pool, &entity_type).await?;
 
     // Create workflow
     let wf_repo = WorkflowRepository::new(pool.clone());
@@ -181,15 +182,15 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
 
 #[tokio::test]
 async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result<()> {
-    let pool = common::utils::setup_test_db().await;
+    let pool = setup_test_db().await;
 
     // Create admin user
-    let creator_uuid = common::utils::create_test_admin_user(&pool).await?;
+    let creator_uuid = create_test_admin_user(&pool).await?;
 
     // Create entity definition
-    let entity_type = common::utils::unique_entity_type("test_entity");
+    let entity_type = unique_entity_type("test_entity");
     let _entity_def_uuid =
-        common::utils::create_test_entity_definition(&pool, &entity_type).await?;
+create_test_entity_definition(&pool, &entity_type).await?;
 
     // Create an entity first
     let de_repo = DynamicEntityRepository::new(pool.clone());

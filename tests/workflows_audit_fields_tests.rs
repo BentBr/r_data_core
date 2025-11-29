@@ -6,16 +6,14 @@ use sqlx::Row;
 use std::sync::Arc;
 use uuid::Uuid;
 
-// Import the common test utilities
-#[path = "common/mod.rs"]
-mod common;
+use r_data_core_test_support::{create_test_admin_user, setup_test_db};
 
 #[tokio::test]
 async fn create_sets_created_by_and_fk_enforced() -> anyhow::Result<()> {
-    let pool = common::utils::setup_test_db().await;
+    let pool = setup_test_db().await;
 
     // Ensure we have at least one admin user to act as creator
-    let creator_uuid = common::utils::create_test_admin_user(&pool).await?;
+    let creator_uuid = create_test_admin_user(&pool).await?;
 
     let repo = WorkflowRepository::new(pool.clone());
     let adapter = WorkflowRepositoryAdapter::new(repo);
@@ -88,10 +86,10 @@ async fn create_sets_created_by_and_fk_enforced() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn update_sets_updated_by_and_fk_enforced() -> anyhow::Result<()> {
-    let pool = common::utils::setup_test_db().await;
+    let pool = setup_test_db().await;
 
-    let creator_uuid = common::utils::create_test_admin_user(&pool).await?;
-    let updater_uuid = common::utils::create_test_admin_user(&pool).await?;
+    let creator_uuid = create_test_admin_user(&pool).await?;
+    let updater_uuid = create_test_admin_user(&pool).await?;
 
     let repo = WorkflowRepository::new(pool.clone());
 

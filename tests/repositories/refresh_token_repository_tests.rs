@@ -1,7 +1,7 @@
-use crate::common::utils;
 use r_data_core_core::error::Result;
 use r_data_core_core::refresh_token::RefreshToken;
 use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
+use r_data_core_test_support::{clear_refresh_tokens, create_test_admin_user, setup_test_db};
 use serial_test::serial;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -10,10 +10,10 @@ use uuid::Uuid;
 #[serial]
 async fn test_create_refresh_token() -> Result<()> {
     // Setup
-    let pool = utils::setup_test_db().await;
-    utils::clear_refresh_tokens(&pool).await?;
+    let pool = setup_test_db().await;
+    clear_refresh_tokens(&pool).await?;
 
-    let user_uuid = utils::create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
     let repo = RefreshTokenRepository::new(pool.clone());
 
     // Test data
@@ -49,10 +49,10 @@ async fn test_create_refresh_token() -> Result<()> {
 #[serial]
 async fn test_find_refresh_token_by_hash() -> Result<()> {
     // Setup
-    let pool = utils::setup_test_db().await;
-    utils::clear_refresh_tokens(&pool).await?;
+    let pool = setup_test_db().await;
+    clear_refresh_tokens(&pool).await?;
 
-    let user_uuid = utils::create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
     let repo = RefreshTokenRepository::new(pool.clone());
 
     // Create a token
@@ -80,8 +80,8 @@ async fn test_find_refresh_token_by_hash() -> Result<()> {
 #[serial]
 async fn test_find_nonexistent_token() -> Result<()> {
     // Setup
-    let pool = utils::setup_test_db().await;
-    utils::clear_refresh_tokens(&pool).await?;
+    let pool = setup_test_db().await;
+    clear_refresh_tokens(&pool).await?;
 
     let repo = RefreshTokenRepository::new(pool.clone());
 
@@ -99,10 +99,10 @@ async fn test_find_nonexistent_token() -> Result<()> {
 #[serial]
 async fn test_update_last_used() -> Result<()> {
     // Setup
-    let pool = utils::setup_test_db().await;
-    utils::clear_refresh_tokens(&pool).await?;
+    let pool = setup_test_db().await;
+    clear_refresh_tokens(&pool).await?;
 
-    let user_uuid = utils::create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
     let repo = RefreshTokenRepository::new(pool.clone());
 
     // Create a token
@@ -131,10 +131,10 @@ async fn test_update_last_used() -> Result<()> {
 #[serial]
 async fn test_revoke_token_by_id() -> Result<()> {
     // Setup
-    let pool = utils::setup_test_db().await;
-    utils::clear_refresh_tokens(&pool).await?;
+    let pool = setup_test_db().await;
+    clear_refresh_tokens(&pool).await?;
 
-    let user_uuid = utils::create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
     let repo = RefreshTokenRepository::new(pool.clone());
 
     // Create a token
@@ -162,10 +162,10 @@ async fn test_revoke_token_by_id() -> Result<()> {
 #[serial]
 async fn test_revoke_token_by_hash() -> Result<()> {
     // Setup
-    let pool = utils::setup_test_db().await;
-    utils::clear_refresh_tokens(&pool).await?;
+    let pool = setup_test_db().await;
+    clear_refresh_tokens(&pool).await?;
 
-    let user_uuid = utils::create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
     let repo = RefreshTokenRepository::new(pool.clone());
 
     // Create a token
@@ -189,10 +189,10 @@ async fn test_revoke_token_by_hash() -> Result<()> {
 #[serial]
 async fn test_revoke_all_user_tokens() -> Result<()> {
     // Setup
-    let pool = utils::setup_test_db().await;
-    utils::clear_refresh_tokens(&pool).await?;
+    let pool = setup_test_db().await;
+    clear_refresh_tokens(&pool).await?;
 
-    let user_uuid = utils::create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
     let repo = RefreshTokenRepository::new(pool.clone());
 
     // Create multiple tokens for the user
