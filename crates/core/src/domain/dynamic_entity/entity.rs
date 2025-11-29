@@ -14,10 +14,14 @@ use crate::field::FieldDefinition;
 
 // Define traits locally since value module is missing
 pub trait FromValue: Sized {
+    /// # Errors
+    /// Returns an error if conversion fails
     fn from_value(value: &JsonValue) -> Result<Self>;
 }
 
 pub trait ToValue {
+    /// # Errors
+    /// Returns an error if conversion fails
     fn to_value(&self) -> Result<JsonValue>;
 }
 
@@ -28,10 +32,9 @@ impl FromValue for String {
             JsonValue::String(s) => Ok(s.clone()),
             JsonValue::Number(n) => Ok(n.to_string()),
             JsonValue::Bool(b) => Ok(b.to_string()),
-            JsonValue::Null => Ok("".to_string()),
+            JsonValue::Null => Ok(String::new()),
             _ => Err(crate::error::Error::Conversion(format!(
-                "Cannot convert {:?} to String",
-                value
+                "Cannot convert {value:?} to String"
             ))),
         }
     }
@@ -41,14 +44,13 @@ impl FromValue for i64 {
     fn from_value(value: &JsonValue) -> Result<Self> {
         match value {
             JsonValue::Number(n) => n.as_i64().ok_or_else(|| {
-                crate::error::Error::Conversion(format!("Cannot convert {:?} to i64", value))
+                crate::error::Error::Conversion(format!("Cannot convert {value:?} to i64"))
             }),
             JsonValue::String(s) => s.parse::<i64>().map_err(|_| {
-                crate::error::Error::Conversion(format!("Cannot convert string '{}' to i64", s))
+                crate::error::Error::Conversion(format!("Cannot convert string '{s}' to i64"))
             }),
             _ => Err(crate::error::Error::Conversion(format!(
-                "Cannot convert {:?} to i64",
-                value
+                "Cannot convert {value:?} to i64"
             ))),
         }
     }
@@ -61,8 +63,7 @@ impl FromValue for bool {
             JsonValue::Number(n) => Ok(n.as_i64().map(|x| x != 0).unwrap_or(false)),
             JsonValue::String(s) => Ok(s.to_lowercase() == "true" || s == "1"),
             _ => Err(crate::error::Error::Conversion(format!(
-                "Cannot convert {:?} to bool",
-                value
+                "Cannot convert {value:?} to bool"
             ))),
         }
     }
@@ -78,11 +79,10 @@ impl FromValue for Uuid {
     fn from_value(value: &JsonValue) -> Result<Self> {
         match value {
             JsonValue::String(s) => Uuid::parse_str(s).map_err(|_| {
-                crate::error::Error::Conversion(format!("Cannot convert string '{}' to Uuid", s))
+                crate::error::Error::Conversion(format!("Cannot convert string '{s}' to Uuid"))
             }),
             _ => Err(crate::error::Error::Conversion(format!(
-                "Cannot convert {:?} to Uuid",
-                value
+                "Cannot convert {value:?} to Uuid"
             ))),
         }
     }
@@ -161,6 +161,7 @@ impl DynamicEntity {
     }
 
     /// Create a dynamic entity from raw data
+    #[must_use]
     pub fn from_data(
         entity_type: String,
         field_data: HashMap<String, JsonValue>,
@@ -183,6 +184,13 @@ impl DynamicEntity {
     }
 
     /// Set a field value
+    ///
+    /// # Panics
+    /// May panic if date formatting fails
+    ///
+    /// # Errors
+    /// Returns an error if the field is not found or validation fails
+    #[allow(clippy::needless_pass_by_value)] // value is consumed by to_value()
     pub fn set<T: ToValue>(&mut self, field: &str, value: T) -> Result<()> {
         let entity_value = value.to_value()?;
 
@@ -253,11 +261,13 @@ impl DynamicEntity {
     }
 
     /// Get a field definition
+    #[must_use]
     pub fn get_field_definition(&self, field: &str) -> Option<&FieldDefinition> {
         self.definition.get_field(field)
     }
 
     /// Get all field names
+    #[must_use]
     pub fn get_field_names(&self) -> Vec<String> {
         let mut fields = vec![
             "uuid".to_string(),
@@ -309,7 +319,7 @@ impl DynamicFields for DynamicEntity {
 
             if let Some(value) = self.field_data.get(&field.name) {
                 if let Err(e) = field.validate_value(value) {
-                    return Err(crate::error::Error::Validation(format!("{}", e)));
+                    return Err(crate::error::Error::Validation(format!("{e}")));
                 }
             }
         }
@@ -324,7 +334,7 @@ impl DynamicFields for DynamicEntity {
                             && !self.field_data.contains_key(field_name)
                         {
                             return Err(crate::error::Error::Validation(format!(
-                                "Required field '{field_name}' is missing",
+                                "Required field '{field_name}' is missing"
                             )));
                         }
                     }

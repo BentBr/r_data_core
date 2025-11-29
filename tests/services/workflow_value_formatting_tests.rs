@@ -1,12 +1,14 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::field::definition::FieldDefinition;
 use r_data_core_core::field::types::FieldType;
 use r_data_core_services::workflow::value_formatting::{
-    build_normalized_field_data, cast_field_value, coerce_published_field, is_protected_field,
-    is_reserved_field, normalize_field_data_by_type, normalize_path, process_reserved_field,
-    PROTECTED_FIELDS, RESERVED_FIELDS,
+    build_normalized_field_data, cast_field_value, normalize_field_data_by_type,
+    process_reserved_field, PROTECTED_FIELDS, RESERVED_FIELDS,
 };
-use serde_json::{json, Value};
+use serde_json::json;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -18,7 +20,7 @@ fn test_normalize_field_data_by_type() {
     field_data.insert("price".to_string(), json!("19.99"));
     field_data.insert("name".to_string(), json!("Test"));
 
-    let mut fields = vec![
+    let fields = vec![
         FieldDefinition::new(
             "is_active".to_string(),
             "Is Active".to_string(),

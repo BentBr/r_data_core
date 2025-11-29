@@ -1,3 +1,6 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use r_data_core_core::DynamicEntity;
 use r_data_core_persistence::DynamicEntityRepositoryTrait;
 use r_data_core_persistence::EntityDefinitionRepository;

@@ -1,9 +1,8 @@
-use r_data_core_core::entity_definition::definition::EntityDefinition;
-use r_data_core_core::field::definition::FieldDefinition;
-use r_data_core_core::field::types::FieldType;
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use r_data_core_services::workflow::entity_persistence::{
-    ensure_audit_fields, ensure_entity_key, find_existing_entity, prepare_field_data,
-    EntityLookupResult, PersistenceContext,
+    ensure_audit_fields, EntityLookupResult, PersistenceContext,
 };
 use r_data_core_services::workflow::value_formatting::normalize_path;
 use serde_json::json;

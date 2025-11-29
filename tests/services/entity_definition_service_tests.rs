@@ -1,3 +1,6 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use async_trait::async_trait;
 use mockall::predicate::eq;
 use std::collections::HashMap;
@@ -5,7 +8,6 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use r_data_core::error::Error;
 use r_data_core_core::error::Result;
 use r_data_core_core::{
     entity_definition::definition::EntityDefinition,
@@ -19,7 +21,7 @@ mockall::mock! {
     pub EntityDefRepository {}
 
     #[async_trait]
-    impl r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait for EntityDefRepository {
+    impl EntityDefinitionRepositoryTrait for EntityDefRepository {
         async fn list(&self, limit: i64, offset: i64) -> Result<Vec<EntityDefinition>>;
         async fn count(&self) -> Result<i64>;
         async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<EntityDefinition>>;

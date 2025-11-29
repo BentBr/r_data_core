@@ -1,3 +1,6 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 // Tests for pulling data from remote APIs via cron into entities
 // Use Case 1: Pull from remote API via cron into entities (CSV/JSON)
 // Use Case 1.a: Pull from remote API with authentication

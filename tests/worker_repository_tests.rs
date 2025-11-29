@@ -1,3 +1,6 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use r_data_core_api::admin::workflows::models::CreateWorkflowRequest;
 use r_data_core_persistence::WorkflowRepository;
 use r_data_core_test_support::{create_test_admin_user, setup_test_db};

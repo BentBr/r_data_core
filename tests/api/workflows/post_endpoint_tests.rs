@@ -1,3 +1,6 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 // Tests for POST endpoints accepting data (CSV/JSON) into entities
 // Use Case 2: Define endpoint to accept POST data (CSV/JSON) into entities
 // Use Case 2.a: POST endpoint without auth should fail with 401

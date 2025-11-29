@@ -1,3 +1,4 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 // Will contain service tests
 
 pub mod adapter_tests;

@@ -55,9 +55,13 @@ pub struct FieldDefinition {
 /// Trait to define common operations for field definitions
 pub trait FieldDefinitionModule {
     /// Validate a field definition for common issues like invalid constraints
+    /// # Errors
+    /// Returns an error if validation fails
     fn validate(&self) -> Result<()>;
 
     /// Validate a value against this field definition
+    /// # Errors
+    /// Returns an error if validation fails
     fn validate_value(&self, value: &Value) -> Result<()>;
 
     /// Get the SQL type for this field
@@ -71,6 +75,7 @@ pub trait FieldDefinitionModule {
 
 impl FieldDefinition {
     /// Create a new field definition with default values
+    #[must_use]
     pub fn new(name: String, display_name: String, field_type: FieldType) -> Self {
         Self {
             name,
@@ -103,24 +108,17 @@ impl FieldDefinitionModule for FieldDefinition {
     fn get_sql_type(&self) -> String {
         // Map field type to SQL type
         match self.field_type {
-            FieldType::String => "TEXT".to_string(),
+            FieldType::String | FieldType::Text | FieldType::Select | FieldType::Wysiwyg
+            | FieldType::File | FieldType::Image => "TEXT".to_string(),
             FieldType::Integer => "INTEGER".to_string(),
             FieldType::Float => "DOUBLE PRECISION".to_string(),
             FieldType::Boolean => "BOOLEAN".to_string(),
             FieldType::DateTime => "TIMESTAMP WITH TIME ZONE".to_string(),
             FieldType::Date => "DATE".to_string(),
-            FieldType::Uuid => "UUID".to_string(),
-            FieldType::Json => "JSONB".to_string(),
-            FieldType::Text => "TEXT".to_string(),
-            FieldType::Select => "TEXT".to_string(),
+            FieldType::Uuid | FieldType::ManyToOne => "UUID".to_string(),
+            FieldType::Json | FieldType::Object | FieldType::Array => "JSONB".to_string(),
             FieldType::MultiSelect => "TEXT[]".to_string(),
-            FieldType::ManyToOne => "UUID".to_string(),
             FieldType::ManyToMany => "UUID[]".to_string(),
-            FieldType::Wysiwyg => "TEXT".to_string(),
-            FieldType::File => "TEXT".to_string(),
-            FieldType::Image => "TEXT".to_string(),
-            FieldType::Object => "JSONB".to_string(),
-            FieldType::Array => "JSONB".to_string(),
         }
     }
 

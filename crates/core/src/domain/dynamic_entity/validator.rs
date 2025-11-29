@@ -17,6 +17,7 @@ pub struct ValidationContext<'a> {
 }
 
 impl<'a> ValidationContext<'a> {
+    #[must_use]
     pub fn new(field_def: &'a FieldDefinition, value: &'a Value) -> Self {
         Self {
             field_def,
@@ -25,7 +26,8 @@ impl<'a> ValidationContext<'a> {
         }
     }
 
-    pub fn with_field_name(
+    #[must_use]
+    pub const fn with_field_name(
         field_def: &'a FieldDefinition,
         value: &'a Value,
         field_name: &'a str,
@@ -37,10 +39,13 @@ impl<'a> ValidationContext<'a> {
         }
     }
 
+    #[must_use]
     pub fn create_validation_error(&self, message: &str) -> crate::error::Error {
         crate::error::Error::Validation(format!("Field '{}' {}", self.field_name, message))
     }
 
+    /// # Errors
+    /// Returns an error if validation fails
     pub fn validate_number_range(&self, num_value: f64) -> Result<()> {
         // Range validation
         if let Some(min_value) = &self.field_def.validation.min_value {
@@ -48,7 +53,7 @@ impl<'a> ValidationContext<'a> {
                 .as_f64()
                 .ok_or_else(|| self.create_validation_error("has invalid min_value"))?;
             if num_value < min {
-                return Err(self.create_validation_error(&format!("must be at least {}", min)));
+                return Err(self.create_validation_error(&format!("must be at least {min}")));
             }
         }
 
@@ -57,20 +62,23 @@ impl<'a> ValidationContext<'a> {
                 .as_f64()
                 .ok_or_else(|| self.create_validation_error("has invalid max_value"))?;
             if num_value > max {
-                return Err(self.create_validation_error(&format!("must be no more than {}", max)));
+                return Err(self.create_validation_error(&format!("must be no more than {max}")));
             }
         }
 
         // Positive only validation
-        if let Some(true) = self.field_def.validation.positive_only {
-            if num_value < 0.0 {
-                return Err(self.create_validation_error("must be a positive number"));
-            }
+        if self.field_def.validation.positive_only == Some(true) && num_value < 0.0 {
+            return Err(self.create_validation_error("must be a positive number"));
         }
 
         Ok(())
     }
 
+    /// # Panics
+    /// May panic if value is not a string when checking for empty strings
+    ///
+    /// # Errors
+    /// Returns an error if validation fails
     pub fn check_required(&self) -> Result<bool> {
         // Check if the field is required and the value is null or empty
         if self.field_def.required
@@ -90,6 +98,9 @@ pub struct DynamicEntityValidator;
 
 impl DynamicEntityValidator {
     /// Validate a field against its definition
+    ///
+    /// # Errors
+    /// Returns an error if validation fails
     pub fn validate_field(field_def: &FieldDefinition, value: &Value) -> Result<()> {
         let ctx = ValidationContext::new(field_def, value);
 
@@ -112,8 +123,9 @@ impl DynamicEntityValidator {
             FieldType::Array => Self::validate_array(&ctx),
             FieldType::Object => Self::validate_object(&ctx),
             FieldType::Json => Self::validate_json(&ctx),
-            FieldType::ManyToOne | FieldType::ManyToMany => Ok(()), // Relation validation is handled separately
-            FieldType::Image | FieldType::File => Ok(()), // Asset validation is handled separately
+            FieldType::ManyToOne | FieldType::ManyToMany | FieldType::Image | FieldType::File => {
+                Ok(())
+            } // Relation and asset validation is handled separately
         }
     }
 
@@ -129,8 +141,7 @@ impl DynamicEntityValidator {
         if let Some(min_length) = ctx.field_def.validation.min_length {
             if string_value.len() < min_length {
                 return Err(ctx.create_validation_error(&format!(
-                    "must be at least {} characters",
-                    min_length
+                    "must be at least {min_length} characters"
                 )));
             }
         }
@@ -138,8 +149,7 @@ impl DynamicEntityValidator {
         if let Some(max_length) = ctx.field_def.validation.max_length {
             if string_value.len() > max_length {
                 return Err(ctx.create_validation_error(&format!(
-                    "must be no more than {} characters",
-                    max_length
+                    "must be no more than {max_length} characters"
                 )));
             }
         }
@@ -149,14 +159,14 @@ impl DynamicEntityValidator {
             match Regex::new(pattern) {
                 Ok(re) => {
                     if !re.is_match(string_value) {
-                        return Err(ctx
-                            .create_validation_error(&format!("must match pattern: {}", pattern)));
+                        return Err(
+                            ctx.create_validation_error(&format!("must match pattern: {pattern}"))
+                        );
                     }
                 }
                 Err(_) => {
                     return Err(ctx.create_validation_error(&format!(
-                        "has invalid regex pattern: {}",
-                        pattern
+                        "has invalid regex pattern: {pattern}"
                     )));
                 }
             }
@@ -169,7 +179,7 @@ impl DynamicEntityValidator {
     fn validate_integer(ctx: &ValidationContext) -> Result<()> {
         let int_value = match ctx.value {
             Value::Number(n) if n.is_i64() => n.as_i64().unwrap(),
-            Value::Number(n) if n.is_u64() => n.as_u64().unwrap() as i64,
+            Value::Number(n) if n.is_u64() => n.as_u64().unwrap().try_into().unwrap_or(i64::MAX),
             Value::String(s) => s
                 .parse::<i64>()
                 .map_err(|_| ctx.create_validation_error("must be a valid integer"))?,
@@ -178,6 +188,7 @@ impl DynamicEntityValidator {
             }
         };
 
+        #[allow(clippy::cast_precision_loss)] // i64 to f64 conversion for validation
         ctx.validate_number_range(int_value as f64)?;
 
         Ok(())
@@ -237,11 +248,8 @@ impl DynamicEntityValidator {
 
     /// Validate date fields
     fn validate_date(ctx: &ValidationContext) -> Result<()> {
-        let date_str = match ctx.value {
-            Value::String(s) => s,
-            _ => {
-                return Err(ctx.create_validation_error("must be a date string"));
-            }
+        let Value::String(date_str) = ctx.value else {
+            return Err(ctx.create_validation_error("must be a date string"));
         };
 
         // Format description for YYYY-MM-DD
@@ -263,9 +271,7 @@ impl DynamicEntityValidator {
             };
 
             if date < min_date {
-                return Err(
-                    ctx.create_validation_error(&format!("must be on or after {}", min_date))
-                );
+                return Err(ctx.create_validation_error(&format!("must be on or after {min_date}")));
             }
         }
 
@@ -279,7 +285,7 @@ impl DynamicEntityValidator {
 
             if date > max_date {
                 return Err(
-                    ctx.create_validation_error(&format!("must be on or before {}", max_date))
+                    ctx.create_validation_error(&format!("must be on or before {max_date}"))
                 );
             }
         }
@@ -289,11 +295,8 @@ impl DynamicEntityValidator {
 
     /// Validate datetime fields
     fn validate_datetime(ctx: &ValidationContext) -> Result<()> {
-        let datetime_str = match ctx.value {
-            Value::String(s) => s,
-            _ => {
-                return Err(ctx.create_validation_error("must be a datetime string"));
-            }
+        let Value::String(datetime_str) = ctx.value else {
+            return Err(ctx.create_validation_error("must be a datetime string"));
         };
 
         // Parse ISO8601 / RFC3339 datetime
@@ -315,9 +318,7 @@ impl DynamicEntityValidator {
             };
 
             if datetime < min_date {
-                return Err(
-                    ctx.create_validation_error(&format!("must be on or after {}", min_date))
-                );
+                return Err(ctx.create_validation_error(&format!("must be on or after {min_date}")));
             }
         }
 
@@ -331,7 +332,7 @@ impl DynamicEntityValidator {
 
             if datetime > max_date {
                 return Err(
-                    ctx.create_validation_error(&format!("must be on or before {}", max_date))
+                    ctx.create_validation_error(&format!("must be on or before {max_date}"))
                 );
             }
         }
@@ -341,11 +342,8 @@ impl DynamicEntityValidator {
 
     /// Validate UUID fields
     fn validate_uuid(ctx: &ValidationContext) -> Result<()> {
-        let uuid_str = match ctx.value {
-            Value::String(s) => s,
-            _ => {
-                return Err(ctx.create_validation_error("must be a UUID string"));
-            }
+        let Value::String(uuid_str) = ctx.value else {
+            return Err(ctx.create_validation_error("must be a UUID string"));
         };
 
         Uuid::parse_str(uuid_str)
@@ -356,25 +354,21 @@ impl DynamicEntityValidator {
 
     /// Validate select fields
     fn validate_select(ctx: &ValidationContext) -> Result<()> {
-        let option_value = match ctx.value {
-            Value::String(s) => s,
-            _ => {
-                return Err(ctx.create_validation_error("must be a string"));
-            }
+        let Value::String(option_value) = ctx.value else {
+            return Err(ctx.create_validation_error("must be a string"));
         };
 
         // Validate against options if present
-        if let Some(options_source) = &ctx.field_def.validation.options_source {
-            if let crate::field::OptionsSource::Fixed { options } = options_source {
-                let valid_options: Vec<String> =
-                    options.iter().map(|opt| opt.value.clone()).collect();
+        if let Some(crate::field::OptionsSource::Fixed { options }) =
+            &ctx.field_def.validation.options_source
+        {
+            let valid_options: Vec<String> = options.iter().map(|opt| opt.value.clone()).collect();
 
-                if !valid_options.contains(&option_value.to_string()) {
-                    return Err(ctx.create_validation_error(&format!(
-                        "must be one of: {}",
-                        valid_options.join(", ")
-                    )));
-                }
+            if !valid_options.contains(option_value) {
+                return Err(ctx.create_validation_error(&format!(
+                    "must be one of: {}",
+                    valid_options.join(", ")
+                )));
             }
         }
 
@@ -398,19 +392,17 @@ impl DynamicEntityValidator {
         };
 
         // Validate against options if present
-        if let Some(options_source) = &ctx.field_def.validation.options_source {
-            if let crate::field::OptionsSource::Fixed { options } = options_source {
-                let valid_options: Vec<String> =
-                    options.iter().map(|opt| opt.value.clone()).collect();
+        if let Some(crate::field::OptionsSource::Fixed { options }) =
+            &ctx.field_def.validation.options_source
+        {
+            let valid_options: Vec<String> = options.iter().map(|opt| opt.value.clone()).collect();
 
-                for value in &selected_values {
-                    if !valid_options.contains(value) {
-                        return Err(ctx.create_validation_error(&format!(
-                            "contains invalid option '{}'. Valid options are: {}",
-                            value,
-                            valid_options.join(", ")
-                        )));
-                    }
+            for value in &selected_values {
+                if !valid_options.contains(value) {
+                    return Err(ctx.create_validation_error(&format!(
+                        "contains invalid option '{value}'. Valid options are: {}",
+                        valid_options.join(", ")
+                    )));
                 }
             }
         }
@@ -419,27 +411,29 @@ impl DynamicEntityValidator {
     }
 
     /// Validate JSON fields
-    fn validate_json(_: &ValidationContext) -> Result<()> {
+    #[allow(clippy::unnecessary_wraps)] // Returns Result for consistency with other validators
+    const fn validate_json(_: &ValidationContext) -> Result<()> {
         // For JSON fields, we accept any valid JSON
         // No additional validation needed as Value is already valid JSON
         Ok(())
     }
 }
 
+/// # Errors
+/// Returns an error if validation fails
 pub fn validate_field(field_def: &Value, value: &Value, field_name: &str) -> Result<()> {
     let field_type = field_def
         .get("type")
         .and_then(Value::as_str)
         .ok_or_else(|| {
-            crate::error::Error::Validation(format!("Missing type for field {}", field_name))
+            crate::error::Error::Validation(format!("Missing type for field {field_name}"))
         })?;
 
     match field_type {
         "string" => {
             if !value.is_string() {
                 return Err(crate::error::Error::Validation(format!(
-                    "Field {} must be a string",
-                    field_name
+                    "Field {field_name} must be a string"
                 )));
             }
             Ok(())
@@ -447,8 +441,7 @@ pub fn validate_field(field_def: &Value, value: &Value, field_name: &str) -> Res
         "number" | "integer" => {
             if !value.is_number() {
                 return Err(crate::error::Error::Validation(format!(
-                    "Field {} must be a number",
-                    field_name
+                    "Field {field_name} must be a number"
                 )));
             }
             Ok(())
@@ -456,8 +449,7 @@ pub fn validate_field(field_def: &Value, value: &Value, field_name: &str) -> Res
         "boolean" => {
             if !value.is_boolean() {
                 return Err(crate::error::Error::Validation(format!(
-                    "Field {} must be a boolean",
-                    field_name
+                    "Field {field_name} must be a boolean"
                 )));
             }
             Ok(())
@@ -465,8 +457,7 @@ pub fn validate_field(field_def: &Value, value: &Value, field_name: &str) -> Res
         "array" => {
             if !value.is_array() {
                 return Err(crate::error::Error::Validation(format!(
-                    "Field {} must be an array",
-                    field_name
+                    "Field {field_name} must be an array"
                 )));
             }
             Ok(())
@@ -474,8 +465,7 @@ pub fn validate_field(field_def: &Value, value: &Value, field_name: &str) -> Res
         "object" => {
             if !value.is_object() {
                 return Err(crate::error::Error::Validation(format!(
-                    "Field {} must be an object",
-                    field_name
+                    "Field {field_name} must be an object"
                 )));
             }
             Ok(())
@@ -491,6 +481,8 @@ pub struct FieldViolation {
     pub message: String,
 }
 
+/// # Errors
+/// Returns an error if validation fails
 pub fn validate_entity(entity: &Value, entity_def: &EntityDefinition) -> Result<()> {
     let violations = validate_entity_with_violations(entity, entity_def)?;
     if !violations.is_empty() {
@@ -508,6 +500,9 @@ pub fn validate_entity(entity: &Value, entity_def: &EntityDefinition) -> Result<
 }
 
 /// Validate entity and return structured violations
+///
+/// # Errors
+/// Returns an error if validation fails
 pub fn validate_entity_with_violations(
     entity: &Value,
     entity_def: &EntityDefinition,
@@ -580,7 +575,7 @@ pub fn validate_entity_with_violations(
     Ok(violations)
 }
 
-/// Validate that parent_uuid and path are consistent
+/// Validate that `parent_uuid` and path are consistent
 /// Returns Ok(()) if valid, or adds violations if invalid
 /// This function checks the relationship between parent_uuid and path
 pub fn validate_parent_path_consistency(

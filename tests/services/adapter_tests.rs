@@ -1,3 +1,6 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use async_trait::async_trait;
 use mockall::predicate::eq;
 use std::collections::HashMap;

@@ -1,3 +1,4 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 pub mod admin_user_repository_tests;
 pub mod api_key_repository_tests;
 pub mod dynamic_entity_repository_tests;

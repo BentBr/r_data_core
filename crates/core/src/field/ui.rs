@@ -18,7 +18,7 @@ pub enum InputType {
     Checkbox,
     /// Date picker
     Date,
-    /// DateTime picker
+    /// `DateTime` picker
     DateTime,
     /// Select dropdown
     Select,

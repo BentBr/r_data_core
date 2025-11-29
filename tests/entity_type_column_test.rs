@@ -1,18 +1,20 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use actix_web::{test, web, App};
 use r_data_core_api::{configure_app, ApiState};
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
-use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use r_data_core_core::error::Result;
 use r_data_core_core::field::options::FieldValidation;
 use r_data_core_core::field::ui::UiSettings;
 use r_data_core_core::field::{FieldDefinition, FieldType};
 use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::admin_user_repository_trait::ApiKeyRepositoryTrait;
 use r_data_core_persistence::DynamicEntityRepository;
 use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core_persistence::WorkflowRepository;
-use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository, ApiKeyRepositoryTrait};
+use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
 use r_data_core_services::WorkflowService;
 use r_data_core_services::{
     AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
@@ -96,7 +98,11 @@ async fn create_test_entity_definition(pool: &PgPool, entity_type: &str) -> Resu
 
     // Use the repository trait to create the entity definition
     let repository = EntityDefinitionRepository::new(pool.clone());
-    let uuid = repository.create(&entity_def).await?;
+    let uuid = r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait::create(
+        &repository,
+        &entity_def,
+    )
+    .await?;
 
     // Trigger the view creation
     let trigger_sql = format!("SELECT create_entity_table_and_view('{}')", entity_type);
@@ -157,6 +163,7 @@ async fn create_test_entity(
 }
 
 /// Create a test API key
+#[allow(dead_code)]
 async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
     // Create an admin user first
     let admin_uuid = Uuid::now_v7();
@@ -198,6 +205,7 @@ async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
 }
 
 // Helper function to hash API key or use a fallback mechanism when testing
+#[allow(dead_code)]
 fn use_api_key_hash_or_fallback(api_key: &str) -> String {
     use r_data_core_core::admin_user::ApiKey;
 
@@ -214,6 +222,7 @@ fn use_api_key_hash_or_fallback(api_key: &str) -> String {
 }
 
 /// Create a test app with all required services
+#[allow(dead_code)]
 async fn create_test_app(
     pool: &PgPool,
 ) -> impl actix_web::dev::Service<
@@ -325,9 +334,14 @@ async fn test_fixed_entity_type_column_issue() -> Result<()> {
 
     // Create an API key repository and key BEFORE creating the app (like in authentication_tests.rs)
     let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-    let (_key_uuid, api_key) = api_key_repo
-        .create_new_api_key("Test API Key", "Test Description", user_uuid, 30)
-        .await?;
+    let (_key_uuid, api_key) = ApiKeyRepositoryTrait::create_new_api_key(
+        &api_key_repo,
+        "Test API Key",
+        "Test Description",
+        user_uuid,
+        30,
+    )
+    .await?;
 
     // Build test app with DynamicEntityService, etc., using the same API key repository
     // This matches the pattern in authentication_tests.rs exactly

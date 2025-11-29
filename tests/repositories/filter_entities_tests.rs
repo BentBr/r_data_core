@@ -1,4 +1,7 @@
-use serde_json::{json, Value};
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
+use serde_json::{json};
 use sqlx::PgPool;
 use std::collections::HashMap;
 use std::sync::Arc;

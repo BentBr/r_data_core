@@ -50,41 +50,26 @@ impl FieldDefinition {
             }
             FieldType::DateTime | FieldType::Date => {
                 // Date constraints
-                match constraint_type {
-                    "min_date" => {
-                        validate_string_constraint(constraint_value)?;
-                    }
-                    "max_date" => {
-                        validate_string_constraint(constraint_value)?;
-                    }
-                    _ => {}
+                if constraint_type == "min_date" || constraint_type == "max_date" {
+                    validate_string_constraint(constraint_value)?;
                 }
             }
             FieldType::Select | FieldType::MultiSelect => {
                 // Select constraints
-                match constraint_type {
-                    "options" => {
-                        validate_array_constraint(constraint_value)?;
-                    }
-                    _ => {}
+                if constraint_type == "options" {
+                    validate_array_constraint(constraint_value)?;
                 }
             }
             FieldType::ManyToOne | FieldType::ManyToMany => {
                 // Relation constraints
-                match constraint_type {
-                    "target_class" => {
-                        validate_string_constraint(constraint_value)?;
-                    }
-                    _ => {}
+                if constraint_type == "target_class" {
+                    validate_string_constraint(constraint_value)?;
                 }
             }
             FieldType::Object | FieldType::Array | FieldType::Json => {
                 // Schema constraints
-                match constraint_type {
-                    "schema" => {
-                        validate_object_constraint(constraint_value)?;
-                    }
-                    _ => {}
+                if constraint_type == "schema" {
+                    validate_object_constraint(constraint_value)?;
                 }
             }
             _ => {}

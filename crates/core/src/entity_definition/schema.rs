@@ -43,7 +43,7 @@ impl Schema {
                             Some("number") => "NUMERIC".to_string(),
                             Some("integer") => "BIGINT".to_string(),
                             Some("boolean") => "BOOLEAN".to_string(),
-                            Some("array") | Some("object") => "JSONB".to_string(),
+                            Some("array" | "object") => "JSONB".to_string(),
                             Some("date") => "DATE".to_string(),
                             Some("datetime") => "TIMESTAMP WITH TIME ZONE".to_string(),
                             Some("uuid") => "UUID".to_string(),

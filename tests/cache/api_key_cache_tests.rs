@@ -1,3 +1,6 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use super::create_test_cache_manager;
 use async_trait::async_trait;
 use mockall::mock;

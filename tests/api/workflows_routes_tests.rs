@@ -1,3 +1,6 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use actix_web::{test, web, App};
 use r_data_core_api::{configure_app, ApiState, ApiStateWrapper};
 use r_data_core_core::admin_user::AdminUser;
@@ -149,7 +152,7 @@ async fn create_workflow_uses_required_auth_and_sets_created_by() -> anyhow::Res
 
     let req = test::TestRequest::post()
         .uri("/admin/api/v1/workflows")
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .set_json(payload.clone())
         .to_request();
 
@@ -269,7 +272,7 @@ async fn update_workflow_sets_updated_by() -> anyhow::Result<()> {
 
     let req = test::TestRequest::put()
         .uri(&format!("/admin/api/v1/workflows/{}", wf_uuid))
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .set_json(update_payload)
         .to_request();
     let resp = test::call_service(&app, req).await;
@@ -347,7 +350,7 @@ async fn create_workflow_accepts_valid_complex_dsl_config() -> anyhow::Result<()
 
     let req = test::TestRequest::post()
         .uri("/admin/api/v1/workflows")
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .set_json(payload)
         .to_request();
 
@@ -391,7 +394,7 @@ async fn create_workflow_rejects_invalid_dsl_config_missing_from() -> anyhow::Re
 
     let req = test::TestRequest::post()
         .uri("/admin/api/v1/workflows")
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .set_json(payload)
         .to_request();
 
@@ -422,7 +425,7 @@ async fn create_workflow_rejects_invalid_dsl_config_empty_steps() -> anyhow::Res
 
     let req = test::TestRequest::post()
         .uri("/admin/api/v1/workflows")
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .set_json(payload)
         .to_request();
 
@@ -513,7 +516,7 @@ async fn update_workflow_validates_dsl_config() -> anyhow::Result<()> {
 
     let req = test::TestRequest::put()
         .uri(&format!("/admin/api/v1/workflows/{}", wf_uuid))
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .set_json(update_payload)
         .to_request();
     let resp = test::call_service(&app, req).await;
@@ -580,7 +583,7 @@ async fn run_workflow_now_enqueues_job_to_redis_if_available() -> anyhow::Result
     // Call run_workflow_now endpoint
     let req = test::TestRequest::post()
         .uri(&format!("/admin/api/v1/workflows/{}/run", wf_uuid))
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
     let resp = test::call_service(&app, req).await;
 

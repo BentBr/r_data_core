@@ -1,3 +1,4 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 pub mod api_key_cache_tests;
 pub mod entity_definition_cache_tests;
 
@@ -13,5 +14,5 @@ pub fn create_test_cache_manager() -> std::sync::Arc<r_data_core_core::cache::Ca
         max_size: 10000,
     };
 
-    std::sync::Arc::new(r_data_core_core::cache::CacheManager::new(config))
+    std::sync::Arc::new(CacheManager::new(config))
 }

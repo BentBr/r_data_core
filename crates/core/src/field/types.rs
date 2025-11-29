@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// Field types supported in entity definitions
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum FieldType {
     // String types with UI variants
     String,
@@ -41,8 +41,9 @@ pub enum FieldType {
 
 impl FieldType {
     /// Check if this field type is a relation
-    pub fn is_relation(&self) -> bool {
-        matches!(self, FieldType::ManyToOne | FieldType::ManyToMany)
+    #[must_use]
+    pub const fn is_relation(&self) -> bool {
+        matches!(self, Self::ManyToOne | Self::ManyToMany)
     }
 }
 
@@ -50,29 +51,30 @@ impl FieldType {
 impl fmt::Display for FieldType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FieldType::String => write!(f, "String"),
-            FieldType::Text => write!(f, "Text"),
-            FieldType::Wysiwyg => write!(f, "Wysiwyg"),
-            FieldType::Integer => write!(f, "Integer"),
-            FieldType::Float => write!(f, "Float"),
-            FieldType::Boolean => write!(f, "Boolean"),
-            FieldType::DateTime => write!(f, "DateTime"),
-            FieldType::Date => write!(f, "Date"),
-            FieldType::Object => write!(f, "Object"),
-            FieldType::Array => write!(f, "Array"),
-            FieldType::Uuid => write!(f, "Uuid"),
-            FieldType::Json => write!(f, "Json"),
-            FieldType::ManyToOne => write!(f, "ManyToOne"),
-            FieldType::ManyToMany => write!(f, "ManyToMany"),
-            FieldType::Select => write!(f, "Select"),
-            FieldType::MultiSelect => write!(f, "MultiSelect"),
-            FieldType::Image => write!(f, "Image"),
-            FieldType::File => write!(f, "File"),
+            Self::String => write!(f, "String"),
+            Self::Text => write!(f, "Text"),
+            Self::Wysiwyg => write!(f, "Wysiwyg"),
+            Self::Integer => write!(f, "Integer"),
+            Self::Float => write!(f, "Float"),
+            Self::Boolean => write!(f, "Boolean"),
+            Self::DateTime => write!(f, "DateTime"),
+            Self::Date => write!(f, "Date"),
+            Self::Object => write!(f, "Object"),
+            Self::Array => write!(f, "Array"),
+            Self::Uuid => write!(f, "Uuid"),
+            Self::Json => write!(f, "Json"),
+            Self::ManyToOne => write!(f, "ManyToOne"),
+            Self::ManyToMany => write!(f, "ManyToMany"),
+            Self::Select => write!(f, "Select"),
+            Self::MultiSelect => write!(f, "MultiSelect"),
+            Self::Image => write!(f, "Image"),
+            Self::File => write!(f, "File"),
         }
     }
 }
 
 /// Return SQL type for a given field type
+#[must_use]
 pub fn get_sql_type_for_field(
     field_type: &FieldType,
     max_length: Option<usize>,
@@ -83,7 +85,7 @@ pub fn get_sql_type_for_field(
             // Use VARCHAR with length limit if specified
             if let Some(max_len) = max_length {
                 if max_len <= 255 {
-                    return format!("VARCHAR({})", max_len);
+                    return format!("VARCHAR({max_len})");
                 }
             }
             "TEXT".to_string()
@@ -96,26 +98,37 @@ pub fn get_sql_type_for_field(
         FieldType::Uuid => "UUID".to_string(),
         FieldType::Select => {
             // If this is an enum-backed select, use enum type
-            if let Some(name) = enum_name {
-                format!("{}_enum", name)
-            } else {
-                "TEXT".to_string()
-            }
+            enum_name.map_or_else(|| "TEXT".to_string(), |name| format!("{name}_enum"))
         }
         FieldType::MultiSelect => "TEXT[]".to_string(),
-        FieldType::Image => "TEXT".to_string(), // Store path or ID
-        FieldType::File => "TEXT".to_string(),  // Store path or ID
+        FieldType::Image | FieldType::File => "TEXT".to_string(), // Store path or ID
         FieldType::Object | FieldType::Array | FieldType::Json => "JSONB".to_string(), // Complex types as JSON
         _ => "TEXT".to_string(), // Default for any other types
     }
 }
 
 // Check if a field type is valid and supported
+#[must_use]
 pub fn is_valid_field_type(field_type: &str) -> bool {
-    match field_type {
-        "String" | "Text" | "Wysiwyg" | "Integer" | "Float" | "Boolean" | "DateTime" | "Date"
-        | "Object" | "Array" | "Uuid" | "Json" | "ManyToOne" | "ManyToMany" | "Select"
-        | "MultiSelect" | "Image" | "File" => true,
-        _ => false,
-    }
+    matches!(
+        field_type,
+        "String"
+            | "Text"
+            | "Wysiwyg"
+            | "Integer"
+            | "Float"
+            | "Boolean"
+            | "DateTime"
+            | "Date"
+            | "Object"
+            | "Array"
+            | "Uuid"
+            | "Json"
+            | "ManyToOne"
+            | "ManyToMany"
+            | "Select"
+            | "MultiSelect"
+            | "Image"
+            | "File"
+    )
 }

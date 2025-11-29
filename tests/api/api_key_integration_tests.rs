@@ -1,3 +1,6 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use actix_web::{
     http::{header, StatusCode},
     test, web, App, HttpMessage, HttpRequest, HttpResponse,
@@ -322,12 +325,12 @@ mod tests {
         let user_uuid = create_test_admin_user(&pool).await?;
         let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
 
-        // Create API key
-        let (key_uuid, key_value) = repo
+        // Create an API key
+        let (_key_uuid, key_value) = repo
             .create_new_api_key("Test Key", "Test description", user_uuid, 30)
             .await?;
 
-        // Create test app
+        // Create the test app
         let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
@@ -394,7 +397,7 @@ mod tests {
             )
             .await;
 
-        // Test with API key
+        // Test with the API key
         let req = test::TestRequest::get()
             .uri("/protected")
             .insert_header(("X-API-Key", key_value))
@@ -913,7 +916,7 @@ mod tests {
         // Test page 1 with 10 items per page using JWT authentication
         let req = test::TestRequest::get()
             .uri("/admin/api/v1/api-keys?page=1&per_page=10")
-            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {token}")))
             .to_request();
 
         let resp = test::call_service(&app, req).await;
@@ -936,7 +939,7 @@ mod tests {
         // Test page 2 with 10 items per page
         let req = test::TestRequest::get()
             .uri("/admin/api/v1/api-keys?page=2&per_page=10")
-            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {token}")))
             .to_request();
 
         let resp = test::call_service(&app, req).await;
@@ -959,7 +962,7 @@ mod tests {
         // Test page 3 with 10 items per page (should have 5 items)
         let req = test::TestRequest::get()
             .uri("/admin/api/v1/api-keys?page=3&per_page=10")
-            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {token}")))
             .to_request();
 
         let resp = test::call_service(&app, req).await;
@@ -982,7 +985,7 @@ mod tests {
         // Test page 4 with 10 items per page (should have 0 items)
         let req = test::TestRequest::get()
             .uri("/admin/api/v1/api-keys?page=4&per_page=10")
-            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {token}")))
             .to_request();
 
         let resp = test::call_service(&app, req).await;
@@ -1005,7 +1008,7 @@ mod tests {
         // Test different per_page value
         let req = test::TestRequest::get()
             .uri("/admin/api/v1/api-keys?page=1&per_page=20")
-            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {token}")))
             .to_request();
 
         let resp = test::call_service(&app, req).await;

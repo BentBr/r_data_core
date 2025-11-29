@@ -1,3 +1,6 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 // Tests for exposing data via our API endpoint (CSV/JSON)
 // Use Case 4: Expose data via our API endpoint (CSV/JSON), ignore cron
 // Use Case 4.a: Expose CSV via API with all auth methods (header)
@@ -78,7 +81,7 @@ async fn test_expose_data_via_api_endpoint_csv_ignores_cron() -> anyhow::Result<
     // Test GET endpoint (should work regardless of cron)
     let req = test::TestRequest::get()
         .uri(&format!("/api/v1/workflows/{}", wf_uuid))
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
     let resp = test::call_service(&app, req).await;
@@ -155,7 +158,7 @@ async fn test_expose_data_via_api_endpoint_json_ignores_cron() -> anyhow::Result
 
     let req = test::TestRequest::get()
         .uri(&format!("/api/v1/workflows/{}", wf_uuid))
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
     let resp = test::call_service(&app, req).await;

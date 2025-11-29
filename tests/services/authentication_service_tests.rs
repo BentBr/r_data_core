@@ -1,10 +1,11 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use async_trait::async_trait;
 use mockall::{mock, predicate::*};
-use r_data_core::error::Error;
 use r_data_core_core::admin_user::ApiKey;
 use r_data_core_core::error::Result;
 use r_data_core_persistence::ApiKeyRepositoryTrait;
-use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 

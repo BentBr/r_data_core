@@ -1,3 +1,6 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use super::create_test_cache_manager;
 use async_trait::async_trait;
 use mockall::mock;
@@ -17,7 +20,7 @@ mock! {
     pub EntityDefinitionRepo {}
 
     #[async_trait]
-    impl r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait for EntityDefinitionRepo {
+    impl EntityDefinitionRepositoryTrait for EntityDefinitionRepo {
         async fn list(&self, limit: i64, offset: i64) -> Result<Vec<EntityDefinition>>;
         async fn count(&self) -> Result<i64>;
         async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<EntityDefinition>>;

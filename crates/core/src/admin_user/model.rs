@@ -20,7 +20,7 @@ use uuid::Uuid;
 
 /// Admin user roles
 ///
-/// Only SuperAdmin is predefined. All other roles are custom and defined
+/// Only `SuperAdmin` is predefined. All other roles are custom and defined
 /// in permission schemes stored in the database.
 /// Use `as_str()` to get the string representation for permission checking.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -44,13 +44,13 @@ impl UserRole {
         }
     }
 
-    /// Convert a string to a UserRole
+    /// Convert a string to a `UserRole`
     ///
     /// # Arguments
     /// * `s` - String representation of the role
     ///
     /// # Returns
-    /// UserRole enum variant
+    /// `UserRole` enum variant
     #[must_use]
     pub fn from_str(s: &str) -> Self {
         match s {
@@ -289,9 +289,8 @@ impl AdminUser {
     #[must_use]
     pub fn verify_password(&self, password: &str) -> bool {
         // Parse the stored hash
-        let parsed_hash = match PasswordHash::new(&self.password_hash) {
-            Ok(hash) => hash,
-            Err(_) => return false,
+        let Ok(parsed_hash) = PasswordHash::new(&self.password_hash) else {
+            return false;
         };
 
         // Verify the password using Argon2id
@@ -341,7 +340,7 @@ impl AdminUser {
     /// * `_permission` - Permission string (not used, kept for backward compatibility)
     ///
     /// # Returns
-    /// `true` if the user is SuperAdmin or Admin, `false` otherwise
+    /// `true` if the user is `SuperAdmin` or Admin, `false` otherwise
     #[must_use]
     #[deprecated(note = "Use has_permission with PermissionScheme instead")]
     pub fn has_permission_simple(&self, _permission: &str) -> bool {

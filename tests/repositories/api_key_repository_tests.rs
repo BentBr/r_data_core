@@ -1,4 +1,6 @@
-use r_data_core_core::error::Error;
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use r_data_core_core::error::Result;
 use r_data_core_persistence::ApiKeyRepository;
 use r_data_core_persistence::ApiKeyRepositoryTrait;
@@ -212,7 +214,7 @@ async fn test_expired_api_key() -> Result<()> {
 
     sqlx::query!(
         r#"
-        INSERT INTO api_keys 
+        INSERT INTO api_keys
         (uuid, user_uuid, key_hash, name, description, is_active, created_at, expires_at, created_by, published)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         "#,

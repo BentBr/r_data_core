@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 
 /// Source of options for select fields
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type")]
 pub enum OptionsSource {
     /// Fixed list of options
@@ -24,7 +24,7 @@ pub enum OptionsSource {
 }
 
 /// Option for select fields
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SelectOption {
     pub value: String,
     pub label: String,

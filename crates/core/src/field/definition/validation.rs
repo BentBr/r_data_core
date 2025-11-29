@@ -9,6 +9,13 @@ use crate::field::types::FieldType;
 
 impl FieldDefinition {
     /// Validate a field value against this definition
+    ///
+    /// # Panics
+    /// May panic if value is not a string when checking for empty strings
+    ///
+    /// # Errors
+    /// Returns an error if validation fails
+    #[allow(clippy::too_many_lines)] // Complex validation logic requires many lines
     pub fn validate_value(&self, value: &Value) -> Result<()> {
         // Check if required
         if self.required && value.is_null() {
@@ -82,18 +89,17 @@ impl FieldDefinition {
                 }
 
                 // Check enum options if present
-                if let Some(options_source) = &self.validation.options_source {
-                    if let crate::field::options::OptionsSource::Fixed { options } = options_source
-                    {
-                        let valid_options: Vec<&String> =
-                            options.iter().map(|opt| &opt.value).collect();
+                if let Some(crate::field::options::OptionsSource::Fixed { options }) =
+                    &self.validation.options_source
+                {
+                    let valid_options: Vec<&String> =
+                        options.iter().map(|opt| &opt.value).collect();
 
-                        if !valid_options.contains(&&s.to_string()) {
-                            return Err(Error::Validation(format!(
-                                "Field '{}' value must be one of {:?}",
-                                self.name, valid_options
-                            )));
-                        }
+                    if !valid_options.contains(&&s.to_string()) {
+                        return Err(Error::Validation(format!(
+                            "Field '{}' value must be one of {:?}",
+                            self.name, valid_options
+                        )));
                     }
                 }
             }
@@ -117,6 +123,7 @@ impl FieldDefinition {
                     }
                 }
 
+                #[allow(clippy::cast_precision_loss)] // i64/u64 to f64 conversion for validation
                 let n = if value.is_i64() {
                     value.as_i64().unwrap() as f64
                 } else if value.is_u64() {
@@ -320,7 +327,7 @@ impl FieldDefinition {
                 let uuid_str = value.as_str().unwrap();
 
                 // Try to parse the UUID
-                if let Err(_) = Uuid::parse_str(uuid_str) {
+                if Uuid::parse_str(uuid_str).is_err() {
                     return Err(Error::Validation(format!(
                         "Field '{}' must be a valid UUID",
                         self.name
@@ -380,24 +387,19 @@ impl FieldDefinition {
                 }
 
                 // Check if selected values are in options
-                if let Some(source) = &self.validation.options_source {
-                    match source {
-                        crate::field::options::OptionsSource::Fixed { options } => {
-                            let valid_options: Vec<&String> =
-                                options.iter().map(|opt| &opt.value).collect();
+                if let Some(crate::field::options::OptionsSource::Fixed { options }) =
+                    &self.validation.options_source
+                {
+                    let valid_options: Vec<&String> =
+                        options.iter().map(|opt| &opt.value).collect();
 
-                            for item in selected {
-                                let item_str = item.as_str().unwrap();
-                                if !valid_options.contains(&&item_str.to_string()) {
-                                    return Err(Error::Validation(format!(
-                                        "Field '{}' values must be one of {:?}",
-                                        self.name, valid_options
-                                    )));
-                                }
-                            }
-                        }
-                        _ => {
-                            // For dynamic options, we can't validate here
+                    for item in selected {
+                        let item_str = item.as_str().unwrap();
+                        if !valid_options.contains(&&item_str.to_string()) {
+                            return Err(Error::Validation(format!(
+                                "Field '{}' values must be one of {:?}",
+                                self.name, valid_options
+                            )));
                         }
                     }
                 }
@@ -428,6 +430,10 @@ impl FieldDefinition {
     }
 
     /// Validate this field definition for common issues like invalid constraints
+    ///
+    /// # Errors
+    /// Returns an error if validation fails
+    #[allow(clippy::too_many_lines)] // Complex validation logic requires many lines
     pub fn validate(&self) -> Result<()> {
         // Check if the field has a valid name
         if self.name.is_empty() {

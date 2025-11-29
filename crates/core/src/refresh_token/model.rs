@@ -74,7 +74,7 @@ impl RefreshToken {
     }
 
     /// Revoke the token
-    pub fn revoke(&mut self) {
+    pub const fn revoke(&mut self) {
         self.is_revoked = true;
     }
 

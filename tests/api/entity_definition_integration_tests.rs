@@ -1,3 +1,6 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use actix_web::{
     http::{header, StatusCode},
     test, web, App,
@@ -19,33 +22,36 @@ fn create_test_jwt_token(user_uuid: &Uuid, secret: &str) -> String {
     let exp = now + Duration::hours(1);
 
     // SuperAdmin gets all permissions
-    let permissions = vec![
-        "workflows:read".to_string(),
-        "workflows:create".to_string(),
-        "workflows:update".to_string(),
-        "workflows:delete".to_string(),
-        "workflows:execute".to_string(),
-        "entities:read".to_string(),
-        "entities:create".to_string(),
-        "entities:update".to_string(),
-        "entities:delete".to_string(),
-        "entity_definitions:read".to_string(),
-        "entity_definitions:create".to_string(),
-        "entity_definitions:update".to_string(),
-        "entity_definitions:delete".to_string(),
-        "api_keys:read".to_string(),
-        "api_keys:create".to_string(),
-        "api_keys:update".to_string(),
-        "api_keys:delete".to_string(),
-        "permission_schemes:read".to_string(),
-        "permission_schemes:create".to_string(),
-        "permission_schemes:update".to_string(),
-        "permission_schemes:delete".to_string(),
-        "system:read".to_string(),
-        "system:create".to_string(),
-        "system:update".to_string(),
-        "system:delete".to_string(),
-    ];
+    let permissions = [
+        "workflows:read",
+        "workflows:create",
+        "workflows:update",
+        "workflows:delete",
+        "workflows:execute",
+        "entities:read",
+        "entities:create",
+        "entities:update",
+        "entities:delete",
+        "entity_definitions:read",
+        "entity_definitions:create",
+        "entity_definitions:update",
+        "entity_definitions:delete",
+        "api_keys:read",
+        "api_keys:create",
+        "api_keys:update",
+        "api_keys:delete",
+        "permission_schemes:read",
+        "permission_schemes:create",
+        "permission_schemes:update",
+        "permission_schemes:delete",
+        "system:read",
+        "system:create",
+        "system:update",
+        "system:delete",
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
 
     let claims = AuthUserClaims {
         sub: user_uuid.to_string(),
@@ -88,9 +94,9 @@ mod tests {
         for i in 1..=25 {
             let entity_def = r_data_core_core::entity_definition::definition::EntityDefinition {
                 uuid: Uuid::now_v7(),
-                entity_type: format!("test_entity_{}", i),
-                display_name: format!("Test Entity {}", i),
-                description: Some(format!("Description for test entity {}", i)),
+                entity_type: format!("test_entity_{i}"),
+                display_name: format!("Test Entity {i}"),
+                description: Some(format!("Description for test entity {i}")),
                 group_name: Some("test_group".to_string()),
                 allow_children: false,
                 icon: Some("mdi-test".to_string()),
@@ -104,7 +110,7 @@ mod tests {
                 version: 1,
             };
 
-            entity_def_repo.create(&entity_def).await?;
+            EntityDefinitionRepositoryTrait::create(entity_def_repo.as_ref(), &entity_def).await?;
         }
 
         // Create test app with actual API routes
@@ -169,7 +175,7 @@ mod tests {
         // Test page 1 with 10 items per page
         let req = test::TestRequest::get()
             .uri("/admin/api/v1/entity-definitions?page=1&per_page=10")
-            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {token}")))
             .to_request();
 
         let resp = test::call_service(&app, req).await;
@@ -192,7 +198,7 @@ mod tests {
         // Test page 2 with 10 items per page
         let req = test::TestRequest::get()
             .uri("/admin/api/v1/entity-definitions?page=2&per_page=10")
-            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {token}")))
             .to_request();
 
         let resp = test::call_service(&app, req).await;
@@ -215,7 +221,7 @@ mod tests {
         // Test page 3 with 10 items per page (should have 5 items)
         let req = test::TestRequest::get()
             .uri("/admin/api/v1/entity-definitions?page=3&per_page=10")
-            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {token}")))
             .to_request();
 
         let resp = test::call_service(&app, req).await;
@@ -238,7 +244,7 @@ mod tests {
         // Test page 4 with 10 items per page (should have 0 items)
         let req = test::TestRequest::get()
             .uri("/admin/api/v1/entity-definitions?page=4&per_page=10")
-            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {token}")))
             .to_request();
 
         let resp = test::call_service(&app, req).await;
@@ -261,7 +267,7 @@ mod tests {
         // Test different per_page value
         let req = test::TestRequest::get()
             .uri("/admin/api/v1/entity-definitions?page=1&per_page=20")
-            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {token}")))
             .to_request();
 
         let resp = test::call_service(&app, req).await;

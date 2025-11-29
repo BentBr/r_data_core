@@ -1,3 +1,6 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 #[cfg(test)]
 mod tests {
     use r_data_core_workflow::dsl::{DslProgram, FromDef, ToDef};

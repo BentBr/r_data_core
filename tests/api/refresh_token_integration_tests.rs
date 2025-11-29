@@ -1,3 +1,6 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use r_data_core_core::error::Result;
 use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
 use serial_test::serial;
@@ -164,7 +167,7 @@ mod tests {
         let token1 = repo
             .create(user_uuid, token1_hash.to_string(), expires_at1, None)
             .await?;
-        let token2 = repo
+        let _token2 = repo
             .create(user_uuid, token2_hash.to_string(), expires_at2, None)
             .await?;
 

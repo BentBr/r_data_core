@@ -1,3 +1,4 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 pub mod adapters;
 pub mod api;
 pub mod cache;

@@ -1,3 +1,6 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use actix_web::{
     http::{header, StatusCode},
     test, web, App, HttpMessage, HttpRequest, HttpResponse,
@@ -800,7 +803,7 @@ mod tests {
         // Test with valid JWT token
         let req = test::TestRequest::get()
             .uri("/test")
-            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {token}")))
             .to_request();
 
         let resp = test::call_service(&app, req).await;

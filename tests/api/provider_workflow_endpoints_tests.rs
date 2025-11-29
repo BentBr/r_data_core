@@ -1,3 +1,6 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use actix_web::{test, web, App};
 use r_data_core_api::{configure_app, ApiState, ApiStateWrapper};
 use r_data_core_core::admin_user::AdminUser;
@@ -206,7 +209,7 @@ async fn test_provider_endpoint_with_jwt_auth() -> anyhow::Result<()> {
     // Test GET endpoint with JWT
     let req = test::TestRequest::get()
         .uri(&format!("/api/v1/workflows/{}", wf_uuid))
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
     let resp = test::call_service(&app, req).await;
@@ -462,7 +465,7 @@ async fn test_provider_endpoint_stats() -> anyhow::Result<()> {
     // Test stats endpoint
     let req = test::TestRequest::get()
         .uri(&format!("/api/v1/workflows/{}/stats", wf_uuid))
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
     let resp = test::call_service(&app, req).await;
@@ -683,7 +686,7 @@ async fn test_provider_endpoint_returns_404_for_consumer_workflow() -> anyhow::R
     // Try to access as provider endpoint
     let req = test::TestRequest::get()
         .uri(&format!("/api/v1/workflows/{}", wf_uuid))
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
     let resp = test::call_service(&app, req).await;

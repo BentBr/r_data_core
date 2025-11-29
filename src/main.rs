@@ -13,7 +13,7 @@ mod error;
 // mod notification;
 
 use r_data_core_api::ApiResponse;
-use r_data_core_api::ApiState;
+use r_data_core_api::{ApiState, ApiStateWrapper};
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::load_app_config;
 use r_data_core_persistence::DynamicEntityRepository;
@@ -159,7 +159,7 @@ async fn main() -> std::io::Result<()> {
         .expect("Failed to initialize Redis queue client"),
     );
 
-    let app_state = web::Data::new(ApiState {
+    let api_state = ApiState {
         db_pool: pool,
         api_config: config.api.clone(),
         cache_manager: cache_manager.clone(),
@@ -170,7 +170,9 @@ async fn main() -> std::io::Result<()> {
         workflow_service,
         permission_scheme_service,
         queue: queue_client.clone(),
-    });
+    };
+
+    let app_state = web::Data::new(ApiStateWrapper::new(api_state));
 
     let bind_address = format!("{}:{}", config.api.host, config.api.port);
     info!("Starting HTTP server at http://{}", bind_address);

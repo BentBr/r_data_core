@@ -44,13 +44,15 @@ impl<'de> Deserialize<'de> for FieldDefinition {
 
         if let Some(min_length) = helper.constraints.get("min_length").cloned() {
             if let Some(min_len) = min_length.as_u64() {
-                helper.validation.min_length = Some(min_len as usize);
+                // u64 to usize conversion is intentional - allow truncation on 32-bit systems
+                helper.validation.min_length = usize::try_from(min_len).ok();
             }
         }
 
         if let Some(max_length) = helper.constraints.get("max_length").cloned() {
             if let Some(max_len) = max_length.as_u64() {
-                helper.validation.max_length = Some(max_len as usize);
+                // u64 to usize conversion is intentional - allow truncation on 32-bit systems
+                helper.validation.max_length = usize::try_from(max_len).ok();
             }
         }
 

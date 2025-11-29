@@ -1,9 +1,11 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use async_trait::async_trait;
 use mockall::{
     mock,
     predicate::{self, eq},
 };
-use r_data_core::error::Error;
 use r_data_core_core::admin_user::ApiKey;
 use r_data_core_core::error::Result;
 use r_data_core_persistence::ApiKeyRepositoryTrait;
@@ -22,6 +24,7 @@ mock! {
         async fn get_by_uuid(&self, uuid: Uuid) -> Result<Option<ApiKey>>;
         async fn create(&self, key: &ApiKey) -> Result<Uuid>;
         async fn list_by_user(&self, user_uuid: Uuid, limit: i64, offset: i64) -> Result<Vec<ApiKey>>;
+        async fn count_by_user(&self, user_uuid: Uuid) -> Result<i64>;
         async fn revoke(&self, uuid: Uuid) -> Result<()>;
         async fn get_by_name(&self, user_uuid: Uuid, name: &str) -> Result<Option<ApiKey>>;
         async fn get_by_hash(&self, api_key: &str) -> Result<Option<ApiKey>>;
@@ -34,7 +37,6 @@ mock! {
         ) -> Result<(Uuid, String)>;
         async fn update_last_used(&self, uuid: Uuid) -> Result<()>;
         async fn reassign(&self, uuid: Uuid, new_user_uuid: Uuid) -> Result<()>;
-        async fn count_by_user(&self, user_uuid: Uuid) -> Result<i64>;
     }
 }
 

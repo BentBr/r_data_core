@@ -97,7 +97,7 @@ impl ResourceNamespace {
     /// # Returns
     /// String representation matching the namespace name
     #[must_use]
-    pub fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &str {
         match self {
             Self::Workflows => "workflows",
             Self::Entities => "entities",
@@ -108,13 +108,13 @@ impl ResourceNamespace {
         }
     }
 
-    /// Convert a string to a ResourceNamespace
+    /// Convert a string to a `ResourceNamespace`
     ///
     /// # Arguments
     /// * `s` - String representation of the namespace
     ///
     /// # Returns
-    /// ResourceNamespace enum variant, or None if invalid
+    /// `ResourceNamespace` enum variant, or None if invalid
     #[must_use]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
@@ -171,7 +171,7 @@ pub struct PermissionScheme {
     pub is_system: bool,
 
     /// Role-based permissions
-    /// Key is role name (e.g., "MyRole"), value is list of permissions for that role
+    /// Key is role name (e.g., `"MyRole"`), value is list of permissions for that role
     pub role_permissions: HashMap<String, Vec<Permission>>,
 }
 
@@ -370,8 +370,7 @@ impl PermissionScheme {
         }
 
         // Wildcard match: /projects/* matches /projects/sub
-        if allowed_path.ends_with("/*") {
-            let base = &allowed_path[..allowed_path.len() - 2];
+        if let Some(base) = allowed_path.strip_suffix("/*") {
             if requested_path.starts_with(base)
                 && (requested_path.len() == base.len()
                     || requested_path.as_bytes()[base.len()] == b'/')
