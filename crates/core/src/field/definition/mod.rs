@@ -108,8 +108,12 @@ impl FieldDefinitionModule for FieldDefinition {
     fn get_sql_type(&self) -> String {
         // Map field type to SQL type
         match self.field_type {
-            FieldType::String | FieldType::Text | FieldType::Select | FieldType::Wysiwyg
-            | FieldType::File | FieldType::Image => "TEXT".to_string(),
+            FieldType::String
+            | FieldType::Text
+            | FieldType::Select
+            | FieldType::Wysiwyg
+            | FieldType::File
+            | FieldType::Image => "TEXT".to_string(),
             FieldType::Integer => "INTEGER".to_string(),
             FieldType::Float => "DOUBLE PRECISION".to_string(),
             FieldType::Boolean => "BOOLEAN".to_string(),

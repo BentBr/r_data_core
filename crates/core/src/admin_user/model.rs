@@ -134,8 +134,8 @@ pub struct AdminUser {
     /// Failed login attempts
     pub failed_login_attempts: i32,
 
-    /// Permission scheme ID
-    pub permission_scheme_uuid: Option<Uuid>,
+    /// Super admin flag - overrides all permissions
+    pub super_admin: bool,
 
     pub uuid: Uuid,
     pub first_name: Option<String>,
@@ -174,7 +174,7 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
         let role = UserRole::Custom("Default".to_string()); // Default role
         let status = UserStatus::Active; // Default status
         let failed_login_attempts = 0; // Default value
-        let permission_scheme_uuid = None; // Default value
+        let super_admin = row.try_get("super_admin").unwrap_or(false); // Default to false
         let is_admin = false; // Default value
 
         Ok(Self {
@@ -187,7 +187,7 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
             status,
             last_login,
             failed_login_attempts,
-            permission_scheme_uuid,
+            super_admin,
             first_name,
             last_name,
             is_active,
@@ -224,7 +224,7 @@ impl AdminUser {
         full_name: String,
         role: UserRole,
         status: UserStatus,
-        permission_scheme_uuid: Option<Uuid>,
+        super_admin: bool,
         first_name: String,
         last_name: String,
         is_active: bool,
@@ -242,7 +242,7 @@ impl AdminUser {
             status,
             last_login: None,
             failed_login_attempts: 0,
-            permission_scheme_uuid,
+            super_admin,
             uuid: Uuid::now_v7(),
             first_name: Some(first_name),
             last_name: Some(last_name),
@@ -323,8 +323,8 @@ impl AdminUser {
         permission_type: &crate::permissions::permission_scheme::PermissionType,
         path: Option<&str>,
     ) -> bool {
-        // SuperAdmin has all permissions
-        if matches!(self.role, UserRole::SuperAdmin) {
+        // SuperAdmin role or super_admin flag has all permissions
+        if self.super_admin || matches!(self.role, UserRole::SuperAdmin) {
             return true;
         }
 
@@ -476,6 +476,8 @@ mod tests {
 
     #[test]
     fn test_admin_user_has_permission_superadmin() {
+        use crate::permissions::permission_scheme::ResourceNamespace;
+
         let user = AdminUser::new(
             "admin".to_string(),
             "admin@test.com".to_string(),
@@ -483,7 +485,7 @@ mod tests {
             "Admin User".to_string(),
             UserRole::SuperAdmin,
             UserStatus::Active,
-            None,
+            false, // super_admin flag
             "Admin".to_string(),
             "User".to_string(),
             true,
@@ -493,10 +495,15 @@ mod tests {
         let scheme = PermissionScheme::new("Test".to_string());
 
         // SuperAdmin should have all permissions
-        assert!(user.has_permission(&scheme, "workflows", &PermissionType::Read, None));
         assert!(user.has_permission(
             &scheme,
-            "entities",
+            &ResourceNamespace::Workflows,
+            &PermissionType::Read,
+            None
+        ));
+        assert!(user.has_permission(
+            &scheme,
+            &ResourceNamespace::Entities,
             &PermissionType::Delete,
             Some("/any/path")
         ));
@@ -504,7 +511,8 @@ mod tests {
 
     #[test]
     fn test_admin_user_has_permission_custom_role() {
-        let scheme_uuid = Uuid::now_v7();
+        use crate::permissions::permission_scheme::ResourceNamespace;
+
         let user = AdminUser::new(
             "user".to_string(),
             "user@test.com".to_string(),
@@ -512,7 +520,7 @@ mod tests {
             "Test User".to_string(),
             UserRole::Custom("MyRole".to_string()),
             UserStatus::Active,
-            Some(scheme_uuid),
+            false, // super_admin flag
             "Test".to_string(),
             "User".to_string(),
             true,
