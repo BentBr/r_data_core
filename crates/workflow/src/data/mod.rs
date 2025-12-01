@@ -23,8 +23,8 @@ pub enum WorkflowKind {
 impl Display for WorkflowKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            WorkflowKind::Consumer => write!(f, "consumer"),
-            WorkflowKind::Provider => write!(f, "provider"),
+            Self::Consumer => write!(f, "consumer"),
+            Self::Provider => write!(f, "provider"),
         }
     }
 }
@@ -33,8 +33,8 @@ impl FromStr for WorkflowKind {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_ascii_lowercase().as_str() {
-            "consumer" => Ok(WorkflowKind::Consumer),
-            "provider" => Ok(WorkflowKind::Provider),
+            "consumer" => Ok(Self::Consumer),
+            "provider" => Ok(Self::Provider),
             _ => Err("invalid workflow kind"),
         }
     }

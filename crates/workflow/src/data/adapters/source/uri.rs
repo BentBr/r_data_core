@@ -2,13 +2,15 @@ use super::{DataSource, SourceContext};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use bytes::Bytes;
-use futures::Stream;
+use futures::{stream, Stream};
 
 /// URI-based data source (HTTP/HTTPS)
+#[derive(Default)]
 pub struct UriSource;
 
 impl UriSource {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -40,10 +42,11 @@ impl DataSource for UriSource {
         let response = request.send().await?.error_for_status()?;
         let body = response.bytes().await?;
 
-        use futures::stream;
         Ok(Box::new(stream::iter(vec![Ok(body)])))
     }
 
+    /// # Errors
+    /// Returns an error if the configuration is invalid.
     fn validate(&self, config: &serde_json::Value) -> Result<()> {
         let uri = config
             .get("uri")

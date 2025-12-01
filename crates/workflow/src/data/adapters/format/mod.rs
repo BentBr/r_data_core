@@ -11,12 +11,21 @@ pub trait FormatHandler: Send + Sync {
     fn format_type(&self) -> &'static str;
 
     /// Parse data into JSON objects
+    ///
+    /// # Errors
+    /// Returns an error if parsing fails.
     fn parse(&self, data: &[u8], options: &Value) -> Result<Vec<Value>>;
 
     /// Serialize JSON objects to format
+    ///
+    /// # Errors
+    /// Returns an error if serialization fails.
     fn serialize(&self, data: &[Value], options: &Value) -> Result<Bytes>;
 
     /// Validate format configuration
+    ///
+    /// # Errors
+    /// Returns an error if the configuration is invalid.
     fn validate_options(&self, options: &Value) -> Result<()>;
 }
 

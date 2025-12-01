@@ -17,8 +17,11 @@ pub struct ApalisRedisQueue {
 impl ApalisRedisQueue {
     /// Create a queue from a specific Redis URL and queue keys.
     /// Tests the connection immediately to fail fast if Redis is unreachable.
+    ///
+    /// # Errors
+    /// Returns an error if the Redis connection cannot be established or the URL is invalid.
     pub async fn from_parts(url: &str, fetch_key: &str, process_key: &str) -> anyhow::Result<Self> {
-        let client = Client::open(url).with_context(|| format!("invalid redis url: {}", url))?;
+        let client = Client::open(url).with_context(|| format!("invalid redis url: {url}"))?;
 
         // Test connection immediately
         let mut test_conn = client
@@ -31,10 +34,7 @@ impl ApalisRedisQueue {
             .context("failed to ping Redis - connection test failed")?;
 
         log::info!(
-            "Redis queue initialized: url={}, fetch_key={}, process_key={}",
-            url,
-            fetch_key,
-            process_key
+            "Redis queue initialized: url={url}, fetch_key={fetch_key}, process_key={process_key}"
         );
 
         Ok(Self {
@@ -55,26 +55,28 @@ impl ApalisRedisQueue {
             .context("failed to get redis connection")
     }
 
+    #[allow(clippy::future_not_send)] // MultiplexedConnection is Send, this is a false positive
     async fn push_json<T: serde::Serialize>(&self, key: &str, job: &T) -> anyhow::Result<()> {
         let mut conn = self.get_conn().await?;
         let payload = serde_json::to_string(job).context("failed to serialize job")?;
-        log::info!("Enqueueing job to Redis key '{}': {}", key, payload);
+        log::info!("Enqueueing job to Redis key '{key}': {payload}");
         // RPUSH for queue semantics (append to tail)
         let result: i64 = redis::cmd("RPUSH")
             .arg(key)
             .arg(&payload)
             .query_async(&mut conn)
             .await
-            .with_context(|| format!("failed to RPUSH job to Redis key '{}'", key))?;
+            .with_context(|| format!("failed to RPUSH job to Redis key '{key}'"))?;
         log::info!(
-            "Successfully enqueued job: RPUSH returned length {} for key '{}'",
-            result,
-            key
+            "Successfully enqueued job: RPUSH returned length {result} for key '{key}'"
         );
         Ok(())
     }
 
     /// Block until a fetch job is available, then return it.
+    ///
+    /// # Errors
+    /// Returns an error if the Redis connection fails or the job cannot be deserialized.
     pub async fn blocking_pop_fetch(&self) -> anyhow::Result<FetchAndStageJob> {
         let mut conn = self.get_conn().await?;
         // BLPOP key 0 => block indefinitely

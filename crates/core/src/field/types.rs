@@ -101,9 +101,8 @@ pub fn get_sql_type_for_field(
             enum_name.map_or_else(|| "TEXT".to_string(), |name| format!("{name}_enum"))
         }
         FieldType::MultiSelect => "TEXT[]".to_string(),
-        FieldType::Image | FieldType::File => "TEXT".to_string(), // Store path or ID
         FieldType::Object | FieldType::Array | FieldType::Json => "JSONB".to_string(), // Complex types as JSON
-        _ => "TEXT".to_string(), // Default for any other types
+        _ => "TEXT".to_string(), // Default for any other types (including Image, File)
     }
 }
 

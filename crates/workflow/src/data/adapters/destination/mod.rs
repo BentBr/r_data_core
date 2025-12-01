@@ -21,10 +21,11 @@ pub enum HttpMethod {
 }
 
 impl HttpMethod {
-    pub fn requires_body(&self) -> bool {
+    #[must_use]
+    pub const fn requires_body(&self) -> bool {
         matches!(
             self,
-            HttpMethod::Post | HttpMethod::Put | HttpMethod::Patch | HttpMethod::Delete
+            Self::Post | Self::Put | Self::Patch | Self::Delete
         )
     }
 }
@@ -43,14 +44,22 @@ pub trait DataDestination: Send + Sync {
     fn destination_type(&self) -> &'static str;
 
     /// Push data to the destination
+    ///
+    /// # Errors
+    /// Returns an error if the push operation fails.
     async fn push(&self, ctx: &DestinationContext, data: Bytes) -> Result<()>;
 
     /// Validate destination configuration
+    ///
+    /// # Errors
+    /// Returns an error if the configuration is invalid.
     fn validate(&self, config: &serde_json::Value) -> Result<()>;
 }
 
 /// Factory for creating destination instances
 pub trait DestinationFactory: Send + Sync {
     fn destination_type(&self) -> &'static str;
+    /// # Errors
+    /// Returns an error if the destination cannot be created from the config.
     fn create(&self, config: &serde_json::Value) -> Result<Box<dyn DataDestination>>;
 }

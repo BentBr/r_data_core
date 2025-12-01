@@ -747,7 +747,7 @@ impl DynamicEntityRepository {
                     JsonValue::Bool(b) => sql = sql.bind(*b),
                     JsonValue::Null => {
                         // NULL values are handled in the query with IS NULL
-                        continue;
+                        // Skip binding for NULL values
                     }
                     _ => sql = sql.bind(value.to_string()),
                 }

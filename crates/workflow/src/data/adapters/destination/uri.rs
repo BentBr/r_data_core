@@ -4,10 +4,12 @@ use async_trait::async_trait;
 use bytes::Bytes;
 
 /// URI-based data destination (HTTP/HTTPS)
+#[derive(Default)]
 pub struct UriDestination;
 
 impl UriDestination {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -54,6 +56,8 @@ impl DataDestination for UriDestination {
         Ok(())
     }
 
+    /// # Errors
+    /// Returns an error if the configuration is invalid.
     fn validate(&self, config: &serde_json::Value) -> Result<()> {
         let uri = config
             .get("uri")

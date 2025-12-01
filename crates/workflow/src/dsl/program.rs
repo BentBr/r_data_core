@@ -38,13 +38,16 @@ impl DslProgram {
             .cloned()
             .map(|v| serde_json::from_value::<DslStep>(v).context("Invalid DSL step"))
             .collect::<Result<_, _>>()?;
-        Ok(DslProgram { steps: parsed })
+        Ok(Self { steps: parsed })
     }
 
     /// Validate the DSL program
     ///
     /// # Errors
     /// Returns an error if validation fails
+    ///
+    /// # Panics
+    /// Panics if the regex pattern is invalid (should never happen).
     pub fn validate(&self) -> anyhow::Result<()> {
         if self.steps.is_empty() {
             bail!("DSL must contain at least one step");
@@ -117,9 +120,9 @@ impl DslProgram {
                         execution::eval_string_operand(&normalized, &ct.right).unwrap_or_default();
                     let sep = ct.separator.clone().unwrap_or_default();
                     let combined = if sep.is_empty() {
-                        format!("{}{}", left, right)
+                        format!("{left}{right}")
                     } else {
-                        format!("{}{}{}", left, sep, right)
+                        format!("{left}{sep}{right}")
                     };
                     execution::set_nested(&mut normalized, &ct.target, Value::from(combined));
                 }
@@ -204,9 +207,9 @@ impl DslProgram {
                         execution::eval_string_operand(&normalized, &ct.right).unwrap_or_default();
                     let sep = ct.separator.clone().unwrap_or_default();
                     let combined = if sep.is_empty() {
-                        format!("{}{}", left, right)
+                        format!("{left}{right}")
                     } else {
-                        format!("{}{}{}", left, sep, right)
+                        format!("{left}{sep}{right}")
                     };
                     execution::set_nested(&mut normalized, &ct.target, Value::from(combined));
                 }

@@ -7,8 +7,6 @@ use log::{debug, error, info};
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 
-mod error;
-
 // Todo: These modules will be implemented later
 // mod notification;
 

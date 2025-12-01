@@ -2,11 +2,11 @@
 
 mod csv;
 mod execution;
-mod from;
+pub mod from;
 mod processor;
 mod program;
-mod to;
-mod transform;
+pub mod to;
+pub mod transform;
 mod validation;
 
 // pub use csv::CsvOptions; // TODO: Re-enable when used
@@ -149,7 +149,7 @@ mod tests {
                 assert_eq!(produced["firstName"], json!("John"));
                 assert_eq!(produced["lastName"], json!("Doe"));
             }
-            _ => panic!("Expected Entity ToDef"),
+            ToDef::Format { .. } => panic!("Expected Entity ToDef"),
         }
     }
 

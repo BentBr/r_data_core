@@ -42,7 +42,7 @@ impl TryFrom<PermissionResponse> for Permission {
     fn try_from(response: PermissionResponse) -> Result<Self, Self::Error> {
         // Convert to lowercase for matching (API sends capitalized, but from_str expects lowercase)
         let resource_type_str = response.resource_type.to_lowercase();
-        let resource_type = ResourceNamespace::from_str(&resource_type_str)
+        let resource_type = ResourceNamespace::try_from_str(&resource_type_str)
             .ok_or_else(|| format!("Invalid resource type: {}", response.resource_type))?;
 
         Ok(Permission {

@@ -577,11 +577,14 @@ pub fn validate_entity_with_violations(
 
 /// Validate that `parent_uuid` and path are consistent
 /// Returns Ok(()) if valid, or adds violations if invalid
-/// This function checks the relationship between parent_uuid and path
+/// This function checks the relationship between `parent_uuid` and path
+///
+/// # Errors
+/// Returns an error if validation processing fails (should not happen in normal operation).
 pub fn validate_parent_path_consistency(
     parent_uuid: Option<String>,
-    path: Option<String>,
-    expected_path: Option<String>,
+    path: Option<&String>,
+    expected_path: Option<&String>,
 ) -> Result<Vec<FieldViolation>> {
     let mut violations = Vec::new();
 
@@ -595,8 +598,7 @@ pub fn validate_parent_path_consistency(
                         violations.push(FieldViolation {
                             field: "path".to_string(),
                             message: format!(
-                                "Path must match parent's path + key. Expected: {}, got: {}",
-                                expected, actual_path
+                                "Path must match parent's path + key. Expected: {expected}, got: {actual_path}"
                             ),
                         });
                     }

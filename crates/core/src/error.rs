@@ -93,6 +93,12 @@ impl From<uuid::Error> for Error {
     }
 }
 
+impl From<redis::RedisError> for Error {
+    fn from(err: redis::RedisError) -> Self {
+        Self::Cache(err.to_string())
+    }
+}
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 // Extension trait to convert sqlx errors to our database errors

@@ -19,17 +19,25 @@ pub trait DataSource: Send + Sync {
     fn source_type(&self) -> &'static str;
 
     /// Fetch data from the source
+    ///
+    /// # Errors
+    /// Returns an error if the fetch operation fails.
     async fn fetch(
         &self,
         ctx: &SourceContext,
     ) -> Result<Box<dyn Stream<Item = Result<Bytes>> + Unpin + Send>>;
 
     /// Validate source configuration
+    ///
+    /// # Errors
+    /// Returns an error if the configuration is invalid.
     fn validate(&self, config: &serde_json::Value) -> Result<()>;
 }
 
 /// Factory for creating source instances
 pub trait SourceFactory: Send + Sync {
     fn source_type(&self) -> &'static str;
+    /// # Errors
+    /// Returns an error if the source cannot be created from the config.
     fn create(&self, config: &serde_json::Value) -> Result<Box<dyn DataSource>>;
 }

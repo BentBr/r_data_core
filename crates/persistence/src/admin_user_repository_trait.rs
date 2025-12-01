@@ -22,7 +22,7 @@ pub trait ApiKeyRepositoryTrait: Send + Sync {
     /// Count API keys for a user
     async fn count_by_user(&self, user_uuid: Uuid) -> Result<i64>;
 
-    /// Revoke an API key (set is_active to false)
+    /// Revoke an API key (set `is_active` to false)
     async fn revoke(&self, uuid: Uuid) -> Result<()>;
 
     /// Get an API key by its name for a specific user

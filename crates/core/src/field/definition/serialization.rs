@@ -109,7 +109,7 @@ impl<'de> Deserialize<'de> for FieldDefinition {
             }
         }
 
-        Ok(FieldDefinition {
+        Ok(Self {
             name: helper.name,
             display_name: helper.display_name,
             field_type: helper.field_type,

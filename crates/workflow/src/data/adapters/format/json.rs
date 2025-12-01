@@ -4,10 +4,12 @@ use bytes::Bytes;
 use serde_json::Value;
 
 /// JSON format handler
+#[derive(Default)]
 pub struct JsonFormatHandler;
 
 impl JsonFormatHandler {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -17,6 +19,8 @@ impl FormatHandler for JsonFormatHandler {
         "json"
     }
 
+    /// # Errors
+    /// Returns an error if JSON parsing fails.
     fn parse(&self, data: &[u8], _options: &Value) -> Result<Vec<Value>> {
         // Try parsing as array first
         if let Ok(array) = serde_json::from_slice::<Vec<Value>>(data) {
@@ -49,10 +53,12 @@ impl FormatHandler for JsonFormatHandler {
         Ok(vec![obj])
     }
 
+    /// # Errors
+    /// Returns an error if JSON serialization fails.
     fn serialize(&self, data: &[Value], options: &Value) -> Result<Bytes> {
         let as_array = options
             .get("as_array")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(true);
 
         let bytes = if as_array {
@@ -70,6 +76,8 @@ impl FormatHandler for JsonFormatHandler {
         Ok(Bytes::from(bytes))
     }
 
+    /// # Errors
+    /// Returns an error if the configuration is invalid.
     fn validate_options(&self, _options: &Value) -> Result<()> {
         // JSON format has minimal options
         Ok(())

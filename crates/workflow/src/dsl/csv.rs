@@ -19,7 +19,7 @@ pub struct CsvOptions {
 
 impl CsvOptions {
     #[allow(dead_code)] // Used by serde default
-    pub fn default_header() -> bool {
+    pub const fn default_header() -> bool {
         true
     }
     #[allow(dead_code)] // Used by serde default

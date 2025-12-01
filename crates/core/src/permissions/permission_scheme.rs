@@ -116,7 +116,7 @@ impl ResourceNamespace {
     /// # Returns
     /// `ResourceNamespace` enum variant, or None if invalid
     #[must_use]
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn try_from_str(s: &str) -> Option<Self> {
         match s {
             "workflows" => Some(Self::Workflows),
             "entities" => Some(Self::Entities),
@@ -311,7 +311,7 @@ impl PermissionScheme {
                 // For entities namespace, check path constraints if provided
                 if matches!(namespace, ResourceNamespace::Entities) {
                     if let Some(requested_path) = path {
-                        return self.check_path_constraint(&p.constraints, requested_path);
+                        return Self::check_path_constraint(p.constraints.as_ref(), requested_path);
                     }
                 }
 
@@ -336,8 +336,7 @@ impl PermissionScheme {
     /// - Wildcard: `/projects/*` explicitly allows sub-paths
     #[must_use]
     fn check_path_constraint(
-        &self,
-        constraints: &Option<serde_json::Value>,
+        constraints: Option<&serde_json::Value>,
         requested_path: &str,
     ) -> bool {
         let Some(constraints) = constraints else {
@@ -586,29 +585,29 @@ mod tests {
 
     #[test]
     fn test_path_constraint_matching() {
-        let scheme = PermissionScheme::new("Test".to_string());
+        let _scheme = PermissionScheme::new("Test".to_string());
 
         // No constraint - all paths allowed
-        assert!(scheme.check_path_constraint(&None, "/any/path"));
+        assert!(PermissionScheme::check_path_constraint(None, "/any/path"));
 
         // Exact match
-        let constraints = Some(serde_json::json!({"path": "/projects"}));
-        assert!(scheme.check_path_constraint(&constraints, "/projects"));
-        assert!(!scheme.check_path_constraint(&constraints, "/project")); // Not exact
+        let constraints = serde_json::json!({"path": "/projects"});
+        assert!(PermissionScheme::check_path_constraint(Some(&constraints), "/projects"));
+        assert!(!PermissionScheme::check_path_constraint(Some(&constraints), "/project")); // Not exact
 
         // Prefix match
-        assert!(scheme.check_path_constraint(&constraints, "/projects/sub"));
-        assert!(scheme.check_path_constraint(&constraints, "/projects/sub/deep"));
+        assert!(PermissionScheme::check_path_constraint(Some(&constraints), "/projects/sub"));
+        assert!(PermissionScheme::check_path_constraint(Some(&constraints), "/projects/sub/deep"));
 
         // Non-matching paths
-        assert!(!scheme.check_path_constraint(&constraints, "/other"));
-        assert!(!scheme.check_path_constraint(&constraints, "/projectx")); // Prefix but not valid
+        assert!(!PermissionScheme::check_path_constraint(Some(&constraints), "/other"));
+        assert!(!PermissionScheme::check_path_constraint(Some(&constraints), "/projectx")); // Prefix but not valid
 
         // Wildcard match
-        let wildcard_constraints = Some(serde_json::json!({"path": "/projects/*"}));
-        assert!(scheme.check_path_constraint(&wildcard_constraints, "/projects/sub"));
-        assert!(scheme.check_path_constraint(&wildcard_constraints, "/projects/sub/deep"));
-        assert!(!scheme.check_path_constraint(&wildcard_constraints, "/projects"));
+        let wildcard_constraints = serde_json::json!({"path": "/projects/*"});
+        assert!(PermissionScheme::check_path_constraint(Some(&wildcard_constraints), "/projects/sub"));
+        assert!(PermissionScheme::check_path_constraint(Some(&wildcard_constraints), "/projects/sub/deep"));
+        assert!(!PermissionScheme::check_path_constraint(Some(&wildcard_constraints), "/projects"));
         // Exact match still works
     }
 

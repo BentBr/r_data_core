@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use sqlx::{postgres::PgRow, FromRow, Row};
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug, Write};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -12,7 +12,7 @@ use crate::error::{Error, Result};
 use crate::field::FieldDefinition;
 use crate::field::FieldType;
 
-/// Function to serialize/deserialize OffsetDateTime with defaults
+/// Function to serialize/deserialize `OffsetDateTime` with defaults
 mod datetime_serde {
     use serde::{Deserialize, Deserializer, Serializer};
     use time::format_description::well_known::Rfc3339;
@@ -31,10 +31,7 @@ mod datetime_serde {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        match OffsetDateTime::parse(&s, &Rfc3339) {
-            Ok(date) => Ok(date),
-            Err(_) => Ok(OffsetDateTime::now_utc()),
-        }
+        OffsetDateTime::parse(&s, &Rfc3339).map_or_else(|_| Ok(OffsetDateTime::now_utc()), Ok)
     }
 }
 
@@ -107,7 +104,7 @@ fn generate_uuid() -> Uuid {
 }
 
 /// Default version for new entities
-fn default_version() -> i32 {
+const fn default_version() -> i32 {
     1
 }
 
@@ -126,7 +123,7 @@ impl<'r> FromRow<'r, PgRow> for EntityDefinition {
         );
         let schema = Schema::new(properties);
 
-        Ok(EntityDefinition {
+        Ok(Self {
             uuid: row.try_get("uuid")?,
             entity_type: row.try_get("entity_type")?,
             display_name: row.try_get("display_name")?,
@@ -148,6 +145,8 @@ impl<'r> FromRow<'r, PgRow> for EntityDefinition {
 
 impl EntityDefinition {
     /// Create a new entity type definition
+    #[must_use]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         entity_type: String,
         display_name: String,
@@ -167,7 +166,7 @@ impl EntityDefinition {
             JsonValue::String(entity_type.clone()),
         );
 
-        EntityDefinition {
+        Self {
             uuid: Uuid::now_v7(),
             entity_type,
             display_name,
@@ -187,21 +186,27 @@ impl EntityDefinition {
     }
 
     /// Get the SQL table name for this entity type
+    #[must_use]
     pub fn get_table_name(&self) -> String {
         format!("entity_{}", self.entity_type.to_lowercase())
     }
 
     /// Get field definition by name
+    #[must_use]
     pub fn get_field(&self, name: &str) -> Option<&FieldDefinition> {
         self.fields.iter().find(|f| f.name == name)
     }
 
     /// Get all field definitions
-    pub fn get_fields(&self) -> &Vec<FieldDefinition> {
+    #[must_use]
+    pub const fn get_fields(&self) -> &Vec<FieldDefinition> {
         &self.fields
     }
 
     /// Add field definition
+    ///
+    /// # Errors
+    /// Returns `Error::FieldAlreadyExists` if a field with the same name already exists.
     pub fn add_field(&mut self, field_definition: FieldDefinition) -> Result<()> {
         if self.get_field(&field_definition.name).is_some() {
             return Err(Error::FieldAlreadyExists(field_definition.name));
@@ -211,6 +216,9 @@ impl EntityDefinition {
     }
 
     /// Update field definition
+    ///
+    /// # Errors
+    /// Returns `Error::FieldNotFound` if the field does not exist.
     pub fn update_field(&mut self, field_definition: FieldDefinition) -> Result<()> {
         let field_idx = self
             .fields
@@ -227,6 +235,9 @@ impl EntityDefinition {
     }
 
     /// Remove field definition
+    ///
+    /// # Errors
+    /// Returns `Error::FieldNotFound` if the field does not exist.
     pub fn remove_field(&mut self, name: &str) -> Result<()> {
         let field_idx = self.fields.iter().position(|f| f.name == name);
 
@@ -240,6 +251,12 @@ impl EntityDefinition {
     }
 
     /// Validate the entity type definition
+    ///
+    /// # Panics
+    /// Panics if `Regex::new` fails, which should never happen with a valid regex pattern.
+    ///
+    /// # Errors
+    /// Returns `Error::Validation` if the entity type name is invalid or required fields are missing.
     pub fn validate(&self) -> Result<()> {
         // Check for required fields
         if self.entity_type.is_empty() {
@@ -280,12 +297,14 @@ impl EntityDefinition {
     }
 
     /// Generate SQL table schema for this class
+    #[must_use]
+    #[allow(clippy::write_with_newline)] // SQL strings need newlines for proper formatting
     pub fn generate_schema_sql(&self) -> String {
         let table_name = self.get_table_name();
         let mut sql = String::new();
 
         // Check if table exists and create it if not
-        sql.push_str(&format!("CREATE TABLE IF NOT EXISTS {} (\n", table_name));
+        let _ = write!(sql, "CREATE TABLE IF NOT EXISTS {table_name} (\n");
         sql.push_str("    uuid UUID PRIMARY KEY DEFAULT uuidv7(),\n");
         sql.push_str("    path TEXT,\n");
         sql.push_str("    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n");
@@ -306,8 +325,8 @@ impl EntityDefinition {
 
             // For ManyToOne, add a reference column
             if matches!(field.field_type, FieldType::ManyToOne) {
-                if let Some(_) = &field.validation.target_class {
-                    sql.push_str(&format!(",\n    {}_uuid UUID", field_name));
+                if field.validation.target_class.is_some() {
+                    let _ = write!(sql, ",\n    {field_name}_uuid UUID");
                 }
                 continue;
             }
@@ -326,7 +345,7 @@ impl EntityDefinition {
             );
 
             // Add NOT NULL constraint if required
-            sql.push_str(&format!(",\n    {} {}", field_name, sql_type));
+            let _ = write!(sql, ",\n    {field_name} {sql_type}");
             if field.required {
                 sql.push_str(" NOT NULL");
             }
@@ -345,44 +364,26 @@ impl EntityDefinition {
                         target_class.to_lowercase()
                     );
 
-                    sql.push_str(&format!(
-                        "CREATE TABLE IF NOT EXISTS {} (\n",
-                        relation_table
-                    ));
-                    sql.push_str(&format!(
-                        "    {}_uuid UUID NOT NULL REFERENCES {} (uuid),\n",
-                        self.entity_type.to_lowercase(),
-                        table_name
-                    ));
-                    sql.push_str(&format!(
-                        "    {}_uuid UUID NOT NULL,\n",
-                        target_class.to_lowercase()
-                    ));
+                    let _ = write!(sql, "CREATE TABLE IF NOT EXISTS {relation_table} (\n");
+                    let entity_lower = self.entity_type.to_lowercase();
+                    let target_lower = target_class.to_lowercase();
+                    let _ = write!(sql, "    {entity_lower}_uuid UUID NOT NULL REFERENCES {table_name} (uuid),\n");
+                    let _ = write!(sql, "    {target_lower}_uuid UUID NOT NULL,\n");
                     sql.push_str(
                         "    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n",
                     );
                     sql.push_str("    PRIMARY KEY (");
-                    sql.push_str(&format!(
-                        "{}_uuid, {}_uuid",
-                        self.entity_type.to_lowercase(),
-                        target_class.to_lowercase()
-                    ));
+                    let _ = write!(sql, "{entity_lower}_uuid, {target_lower}_uuid");
                     sql.push_str(")\n);\n\n");
 
                     // Add indexes for the relation table with explicit comments for identification
-                    sql.push_str(&format!("-- INDEX: Relation table source index\n"));
-                    sql.push_str(&format!(
-                        "CREATE INDEX IF NOT EXISTS idx_{0}_{1}_uuid ON {0} ({1}_uuid);\n\n",
-                        relation_table,
-                        self.entity_type.to_lowercase()
-                    ));
+                    sql.push_str("-- INDEX: Relation table source index\n");
+                    let entity_lower = self.entity_type.to_lowercase();
+                    let _ = write!(sql, "CREATE INDEX IF NOT EXISTS idx_{relation_table}_{entity_lower}_uuid ON {relation_table} ({entity_lower}_uuid);\n\n");
 
-                    sql.push_str(&format!("-- INDEX: Relation table target index\n"));
-                    sql.push_str(&format!(
-                        "CREATE INDEX IF NOT EXISTS idx_{0}_{1}_uuid ON {0} ({1}_uuid);\n\n",
-                        relation_table,
-                        target_class.to_lowercase()
-                    ));
+                    sql.push_str("-- INDEX: Relation table target index\n");
+                    let target_lower = target_class.to_lowercase();
+                    let _ = write!(sql, "CREATE INDEX IF NOT EXISTS idx_{relation_table}_{target_lower}_uuid ON {relation_table} ({target_lower}_uuid);\n\n");
                 }
             }
         }
@@ -394,20 +395,14 @@ impl EntityDefinition {
 
                 // For ManyToOne relations, index the reference column
                 if matches!(field.field_type, FieldType::ManyToOne) {
-                    if let Some(_) = &field.validation.target_class {
-                        sql.push_str(&format!("-- INDEX: ManyToOne reference field index\n"));
-                        sql.push_str(&format!(
-                            "CREATE INDEX IF NOT EXISTS idx_{}_{}_uuid ON {} ({}_uuid);\n\n",
-                            table_name, field_name, table_name, field_name
-                        ));
+                    if field.validation.target_class.is_some() {
+                        sql.push_str("-- INDEX: ManyToOne reference field index\n");
+                        let _ = write!(sql, "CREATE INDEX IF NOT EXISTS idx_{table_name}_{field_name}_uuid ON {table_name} ({field_name}_uuid);\n\n");
                     }
                 } else if !matches!(field.field_type, FieldType::ManyToMany) {
                     // Don't add index for ManyToMany as those are in separate tables
-                    sql.push_str(&format!("-- INDEX: Regular field index\n"));
-                    sql.push_str(&format!(
-                        "CREATE INDEX IF NOT EXISTS idx_{}_{} ON {} ({});\n\n",
-                        table_name, field_name, table_name, field_name
-                    ));
+                    sql.push_str("-- INDEX: Regular field index\n");
+                    let _ = write!(sql, "CREATE INDEX IF NOT EXISTS idx_{table_name}_{field_name} ON {table_name} ({field_name});\n\n");
                 }
             }
         }
@@ -416,12 +411,14 @@ impl EntityDefinition {
     }
 
     /// Returns the properly formatted table name for this entity definition
+    #[must_use]
     pub fn table_name(&self) -> String {
         self.entity_type.to_lowercase()
     }
 
     /// Generate SQL schema for this entity definition
-    /// This is an alias for generate_schema_sql to maintain compatibility
+    /// This is an alias for `generate_schema_sql` to maintain compatibility
+    #[must_use]
     pub fn generate_sql_schema(&self) -> String {
         self.generate_schema_sql()
     }

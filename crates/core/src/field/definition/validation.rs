@@ -187,6 +187,7 @@ impl FieldDefinition {
                     }
                 }
 
+                #[allow(clippy::cast_precision_loss)]
                 let n = if value.is_f64() {
                     value.as_f64().unwrap()
                 } else if value.is_i64() {
@@ -246,6 +247,7 @@ impl FieldDefinition {
                         }
                     } else if value.is_number() {
                         // Allow 0/1 as boolean
+                        #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
                         let n = if value.is_i64() {
                             value.as_i64().unwrap()
                         } else if value.is_u64() {
@@ -280,7 +282,7 @@ impl FieldDefinition {
                 let date_str = value.as_str().unwrap();
 
                 // Try to parse the date
-                if let Err(_) = time::OffsetDateTime::parse(date_str, &Rfc3339) {
+                if time::OffsetDateTime::parse(date_str, &Rfc3339).is_err() {
                     return Err(Error::Validation(format!(
                         "Field '{}' must be a valid date in RFC3339 format",
                         self.name
@@ -346,22 +348,15 @@ impl FieldDefinition {
                 let selected = value.as_str().unwrap();
 
                 // Check if selected value is in options
-                if let Some(source) = &self.validation.options_source {
-                    match source {
-                        crate::field::options::OptionsSource::Fixed { options } => {
-                            let valid_options: Vec<&String> =
-                                options.iter().map(|opt| &opt.value).collect();
+                if let Some(crate::field::options::OptionsSource::Fixed { options }) = &self.validation.options_source {
+                    let valid_options: Vec<&String> =
+                        options.iter().map(|opt| &opt.value).collect();
 
-                            if !valid_options.contains(&&selected.to_string()) {
-                                return Err(Error::Validation(format!(
-                                    "Field '{}' value must be one of {:?}",
-                                    self.name, valid_options
-                                )));
-                            }
-                        }
-                        _ => {
-                            // For dynamic options, we can't validate here
-                        }
+                    if !valid_options.contains(&&selected.to_string()) {
+                        return Err(Error::Validation(format!(
+                            "Field '{}' value must be one of {:?}",
+                            self.name, valid_options
+                        )));
                     }
                 }
             }

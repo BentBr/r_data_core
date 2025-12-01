@@ -32,7 +32,7 @@ impl FromValue for String {
             JsonValue::String(s) => Ok(s.clone()),
             JsonValue::Number(n) => Ok(n.to_string()),
             JsonValue::Bool(b) => Ok(b.to_string()),
-            JsonValue::Null => Ok(String::new()),
+            JsonValue::Null => Ok(Self::new()),
             _ => Err(crate::error::Error::Conversion(format!(
                 "Cannot convert {value:?} to String"
             ))),
@@ -46,7 +46,7 @@ impl FromValue for i64 {
             JsonValue::Number(n) => n.as_i64().ok_or_else(|| {
                 crate::error::Error::Conversion(format!("Cannot convert {value:?} to i64"))
             }),
-            JsonValue::String(s) => s.parse::<i64>().map_err(|_| {
+            JsonValue::String(s) => s.parse::<Self>().map_err(|_| {
                 crate::error::Error::Conversion(format!("Cannot convert string '{s}' to i64"))
             }),
             _ => Err(crate::error::Error::Conversion(format!(
@@ -60,7 +60,7 @@ impl FromValue for bool {
     fn from_value(value: &JsonValue) -> Result<Self> {
         match value {
             JsonValue::Bool(b) => Ok(*b),
-            JsonValue::Number(n) => Ok(n.as_i64().map(|x| x != 0).unwrap_or(false)),
+            JsonValue::Number(n) => Ok(n.as_i64().is_some_and(|x| x != 0)),
             JsonValue::String(s) => Ok(s.to_lowercase() == "true" || s == "1"),
             _ => Err(crate::error::Error::Conversion(format!(
                 "Cannot convert {value:?} to bool"
@@ -78,7 +78,7 @@ impl FromValue for JsonValue {
 impl FromValue for Uuid {
     fn from_value(value: &JsonValue) -> Result<Self> {
         match value {
-            JsonValue::String(s) => Uuid::parse_str(s).map_err(|_| {
+            JsonValue::String(s) => Self::parse_str(s).map_err(|_| {
                 crate::error::Error::Conversion(format!("Cannot convert string '{s}' to Uuid"))
             }),
             _ => Err(crate::error::Error::Conversion(format!(
@@ -130,6 +130,10 @@ pub struct DynamicEntity {
 
 impl DynamicEntity {
     /// Create a new dynamic entity
+    ///
+    /// # Panics
+    /// Panics if `OffsetDateTime::now_utc().format(&Rfc3339)` fails, which should never happen.
+    #[must_use]
     pub fn new(entity_type: String, definition: Arc<EntityDefinition>) -> Self {
         let mut field_data = HashMap::new();
 
@@ -162,6 +166,7 @@ impl DynamicEntity {
 
     /// Create a dynamic entity from raw data
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // Cannot be const: takes HashMap and Arc which are not const
     pub fn from_data(
         entity_type: String,
         field_data: HashMap<String, JsonValue>,
@@ -175,6 +180,9 @@ impl DynamicEntity {
     }
 
     /// Get a typed field value
+    ///
+    /// # Errors
+    /// Returns `Error::Conversion` if the field value cannot be converted to the requested type.
     pub fn get<T: FromValue>(&self, field: &str) -> Result<T> {
         let value = self
             .field_data
@@ -228,6 +236,9 @@ impl DynamicEntity {
     }
 
     /// Validate the entity against its entity definition
+    ///
+    /// # Errors
+    /// Returns `Error::Validation` if required fields are missing or field values are invalid.
     pub fn validate(&self) -> Result<()> {
         for field in &self.definition.fields {
             if field.required && !self.field_data.contains_key(&field.name) {
@@ -248,6 +259,12 @@ impl DynamicEntity {
     }
 
     /// Increment the entity version number
+    ///
+    /// # Panics
+    /// Panics if `OffsetDateTime::now_utc().format(&Rfc3339)` fails, which should never happen.
+    ///
+    /// # Errors
+    /// Returns `Error::Conversion` if the current version cannot be read as i64.
     pub fn increment_version(&mut self) -> Result<()> {
         let current_version = self.get::<i64>("version")?;
         let new_version = current_version + 1;

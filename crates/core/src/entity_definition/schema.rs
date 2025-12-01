@@ -3,21 +3,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Schema {
     pub properties: HashMap<String, JsonValue>,
 }
 
-impl Default for Schema {
-    fn default() -> Self {
-        Self {
-            properties: HashMap::new(),
-        }
-    }
-}
-
 impl Schema {
-    pub fn new(properties: HashMap<String, JsonValue>) -> Self {
+    #[must_use]
+    pub const fn new(properties: HashMap<String, JsonValue>) -> Self {
         Self { properties }
     }
 
@@ -25,6 +18,10 @@ impl Schema {
         self.properties.iter()
     }
 
+    /// Get column definitions from the schema
+    ///
+    /// # Errors
+    /// Returns an error if the schema structure is invalid or cannot be processed.
     pub fn get_column_definitions(&self) -> Result<Vec<String>> {
         let mut columns = Vec::new();
 
@@ -34,11 +31,10 @@ impl Schema {
                     if let Some(field_type) = field_def.get("type") {
                         let sql_type = match field_type.as_str() {
                             Some("string") => {
-                                if let Some(max_length) = field_def.get("maxLength") {
-                                    format!("VARCHAR({})", max_length)
-                                } else {
-                                    "TEXT".to_string()
-                                }
+                                field_def.get("maxLength").map_or_else(
+                                    || "TEXT".to_string(),
+                                    |max_length| format!("VARCHAR({max_length})"),
+                                )
                             }
                             Some("number") => "NUMERIC".to_string(),
                             Some("integer") => "BIGINT".to_string(),
@@ -50,7 +46,7 @@ impl Schema {
                             _ => "TEXT".to_string(),
                         };
 
-                        let mut column_def = format!("{} {}", field_name, sql_type);
+                        let mut column_def = format!("{field_name} {sql_type}");
 
                         if let Some(required) = field_def.get("required") {
                             if required.as_bool() == Some(true) {
@@ -84,6 +80,6 @@ impl From<JsonValue> for Schema {
 
 impl From<Schema> for JsonValue {
     fn from(schema: Schema) -> Self {
-        JsonValue::Object(schema.properties.into_iter().collect())
+        Self::Object(schema.properties.into_iter().collect())
     }
 }

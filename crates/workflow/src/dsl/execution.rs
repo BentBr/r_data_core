@@ -36,7 +36,7 @@ pub fn eval_operand(ctx: &Value, op: &Operand) -> Option<f64> {
 pub fn eval_string_operand(ctx: &Value, op: &StringOperand) -> Option<String> {
     match op {
         StringOperand::Field { field } => {
-            get_nested(ctx, field).and_then(|v| v.as_str().map(|s| s.to_string()))
+            get_nested(ctx, field).and_then(|v| v.as_str().map(ToString::to_string))
         }
         StringOperand::ConstString { value } => Some(value.clone()),
     }

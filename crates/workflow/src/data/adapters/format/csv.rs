@@ -4,10 +4,12 @@ use bytes::Bytes;
 use serde_json::Value;
 
 /// CSV format handler
+#[derive(Default)]
 pub struct CsvFormatHandler;
 
 impl CsvFormatHandler {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -17,10 +19,12 @@ impl FormatHandler for CsvFormatHandler {
         "csv"
     }
 
+    /// # Errors
+    /// Returns an error if CSV parsing fails.
     fn parse(&self, data: &[u8], options: &Value) -> Result<Vec<Value>> {
         let has_header = options
             .get("has_header")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(true);
         let delimiter = options
             .get("delimiter")
@@ -60,20 +64,21 @@ impl FormatHandler for CsvFormatHandler {
             match &headers {
                 Some(h) => {
                     for (i, field) in rec.iter().enumerate() {
+                        let col_num = i + 1;
                         let key = h
                             .get(i)
-                            .map(|s| s.to_string())
-                            .unwrap_or_else(|| format!("col_{}", i + 1));
-                        obj.insert(key, Value::String(field.to_string()));
+                            .map_or_else(|| format!("col_{col_num}"), ToString::to_string);
+                        obj.insert(key, serde_json::Value::String(field.to_string()));
                     }
                 }
                 None => {
                     for (i, field) in rec.iter().enumerate() {
-                        obj.insert(format!("col_{}", i + 1), Value::String(field.to_string()));
+                        let col_num = i + 1;
+                        obj.insert(format!("col_{col_num}"), serde_json::Value::String(field.to_string()));
                     }
                 }
             }
-            rows.push(Ok(Value::Object(obj)));
+            rows.push(Ok(serde_json::Value::Object(obj)));
         }
 
         let mut out = Vec::with_capacity(rows.len());
@@ -86,7 +91,7 @@ impl FormatHandler for CsvFormatHandler {
     fn serialize(&self, data: &[Value], options: &Value) -> Result<Bytes> {
         let has_header = options
             .get("has_header")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(true);
         let delimiter = options
             .get("delimiter")
@@ -127,7 +132,7 @@ impl FormatHandler for CsvFormatHandler {
                 let row: Vec<String> = obj
                     .values()
                     .map(|v| match v {
-                        Value::String(s) => s.clone(),
+                        serde_json::Value::String(s) => s.clone(),
                         _ => v.to_string(),
                     })
                     .collect();
@@ -140,6 +145,8 @@ impl FormatHandler for CsvFormatHandler {
         Ok(Bytes::from(bytes))
     }
 
+    /// # Errors
+    /// Returns an error if the configuration is invalid.
     fn validate_options(&self, options: &Value) -> Result<()> {
         if let Some(delimiter) = options.get("delimiter").and_then(|v| v.as_str()) {
             if delimiter.len() != 1 {

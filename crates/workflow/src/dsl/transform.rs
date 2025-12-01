@@ -45,7 +45,7 @@ pub enum ArithmeticOp {
 }
 
 /// Operand can reference a normalized field or be a constant value.
-/// Future: ExternalEntityField for cross-entity lookups during transform.
+/// Future: `ExternalEntityField` for cross-entity lookups during transform.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Operand {
@@ -55,7 +55,7 @@ pub enum Operand {
     Const {
         value: f64,
     },
-    /// Future extension: resolve from repository during processing (not implemented in apply())
+    /// Future extension: resolve from repository during processing (not implemented in `apply()`)
     ExternalEntityField {
         entity_definition: String,
         filter: super::from::EntityFilter,
@@ -75,28 +75,19 @@ pub(crate) fn validate_transform(idx: usize, t: &Transform, safe_field: &Regex) 
     match t {
         Transform::Arithmetic(ar) => {
             if !safe_field.is_match(&ar.target) {
-                bail!(
-                    "DSL step {}: transform.arithmetic.target must be a safe identifier",
-                    idx
-                );
+                bail!("DSL step {idx}: transform.arithmetic.target must be a safe identifier");
             }
             validate_operand(idx, "left", &ar.left, safe_field)?;
             validate_operand(idx, "right", &ar.right, safe_field)?;
         }
         Transform::Concat(ct) => {
             if !safe_field.is_match(&ct.target) {
-                bail!(
-                    "DSL step {}: transform.concat.target must be a safe identifier",
-                    idx
-                );
+                bail!("DSL step {idx}: transform.concat.target must be a safe identifier");
             }
             match &ct.left {
                 StringOperand::Field { field } => {
                     if !safe_field.is_match(field) {
-                        bail!(
-                            "DSL step {}: transform.concat.left field path must be safe",
-                            idx
-                        );
+                        bail!("DSL step {idx}: transform.concat.left field path must be safe");
                     }
                 }
                 StringOperand::ConstString { .. } => {}
@@ -104,10 +95,7 @@ pub(crate) fn validate_transform(idx: usize, t: &Transform, safe_field: &Regex) 
             match &ct.right {
                 StringOperand::Field { field } => {
                     if !safe_field.is_match(field) {
-                        bail!(
-                            "DSL step {}: transform.concat.right field path must be safe",
-                            idx
-                        );
+                        bail!("DSL step {idx}: transform.concat.right field path must be safe");
                     }
                 }
                 StringOperand::ConstString { .. } => {}
@@ -122,11 +110,7 @@ fn validate_operand(idx: usize, side: &str, op: &Operand, safe_field: &Regex) ->
     match op {
         Operand::Field { field } => {
             if !safe_field.is_match(field) {
-                bail!(
-                    "DSL step {}: transform.arithmetic.{} field path must be safe",
-                    idx,
-                    side
-                );
+                bail!("DSL step {idx}: transform.arithmetic.{side} field path must be safe");
             }
         }
         Operand::Const { .. } => {}
@@ -136,25 +120,13 @@ fn validate_operand(idx: usize, side: &str, op: &Operand, safe_field: &Regex) ->
             field,
         } => {
             if entity_definition.trim().is_empty() {
-                bail!(
-                    "DSL step {}: transform.arithmetic.{} external entity_definition required",
-                    idx,
-                    side
-                );
+                bail!("DSL step {idx}: transform.arithmetic.{side} external entity_definition required");
             }
             if filter.field.trim().is_empty() || filter.value.trim().is_empty() {
-                bail!(
-                    "DSL step {}: transform.arithmetic.{} external filter requires field and value",
-                    idx,
-                    side
-                );
+                bail!("DSL step {idx}: transform.arithmetic.{side} external filter requires field and value");
             }
             if !safe_field.is_match(field) {
-                bail!(
-                    "DSL step {}: transform.arithmetic.{} external field path must be safe",
-                    idx,
-                    side
-                );
+                bail!("DSL step {idx}: transform.arithmetic.{side} external field path must be safe");
             }
         }
     }

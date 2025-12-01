@@ -1,6 +1,5 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-pub mod error;
 pub use r_data_core_core::utils;
 pub use r_data_core_core::versioning;
 
@@ -14,8 +13,7 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const DESCRIPTION: &str = env!("CARGO_PKG_DESCRIPTION");
 
 /// Re-export common types
-pub use error::Error;
-pub use r_data_core_core::error::Result;
+pub use r_data_core_core::error::{Error, Result};
 
 // API state moved to r_data_core_api::ApiState
 

@@ -13,19 +13,16 @@ use std::collections::HashMap;
 ///
 /// # Errors
 /// Returns an error if validation fails
-pub fn validate_mapping(
+pub fn validate_mapping<H: std::hash::BuildHasher>(
     idx: usize,
-    mapping: &HashMap<String, String>,
+    mapping: &HashMap<String, String, H>,
     safe_field: &Regex,
 ) -> anyhow::Result<()> {
     // Allow empty mappings
     for (k, v) in mapping {
         if !safe_field.is_match(k) || !safe_field.is_match(v) {
             bail!(
-                "DSL step {}: mapping contains unsafe field names ('{}' -> '{}')",
-                idx,
-                k,
-                v
+                "DSL step {idx}: mapping contains unsafe field names ('{k}' -> '{v}')"
             );
         }
     }

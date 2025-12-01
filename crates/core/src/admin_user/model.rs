@@ -4,7 +4,7 @@ use crate::domain::AbstractRDataEntity;
 use crate::error::{Error, Result};
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
-    Argon2,
+    Argon2, Params,
 };
 use base64::engine::Engine as _;
 use serde::{Deserialize, Serialize};
@@ -14,6 +14,7 @@ use sqlx::{
     postgres::{PgRow, PgTypeInfo, PgValueRef},
     FromRow, Row, Type,
 };
+use std::str::FromStr;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -44,19 +45,16 @@ impl UserRole {
         }
     }
 
-    /// Convert a string to a `UserRole`
-    ///
-    /// # Arguments
-    /// * `s` - String representation of the role
-    ///
-    /// # Returns
-    /// `UserRole` enum variant
-    #[must_use]
-    pub fn from_str(s: &str) -> Self {
-        match s {
+}
+
+impl FromStr for UserRole {
+    type Err = ();
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        Ok(match s {
             "SuperAdmin" => Self::SuperAdmin,
             other => Self::Custom(other.to_string()),
-        }
+        })
     }
 }
 
@@ -69,7 +67,7 @@ impl Type<sqlx::Postgres> for UserRole {
 impl<'r> Decode<'r, sqlx::Postgres> for UserRole {
     fn decode(value: PgValueRef<'r>) -> std::result::Result<Self, sqlx::error::BoxDynError> {
         let value = <String as Decode<sqlx::Postgres>>::decode(value)?;
-        Ok(Self::from_str(&value))
+        Self::from_str(&value).map_err(|()| "Invalid user role".into())
     }
 }
 
@@ -214,9 +212,25 @@ pub struct ApiKey {
     pub published: bool,
 }
 
-impl AdminUser {
-    /// Create a new admin user
+/// Builder for creating new `AdminUser` instances
+#[derive(Debug, Clone)]
+pub struct AdminUserBuilder {
+    username: String,
+    email: String,
+    password_hash: String,
+    full_name: String,
+    role: UserRole,
+    status: UserStatus,
+    super_admin: bool,
+    first_name: String,
+    last_name: String,
+    is_active: bool,
+    is_admin: bool,
+}
+
+impl AdminUserBuilder {
     #[must_use]
+    #[allow(clippy::too_many_arguments, clippy::missing_const_for_fn)] // Builder pattern requires many parameters; cannot be const due to String parameters
     pub fn new(
         username: String,
         email: String,
@@ -230,27 +244,83 @@ impl AdminUser {
         is_active: bool,
         is_admin: bool,
     ) -> Self {
-        let now = OffsetDateTime::now_utc();
-
         Self {
-            base: AbstractRDataEntity::new("/admin/users".to_string()),
             username,
             email,
             password_hash,
             full_name,
             role,
             status,
-            last_login: None,
-            failed_login_attempts: 0,
             super_admin,
-            uuid: Uuid::now_v7(),
-            first_name: Some(first_name),
-            last_name: Some(last_name),
+            first_name,
+            last_name,
             is_active,
             is_admin,
+        }
+    }
+
+    #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // Cannot be const: uses OffsetDateTime::now_utc() and Uuid::now_v7()
+    pub fn build(self) -> AdminUser {
+        let now = OffsetDateTime::now_utc();
+
+        AdminUser {
+            base: AbstractRDataEntity::new("/admin/users".to_string()),
+            username: self.username,
+            email: self.email,
+            password_hash: self.password_hash,
+            full_name: self.full_name,
+            role: self.role,
+            status: self.status,
+            last_login: None,
+            failed_login_attempts: 0,
+            super_admin: self.super_admin,
+            uuid: Uuid::now_v7(),
+            first_name: Some(self.first_name),
+            last_name: Some(self.last_name),
+            is_active: self.is_active,
+            is_admin: self.is_admin,
             created_at: now,
             updated_at: now,
         }
+    }
+}
+
+impl AdminUser {
+    /// Create a new admin user
+    ///
+    /// # Note
+    /// This method is deprecated. Use `AdminUserBuilder` instead.
+    #[must_use]
+    #[allow(clippy::too_many_arguments)]
+    #[deprecated(note = "Use AdminUserBuilder::new().build() instead")]
+    pub fn new(
+        username: String,
+        email: String,
+        password_hash: String,
+        full_name: String,
+        role: UserRole,
+        status: UserStatus,
+        super_admin: bool,
+        first_name: String,
+        last_name: String,
+        is_active: bool,
+        is_admin: bool,
+    ) -> Self {
+        AdminUserBuilder::new(
+            username,
+            email,
+            password_hash,
+            full_name,
+            role,
+            status,
+            super_admin,
+            first_name,
+            last_name,
+            is_active,
+            is_admin,
+        )
+        .build()
     }
 
     /// Set password, hashing it with Argon2
@@ -269,7 +339,6 @@ impl AdminUser {
         // - t=2 (2 iterations - recommended minimum)
         // - p=1 (1 parallelism - good for most systems)
         // Note: These parameters balance security and performance
-        use argon2::Params;
         let params = Params::new(19456, 2, 1, None)
             .map_err(|e| Error::PasswordHash(format!("Invalid parameters: {e}")))?;
 
@@ -314,7 +383,7 @@ impl AdminUser {
     /// `true` if the user's role has the permission, `false` otherwise
     ///
     /// # Note
-    /// SuperAdmin always returns `true` for all permissions.
+    /// `SuperAdmin` always returns `true` for all permissions.
     #[must_use]
     pub fn has_permission(
         &self,
@@ -333,7 +402,7 @@ impl AdminUser {
 
     /// Check if the user has a specific permission (simple string-based check for backward compatibility)
     ///
-    /// This is a simplified check that returns true for SuperAdmin and Admin roles.
+    /// This is a simplified check that returns true for `SuperAdmin` and Admin roles.
     /// For proper permission checking, use `has_permission` with a permission scheme.
     ///
     /// # Arguments
@@ -343,7 +412,7 @@ impl AdminUser {
     /// `true` if the user is `SuperAdmin` or Admin, `false` otherwise
     #[must_use]
     #[deprecated(note = "Use has_permission with PermissionScheme instead")]
-    pub fn has_permission_simple(&self, _permission: &str) -> bool {
+    pub const fn has_permission_simple(&self, _permission: &str) -> bool {
         matches!(self.role, UserRole::SuperAdmin)
     }
 
@@ -354,6 +423,10 @@ impl AdminUser {
     }
 
     /// Record a failed login attempt
+    ///
+    /// # Note
+    /// This function cannot be `const` because it mutates `self`.
+    #[allow(clippy::missing_const_for_fn)] // Cannot be const: mutates self
     pub fn record_login_failure(&mut self) {
         self.failed_login_attempts += 1;
         if self.failed_login_attempts >= 5 {
@@ -412,6 +485,9 @@ impl ApiKey {
     }
 
     /// Hash an API key for storage
+    ///
+    /// # Errors
+    /// This function does not return errors, but is marked as `Result` for consistency.
     pub fn hash_api_key(api_key: &str) -> Result<String> {
         let mut hasher = sha2::Sha256::new();
         hasher.update(api_key.as_bytes());
@@ -437,6 +513,9 @@ impl ApiKey {
     }
 
     /// Update the `last_used_at` timestamp
+    ///
+    /// # Errors
+    /// Returns `Error::Database` if the database update fails.
     pub async fn update_last_used(&mut self, pool: &sqlx::PgPool) -> Result<()> {
         let now = OffsetDateTime::now_utc();
         self.last_used_at = Some(now);
@@ -476,7 +555,7 @@ mod tests {
 
     #[test]
     fn test_admin_user_has_permission_superadmin() {
-        let user = AdminUser::new(
+        let user = AdminUserBuilder::new(
             "admin".to_string(),
             "admin@test.com".to_string(),
             "hash".to_string(),
@@ -488,7 +567,8 @@ mod tests {
             "User".to_string(),
             true,
             true,
-        );
+        )
+        .build();
 
         let scheme = PermissionScheme::new("Test".to_string());
 
@@ -509,7 +589,7 @@ mod tests {
 
     #[test]
     fn test_admin_user_has_permission_custom_role() {
-        let user = AdminUser::new(
+        let user = AdminUserBuilder::new(
             "user".to_string(),
             "user@test.com".to_string(),
             "hash".to_string(),
@@ -521,7 +601,8 @@ mod tests {
             "User".to_string(),
             true,
             false,
-        );
+        )
+        .build();
 
         let mut scheme = PermissionScheme::new("Test".to_string());
         scheme

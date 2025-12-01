@@ -102,10 +102,10 @@ impl PermissionSchemeRepository {
             .map_err(|e| Error::Unknown(format!("Failed to serialize role_permissions: {e}")))?;
 
         sqlx::query(
-            r#"
+            "
             INSERT INTO permission_schemes (uuid, path, name, description, rules, created_by, published, version)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            "#,
+            ",
         )
         .bind(uuid)
         .bind(&scheme.base.path)
@@ -135,11 +135,11 @@ impl PermissionSchemeRepository {
             .map_err(|e| Error::Unknown(format!("Failed to serialize role_permissions: {e}")))?;
 
         sqlx::query(
-            r#"
+            "
             UPDATE permission_schemes
             SET name = $2, description = $3, rules = $4, updated_by = $5, updated_at = NOW(), version = version + 1
             WHERE uuid = $1
-            "#,
+            ",
         )
         .bind(scheme.base.uuid)
         .bind(&scheme.name)

@@ -20,11 +20,15 @@ pub struct AdminUserRepository {
 impl AdminUserRepository {
     /// Create a new repository instance
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // Cannot be const due to Arc parameter
     pub fn new(pool: Arc<Pool<Postgres>>) -> Self {
         Self { pool }
     }
 
     /// Get all permission schemes assigned to a user
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn get_user_permission_schemes(&self, user_uuid: Uuid) -> Result<Vec<Uuid>> {
         let schemes = sqlx::query_scalar::<_, Uuid>(
             "SELECT scheme_uuid FROM admin_users_permission_schemes WHERE user_uuid = $1",
@@ -33,7 +37,7 @@ impl AdminUserRepository {
         .fetch_all(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error getting user permission schemes: {:?}", e);
+            error!("Error getting user permission schemes: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -41,6 +45,9 @@ impl AdminUserRepository {
     }
 
     /// Assign a permission scheme to a user
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn assign_permission_scheme(&self, user_uuid: Uuid, scheme_uuid: Uuid) -> Result<()> {
         sqlx::query(
             "INSERT INTO admin_users_permission_schemes (user_uuid, scheme_uuid) VALUES ($1, $2) ON CONFLICT DO NOTHING",
@@ -50,7 +57,7 @@ impl AdminUserRepository {
         .execute(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error assigning permission scheme to user: {:?}", e);
+            error!("Error assigning permission scheme to user: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -58,6 +65,9 @@ impl AdminUserRepository {
     }
 
     /// Unassign a permission scheme from a user
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn unassign_permission_scheme(
         &self,
         user_uuid: Uuid,
@@ -71,7 +81,7 @@ impl AdminUserRepository {
         .execute(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error unassigning permission scheme from user: {:?}", e);
+            error!("Error unassigning permission scheme from user: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -79,10 +89,13 @@ impl AdminUserRepository {
     }
 
     /// Update all permission schemes for a user (replace existing assignments)
+    ///
+    /// # Errors
+    /// Returns an error if the database transaction fails
     pub async fn update_user_schemes(&self, user_uuid: Uuid, scheme_uuids: &[Uuid]) -> Result<()> {
         // Start a transaction
         let mut tx = self.pool.begin().await.map_err(|e| {
-            error!("Error starting transaction: {:?}", e);
+            error!("Error starting transaction: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -92,7 +105,7 @@ impl AdminUserRepository {
             .execute(&mut *tx)
             .await
             .map_err(|e| {
-                error!("Error deleting existing permission schemes: {:?}", e);
+                error!("Error deleting existing permission schemes: {e:?}");
                 r_data_core_core::error::Error::Database(e)
             })?;
 
@@ -106,14 +119,14 @@ impl AdminUserRepository {
             .execute(&mut *tx)
             .await
             .map_err(|e| {
-                error!("Error assigning permission scheme: {:?}", e);
+                error!("Error assigning permission scheme: {e:?}");
                 r_data_core_core::error::Error::Database(e)
             })?;
         }
 
         // Commit transaction
         tx.commit().await.map_err(|e| {
-            error!("Error committing transaction: {:?}", e);
+            error!("Error committing transaction: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -134,7 +147,7 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         .fetch_optional(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error finding user by username or email: {:?}", e);
+            error!("Error finding user by username or email: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })
     }
@@ -145,7 +158,7 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
             .fetch_optional(&*self.pool)
             .await
             .map_err(|e| {
-                error!("Error finding user by UUID: {:?}", e);
+                error!("Error finding user by UUID: {e:?}");
                 r_data_core_core::error::Error::Database(e)
             })
     }
@@ -158,7 +171,7 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         .execute(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error updating last login: {:?}", e);
+            error!("Error updating last login: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -191,15 +204,14 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
             .hash_password(password.as_bytes(), &salt)
             .map_err(|e| {
                 r_data_core_core::error::Error::PasswordHash(format!(
-                    "Failed to hash password: {}",
-                    e
+                    "Failed to hash password: {e}"
                 ))
             })?
             .to_string();
 
         // For authenticated requests, use the authenticated user's UUID as creator
         // For unauthenticated requests or if creator_uuid is nil, use the new user's UUID
-        let created_by = if !creator_uuid.is_nil() {
+        let created_by = if creator_uuid != Uuid::nil() {
             creator_uuid
         } else {
             user_uuid // Self-reference for unauthenticated registrations
@@ -232,7 +244,7 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         .fetch_one(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error creating admin user: {:?}", e);
+            error!("Error creating admin user: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -266,7 +278,7 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         .execute(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error updating admin user: {:?}", e);
+            error!("Error updating admin user: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -283,7 +295,7 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         .execute(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error deleting admin user: {:?}", e);
+            error!("Error deleting admin user: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -299,7 +311,7 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         .fetch_all(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error listing admin users: {:?}", e);
+            error!("Error listing admin users: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })
     }

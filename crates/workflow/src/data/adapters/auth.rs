@@ -9,9 +9,15 @@ use utoipa::ToSchema;
 #[async_trait]
 pub trait AuthProvider: Send + Sync {
     /// Apply authentication to HTTP request builder
+    ///
+    /// # Errors
+    /// Returns an error if authentication cannot be applied to the request.
     fn apply_to_request(&self, builder: RequestBuilder) -> Result<RequestBuilder>;
 
     /// Extract auth from incoming request (for pre-shared keys, etc.)
+    ///
+    /// # Errors
+    /// Returns an error if extraction fails.
     fn extract_from_request(&self, req: &HttpRequest) -> Result<Option<String>>;
 
     /// Auth type identifier
@@ -21,6 +27,8 @@ pub trait AuthProvider: Send + Sync {
 /// Factory for creating auth providers
 pub trait AuthFactory: Send + Sync {
     fn auth_type(&self) -> &'static str;
+    /// # Errors
+    /// Returns an error if the auth provider cannot be created from the config.
     fn create(&self, config: &serde_json::Value) -> Result<Box<dyn AuthProvider>>;
 }
 
@@ -85,6 +93,7 @@ pub struct ApiKeyAuthProvider {
 }
 
 impl ApiKeyAuthProvider {
+    #[must_use]
     pub fn new(key: String, header_name: Option<String>) -> Self {
         Self {
             key,
@@ -115,7 +124,8 @@ pub struct BasicAuthProvider {
 }
 
 impl BasicAuthProvider {
-    pub fn new(username: String, password: String) -> Self {
+    #[must_use]
+    pub const fn new(username: String, password: String) -> Self {
         Self { username, password }
     }
 }
@@ -143,7 +153,8 @@ pub struct PreSharedKeyAuthProvider {
 }
 
 impl PreSharedKeyAuthProvider {
-    pub fn new(key: String, location: KeyLocation, field_name: String) -> Self {
+    #[must_use]
+    pub const fn new(key: String, location: KeyLocation, field_name: String) -> Self {
         Self {
             key,
             location,
@@ -187,6 +198,9 @@ impl AuthProvider for PreSharedKeyAuthProvider {
 }
 
 /// Create auth provider from config
+///
+/// # Errors
+/// Returns an error if the auth provider cannot be created from the config.
 pub fn create_auth_provider(config: &AuthConfig) -> Result<Box<dyn AuthProvider>> {
     match config {
         AuthConfig::None => Ok(Box::new(NoAuthProvider)),

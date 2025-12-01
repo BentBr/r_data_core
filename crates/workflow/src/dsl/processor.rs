@@ -9,7 +9,7 @@ pub struct DslProcessor {
 }
 
 impl DslProcessor {
-    pub fn new(program: DslProgram) -> Self {
+    pub const fn new(program: DslProgram) -> Self {
         Self { program }
     }
 

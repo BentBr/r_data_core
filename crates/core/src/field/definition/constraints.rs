@@ -7,15 +7,19 @@ use crate::field::types::FieldType;
 
 impl FieldDefinition {
     /// Handle a constraint validation for a field definition
+    /// Handle constraint validation
+    ///
+    /// # Panics
+    /// May panic if `constraint_value.as_str()` is called on a non-string value.
+    ///
+    /// # Errors
+    /// Returns `Error::Validation` if the constraint value is invalid or the regex pattern is invalid.
     pub fn handle_constraint(&self, constraint_type: &str, constraint_value: &Value) -> Result<()> {
         match self.field_type {
             FieldType::String | FieldType::Text | FieldType::Wysiwyg => {
                 // String constraints
                 match constraint_type {
-                    "min_length" => {
-                        validate_number_constraint(constraint_value)?;
-                    }
-                    "max_length" => {
+                    "min_length" | "max_length" => {
                         validate_number_constraint(constraint_value)?;
                     }
                     "pattern" => {
@@ -24,7 +28,7 @@ impl FieldDefinition {
                         // Test if pattern is a valid regex
                         let pattern = constraint_value.as_str().unwrap();
                         if let Err(e) = Regex::new(pattern) {
-                            return Err(Error::Validation(format!("Invalid regex pattern: {}", e)));
+                            return Err(Error::Validation(format!("Invalid regex pattern: {e}")));
                         }
                     }
                     _ => {}
@@ -33,13 +37,7 @@ impl FieldDefinition {
             FieldType::Integer | FieldType::Float => {
                 // Numeric constraints
                 match constraint_type {
-                    "min" => {
-                        validate_number_constraint(constraint_value)?;
-                    }
-                    "max" => {
-                        validate_number_constraint(constraint_value)?;
-                    }
-                    "precision" => {
+                    "min" | "max" | "precision" => {
                         validate_number_constraint(constraint_value)?;
                     }
                     "positive_only" => {

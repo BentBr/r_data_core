@@ -51,7 +51,7 @@ pub enum FromDef {
     Entity {
         entity_definition: String,
         filter: EntityFilter,
-        /// One-to-one mapping: source_field -> normalized_field
+        /// One-to-one mapping: `source_field` -> `normalized_field`
         mapping: std::collections::HashMap<String, String>,
     },
 }
@@ -64,72 +64,47 @@ pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> R
             mapping,
         } => {
             if source.source_type.trim().is_empty() {
-                bail!(
-                    "DSL step {}: from.format.source.source_type must not be empty",
-                    idx
-                );
+                bail!("DSL step {idx}: from.format.source.source_type must not be empty");
             }
             if format.format_type.trim().is_empty() {
-                bail!(
-                    "DSL step {}: from.format.format.format_type must not be empty",
-                    idx
-                );
+                bail!("DSL step {idx}: from.format.format.format_type must not be empty");
             }
             // Validate format-specific options
-            match format.format_type.as_str() {
-                "csv" => {
-                    if let Some(delimiter) =
-                        format.options.get("delimiter").and_then(|v| v.as_str())
-                    {
-                        if delimiter.len() != 1 {
-                            bail!(
-                                "DSL step {}: from.format.format.options.delimiter must be a single character",
-                                idx
-                            );
-                        }
-                    }
-                    if let Some(escape) = format.options.get("escape").and_then(|v| v.as_str()) {
-                        if !escape.is_empty() && escape.len() != 1 {
-                            bail!(
-                                "DSL step {}: from.format.format.options.escape must be a single character when set",
-                                idx
-                            );
-                        }
-                    }
-                    if let Some(quote) = format.options.get("quote").and_then(|v| v.as_str()) {
-                        if !quote.is_empty() && quote.len() != 1 {
-                            bail!(
-                                "DSL step {}: from.format.format.options.quote must be a single character when set",
-                                idx
-                            );
-                        }
+            if format.format_type.as_str() == "csv" {
+                if let Some(delimiter) =
+                    format.options.get("delimiter").and_then(|v| v.as_str())
+                {
+                    if delimiter.len() != 1 {
+                        bail!("DSL step {idx}: from.format.format.options.delimiter must be a single character");
                     }
                 }
-                "json" => {
-                    // JSON format has minimal validation
+                if let Some(escape) = format.options.get("escape").and_then(|v| v.as_str()) {
+                    if !escape.is_empty() && escape.len() != 1 {
+                        bail!("DSL step {idx}: from.format.format.options.escape must be a single character when set");
+                    }
                 }
-                _ => {
-                    // Other formats will be validated by their handlers
+                if let Some(quote) = format.options.get("quote").and_then(|v| v.as_str()) {
+                    if !quote.is_empty() && quote.len() != 1 {
+                        bail!("DSL step {idx}: from.format.format.options.quote must be a single character when set");
+                    }
                 }
+            } else {
+                // JSON format and other formats have minimal validation
+                // Other formats will be validated by their handlers
             }
             // Validate source config
+            #[allow(clippy::match_same_arms)] // "file" and "_" have different semantic meanings
             match source.source_type.as_str() {
                 "uri" => {
                     if let Some(uri) = source.config.get("uri").and_then(|v| v.as_str()) {
                         if uri.trim().is_empty() {
-                            bail!(
-                                "DSL step {}: from.format.source.config.uri must not be empty",
-                                idx
-                            );
+                            bail!("DSL step {idx}: from.format.source.config.uri must not be empty");
                         }
                         if !uri.starts_with("http://") && !uri.starts_with("https://") {
-                            bail!("DSL step {}: from.format.source.config.uri must start with http:// or https://", idx);
+                            bail!("DSL step {idx}: from.format.source.config.uri must start with http:// or https://");
                         }
                     } else {
-                        bail!(
-                            "DSL step {}: from.format.source.config.uri is required for uri source",
-                            idx
-                        );
+                        bail!("DSL step {idx}: from.format.source.config.uri is required for uri source");
                     }
                 }
                 "file" => {
@@ -140,10 +115,7 @@ pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> R
                     // No endpoint field needed (always /api/v1/workflows/{this-workflow-uuid})
                     // If endpoint field is present, it's invalid (use from.uri instead to pull from provider workflows)
                     if source.config.get("endpoint").is_some() {
-                        bail!(
-                            "DSL step {}: from.format.source.config.endpoint is not allowed for 'api' source type. Use 'uri' source type to pull from provider workflows.",
-                            idx
-                        );
+                        bail!("DSL step {idx}: from.format.source.config.endpoint is not allowed for 'api' source type. Use 'uri' source type to pull from provider workflows.");
                     }
                 }
                 _ => {
@@ -163,16 +135,10 @@ pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> R
             mapping,
         } => {
             if entity_definition.trim().is_empty() {
-                bail!(
-                    "DSL step {}: from.entity.entity_definition must not be empty",
-                    idx
-                );
+                bail!("DSL step {idx}: from.entity.entity_definition must not be empty");
             }
             if filter.field.trim().is_empty() || filter.value.trim().is_empty() {
-                bail!(
-                    "DSL step {}: from.entity.filter requires both field and value",
-                    idx
-                );
+                bail!("DSL step {idx}: from.entity.filter requires both field and value");
             }
             // Allow empty mappings
             validate_mapping(idx, mapping, safe_field)?;
@@ -189,34 +155,18 @@ fn validate_auth_config(idx: usize, auth: &AuthConfig, context: &str) -> Result<
         }
         AuthConfig::ApiKey { key, header_name } => {
             if key.trim().is_empty() {
-                bail!(
-                    "DSL step {}: {}.auth.api_key.key must not be empty",
-                    idx,
-                    context
-                );
+                bail!("DSL step {idx}: {context}.auth.api_key.key must not be empty");
             }
             if header_name.trim().is_empty() {
-                bail!(
-                    "DSL step {}: {}.auth.api_key.header_name must not be empty",
-                    idx,
-                    context
-                );
+                bail!("DSL step {idx}: {context}.auth.api_key.header_name must not be empty");
             }
         }
         AuthConfig::BasicAuth { username, password } => {
             if username.trim().is_empty() {
-                bail!(
-                    "DSL step {}: {}.auth.basic_auth.username must not be empty",
-                    idx,
-                    context
-                );
+                bail!("DSL step {idx}: {context}.auth.basic_auth.username must not be empty");
             }
             if password.trim().is_empty() {
-                bail!(
-                    "DSL step {}: {}.auth.basic_auth.password must not be empty",
-                    idx,
-                    context
-                );
+                bail!("DSL step {idx}: {context}.auth.basic_auth.password must not be empty");
             }
         }
         AuthConfig::PreSharedKey {
@@ -225,24 +175,17 @@ fn validate_auth_config(idx: usize, auth: &AuthConfig, context: &str) -> Result<
             field_name,
         } => {
             if key.trim().is_empty() {
-                bail!(
-                    "DSL step {}: {}.auth.pre_shared_key.key must not be empty",
-                    idx,
-                    context
-                );
+                bail!("DSL step {idx}: {context}.auth.pre_shared_key.key must not be empty");
             }
             if field_name.trim().is_empty() {
-                bail!(
-                    "DSL step {}: {}.auth.pre_shared_key.field_name must not be empty",
-                    idx,
-                    context
-                );
+                bail!("DSL step {idx}: {context}.auth.pre_shared_key.field_name must not be empty");
             }
         }
     }
     Ok(())
 }
 
+#[allow(clippy::missing_const_for_fn)] // Cannot be const due to pattern matching
 pub(crate) fn mapping_of(from: &FromDef) -> &std::collections::HashMap<String, String> {
     match from {
         FromDef::Format { mapping, .. } | FromDef::Entity { mapping, .. } => mapping,
