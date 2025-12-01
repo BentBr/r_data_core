@@ -75,6 +75,7 @@ pub trait AdminUserRepositoryTrait: Send + Sync {
     async fn update_last_login(&self, uuid: &Uuid) -> Result<()>;
 
     /// Create a new admin user
+    #[allow(clippy::too_many_arguments)]
     async fn create_admin_user<'a>(
         &self,
         username: &str,

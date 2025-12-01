@@ -6,6 +6,9 @@ use sqlx::PgPool;
 /// Get the count of dynamic entity instances for a given entity type
 ///
 /// The entity type corresponds to an entity definition name.
+///
+/// # Errors
+/// Returns an error if the database query fails
 pub async fn get_entity_count(pool: &PgPool, entity_type: &str) -> Result<i64> {
     let table_name = format!("{}_entities", entity_type.to_lowercase());
 
@@ -27,7 +30,7 @@ pub async fn get_entity_count(pool: &PgPool, entity_type: &str) -> Result<i64> {
         return Ok(0);
     }
 
-    let query = format!("SELECT COUNT(*) FROM \"{}\"", table_name);
+    let query = format!("SELECT COUNT(*) FROM \"{table_name}\"");
     let count: i64 = sqlx::query_scalar(&query).fetch_one(pool).await?;
 
     Ok(count)

@@ -18,11 +18,15 @@ pub struct ApiKeyRepository {
 impl ApiKeyRepository {
     /// Create a new repository instance
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // Cannot be const due to Arc parameter
     pub fn new(pool: Arc<Pool<Postgres>>) -> Self {
         Self { pool }
     }
 
     /// Get all permission schemes assigned to an API key
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn get_api_key_permission_schemes(&self, api_key_uuid: Uuid) -> Result<Vec<Uuid>> {
         let schemes = sqlx::query_scalar::<_, Uuid>(
             "SELECT scheme_uuid FROM api_keys_permission_schemes WHERE api_key_uuid = $1",
@@ -31,7 +35,7 @@ impl ApiKeyRepository {
         .fetch_all(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error getting API key permission schemes: {:?}", e);
+            error!("Error getting API key permission schemes: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -39,6 +43,9 @@ impl ApiKeyRepository {
     }
 
     /// Assign a permission scheme to an API key
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn assign_permission_scheme(
         &self,
         api_key_uuid: Uuid,
@@ -52,7 +59,7 @@ impl ApiKeyRepository {
         .execute(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error assigning permission scheme to API key: {:?}", e);
+            error!("Error assigning permission scheme to API key: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -60,6 +67,9 @@ impl ApiKeyRepository {
     }
 
     /// Unassign a permission scheme from an API key
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn unassign_permission_scheme(
         &self,
         api_key_uuid: Uuid,
@@ -73,7 +83,7 @@ impl ApiKeyRepository {
         .execute(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error unassigning permission scheme from API key: {:?}", e);
+            error!("Error unassigning permission scheme from API key: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -81,6 +91,9 @@ impl ApiKeyRepository {
     }
 
     /// Update all permission schemes for an API key (replace existing assignments)
+    ///
+    /// # Errors
+    /// Returns an error if the database transaction fails
     pub async fn update_api_key_schemes(
         &self,
         api_key_uuid: Uuid,
@@ -88,7 +101,7 @@ impl ApiKeyRepository {
     ) -> Result<()> {
         // Start a transaction
         let mut tx = self.pool.begin().await.map_err(|e| {
-            error!("Error starting transaction: {:?}", e);
+            error!("Error starting transaction: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -98,7 +111,7 @@ impl ApiKeyRepository {
             .execute(&mut *tx)
             .await
             .map_err(|e| {
-                error!("Error deleting existing permission schemes: {:?}", e);
+                error!("Error deleting existing permission schemes: {e:?}");
                 r_data_core_core::error::Error::Database(e)
             })?;
 
@@ -112,14 +125,14 @@ impl ApiKeyRepository {
             .execute(&mut *tx)
             .await
             .map_err(|e| {
-                error!("Error assigning permission scheme: {:?}", e);
+                error!("Error assigning permission scheme: {e:?}");
                 r_data_core_core::error::Error::Database(e)
             })?;
         }
 
         // Commit transaction
         tx.commit().await.map_err(|e| {
-            error!("Error committing transaction: {:?}", e);
+            error!("Error committing transaction: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -147,7 +160,7 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         .fetch_optional(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error fetching API key: {:?}", e);
+            error!("Error fetching API key: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -175,7 +188,7 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         .fetch_optional(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error fetching API key by UUID: {:?}", e);
+            error!("Error fetching API key by UUID: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -205,7 +218,7 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         .fetch_one(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error creating API key: {:?}", e);
+            error!("Error creating API key: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -229,7 +242,7 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         .fetch_all(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error listing API keys for user: {:?}", e);
+            error!("Error listing API keys for user: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -249,14 +262,14 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         .fetch_one(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error counting API keys for user: {:?}", e);
+            error!("Error counting API keys for user: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
         Ok(count)
     }
 
-    /// Revoke an API key (set is_active to false)
+    /// Revoke an API key (set `is_active` to false)
     async fn revoke(&self, uuid: Uuid) -> Result<()> {
         sqlx::query!(
             "UPDATE api_keys SET is_active = FALSE WHERE uuid = $1",
@@ -265,7 +278,7 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         .execute(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error revoking API key: {:?}", e);
+            error!("Error revoking API key: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -341,7 +354,7 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         let uuid = Uuid::now_v7();
         let created_at = OffsetDateTime::now_utc();
         let expires_at = if expires_in_days > 0 {
-            Some(created_at + Duration::days(expires_in_days as i64))
+            Some(created_at + Duration::days(i64::from(expires_in_days)))
         } else {
             None
         };
@@ -367,7 +380,7 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         .fetch_one(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error creating API key: {:?}", e);
+            error!("Error creating API key: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -386,7 +399,7 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         .execute(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error updating API key last_used_at: {:?}", e);
+            error!("Error updating API key last_used_at: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -403,7 +416,7 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         .execute(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error reassigning API key: {:?}", e);
+            error!("Error reassigning API key: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -412,12 +425,12 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
 
     /// Get all permission schemes assigned to an API key
     async fn get_api_key_permission_schemes(&self, api_key_uuid: Uuid) -> Result<Vec<Uuid>> {
-        ApiKeyRepository::get_api_key_permission_schemes(self, api_key_uuid).await
+        Self::get_api_key_permission_schemes(self, api_key_uuid).await
     }
 
     /// Assign a permission scheme to an API key
     async fn assign_permission_scheme(&self, api_key_uuid: Uuid, scheme_uuid: Uuid) -> Result<()> {
-        ApiKeyRepository::assign_permission_scheme(self, api_key_uuid, scheme_uuid).await
+        Self::assign_permission_scheme(self, api_key_uuid, scheme_uuid).await
     }
 
     /// Unassign a permission scheme from an API key
@@ -426,7 +439,7 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         api_key_uuid: Uuid,
         scheme_uuid: Uuid,
     ) -> Result<()> {
-        ApiKeyRepository::unassign_permission_scheme(self, api_key_uuid, scheme_uuid).await
+        Self::unassign_permission_scheme(self, api_key_uuid, scheme_uuid).await
     }
 
     /// Update all permission schemes for an API key (replace existing assignments)
@@ -435,6 +448,6 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         api_key_uuid: Uuid,
         scheme_uuids: &[Uuid],
     ) -> Result<()> {
-        ApiKeyRepository::update_api_key_schemes(self, api_key_uuid, scheme_uuids).await
+        Self::update_api_key_schemes(self, api_key_uuid, scheme_uuids).await
     }
 }

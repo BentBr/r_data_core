@@ -25,7 +25,7 @@ pub struct DynamicEntityRepository {
 impl DynamicEntityRepository {
     /// Create a new repository instance
     #[must_use]
-    pub fn new(pool: PgPool) -> Self {
+    pub const fn new(pool: PgPool) -> Self {
         Self {
             pool,
             cache_manager: None,
@@ -34,7 +34,7 @@ impl DynamicEntityRepository {
 
     /// Create a new repository instance with cache manager
     #[must_use]
-    pub fn with_cache(pool: PgPool, cache_manager: Arc<CacheManager>) -> Self {
+    pub const fn with_cache(pool: PgPool, cache_manager: Arc<CacheManager>) -> Self {
         Self {
             pool,
             cache_manager: Some(cache_manager),
@@ -42,6 +42,10 @@ impl DynamicEntityRepository {
     }
 
     /// Create a new dynamic entity
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails or validation fails
+    #[allow(clippy::too_many_lines)]
     pub async fn create(&self, entity: &DynamicEntity) -> Result<()> {
         // Get the entity definition to validate against
         let _entity_def = dynamic_entity_utils::get_entity_definition(
@@ -67,7 +71,7 @@ impl DynamicEntityRepository {
         let mut path = entity
             .field_data
             .get("path")
-            .and_then(|v| v.as_str().map(|s| s.to_string()))
+            .and_then(|v| v.as_str().map(ToString::to_string))
             .unwrap_or_else(|| "/".to_string());
 
         let key = entity
@@ -118,9 +122,9 @@ impl DynamicEntityRepository {
 
             if let Some((parent_path, parent_key)) = parent_result {
                 let expected_path = if parent_path.ends_with('/') {
-                    format!("{}{}", parent_path, parent_key)
+                    format!("{parent_path}{parent_key}")
                 } else {
-                    format!("{}/{}", parent_path, parent_key)
+                    format!("{parent_path}/{parent_key}")
                 };
 
                 // Normalize the path to the expected parent path
@@ -150,21 +154,25 @@ impl DynamicEntityRepository {
             .field_data
             .get("created_at")
             .and_then(|v| v.as_str())
-            .map(|s| {
-                OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)
-                    .unwrap_or_else(|_| OffsetDateTime::now_utc())
-            })
-            .unwrap_or_else(OffsetDateTime::now_utc);
+            .map_or_else(
+                OffsetDateTime::now_utc,
+                |s| {
+                    OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)
+                        .unwrap_or_else(|_| OffsetDateTime::now_utc())
+                },
+            );
 
         let updated_at = entity
             .field_data
             .get("updated_at")
             .and_then(|v| v.as_str())
-            .map(|s| {
-                OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)
-                    .unwrap_or_else(|_| OffsetDateTime::now_utc())
-            })
-            .unwrap_or_else(OffsetDateTime::now_utc);
+            .map_or_else(
+                OffsetDateTime::now_utc,
+                |s| {
+                    OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)
+                        .unwrap_or_else(|_| OffsetDateTime::now_utc())
+                },
+            );
 
         let created_by = dynamic_entity_utils::extract_uuid_from_entity_field_data(
             &entity.field_data,
@@ -179,13 +187,13 @@ impl DynamicEntityRepository {
         let published = entity
             .field_data
             .get("published")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(false);
 
         let version = entity
             .field_data
             .get("version")
-            .and_then(|v| v.as_i64())
+            .and_then(serde_json::Value::as_i64)
             .unwrap_or(1);
 
         let result = sqlx::query(registry_query)
@@ -268,7 +276,7 @@ impl DynamicEntityRepository {
 
                 // Format the value appropriately based on its type
                 let value_str = match value {
-                    JsonValue::String(s) => format!("'{}'", s.replace("'", "''")),
+                    JsonValue::String(s) => format!("'{}'", s.replace('\'', "''")),
                     JsonValue::Number(n) => n.to_string(),
                     JsonValue::Bool(b) => {
                         if *b {
@@ -278,7 +286,7 @@ impl DynamicEntityRepository {
                         }
                     }
                     JsonValue::Null => "NULL".to_string(),
-                    _ => format!("'{}'", value.to_string().replace("'", "''")), // For complex types
+                    _ => format!("'{}'", value.to_string().replace('\'', "''")), // For complex types
                 };
 
                 values.push(value_str);
@@ -298,7 +306,7 @@ impl DynamicEntityRepository {
             sqlx::query(&query).execute(&mut *tx).await?;
         } else {
             // If we only have the UUID, just insert that
-            sqlx::query(&format!("INSERT INTO {} (uuid) VALUES ($1)", table_name))
+            sqlx::query(&format!("INSERT INTO {table_name} (uuid) VALUES ($1)"))
                 .bind(uuid)
                 .execute(&mut *tx)
                 .await?;
@@ -311,6 +319,10 @@ impl DynamicEntityRepository {
     }
 
     /// Update an existing dynamic entity
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails or validation fails
+    #[allow(clippy::too_many_lines)]
     pub async fn update(&self, entity: &DynamicEntity) -> Result<()> {
         // Validate the entity against the entity definition
         entity.validate()?;
@@ -331,7 +343,7 @@ impl DynamicEntityRepository {
         let skip_versioning = entity
             .field_data
             .get("__skip_versioning")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(false);
         // Extract updated_by if present for snapshot attribution
         let updated_by = dynamic_entity_utils::extract_uuid_from_entity_field_data(
@@ -354,20 +366,20 @@ impl DynamicEntityRepository {
 
         // Extract metadata fields for update with proper types
         if let Some(path) = entity.field_data.get("path").and_then(|v| v.as_str()) {
-            update_clauses.push(format!("path = ${}", param_index));
+            update_clauses.push(format!("path = ${param_index}"));
             path_param = Some(path.to_string());
             param_index += 1;
         }
 
         // Include optional key update
         if let Some(entity_key) = entity.field_data.get("entity_key").and_then(|v| v.as_str()) {
-            update_clauses.push(format!("entity_key = ${}", param_index));
+            update_clauses.push(format!("entity_key = ${param_index}"));
             entity_key_param = Some(entity_key.to_string());
             param_index += 1;
         }
 
-        if let Some(published) = entity.field_data.get("published").and_then(|v| v.as_bool()) {
-            update_clauses.push(format!("published = ${}", param_index));
+        if let Some(published) = entity.field_data.get("published").and_then(serde_json::Value::as_bool) {
+            update_clauses.push(format!("published = ${param_index}"));
             published_param = Some(published);
             param_index += 1;
         }
@@ -378,7 +390,7 @@ impl DynamicEntityRepository {
         );
 
         if let Some(item) = updated_by {
-            update_clauses.push(format!("updated_by = ${}", param_index));
+            update_clauses.push(format!("updated_by = ${param_index}"));
             updated_by_param = Some(item);
             param_index += 1;
         }
@@ -502,7 +514,7 @@ impl DynamicEntityRepository {
             let key_lower = key.to_lowercase();
             if valid_columns.contains(&key_lower) {
                 // Database columns are lowercase, so use lowercase for column name
-                set_clauses.push(format!("{} = ${}", key_lower, param_index));
+                set_clauses.push(format!("{key_lower} = ${param_index}"));
                 entity_params.push((param_index, value.clone()));
                 param_index += 1;
             }
@@ -552,6 +564,8 @@ impl DynamicEntityRepository {
     }
 
     /// Filter entities by field values with advanced options
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_lines)]
     async fn filter_entities(
         &self,
         entity_type: &str,
@@ -566,7 +580,9 @@ impl DynamicEntityRepository {
         let view_name = dynamic_entity_utils::get_view_name(entity_type);
 
         // Start building the query with field selection
-        let query_prefix = if let Some(field_list) = &fields {
+        let query_prefix = fields.map_or_else(
+            || format!("SELECT * FROM {view_name}"),
+            |field_list| {
             // Always include system fields
             let mut selected_fields = vec![
                 "uuid".to_string(),
@@ -582,18 +598,17 @@ impl DynamicEntityRepository {
 
             // Add requested fields
             for field in field_list {
-                if !selected_fields.contains(field) {
+                if !selected_fields.contains(&field) {
                     selected_fields.push(field.clone());
                 }
             }
 
-            format!("SELECT {} FROM {}", selected_fields.join(", "), view_name)
-        } else {
-            format!("SELECT * FROM {}", view_name)
-        };
+            format!("SELECT {} FROM {view_name}", selected_fields.join(", "))
+            }
+        );
 
         // Base WHERE clause - no need to filter by entity_type as each view only contains one type
-        let mut query = format!("{}", query_prefix);
+        let mut query = query_prefix.clone();
         let mut bind_values: Vec<String> = vec![];
         let mut param_index = 1;
 
@@ -611,7 +626,10 @@ impl DynamicEntityRepository {
                     // Special handling for path-based filters
                     if field == "path_prefix" {
                         // Items under the given prefix (recursive)
-                        query.push_str(&format!("path LIKE ${} || '/%'", param_index));
+                        #[allow(clippy::format_push_string)]
+                        {
+                            query.push_str(&format!("path LIKE ${param_index} || '/%'"));
+                        }
                         bind_values.push(
                             value
                                 .as_str()
@@ -624,7 +642,10 @@ impl DynamicEntityRepository {
                         continue;
                     } else if field == "path_equals" || field == "path" {
                         // Exact path match
-                        query.push_str(&format!("path = ${}", param_index));
+                        #[allow(clippy::format_push_string)]
+                        {
+                            query.push_str(&format!("path = ${param_index}"));
+                        }
                         bind_values.push(value.as_str().unwrap_or("").to_string());
                         param_index += 1;
                         is_first = false;
@@ -633,25 +654,40 @@ impl DynamicEntityRepository {
 
                     match value {
                         JsonValue::String(s) => {
-                            query.push_str(&format!("{} = ${}", field, param_index));
-                            bind_values.push(s.to_string());
+                            #[allow(clippy::format_push_string)]
+                            {
+                                query.push_str(&format!("{field} = ${param_index}"));
+                            }
+                            bind_values.push(s.clone());
                             param_index += 1;
                         }
                         JsonValue::Number(n) => {
-                            query.push_str(&format!("{} = ${}", field, param_index));
+                            #[allow(clippy::format_push_string)]
+                            {
+                                query.push_str(&format!("{field} = ${param_index}"));
+                            }
                             bind_values.push(n.to_string());
                             param_index += 1;
                         }
                         JsonValue::Bool(b) => {
-                            query.push_str(&format!("{} = ${}", field, param_index));
+                            #[allow(clippy::format_push_string)]
+                            {
+                                query.push_str(&format!("{field} = ${param_index}"));
+                            }
                             bind_values.push(b.to_string());
                             param_index += 1;
                         }
                         JsonValue::Null => {
-                            query.push_str(&format!("{} IS NULL", field));
+                            #[allow(clippy::format_push_string)]
+                            {
+                                query.push_str(&format!("{field} IS NULL"));
+                            }
                         }
                         _ => {
-                            query.push_str(&format!("{} = ${}", field, param_index));
+                            #[allow(clippy::format_push_string)]
+                            {
+                                query.push_str(&format!("{field} = ${param_index}"));
+                            }
                             bind_values.push(value.to_string());
                             param_index += 1;
                         }
@@ -674,17 +710,17 @@ impl DynamicEntityRepository {
                 let search_conditions: Vec<String> = search_fields
                     .iter()
                     .map(|field| {
-                        let condition = format!("{} ILIKE ${}", field, param_index);
-                        bind_values.push(format!("%{}%", search_term));
+                        let condition = format!("{field} ILIKE ${param_index}");
+                        bind_values.push(format!("%{search_term}%"));
                         param_index += 1;
                         condition
                     })
                     .collect();
 
                 if !search_conditions.is_empty() {
-                    query.push_str("(");
+                    query.push('(');
                     query.push_str(&search_conditions.join(" OR "));
-                    query.push_str(")");
+                    query.push(')');
                 }
             }
         }
@@ -697,16 +733,22 @@ impl DynamicEntityRepository {
                 _ => "DESC",
             };
 
-            query.push_str(&format!(" ORDER BY {} {}", field, sanitized_direction));
+            #[allow(clippy::format_push_string)]
+            {
+                query.push_str(&format!(" ORDER BY {field} {sanitized_direction}"));
+            }
         } else {
             // Default sort
             query.push_str(" ORDER BY created_at DESC");
         }
 
         // Add pagination
-        query.push_str(&format!(" LIMIT {} OFFSET {}", limit, offset));
+        #[allow(clippy::format_push_string)]
+        {
+            query.push_str(&format!(" LIMIT {limit} OFFSET {offset}"));
+        }
 
-        debug!("Executing filter query: {}", query);
+        debug!("Executing filter query: {query}");
 
         // Get the entity definition for mapping
         let entity_def = dynamic_entity_utils::get_entity_definition(
@@ -757,12 +799,12 @@ impl DynamicEntityRepository {
         // Bind search parameters - bind once for each search field
         if let Some((search_term, search_fields)) = &search {
             for _field in search_fields {
-                sql = sql.bind(format!("%{}%", search_term));
+                sql = sql.bind(format!("%{search_term}%"));
             }
         }
 
         let rows = sql.fetch_all(&self.pool).await.map_err(|e| {
-            error!("Database error: {}", e);
+            error!("Database error: {e}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -777,6 +819,9 @@ impl DynamicEntityRepository {
     }
 
     /// Count entities of a specific type
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn count_entities(&self, entity_type: &str) -> Result<i64> {
         // Use the view for this entity type
         let view_name = dynamic_entity_utils::get_view_name(entity_type);
@@ -799,13 +844,12 @@ impl DynamicEntityRepository {
 
         if !view_exists {
             return Err(r_data_core_core::error::Error::NotFound(format!(
-                "Entity type '{}' not found",
-                entity_type
+                "Entity type '{entity_type}' not found"
             )));
         }
 
         // Query count
-        let query = format!("SELECT COUNT(*) FROM {}", view_name);
+        let query = format!("SELECT COUNT(*) FROM {view_name}");
         let count: i64 = sqlx::query_scalar(&query)
             .fetch_one(&self.pool)
             .await
@@ -814,8 +858,11 @@ impl DynamicEntityRepository {
         Ok(count)
     }
 
-    /// Query entities by parent_uuid or path
-    /// Returns entities filtered by either parent_uuid, exact path, or both
+    /// Query entities by `parent_uuid` or `path`
+    /// Returns entities filtered by either `parent_uuid`, exact `path`, or both
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn query_by_parent_and_path(
         &self,
         entity_type: &str,
@@ -834,23 +881,28 @@ impl DynamicEntityRepository {
 
         // Build the query
         let mut query = format!(
-            "SELECT e.*, r.path, r.entity_key, r.parent_uuid FROM {} e 
+            "SELECT e.*, r.path, r.entity_key, r.parent_uuid FROM {table_name} e 
             INNER JOIN entities_registry r ON e.uuid = r.uuid 
-            WHERE r.entity_type = $1",
-            table_name
+            WHERE r.entity_type = $1"
         );
 
         let mut param_index = 2; // Start after entity_type
 
         // Add parent_uuid filter if provided
         if let Some(_parent_id) = &parent_uuid {
-            query.push_str(&format!(" AND r.parent_uuid = ${}", param_index));
+            #[allow(clippy::format_push_string)]
+            {
+                query.push_str(&format!(" AND r.parent_uuid = ${param_index}"));
+            }
             param_index += 1;
         }
 
         // Add path filter if provided
         if let Some(_p) = path {
-            query.push_str(&format!(" AND r.path = ${}", param_index));
+            #[allow(clippy::format_push_string)]
+            {
+                query.push_str(&format!(" AND r.path = ${param_index}"));
+            }
             param_index += 1;
         }
 
@@ -861,7 +913,7 @@ impl DynamicEntityRepository {
         query.push_str(" OFFSET $");
         query.push_str(&param_index.to_string());
 
-        debug!("Query by parent/path: {}", query);
+        debug!("Query by parent/path: {query}");
 
         // Build the query with proper parameter binding
         let mut sql_query = sqlx::query(&query).bind(entity_type);
@@ -880,7 +932,7 @@ impl DynamicEntityRepository {
             .fetch_all(&self.pool)
             .await
             .map_err(|e| {
-                error!("Error querying entities by parent/path: {:?}", e);
+                error!("Error querying entities by parent/path: {e:?}");
                 r_data_core_core::error::Error::Database(e)
             })?;
 
@@ -894,6 +946,9 @@ impl DynamicEntityRepository {
     }
 
     /// Check if an entity has children
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn has_children(&self, parent_uuid: &Uuid) -> Result<bool> {
         let exists: Option<bool> = sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM entities_registry WHERE parent_uuid = $1 LIMIT 1)",
@@ -923,7 +978,7 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
         uuid: &Uuid,
         exclusive_fields: Option<Vec<String>>,
     ) -> Result<Option<DynamicEntity>> {
-        debug!("Getting entity of type {} with UUID {}", entity_type, uuid);
+        debug!("Getting entity of type {entity_type} with UUID {uuid}");
 
         // Get the entity definition to understand entity structure
         let entity_def = dynamic_entity_utils::get_entity_definition(
@@ -937,53 +992,54 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
         let view_name = dynamic_entity_utils::get_view_name(entity_type);
 
         // Build the query with field selection
-        let query = if let Some(fields) = &exclusive_fields {
-            // Always include system fields
-            let mut selected_fields = vec![
-                "uuid".to_string(),
-                "created_at".to_string(),
-                "updated_at".to_string(),
-                "created_by".to_string(),
-                "updated_by".to_string(),
-                "published".to_string(),
-                "version".to_string(),
-                "path".to_string(),
-            ];
+        let query = exclusive_fields.map_or_else(
+            || format!("SELECT * FROM {view_name} WHERE uuid = $1"),
+            |fields| {
+                // Always include system fields
+                let mut selected_fields = vec![
+                    "uuid".to_string(),
+                    "created_at".to_string(),
+                    "updated_at".to_string(),
+                    "created_by".to_string(),
+                    "updated_by".to_string(),
+                    "published".to_string(),
+                    "version".to_string(),
+                    "path".to_string(),
+                ];
 
-            // Add requested fields
-            for field in fields {
-                if !selected_fields.contains(field) {
-                    selected_fields.push(field.clone());
+                // Add requested fields
+                for field in fields {
+                    if !selected_fields.contains(&field) {
+                        selected_fields.push(field.clone());
+                    }
                 }
+
+                format!(
+                    "SELECT {} FROM {view_name} WHERE uuid = $1",
+                    selected_fields.join(", ")
+                )
             }
+        );
 
-            format!(
-                "SELECT {} FROM {} WHERE uuid = $1",
-                selected_fields.join(", "),
-                view_name
-            )
-        } else {
-            format!("SELECT * FROM {} WHERE uuid = $1", view_name)
-        };
-
-        debug!("Query: {}", query);
+        debug!("Query: {query}");
 
         let row = sqlx::query(&query)
             .bind(uuid)
             .fetch_optional(&self.pool)
             .await
             .map_err(|e| {
-                error!("Error fetching entity: {:?}", e);
+                error!("Error fetching entity: {e:?}");
                 r_data_core_core::error::Error::Database(e)
             })?;
 
-        if let Some(row) = row {
-            // Map the row to a DynamicEntity
-            let entity = dynamic_entity_mapper::map_row_to_entity(&row, entity_type, &entity_def);
-            Ok(Some(entity))
-        } else {
-            Ok(None)
-        }
+        row.map_or_else(
+            || Ok(None),
+            |row| {
+                // Map the row to a DynamicEntity
+                let entity = dynamic_entity_mapper::map_row_to_entity(&row, entity_type, &entity_def);
+                Ok(Some(entity))
+            },
+        )
     }
 
     async fn get_all_by_type(
@@ -993,7 +1049,7 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
         offset: i64,
         exclusive_fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>> {
-        debug!("Getting all entities of type {}", entity_type);
+        debug!("Getting all entities of type {entity_type}");
 
         // Get the entity definition to understand entity structure
         let entity_def = dynamic_entity_utils::get_entity_definition(
@@ -1007,39 +1063,36 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
         let view_name = dynamic_entity_utils::get_view_name(entity_type);
 
         // Build the query with field selection
-        let query = if let Some(fields) = &exclusive_fields {
-            // Always include system fields
-            let mut selected_fields = vec![
-                "uuid".to_string(),
-                "created_at".to_string(),
-                "updated_at".to_string(),
-                "created_by".to_string(),
-                "updated_by".to_string(),
-                "published".to_string(),
-                "version".to_string(),
-                "path".to_string(),
-            ];
+        let query = exclusive_fields.map_or_else(
+            || format!("SELECT * FROM {view_name} ORDER BY created_at DESC LIMIT $1 OFFSET $2"),
+            |fields| {
+                // Always include system fields
+                let mut selected_fields = vec![
+                    "uuid".to_string(),
+                    "created_at".to_string(),
+                    "updated_at".to_string(),
+                    "created_by".to_string(),
+                    "updated_by".to_string(),
+                    "published".to_string(),
+                    "version".to_string(),
+                    "path".to_string(),
+                ];
 
-            // Add requested fields
-            for field in fields {
-                if !selected_fields.contains(field) {
-                    selected_fields.push(field.clone());
+                // Add requested fields
+                for field in fields {
+                    if !selected_fields.contains(&field) {
+                        selected_fields.push(field.clone());
+                    }
                 }
+
+                format!(
+                    "SELECT {} FROM {view_name} ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+                    selected_fields.join(", ")
+                )
             }
+        );
 
-            format!(
-                "SELECT {} FROM {} ORDER BY created_at DESC LIMIT $1 OFFSET $2",
-                selected_fields.join(", "),
-                view_name
-            )
-        } else {
-            format!(
-                "SELECT * FROM {} ORDER BY created_at DESC LIMIT $1 OFFSET $2",
-                view_name
-            )
-        };
-
-        debug!("Query: {}", query);
+        debug!("Query: {query}");
 
         // Query all entities
         let rows = sqlx::query(&query)
@@ -1048,7 +1101,7 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
             .fetch_all(&self.pool)
             .await
             .map_err(|e| {
-                error!("Error fetching entities: {:?}", e);
+                error!("Error fetching entities: {e:?}");
                 r_data_core_core::error::Error::Database(e)
             })?;
 
@@ -1062,7 +1115,7 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
     }
 
     async fn delete_by_type(&self, entity_type: &str, uuid: &Uuid) -> Result<()> {
-        debug!("Deleting entity of type {} with UUID {}", entity_type, uuid);
+        debug!("Deleting entity of type {entity_type} with UUID {uuid}");
 
         // Get the table name
         let table_name = dynamic_entity_utils::get_table_name(entity_type);
@@ -1071,13 +1124,13 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
         let mut tx = self.pool.begin().await?;
 
         // First, delete from the entity-specific table
-        let query = format!("DELETE FROM {} WHERE uuid = $1", table_name);
+        let query = format!("DELETE FROM {table_name} WHERE uuid = $1");
 
         let result = sqlx::query(&query).bind(uuid).execute(&mut *tx).await;
 
         // If the entity table doesn't exist, just log a warning
         if let Err(e) = result {
-            warn!("Error deleting from {}: {}", table_name, e);
+            warn!("Error deleting from {table_name}: {e}");
         }
 
         // Then delete from entities_registry
@@ -1094,6 +1147,7 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn filter_entities(
         &self,
         entity_type: &str,

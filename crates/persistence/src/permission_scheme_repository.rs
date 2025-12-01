@@ -17,7 +17,10 @@ impl PermissionSchemeRepository {
     /// Create a new repository instance
     ///
     /// # Arguments
-    /// * `pool` - PostgreSQL connection pool
+    /// * `pool` - `PostgreSQL` connection ``PgPool``
+    ///
+    /// # Errors
+    /// This function does not return errors
     #[must_use]
     pub const fn new(pool: PgPool) -> Self {
         Self { pool }
@@ -49,7 +52,7 @@ impl PermissionSchemeRepository {
 
         Ok(row.map(|r| {
             permission_scheme_from_row(&r).unwrap_or_else(|e| {
-                log::error!("Failed to deserialize permission scheme: {}", e);
+                log::error!("Failed to deserialize permission scheme: {e}");
                 // Return empty scheme on error
                 PermissionScheme::new("Error".to_string())
             })
@@ -82,7 +85,7 @@ impl PermissionSchemeRepository {
 
         Ok(row.map(|r| {
             permission_scheme_from_row(&r).unwrap_or_else(|e| {
-                log::error!("Failed to deserialize permission scheme: {}", e);
+                log::error!("Failed to deserialize permission scheme: {e}");
                 PermissionScheme::new("Error".to_string())
             })
         }))
@@ -202,7 +205,7 @@ impl PermissionSchemeRepository {
             match permission_scheme_from_row(&row) {
                 Ok(scheme) => schemes.push(scheme),
                 Err(e) => {
-                    log::error!("Failed to deserialize permission scheme: {}", e);
+                    log::error!("Failed to deserialize permission scheme: {e}");
                     // Continue with other schemes
                 }
             }
@@ -248,7 +251,10 @@ impl PermissionSchemeRepositoryTrait for PermissionSchemeRepository {
     }
 }
 
-/// Helper function to deserialize PermissionScheme from database row
+/// Helper function to deserialize `PermissionScheme` from database row
+///
+/// # Panics
+/// May panic if database row data is invalid
 fn permission_scheme_from_row(row: &PgRow) -> std::result::Result<PermissionScheme, sqlx::Error> {
     use crate::core::domain::AbstractRDataEntity;
     use std::collections::HashMap;

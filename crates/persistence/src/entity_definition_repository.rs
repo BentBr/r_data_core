@@ -19,11 +19,14 @@ pub struct EntityDefinitionRepository {
 impl EntityDefinitionRepository {
     /// Create a new entity definition repository
     #[must_use]
-    pub fn new(db_pool: PgPool) -> Self {
+    pub const fn new(db_pool: PgPool) -> Self {
         Self { db_pool }
     }
 
     /// Check if a view exists in the database
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn check_view_exists(&self, view_name: &str) -> Result<bool> {
         // First check for views
         let view_exists = sqlx::query!(
@@ -63,6 +66,9 @@ impl EntityDefinitionRepository {
     }
 
     /// Get columns and their types for a view
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn get_view_columns_with_types(
         &self,
         view_name: &str,
@@ -90,8 +96,11 @@ impl EntityDefinitionRepository {
     }
 
     /// Count records in a view or table
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn count_view_records(&self, table_name: &str) -> Result<i64> {
-        let count = sqlx::query_scalar::<_, i64>(&format!("SELECT COUNT(*) FROM {}", table_name))
+        let count = sqlx::query_scalar::<_, i64>(&format!("SELECT COUNT(*) FROM {table_name}"))
             .fetch_one(&self.db_pool)
             .await
             .map_err(Error::Database)?;
@@ -99,7 +108,10 @@ impl EntityDefinitionRepository {
         Ok(count)
     }
 
-    /// Delete entities from the entities_registry by entity type
+    /// Delete entities from the `entities_registry` by entity type
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn delete_from_entities_registry(&self, entity_type: &str) -> Result<()> {
         sqlx::query!(
             "
@@ -123,7 +135,6 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
             .repository_with_table::<EntityDefinition>("entity_definitions")
             .list(None, Some("entity_type ASC"), Some(limit), Some(offset))
             .await
-            .map_err(Into::into)
     }
 
     async fn count(&self) -> Result<i64> {
@@ -131,7 +142,6 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
             .repository_with_table::<EntityDefinition>("entity_definitions")
             .count(None)
             .await
-            .map_err(Into::into)
     }
 
     /// Get a entity definition by UUID
@@ -262,14 +272,13 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
         let version = definition.version;
 
         // Log values for debugging
-        log::debug!("Creating entity definition with UUID: {}", uuid);
-        log::debug!("Entity type: {}", entity_type);
+        log::debug!("Creating entity definition with UUID: {uuid}");
+        log::debug!("Entity type: {entity_type}");
         log::debug!(
-            "Created by: {} (type: {})",
-            created_by,
+            "Created by: {created_by} (type: {})",
             std::any::type_name_of_val(&created_by)
         );
-        log::debug!("Fields: {}", fields);
+        log::debug!("Fields: {fields}");
         log::debug!("Schema properties: {:?}", definition.schema.properties);
 
         // SQL query with named parameters for clarity
@@ -299,7 +308,7 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
             .fetch_one(&self.db_pool)
             .await
             .map_err(|e| {
-                log::error!("Database error creating entity definition: {}", e);
+                log::error!("Database error creating entity definition: {e}");
                 Error::Database(e)
             })?;
 
@@ -386,7 +395,7 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
             if table_exists {
                 // Also drop any relation tables if they exist
                 for field in &entity_definition.fields {
-                    if let FieldType::ManyToMany = field.field_type {
+                    if field.field_type == FieldType::ManyToMany {
                         let relation_table_name = format!(
                             "rel_{}_{}",
                             entity_definition.entity_type.to_lowercase(),
@@ -395,9 +404,9 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
 
                         let rel_table_exists = self.check_view_exists(&relation_table_name).await?;
                         if rel_table_exists {
-                            log::info!("Dropping relation table: {}", relation_table_name);
+                            log::info!("Dropping relation table: {relation_table_name}");
                             let drop_rel_sql =
-                                format!("DROP TABLE IF EXISTS {} CASCADE", relation_table_name);
+                                format!("DROP TABLE IF EXISTS {relation_table_name} CASCADE");
                             sqlx::query(&drop_rel_sql)
                                 .execute(&self.db_pool)
                                 .await
@@ -407,8 +416,8 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
                 }
 
                 // Drop the entity table
-                log::info!("Dropping entity table: {}", table_name);
-                let drop_entity_sql = format!("DROP TABLE IF EXISTS {} CASCADE", table_name);
+                log::info!("Dropping entity table: {table_name}");
+                let drop_entity_sql = format!("DROP TABLE IF EXISTS {table_name} CASCADE");
                 sqlx::query(&drop_entity_sql)
                     .execute(&self.db_pool)
                     .await
@@ -429,8 +438,7 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
             Ok(())
         } else {
             Err(r_data_core_core::error::Error::NotFound(format!(
-                "Class definition with UUID {} not found",
-                uuid
+                "Class definition with UUID {uuid} not found"
             )))
         }
     }
@@ -440,13 +448,13 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
         // Split the SQL into individual statements and execute each one separately
         let statements: Vec<&str> = schema_sql
             .split(';')
-            .map(|s| s.trim())
+            .map(str::trim)
             .filter(|s| !s.is_empty())
             .collect();
 
         for statement in statements {
             if !statement.trim().is_empty() {
-                log::debug!("Executing SQL statement: {}", statement);
+                log::debug!("Executing SQL statement: {statement}");
                 sqlx::query(statement)
                     .execute(&self.db_pool)
                     .await
@@ -469,7 +477,7 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
         // Generate the complete schema SQL including indexes
         let schema_sql = entity_definition.generate_schema_sql();
 
-        log::debug!("Generated schema SQL: {}", schema_sql);
+        log::debug!("Generated schema SQL: {schema_sql}");
 
         // Apply the schema using the Rust-generated SQL
         self.apply_schema(&schema_sql).await?;
@@ -512,15 +520,15 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
         // Identify tables without a corresponding entity definition
         let defined_tables: HashSet<String> = entity_definitions
             .iter()
-            .map(|def| def.get_table_name())
+            .map(r_data_core_core::entity_definition::definition::EntityDefinition::get_table_name)
             .collect();
 
         for row in tables {
             if let Some(table_name) = row.table_name {
                 if !defined_tables.contains(&table_name) {
                     // Table has no corresponding entity definition, drop it
-                    log::info!("Dropping orphaned entity table: {}", table_name);
-                    let drop_sql = format!("DROP TABLE IF EXISTS {} CASCADE", table_name);
+                    log::info!("Dropping orphaned entity table: {table_name}");
+                    let drop_sql = format!("DROP TABLE IF EXISTS {table_name} CASCADE");
 
                     sqlx::query(&drop_sql)
                         .execute(&self.db_pool)
@@ -533,21 +541,30 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
         Ok(())
     }
 
-    /// Get columns and their types for a view - delegates to implementation in EntityDefinitionRepository
+    /// Get columns and their types for a view - delegates to implementation in `EntityDefinitionRepository`
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     async fn get_view_columns_with_types(
         &self,
         view_name: &str,
     ) -> Result<HashMap<String, String>> {
-        EntityDefinitionRepository::get_view_columns_with_types(self, view_name).await
+        Self::get_view_columns_with_types(self, view_name).await
     }
 
-    /// Count records in a view or table - delegates to implementation in EntityDefinitionRepository
+    /// Count records in a view or table - delegates to implementation in `EntityDefinitionRepository`
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     async fn count_view_records(&self, view_name: &str) -> Result<i64> {
-        EntityDefinitionRepository::count_view_records(self, view_name).await
+        Self::count_view_records(self, view_name).await
     }
 
-    /// Check if a view or table exists in the database - delegates to implementation in EntityDefinitionRepository
+    /// Check if a view or table exists in the database - delegates to implementation in `EntityDefinitionRepository`
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     async fn check_view_exists(&self, view_name: &str) -> Result<bool> {
-        EntityDefinitionRepository::check_view_exists(self, view_name).await
+        Self::check_view_exists(self, view_name).await
     }
 }

@@ -9,10 +9,13 @@ use uuid::Uuid;
 
 /// Generate cache key for entity definition by entity type
 fn cache_key_by_entity_type(entity_type: &str) -> String {
-    format!("entity_def:by_type:{}", entity_type)
+    format!("entity_def:by_type:{entity_type}")
 }
 
 /// Get a entity definition by entity type
+///
+/// # Errors
+/// Returns an error if the database query fails or the entity type is not found
 pub async fn get_entity_definition(
     db_pool: &PgPool,
     entity_type: &str,
@@ -70,32 +73,34 @@ pub async fn get_entity_definition(
         if let Some(cache) = &cache_manager {
             let cache_key = cache_key_by_entity_type(entity_type);
             if let Err(e) = cache.set(&cache_key, &definition, None).await {
-                log::warn!("Failed to cache entity definition: {}", e);
+                log::warn!("Failed to cache entity definition: {e}");
             }
         }
 
         Ok(definition)
     } else {
         Err(r_data_core_core::error::Error::NotFound(format!(
-            "Class definition for entity type '{}' not found",
-            entity_type
+            "Class definition for entity type '{entity_type}' not found"
         )))
     }
 }
 
 /// Get the view name for an entity type
+#[must_use]
 pub fn get_view_name(entity_type: &str) -> String {
     format!("entity_{}_view", entity_type.to_lowercase())
 }
 
 /// Get the table name for an entity type
+#[must_use]
 pub fn get_table_name(entity_type: &str) -> String {
     format!("entity_{}", entity_type.to_lowercase())
 }
 
 /// Build a dynamic WHERE clause from filters
-pub fn build_where_clause(
-    filters: &std::collections::HashMap<String, JsonValue>,
+#[must_use]
+pub fn build_where_clause<H: std::hash::BuildHasher>(
+    filters: &std::collections::HashMap<String, JsonValue, H>,
     entity_def: &EntityDefinition,
 ) -> (String, Vec<String>) {
     let mut where_clauses = Vec::new();
@@ -106,37 +111,37 @@ pub fn build_where_clause(
     for (field_name, value) in filters {
         if let Some(field_def) = entity_def.get_field(field_name) {
             match field_def.field_type {
-                r_data_core_core::field::types::FieldType::String => {
-                    where_clauses.push(format!("{} = ${}", field_name, param_idx));
-                    params.push(value.as_str().unwrap_or_default().to_string());
+                r_data_core_core::field::types::FieldType::String
+                | r_data_core_core::field::types::FieldType::Integer
+                | r_data_core_core::field::types::FieldType::Float
+                | r_data_core_core::field::types::FieldType::Boolean => {
+                    where_clauses.push(format!("{field_name} = ${param_idx}"));
+                    let param_value = match field_def.field_type {
+                        r_data_core_core::field::types::FieldType::String => {
+                            value.as_str().unwrap_or_default().to_string()
+                        }
+                        r_data_core_core::field::types::FieldType::Integer => {
+                            value.as_i64().unwrap_or_default().to_string()
+                        }
+                        r_data_core_core::field::types::FieldType::Float => {
+                            value.as_f64().unwrap_or_default().to_string()
+                        }
+                        r_data_core_core::field::types::FieldType::Boolean => {
+                            value.as_bool().unwrap_or_default().to_string()
+                        }
+                        _ => unreachable!(),
+                    };
+                    params.push(param_value);
                 }
-                r_data_core_core::field::types::FieldType::Integer => {
-                    where_clauses.push(format!("{} = ${}", field_name, param_idx));
-                    params.push(value.as_i64().unwrap_or_default().to_string());
-                }
-                r_data_core_core::field::types::FieldType::Float => {
-                    where_clauses.push(format!("{} = ${}", field_name, param_idx));
-                    params.push(value.as_f64().unwrap_or_default().to_string());
-                }
-                r_data_core_core::field::types::FieldType::Boolean => {
-                    where_clauses.push(format!("{} = ${}", field_name, param_idx));
-                    params.push(value.as_bool().unwrap_or_default().to_string());
-                }
-                r_data_core_core::field::types::FieldType::DateTime => {
-                    where_clauses.push(format!("{} = ${}", field_name, param_idx));
-                    params.push(value.as_str().unwrap_or_default().to_string());
-                }
-                r_data_core_core::field::types::FieldType::Date => {
-                    where_clauses.push(format!("{} = ${}", field_name, param_idx));
-                    params.push(value.as_str().unwrap_or_default().to_string());
-                }
-                r_data_core_core::field::types::FieldType::Uuid => {
-                    where_clauses.push(format!("{} = ${}", field_name, param_idx));
+                r_data_core_core::field::types::FieldType::DateTime
+                | r_data_core_core::field::types::FieldType::Date
+                | r_data_core_core::field::types::FieldType::Uuid => {
+                    where_clauses.push(format!("{field_name} = ${param_idx}"));
                     params.push(value.as_str().unwrap_or_default().to_string());
                 }
                 _ => {
                     // For complex types (Object, Array, etc.), use JSONB comparison
-                    where_clauses.push(format!("{}::jsonb = ${}::jsonb", field_name, param_idx));
+                    where_clauses.push(format!("{field_name}::jsonb = ${param_idx}::jsonb"));
                     params.push(value.to_string());
                 }
             }
@@ -153,8 +158,9 @@ pub fn build_where_clause(
     (clause, params)
 }
 
-/// Extract UUID from a JsonValue field
-/// Returns None if the field is not a string or if the string is not a valid UUID
+/// Extract UUID from a `JsonValue` field
+/// Returns `None` if the field is not a string or if the string is not a valid UUID
+#[must_use]
 pub fn extract_uuid_from_json(value: &JsonValue) -> Option<Uuid> {
     match value {
         JsonValue::String(s) => Uuid::parse_str(s).ok(),
@@ -164,8 +170,9 @@ pub fn extract_uuid_from_json(value: &JsonValue) -> Option<Uuid> {
 
 /// Extract UUID from entity field data
 /// Returns None if the field is missing, not a string, or not a valid UUID
-pub fn extract_uuid_from_entity_field_data(
-    field_data: &std::collections::HashMap<String, JsonValue>,
+#[must_use]
+pub fn extract_uuid_from_entity_field_data<H: std::hash::BuildHasher>(
+    field_data: &std::collections::HashMap<String, JsonValue, H>,
     field_name: &str,
 ) -> Option<Uuid> {
     field_data.get(field_name).and_then(extract_uuid_from_json)

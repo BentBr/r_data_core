@@ -17,7 +17,13 @@ struct RowRec {
 /// Browse dynamic entities by virtual path
 ///
 /// Returns folders (first) and files directly under the path, representing the hierarchical
-/// structure of dynamic entities in the entities_registry.
+/// structure of dynamic entities in the `entities_registry`.
+///
+/// * `pool` - `PostgreSQL` connection ``PgPool``
+///
+/// # Errors
+/// Returns an error if the database query fails
+#[allow(clippy::too_many_lines)]
 pub async fn browse_by_path(
     db_pool: &PgPool,
     raw_path: &str,
@@ -45,8 +51,9 @@ pub async fn browse_by_path(
     check_children(db_pool, &mut all).await?;
 
     // Paginate results
+    #[allow(clippy::cast_possible_wrap)]
     let total = all.len() as i64;
-    let page = paginate_results(all, offset, limit);
+    let page = paginate_results(&all, offset, limit);
 
     Ok((page, total))
 }
@@ -57,7 +64,7 @@ fn normalize_path(raw_path: &str) -> String {
         prefix = "/".to_string();
     }
     if !prefix.starts_with('/') {
-        prefix = format!("/{}", prefix);
+        prefix = format!("/{prefix}");
     }
     if prefix.len() > 1 {
         prefix = prefix.trim_end_matches('/').to_string();
@@ -112,18 +119,17 @@ fn build_files_and_folders(
         let p = r.path.as_str();
         if p == prefix {
             let entity_key = r.entity_key.clone();
-            let exact_key = format!("{}::{}", p, &entity_key);
+            let exact_key = format!("{p}::{entity_key}");
             let (entity_uuid, entity_type) = exact
                 .get(&exact_key)
                 .cloned()
-                .map(|(u, t)| (Some(u), Some(t)))
-                .unwrap_or((None, None));
+                .map_or((None, None), |(u, t)| (Some(u), Some(t)));
 
             // Child folder path for this file (so FE can lazy-load its children by path)
             let child_path = if p == "/" {
-                format!("/{}", entity_key)
+                format!("/{entity_key}")
             } else {
-                format!("{}/{}", p, entity_key)
+                format!("{p}/{entity_key}")
             };
 
             files.push(BrowseNode {
@@ -163,12 +169,12 @@ fn build_files_and_folders(
         }
 
         let folder_path = if prefix == "/" {
-            format!("/{}", seg)
+            format!("/{seg}")
         } else {
-            format!("{}/{}", prefix, seg)
+                format!("{prefix}/{seg}")
         };
 
-        folder_map.entry(seg.to_string()).or_insert(BrowseNode {
+        folder_map.entry(seg.to_string()).or_insert_with(|| BrowseNode {
             kind: BrowseKind::Folder,
             name: seg.to_string(),
             path: folder_path,
@@ -198,7 +204,7 @@ fn sort_and_combine(
 async fn check_children(db_pool: &PgPool, nodes: &mut [BrowseNode]) -> Result<()> {
     for node in nodes.iter_mut() {
         if let Some(uuid) = node.entity_uuid {
-            if let Some(true) = node.has_children {
+            if node.has_children == Some(true) {
                 // Already marked as having children
                 continue;
             }
@@ -231,8 +237,10 @@ async fn check_children(db_pool: &PgPool, nodes: &mut [BrowseNode]) -> Result<()
     Ok(())
 }
 
-fn paginate_results(all: Vec<BrowseNode>, offset: i64, limit: i64) -> Vec<BrowseNode> {
+fn paginate_results(all: &[BrowseNode], offset: i64, limit: i64) -> Vec<BrowseNode> {
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let start = offset.max(0) as usize;
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let end = (offset + limit).max(0) as usize;
     if start >= all.len() {
         vec![]

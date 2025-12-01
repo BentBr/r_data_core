@@ -16,12 +16,15 @@ pub struct EntityDefinitionVersioningRepository {
 impl EntityDefinitionVersioningRepository {
     /// Create a new entity definition versioning repository
     #[must_use]
-    pub fn new(pool: PgPool) -> Self {
+    pub const fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 
     /// Create a pre-update snapshot for an entity definition
-    /// The snapshot's created_by is extracted from the JSON data (updated_by or created_by).
+    /// The snapshot's `created_by` is extracted from the JSON data (`updated_by` or `created_by`).
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn snapshot_pre_update(&self, definition_uuid: Uuid) -> Result<()> {
         // Get current definition data as JSON (includes version, updated_by, and created_by)
         let current_json: Option<serde_json::Value> = sqlx::query_scalar(
@@ -34,9 +37,11 @@ impl EntityDefinitionVersioningRepository {
 
         if let Some(data) = current_json {
             // Extract version and creator from JSON
+            // Cast i64 to i32 - version numbers are small enough
+            #[allow(clippy::cast_possible_truncation)]
             let ver: Option<i32> = data
                 .get("version")
-                .and_then(|v| v.as_i64())
+                .and_then(serde_json::Value::as_i64)
                 .map(|v| v as i32);
             let Some(version) = ver else {
                 return Ok(()); // No definition to snapshot
@@ -71,7 +76,10 @@ impl EntityDefinitionVersioningRepository {
 
     /// Create a pre-update snapshot within a transaction
     /// This is an associated function (static method) since it doesn't require a repository instance.
-    /// The snapshot's created_by is extracted from the JSON data (updated_by or created_by).
+    /// The snapshot's `created_by` is extracted from the JSON data (`updated_by` or `created_by`).
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn snapshot_pre_update_tx(
         tx: &mut Transaction<'_, Postgres>,
         definition_uuid: Uuid,
@@ -88,9 +96,11 @@ impl EntityDefinitionVersioningRepository {
 
         if let Some(data) = current_json {
             // Extract version and creator from JSON
+            // Cast i64 to i32 - version numbers are small enough
+            #[allow(clippy::cast_possible_truncation)]
             let ver: Option<i32> = data
                 .get("version")
-                .and_then(|v| v.as_i64())
+                .and_then(serde_json::Value::as_i64)
                 .map(|v| v as i32);
             let Some(version) = ver else {
                 return Ok(()); // No definition to snapshot
@@ -124,6 +134,12 @@ impl EntityDefinitionVersioningRepository {
     }
 
     /// List all versions for an entity definition
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
+    ///
+    /// # Panics
+    /// Panics if database row data is invalid
     pub async fn list_definition_versions(
         &self,
         definition_uuid: Uuid,
@@ -165,6 +181,12 @@ impl EntityDefinitionVersioningRepository {
     }
 
     /// Get a specific version of an entity definition
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
+    ///
+    /// # Panics
+    /// Panics if database row data is invalid
     pub async fn get_definition_version(
         &self,
         definition_uuid: Uuid,
@@ -192,6 +214,12 @@ impl EntityDefinitionVersioningRepository {
     }
 
     /// Get current entity definition metadata
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
+    ///
+    /// # Panics
+    /// Panics if database row data is invalid
     pub async fn get_current_definition_metadata(
         &self,
         definition_uuid: Uuid,
@@ -229,6 +257,9 @@ impl EntityDefinitionVersioningRepository {
     }
 
     /// Prune entity definition versions older than the specified number of days
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn prune_older_than_days(&self, days: i32) -> Result<u64> {
         let res = sqlx::query(
             "
@@ -244,6 +275,9 @@ impl EntityDefinitionVersioningRepository {
     }
 
     /// Prune entity definition versions, keeping only the latest N versions per definition
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn prune_keep_latest_per_definition(&self, keep: i32) -> Result<u64> {
         let res = sqlx::query(
             "
@@ -312,7 +346,7 @@ impl VersionPurger for EntityDefinitionVersioningRepository {
     }
 
     async fn prune_older_than_days(&self, days: i32) -> Result<u64> {
-        EntityDefinitionVersioningRepository::prune_older_than_days(self, days)
+        Self::prune_older_than_days(self, days)
             .await
             .map_err(|e| Error::Unknown(e.to_string()))
     }

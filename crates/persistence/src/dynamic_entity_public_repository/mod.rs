@@ -21,13 +21,16 @@ pub struct DynamicEntityPublicRepository {
 impl DynamicEntityPublicRepository {
     /// Create a new dynamic entity public repository
     #[must_use]
-    pub fn new(db_pool: PgPool) -> Self {
+    pub const fn new(db_pool: PgPool) -> Self {
         Self { db_pool }
     }
 
     /// List all available entity types (entity definitions) with metadata
     ///
     /// Returns entity definitions that are published and can be used to create dynamic entities.
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn list_available_entity_types(&self) -> Result<Vec<EntityTypeInfo>> {
         let rows = sqlx::query!(
             "
@@ -49,7 +52,7 @@ impl DynamicEntityPublicRepository {
                 .unwrap_or(0);
 
             // Count fields for each entity
-            let field_count: i64 = match sqlx::query_scalar!(
+            let field_count: i64 = sqlx::query_scalar!(
                 "
                 SELECT COUNT(*) as count
                 FROM entity_definitions
@@ -59,10 +62,7 @@ impl DynamicEntityPublicRepository {
             )
             .fetch_one(&self.db_pool)
             .await
-            {
-                Ok(count) => count.unwrap_or(0),
-                Err(_) => 0,
-            };
+            .map_or(0, |count| count.unwrap_or(0));
 
             result.push(EntityTypeInfo {
                 name: row.name,
@@ -70,6 +70,7 @@ impl DynamicEntityPublicRepository {
                 description: row.description,
                 is_system: false,
                 entity_count,
+                #[allow(clippy::cast_possible_truncation)]
                 field_count: field_count as i32,
             });
         }
@@ -80,6 +81,9 @@ impl DynamicEntityPublicRepository {
     /// Browse dynamic entities by virtual path
     ///
     /// Returns folders and files representing the hierarchical structure of dynamic entities.
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn browse_by_path(
         &self,
         raw_path: &str,

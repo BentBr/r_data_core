@@ -35,6 +35,7 @@ pub trait DynamicEntityRepositoryTrait: Send + Sync {
     async fn delete_by_type(&self, entity_type: &str, uuid: &Uuid) -> Result<()>;
 
     /// Filter entities by field values with advanced options
+    #[allow(clippy::too_many_arguments)]
     async fn filter_entities(
         &self,
         entity_type: &str,

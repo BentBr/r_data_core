@@ -546,10 +546,10 @@ mod tests {
 
     #[test]
     fn test_user_role_from_str() {
-        assert_eq!(UserRole::from_str("SuperAdmin"), UserRole::SuperAdmin);
+        assert_eq!(UserRole::from_str("SuperAdmin"), Ok(UserRole::SuperAdmin));
         assert_eq!(
             UserRole::from_str("MyRole"),
-            UserRole::Custom("MyRole".to_string())
+            Ok(UserRole::Custom("MyRole".to_string()))
         );
     }
 

@@ -13,7 +13,7 @@ use r_data_core_core::error::Result;
 #[async_trait]
 pub trait EntityDefinitionVersioningRepositoryTrait: Send + Sync {
     /// Create a pre-update snapshot for an entity definition
-    /// The snapshot's created_by is extracted from the JSON data (updated_by or created_by).
+    /// The snapshot's `created_by` is extracted from the JSON data (`updated_by` or `created_by`).
     ///
     /// # Arguments
     /// * `definition_uuid` - UUID of the entity definition

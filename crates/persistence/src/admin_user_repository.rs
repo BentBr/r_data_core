@@ -178,6 +178,8 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_lines)]
     async fn create_admin_user<'a>(
         &self,
         username: &str,
@@ -211,10 +213,10 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
 
         // For authenticated requests, use the authenticated user's UUID as creator
         // For unauthenticated requests or if creator_uuid is nil, use the new user's UUID
-        let created_by = if creator_uuid != Uuid::nil() {
-            creator_uuid
-        } else {
+        let created_by = if creator_uuid.is_nil() {
             user_uuid // Self-reference for unauthenticated registrations
+        } else {
+            creator_uuid
         };
 
         // Insert the new admin user

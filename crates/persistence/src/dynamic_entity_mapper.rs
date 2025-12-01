@@ -10,6 +10,7 @@ use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::DynamicEntity;
 
 /// Extract field data from a database row based on column types
+#[allow(clippy::too_many_lines)]
 pub fn extract_field_data(row: &PgRow) -> HashMap<String, JsonValue> {
     let mut field_data = HashMap::new();
 
@@ -17,7 +18,7 @@ pub fn extract_field_data(row: &PgRow) -> HashMap<String, JsonValue> {
         let column_name = column.name();
         let column_type = column.type_info().to_string();
 
-        debug!("Column: {} of type {}", column_name, column_type);
+        debug!("Column: {column_name} of type {column_type}");
 
         // Handle different types based on PostgreSQL type names
         match column_type.to_lowercase().as_str() {
@@ -31,9 +32,9 @@ pub fn extract_field_data(row: &PgRow) -> HashMap<String, JsonValue> {
                         None => {
                             field_data.insert(column_name.to_string(), JsonValue::Null);
                         }
-                    };
+                    }
                 } else {
-                    debug!("Failed to extract int value for column: {}", column_name);
+                    debug!("Failed to extract int value for column: {column_name}");
                     field_data.insert(column_name.to_string(), JsonValue::Null);
                 }
             }
@@ -46,9 +47,9 @@ pub fn extract_field_data(row: &PgRow) -> HashMap<String, JsonValue> {
                         None => {
                             field_data.insert(column_name.to_string(), JsonValue::Null);
                         }
-                    };
+                    }
                 } else {
-                    debug!("Failed to extract bigint value for column: {}", column_name);
+                    debug!("Failed to extract bigint value for column: {column_name}");
                     field_data.insert(column_name.to_string(), JsonValue::Null);
                 }
             }
@@ -67,9 +68,9 @@ pub fn extract_field_data(row: &PgRow) -> HashMap<String, JsonValue> {
                         None => {
                             field_data.insert(column_name.to_string(), JsonValue::Null);
                         }
-                    };
+                    }
                 } else {
-                    debug!("Failed to extract float value for column: {}", column_name);
+                    debug!("Failed to extract float value for column: {column_name}");
                     field_data.insert(column_name.to_string(), JsonValue::Null);
                 }
             }
@@ -83,12 +84,9 @@ pub fn extract_field_data(row: &PgRow) -> HashMap<String, JsonValue> {
                         None => {
                             field_data.insert(column_name.to_string(), JsonValue::Null);
                         }
-                    };
+                    }
                 } else {
-                    debug!(
-                        "Failed to extract boolean value for column: {}",
-                        column_name
-                    );
+                    debug!("Failed to extract boolean value for column: {column_name}");
                     field_data.insert(column_name.to_string(), JsonValue::Null);
                 }
             }
@@ -102,9 +100,9 @@ pub fn extract_field_data(row: &PgRow) -> HashMap<String, JsonValue> {
                         None => {
                             field_data.insert(column_name.to_string(), JsonValue::Null);
                         }
-                    };
+                    }
                 } else {
-                    debug!("Failed to extract string value for column: {}", column_name);
+                    debug!("Failed to extract string value for column: {column_name}");
                     field_data.insert(column_name.to_string(), JsonValue::Null);
                 }
             }
@@ -119,9 +117,9 @@ pub fn extract_field_data(row: &PgRow) -> HashMap<String, JsonValue> {
                         None => {
                             field_data.insert(column_name.to_string(), JsonValue::Null);
                         }
-                    };
+                    }
                 } else {
-                    debug!("Failed to extract UUID value for column: {}", column_name);
+                    debug!("Failed to extract UUID value for column: {column_name}");
                     field_data.insert(column_name.to_string(), JsonValue::Null);
                 }
             }
@@ -142,12 +140,9 @@ pub fn extract_field_data(row: &PgRow) -> HashMap<String, JsonValue> {
                         None => {
                             field_data.insert(column_name.to_string(), JsonValue::Null);
                         }
-                    };
+                    }
                 } else {
-                    debug!(
-                        "Failed to extract timestamp value for column: {}",
-                        column_name
-                    );
+                    debug!("Failed to extract timestamp value for column: {column_name}");
                     field_data.insert(column_name.to_string(), JsonValue::Null);
                 }
             }
@@ -162,9 +157,9 @@ pub fn extract_field_data(row: &PgRow) -> HashMap<String, JsonValue> {
                         None => {
                             field_data.insert(column_name.to_string(), JsonValue::Null);
                         }
-                    };
+                    }
                 } else {
-                    debug!("Failed to extract date value for column: {}", column_name);
+                    debug!("Failed to extract date value for column: {column_name}");
                     field_data.insert(column_name.to_string(), JsonValue::Null);
                 }
             }
@@ -178,36 +173,35 @@ pub fn extract_field_data(row: &PgRow) -> HashMap<String, JsonValue> {
                         None => {
                             field_data.insert(column_name.to_string(), JsonValue::Null);
                         }
-                    };
+                    }
                 } else {
-                    debug!("Failed to extract JSON value for column: {}", column_name);
+                    debug!("Failed to extract JSON value for column: {column_name}");
                     field_data.insert(column_name.to_string(), JsonValue::Null);
                 }
             }
             // Handle NULL values for any type
             _ => {
-                error!(
-                    "Unsupported type extraction for column: {} of type: {}",
-                    column_name, column_type
-                );
+                error!("Unsupported type extraction for column: {column_name} of type: {column_type}");
             }
         }
     }
 
-    debug!("Extracted field data: {:?}", field_data);
+    debug!("Extracted field data: {field_data:?}");
     field_data
 }
 
-/// Create a DynamicEntity from field data
-pub fn create_entity(
+/// Create a `DynamicEntity` from field data
+#[must_use]
+pub fn create_entity<H: std::hash::BuildHasher>(
     entity_type: String,
-    field_data: HashMap<String, JsonValue>,
+    field_data: HashMap<String, JsonValue, H>,
     entity_def: EntityDefinition,
 ) -> DynamicEntity {
+    let field_data: HashMap<String, JsonValue> = field_data.into_iter().collect();
     DynamicEntity::from_data(entity_type, field_data, Arc::new(entity_def))
 }
 
-/// Map a database row to a DynamicEntity
+/// Map a database row to a `DynamicEntity`
 pub fn map_row_to_entity(
     row: &PgRow,
     entity_type: &str,
@@ -218,7 +212,7 @@ pub fn map_row_to_entity(
     // Map lowercase database column names back to entity definition field names (original case)
     // Database columns are lowercase, but entity definition uses original case
     let mut mapped_field_data = HashMap::new();
-    for (db_column_name, value) in field_data.iter() {
+    for (db_column_name, value) in &field_data {
         // Find the field definition that matches this column (case-insensitive)
         if let Some(field_def) = entity_def
             .fields

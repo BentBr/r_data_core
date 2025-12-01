@@ -16,14 +16,26 @@ pub struct WorkflowRepository {
 }
 
 impl WorkflowRepository {
-    pub fn new(pool: PgPool) -> Self {
+    #[must_use]
+    pub const fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 
+    /// Get workflow UUID for a run UUID
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn get_workflow_uuid_for_run(&self, run_uuid: Uuid) -> anyhow::Result<Option<Uuid>> {
         self.get_workflow_uuid_for_run_internal(run_uuid).await
     }
 
+    /// Get a workflow by UUID
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
+    ///
+    /// # Panics
+    /// Panics if database row data is invalid
     pub async fn get_by_uuid(&self, uuid: Uuid) -> anyhow::Result<Option<Workflow>> {
         let row = sqlx::query(
             "
@@ -37,31 +49,36 @@ impl WorkflowRepository {
         .await
         .context("get workflow by uuid")?;
 
-        if let Some(r) = row {
-            let kind_str: String = r.try_get(3).unwrap_or_else(|_| "consumer".to_string());
-            let kind = WorkflowKind::from_str(&kind_str).unwrap_or(WorkflowKind::Consumer);
-            let wf = Workflow {
-                uuid: r.try_get(0).unwrap(),
-                name: r.try_get(1).unwrap(),
-                description: r.try_get(2).ok(),
-                kind,
-                enabled: r
-                    .try_get::<Option<bool>, _>(4)
-                    .unwrap_or(Some(true))
-                    .unwrap_or(true),
-                schedule_cron: r.try_get(5).ok(),
-                config: r.try_get(6).unwrap_or(serde_json::json!({})),
-                versioning_disabled: r
-                    .try_get::<Option<bool>, _>(7)
-                    .unwrap_or(Some(false))
-                    .unwrap_or(false),
-            };
-            Ok(Some(wf))
-        } else {
-            Ok(None)
-        }
+        row.map_or_else(
+            || Ok(None),
+            |r| {
+                let kind_str: String = r.try_get(3).unwrap_or_else(|_| "consumer".to_string());
+                let kind = WorkflowKind::from_str(&kind_str).unwrap_or(WorkflowKind::Consumer);
+                let wf = Workflow {
+                    uuid: r.try_get(0).unwrap(),
+                    name: r.try_get(1).unwrap(),
+                    description: r.try_get(2).ok(),
+                    kind,
+                    enabled: r
+                        .try_get::<Option<bool>, _>(4)
+                        .unwrap_or(Some(true))
+                        .unwrap_or(true),
+                    schedule_cron: r.try_get(5).ok(),
+                    config: r.try_get(6).unwrap_or_else(|_| serde_json::json!({})),
+                    versioning_disabled: r
+                        .try_get::<Option<bool>, _>(7)
+                        .unwrap_or(Some(true))
+                        .unwrap_or(true),
+                };
+                Ok(Some(wf))
+            },
+        )
     }
 
+    /// Create a new workflow
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn create(
         &self,
         req: &CreateWorkflowRequest,
@@ -89,6 +106,10 @@ impl WorkflowRepository {
         Ok(row.try_get("uuid")?)
     }
 
+    /// Update an existing workflow
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn update(
         &self,
         uuid: Uuid,
@@ -100,7 +121,7 @@ impl WorkflowRepository {
         versioning_repo
             .snapshot_pre_update(uuid)
             .await
-            .map_err(|e| anyhow::anyhow!("Failed to snapshot workflow: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to snapshot workflow: {e}"))?;
 
         sqlx::query(
             "
@@ -125,6 +146,10 @@ impl WorkflowRepository {
         Ok(())
     }
 
+    /// Delete a workflow
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn delete(&self, uuid: Uuid) -> anyhow::Result<()> {
         sqlx::query("DELETE FROM workflows WHERE uuid = $1")
             .bind(uuid)
@@ -134,6 +159,13 @@ impl WorkflowRepository {
         Ok(())
     }
 
+    /// List all workflows
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
+    ///
+    /// # Panics
+    /// Panics if database row data is invalid
     pub async fn list_all(&self) -> anyhow::Result<Vec<Workflow>> {
         let rows = sqlx::query(
             "
@@ -160,7 +192,7 @@ impl WorkflowRepository {
                     .unwrap_or(Some(true))
                     .unwrap_or(true),
                 schedule_cron: r.try_get(5).ok(),
-                config: r.try_get(6).unwrap_or(serde_json::json!({})),
+                config: r.try_get(6).unwrap_or_else(|_| serde_json::json!({})),
                 versioning_disabled: r
                     .try_get::<Option<bool>, _>(7)
                     .unwrap_or(Some(false))
@@ -170,6 +202,13 @@ impl WorkflowRepository {
         Ok(out)
     }
 
+    /// List workflows with pagination
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
+    ///
+    /// # Panics
+    /// Panics if database row data is invalid
     pub async fn list_paginated(&self, limit: i64, offset: i64) -> anyhow::Result<Vec<Workflow>> {
         let rows = sqlx::query(
             "
@@ -199,7 +238,7 @@ impl WorkflowRepository {
                     .unwrap_or(Some(true))
                     .unwrap_or(true),
                 schedule_cron: r.try_get(5).ok(),
-                config: r.try_get(6).unwrap_or(serde_json::json!({})),
+                config: r.try_get(6).unwrap_or_else(|_| serde_json::json!({})),
                 versioning_disabled: r
                     .try_get::<Option<bool>, _>(7)
                     .unwrap_or(Some(false))
@@ -209,6 +248,10 @@ impl WorkflowRepository {
         Ok(out)
     }
 
+    /// Count all workflows
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn count_all(&self) -> anyhow::Result<i64> {
         let row = sqlx::query("SELECT COUNT(*) AS cnt FROM workflows")
             .fetch_one(&self.pool)
@@ -251,6 +294,13 @@ impl WorkflowRepository {
         false
     }
 
+    /// List scheduled workflow consumers
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
+    ///
+    /// # Panics
+    /// Panics if database row data is invalid
     pub async fn list_scheduled_consumers(&self) -> anyhow::Result<Vec<(Uuid, String)>> {
         // Fetch workflows with their config to check for from.api source type
         let rows = sqlx::query(
@@ -263,8 +313,11 @@ impl WorkflowRepository {
         let mut out = Vec::with_capacity(rows.len());
         for r in rows {
             let uuid: Uuid = r.try_get(0).unwrap();
-            let cron: String = r.try_get::<Option<String>, _>(1).unwrap().unwrap();
-            let config: Value = r.try_get(2).unwrap_or(serde_json::json!({}));
+            let cron: String = r.try_get::<Option<String>, _>(1)
+                .ok()
+                .flatten()
+                .unwrap_or_default();
+            let config: Value = r.try_get(2).unwrap_or_else(|_| serde_json::json!({}));
 
             // Exclude workflows with from.api source type (they accept POST, not cron)
             if !Self::check_has_api_endpoint(&config) {
@@ -274,6 +327,10 @@ impl WorkflowRepository {
         Ok(out)
     }
 
+    /// Insert a queued workflow run
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn insert_run_queued(
         &self,
         workflow_uuid: Uuid,
@@ -290,6 +347,10 @@ impl WorkflowRepository {
         Ok(row.try_get("uuid")?)
     }
 
+    /// List queued workflow runs
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn list_queued_runs(&self, limit: i64) -> anyhow::Result<Vec<Uuid>> {
         let rows = sqlx::query("SELECT uuid FROM workflow_runs WHERE status = 'queued' ORDER BY queued_at ASC LIMIT $1")
             .bind(limit)
@@ -303,6 +364,10 @@ impl WorkflowRepository {
         Ok(out)
     }
 
+    /// Mark a workflow run as running
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn mark_run_running(&self, run_uuid: Uuid) -> anyhow::Result<()> {
         sqlx::query("UPDATE workflow_runs SET status = 'running', started_at = NOW() WHERE uuid = $1 AND status = 'queued'")
             .bind(run_uuid)
@@ -312,6 +377,10 @@ impl WorkflowRepository {
         Ok(())
     }
 
+    /// Mark a workflow run as successful
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn mark_run_success(
         &self,
         run_uuid: Uuid,
@@ -328,6 +397,10 @@ impl WorkflowRepository {
         Ok(())
     }
 
+    /// Mark a workflow run as failed
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
         sqlx::query("UPDATE workflow_runs SET status = 'failed', finished_at = NOW(), error = $2 WHERE uuid = $1")
             .bind(run_uuid)
@@ -338,6 +411,10 @@ impl WorkflowRepository {
         Ok(())
     }
 
+    /// Insert a log entry for a workflow run
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn insert_run_log(
         &self,
         run_uuid: Uuid,
@@ -356,6 +433,10 @@ impl WorkflowRepository {
         Ok(())
     }
 
+    /// Insert raw items for a workflow
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn insert_raw_items(
         &self,
         _workflow_uuid: Uuid,
@@ -373,6 +454,7 @@ impl WorkflowRepository {
 
         let mut count: i64 = 0;
         for (idx, payload) in payloads.into_iter().enumerate() {
+            #[allow(clippy::cast_possible_wrap)]
             let seq_no = start_seq + (idx as i64) + 1;
             sqlx::query(
                 "
@@ -391,6 +473,10 @@ impl WorkflowRepository {
         Ok(count)
     }
 
+    /// Count raw items for a workflow run
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn count_raw_items_for_run(&self, run_uuid: Uuid) -> anyhow::Result<i64> {
         let row = sqlx::query(
             "SELECT COUNT(*) AS cnt FROM workflow_raw_items WHERE workflow_run_uuid = $1",
@@ -402,6 +488,10 @@ impl WorkflowRepository {
         Ok(row.try_get::<i64, _>("cnt")?)
     }
 
+    /// Mark raw items as processed for a workflow run
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn mark_raw_items_processed(&self, run_uuid: Uuid) -> anyhow::Result<()> {
         sqlx::query("UPDATE workflow_raw_items SET status = 'processed' WHERE workflow_run_uuid = $1 AND status = 'queued'")
             .bind(run_uuid)
@@ -411,6 +501,10 @@ impl WorkflowRepository {
         Ok(())
     }
 
+    /// Fetch staged raw items for a workflow run
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn fetch_staged_raw_items(
         &self,
         run_uuid: Uuid,
@@ -439,6 +533,10 @@ impl WorkflowRepository {
         Ok(out)
     }
 
+    /// Set the status of a raw item
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn set_raw_item_status(
         &self,
         item_uuid: Uuid,
@@ -461,6 +559,10 @@ impl WorkflowRepository {
         Ok(())
     }
 
+    /// Get workflow UUID for a run UUID (internal implementation)
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn get_workflow_uuid_for_run_internal(
         &self,
         run_uuid: Uuid,

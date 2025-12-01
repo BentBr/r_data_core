@@ -6,7 +6,7 @@ use uuid::Uuid;
 use r_data_core_core::error::{Error, Result};
 use r_data_core_core::versioning::VersionedData;
 
-/// Extension trait for `PgPool` to add `repository()` function
+/// Extension trait for ``PgPool`` to add `repository()` function
 pub trait PgPoolExtension {
     /// Get a repository for a specific entity type
     fn repository<T>(&self) -> EntityRepository<T>

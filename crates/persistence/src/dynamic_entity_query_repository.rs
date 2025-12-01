@@ -19,7 +19,7 @@ pub struct DynamicEntityQueryRepository {
 impl DynamicEntityQueryRepository {
     /// Create a new dynamic entity query repository
     #[must_use]
-    pub fn new(db_pool: PgPool) -> Self {
+    pub const fn new(db_pool: PgPool) -> Self {
         Self { db_pool }
     }
 
@@ -28,6 +28,11 @@ impl DynamicEntityQueryRepository {
     /// # Errors
     ///
     /// Returns an error if the query cannot be executed
+    /// Query entities with advanced query options
+    ///
+    /// # Errors
+    /// Returns an error if the query cannot be executed
+    #[allow(clippy::unused_async)] // Stub implementation, will be implemented later
     pub async fn query_entities(
         &self,
         _entity_type: &str,

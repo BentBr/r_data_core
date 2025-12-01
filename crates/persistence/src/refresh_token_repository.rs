@@ -14,7 +14,7 @@ pub struct RefreshTokenRepository {
 impl RefreshTokenRepository {
     /// Create a new refresh token repository
     #[must_use]
-    pub fn new(pool: PgPool) -> Self {
+    pub const fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 }
