@@ -456,7 +456,7 @@ impl ApiKey {
 mod tests {
     use super::*;
     use crate::permissions::permission_scheme::{
-        AccessLevel, Permission, PermissionScheme, PermissionType,
+        AccessLevel, Permission, PermissionScheme, PermissionType, ResourceNamespace,
     };
 
     #[test]
@@ -476,8 +476,6 @@ mod tests {
 
     #[test]
     fn test_admin_user_has_permission_superadmin() {
-        use crate::permissions::permission_scheme::ResourceNamespace;
-
         let user = AdminUser::new(
             "admin".to_string(),
             "admin@test.com".to_string(),
@@ -511,8 +509,6 @@ mod tests {
 
     #[test]
     fn test_admin_user_has_permission_custom_role() {
-        use crate::permissions::permission_scheme::ResourceNamespace;
-
         let user = AdminUser::new(
             "user".to_string(),
             "user@test.com".to_string(),

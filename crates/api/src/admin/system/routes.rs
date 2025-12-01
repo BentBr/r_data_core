@@ -5,7 +5,9 @@ use actix_web::{get, put, web, Responder};
 use crate::admin::system::models::{EntityVersioningSettingsDto, UpdateSettingsBody};
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
+use crate::auth::permission_check;
 use crate::response::ApiResponse;
+use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
 use r_data_core_services::SettingsService;
 
 /// Register system routes
@@ -28,8 +30,18 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
 #[get("/settings/entity-versioning")]
 pub async fn get_entity_versioning_settings(
     data: web::Data<ApiStateWrapper>,
-    _: RequiredAuth,
+    auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::System,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to view system settings");
+    }
+
     let service = SettingsService::new(data.db_pool().clone(), data.cache_manager().clone());
     match service.get_entity_versioning_settings().await {
         Ok(settings) => ApiResponse::ok(EntityVersioningSettingsDto::from(settings)),
@@ -58,6 +70,16 @@ pub async fn update_entity_versioning_settings(
     body: web::Json<UpdateSettingsBody>,
     auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::System,
+        &PermissionType::Update,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to update system settings");
+    }
+
     let service = SettingsService::new(data.db_pool().clone(), data.cache_manager().clone());
 
     // Merge with current to allow partial updates

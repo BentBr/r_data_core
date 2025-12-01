@@ -116,7 +116,7 @@ async fn setup_app_with_entities() -> anyhow::Result<(
         enable_docs: true,
         cors_origins: vec![],
     };
-    let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, None)?;
+    let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, &[])?;
 
     // Create API key for testing - we need to use the repository directly to get the key value
     let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));

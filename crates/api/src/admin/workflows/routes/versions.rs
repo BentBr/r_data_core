@@ -7,7 +7,9 @@ use uuid::Uuid;
 use crate::admin::workflows::models::{WorkflowVersionMeta, WorkflowVersionPayload};
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
+use crate::auth::permission_check;
 use crate::response::ApiResponse;
+use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
 use r_data_core_persistence::WorkflowVersioningRepository;
 
 /// List versions of a workflow
@@ -30,8 +32,18 @@ use r_data_core_persistence::WorkflowVersioningRepository;
 pub async fn list_workflow_versions(
     state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
-    _: RequiredAuth,
+    auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to view workflow versions");
+    }
+
     let workflow_uuid = path.into_inner();
     let versioning_repo = WorkflowVersioningRepository::new(state.db_pool().clone());
 
@@ -108,8 +120,18 @@ pub async fn list_workflow_versions(
 pub async fn get_workflow_version(
     state: web::Data<ApiStateWrapper>,
     path: web::Path<(Uuid, i32)>,
-    _: RequiredAuth,
+    auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to view workflow versions");
+    }
+
     let (workflow_uuid, version_number) = path.into_inner();
     let versioning_repo = WorkflowVersioningRepository::new(state.db_pool().clone());
 

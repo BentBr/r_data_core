@@ -3,7 +3,9 @@
 use actix_web::{get, post, web, Responder};
 
 use crate::auth::auth_enum::RequiredAuth;
+use crate::auth::permission_check;
 use crate::response::{ApiResponse, ValidationViolation};
+use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
 use r_data_core_workflow::dsl::{
     ArithmeticOp, ArithmeticTransform, ConcatTransform, DslProgram, DslStep, EntityFilter,
     EntityWriteMode, FormatConfig, FromDef, Operand, OutputMode, SourceConfig, StringOperand,
@@ -30,8 +32,18 @@ use crate::admin::dsl::models::{
 #[post("/validate")]
 pub async fn validate_dsl(
     payload: web::Json<DslValidateRequest>,
-    _: RequiredAuth,
+    auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission (DSL validation is part of workflow management)
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to validate DSL");
+    }
+
     // Convert Vec<Value> to Vec<DslStep> for validation
     let steps: Result<Vec<DslStep>, _> = payload
         .steps
@@ -66,7 +78,17 @@ pub async fn validate_dsl(
     security(("jwt" = []))
 )]
 #[get("/from/options")]
-pub async fn list_from_options(_: RequiredAuth) -> impl Responder {
+pub async fn list_from_options(auth: RequiredAuth) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to view DSL options");
+    }
+
     let types = DslOptionsResponse {
         types: vec![
             DslTypeSpec {
@@ -231,7 +253,17 @@ pub async fn list_from_options(_: RequiredAuth) -> impl Responder {
     security(("jwt" = []))
 )]
 #[get("/to/options")]
-pub async fn list_to_options(_: RequiredAuth) -> impl Responder {
+pub async fn list_to_options(auth: RequiredAuth) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to view DSL options");
+    }
+
     let types = DslOptionsResponse {
         types: vec![
             DslTypeSpec {
@@ -416,7 +448,17 @@ pub async fn list_to_options(_: RequiredAuth) -> impl Responder {
     security(("jwt" = []))
 )]
 #[get("/transform/options")]
-pub async fn list_transform_options(_: RequiredAuth) -> impl Responder {
+pub async fn list_transform_options(auth: RequiredAuth) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to view DSL options");
+    }
+
     let types = DslOptionsResponse {
         types: vec![
             DslTypeSpec {

@@ -68,4 +68,36 @@ impl ApiKeyRepositoryTrait for ApiKeyRepositoryAdapter {
     async fn count_by_user(&self, user_uuid: Uuid) -> Result<i64> {
         self.inner.count_by_user(user_uuid).await
     }
+
+    async fn get_api_key_permission_schemes(&self, api_key_uuid: Uuid) -> Result<Vec<Uuid>> {
+        self.inner
+            .get_api_key_permission_schemes(api_key_uuid)
+            .await
+    }
+
+    async fn assign_permission_scheme(&self, api_key_uuid: Uuid, scheme_uuid: Uuid) -> Result<()> {
+        self.inner
+            .assign_permission_scheme(api_key_uuid, scheme_uuid)
+            .await
+    }
+
+    async fn unassign_permission_scheme(
+        &self,
+        api_key_uuid: Uuid,
+        scheme_uuid: Uuid,
+    ) -> Result<()> {
+        self.inner
+            .unassign_permission_scheme(api_key_uuid, scheme_uuid)
+            .await
+    }
+
+    async fn update_api_key_schemes(
+        &self,
+        api_key_uuid: Uuid,
+        scheme_uuids: &[Uuid],
+    ) -> Result<()> {
+        self.inner
+            .update_api_key_schemes(api_key_uuid, scheme_uuids)
+            .await
+    }
 }

@@ -104,7 +104,7 @@ async fn setup_app_and_token() -> anyhow::Result<(
         enable_docs: true,
         cors_origins: vec![],
     };
-    let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, None)?;
+    let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, &[])?;
 
     Ok((app, pool, token))
 }
@@ -596,7 +596,7 @@ async fn run_workflow_now_enqueues_job_to_redis_if_available() -> anyhow::Result
     if let Some(url) = redis_url {
         let client = redis::Client::open(url).ok();
         if let Some(client) = client {
-            let mut conn = client.get_multiplexed_async_connection().await.ok();
+            let conn = client.get_multiplexed_async_connection().await.ok();
             if let Some(mut conn) = conn {
                 let len: i64 = redis::cmd("LLEN")
                     .arg(&fetch_key)

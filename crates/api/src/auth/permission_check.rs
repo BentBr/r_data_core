@@ -24,11 +24,17 @@ pub fn has_permission(
     permission_type: &PermissionType,
     path: Option<&str>,
 ) -> bool {
-    // SuperAdmin always has all permissions
-    if claims.role == "SuperAdmin" {
+    // SuperAdmin role or super_admin flag always has all permissions
+    if claims.is_super_admin || claims.role == "SuperAdmin" {
         debug!(
-            "Permission check: SuperAdmin user '{}' has all permissions for {}:{}",
+            "Permission check: {} user '{}' (super_admin: {}) has all permissions for {}:{}",
+            if claims.is_super_admin {
+                "super_admin"
+            } else {
+                "SuperAdmin"
+            },
             claims.name,
+            claims.is_super_admin,
             namespace.as_str(),
             permission_type
         );
@@ -74,6 +80,156 @@ pub fn has_permission(
     );
 
     has_perm
+}
+
+/// Check if an API key has permission to perform an action
+///
+/// This function loads permission schemes for the API key, merges permissions,
+/// and checks if the required permission is present.
+///
+/// # Arguments
+/// * `api_key_uuid` - API key UUID
+/// * `namespace` - Resource namespace
+/// * `permission_type` - Permission type (read, create, update, delete, etc.)
+/// * `path` - Optional path constraint (for entities namespace)
+/// * `permission_scheme_service` - Permission scheme service for loading schemes
+/// * `api_key_repo` - API key repository for loading scheme assignments
+///
+/// # Returns
+/// `true` if the API key has permission, `false` otherwise
+///
+/// # Note
+/// API keys don't have roles, so permissions from all roles in assigned schemes are merged
+pub async fn has_permission_for_api_key(
+    api_key_uuid: uuid::Uuid,
+    namespace: &ResourceNamespace,
+    permission_type: &PermissionType,
+    path: Option<&str>,
+    permission_scheme_service: &r_data_core_services::PermissionSchemeService,
+    api_key_repo: &r_data_core_persistence::ApiKeyRepository,
+) -> r_data_core_core::error::Result<bool> {
+    use std::collections::HashSet;
+
+    // Load all permission schemes for the API key
+    let schemes = permission_scheme_service
+        .get_schemes_for_api_key(api_key_uuid, api_key_repo)
+        .await?;
+
+    if schemes.is_empty() {
+        debug!(
+            "Permission check: API key {} has no permission schemes assigned",
+            api_key_uuid
+        );
+        return Ok(false);
+    }
+
+    // Merge permissions from all schemes
+    // Since API keys don't have roles, we need to collect permissions from all roles
+    let mut permission_set = HashSet::new();
+    for scheme in &schemes {
+        // Get permissions from all roles in the scheme
+        for (_role, permissions) in &scheme.role_permissions {
+            for permission in permissions {
+                // Only check permissions that match the requested namespace and type
+                if permission.resource_type == *namespace
+                    && permission.permission_type == *permission_type
+                {
+                    // For entities namespace, check path constraints
+                    if matches!(namespace, ResourceNamespace::Entities) {
+                        if let Some(requested_path) = path {
+                            // Check if path constraint allows this path
+                            let allowed = if let Some(constraints) = &permission.constraints {
+                                if let Some(path_value) = constraints.get("path") {
+                                    if let Some(allowed_path) = path_value.as_str() {
+                                        // Exact match or prefix match
+                                        requested_path == allowed_path
+                                            || requested_path.starts_with(allowed_path)
+                                    } else {
+                                        false
+                                    }
+                                } else {
+                                    true // No path constraint means all paths allowed
+                                }
+                            } else {
+                                true // No constraints means all paths allowed
+                            };
+
+                            if allowed {
+                                permission_set.insert(format!(
+                                    "{}:{}:{}",
+                                    namespace.as_str(),
+                                    requested_path,
+                                    format!("{}", permission_type).to_lowercase()
+                                ));
+                            }
+                        } else {
+                            // No path requested, check if permission has no path constraint
+                            let has_path_constraint = permission
+                                .constraints
+                                .as_ref()
+                                .and_then(|c| c.get("path"))
+                                .is_some();
+                            if !has_path_constraint {
+                                permission_set.insert(format!(
+                                    "{}:{}",
+                                    namespace.as_str(),
+                                    format!("{}", permission_type).to_lowercase()
+                                ));
+                            }
+                        }
+                    } else {
+                        // Non-entities namespace, no path checking needed
+                        permission_set.insert(format!(
+                            "{}:{}",
+                            namespace.as_str(),
+                            format!("{}", permission_type).to_lowercase()
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    // Build permission string to check
+    let perm_str = format!("{}", permission_type).to_lowercase();
+    let permission_string = if let Some(p) = path {
+        format!("{}:{}:{}", namespace.as_str(), p, perm_str)
+    } else {
+        format!("{}:{}", namespace.as_str(), perm_str)
+    };
+
+    // Check if merged permissions include the required permission
+    let has_perm = permission_set.contains(&permission_string)
+        || (matches!(namespace, ResourceNamespace::Entities)
+            && path.is_some()
+            && permission_set.iter().any(|p| {
+                p.starts_with(&format!("{}:", namespace.as_str()))
+                    && p.ends_with(&format!(":{}", perm_str))
+                    && if let Some(req_path) = path {
+                        if let Some(perm_path) = p.strip_prefix(&format!("{}:", namespace.as_str()))
+                        {
+                            if let Some(perm_path) =
+                                perm_path.strip_suffix(&format!(":{}", perm_str))
+                            {
+                                return req_path.starts_with(perm_path);
+                            }
+                        }
+                        false
+                    } else {
+                        false
+                    }
+            }));
+
+    debug!(
+        "Permission check: API key {} {} permission for {}:{} (path: {:?})",
+        api_key_uuid,
+        if has_perm { "has" } else { "does not have" },
+        namespace.as_str(),
+        permission_type,
+        path
+    );
+
+    Ok(has_perm)
 }
 
 /// Check if a user has permission to perform an action and log the result

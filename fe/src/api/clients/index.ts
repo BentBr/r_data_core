@@ -9,6 +9,7 @@ import { AuthClient } from './auth'
 import { UsersClient } from './users'
 import { EntitiesClient } from './entities'
 import { SystemClient } from './system'
+import { PermissionsClient } from './permissions'
 
 /**
  * Main typed HTTP client that combines all domain-specific clients
@@ -23,6 +24,7 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     private usersClient = new UsersClient()
     private entitiesClient = new EntitiesClient()
     private systemClient = new SystemClient()
+    private permissionsClient = new PermissionsClient()
 
     // Entity Definitions
     async getEntityDefinitions(
@@ -196,6 +198,29 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     ) {
         return this.systemClient.updateEntityVersioningSettings(...args)
     }
+
+    // Permissions
+    async getPermissionSchemes(...args: Parameters<PermissionsClient['getPermissionSchemes']>) {
+        return this.permissionsClient.getPermissionSchemes(...args)
+    }
+    async getPermissionScheme(...args: Parameters<PermissionsClient['getPermissionScheme']>) {
+        return this.permissionsClient.getPermissionScheme(...args)
+    }
+    async createPermissionScheme(...args: Parameters<PermissionsClient['createPermissionScheme']>) {
+        return this.permissionsClient.createPermissionScheme(...args)
+    }
+    async updatePermissionScheme(...args: Parameters<PermissionsClient['updatePermissionScheme']>) {
+        return this.permissionsClient.updatePermissionScheme(...args)
+    }
+    async deletePermissionScheme(...args: Parameters<PermissionsClient['deletePermissionScheme']>) {
+        return this.permissionsClient.deletePermissionScheme(...args)
+    }
+    async assignSchemesToUser(...args: Parameters<PermissionsClient['assignSchemesToUser']>) {
+        return this.permissionsClient.assignSchemesToUser(...args)
+    }
+    async assignSchemesToApiKey(...args: Parameters<PermissionsClient['assignSchemesToApiKey']>) {
+        return this.permissionsClient.assignSchemesToApiKey(...args)
+    }
 }
 
 // Export individual clients for direct use if needed
@@ -206,3 +231,4 @@ export { WorkflowsClient } from './workflows'
 export { AuthClient } from './auth'
 export { UsersClient } from './users'
 export { EntitiesClient } from './entities'
+export { PermissionsClient } from './permissions'

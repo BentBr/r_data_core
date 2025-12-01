@@ -9,8 +9,10 @@ use crate::admin::workflows::models::{
 };
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
+use crate::auth::permission_check;
 use crate::response::ApiResponse;
 use crate::response::ValidationViolation;
+use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
 use r_data_core_core::utils;
 
 /// Get details for one workflow by UUID
@@ -30,8 +32,18 @@ use r_data_core_core::utils;
 pub async fn get_workflow_details(
     state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
-    _: RequiredAuth,
+    auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to view workflows");
+    }
+
     let uuid = path.into_inner();
     match state.workflow_service().get(uuid).await {
         Ok(Some(workflow)) => {
@@ -73,6 +85,16 @@ pub async fn create_workflow(
     body: web::Json<CreateWorkflowRequest>,
     auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Create,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to create workflows");
+    }
+
     // Validate cron format early to return Symfony-style 422
     if let Some(cron_str) = &body.schedule_cron {
         if let Err(e) = utils::validate_cron(cron_str) {
@@ -134,6 +156,16 @@ pub async fn update_workflow(
     body: web::Json<UpdateWorkflowRequest>,
     auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Update,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to update workflows");
+    }
+
     let uuid = path.into_inner();
     let updated_by = match auth.user_uuid() {
         Some(u) => u,
@@ -179,8 +211,18 @@ pub async fn update_workflow(
 pub async fn delete_workflow(
     state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
-    _: RequiredAuth,
+    auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Delete,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to delete workflows");
+    }
+
     let uuid = path.into_inner();
     let res = state.workflow_service().delete(uuid).await;
     match res {

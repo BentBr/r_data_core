@@ -1,0 +1,440 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
+use crate::admin_user_repository_trait::{is_key_valid, ApiKeyRepositoryTrait};
+use async_trait::async_trait;
+use log::error;
+use r_data_core_core::admin_user::ApiKey;
+use r_data_core_core::error::Result;
+use sqlx::{Pool, Postgres};
+use std::sync::Arc;
+use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
+
+/// Repository for API key operations
+pub struct ApiKeyRepository {
+    pool: Arc<Pool<Postgres>>,
+}
+
+impl ApiKeyRepository {
+    /// Create a new repository instance
+    #[must_use]
+    pub fn new(pool: Arc<Pool<Postgres>>) -> Self {
+        Self { pool }
+    }
+
+    /// Get all permission schemes assigned to an API key
+    pub async fn get_api_key_permission_schemes(&self, api_key_uuid: Uuid) -> Result<Vec<Uuid>> {
+        let schemes = sqlx::query_scalar::<_, Uuid>(
+            "SELECT scheme_uuid FROM api_keys_permission_schemes WHERE api_key_uuid = $1",
+        )
+        .bind(api_key_uuid)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error getting API key permission schemes: {:?}", e);
+            r_data_core_core::error::Error::Database(e)
+        })?;
+
+        Ok(schemes)
+    }
+
+    /// Assign a permission scheme to an API key
+    pub async fn assign_permission_scheme(
+        &self,
+        api_key_uuid: Uuid,
+        scheme_uuid: Uuid,
+    ) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO api_keys_permission_schemes (api_key_uuid, scheme_uuid) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        )
+        .bind(api_key_uuid)
+        .bind(scheme_uuid)
+        .execute(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error assigning permission scheme to API key: {:?}", e);
+            r_data_core_core::error::Error::Database(e)
+        })?;
+
+        Ok(())
+    }
+
+    /// Unassign a permission scheme from an API key
+    pub async fn unassign_permission_scheme(
+        &self,
+        api_key_uuid: Uuid,
+        scheme_uuid: Uuid,
+    ) -> Result<()> {
+        sqlx::query(
+            "DELETE FROM api_keys_permission_schemes WHERE api_key_uuid = $1 AND scheme_uuid = $2",
+        )
+        .bind(api_key_uuid)
+        .bind(scheme_uuid)
+        .execute(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error unassigning permission scheme from API key: {:?}", e);
+            r_data_core_core::error::Error::Database(e)
+        })?;
+
+        Ok(())
+    }
+
+    /// Update all permission schemes for an API key (replace existing assignments)
+    pub async fn update_api_key_schemes(
+        &self,
+        api_key_uuid: Uuid,
+        scheme_uuids: &[Uuid],
+    ) -> Result<()> {
+        // Start a transaction
+        let mut tx = self.pool.begin().await.map_err(|e| {
+            error!("Error starting transaction: {:?}", e);
+            r_data_core_core::error::Error::Database(e)
+        })?;
+
+        // Delete all existing assignments
+        sqlx::query("DELETE FROM api_keys_permission_schemes WHERE api_key_uuid = $1")
+            .bind(api_key_uuid)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| {
+                error!("Error deleting existing permission schemes: {:?}", e);
+                r_data_core_core::error::Error::Database(e)
+            })?;
+
+        // Insert new assignments
+        for scheme_uuid in scheme_uuids {
+            sqlx::query(
+                "INSERT INTO api_keys_permission_schemes (api_key_uuid, scheme_uuid) VALUES ($1, $2)",
+            )
+            .bind(api_key_uuid)
+            .bind(scheme_uuid)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| {
+                error!("Error assigning permission scheme: {:?}", e);
+                r_data_core_core::error::Error::Database(e)
+            })?;
+        }
+
+        // Commit transaction
+        tx.commit().await.map_err(|e| {
+            error!("Error committing transaction: {:?}", e);
+            r_data_core_core::error::Error::Database(e)
+        })?;
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl ApiKeyRepositoryTrait for ApiKeyRepository {
+    /// Find an API key by its value, optimized for authentication
+    async fn find_api_key_for_auth(&self, api_key: &str) -> Result<Option<(ApiKey, Uuid)>> {
+        // Hash the provided API key
+        let key_hash = ApiKey::hash_api_key(api_key)?;
+
+        let api_key = sqlx::query_as::<_, ApiKey>(
+            "
+            SELECT *
+            FROM api_keys
+            WHERE key_hash = $1
+            AND is_active = true
+            AND (expires_at IS NULL OR expires_at > NOW())
+            ",
+        )
+        .bind(key_hash)
+        .fetch_optional(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error fetching API key: {:?}", e);
+            r_data_core_core::error::Error::Database(e)
+        })?;
+
+        // Update last_used_at if the key was found
+        if let Some(ref key) = api_key {
+            self.update_last_used(key.uuid).await?;
+            if is_key_valid(key) {
+                return Ok(Some((key.clone(), key.user_uuid)));
+            }
+        }
+
+        Ok(None)
+    }
+
+    /// Get a full API key by UUID (admin operations)
+    async fn get_by_uuid(&self, uuid: Uuid) -> Result<Option<ApiKey>> {
+        let api_key = sqlx::query_as::<_, ApiKey>(
+            "
+            SELECT *
+            FROM api_keys
+            WHERE uuid = $1
+            ",
+        )
+        .bind(uuid)
+        .fetch_optional(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error fetching API key by UUID: {:?}", e);
+            r_data_core_core::error::Error::Database(e)
+        })?;
+
+        Ok(api_key)
+    }
+
+    /// Create a new API key
+    async fn create(&self, key: &ApiKey) -> Result<Uuid> {
+        let result = sqlx::query!(
+            "
+            INSERT INTO api_keys 
+            (uuid, user_uuid, key_hash, name, description, is_active, created_at, expires_at, created_by, published)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING uuid
+            ",
+            key.uuid,
+            key.user_uuid,
+            key.key_hash,
+            key.name,
+            key.description,
+            key.is_active,
+            key.created_at,
+            key.expires_at,
+            key.created_by,
+            key.published
+        )
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error creating API key: {:?}", e);
+            r_data_core_core::error::Error::Database(e)
+        })?;
+
+        Ok(result.uuid)
+    }
+
+    /// List all API keys for a user
+    async fn list_by_user(&self, user_uuid: Uuid, limit: i64, offset: i64) -> Result<Vec<ApiKey>> {
+        let api_keys = sqlx::query_as::<_, ApiKey>(
+            "
+            SELECT *
+            FROM api_keys
+            WHERE user_uuid = $1
+            ORDER BY created_at DESC
+            LIMIT $2 OFFSET $3
+            ",
+        )
+        .bind(user_uuid)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error listing API keys for user: {:?}", e);
+            r_data_core_core::error::Error::Database(e)
+        })?;
+
+        Ok(api_keys)
+    }
+
+    /// Count API keys for a user
+    async fn count_by_user(&self, user_uuid: Uuid) -> Result<i64> {
+        let count = sqlx::query_scalar::<_, i64>(
+            "
+            SELECT COUNT(*)
+            FROM api_keys
+            WHERE user_uuid = $1
+            ",
+        )
+        .bind(user_uuid)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error counting API keys for user: {:?}", e);
+            r_data_core_core::error::Error::Database(e)
+        })?;
+
+        Ok(count)
+    }
+
+    /// Revoke an API key (set is_active to false)
+    async fn revoke(&self, uuid: Uuid) -> Result<()> {
+        sqlx::query!(
+            "UPDATE api_keys SET is_active = FALSE WHERE uuid = $1",
+            uuid
+        )
+        .execute(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error revoking API key: {:?}", e);
+            r_data_core_core::error::Error::Database(e)
+        })?;
+
+        Ok(())
+    }
+
+    /// Get an API key by its name for a specific user
+    async fn get_by_name(&self, user_uuid: Uuid, name: &str) -> Result<Option<ApiKey>> {
+        let api_keys = sqlx::query_as::<_, ApiKey>(
+            "
+            SELECT *
+            FROM api_keys 
+            WHERE user_uuid = $1 AND name = $2
+            ",
+        )
+        .bind(user_uuid)
+        .bind(name)
+        .fetch_optional(&*self.pool)
+        .await
+        .map_err(r_data_core_core::error::Error::Database)?;
+
+        Ok(api_keys)
+    }
+
+    /// Get an API key by its hash value
+    async fn get_by_hash(&self, api_key: &str) -> Result<Option<ApiKey>> {
+        // Hash the provided API key
+        let key_hash = ApiKey::hash_api_key(api_key)?;
+
+        let api_keys = sqlx::query_as::<_, ApiKey>(
+            "
+            SELECT *
+            FROM api_keys 
+            WHERE key_hash = $1 AND is_active = true AND (expires_at IS NULL OR expires_at > now())
+            ",
+        )
+        .bind(key_hash)
+        .fetch_optional(&*self.pool)
+        .await
+        .map_err(r_data_core_core::error::Error::Database)?;
+
+        Ok(api_keys)
+    }
+
+    /// Create a new API key
+    async fn create_new_api_key(
+        &self,
+        name: &str,
+        description: &str,
+        created_by: Uuid,
+        expires_in_days: i32,
+    ) -> Result<(Uuid, String)> {
+        // Validate input parameters
+        if name.trim().is_empty() {
+            return Err(r_data_core_core::error::Error::Validation(
+                "API key name cannot be empty".to_string(),
+            ));
+        }
+
+        if expires_in_days < 0 {
+            return Err(r_data_core_core::error::Error::Validation(
+                "Expiration days cannot be negative".to_string(),
+            ));
+        }
+
+        // Generate a secure random API key
+        let key_value = ApiKey::generate_key();
+
+        // Hash the key for storage
+        let key_hash = ApiKey::hash_api_key(&key_value)?;
+
+        // Create a new UUID for the API key
+        let uuid = Uuid::now_v7();
+        let created_at = OffsetDateTime::now_utc();
+        let expires_at = if expires_in_days > 0 {
+            Some(created_at + Duration::days(expires_in_days as i64))
+        } else {
+            None
+        };
+
+        let result = sqlx::query!(
+            "
+            INSERT INTO api_keys 
+            (uuid, user_uuid, key_hash, name, description, is_active, created_at, expires_at, created_by, published)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING uuid
+            ",
+            uuid,
+            created_by,  // Use the creator as the owner initially
+            key_hash,
+            name,
+            description,
+            true,        // Active by default
+            created_at,
+            expires_at,
+            created_by,
+            true         // Published by default
+        )
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error creating API key: {:?}", e);
+            r_data_core_core::error::Error::Database(e)
+        })?;
+
+        Ok((result.uuid, key_value))
+    }
+
+    /// Update an API key's last used timestamp
+    async fn update_last_used(&self, uuid: Uuid) -> Result<()> {
+        let now = OffsetDateTime::now_utc();
+
+        sqlx::query!(
+            "UPDATE api_keys SET last_used_at = $1 WHERE uuid = $2",
+            now,
+            uuid
+        )
+        .execute(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error updating API key last_used_at: {:?}", e);
+            r_data_core_core::error::Error::Database(e)
+        })?;
+
+        Ok(())
+    }
+
+    /// Reassign an API key to a different user
+    async fn reassign(&self, uuid: Uuid, new_user_uuid: Uuid) -> Result<()> {
+        sqlx::query!(
+            "UPDATE api_keys SET user_uuid = $1 WHERE uuid = $2",
+            new_user_uuid,
+            uuid
+        )
+        .execute(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error reassigning API key: {:?}", e);
+            r_data_core_core::error::Error::Database(e)
+        })?;
+
+        Ok(())
+    }
+
+    /// Get all permission schemes assigned to an API key
+    async fn get_api_key_permission_schemes(&self, api_key_uuid: Uuid) -> Result<Vec<Uuid>> {
+        ApiKeyRepository::get_api_key_permission_schemes(self, api_key_uuid).await
+    }
+
+    /// Assign a permission scheme to an API key
+    async fn assign_permission_scheme(&self, api_key_uuid: Uuid, scheme_uuid: Uuid) -> Result<()> {
+        ApiKeyRepository::assign_permission_scheme(self, api_key_uuid, scheme_uuid).await
+    }
+
+    /// Unassign a permission scheme from an API key
+    async fn unassign_permission_scheme(
+        &self,
+        api_key_uuid: Uuid,
+        scheme_uuid: Uuid,
+    ) -> Result<()> {
+        ApiKeyRepository::unassign_permission_scheme(self, api_key_uuid, scheme_uuid).await
+    }
+
+    /// Update all permission schemes for an API key (replace existing assignments)
+    async fn update_api_key_schemes(
+        &self,
+        api_key_uuid: Uuid,
+        scheme_uuids: &[Uuid],
+    ) -> Result<()> {
+        ApiKeyRepository::update_api_key_schemes(self, api_key_uuid, scheme_uuids).await
+    }
+}

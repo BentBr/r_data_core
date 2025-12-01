@@ -25,6 +25,8 @@ pub struct AuthUserClaims {
     pub email: String,
     /// User role (SuperAdmin or custom role name)
     pub role: String,
+    /// Super admin flag - overrides all permissions
+    pub is_super_admin: bool,
     /// Allowed actions in format: "namespace:action" or "namespace:path:action"
     pub permissions: Vec<String>,
     /// Expiration timestamp
@@ -38,16 +40,16 @@ pub struct AuthUserClaims {
 /// # Arguments
 /// * `user` - Admin user
 /// * `config` - API configuration containing JWT secret and expiration
-/// * `scheme` - Optional permission scheme (if None, user has no permissions except SuperAdmin)
+/// * `schemes` - Vector of permission schemes (if empty, user has no permissions except SuperAdmin/super_admin)
 ///
 /// # Errors
 /// Returns an error if token generation fails
 pub fn generate_access_token(
     user: &AdminUser,
     config: &ApiConfig,
-    scheme: Option<&PermissionScheme>,
+    schemes: &[PermissionScheme],
 ) -> Result<String> {
-    generate_jwt(user, config, ACCESS_TOKEN_EXPIRY_SECONDS, scheme)
+    generate_jwt(user, config, ACCESS_TOKEN_EXPIRY_SECONDS, schemes)
 }
 
 /// Generate a JWT token for a user
@@ -56,7 +58,7 @@ pub fn generate_access_token(
 /// * `user` - Admin user
 /// * `config` - API configuration containing JWT secret
 /// * `expiration_seconds` - Token expiration in seconds (overrides config if provided)
-/// * `scheme` - Optional permission scheme (if None, user has no permissions except SuperAdmin)
+/// * `schemes` - Vector of permission schemes (if empty, user has no permissions except SuperAdmin/super_admin)
 ///
 /// # Errors
 /// Returns an error if token generation fails
@@ -64,7 +66,7 @@ pub fn generate_jwt(
     user: &AdminUser,
     config: &ApiConfig,
     expiration_seconds: u64,
-    scheme: Option<&PermissionScheme>,
+    schemes: &[PermissionScheme],
 ) -> Result<String> {
     let user_uuid = user.uuid;
 
@@ -78,15 +80,18 @@ pub fn generate_jwt(
             r_data_core_core::error::Error::Auth("Could not create token expiration".to_string())
         })?;
 
-    // Extract permissions from scheme
-    let permissions = if matches!(user.role, UserRole::SuperAdmin) {
-        // SuperAdmin gets all permissions for all namespaces
+    // Check super_admin flag first, then SuperAdmin role
+    let is_super_admin = user.super_admin || matches!(user.role, UserRole::SuperAdmin);
+
+    // Extract permissions from schemes
+    let permissions = if is_super_admin {
+        // SuperAdmin or super_admin flag gets all permissions for all namespaces
         generate_all_permissions()
-    } else if let Some(scheme) = scheme {
-        // Get permissions for user's role from scheme
-        scheme.get_permissions_as_strings(user.role.as_str())
+    } else if !schemes.is_empty() {
+        // Merge permissions from all schemes for user's role
+        merge_permissions_from_multiple_schemes(schemes, user.role.as_str())
     } else {
-        // No scheme means no permissions
+        // No schemes means no permissions
         Vec::new()
     };
 
@@ -96,6 +101,7 @@ pub fn generate_jwt(
         name: user.username.clone(),
         email: user.email.clone(),
         role: user.role.as_str().to_string(),
+        is_super_admin,
         permissions,
         exp: expiration.unix_timestamp() as usize,
         iat: now.unix_timestamp() as usize,
@@ -110,6 +116,39 @@ pub fn generate_jwt(
     .map_err(|e| r_data_core_core::error::Error::Auth(format!("Token generation error: {e}")))?;
 
     Ok(token)
+}
+
+/// Merge permissions from multiple schemes for a role
+///
+/// This combines all permissions from all schemes for the given role,
+/// converting them to permission strings and deduplicating.
+///
+/// # Arguments
+/// * `schemes` - Vector of permission schemes
+/// * `role` - Role name to get permissions for
+///
+/// # Returns
+/// Vector of merged permission strings (deduplicated)
+#[must_use]
+fn merge_permissions_from_multiple_schemes(
+    schemes: &[PermissionScheme],
+    role: &str,
+) -> Vec<String> {
+    use std::collections::HashSet;
+
+    let mut permission_set = HashSet::new();
+    let mut merged_permissions = Vec::new();
+
+    for scheme in schemes {
+        let scheme_permissions = scheme.get_permissions_as_strings(role);
+        for perm in scheme_permissions {
+            if permission_set.insert(perm.clone()) {
+                merged_permissions.push(perm);
+            }
+        }
+    }
+
+    merged_permissions
 }
 
 /// Generate all permissions for SuperAdmin
@@ -208,7 +247,7 @@ mod tests {
             status: UserStatus::Active,
             last_login: None,
             failed_login_attempts: 0,
-            permission_scheme_uuid: None,
+            super_admin: false,
             uuid: Uuid::now_v7(),
             first_name: Some("Test".to_string()),
             last_name: Some("User".to_string()),
@@ -236,7 +275,7 @@ mod tests {
         let user = create_test_user();
         let config = create_test_config();
 
-        let result = generate_jwt(&user, &config, 3600, None);
+        let result = generate_jwt(&user, &config, 3600, &[]);
         assert!(result.is_ok());
 
         let token = result.unwrap();
@@ -248,7 +287,7 @@ mod tests {
         let user = create_test_user();
         let config = create_test_config();
 
-        let result = generate_access_token(&user, &config, None);
+        let result = generate_access_token(&user, &config, &[]);
         assert!(result.is_ok());
 
         let token = result.unwrap();
@@ -260,7 +299,7 @@ mod tests {
         let user = create_test_user();
         let config = create_test_config();
 
-        let token = generate_jwt(&user, &config, 3600, None).unwrap();
+        let token = generate_jwt(&user, &config, 3600, &[]).unwrap();
         let result = verify_jwt(&token, &config.jwt_secret);
 
         assert!(result.is_ok());
@@ -269,7 +308,8 @@ mod tests {
         assert_eq!(claims.name, user.username);
         assert_eq!(claims.email, user.email);
         assert_eq!(claims.role, "SuperAdmin");
-        // SuperAdmin should have all permissions
+        assert_eq!(claims.is_super_admin, false); // User has SuperAdmin role but not super_admin flag
+                                                  // SuperAdmin should have all permissions
         assert!(!claims.permissions.is_empty());
     }
 
@@ -288,7 +328,7 @@ mod tests {
         let config = create_test_config();
         let wrong_secret = "wrong_secret";
 
-        let token = generate_jwt(&user, &config, 3600, None).unwrap();
+        let token = generate_jwt(&user, &config, 3600, &[]).unwrap();
         let result = verify_jwt(&token, wrong_secret);
 
         assert!(result.is_err());
@@ -308,6 +348,7 @@ mod tests {
             name: user.username.clone(),
             email: user.email.clone(),
             role: "SuperAdmin".to_string(),
+            is_super_admin: false,
             permissions: vec!["workflows:read".to_string()],
             exp: expired_time.unix_timestamp() as usize,
             iat: now.unix_timestamp() as usize,
@@ -331,6 +372,7 @@ mod tests {
             name: "test_user".to_string(),
             email: "test@example.com".to_string(),
             role: "SuperAdmin".to_string(),
+            is_super_admin: false,
             permissions: vec!["workflows:read".to_string()],
             exp: OffsetDateTime::now_utc().unix_timestamp() as usize + 3600,
             iat: OffsetDateTime::now_utc().unix_timestamp() as usize,
@@ -353,7 +395,7 @@ mod tests {
         let config = create_test_config();
 
         // This should fail because we can't add 0 seconds to now
-        let result = generate_jwt(&user, &config, 0, None);
+        let result = generate_jwt(&user, &config, 0, &[]);
         assert!(result.is_ok()); // Actually this might work, let's see
     }
 
@@ -363,7 +405,7 @@ mod tests {
         let config = create_test_config();
 
         // Test with a very long expiry (100 years)
-        let result = generate_jwt(&user, &config, 3153600000, None);
+        let result = generate_jwt(&user, &config, 3153600000, &[]);
         assert!(result.is_ok());
 
         let token = result.unwrap();

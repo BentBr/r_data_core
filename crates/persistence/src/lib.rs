@@ -2,6 +2,7 @@
 
 pub mod admin_user_repository;
 pub mod admin_user_repository_trait;
+pub mod api_key_repository;
 pub mod dynamic_entity_mapper;
 pub mod dynamic_entity_public_repository;
 pub mod dynamic_entity_query_repository;
@@ -29,10 +30,11 @@ pub mod workflow_versioning_repository_trait;
 pub use r_data_core_core as core;
 
 // Re-export commonly used types
-pub use admin_user_repository::{AdminUserRepository, ApiKeyRepository};
+pub use admin_user_repository::AdminUserRepository;
 pub use admin_user_repository_trait::{
     is_key_valid, AdminUserRepositoryTrait, ApiKeyRepositoryTrait,
 };
+pub use api_key_repository::ApiKeyRepository;
 pub use dynamic_entity_public_repository::DynamicEntityPublicRepository;
 pub use dynamic_entity_query_repository::DynamicEntityQueryRepository;
 pub use dynamic_entity_query_repository_trait::DynamicEntityQueryRepositoryTrait;

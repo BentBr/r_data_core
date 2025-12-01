@@ -760,7 +760,7 @@ mod tests {
             enable_docs: true,
             cors_origins: vec![],
         };
-        let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, None)
+        let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, &[])
             .expect("Failed to generate JWT token");
 
         let api_state = ApiState {

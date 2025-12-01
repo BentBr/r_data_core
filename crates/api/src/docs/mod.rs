@@ -47,6 +47,13 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         crate::admin::dsl::routes::list_transform_options,
         crate::admin::system::routes::get_entity_versioning_settings,
         crate::admin::system::routes::update_entity_versioning_settings,
+        crate::admin::permissions::routes::list_permission_schemes,
+        crate::admin::permissions::routes::get_permission_scheme,
+        crate::admin::permissions::routes::create_permission_scheme,
+        crate::admin::permissions::routes::update_permission_scheme,
+        crate::admin::permissions::routes::delete_permission_scheme,
+        crate::admin::permissions::routes::assign_schemes_to_user,
+        crate::admin::permissions::routes::assign_schemes_to_api_key,
     ),
     components(
         schemas(
@@ -106,7 +113,12 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
             crate::admin::dsl::models::DslTypeSpec,
             crate::admin::dsl::models::DslOptionsResponse,
             crate::admin::system::models::EntityVersioningSettingsDto,
-            crate::admin::system::models::UpdateSettingsBody
+            crate::admin::system::models::UpdateSettingsBody,
+            crate::admin::permissions::models::PermissionSchemeResponse,
+            crate::admin::permissions::models::CreatePermissionSchemeRequest,
+            crate::admin::permissions::models::UpdatePermissionSchemeRequest,
+            crate::admin::permissions::models::AssignSchemesRequest,
+            crate::admin::permissions::models::PermissionResponse
         )
     ),
     modifiers(&SecurityAddon, &UuidSchemaAddon, &DateTimeSchemaAddon, &ModelSchemaAddon, &JsonValueSchemaAddon),
@@ -118,6 +130,7 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         (name = "workflows", description = "Workflow management"),
         (name = "DSL", description = "Workflow DSL validation and options"),
         (name = "system", description = "System settings management"),
+        (name = "permissions", description = "Permission scheme management"),
     ),
     info(
         title = "R Data Core Admin API",

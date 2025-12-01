@@ -169,6 +169,60 @@ impl PermissionSchemeRepository {
 
         Ok(())
     }
+
+    /// List all permission schemes with pagination
+    ///
+    /// # Arguments
+    /// * `limit` - Maximum number of schemes to return
+    /// * `offset` - Number of schemes to skip
+    ///
+    /// # Errors
+    /// Returns an error if database query fails
+    pub async fn list_all(&self, limit: i64, offset: i64) -> Result<Vec<PermissionScheme>> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                uuid, path, name, description,
+                rules as "rules: serde_json::Value",
+                created_at, updated_at, created_by, updated_by,
+                published, version
+            FROM permission_schemes
+            ORDER BY created_at DESC
+            LIMIT $1 OFFSET $2
+            "#,
+        )
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::Database)?;
+
+        let mut schemes = Vec::new();
+        for row in rows {
+            match permission_scheme_from_row(&row) {
+                Ok(scheme) => schemes.push(scheme),
+                Err(e) => {
+                    log::error!("Failed to deserialize permission scheme: {}", e);
+                    // Continue with other schemes
+                }
+            }
+        }
+
+        Ok(schemes)
+    }
+
+    /// Count all permission schemes
+    ///
+    /// # Errors
+    /// Returns an error if database query fails
+    pub async fn count_all(&self) -> Result<i64> {
+        let count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM permission_schemes")
+            .fetch_one(&self.pool)
+            .await
+            .map_err(Error::Database)?;
+
+        Ok(count)
+    }
 }
 
 #[async_trait]

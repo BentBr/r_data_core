@@ -7,7 +7,7 @@
 -- 5. Removes old permissions JSONB column from api_keys
 
 -- Add super_admin flag to admin_users table
-ALTER TABLE admin_users 
+ALTER TABLE admin_users
 ADD COLUMN IF NOT EXISTS super_admin BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE INDEX IF NOT EXISTS idx_admin_users_super_admin ON admin_users(super_admin);
@@ -32,33 +32,12 @@ CREATE TABLE IF NOT EXISTS api_keys_permission_schemes (
 CREATE INDEX IF NOT EXISTS idx_api_keys_permission_schemes_key ON api_keys_permission_schemes(api_key_uuid);
 CREATE INDEX IF NOT EXISTS idx_api_keys_permission_schemes_scheme ON api_keys_permission_schemes(scheme_uuid);
 
--- Migrate existing permission_scheme_uuid data to junction table (if column exists)
--- Note: This assumes the column might exist. If it doesn't, the migration will still work.
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'admin_users' 
-        AND column_name = 'permission_scheme_uuid'
-    ) THEN
-        -- Migrate existing single scheme assignments to junction table
-        INSERT INTO admin_users_permission_schemes (user_uuid, scheme_uuid)
-        SELECT uuid, permission_scheme_uuid
-        FROM admin_users
-        WHERE permission_scheme_uuid IS NOT NULL
-        ON CONFLICT (user_uuid, scheme_uuid) DO NOTHING;
-        
-        -- Drop the old column after migration
-        ALTER TABLE admin_users DROP COLUMN IF EXISTS permission_scheme_uuid;
-    END IF;
-END $$;
-
 -- Remove permissions JSONB column from api_keys if it exists
 DO $$
 BEGIN
     IF EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'api_keys' 
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'api_keys'
         AND column_name = 'permissions'
     ) THEN
         ALTER TABLE api_keys DROP COLUMN permissions;

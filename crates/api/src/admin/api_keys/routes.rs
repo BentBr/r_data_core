@@ -10,8 +10,10 @@ use crate::admin::api_keys::models::{
 };
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
+use crate::auth::permission_check;
 use crate::query::PaginationQuery;
 use crate::response::ApiResponse;
+use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
 use r_data_core_persistence::{ApiKeyRepository, ApiKeyRepositoryTrait};
 
 /// Register API key routes
@@ -49,6 +51,16 @@ pub async fn list_api_keys(
     auth: RequiredAuth,
     query: web::Query<PaginationQuery>,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::ApiKeys,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to list API keys");
+    }
+
     let pool = Arc::new(state.db_pool().clone());
     let user_uuid = Uuid::parse_str(&auth.0.sub).expect("Invalid UUID in auth token");
 
@@ -117,6 +129,16 @@ pub async fn create_api_key(
     req: web::Json<CreateApiKeyRequest>,
     auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::ApiKeys,
+        &PermissionType::Create,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to create API keys");
+    }
+
     let pool = Arc::new(state.db_pool().clone());
     let creator_uuid = match Uuid::parse_str(&auth.0.sub) {
         Ok(uuid) => uuid,
@@ -211,6 +233,16 @@ pub async fn revoke_api_key(
     path: web::Path<Uuid>,
     auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::ApiKeys,
+        &PermissionType::Delete,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to revoke API keys");
+    }
+
     let pool = Arc::new(state.db_pool().clone());
     let user_uuid = Uuid::parse_str(&auth.0.sub).expect("Invalid UUID in auth token");
     let api_key_uuid = path.into_inner();
@@ -271,6 +303,16 @@ pub async fn reassign_api_key(
     req: web::Json<ReassignApiKeyRequest>,
     auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::ApiKeys,
+        &PermissionType::Update,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to reassign API keys");
+    }
+
     let pool = Arc::new(state.db_pool().clone());
     let user_uuid = match Uuid::parse_str(&auth.0.sub) {
         Ok(uuid) => uuid,

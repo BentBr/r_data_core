@@ -105,25 +105,28 @@ pub async fn admin_login(
         log::error!("Failed to update last login: {:?}", e);
     }
 
-    // Load permission scheme for user (if not SuperAdmin)
-    let scheme = if matches!(user.role, UserRole::SuperAdmin) {
-        // SuperAdmin doesn't need a scheme - handled in JWT generation
-        None
+    // Load all permission schemes for user (if not SuperAdmin or super_admin)
+    let schemes = if user.super_admin || matches!(user.role, UserRole::SuperAdmin) {
+        // SuperAdmin or super_admin doesn't need schemes - handled in JWT generation
+        vec![]
     } else {
-        // Load user's permission scheme
+        // Load all user's permission schemes
         match data
             .permission_scheme_service()
-            .get_scheme_for_user(user.permission_scheme_uuid)
+            .get_schemes_for_user(user.uuid, &repo)
             .await
         {
-            Ok(Some(s)) => Some(s),
-            Ok(None) => {
-                log::debug!("User {} has no permission scheme assigned", user.username);
-                None
+            Ok(s) => {
+                log::debug!(
+                    "Loaded {} permission schemes for user {}",
+                    s.len(),
+                    user.username
+                );
+                s
             }
             Err(e) => {
-                log::warn!("Failed to load permission scheme for user: {}", e);
-                None
+                log::warn!("Failed to load permission schemes for user: {}", e);
+                vec![]
             }
         }
     };
@@ -132,7 +135,7 @@ pub async fn admin_login(
     // Use short-lived expiration for access tokens, but get secret from config
     let mut access_token_config = data.api_config().clone();
     access_token_config.jwt_expiration = ACCESS_TOKEN_EXPIRY_SECONDS;
-    let access_token = match generate_access_token(&user, &access_token_config, scheme.as_ref()) {
+    let access_token = match generate_access_token(&user, &access_token_config, &schemes) {
         Ok(token) => token,
         Err(e) => {
             log::error!("Failed to generate access token: {:?}", e);
@@ -438,20 +441,28 @@ pub async fn admin_refresh_token(
     }
 
     // Generate new access token
-    // Load permission scheme for user (if not SuperAdmin)
-    let scheme = if matches!(user.role, UserRole::SuperAdmin) {
-        None
+    // Load all permission schemes for user (if not SuperAdmin or super_admin)
+    let schemes = if user.super_admin || matches!(user.role, UserRole::SuperAdmin) {
+        // SuperAdmin or super_admin doesn't need schemes - handled in JWT generation
+        vec![]
     } else {
+        // Load all user's permission schemes
         match data
             .permission_scheme_service()
-            .get_scheme_for_user(user.permission_scheme_uuid)
+            .get_schemes_for_user(user.uuid, &admin_repo)
             .await
         {
-            Ok(Some(s)) => Some(s),
-            Ok(None) => None,
+            Ok(s) => {
+                log::debug!(
+                    "Loaded {} permission schemes for user {} during token refresh",
+                    s.len(),
+                    user.username
+                );
+                s
+            }
             Err(e) => {
-                log::warn!("Failed to load permission scheme for user: {}", e);
-                None
+                log::warn!("Failed to load permission schemes for user: {}", e);
+                vec![]
             }
         }
     };
@@ -459,8 +470,7 @@ pub async fn admin_refresh_token(
     // Use short-lived expiration for access tokens, but get secret from config
     let mut access_token_config = data.api_config().clone();
     access_token_config.jwt_expiration = ACCESS_TOKEN_EXPIRY_SECONDS;
-    let new_access_token = match generate_access_token(&user, &access_token_config, scheme.as_ref())
-    {
+    let new_access_token = match generate_access_token(&user, &access_token_config, &schemes) {
         Ok(token) => token,
         Err(e) => {
             log::error!("Failed to generate new access token: {:?}", e);

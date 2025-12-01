@@ -61,6 +61,7 @@ fn create_test_jwt_token(user_uuid: &Uuid, secret: &str) -> String {
         permissions,
         exp: exp.unix_timestamp() as usize,
         iat: now.unix_timestamp() as usize,
+        is_super_admin: false,
     };
 
     jsonwebtoken::encode(

@@ -8,8 +8,10 @@ use super::utils::check_has_api_endpoint;
 use crate::admin::workflows::models::{WorkflowRunSummary, WorkflowSummary};
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
+use crate::auth::permission_check;
 use crate::query::PaginationQuery;
 use crate::response::ApiResponse;
+use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
 
 /// List all workflow runs across all workflows
 #[utoipa::path(
@@ -27,8 +29,18 @@ use crate::response::ApiResponse;
 pub async fn list_all_workflow_runs(
     state: web::Data<ApiStateWrapper>,
     query: web::Query<PaginationQuery>,
-    _: RequiredAuth,
+    auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to list workflow runs");
+    }
+
     let (limit, offset) = query.to_limit_offset(20, 100);
     let page = query.get_page(1);
     let per_page = query.get_per_page(20, 100);
@@ -87,9 +99,19 @@ pub async fn list_all_workflow_runs(
 #[get("")]
 pub async fn list_workflows(
     state: web::Data<ApiStateWrapper>,
-    _: RequiredAuth,
+    auth: RequiredAuth,
     query: web::Query<PaginationQuery>,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to list workflows");
+    }
+
     let (limit, offset) = query.to_limit_offset(20, 100);
     let page = query.get_page(1);
     let per_page = query.get_per_page(20, 100);
@@ -136,8 +158,18 @@ pub async fn list_workflow_runs(
     state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
     query: web::Query<PaginationQuery>,
-    _: RequiredAuth,
+    auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to list workflow runs");
+    }
+
     let workflow_uuid = path.into_inner();
     let (limit, offset) = query.to_limit_offset(20, 100);
     let page = query.get_page(1);

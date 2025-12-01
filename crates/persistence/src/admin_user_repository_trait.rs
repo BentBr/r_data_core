@@ -45,6 +45,20 @@ pub trait ApiKeyRepositoryTrait: Send + Sync {
 
     /// Reassign an API key to a different user
     async fn reassign(&self, uuid: Uuid, new_user_uuid: Uuid) -> Result<()>;
+
+    /// Get all permission schemes assigned to an API key
+    async fn get_api_key_permission_schemes(&self, api_key_uuid: Uuid) -> Result<Vec<Uuid>>;
+
+    /// Assign a permission scheme to an API key
+    async fn assign_permission_scheme(&self, api_key_uuid: Uuid, scheme_uuid: Uuid) -> Result<()>;
+
+    /// Unassign a permission scheme from an API key
+    async fn unassign_permission_scheme(&self, api_key_uuid: Uuid, scheme_uuid: Uuid)
+        -> Result<()>;
+
+    /// Update all permission schemes for an API key (replace existing assignments)
+    async fn update_api_key_schemes(&self, api_key_uuid: Uuid, scheme_uuids: &[Uuid])
+        -> Result<()>;
 }
 
 /// Repository trait for admin user operations

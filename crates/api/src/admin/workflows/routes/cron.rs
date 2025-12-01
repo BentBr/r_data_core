@@ -1,8 +1,10 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use crate::auth::auth_enum::RequiredAuth;
+use crate::auth::permission_check;
 use crate::response::ApiResponse;
 use actix_web::{get, web, Responder};
+use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
 use r_data_core_core::utils;
 
 /// Preview next run times for a cron expression
@@ -20,8 +22,20 @@ use r_data_core_core::utils;
 #[get("/cron/preview")]
 pub async fn cron_preview(
     query: web::Query<std::collections::HashMap<String, String>>,
-    _: RequiredAuth,
+    auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden(
+            "Insufficient permissions to preview cron expressions",
+        );
+    }
+
     let expr = match query.get("expr") {
         Some(v) if !v.trim().is_empty() => v.clone(),
         _ => return ApiResponse::<()>::unprocessable_entity("Missing expr parameter"),

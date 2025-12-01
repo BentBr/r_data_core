@@ -9,8 +9,10 @@ use uuid::Uuid;
 use crate::admin::workflows::models::WorkflowRunLogDto;
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
+use crate::auth::permission_check;
 use crate::query::PaginationQuery;
 use crate::response::ApiResponse;
+use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
 use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::FetchAndStageJob;
 
@@ -32,8 +34,18 @@ use r_data_core_workflow::data::jobs::FetchAndStageJob;
 pub async fn run_workflow_now(
     state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
-    _: RequiredAuth,
+    auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Execute,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to execute workflows");
+    }
+
     let uuid = path.into_inner();
     match state.workflow_service().get(uuid).await {
         Ok(Some(_)) => match state.workflow_service().enqueue_run(uuid).await {
@@ -95,8 +107,18 @@ pub async fn run_workflow_now_upload(
     state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
     mut payload: Multipart,
-    _: RequiredAuth,
+    auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Execute,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to execute workflows");
+    }
+
     let workflow_uuid = path.into_inner();
     // Validate workflow exists
     match state.workflow_service().get(workflow_uuid).await {
@@ -192,8 +214,18 @@ pub async fn list_workflow_run_logs(
     state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
     query: web::Query<PaginationQuery>,
-    _: RequiredAuth,
+    auth: RequiredAuth,
 ) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to view workflow run logs");
+    }
+
     let run_uuid = path.into_inner();
     let (limit, offset) = query.to_limit_offset(50, 200);
     let page = query.get_page(1);

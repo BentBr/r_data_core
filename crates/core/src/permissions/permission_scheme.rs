@@ -9,7 +9,7 @@ use crate::domain::AbstractRDataEntity;
 use crate::error::{Error, Result};
 
 /// Permission types that can be granted
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum PermissionType {
     /// Read data
     Read,
@@ -52,7 +52,7 @@ impl Display for PermissionType {
 }
 
 /// Access level for a permission
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum AccessLevel {
     /// No access granted
     None,
@@ -70,7 +70,7 @@ pub enum AccessLevel {
 /// Resource namespace for permissions
 ///
 /// Each namespace represents a different resource type that can have permissions.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum ResourceNamespace {
     /// Workflows namespace
     Workflows,

@@ -172,10 +172,10 @@ pub async fn create_test_admin_user(pool: &PgPool) -> Result<Uuid> {
         return Ok(uuid);
     }
 
-    // Create a new admin user
+    // Create a new admin user with super_admin = true for tests
     log::debug!("Creating test admin user: {}", username);
-    sqlx::query("INSERT INTO admin_users (uuid, username, email, password_hash, first_name, last_name, is_active, created_at, updated_at, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $1)")
+    sqlx::query("INSERT INTO admin_users (uuid, username, email, password_hash, first_name, last_name, is_active, created_at, updated_at, created_by, super_admin)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $1, $9)")
         .bind(uuid)
         .bind(&username)
         .bind(&email)
@@ -184,6 +184,7 @@ pub async fn create_test_admin_user(pool: &PgPool) -> Result<Uuid> {
         .bind("User")
         .bind(true)
         .bind(OffsetDateTime::now_utc())
+        .bind(true) // super_admin = true for test users
         .execute(&mut *tx)
         .await?;
 
