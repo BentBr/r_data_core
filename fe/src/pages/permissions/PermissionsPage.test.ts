@@ -39,7 +39,7 @@ vi.mock('@/composables/usePermissionSchemes', () => ({
                 throw err
             }
         }
-        
+
         const updateSchemeWrapper = async (uuid: string, data: unknown) => {
             try {
                 const result = await mockUpdatePermissionScheme(uuid, data)
@@ -50,7 +50,7 @@ vi.mock('@/composables/usePermissionSchemes', () => ({
                 throw err
             }
         }
-        
+
         const deleteSchemeWrapper = async (uuid: string) => {
             try {
                 const result = await mockDeletePermissionScheme(uuid)
@@ -61,19 +61,20 @@ vi.mock('@/composables/usePermissionSchemes', () => ({
                 throw err
             }
         }
-        
+
         const loadSchemesWrapper = async (page?: number, perPage?: number) => {
             try {
                 const result = await mockGetPermissionSchemes(page, perPage)
                 mockSchemesList.value = result.data
                 return result
             } catch (err) {
-                mockError.value = err instanceof Error ? err.message : 'Failed to load permission schemes'
+                mockError.value =
+                    err instanceof Error ? err.message : 'Failed to load permission schemes'
                 showError(mockError.value)
                 throw err
             }
         }
-        
+
         return {
             loading: mockLoading,
             error: mockError,
@@ -161,7 +162,7 @@ describe('PermissionsPage', () => {
         mockLoading.value = false
         mockError.value = ''
         mockSchemesList.value = []
-        
+
         // Setup loadSchemes - the wrapper will handle updating mockSchemesList
         mockGetPermissionSchemes.mockResolvedValue({
             data: mockSchemes,
@@ -176,7 +177,7 @@ describe('PermissionsPage', () => {
                 },
             },
         })
-        
+
         mockCreatePermissionScheme.mockResolvedValue(mockSchemes[0])
         mockUpdatePermissionScheme.mockResolvedValue(mockSchemes[0])
         mockDeletePermissionScheme.mockResolvedValue({ message: 'Deleted successfully' })
@@ -243,11 +244,11 @@ describe('PermissionsPage', () => {
             description: 'New description',
             role_permissions: {},
         }
-        
+
         // Mock the composable to call showSuccess
         const mockCreateWithSuccess = vi.fn().mockResolvedValue(undefined)
         vi.mocked(mockCreatePermissionScheme).mockImplementation(mockCreateWithSuccess)
-        
+
         await (wrapper.vm as any).handleSaveScheme(saveData)
         await wrapper.vm.$nextTick()
 
