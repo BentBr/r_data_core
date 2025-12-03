@@ -12,7 +12,8 @@ pub struct WorkflowRepositoryAdapter {
 }
 
 impl WorkflowRepositoryAdapter {
-    pub fn new(inner: WorkflowRepository) -> Self {
+    #[must_use]
+    pub const fn new(inner: WorkflowRepository) -> Self {
         Self { inner }
     }
 }

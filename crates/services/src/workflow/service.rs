@@ -3,6 +3,7 @@ use crate::workflow::entity_persistence::{
     create_entity, create_or_update_entity, update_entity, PersistenceContext,
 };
 use cron::Schedule;
+use futures::StreamExt;
 use r_data_core_persistence::WorkflowRepositoryTrait;
 use r_data_core_workflow::data::requests::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use r_data_core_workflow::data::Workflow;
@@ -37,7 +38,7 @@ impl WorkflowService {
         // Required structure: { "input": { "type": "csv" | "ndjson", "format": {...}, "source": {...} } }
         cfg.pointer("/input/type")
             .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
     }
 
     fn csv_format_from_config(cfg: &serde_json::Value) -> serde_json::Value {
@@ -50,17 +51,29 @@ impl WorkflowService {
     fn input_uri_from_config(cfg: &serde_json::Value) -> Option<String> {
         cfg.pointer("/input/source/uri")
             .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
     }
 
+    /// List all workflows
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn list(&self) -> anyhow::Result<Vec<Workflow>> {
         self.repo.list_all().await
     }
 
+    /// Get a workflow by UUID
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn get(&self, uuid: Uuid) -> anyhow::Result<Option<Workflow>> {
         self.repo.get_by_uuid(uuid).await
     }
 
+    /// Create a new workflow
+    ///
+    /// # Errors
+    /// Returns an error if validation fails or database operation fails
     pub async fn create(
         &self,
         req: &CreateWorkflowRequest,
@@ -68,7 +81,7 @@ impl WorkflowService {
     ) -> anyhow::Result<Uuid> {
         if let Some(expr) = &req.schedule_cron {
             Schedule::from_str(expr)
-                .map_err(|e| anyhow::anyhow!("Invalid cron schedule: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Invalid cron schedule: {e}"))?;
         }
         // Strict DSL: parse and validate
         let program = r_data_core_workflow::dsl::DslProgram::from_config(&req.config)?;
@@ -76,6 +89,10 @@ impl WorkflowService {
         self.repo.create(req, created_by).await
     }
 
+    /// Update an existing workflow
+    ///
+    /// # Errors
+    /// Returns an error if validation fails or database operation fails
     pub async fn update(
         &self,
         uuid: Uuid,
@@ -84,7 +101,7 @@ impl WorkflowService {
     ) -> anyhow::Result<()> {
         if let Some(expr) = &req.schedule_cron {
             Schedule::from_str(expr)
-                .map_err(|e| anyhow::anyhow!("Invalid cron schedule: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Invalid cron schedule: {e}"))?;
         }
         // Strict DSL: parse and validate
         let program = r_data_core_workflow::dsl::DslProgram::from_config(&req.config)?;
@@ -92,10 +109,18 @@ impl WorkflowService {
         self.repo.update(uuid, req, updated_by).await
     }
 
+    /// Delete a workflow
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn delete(&self, uuid: Uuid) -> anyhow::Result<()> {
         self.repo.delete(uuid).await
     }
 
+    /// List workflows with pagination
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn list_paginated(
         &self,
         limit: i64,
@@ -108,6 +133,10 @@ impl WorkflowService {
         Ok((items, total))
     }
 
+    /// List runs for a workflow with pagination
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn list_runs_paginated(
         &self,
         workflow_uuid: Uuid,
@@ -129,6 +158,10 @@ impl WorkflowService {
             .await
     }
 
+    /// List run logs with pagination
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn list_run_logs_paginated(
         &self,
         run_uuid: Uuid,
@@ -143,10 +176,18 @@ impl WorkflowService {
             .await
     }
 
+    /// Check if a run exists
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn run_exists(&self, run_uuid: Uuid) -> anyhow::Result<bool> {
         self.repo.run_exists(run_uuid).await
     }
 
+    /// List all runs with pagination
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn list_all_runs_paginated(
         &self,
         limit: i64,
@@ -165,6 +206,10 @@ impl WorkflowService {
         self.repo.list_all_runs_paginated(limit, offset).await
     }
 
+    /// Enqueue a workflow run
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn enqueue_run(&self, workflow_uuid: Uuid) -> anyhow::Result<Uuid> {
         let trigger_id = Uuid::now_v7();
         let run_uuid = self
@@ -184,6 +229,10 @@ impl WorkflowService {
         Ok(run_uuid)
     }
 
+    /// Stage raw items for processing
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
     pub async fn stage_raw_items(
         &self,
         workflow_uuid: Uuid,
@@ -200,6 +249,9 @@ impl WorkflowService {
     /// - parses CSV (expects headers)
     /// - stages rows as raw items
     /// - writes a staging log
+    ///
+    /// # Errors
+    /// Returns an error if parsing fails or database operation fails
     pub async fn run_now_upload_csv(
         &self,
         workflow_uuid: Uuid,
@@ -225,12 +277,11 @@ impl WorkflowService {
             "ndjson" => inline
                 .lines()
                 .filter(|l| !l.trim().is_empty())
-                .map(|l| serde_json::from_str::<serde_json::Value>(l))
+                .map(serde_json::from_str::<serde_json::Value>)
                 .collect::<Result<Vec<_>, _>>()?,
             other => {
                 return Err(anyhow::anyhow!(format!(
-                    "Unsupported input type for upload: {}",
-                    other
+                    "Unsupported input type for upload: {other}"
                 )))
             }
         };
@@ -260,6 +311,9 @@ impl WorkflowService {
     }
 
     /// Upload bytes (CSV/JSON) and trigger workflow run synchronously
+    ///
+    /// # Errors
+    /// Returns an error if parsing fails or database operation fails
     pub async fn run_now_upload_bytes(
         &self,
         workflow_uuid: Uuid,
@@ -331,8 +385,7 @@ impl WorkflowService {
             }
             other => {
                 return Err(anyhow::anyhow!(format!(
-                    "Unsupported input type for upload: {}",
-                    other
+                    "Unsupported input type for upload: {other}"
                 )))
             }
         };
@@ -361,6 +414,9 @@ impl WorkflowService {
     }
 
     /// Fetch from configured source (URI) and stage items using the appropriate adapter (csv or ndjson)
+    ///
+    /// # Errors
+    /// Returns an error if DSL parsing fails, fetch fails, or staging fails
     pub async fn fetch_and_stage_from_config(
         &self,
         workflow_uuid: Uuid,
@@ -374,7 +430,7 @@ impl WorkflowService {
 
         // Parse DSL program to get FromDef steps
         let program = r_data_core_workflow::dsl::DslProgram::from_config(&wf.config)
-            .map_err(|e| anyhow::anyhow!("Failed to parse DSL for fetch: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to parse DSL for fetch: {e}"))?;
 
         // Find Format-based FromDef steps that need fetching
         let mut total_staged = 0_i64;
@@ -417,7 +473,6 @@ impl WorkflowService {
 
                 // Fetch data
                 let mut stream = source_adapter.fetch(&source_ctx).await?;
-                use futures::StreamExt;
                 let mut all_data = Vec::new();
                 while let Some(chunk_result) = stream.next().await {
                     let chunk = chunk_result?;
@@ -472,6 +527,10 @@ impl WorkflowService {
     }
 
     /// Process staged raw items for a run using the workflow DSL
+    ///
+    /// # Errors
+    /// Returns an error if workflow not found, DSL validation fails, or processing fails
+    #[allow(clippy::too_many_lines)] // Complex workflow processing logic - would benefit from future refactoring
     pub async fn process_staged_items(
         &self,
         workflow_uuid: Uuid,
@@ -518,14 +577,15 @@ impl WorkflowService {
                         for (to_def, produced) in outputs {
                             // Handle Format outputs with Push mode
                             if let r_data_core_workflow::dsl::ToDef::Format {
-                                output, format, ..
-                            } = &to_def
+                                output:
+                                    r_data_core_workflow::dsl::OutputMode::Push {
+                                        ref destination,
+                                        ref method,
+                                    },
+                                ref format,
+                                ..
+                            } = to_def
                             {
-                                if let r_data_core_workflow::dsl::OutputMode::Push {
-                                    destination,
-                                    method,
-                                } = output
-                                {
                                     // Serialize data using format handler
                                     let format_handler: Box<
                                         dyn r_data_core_workflow::data::adapters::format::FormatHandler,
@@ -556,7 +616,7 @@ impl WorkflowService {
 
                                     // Serialize to bytes (clone produced since it may be used later for Entity outputs)
                                     let data_bytes = match format_handler
-                                        .serialize(&[produced.clone()], &format.options)
+                                        .serialize(std::slice::from_ref(&produced), &format.options)
                                     {
                                         Ok(bytes) => bytes,
                                         Err(e) => {
@@ -589,33 +649,32 @@ impl WorkflowService {
                                     // Create destination context
                                     let dest_ctx = r_data_core_workflow::data::adapters::destination::DestinationContext {
                                         auth: auth_provider,
-                                        method: *method,
+                                        method: method.as_ref().copied(),
                                         config: destination.config.clone(),
                                     };
 
                                     // Get appropriate destination based on destination_type
                                     let dest_adapter: Box<
                                         dyn r_data_core_workflow::data::adapters::destination::DataDestination,
-                                    > = match destination.destination_type.as_str() {
-                                        "uri" => Box::new(
+                                    > = if destination.destination_type.as_str() == "uri" {
+                                        Box::new(
                                             r_data_core_workflow::data::adapters::destination::uri::UriDestination::new(),
-                                        ),
-                                        _ => {
-                                            let _ = self
-                                                .repo
-                                                .insert_run_log(
-                                                    run_uuid,
-                                                    "error",
-                                                    "Unsupported destination type",
-                                                    Some(serde_json::json!({
-                                                        "item_uuid": item_uuid,
-                                                        "destination_type": destination.destination_type
-                                                    })),
-                                                )
-                                                .await;
-                                            entity_ops_ok = false;
-                                            break;
-                                        }
+                                        )
+                                    } else {
+                                        let _ = self
+                                            .repo
+                                            .insert_run_log(
+                                                run_uuid,
+                                                "error",
+                                                "Unsupported destination type",
+                                                Some(serde_json::json!({
+                                                    "item_uuid": item_uuid,
+                                                    "destination_type": destination.destination_type
+                                                })),
+                                            )
+                                            .await;
+                                        entity_ops_ok = false;
+                                        break;
                                     };
 
                                     // Push data
@@ -636,7 +695,6 @@ impl WorkflowService {
                                         entity_ops_ok = false;
                                         break;
                                     }
-                                }
                             }
 
                             // Handle Entity outputs
@@ -665,8 +723,7 @@ impl WorkflowService {
                                                 if k == "entity_key"
                                                     || update_key
                                                         .as_ref()
-                                                        .map(|uk| k == uk)
-                                                        .unwrap_or(false)
+                                                        .is_some_and(|uk| k == uk)
                                                 {
                                                     merged_obj.insert(k.clone(), v.clone());
                                                 }
@@ -722,7 +779,7 @@ impl WorkflowService {
                                             .insert_run_log(
                                                 run_uuid,
                                                 "error",
-                                                &format!("Entity {} failed", operation),
+                                                &format!("Entity {operation} failed"),
                                                 Some(serde_json::json!({
                                                     "item_uuid": item_uuid,
                                                     "entity_type": entity_definition,
@@ -852,12 +909,10 @@ fn extract_sqlx_meta(e: &anyhow::Error) -> serde_json::Value {
 
     let mut cause: Option<&(dyn std::error::Error + 'static)> = Some(e.as_ref());
     while let Some(err) = cause {
-        if let Some(sqlx_err) = err.downcast_ref::<sqlx::Error>() {
-            if let sqlx::Error::Database(db_err) = sqlx_err {
-                code = db_err.code().map(|s| s.to_string());
-                message = Some(db_err.message().to_string());
-                break;
-            }
+        if let Some(sqlx::Error::Database(db_err)) = err.downcast_ref::<sqlx::Error>() {
+            code = db_err.code().map(|s| s.to_string());
+            message = Some(db_err.message().to_string());
+            break;
         }
         cause = err.source();
     }

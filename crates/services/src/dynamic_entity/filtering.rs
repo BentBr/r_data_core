@@ -16,6 +16,7 @@ impl DynamicEntityService {
     ///
     /// # Errors
     /// Returns an error if entity type is not found, not published, or database query fails
+    #[allow(clippy::too_many_arguments)] // Public API - parameters are clear and well-named
     pub async fn filter_entities(
         &self,
         entity_type: &str,
@@ -42,6 +43,7 @@ impl DynamicEntityService {
     ///
     /// # Errors
     /// Returns an error if entity type is not found, not published, or database query fails
+    #[allow(clippy::too_many_arguments)] // Public API - parameters are clear and well-named
     pub async fn list_entities_with_filters(
         &self,
         entity_type: &str,
@@ -114,13 +116,13 @@ impl DynamicEntityService {
         };
 
         // Build sort information
-        let sort_info = if let Some(field) = sort_by {
-            let direction = sort_direction.unwrap_or_else(|| "ASC".to_string());
-            Some((field, direction))
-        } else {
-            // Default sort by created_at descending if not specified
-            Some(("created_at".to_string(), "DESC".to_string()))
-        };
+        let sort_info = sort_by.map_or_else(
+            || Some(("created_at".to_string(), "DESC".to_string())),
+            |field| {
+                let direction = sort_direction.unwrap_or_else(|| "ASC".to_string());
+                Some((field, direction))
+            },
+        );
 
         // Fetch the entities
         let params = FilterEntitiesParams::new(limit, offset)

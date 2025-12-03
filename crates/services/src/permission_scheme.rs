@@ -39,27 +39,27 @@ impl PermissionSchemeService {
     }
 
     /// Generate cache key for permission scheme
-    fn cache_key(&self, uuid: &Uuid) -> String {
+    fn cache_key(uuid: &Uuid) -> String {
         format!("permission_scheme:{uuid}")
     }
 
     /// Generate cache key for user permission schemes
-    fn user_schemes_cache_key(&self, user_uuid: &Uuid) -> String {
+    fn user_schemes_cache_key(user_uuid: &Uuid) -> String {
         format!("user_permission_schemes:{user_uuid}")
     }
 
     /// Generate cache key for API key permission schemes
-    fn api_key_schemes_cache_key(&self, api_key_uuid: &Uuid) -> String {
+    fn api_key_schemes_cache_key(api_key_uuid: &Uuid) -> String {
         format!("api_key_permission_schemes:{api_key_uuid}")
     }
 
     /// Generate cache key for merged user permissions
-    fn user_permissions_cache_key(&self, user_uuid: &Uuid, role: &str) -> String {
+    fn user_permissions_cache_key(user_uuid: &Uuid, role: &str) -> String {
         format!("user_permissions:{user_uuid}:{role}")
     }
 
     /// Generate cache key for merged API key permissions
-    fn api_key_permissions_cache_key(&self, api_key_uuid: &Uuid) -> String {
+    fn api_key_permissions_cache_key(api_key_uuid: &Uuid) -> String {
         format!("api_key_permissions:{api_key_uuid}")
     }
 
@@ -72,13 +72,16 @@ impl PermissionSchemeService {
     ///
     /// # Returns
     /// Vector of merged permission strings
+    ///
+    /// # Errors
+    /// Returns an error if database query fails
     pub async fn get_merged_permissions_for_user(
         &self,
         user_uuid: Uuid,
         role: &str,
         admin_user_repo: &AdminUserRepository,
     ) -> Result<Vec<String>> {
-        let cache_key = self.user_permissions_cache_key(&user_uuid, role);
+        let cache_key = Self::user_permissions_cache_key(&user_uuid, role);
 
         // Try cache first
         if let Ok(Some(cached)) = self.cache_manager.get::<Vec<String>>(&cache_key).await {
@@ -124,12 +127,15 @@ impl PermissionSchemeService {
     ///
     /// # Returns
     /// Vector of merged permission strings (from all roles in schemes)
+    ///
+    /// # Errors
+    /// Returns an error if database query fails
     pub async fn get_merged_permissions_for_api_key(
         &self,
         api_key_uuid: Uuid,
         api_key_repo: &ApiKeyRepository,
     ) -> Result<Vec<String>> {
-        let cache_key = self.api_key_permissions_cache_key(&api_key_uuid);
+        let cache_key = Self::api_key_permissions_cache_key(&api_key_uuid);
 
         // Try cache first
         if let Ok(Some(cached)) = self.cache_manager.get::<Vec<String>>(&cache_key).await {
@@ -145,21 +151,26 @@ impl PermissionSchemeService {
 
         for scheme in &schemes {
             // API keys don't have roles, so merge permissions from all roles
-            for (_role, permissions) in &scheme.role_permissions {
+            for permissions in scheme.role_permissions.values() {
                 for permission in permissions {
                     let perm_str = format!("{}", permission.permission_type).to_lowercase();
-                    let perm_string = if let Some(path) =
-                        permission.constraints.as_ref().and_then(|c| c.get("path"))
-                    {
-                        format!(
-                            "{}:{}:{}",
-                            permission.resource_type.as_str(),
-                            path,
-                            perm_str
-                        )
-                    } else {
-                        format!("{}:{}", permission.resource_type.as_str(), perm_str)
-                    };
+                    let perm_string = permission
+                        .constraints
+                        .as_ref()
+                        .and_then(|c| c.get("path"))
+                        .map_or_else(
+                            || {
+                                format!("{}:{}", permission.resource_type.as_str(), perm_str)
+                            },
+                            |path| {
+                                format!(
+                                    "{}:{}:{}",
+                                    permission.resource_type.as_str(),
+                                    path,
+                                    perm_str
+                                )
+                            },
+                        );
 
                     if permission_set.insert(perm_string.clone()) {
                         merged_permissions.push(perm_string);
@@ -191,7 +202,7 @@ impl PermissionSchemeService {
     /// * `user_uuid` - User UUID
     pub async fn invalidate_user_permissions_cache(&self, user_uuid: &Uuid) {
         // Invalidate schemes cache - this will cause permissions to be recalculated
-        let cache_key = self.user_schemes_cache_key(user_uuid);
+        let cache_key = Self::user_schemes_cache_key(user_uuid);
         if let Err(e) = self.cache_manager.delete(&cache_key).await {
             log::warn!("Failed to invalidate user schemes cache {user_uuid}: {e}");
         }
@@ -206,12 +217,12 @@ impl PermissionSchemeService {
     /// * `api_key_uuid` - API key UUID
     pub async fn invalidate_api_key_permissions_cache(&self, api_key_uuid: &Uuid) {
         // Invalidate merged permissions cache
-        let cache_key = self.api_key_permissions_cache_key(api_key_uuid);
+        let cache_key = Self::api_key_permissions_cache_key(api_key_uuid);
         if let Err(e) = self.cache_manager.delete(&cache_key).await {
             log::warn!("Failed to invalidate API key permissions cache {api_key_uuid}: {e}");
         }
         // Also invalidate schemes cache
-        let schemes_cache_key = self.api_key_schemes_cache_key(api_key_uuid);
+        let schemes_cache_key = Self::api_key_schemes_cache_key(api_key_uuid);
         if let Err(e) = self.cache_manager.delete(&schemes_cache_key).await {
             log::warn!("Failed to invalidate API key schemes cache {api_key_uuid}: {e}");
         }
@@ -225,7 +236,7 @@ impl PermissionSchemeService {
     /// # Errors
     /// Returns an error if database query fails
     pub async fn get_scheme(&self, uuid: Uuid) -> Result<Option<PermissionScheme>> {
-        let cache_key = self.cache_key(&uuid);
+        let cache_key = Self::cache_key(&uuid);
 
         // Try cache first
         if let Ok(Some(cached)) = self.cache_manager.get::<PermissionScheme>(&cache_key).await {
@@ -289,7 +300,7 @@ impl PermissionSchemeService {
         let uuid = self.repository.create(scheme, created_by).await?;
 
         // Cache the new scheme
-        let cache_key = self.cache_key(&uuid);
+        let cache_key = Self::cache_key(&uuid);
         let ttl = self.cache_ttl;
         if let Err(e) = self.cache_manager.set(&cache_key, scheme, ttl).await {
             log::warn!("Failed to cache new permission scheme {uuid}: {e}");
@@ -310,7 +321,7 @@ impl PermissionSchemeService {
         self.repository.update(scheme, updated_by).await?;
 
         // Invalidate scheme cache
-        let cache_key = self.cache_key(&scheme.base.uuid);
+        let cache_key = Self::cache_key(&scheme.base.uuid);
         if let Err(e) = self.cache_manager.delete(&cache_key).await {
             log::warn!(
                 "Failed to invalidate cache for permission scheme {}: {}",
@@ -336,7 +347,7 @@ impl PermissionSchemeService {
         self.repository.delete(uuid).await?;
 
         // Invalidate cache
-        let cache_key = self.cache_key(&uuid);
+        let cache_key = Self::cache_key(&uuid);
         if let Err(e) = self.cache_manager.delete(&cache_key).await {
             log::warn!("Failed to invalidate cache for permission scheme {uuid}: {e}");
         }
@@ -376,7 +387,7 @@ impl PermissionSchemeService {
         user_uuid: Uuid,
         admin_user_repo: &AdminUserRepository,
     ) -> Result<Vec<PermissionScheme>> {
-        let cache_key = self.user_schemes_cache_key(&user_uuid);
+        let cache_key = Self::user_schemes_cache_key(&user_uuid);
 
         // Try cache first
         if let Ok(Some(cached)) = self.cache_manager.get::<Vec<Uuid>>(&cache_key).await {
@@ -424,7 +435,7 @@ impl PermissionSchemeService {
         api_key_uuid: Uuid,
         api_key_repo: &ApiKeyRepository,
     ) -> Result<Vec<PermissionScheme>> {
-        let cache_key = self.api_key_schemes_cache_key(&api_key_uuid);
+        let cache_key = Self::api_key_schemes_cache_key(&api_key_uuid);
 
         // Try cache first
         if let Ok(Some(cached)) = self.cache_manager.get::<Vec<Uuid>>(&cache_key).await {

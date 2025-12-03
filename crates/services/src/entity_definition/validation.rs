@@ -14,7 +14,7 @@ impl EntityDefinitionService {
     ///
     /// # Errors
     /// Returns an error if entity type is invalid or reserved
-    pub(crate) fn validate_entity_type(&self, entity_type: &str) -> Result<()> {
+    pub(crate) fn validate_entity_type(entity_type: &str) -> Result<()> {
         // Entity type must be alphanumeric with underscores, starting with a letter
         let valid_pattern = regex::Regex::new(r"^[a-zA-Z][a-zA-Z0-9_]*$").unwrap();
 
@@ -45,7 +45,7 @@ impl EntityDefinitionService {
     ///
     /// # Errors
     /// Returns an error if field validation fails
-    pub(crate) fn validate_fields(&self, definition: &EntityDefinition) -> Result<()> {
+    pub(crate) fn validate_fields(definition: &EntityDefinition) -> Result<()> {
         // Check for duplicate field names
         let mut field_names = HashMap::new();
 

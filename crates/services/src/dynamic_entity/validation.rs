@@ -14,12 +14,12 @@ impl DynamicEntityService {
     ///
     /// # Errors
     /// Returns an error if validation fails
-    pub(crate) fn validate_entity(&self, entity: &DynamicEntity) -> Result<()> {
+    pub(crate) fn validate_entity(entity: &DynamicEntity) -> Result<()> {
         // Collect all validation errors instead of returning on first error
         let mut validation_errors = Vec::new();
 
         // Check for unknown fields - fields in the data that are not defined in the entity definition
-        let unknown_fields = self.check_unknown_fields(entity);
+        let unknown_fields = Self::check_unknown_fields(entity);
         if !unknown_fields.is_empty() {
             validation_errors.push(format!(
                 "Unknown fields found: {}. Only fields defined in the entity definition are allowed.",
@@ -29,16 +29,16 @@ impl DynamicEntityService {
 
         // For update operations, we only need to validate the fields that are being submitted
         // For create operations, check all required fields
-        let is_update = self.is_update_operation(entity);
+        let is_update = Self::is_update_operation(entity);
         debug!("Validation - is update operation: {is_update}");
 
         if !is_update {
             // This is a create operation, so check all required fields
-            self.check_required_fields(entity, &mut validation_errors);
+            Self::check_required_fields(entity, &mut validation_errors);
         }
 
         // Validate field values against their types and constraints (only for fields that are present)
-        self.validate_field_values(entity, &mut validation_errors);
+        Self::validate_field_values(entity, &mut validation_errors);
 
         // If we've collected any errors, return them all as one validation error
         if !validation_errors.is_empty() {
@@ -58,8 +58,8 @@ impl DynamicEntityService {
     ///
     /// # Returns
     /// `true` if this is an update operation, `false` otherwise
-    fn is_update_operation(&self, entity: &DynamicEntity) -> bool {
-        entity.field_data.contains_key("uuid") && entity.field_data.get("uuid").is_some()
+    fn is_update_operation(entity: &DynamicEntity) -> bool {
+        entity.field_data.contains_key("uuid")
     }
 
     /// Check for unknown fields
@@ -69,7 +69,7 @@ impl DynamicEntityService {
     ///
     /// # Returns
     /// Vector of unknown field names
-    fn check_unknown_fields(&self, entity: &DynamicEntity) -> Vec<String> {
+    fn check_unknown_fields(entity: &DynamicEntity) -> Vec<String> {
         let reserved_fields = [
             "uuid",
             "path",
@@ -109,7 +109,7 @@ impl DynamicEntityService {
     /// # Arguments
     /// * `entity` - Entity to check
     /// * `validation_errors` - Mutable vector to append validation errors to
-    fn check_required_fields(&self, entity: &DynamicEntity, validation_errors: &mut Vec<String>) {
+    fn check_required_fields(entity: &DynamicEntity, validation_errors: &mut Vec<String>) {
         for field in &entity.definition.fields {
             if field.required && !entity.field_data.contains_key(&field.name) {
                 validation_errors.push(format!("Required field '{}' is missing", field.name));
@@ -122,7 +122,7 @@ impl DynamicEntityService {
     /// # Arguments
     /// * `entity` - Entity to validate
     /// * `validation_errors` - Mutable vector to append validation errors to
-    fn validate_field_values(&self, entity: &DynamicEntity, validation_errors: &mut Vec<String>) {
+    fn validate_field_values(entity: &DynamicEntity, validation_errors: &mut Vec<String>) {
         for field in &entity.definition.fields {
             if let Some(value) = entity.field_data.get(&field.name) {
                 if let Err(e) = field.validate_value(value) {
@@ -135,6 +135,6 @@ impl DynamicEntityService {
     /// Validate an entity against its entity definition - exported for testing
     #[cfg(test)]
     pub fn validate_entity_for_test(&self, entity: &DynamicEntity) -> Result<()> {
-        self.validate_entity(entity)
+        Self::validate_entity(entity)
     }
 }

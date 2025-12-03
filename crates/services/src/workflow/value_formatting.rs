@@ -29,13 +29,13 @@ fn cast_to_boolean(value: Value) -> Value {
             }
         },
         Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                Value::Bool(i != 0)
-            } else if let Some(f) = n.as_f64() {
-                Value::Bool(f != 0.0)
-            } else {
-                Value::Bool(false)
-            }
+            n.as_i64().map_or_else(
+                || {
+                    n.as_f64()
+                        .map_or(Value::Bool(false), |f| Value::Bool(f != 0.0))
+                },
+                |i| Value::Bool(i != 0),
+            )
         }
         Value::Null => Value::Null,
         _ => {
@@ -50,19 +50,16 @@ fn cast_to_integer(value: Value) -> Value {
     match &value {
         Value::Number(n) if n.is_i64() => value,
         Value::Number(n) if n.is_u64() => {
-            if let Some(i) = n.as_i64() {
-                Value::Number(serde_json::Number::from(i))
-            } else {
-                value
-            }
+            n.as_i64().map_or(value, |i| Value::Number(serde_json::Number::from(i)))
         }
-        Value::String(s) => match s.parse::<i64>() {
-            Ok(i) => Value::Number(serde_json::Number::from(i)),
-            Err(_) => {
-                log::warn!("Cannot convert string '{}' to integer", s);
-                value
-            }
-        },
+        Value::String(s) => s.parse::<i64>()
+            .map_or_else(
+                |_| {
+                    log::warn!("Cannot convert string '{s}' to integer");
+                    value.clone()
+                },
+                |i| Value::Number(serde_json::Number::from(i)),
+            ),
         Value::Null => Value::Null,
         _ => value,
     }
@@ -90,8 +87,8 @@ fn cast_to_float(value: Value) -> Value {
 }
 
 /// Normalize field data by casting values to their proper types based on entity definition
-pub fn normalize_field_data_by_type(
-    field_data: &mut HashMap<String, Value>,
+pub fn normalize_field_data_by_type<S: std::hash::BuildHasher>(
+    field_data: &mut HashMap<String, Value, S>,
     entity_definition: &EntityDefinition,
 ) {
     for field_def in &entity_definition.fields {
@@ -155,10 +152,10 @@ pub fn is_protected_field(field_name: &str) -> bool {
 }
 
 /// Process reserved fields with special handling
-pub fn process_reserved_field(
+pub fn process_reserved_field<S: std::hash::BuildHasher>(
     field_name: &str,
     value: Value,
-    normalized_data: &mut HashMap<String, Value>,
+    normalized_data: &mut HashMap<String, Value, S>,
 ) -> bool {
     // Coerce published from string if needed
     if field_name == "published" {
@@ -184,13 +181,13 @@ pub fn process_reserved_field(
 
 /// Build normalized field data from raw field data, handling reserved fields and type casting
 #[must_use]
-pub fn build_normalized_field_data(
-    field_data: HashMap<String, Value>,
+pub fn build_normalized_field_data<S: std::hash::BuildHasher + Default>(
+    field_data: HashMap<String, Value, S>,
     _entity_definition: &EntityDefinition,
 ) -> HashMap<String, Value> {
-    let mut normalized = HashMap::new();
+    let mut normalized = HashMap::default();
 
-    for (k, v) in field_data.into_iter() {
+    for (k, v) in field_data {
         if is_reserved_field(&k) {
             process_reserved_field(&k, v, &mut normalized);
             continue;

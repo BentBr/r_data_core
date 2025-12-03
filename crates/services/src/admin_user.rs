@@ -40,13 +40,11 @@ impl AdminUserService {
         }
 
         // Find the user
-        let user = match self
+        let Some(user) = self
             .repository
             .find_by_username_or_email(username_or_email)
-            .await?
-        {
-            Some(user) => user,
-            None => return Ok(None),
+            .await? else {
+            return Ok(None);
         };
 
         // Verify password
@@ -71,6 +69,7 @@ impl AdminUserService {
     ///
     /// # Errors
     /// Returns an error if validation fails, username/email already exists, or database operation fails
+    #[allow(clippy::too_many_arguments)] // Public API - parameters are clear and well-named
     pub async fn register_user(
         &self,
         username: &str,
@@ -133,6 +132,9 @@ impl AdminUserService {
     }
 
     /// Update a user
+    ///
+    /// # Errors
+    /// Returns an error if the user is not found or database operation fails
     pub async fn update_user(&self, user: &AdminUser) -> Result<()> {
         // Check if the user exists
         let existing_user = self.repository.find_by_uuid(&user.uuid).await?;
@@ -147,6 +149,9 @@ impl AdminUserService {
     }
 
     /// Delete a user
+    ///
+    /// # Errors
+    /// Returns an error if the user is not found or database operation fails
     pub async fn delete_user(&self, uuid: &Uuid) -> Result<()> {
         // Check if the user exists
         let existing_user = self.repository.find_by_uuid(uuid).await?;
@@ -160,6 +165,9 @@ impl AdminUserService {
     }
 
     /// List users with pagination
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn list_users(&self, limit: i64, offset: i64) -> Result<Vec<AdminUser>> {
         // Validate input
         let limit = if limit <= 0 { 50 } else { limit };

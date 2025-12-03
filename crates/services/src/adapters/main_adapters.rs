@@ -209,7 +209,7 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
     }
 }
 
-/// Repository adapter for AdminUserRepository
+/// Repository adapter for `AdminUserRepository`
 pub struct AdminUserRepositoryAdapter {
     inner: r_data_core_persistence::AdminUserRepository,
 }

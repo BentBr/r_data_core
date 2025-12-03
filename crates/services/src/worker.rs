@@ -3,16 +3,17 @@
 use std::collections::HashMap;
 use uuid::Uuid;
 
-/// Compute reconcile actions between existing scheduler map (wf_id -> cron)
-/// and the current set from DB (wf_id -> cron).
-/// Returns (workflows_to_remove, workflows_to_add_or_update)
-pub fn compute_reconcile_actions(
-    existing: &HashMap<Uuid, String>,
-    current: &HashMap<Uuid, String>,
+/// Compute reconcile actions between existing scheduler map (`wf_id` -> cron)
+/// and the current set from DB (`wf_id` -> cron).
+/// Returns (`workflows_to_remove`, `workflows_to_add_or_update`)
+#[must_use]
+pub fn compute_reconcile_actions<S: std::hash::BuildHasher>(
+    existing: &HashMap<Uuid, String, S>,
+    current: &HashMap<Uuid, String, S>,
 ) -> (Vec<Uuid>, Vec<(Uuid, String)>) {
     // Remove if missing from current or cron changed
     let mut to_remove = Vec::new();
-    for (wf_id, existing_cron) in existing.iter() {
+    for (wf_id, existing_cron) in existing {
         match current.get(wf_id) {
             None => to_remove.push(*wf_id),
             Some(new_cron) if new_cron != existing_cron => to_remove.push(*wf_id),
@@ -21,7 +22,7 @@ pub fn compute_reconcile_actions(
     }
     // Add if new or cron changed
     let mut to_add = Vec::new();
-    for (wf_id, new_cron) in current.iter() {
+    for (wf_id, new_cron) in current {
         match existing.get(wf_id) {
             None => to_add.push((*wf_id, new_cron.clone())),
             Some(old_cron) if old_cron != new_cron => to_add.push((*wf_id, new_cron.clone())),

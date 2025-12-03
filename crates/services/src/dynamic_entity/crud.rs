@@ -93,7 +93,7 @@ impl DynamicEntityService {
             .await?;
 
         // Validate entity against entity definition
-        self.validate_entity(entity)?;
+        Self::validate_entity(entity)?;
 
         self.repository.create(entity).await
     }
@@ -108,7 +108,7 @@ impl DynamicEntityService {
             .await?;
 
         // Validate entity against entity definition
-        self.validate_entity(entity)?;
+        Self::validate_entity(entity)?;
 
         self.repository.update(entity).await
     }
@@ -131,7 +131,7 @@ impl DynamicEntityService {
             .await?;
 
         // Validate entity against entity definition
-        self.validate_entity(entity)?;
+        Self::validate_entity(entity)?;
 
         if skip_versioning {
             // Temporary: inject internal flag until repository trait supports explicit param

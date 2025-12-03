@@ -8,13 +8,13 @@ use super::EntityDefinitionService;
 impl EntityDefinitionService {
     /// Generate cache key for entity definition by entity type
     #[must_use]
-    pub(crate) fn cache_key_by_entity_type(&self, entity_type: &str) -> String {
+    pub(crate) fn cache_key_by_entity_type(entity_type: &str) -> String {
         format!("entity_def:by_type:{entity_type}")
     }
 
     /// Generate cache key for entity definition by UUID
     #[must_use]
-    pub(crate) fn cache_key_by_uuid(&self, uuid: &Uuid) -> String {
+    pub(crate) fn cache_key_by_uuid(uuid: &Uuid) -> String {
         format!("entity_def:by_uuid:{uuid}")
     }
 
@@ -31,8 +31,8 @@ impl EntityDefinitionService {
         entity_type: &str,
         uuid: &Uuid,
     ) -> Result<()> {
-        let type_key = self.cache_key_by_entity_type(entity_type);
-        let uuid_key = self.cache_key_by_uuid(uuid);
+        let type_key = Self::cache_key_by_entity_type(entity_type);
+        let uuid_key = Self::cache_key_by_uuid(uuid);
 
         // Invalidate both cache keys
         if let Err(e) = self.cache_manager.delete(&type_key).await {

@@ -26,11 +26,15 @@ pub enum EntityLookupResult {
 }
 
 /// Find an existing entity by various methods
-pub async fn find_existing_entity(
+///
+/// # Errors
+/// Returns an error if database query fails
+#[allow(clippy::future_not_send)] // HashMap with generic BuildHasher doesn't implement Send, but this is safe in practice
+pub async fn find_existing_entity<S: std::hash::BuildHasher>(
     de_service: &DynamicEntityService,
     entity_type: &str,
-    normalized_field_data: &HashMap<String, Value>,
-    original_field_data: &HashMap<String, Value>,
+    normalized_field_data: &HashMap<String, Value, S>,
+    original_field_data: &HashMap<String, Value, S>,
     produced: &Value,
     update_key: Option<&String>,
 ) -> anyhow::Result<EntityLookupResult> {
@@ -47,29 +51,36 @@ pub async fn find_existing_entity(
     }
 
     // If not found by UUID, try to find by update_key or entity_key
-    let search_key = if let Some(key_field) = update_key {
-        // Use the update_key field name to find the value in produced data
-        normalized_field_data
-            .get(key_field)
-            .or_else(|| original_field_data.get(key_field))
-            .or_else(|| {
-                if let Some(produced_obj) = produced.as_object() {
-                    produced_obj.get(key_field)
-                } else {
-                    None
-                }
-            })
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
-    } else if let Some(Value::String(key)) = normalized_field_data.get("entity_key") {
-        Some(key.clone())
-    } else if let Some(Value::String(key)) = original_field_data.get("entity_key") {
-        Some(key.clone())
-    } else if let Some(Value::String(key)) = produced.get("entity_key") {
-        Some(key.clone())
-    } else {
-        None
-    };
+    let search_key = update_key
+        .and_then(|key_field| {
+            // Use the update_key field name to find the value in produced data
+            normalized_field_data
+                .get(key_field)
+                .or_else(|| original_field_data.get(key_field))
+                .or_else(|| {
+                    produced.as_object().and_then(|obj| obj.get(key_field))
+                })
+                .and_then(|v| v.as_str())
+                .map(std::string::ToString::to_string)
+        })
+        .or_else(|| {
+            normalized_field_data
+                .get("entity_key")
+                .and_then(|v| v.as_str())
+                .map(std::string::ToString::to_string)
+        })
+        .or_else(|| {
+            original_field_data
+                .get("entity_key")
+                .and_then(|v| v.as_str())
+                .map(std::string::ToString::to_string)
+        })
+        .or_else(|| {
+            produced
+                .get("entity_key")
+                .and_then(|v| v.as_str())
+                .map(std::string::ToString::to_string)
+        });
 
     if let Some(key_value) = search_key {
         // Use filter_entities to find by entity_key
@@ -89,6 +100,9 @@ pub async fn find_existing_entity(
 }
 
 /// Prepare field data for persistence (normalize path, types, etc.)
+///
+/// # Errors
+/// Returns an error if entity definition not found or database query fails
 pub async fn prepare_field_data(
     de_service: &DynamicEntityService,
     ctx: &PersistenceContext,
@@ -96,7 +110,7 @@ pub async fn prepare_field_data(
     // Build field_data as a flat object from produced
     let mut field_data = HashMap::new();
     if let Some(obj) = ctx.produced.as_object() {
-        for (k, v) in obj.iter() {
+        for (k, v) in obj {
             field_data.insert(k.clone(), v.clone());
         }
     }
@@ -125,15 +139,18 @@ pub async fn prepare_field_data(
 }
 
 /// Build the final normalized field data with reserved field handling
-pub fn build_final_field_data(
-    field_data: HashMap<String, Value>,
-    _entity_definition: &EntityDefinition,
+pub fn build_final_field_data<S: std::hash::BuildHasher + Default>(
+    field_data: HashMap<String, Value, S>,
+    entity_definition: &EntityDefinition,
 ) -> HashMap<String, Value> {
-    build_normalized_field_data(field_data, _entity_definition)
+    build_normalized_field_data(field_data, entity_definition)
 }
 
 /// Ensure required audit fields exist for entity creation
-pub fn ensure_audit_fields(field_data: &mut HashMap<String, Value>, run_uuid: Uuid) {
+pub fn ensure_audit_fields<S: std::hash::BuildHasher>(
+    field_data: &mut HashMap<String, Value, S>,
+    run_uuid: Uuid,
+) {
     field_data
         .entry("created_by".to_string())
         .or_insert_with(|| Value::String(run_uuid.to_string()));
@@ -142,11 +159,11 @@ pub fn ensure_audit_fields(field_data: &mut HashMap<String, Value>, run_uuid: Uu
         .or_insert_with(|| Value::String(run_uuid.to_string()));
 }
 
-/// Generate entity_key if missing
-pub async fn ensure_entity_key(
+/// Generate `entity_key` if missing
+pub async fn ensure_entity_key<S: std::hash::BuildHasher>(
     de_service: &DynamicEntityService,
     entity_type: &str,
-    field_data: &mut HashMap<String, Value>,
+    field_data: &mut HashMap<String, Value, S>,
 ) {
     if !field_data.contains_key("entity_key") {
         let existing_count: i64 = de_service.count_entities(entity_type).await.unwrap_or(0);
@@ -158,6 +175,9 @@ pub async fn ensure_entity_key(
 }
 
 /// Create a new entity
+///
+/// # Errors
+/// Returns an error if entity definition not found, validation fails, or database operation fails
 pub async fn create_entity(
     de_service: &DynamicEntityService,
     ctx: &PersistenceContext,
@@ -205,6 +225,9 @@ pub async fn create_entity(
 }
 
 /// Update an existing entity
+///
+/// # Errors
+/// Returns an error if entity not found, validation fails, or database operation fails
 pub async fn update_entity(
     de_service: &DynamicEntityService,
     ctx: &PersistenceContext,
@@ -234,7 +257,7 @@ pub async fn update_entity(
     };
 
     // Update the entity's field_data with new values
-    for (k, v) in normalized_field_data.iter() {
+    for (k, v) in &normalized_field_data {
         // Don't overwrite created_at or created_by
         if k != "created_at" && k != "created_by" {
             entity.field_data.insert(k.clone(), v.clone());
@@ -259,6 +282,9 @@ pub async fn update_entity(
 }
 
 /// Create or update an entity (upsert)
+///
+/// # Errors
+/// Returns an error if entity definition not found, validation fails, or database operation fails
 pub async fn create_or_update_entity(
     de_service: &DynamicEntityService,
     ctx: &PersistenceContext,
@@ -281,7 +307,7 @@ pub async fn create_or_update_entity(
     match lookup_result {
         EntityLookupResult::Found(mut entity) => {
             // Update existing entity
-            for (k, v) in normalized_field_data.iter() {
+            for (k, v) in &normalized_field_data {
                 // Don't overwrite created_at or created_by
                 if k != "created_at" && k != "created_by" {
                     entity.field_data.insert(k.clone(), v.clone());

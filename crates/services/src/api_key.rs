@@ -46,11 +46,14 @@ impl ApiKeyService {
     }
 
     /// Generate cache key for API key by hash
-    fn cache_key_by_hash(&self, key_hash: &str) -> String {
+    fn cache_key_by_hash(key_hash: &str) -> String {
         format!("api_key:hash:{key_hash}")
     }
 
     /// Create a new API key
+    ///
+    /// # Errors
+    /// Returns an error if validation fails or database operation fails
     pub async fn create_api_key(
         &self,
         name: &str,
@@ -77,6 +80,9 @@ impl ApiKeyService {
     }
 
     /// Validate an API key and return user information if valid
+    ///
+    /// # Errors
+    /// Returns an error if database operation fails
     pub async fn validate_api_key(&self, api_key: &str) -> Result<Option<(ApiKey, Uuid)>> {
         if api_key.is_empty() {
             return Ok(None);
@@ -94,7 +100,7 @@ impl ApiKeyService {
 
         // Check cache first if cache manager is available
         if let Some(cache) = &self.cache_manager {
-            let cache_key = self.cache_key_by_hash(&key_hash);
+            let cache_key = Self::cache_key_by_hash(&key_hash);
             if let Ok(Some(cached)) = cache.get::<(ApiKey, Uuid)>(&cache_key).await {
                 // Cache hit - return cached result (skip last_used_at update for performance)
                 return Ok(Some(cached));
@@ -107,7 +113,7 @@ impl ApiKeyService {
         // Cache the result if valid and cache manager is available
         if let Some((ref key, ref user_uuid)) = result {
             if let Some(cache) = &self.cache_manager {
-                let cache_key = self.cache_key_by_hash(&key_hash);
+                let cache_key = Self::cache_key_by_hash(&key_hash);
                 // Use configured TTL (0 = no expiration, but we use Some() to respect TTL)
                 let ttl = if self.api_key_ttl > 0 {
                     Some(self.api_key_ttl)
@@ -124,6 +130,9 @@ impl ApiKeyService {
     }
 
     /// List all API keys for a user
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn list_keys_for_user(
         &self,
         user_uuid: Uuid,
@@ -138,6 +147,9 @@ impl ApiKeyService {
     }
 
     /// Revoke an API key
+    ///
+    /// # Errors
+    /// Returns an error if the key is not found, user doesn't have permission, or database operation fails
     pub async fn revoke_key(&self, key_uuid: Uuid, user_uuid: Uuid) -> Result<()> {
         // Verify ownership first
         let key = self.repository.get_by_uuid(key_uuid).await?;
@@ -150,7 +162,7 @@ impl ApiKeyService {
                 // Invalidate cache if revocation succeeded
                 if result.is_ok() {
                     if let Some(cache) = &self.cache_manager {
-                        let cache_key = self.cache_key_by_hash(&key.key_hash);
+                        let cache_key = Self::cache_key_by_hash(&key.key_hash);
                         if let Err(e) = cache.delete(&cache_key).await {
                             log::warn!("Failed to invalidate API key cache: {e}");
                         }
@@ -169,11 +181,17 @@ impl ApiKeyService {
     }
 
     /// Get a key by UUID
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn get_key(&self, key_uuid: Uuid) -> Result<Option<ApiKey>> {
         self.repository.get_by_uuid(key_uuid).await
     }
 
     /// Reassign an API key to a different user
+    ///
+    /// # Errors
+    /// Returns an error if the key is not found or database operation fails
     pub async fn reassign_key(&self, key_uuid: Uuid, new_user_uuid: Uuid) -> Result<()> {
         // Verify the key exists
         let key = self.get_key(key_uuid).await?;

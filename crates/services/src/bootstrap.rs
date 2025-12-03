@@ -18,7 +18,7 @@ pub fn init_logger_with_default(default_level: &str) {
         .init();
 }
 
-/// Initialize PostgreSQL connection pool
+/// Initialize `PostgreSQL` connection pool
 ///
 /// # Errors
 /// Returns an error if the connection pool cannot be created
