@@ -1,12 +1,13 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery)]
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 
 // Basic test setup for Admin Auth routes
 // More comprehensive tests to be implemented
 
 #[cfg(test)]
 mod tests {
-    use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
+    use r_data_core_persistence::{
+    AdminUserRepository, AdminUserRepositoryTrait, CreateAdminUserParams,
+};
     use std::sync::Arc;
     use uuid::Uuid;
 
@@ -32,18 +33,17 @@ mod tests {
         let test_password = "Test123!";
 
         // Create the admin user directly in the database
-        let user_uuid = repo
-            .create_admin_user(
-                &username,
-                &email,
-                test_password,
-                "Test",
-                "User",
-                None,
-                true,
-                Uuid::now_v7(),
-            )
-            .await?;
+        let params = CreateAdminUserParams {
+            username: &username,
+            email: &email,
+            password: test_password,
+            first_name: "Test",
+            last_name: "User",
+            role: None,
+            is_active: true,
+            creator_uuid: Uuid::now_v7(),
+        };
+        let user_uuid = repo.create_admin_user(&params).await?;
 
         // Verify the user has no last_login timestamp initially
         let initial_user = repo.find_by_uuid(&user_uuid).await?.unwrap();

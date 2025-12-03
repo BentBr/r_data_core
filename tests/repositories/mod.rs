@@ -2,6 +2,8 @@
 pub mod admin_user_repository_tests;
 pub mod api_key_repository_tests;
 pub mod dynamic_entity_repository_tests;
+pub mod dynamic_entity_repository_tests_additional;
+pub mod dynamic_entity_public_repository_tests;
 pub mod entity_definition_repository_tests;
 pub mod filter_entities_tests;
 pub mod refresh_token_repository_tests;

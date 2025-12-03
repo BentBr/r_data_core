@@ -1,5 +1,4 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery)]
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 
 use r_data_core_persistence::VersionRepository;
 use uuid::Uuid;

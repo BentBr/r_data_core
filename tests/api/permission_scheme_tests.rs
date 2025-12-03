@@ -9,18 +9,18 @@ use r_data_core_core::permissions::permission_scheme::{
 };
 use r_data_core_persistence::WorkflowRepository;
 use r_data_core_persistence::{
-    AdminUserRepository, AdminUserRepositoryTrait, ApiKeyRepository, ApiKeyRepositoryTrait,
+    AdminUserRepository, AdminUserRepositoryTrait, ApiKeyRepository,
+    CreateAdminUserParams,
 };
 use r_data_core_services::{
     AdminUserService, ApiKeyService, EntityDefinitionService, PermissionSchemeService,
 };
 use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_test_support::{
-    clear_test_db, create_test_admin_user, make_workflow_service, setup_test_db,
+    clear_test_db, create_test_admin_user, setup_test_db,
     test_queue_client_async,
 };
 use serial_test::serial;
-use sqlx::Row;
 use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -140,16 +140,16 @@ mod tests {
         // Create a test user (not super_admin)
         let user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let user_uuid = user_repo
-            .create_admin_user(
-                "testuser",
-                "test@example.com",
-                "password123",
-                "Test",
-                "User",
-                Some("Editor"), // Set role to Editor
-                true,
-                admin_user_uuid,
-            )
+            .create_admin_user(&CreateAdminUserParams {
+                username: "testuser",
+                email: "test@example.com",
+                password: "password123",
+                first_name: "Test",
+                last_name: "User",
+                role: Some("Editor"), // Set role to Editor
+                is_active: true,
+                creator_uuid: admin_user_uuid,
+            })
             .await?;
 
         // Update user to not be super_admin and set role to Editor (matching scheme)
@@ -259,16 +259,16 @@ mod tests {
         // Create a test user without super_admin
         let user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let user_uuid = user_repo
-            .create_admin_user(
-                "testuser2",
-                "test2@example.com",
-                "password123",
-                "Test",
-                "User",
-                Some("Editor"), // Set role
-                true,
-                admin_user_uuid,
-            )
+            .create_admin_user(&CreateAdminUserParams {
+                username: "testuser2",
+                email: "test2@example.com",
+                password: "password123",
+                first_name: "Test",
+                last_name: "User",
+                role: Some("Editor"), // Set role
+                is_active: true,
+                creator_uuid: admin_user_uuid,
+            })
             .await?;
 
         // Update user to not be super_admin and no schemes assigned
@@ -314,16 +314,16 @@ mod tests {
 
         let user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
         let user_uuid = user_repo
-            .create_admin_user(
-                "testuser3",
-                "test3@example.com",
-                "password123",
-                "Test",
-                "User",
-                Some("Editor"), // Set role to Editor
-                true,
-                admin_user_uuid,
-            )
+            .create_admin_user(&CreateAdminUserParams {
+                username: "testuser3",
+                email: "test3@example.com",
+                password: "password123",
+                first_name: "Test",
+                last_name: "User",
+                role: Some("Editor"), // Set role to Editor
+                is_active: true,
+                creator_uuid: admin_user_uuid,
+            })
             .await?;
 
         let mut user = user_repo.find_by_uuid(&user_uuid).await?.unwrap();
@@ -442,7 +442,7 @@ mod tests {
             PermissionSchemeService::new(pool.clone(), cache_manager.clone(), Some(3600));
 
         // Create a scheme
-        let mut scheme = create_test_permission_scheme("CacheTestScheme");
+        let scheme = create_test_permission_scheme("CacheTestScheme");
         let scheme_uuid = scheme_service
             .create_scheme(&scheme, admin_user_uuid)
             .await?;
@@ -456,16 +456,16 @@ mod tests {
 
         // Create a user
         let user_uuid = user_repo
-            .create_admin_user(
-                "cacheuser",
-                "cache@example.com",
-                "password123",
-                "Test",
-                "User",
-                Some("Editor"), // Set role
-                true,
-                admin_user_uuid,
-            )
+            .create_admin_user(&CreateAdminUserParams {
+                username: "cacheuser",
+                email: "cache@example.com",
+                password: "password123",
+                first_name: "Test",
+                last_name: "User",
+                role: Some("Editor"), // Set role
+                is_active: true,
+                creator_uuid: admin_user_uuid,
+            })
             .await?;
 
         let mut user = user_repo.find_by_uuid(&user_uuid).await?.unwrap();
@@ -547,7 +547,7 @@ mod tests {
         );
 
         // Test cache invalidation on scheme assignment
-        let mut scheme2 = create_test_permission_scheme("CacheTestScheme2");
+        let scheme2 = create_test_permission_scheme("CacheTestScheme2");
         let scheme2_uuid = scheme_service
             .create_scheme(&scheme2, admin_user_uuid)
             .await?;
@@ -597,16 +597,16 @@ mod tests {
 
         // Create a user
         let user_uuid = user_repo
-            .create_admin_user(
-                "mergeduser",
-                "merged@example.com",
-                "password123",
-                "Test",
-                "User",
-                Some("Editor"), // Set role
-                true,
-                admin_user_uuid,
-            )
+            .create_admin_user(&CreateAdminUserParams {
+                username: "mergeduser",
+                email: "merged@example.com",
+                password: "password123",
+                first_name: "Test",
+                last_name: "User",
+                role: Some("Editor"), // Set role
+                is_active: true,
+                creator_uuid: admin_user_uuid,
+            })
             .await?;
 
         let mut user = user_repo.find_by_uuid(&user_uuid).await?.unwrap();

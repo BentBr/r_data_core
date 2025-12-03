@@ -1,5 +1,4 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery)]
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 
 use serde_json::json;
 use std::collections::HashMap;
@@ -13,7 +12,9 @@ use r_data_core_core::{
     entity_definition::definition::EntityDefinition, entity_definition::schema::Schema,
     field::definition::FieldDefinition, field::types::FieldType,
 };
-use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
+use r_data_core_persistence::{
+    DynamicEntityRepository, DynamicEntityRepositoryTrait, FilterEntitiesParams,
+};
 use r_data_core_test_support::setup_test_db;
 
 // Helper function to create a test entity definition struct for dynamic entities
@@ -240,16 +241,8 @@ async fn test_list_entities_by_parent() -> Result<()> {
 
     // Test filter by parent - using filter_entities method
     let filters = HashMap::from([("parent_uuid".to_string(), json!(parent_uuid.to_string()))]);
-    let children = repo
-        .filter_entities(
-            &entity_def.entity_type,
-            10,
-            0,
-            Some(filters),
-            None,
-            None,
-            None,
-        )
+    let params = FilterEntitiesParams::new(10, 0).with_filters(Some(filters));
+    let children = repo.filter_entities(&entity_def.entity_type, &params)
         .await?;
     assert_eq!(children.len(), 2);
 
@@ -304,16 +297,8 @@ async fn test_filter_entities() -> Result<()> {
 
     // Test filtering with the filter_entities method
     let filters = HashMap::from([("age".to_string(), json!(30))]);
-    let filtered = repo
-        .filter_entities(
-            &entity_def.entity_type,
-            10,
-            0,
-            Some(filters),
-            None,
-            None,
-            None,
-        )
+    let params = FilterEntitiesParams::new(10, 0).with_filters(Some(filters));
+    let filtered = repo.filter_entities(&entity_def.entity_type, &params)
         .await?;
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].get::<String>("name")?, "Bob");

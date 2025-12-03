@@ -4,6 +4,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 /// Cast a JSON value to the appropriate type based on field definition
+#[must_use]
 pub fn cast_field_value(value: Value, field_type: &FieldType) -> Value {
     match field_type {
         FieldType::Boolean => cast_to_boolean(value),
@@ -22,8 +23,7 @@ fn cast_to_boolean(value: Value) -> Value {
             "false" | "no" | "0" | "off" | "" => Value::Bool(false),
             _ => {
                 log::warn!(
-                    "Cannot convert string '{}' to boolean, defaulting to false",
-                    s
+                    "Cannot convert string '{s}' to boolean, defaulting to false"
                 );
                 Value::Bool(false)
             }
@@ -39,7 +39,7 @@ fn cast_to_boolean(value: Value) -> Value {
         }
         Value::Null => Value::Null,
         _ => {
-            log::warn!("Cannot convert {:?} to boolean, defaulting to false", value);
+            log::warn!("Cannot convert {value:?} to boolean, defaulting to false");
             Value::Bool(false)
         }
     }
@@ -73,27 +73,16 @@ fn cast_to_float(value: Value) -> Value {
     match &value {
         Value::Number(n) => {
             if let Some(f) = n.as_f64() {
-                if let Some(num) = serde_json::Number::from_f64(f) {
-                    Value::Number(num)
-                } else {
-                    value
-                }
+                serde_json::Number::from_f64(f).map_or(value, Value::Number)
             } else {
                 value
             }
         }
-        Value::String(s) => match s.parse::<f64>() {
-            Ok(f) => {
-                if let Some(num) = serde_json::Number::from_f64(f) {
-                    Value::Number(num)
-                } else {
-                    value
-                }
-            }
-            Err(_) => {
-                log::warn!("Cannot convert string '{}' to float", s);
-                value
-            }
+        Value::String(s) => if let Ok(f) = s.parse::<f64>() {
+            serde_json::Number::from_f64(f).map_or(value, Value::Number)
+        } else {
+            log::warn!("Cannot convert string '{s}' to float");
+            value
         },
         Value::Null => Value::Null,
         _ => value,
@@ -114,6 +103,7 @@ pub fn normalize_field_data_by_type(
 }
 
 /// Coerce published field from string to boolean if needed
+#[must_use]
 pub fn coerce_published_field(value: Value) -> Value {
     match value {
         Value::String(s) => match s.to_lowercase().as_str() {
@@ -126,11 +116,12 @@ pub fn coerce_published_field(value: Value) -> Value {
 }
 
 /// Normalize a path string (ensure it starts with /)
+#[must_use]
 pub fn normalize_path(path: &str) -> String {
     if path.starts_with('/') {
         path.to_string()
     } else {
-        format!("/{}", path)
+        format!("/{path}")
     }
 }
 
@@ -149,6 +140,7 @@ pub const RESERVED_FIELDS: &[&str] = &[
 ];
 
 /// Check if a field name is reserved
+#[must_use]
 pub fn is_reserved_field(field_name: &str) -> bool {
     RESERVED_FIELDS.contains(&field_name)
 }
@@ -157,6 +149,7 @@ pub fn is_reserved_field(field_name: &str) -> bool {
 pub const PROTECTED_FIELDS: &[&str] = &["created_at", "created_by"];
 
 /// Check if a field name is protected (should not be overwritten)
+#[must_use]
 pub fn is_protected_field(field_name: &str) -> bool {
     PROTECTED_FIELDS.contains(&field_name)
 }
@@ -190,6 +183,7 @@ pub fn process_reserved_field(
 }
 
 /// Build normalized field data from raw field data, handling reserved fields and type casting
+#[must_use]
 pub fn build_normalized_field_data(
     field_data: HashMap<String, Value>,
     _entity_definition: &EntityDefinition,

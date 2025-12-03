@@ -10,9 +10,8 @@ use r_data_core_core::error::Result;
 use r_data_core_core::DynamicEntity;
 use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
-use serde_json::Value as JsonValue;
 
-/// Repository adapter for EntityDefinitionRepository
+/// Repository adapter for `EntityDefinitionRepository`
 pub struct EntityDefinitionRepositoryAdapter {
     inner: EntityDefinitionRepository,
 }
@@ -20,7 +19,7 @@ pub struct EntityDefinitionRepositoryAdapter {
 impl EntityDefinitionRepositoryAdapter {
     /// Create a new adapter that wraps the repository implementation
     #[must_use]
-    pub fn new(repository: EntityDefinitionRepository) -> Self {
+    pub const fn new(repository: EntityDefinitionRepository) -> Self {
         Self { inner: repository }
     }
 }
@@ -39,16 +38,14 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepositoryAdapter {
 
     async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<EntityDefinition>> {
         log::debug!(
-            "EntityDefinitionRepositoryAdapter::get_by_uuid called with uuid: {}",
-            uuid
+            "EntityDefinitionRepositoryAdapter::get_by_uuid called with uuid: {uuid}"
         );
         self.inner.get_by_uuid(uuid).await
     }
 
     async fn get_by_entity_type(&self, entity_type: &str) -> Result<Option<EntityDefinition>> {
         log::debug!(
-            "EntityDefinitionRepositoryAdapter::get_by_entity_type called with entity_type: {}",
-            entity_type
+            "EntityDefinitionRepositoryAdapter::get_by_entity_type called with entity_type: {entity_type}"
         );
         self.inner.get_by_entity_type(entity_type).await
     }
@@ -69,7 +66,7 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepositoryAdapter {
         let result = self.inner.create(definition).await;
 
         if let Err(ref e) = result {
-            log::error!("Error creating entity definition in adapter: {:?}", e);
+            log::error!("Error creating entity definition in adapter: {e:?}");
         } else {
             log::debug!("Entity definition created successfully in adapter");
         }
@@ -78,18 +75,12 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepositoryAdapter {
     }
 
     async fn update(&self, uuid: &Uuid, definition: &EntityDefinition) -> Result<()> {
-        log::debug!(
-            "EntityDefinitionRepositoryAdapter::update called with uuid: {}",
-            uuid
-        );
+        log::debug!("EntityDefinitionRepositoryAdapter::update called with uuid: {uuid}");
         self.inner.update(uuid, definition).await
     }
 
     async fn delete(&self, uuid: &Uuid) -> Result<()> {
-        log::debug!(
-            "EntityDefinitionRepositoryAdapter::delete called with uuid: {}",
-            uuid
-        );
+        log::debug!("EntityDefinitionRepositoryAdapter::delete called with uuid: {uuid}");
         self.inner.delete(uuid).await
     }
 
@@ -112,8 +103,7 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepositoryAdapter {
 
     async fn check_view_exists(&self, view_name: &str) -> Result<bool> {
         log::debug!(
-            "EntityDefinitionRepositoryAdapter::check_view_exists called with view_name: {}",
-            view_name
+            "EntityDefinitionRepositoryAdapter::check_view_exists called with view_name: {view_name}"
         );
         self.inner.check_view_exists(view_name).await
     }
@@ -122,14 +112,13 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepositoryAdapter {
         &self,
         view_name: &str,
     ) -> Result<HashMap<String, String>> {
-        log::debug!("EntityDefinitionRepositoryAdapter::get_view_columns_with_types called with view_name: {}", view_name);
+        log::debug!("EntityDefinitionRepositoryAdapter::get_view_columns_with_types called with view_name: {view_name}");
         self.inner.get_view_columns_with_types(view_name).await
     }
 
     async fn count_view_records(&self, view_name: &str) -> Result<i64> {
         log::debug!(
-            "EntityDefinitionRepositoryAdapter::count_view_records called with view_name: {}",
-            view_name
+            "EntityDefinitionRepositoryAdapter::count_view_records called with view_name: {view_name}"
         );
         self.inner.count_view_records(view_name).await
     }
@@ -148,13 +137,13 @@ pub struct DynamicEntityRepositoryAdapter {
 impl DynamicEntityRepositoryAdapter {
     /// Create a new adapter
     #[must_use]
-    pub fn new(inner: DynamicEntityRepository) -> Self {
+    pub const fn new(inner: DynamicEntityRepository) -> Self {
         Self { inner }
     }
 
     /// Adapt a concrete repository implementation to a trait
     #[must_use]
-    pub fn from_repository(repository: DynamicEntityRepository) -> Self {
+    pub const fn from_repository(repository: DynamicEntityRepository) -> Self {
         Self { inner: repository }
     }
 }
@@ -163,12 +152,12 @@ impl DynamicEntityRepositoryAdapter {
 impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
     /// Create a new entity
     async fn create(&self, entity: &DynamicEntity) -> r_data_core_core::error::Result<()> {
-        self.inner.create(entity).await.map_err(Into::into)
+        self.inner.create(entity).await
     }
 
     /// Update an existing entity
     async fn update(&self, entity: &DynamicEntity) -> r_data_core_core::error::Result<()> {
-        self.inner.update(entity).await.map_err(Into::into)
+        self.inner.update(entity).await
     }
 
     /// Get a dynamic entity by type and UUID
@@ -181,7 +170,6 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
         self.inner
             .get_by_type(entity_type, uuid, exclusive_fields)
             .await
-            .map_err(Into::into)
     }
 
     /// Get all entities of a specific type with pagination
@@ -195,7 +183,6 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
         self.inner
             .get_all_by_type(entity_type, limit, offset, exclusive_fields)
             .await
-            .map_err(Into::into)
     }
 
     /// Delete an entity by type and UUID
@@ -204,35 +191,21 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
         entity_type: &str,
         uuid: &Uuid,
     ) -> r_data_core_core::error::Result<()> {
-        self.inner
-            .delete_by_type(entity_type, uuid)
-            .await
-            .map_err(Into::into)
+        self.inner.delete_by_type(entity_type, uuid).await
     }
 
     /// Filter entities by field values with advanced options
     async fn filter_entities(
         &self,
         entity_type: &str,
-        limit: i64,
-        offset: i64,
-        filters: Option<HashMap<String, JsonValue>>,
-        search: Option<(String, Vec<String>)>,
-        sort: Option<(String, String)>,
-        fields: Option<Vec<String>>,
+        params: &r_data_core_persistence::FilterEntitiesParams,
     ) -> r_data_core_core::error::Result<Vec<DynamicEntity>> {
-        self.inner
-            .filter_entities(entity_type, limit, offset, filters, search, sort, fields)
-            .await
-            .map_err(Into::into)
+        self.inner.filter_entities(entity_type, params).await
     }
 
     /// Count entities of a specific type
     async fn count_entities(&self, entity_type: &str) -> r_data_core_core::error::Result<i64> {
-        self.inner
-            .count_entities(entity_type)
-            .await
-            .map_err(Into::into)
+        self.inner.count_entities(entity_type).await
     }
 }
 
@@ -244,7 +217,7 @@ pub struct AdminUserRepositoryAdapter {
 impl AdminUserRepositoryAdapter {
     /// Create a new adapter that wraps the repository implementation
     #[must_use]
-    pub fn new(repository: r_data_core_persistence::AdminUserRepository) -> Self {
+    pub const fn new(repository: r_data_core_persistence::AdminUserRepository) -> Self {
         Self { inner: repository }
     }
 }
@@ -255,60 +228,32 @@ impl r_data_core_persistence::AdminUserRepositoryTrait for AdminUserRepositoryAd
         &self,
         username_or_email: &str,
     ) -> r_data_core_core::error::Result<Option<r_data_core_core::admin_user::AdminUser>> {
-        log::debug!("AdminUserRepositoryAdapter::find_by_username_or_email called with username_or_email: {}", username_or_email);
-        self.inner
-            .find_by_username_or_email(username_or_email)
-            .await
-            .map_err(Into::into)
+        log::debug!("AdminUserRepositoryAdapter::find_by_username_or_email called with username_or_email: {username_or_email}");
+        self.inner.find_by_username_or_email(username_or_email).await
     }
 
     async fn find_by_uuid(
         &self,
         uuid: &Uuid,
     ) -> r_data_core_core::error::Result<Option<r_data_core_core::admin_user::AdminUser>> {
-        log::debug!(
-            "AdminUserRepositoryAdapter::find_by_uuid called with uuid: {}",
-            uuid
-        );
-        self.inner.find_by_uuid(uuid).await.map_err(Into::into)
+        log::debug!("AdminUserRepositoryAdapter::find_by_uuid called with uuid: {uuid}");
+        self.inner.find_by_uuid(uuid).await
     }
 
     async fn update_last_login(&self, uuid: &Uuid) -> r_data_core_core::error::Result<()> {
-        log::debug!(
-            "AdminUserRepositoryAdapter::update_last_login called with uuid: {}",
-            uuid
-        );
-        self.inner.update_last_login(uuid).await.map_err(Into::into)
+        log::debug!("AdminUserRepositoryAdapter::update_last_login called with uuid: {uuid}");
+        self.inner.update_last_login(uuid).await
     }
 
     async fn create_admin_user<'a>(
         &self,
-        username: &str,
-        email: &str,
-        password: &str,
-        first_name: &str,
-        last_name: &str,
-        role: Option<&'a str>,
-        is_active: bool,
-        creator_uuid: Uuid,
+        params: &r_data_core_persistence::CreateAdminUserParams<'a>,
     ) -> r_data_core_core::error::Result<Uuid> {
         log::debug!(
             "AdminUserRepositoryAdapter::create_admin_user called with username: {}",
-            username
+            params.username
         );
-        self.inner
-            .create_admin_user(
-                username,
-                email,
-                password,
-                first_name,
-                last_name,
-                role,
-                is_active,
-                creator_uuid,
-            )
-            .await
-            .map_err(Into::into)
+        self.inner.create_admin_user(params).await
     }
 
     async fn update_admin_user(
@@ -319,15 +264,12 @@ impl r_data_core_persistence::AdminUserRepositoryTrait for AdminUserRepositoryAd
             "AdminUserRepositoryAdapter::update_admin_user called for user uuid: {}",
             user.uuid
         );
-        self.inner.update_admin_user(user).await.map_err(Into::into)
+        self.inner.update_admin_user(user).await
     }
 
     async fn delete_admin_user(&self, uuid: &Uuid) -> Result<()> {
-        log::debug!(
-            "AdminUserRepositoryAdapter::delete_admin_user called with uuid: {}",
-            uuid
-        );
-        self.inner.delete_admin_user(uuid).await.map_err(Into::into)
+        log::debug!("AdminUserRepositoryAdapter::delete_admin_user called with uuid: {uuid}");
+        self.inner.delete_admin_user(uuid).await
     }
 
     async fn list_admin_users(
@@ -336,13 +278,8 @@ impl r_data_core_persistence::AdminUserRepositoryTrait for AdminUserRepositoryAd
         offset: i64,
     ) -> r_data_core_core::error::Result<Vec<r_data_core_core::admin_user::AdminUser>> {
         log::debug!(
-            "AdminUserRepositoryAdapter::list_admin_users called with limit: {}, offset: {}",
-            limit,
-            offset
+            "AdminUserRepositoryAdapter::list_admin_users called with limit: {limit}, offset: {offset}"
         );
-        self.inner
-            .list_admin_users(limit, offset)
-            .await
-            .map_err(Into::into)
+        self.inner.list_admin_users(limit, offset).await
     }
 }

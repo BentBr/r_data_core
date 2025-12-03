@@ -288,18 +288,17 @@ pub async fn admin_register(
     };
 
     // Create the user
-    let result = repo
-        .create_admin_user(
-            &register_req.username,
-            &register_req.email,
-            &register_req.password,
-            &register_req.first_name,
-            &register_req.last_name,
-            register_req.role.as_deref(),
-            is_authenticated,
-            creator_uuid,
-        )
-        .await;
+    let params = r_data_core_persistence::CreateAdminUserParams {
+        username: &register_req.username,
+        email: &register_req.email,
+        password: &register_req.password,
+        first_name: &register_req.first_name,
+        last_name: &register_req.last_name,
+        role: register_req.role.as_deref(),
+        is_active: is_authenticated,
+        creator_uuid,
+    };
+    let result = repo.create_admin_user(&params).await;
 
     match result {
         Ok(uuid) => {

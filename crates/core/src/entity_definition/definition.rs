@@ -12,6 +12,27 @@ use crate::error::{Error, Result};
 use crate::field::FieldDefinition;
 use crate::field::FieldType;
 
+/// Parameters for creating a new entity definition
+#[derive(Debug, Clone)]
+pub struct EntityDefinitionParams {
+    /// Entity type identifier
+    pub entity_type: String,
+    /// Display name
+    pub display_name: String,
+    /// Optional description
+    pub description: Option<String>,
+    /// Optional group name
+    pub group_name: Option<String>,
+    /// Whether entities of this type can have children
+    pub allow_children: bool,
+    /// Optional icon identifier
+    pub icon: Option<String>,
+    /// Field definitions
+    pub fields: Vec<FieldDefinition>,
+    /// UUID of the user creating this definition
+    pub created_by: Uuid,
+}
+
 /// Function to serialize/deserialize `OffsetDateTime` with defaults
 mod datetime_serde {
     use serde::{Deserialize, Deserializer, Serializer};
@@ -144,19 +165,17 @@ impl<'r> FromRow<'r, PgRow> for EntityDefinition {
 }
 
 impl EntityDefinition {
-    /// Create a new entity type definition
+    /// Create a new entity type definition from parameters
     #[must_use]
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        entity_type: String,
-        display_name: String,
-        description: Option<String>,
-        group_name: Option<String>,
-        allow_children: bool,
-        icon: Option<String>,
-        fields: Vec<FieldDefinition>,
-        created_by: Uuid,
-    ) -> Self {
+    pub fn from_params(params: EntityDefinitionParams) -> Self {
+        let entity_type = params.entity_type;
+        let display_name = params.display_name;
+        let description = params.description;
+        let group_name = params.group_name;
+        let allow_children = params.allow_children;
+        let icon = params.icon;
+        let fields = params.fields;
+        let created_by = params.created_by;
         let now = OffsetDateTime::now_utc();
 
         // Create a properties map for the schema
@@ -183,6 +202,32 @@ impl EntityDefinition {
             published: false,
             version: 1,
         }
+    }
+
+    /// Create a new entity type definition (deprecated: use `from_params` instead)
+    #[must_use]
+    #[deprecated(note = "Use EntityDefinition::from_params instead")]
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        entity_type: String,
+        display_name: String,
+        description: Option<String>,
+        group_name: Option<String>,
+        allow_children: bool,
+        icon: Option<String>,
+        fields: Vec<FieldDefinition>,
+        created_by: Uuid,
+    ) -> Self {
+        Self::from_params(EntityDefinitionParams {
+            entity_type,
+            display_name,
+            description,
+            group_name,
+            allow_children,
+            icon,
+            fields,
+            created_by,
+        })
     }
 
     /// Get the SQL table name for this entity type

@@ -4,6 +4,27 @@ use r_data_core_core::error::Result;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+/// Parameters for creating an admin user
+#[derive(Debug, Clone)]
+pub struct CreateAdminUserParams<'a> {
+    /// Username for the new user
+    pub username: &'a str,
+    /// Email address for the new user
+    pub email: &'a str,
+    /// Plain text password (will be hashed)
+    pub password: &'a str,
+    /// First name
+    pub first_name: &'a str,
+    /// Last name
+    pub last_name: &'a str,
+    /// Optional role (currently unused)
+    pub role: Option<&'a str>,
+    /// Whether the user is active
+    pub is_active: bool,
+    /// UUID of the user creating this user
+    pub creator_uuid: Uuid,
+}
+
 /// Repository trait for API key operations
 #[async_trait]
 pub trait ApiKeyRepositoryTrait: Send + Sync {
@@ -75,17 +96,9 @@ pub trait AdminUserRepositoryTrait: Send + Sync {
     async fn update_last_login(&self, uuid: &Uuid) -> Result<()>;
 
     /// Create a new admin user
-    #[allow(clippy::too_many_arguments)]
     async fn create_admin_user<'a>(
         &self,
-        username: &str,
-        email: &str,
-        password: &str,
-        first_name: &str,
-        last_name: &str,
-        role: Option<&'a str>,
-        is_active: bool,
-        creator_uuid: Uuid,
+        params: &CreateAdminUserParams<'a>,
     ) -> Result<Uuid>;
 
     /// Update an admin user

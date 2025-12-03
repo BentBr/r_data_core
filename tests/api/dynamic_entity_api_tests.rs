@@ -1,5 +1,4 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery)]
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 
 use actix_web::{test, web, App};
 use r_data_core_api::{configure_app, ApiState};

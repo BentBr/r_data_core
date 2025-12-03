@@ -1,8 +1,9 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery)]
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 
 use r_data_core_core::error::Result;
-use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
+use r_data_core_persistence::{
+    AdminUserRepository, AdminUserRepositoryTrait, CreateAdminUserParams,
+};
 use r_data_core_test_support::{
     clear_test_db, create_test_admin_user, random_string, setup_test_db,
 };
@@ -28,18 +29,17 @@ async fn test_create_and_find_admin_user() -> Result<()> {
     let creator_uuid = create_test_admin_user(&pool).await?;
 
     // Create the test user
-    let user_uuid = repo
-        .create_admin_user(
-            &username,
-            &email,
-            password,
-            first_name,
-            last_name,
-            None,
-            true, // is_active
-            creator_uuid,
-        )
-        .await?;
+    let params = CreateAdminUserParams {
+        username: &username,
+        email: &email,
+        password,
+        first_name,
+        last_name,
+        role: None,
+        is_active: true,
+        creator_uuid,
+    };
+    let user_uuid = repo.create_admin_user(&params).await?;
 
     // Find the user by username
     let found_user = repo.find_by_username_or_email(&username).await?;

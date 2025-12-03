@@ -10,7 +10,7 @@ use sqlx::PgPool;
 /// # Errors
 /// Returns an error if the database query fails
 pub async fn get_entity_count(pool: &PgPool, entity_type: &str) -> Result<i64> {
-    let table_name = format!("{}_entities", entity_type.to_lowercase());
+    let table_name = format!("entity_{}", entity_type.to_lowercase());
 
     // Check if table exists first
     let table_exists: bool = sqlx::query_scalar!(

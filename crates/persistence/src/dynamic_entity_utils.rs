@@ -51,22 +51,31 @@ pub async fn get_entity_definition(
         )
         .map_err(r_data_core_core::error::Error::Serialization)?;
 
-        let definition = EntityDefinition::new(
-            row.try_get("entity_type")
-                .map_err(r_data_core_core::error::Error::Database)?,
-            row.try_get("display_name")
-                .map_err(r_data_core_core::error::Error::Database)?,
-            row.try_get("description")
-                .map_err(r_data_core_core::error::Error::Database)?,
-            row.try_get("group_name")
-                .map_err(r_data_core_core::error::Error::Database)?,
-            row.try_get("allow_children")
-                .map_err(r_data_core_core::error::Error::Database)?,
-            row.try_get("icon")
-                .map_err(r_data_core_core::error::Error::Database)?,
-            fields,
-            row.try_get("created_by")
-                .map_err(r_data_core_core::error::Error::Database)?,
+        let definition = EntityDefinition::from_params(
+            r_data_core_core::entity_definition::definition::EntityDefinitionParams {
+                entity_type: row
+                    .try_get("entity_type")
+                    .map_err(r_data_core_core::error::Error::Database)?,
+                display_name: row
+                    .try_get("display_name")
+                    .map_err(r_data_core_core::error::Error::Database)?,
+                description: row
+                    .try_get("description")
+                    .map_err(r_data_core_core::error::Error::Database)?,
+                group_name: row
+                    .try_get("group_name")
+                    .map_err(r_data_core_core::error::Error::Database)?,
+                allow_children: row
+                    .try_get("allow_children")
+                    .map_err(r_data_core_core::error::Error::Database)?,
+                icon: row
+                    .try_get("icon")
+                    .map_err(r_data_core_core::error::Error::Database)?,
+                fields,
+                created_by: row
+                    .try_get("created_by")
+                    .map_err(r_data_core_core::error::Error::Database)?,
+            },
         );
 
         // Cache the result if cache manager is provided

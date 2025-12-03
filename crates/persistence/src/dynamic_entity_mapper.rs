@@ -9,8 +9,130 @@ use uuid::Uuid;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::DynamicEntity;
 
+/// Extract an integer field value from a database row
+fn extract_integer_field(row: &PgRow, column_name: &str, is_bigint: bool) -> JsonValue {
+    if is_bigint {
+        row.try_get::<Option<i64>, _>(column_name)
+            .map_or_else(
+                |_| {
+                    debug!("Failed to extract bigint value for column: {column_name}");
+                    JsonValue::Null
+                },
+                |value| value.map_or(JsonValue::Null, |v| JsonValue::Number(v.into())),
+            )
+    } else {
+        row.try_get::<Option<i32>, _>(column_name)
+            .map_or_else(
+                |_| {
+                    debug!("Failed to extract int value for column: {column_name}");
+                    JsonValue::Null
+                },
+                |value| value.map_or(JsonValue::Null, |v| JsonValue::Number(v.into())),
+            )
+    }
+}
+
+/// Extract a float field value from a database row
+fn extract_float_field(row: &PgRow, column_name: &str) -> JsonValue {
+    row.try_get::<Option<f64>, _>(column_name)
+        .map_or_else(
+            |_| {
+                debug!("Failed to extract float value for column: {column_name}");
+                JsonValue::Null
+            },
+            |value| {
+                value
+                    .and_then(|v| serde_json::Number::from_f64(v).map(JsonValue::Number))
+                    .unwrap_or(JsonValue::Null)
+            },
+        )
+}
+
+/// Extract a boolean field value from a database row
+fn extract_boolean_field(row: &PgRow, column_name: &str) -> JsonValue {
+    row.try_get::<Option<bool>, _>(column_name)
+        .map_or_else(
+            |_| {
+                debug!("Failed to extract boolean value for column: {column_name}");
+                JsonValue::Null
+            },
+            |value| value.map_or(JsonValue::Null, JsonValue::Bool),
+        )
+}
+
+/// Extract a text field value from a database row
+fn extract_text_field(row: &PgRow, column_name: &str) -> JsonValue {
+    row.try_get::<Option<String>, _>(column_name)
+        .map_or_else(
+            |_| {
+                debug!("Failed to extract string value for column: {column_name}");
+                JsonValue::Null
+            },
+            |value| value.map_or(JsonValue::Null, JsonValue::String),
+        )
+}
+
+/// Extract a UUID field value from a database row
+fn extract_uuid_field(row: &PgRow, column_name: &str) -> JsonValue {
+    row.try_get::<Option<Uuid>, _>(column_name)
+        .map_or_else(
+            |_| {
+                debug!("Failed to extract UUID value for column: {column_name}");
+                JsonValue::Null
+            },
+            |value| {
+                value.map_or(JsonValue::Null, |v| JsonValue::String(v.to_string()))
+            },
+        )
+}
+
+/// Extract a timestamp field value from a database row
+fn extract_timestamp_field(row: &PgRow, column_name: &str) -> JsonValue {
+    row.try_get::<Option<OffsetDateTime>, _>(column_name)
+        .map_or_else(
+            |_| {
+                debug!("Failed to extract timestamp value for column: {column_name}");
+                JsonValue::Null
+            },
+            |value| {
+                value
+                    .and_then(|v| {
+                        v.format(&time::format_description::well_known::Rfc3339)
+                            .ok()
+                            .map(JsonValue::String)
+                    })
+                    .unwrap_or(JsonValue::Null)
+            },
+        )
+}
+
+/// Extract a date field value from a database row
+fn extract_date_field(row: &PgRow, column_name: &str) -> JsonValue {
+    row.try_get::<Option<time::Date>, _>(column_name)
+        .map_or_else(
+            |_| {
+                debug!("Failed to extract date value for column: {column_name}");
+                JsonValue::Null
+            },
+            |value| {
+                value.map_or(JsonValue::Null, |v| JsonValue::String(v.to_string()))
+            },
+        )
+}
+
+/// Extract a JSON field value from a database row
+fn extract_json_field(row: &PgRow, column_name: &str) -> JsonValue {
+    row.try_get::<Option<JsonValue>, _>(column_name)
+        .map_or_else(
+            |_| {
+                debug!("Failed to extract JSON value for column: {column_name}");
+                JsonValue::Null
+            },
+            |value| value.unwrap_or(JsonValue::Null),
+        )
+}
+
 /// Extract field data from a database row based on column types
-#[allow(clippy::too_many_lines)]
 pub fn extract_field_data(row: &PgRow) -> HashMap<String, JsonValue> {
     let mut field_data = HashMap::new();
 
@@ -20,170 +142,32 @@ pub fn extract_field_data(row: &PgRow) -> HashMap<String, JsonValue> {
 
         debug!("Column: {column_name} of type {column_type}");
 
-        // Handle different types based on PostgreSQL type names
-        match column_type.to_lowercase().as_str() {
+        let value = match column_type.to_lowercase().as_str() {
             // Integer types
-            "int4" | "int2" => {
-                if let Ok(value) = row.try_get::<Option<i32>, _>(column_name) {
-                    match value {
-                        Some(v) => {
-                            field_data.insert(column_name.to_string(), JsonValue::Number(v.into()));
-                        }
-                        None => {
-                            field_data.insert(column_name.to_string(), JsonValue::Null);
-                        }
-                    }
-                } else {
-                    debug!("Failed to extract int value for column: {column_name}");
-                    field_data.insert(column_name.to_string(), JsonValue::Null);
-                }
-            }
-            "int8" => {
-                if let Ok(value) = row.try_get::<Option<i64>, _>(column_name) {
-                    match value {
-                        Some(v) => {
-                            field_data.insert(column_name.to_string(), JsonValue::Number(v.into()));
-                        }
-                        None => {
-                            field_data.insert(column_name.to_string(), JsonValue::Null);
-                        }
-                    }
-                } else {
-                    debug!("Failed to extract bigint value for column: {column_name}");
-                    field_data.insert(column_name.to_string(), JsonValue::Null);
-                }
-            }
+            "int4" | "int2" => extract_integer_field(row, column_name, false),
+            "int8" => extract_integer_field(row, column_name, true),
             // Float types
-            "float4" | "float8" | "numeric" => {
-                if let Ok(value) = row.try_get::<Option<f64>, _>(column_name) {
-                    match value {
-                        Some(v) => {
-                            if let Some(number) = serde_json::Number::from_f64(v) {
-                                field_data
-                                    .insert(column_name.to_string(), JsonValue::Number(number));
-                            } else {
-                                field_data.insert(column_name.to_string(), JsonValue::Null);
-                            }
-                        }
-                        None => {
-                            field_data.insert(column_name.to_string(), JsonValue::Null);
-                        }
-                    }
-                } else {
-                    debug!("Failed to extract float value for column: {column_name}");
-                    field_data.insert(column_name.to_string(), JsonValue::Null);
-                }
-            }
+            "float4" | "float8" | "numeric" => extract_float_field(row, column_name),
             // Boolean
-            "bool" => {
-                if let Ok(value) = row.try_get::<Option<bool>, _>(column_name) {
-                    match value {
-                        Some(v) => {
-                            field_data.insert(column_name.to_string(), JsonValue::Bool(v));
-                        }
-                        None => {
-                            field_data.insert(column_name.to_string(), JsonValue::Null);
-                        }
-                    }
-                } else {
-                    debug!("Failed to extract boolean value for column: {column_name}");
-                    field_data.insert(column_name.to_string(), JsonValue::Null);
-                }
-            }
+            "bool" => extract_boolean_field(row, column_name),
             // Text types
-            "text" | "varchar" | "char" | "name" => {
-                if let Ok(value) = row.try_get::<Option<String>, _>(column_name) {
-                    match value {
-                        Some(v) => {
-                            field_data.insert(column_name.to_string(), JsonValue::String(v));
-                        }
-                        None => {
-                            field_data.insert(column_name.to_string(), JsonValue::Null);
-                        }
-                    }
-                } else {
-                    debug!("Failed to extract string value for column: {column_name}");
-                    field_data.insert(column_name.to_string(), JsonValue::Null);
-                }
-            }
+            "text" | "varchar" | "char" | "name" => extract_text_field(row, column_name),
             // UUID
-            "uuid" => {
-                if let Ok(value) = row.try_get::<Option<Uuid>, _>(column_name) {
-                    match value {
-                        Some(v) => {
-                            field_data
-                                .insert(column_name.to_string(), JsonValue::String(v.to_string()));
-                        }
-                        None => {
-                            field_data.insert(column_name.to_string(), JsonValue::Null);
-                        }
-                    }
-                } else {
-                    debug!("Failed to extract UUID value for column: {column_name}");
-                    field_data.insert(column_name.to_string(), JsonValue::Null);
-                }
-            }
+            "uuid" => extract_uuid_field(row, column_name),
             // Timestamp types
-            "timestamp" | "timestamptz" => {
-                if let Ok(value) = row.try_get::<Option<OffsetDateTime>, _>(column_name) {
-                    match value {
-                        Some(v) => {
-                            if let Ok(formatted) =
-                                v.format(&time::format_description::well_known::Rfc3339)
-                            {
-                                field_data
-                                    .insert(column_name.to_string(), JsonValue::String(formatted));
-                            } else {
-                                field_data.insert(column_name.to_string(), JsonValue::Null);
-                            }
-                        }
-                        None => {
-                            field_data.insert(column_name.to_string(), JsonValue::Null);
-                        }
-                    }
-                } else {
-                    debug!("Failed to extract timestamp value for column: {column_name}");
-                    field_data.insert(column_name.to_string(), JsonValue::Null);
-                }
-            }
+            "timestamp" | "timestamptz" => extract_timestamp_field(row, column_name),
             // Date types
-            "date" => {
-                if let Ok(value) = row.try_get::<Option<time::Date>, _>(column_name) {
-                    match value {
-                        Some(v) => {
-                            field_data
-                                .insert(column_name.to_string(), JsonValue::String(v.to_string()));
-                        }
-                        None => {
-                            field_data.insert(column_name.to_string(), JsonValue::Null);
-                        }
-                    }
-                } else {
-                    debug!("Failed to extract date value for column: {column_name}");
-                    field_data.insert(column_name.to_string(), JsonValue::Null);
-                }
-            }
+            "date" => extract_date_field(row, column_name),
             // JSON types
-            "json" | "jsonb" => {
-                if let Ok(value) = row.try_get::<Option<JsonValue>, _>(column_name) {
-                    match value {
-                        Some(v) => {
-                            field_data.insert(column_name.to_string(), v);
-                        }
-                        None => {
-                            field_data.insert(column_name.to_string(), JsonValue::Null);
-                        }
-                    }
-                } else {
-                    debug!("Failed to extract JSON value for column: {column_name}");
-                    field_data.insert(column_name.to_string(), JsonValue::Null);
-                }
-            }
-            // Handle NULL values for any type
+            "json" | "jsonb" => extract_json_field(row, column_name),
+            // Handle unsupported types
             _ => {
                 error!("Unsupported type extraction for column: {column_name} of type: {column_type}");
+                JsonValue::Null
             }
-        }
+        };
+
+        field_data.insert(column_name.to_string(), value);
     }
 
     debug!("Extracted field data: {field_data:?}");

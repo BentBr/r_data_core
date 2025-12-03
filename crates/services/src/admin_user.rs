@@ -11,11 +11,13 @@ pub struct AdminUserService {
 
 impl AdminUserService {
     /// Create a new admin user service with a repository
+    #[must_use]
     pub fn new(repository: Arc<dyn AdminUserRepositoryTrait>) -> Self {
         Self { repository }
     }
 
     /// Create a new admin user service from a concrete repository
+    #[must_use]
     pub fn from_repository<T: AdminUserRepositoryTrait + 'static>(repository: T) -> Self {
         Self {
             repository: Arc::new(repository),
@@ -23,6 +25,9 @@ impl AdminUserService {
     }
 
     /// Authenticate a user with username/email and password
+    ///
+    /// # Errors
+    /// Returns an error if validation fails, user is not active, or database operation fails
     pub async fn authenticate(
         &self,
         username_or_email: &str,
@@ -63,6 +68,9 @@ impl AdminUserService {
     }
 
     /// Register a new admin user
+    ///
+    /// # Errors
+    /// Returns an error if validation fails, username/email already exists, or database operation fails
     pub async fn register_user(
         &self,
         username: &str,
@@ -103,21 +111,23 @@ impl AdminUserService {
         }
 
         // Create the user
-        self.repository
-            .create_admin_user(
-                username,
-                email,
-                password,
-                first_name,
-                last_name,
-                role,
-                is_active,
-                creator_uuid,
-            )
-            .await
+        let params = r_data_core_persistence::CreateAdminUserParams {
+            username,
+            email,
+            password,
+            first_name,
+            last_name,
+            role,
+            is_active,
+            creator_uuid,
+        };
+        self.repository.create_admin_user(&params).await
     }
 
     /// Get a user by UUID
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
     pub async fn get_user_by_uuid(&self, uuid: &Uuid) -> Result<Option<AdminUser>> {
         self.repository.find_by_uuid(uuid).await
     }

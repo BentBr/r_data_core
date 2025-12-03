@@ -4,13 +4,14 @@ use r_data_core_core::error::Result;
 use r_data_core_persistence::{ApiKeyRepository, ApiKeyRepositoryTrait};
 use uuid::Uuid;
 
-/// Repository adapter for ApiKeyRepository
+/// Repository adapter for `ApiKeyRepository`
 pub struct ApiKeyRepositoryAdapter {
     inner: ApiKeyRepository,
 }
 
 impl ApiKeyRepositoryAdapter {
-    pub fn new(inner: ApiKeyRepository) -> Self {
+    #[must_use]
+    pub const fn new(inner: ApiKeyRepository) -> Self {
         Self { inner }
     }
 }

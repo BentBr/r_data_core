@@ -1,5 +1,4 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery)]
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 
 use crate::repositories::{get_entity_definition_repository_with_pool, TestRepository};
 use r_data_core_core::entity_definition::definition::EntityDefinition;

@@ -1,5 +1,4 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery)]
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -14,7 +13,7 @@ use r_data_core_core::error::Result;
 use r_data_core_core::field::ui::UiSettings;
 use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core_core::DynamicEntity;
-use r_data_core_persistence::DynamicEntityRepositoryTrait;
+use r_data_core_persistence::{DynamicEntityRepositoryTrait, FilterEntitiesParams};
 
 // Create a struct to represent DynamicFields since we can't use the trait directly
 #[derive(Default)]
@@ -48,12 +47,7 @@ mockall::mock! {
         async fn filter_entities(
             &self,
             entity_type: &str,
-            limit: i64,
-            offset: i64,
-            filters: Option<HashMap<String, Value>>,
-            search: Option<(String, Vec<String>)>,
-            sort: Option<(String, String)>,
-            fields: Option<Vec<String>>
+            params: &FilterEntitiesParams,
         ) -> Result<Vec<DynamicEntity>>;
         async fn count_entities(&self, entity_type: &str) -> Result<i64>;
     }

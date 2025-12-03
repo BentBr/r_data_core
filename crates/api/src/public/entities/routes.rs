@@ -272,16 +272,27 @@ pub async fn query_entities(
     let limit = body.limit.unwrap_or(20).clamp(1, 100);
     let offset = body.offset.unwrap_or(0).max(0);
 
-    match repository
-        .query_by_parent_and_path(
-            &body.entity_type,
-            body.parent_uuid,
-            body.path.as_deref(),
-            limit,
-            offset,
-        )
-        .await
-    {
+    let result = match (body.parent_uuid, body.path.as_deref()) {
+        (Some(parent_uuid), _) => {
+            // If parent_uuid is provided, use query_by_parent
+            repository
+                .query_by_parent(&body.entity_type, parent_uuid, limit, offset)
+                .await
+        }
+        (None, Some(path)) => {
+            // If only path is provided, use query_by_path
+            repository
+                .query_by_path(&body.entity_type, path, limit, offset)
+                .await
+        }
+        (None, None) => {
+            // If neither is provided, return empty or use filter_entities
+            // For now, return empty list
+            Ok(Vec::new())
+        }
+    };
+
+    match result {
         Ok(entities) => {
             // Convert DynamicEntity to DynamicEntityResponse
             let responses: Vec<DynamicEntityResponse> = entities

@@ -32,14 +32,14 @@ pub use r_data_core_core as core;
 // Re-export commonly used types
 pub use admin_user_repository::AdminUserRepository;
 pub use admin_user_repository_trait::{
-    is_key_valid, AdminUserRepositoryTrait, ApiKeyRepositoryTrait,
+    is_key_valid, AdminUserRepositoryTrait, ApiKeyRepositoryTrait, CreateAdminUserParams,
 };
 pub use api_key_repository::ApiKeyRepository;
 pub use dynamic_entity_public_repository::DynamicEntityPublicRepository;
 pub use dynamic_entity_query_repository::DynamicEntityQueryRepository;
 pub use dynamic_entity_query_repository_trait::DynamicEntityQueryRepositoryTrait;
 pub use dynamic_entity_repository::DynamicEntityRepository;
-pub use dynamic_entity_repository_trait::DynamicEntityRepositoryTrait;
+pub use dynamic_entity_repository_trait::{DynamicEntityRepositoryTrait, FilterEntitiesParams};
 pub use entity_definition_repository::EntityDefinitionRepository;
 pub use entity_definition_versioning_repository::{
     EntityDefinitionVersionMeta, EntityDefinitionVersionPayload,

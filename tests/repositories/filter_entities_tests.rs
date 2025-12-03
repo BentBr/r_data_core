@@ -1,5 +1,4 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery)]
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 
 use serde_json::json;
 use sqlx::PgPool;
@@ -12,7 +11,9 @@ use r_data_core_core::error::Result;
 use r_data_core_core::field::ui::UiSettings;
 use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core_core::DynamicEntity;
-use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
+use r_data_core_persistence::{
+    DynamicEntityRepository, DynamicEntityRepositoryTrait, FilterEntitiesParams,
+};
 
 use r_data_core_test_support::{clear_test_db, setup_test_db};
 
@@ -200,9 +201,8 @@ mod filter_entities_tests {
         let mut filters = HashMap::new();
         filters.insert("active".to_string(), json!(true));
 
-        let active_entities = repository
-            .filter_entities(&entity_type, 100, 0, Some(filters), None, None, None)
-            .await?;
+        let params = FilterEntitiesParams::new(100, 0).with_filters(Some(filters));
+        let active_entities = repository.filter_entities(&entity_type, &params).await?;
 
         // We should have about 10 active entities (even numbers)
         assert!(
@@ -246,9 +246,8 @@ mod filter_entities_tests {
         let mut filters = HashMap::new();
         filters.insert("age".to_string(), json!(30));
 
-        let filtered_entities = repository
-            .filter_entities(&entity_type, 100, 0, Some(filters), None, None, None)
-            .await?;
+        let params = FilterEntitiesParams::new(100, 0).with_filters(Some(filters));
+        let filtered_entities = repository.filter_entities(&entity_type, &params).await?;
 
         // Verify all retrieved entities have age = 30
         for entity in &filtered_entities {
@@ -282,17 +281,9 @@ mod filter_entities_tests {
         let _uuids = create_test_entities(&db_pool, &entity_type, 20).await?;
 
         // Search for entities with "Test Entity 1" in name
-        let search_result = repository
-            .filter_entities(
-                &entity_type,
-                100,
-                0,
-                None,
-                Some(("Test Entity 1".to_string(), vec!["name".to_string()])),
-                None,
-                None,
-            )
-            .await?;
+        let params = FilterEntitiesParams::new(100, 0)
+            .with_search(Some(("Test Entity 1".to_string(), vec!["name".to_string()])));
+        let search_result = repository.filter_entities(&entity_type, &params).await?;
 
         // Should find entities with "Test Entity 1" in the name (1, 10-19)
         assert!(
@@ -330,17 +321,9 @@ mod filter_entities_tests {
         let _uuids = create_test_entities(&db_pool, &entity_type, 20).await?;
 
         // Get entities sorted by age ascending
-        let sorted_entities = repository
-            .filter_entities(
-                &entity_type,
-                100,
-                0,
-                None,
-                None,
-                Some(("age".to_string(), "ASC".to_string())),
-                None,
-            )
-            .await?;
+        let params = FilterEntitiesParams::new(100, 0)
+            .with_sort(Some(("age".to_string(), "ASC".to_string())));
+        let sorted_entities = repository.filter_entities(&entity_type, &params).await?;
 
         // Verify entities are sorted by age
         let mut prev_age = 0;
@@ -375,17 +358,8 @@ mod filter_entities_tests {
         let _uuids = create_test_entities(&db_pool, &entity_type, 20).await?;
 
         // Get entities with only name field
-        let entities = repository
-            .filter_entities(
-                &entity_type,
-                100,
-                0,
-                None,
-                None,
-                None,
-                Some(vec!["name".to_string()]),
-            )
-            .await?;
+        let params = FilterEntitiesParams::new(100, 0).with_fields(Some(vec!["name".to_string()]));
+        let entities = repository.filter_entities(&entity_type, &params).await?;
 
         // Verify entities have name field but not age or active fields
         for entity in &entities {
@@ -425,14 +399,12 @@ mod filter_entities_tests {
         let _uuids = create_test_entities(&db_pool, &entity_type, 30).await?;
 
         // Get first page (10 entities)
-        let page1 = repository
-            .filter_entities(&entity_type, 10, 0, None, None, None, None)
-            .await?;
+        let params1 = FilterEntitiesParams::new(10, 0);
+        let page1 = repository.filter_entities(&entity_type, &params1).await?;
 
         // Get second page (10 entities)
-        let page2 = repository
-            .filter_entities(&entity_type, 10, 10, None, None, None, None)
-            .await?;
+        let params2 = FilterEntitiesParams::new(10, 10);
+        let page2 = repository.filter_entities(&entity_type, &params2).await?;
 
         // Test pagination works as expected
         assert_eq!(page1.len(), 10, "First page should have 10 entities");

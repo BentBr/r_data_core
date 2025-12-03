@@ -6,6 +6,7 @@ use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::error::Result;
 use r_data_core_core::field::types::FieldType;
 use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::FilterEntitiesParams;
 use serde_json::Value as JsonValue;
 
 use super::DynamicEntityService;
@@ -29,9 +30,12 @@ impl DynamicEntityService {
         self.check_entity_type_exists_and_published(entity_type)
             .await?;
 
-        self.repository
-            .filter_entities(entity_type, limit, offset, filters, search, sort, fields)
-            .await
+        let params = FilterEntitiesParams::new(limit, offset)
+            .with_filters(filters)
+            .with_search(search)
+            .with_sort(sort)
+            .with_fields(fields);
+        self.repository.filter_entities(entity_type, &params).await
     }
 
     /// List entities with advanced filtering options
@@ -119,18 +123,12 @@ impl DynamicEntityService {
         };
 
         // Fetch the entities
-        let entities = self
-            .repository
-            .filter_entities(
-                entity_type,
-                limit,
-                offset,
-                Some(filter_conditions),
-                search_fields,
-                sort_info,
-                fields,
-            )
-            .await?;
+        let params = FilterEntitiesParams::new(limit, offset)
+            .with_filters(Some(filter_conditions))
+            .with_search(search_fields)
+            .with_sort(sort_info)
+            .with_fields(fields);
+        let entities = self.repository.filter_entities(entity_type, &params).await?;
 
         Ok((entities, total))
     }
@@ -189,16 +187,9 @@ impl DynamicEntityService {
         let _ = self.get_entity_definition_for_query(entity_type).await?;
 
         // Use the new filter_entities method with the structured parameters
-        self.repository
-            .filter_entities(
-                entity_type,
-                limit,
-                offset,
-                filters,
-                None, // no search
-                None, // no sort
-                exclusive_fields,
-            )
-            .await
+        let params = FilterEntitiesParams::new(limit, offset)
+            .with_filters(filters)
+            .with_fields(exclusive_fields);
+        self.repository.filter_entities(entity_type, &params).await
     }
 }

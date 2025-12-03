@@ -1,8 +1,4 @@
 use crate::admin_user_repository_trait::AdminUserRepositoryTrait;
-use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
-    Argon2,
-};
 use async_trait::async_trait;
 use log::error;
 use r_data_core_core::admin_user::AdminUser;
@@ -15,6 +11,34 @@ use uuid::Uuid;
 /// Repository for admin user operations
 pub struct AdminUserRepository {
     pool: Arc<Pool<Postgres>>,
+}
+
+/// Hash a password using Argon2
+fn hash_password(password: &str) -> Result<String> {
+    use argon2::password_hash::{rand_core::OsRng, PasswordHasher, SaltString};
+    use argon2::Argon2;
+
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::default();
+    argon2
+        .hash_password(password.as_bytes(), &salt)
+        .map_err(|e| {
+            r_data_core_core::error::Error::PasswordHash(format!(
+                "Failed to hash password: {e}"
+            ))
+        })
+        .map(|hash| hash.to_string())
+}
+
+/// Determine the `created_by` UUID value
+/// For authenticated requests, use the authenticated user's UUID as creator
+/// For unauthenticated requests or if `creator_uuid` is nil, use the new user's UUID
+const fn determine_created_by(creator_uuid: Uuid, user_uuid: Uuid) -> Uuid {
+    if creator_uuid.is_nil() {
+        user_uuid // Self-reference for unauthenticated registrations
+    } else {
+        creator_uuid
+    }
 }
 
 impl AdminUserRepository {
@@ -178,19 +202,19 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
-    #[allow(clippy::too_many_lines)]
     async fn create_admin_user<'a>(
         &self,
-        username: &str,
-        email: &str,
-        password: &str,
-        first_name: &str,
-        last_name: &str,
-        _role: Option<&'a str>,
-        is_active: bool,
-        creator_uuid: Uuid,
+        params: &crate::admin_user_repository_trait::CreateAdminUserParams<'a>,
     ) -> Result<Uuid> {
+        let username = params.username;
+        let email = params.email;
+        let password = params.password;
+        let first_name = params.first_name;
+        let last_name = params.last_name;
+        let _role = params.role;
+        let is_active = params.is_active;
+        let creator_uuid = params.creator_uuid;
+
         // Create UUID for the new user
         let user_uuid = Uuid::now_v7();
         let now = OffsetDateTime::now_utc();
@@ -200,24 +224,10 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         let path = "/admin/users";
 
         // Hash the password using Argon2
-        let salt = SaltString::generate(&mut OsRng);
-        let argon2 = Argon2::default();
-        let password_hash = argon2
-            .hash_password(password.as_bytes(), &salt)
-            .map_err(|e| {
-                r_data_core_core::error::Error::PasswordHash(format!(
-                    "Failed to hash password: {e}"
-                ))
-            })?
-            .to_string();
+        let password_hash = hash_password(password)?;
 
-        // For authenticated requests, use the authenticated user's UUID as creator
-        // For unauthenticated requests or if creator_uuid is nil, use the new user's UUID
-        let created_by = if creator_uuid.is_nil() {
-            user_uuid // Self-reference for unauthenticated registrations
-        } else {
-            creator_uuid
-        };
+        // Determine created_by value
+        let created_by = determine_created_by(creator_uuid, user_uuid);
 
         // Insert the new admin user
         let result = sqlx::query_scalar::<_, Uuid>(
