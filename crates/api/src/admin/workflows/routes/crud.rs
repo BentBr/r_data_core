@@ -60,7 +60,7 @@ pub async fn get_workflow_details(
             ApiResponse::ok(detail)
         }
         Ok(None) => ApiResponse::<()>::not_found("Workflow not found"),
-        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to get workflow: {}", e)),
+        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to get workflow: {e}")),
     }
 }
 
@@ -99,7 +99,7 @@ pub async fn create_workflow(
     if let Some(cron_str) = &body.schedule_cron {
         if let Err(e) = utils::validate_cron(cron_str) {
             return ApiResponse::<()>::unprocessable_entity_with_violations(
-                &format!("Invalid cron schedule: {}", e),
+                &format!("Invalid cron schedule: {e}"),
                 vec![ValidationViolation {
                     field: "schedule_cron".to_string(),
                     message: "Invalid cron expression".to_string(),
@@ -175,7 +175,7 @@ pub async fn update_workflow(
     if let Some(cron_str) = &body.schedule_cron {
         if let Err(e) = utils::validate_cron(cron_str) {
             return ApiResponse::<()>::unprocessable_entity_with_violations(
-                &format!("Invalid cron schedule: {}", e),
+                &format!("Invalid cron schedule: {e}"),
                 vec![ValidationViolation {
                     field: "schedule_cron".to_string(),
                     message: "Invalid cron expression".to_string(),
@@ -192,7 +192,7 @@ pub async fn update_workflow(
 
     match res {
         Ok(_) => ApiResponse::<()>::message("Updated"),
-        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to update: {}", e)),
+        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to update: {e}")),
     }
 }
 
@@ -227,6 +227,6 @@ pub async fn delete_workflow(
     let res = state.workflow_service().delete(uuid).await;
     match res {
         Ok(_) => ApiResponse::<()>::message("Deleted"),
-        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to delete: {}", e)),
+        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to delete: {e}")),
     }
 }

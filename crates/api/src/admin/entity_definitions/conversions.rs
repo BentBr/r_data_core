@@ -10,7 +10,7 @@ use r_data_core_core::field::FieldDefinition;
 use r_data_core_core::field::FieldType;
 use time::format_description::well_known::Rfc3339;
 
-/// Convert EntityDefinition to API schema model
+/// Convert `EntityDefinition` to API schema model
 pub fn entity_definition_to_schema_model(def: &EntityDefinition) -> EntityDefinitionSchema {
     EntityDefinitionSchema {
         uuid: Some(def.uuid),
@@ -31,7 +31,7 @@ pub fn entity_definition_to_schema_model(def: &EntityDefinition) -> EntityDefini
     }
 }
 
-/// Convert FieldDefinition to API schema model
+/// Convert `FieldDefinition` to API schema model
 pub fn field_definition_to_schema_model(field: &FieldDefinition) -> FieldDefinitionSchema {
     let field_type_clone = field.field_type.clone();
     let field_type = field_type_to_schema(field_type_clone.clone());
@@ -125,7 +125,7 @@ pub fn field_definition_to_schema_model(field: &FieldDefinition) -> FieldDefinit
     }
 }
 
-/// Convert FieldType to FieldTypeSchema
+/// Convert `FieldType` to `FieldTypeSchema`
 fn field_type_to_schema(field_type: FieldType) -> FieldTypeSchema {
     match field_type {
         FieldType::String => FieldTypeSchema::String,

@@ -43,6 +43,6 @@ pub async fn cron_preview(
 
     match utils::preview_next(&expr, 5) {
         Ok(next) => ApiResponse::ok(next),
-        Err(e) => ApiResponse::<()>::unprocessable_entity(&format!("Invalid cron: {}", e)),
+        Err(e) => ApiResponse::<()>::unprocessable_entity(&format!("Invalid cron: {e}")),
     }
 }

@@ -39,24 +39,26 @@ pub async fn extract_and_validate_jwt(
             // Verify JWT token
             return match verify_jwt(token, jwt_secret) {
                 Ok(claims) => {
-                    debug!("JWT auth successful for user: {}", claims.name);
+                    let name = &claims.name;
+                    debug!("JWT auth successful for user: {name}");
                     Ok(Some(claims))
                 }
                 Err(err) => {
-                    log::error!("JWT verification failed: {}", err);
+                    log::error!("JWT verification failed: {err}");
                     Ok(None)
                 }
             };
         }
     }
 
-    debug!("No valid JWT token found for path: {}", req.path());
+    let path = req.path();
+    debug!("No valid JWT token found for path: {path}");
     Ok(None)
 }
 
 /// Extract and validate API key from request headers
-/// This function uses ApiKeyService with caching support
-/// ApiState should always be available in normal operation
+/// This function uses `ApiKeyService` with caching support
+/// `ApiState` should always be available in normal operation
 pub async fn extract_and_validate_api_key(
     req: &HttpRequest,
 ) -> StdResult<Option<(ApiKey, Uuid)>, ActixError> {
@@ -75,7 +77,7 @@ pub async fn extract_and_validate_api_key(
             let validation_result = state.api_key_service().validate_api_key(api_key).await;
             match validation_result {
                 Ok(Some((key, user_uuid))) => {
-                    debug!("API key authentication successful for user: {}", user_uuid);
+                    debug!("API key authentication successful for user: {user_uuid}");
                     return Ok(Some((key, user_uuid)));
                 }
                 Ok(None) => {
@@ -85,7 +87,7 @@ pub async fn extract_and_validate_api_key(
                     );
                 }
                 Err(e) => {
-                    error!("API key validation error: {}", e);
+                    error!("API key validation error: {e}");
                     return Err(ErrorUnauthorized(
                         "Internal server error during API key validation",
                     ));

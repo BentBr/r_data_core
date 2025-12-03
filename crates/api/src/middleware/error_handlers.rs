@@ -28,7 +28,7 @@ impl AppErrorHandlers {
                 }
             });
 
-        log::debug!("Error handler called for status {}: {}", status, error);
+        log::debug!("Error handler called for status {status}: {error}");
 
         // Check if this is a deserialization error - be more flexible with the detection
         let is_deserialization_error = error.contains("invalid type: string")
@@ -51,7 +51,7 @@ impl AppErrorHandlers {
             status_code if status_code.is_client_error() => ApiResponse::<()>::bad_request(&error),
             status_code if status_code.is_server_error() => {
                 // Log server errors
-                log::error!("Server error: {} - {}", status_code, error);
+                log::error!("Server error: {status_code} - {error}");
                 ApiResponse::<()>::internal_error("An internal server error occurred")
             }
             _ => {
@@ -83,7 +83,7 @@ pub fn create_error_handlers() -> ActixErrorHandlers<BoxBody> {
 // Add a custom panic handler for middleware errors
 #[allow(dead_code)] // Handler for future use
 pub fn handle_middleware_panic(err: &actix_web::Error) -> HttpResponse {
-    log::error!("Middleware panic: {:?}", err);
+    log::error!("Middleware panic: {err:?}");
 
     // Return a friendly error response
     ApiResponse::<()>::internal_error("An unexpected error occurred processing your request")

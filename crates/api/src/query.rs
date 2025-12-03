@@ -15,7 +15,7 @@ where
         Some(s) => s
             .parse::<i64>()
             .map(Some)
-            .map_err(|_| D::Error::custom(format!("invalid type: string \"{}\", expected i64", s))),
+            .map_err(|_| D::Error::custom(format!("invalid type: string \"{s}\", expected i64"))),
         None => Ok(None),
     }
 }
@@ -59,6 +59,7 @@ pub struct PaginationQuery {
 
 impl PaginationQuery {
     /// Convert to limit/offset with defaults
+    #[must_use]
     pub fn to_limit_offset(&self, default_limit: i64, max_limit: i64) -> (i64, i64) {
         let (limit, offset) = if let (Some(page), Some(per_page)) = (self.page, self.per_page) {
             // Use page/per_page if both are provided
@@ -122,6 +123,7 @@ impl PaginationQuery {
     }
 
     /// Get the per_page value (for response metadata)
+    #[must_use]
     pub fn get_per_page(&self, default: i64, max_limit: i64) -> i64 {
         if let Some(per_page) = self.per_page {
             per_page.clamp(1, max_limit)
@@ -144,6 +146,7 @@ pub struct SortingQuery {
 
 impl SortingQuery {
     /// Get the sort direction as uppercase
+    #[must_use]
     pub fn get_sort_direction(&self) -> String {
         match &self.sort_direction {
             Some(dir) => {
@@ -159,10 +162,14 @@ impl SortingQuery {
     }
 
     /// Get the sort SQL clause if sort_by is provided
+    #[must_use]
     pub fn get_sort_clause(&self) -> Option<String> {
         self.sort_by
             .as_ref()
-            .map(|field| format!("{} {}", field, self.get_sort_direction()))
+            .map(|field| {
+                let dir = self.get_sort_direction();
+                format!("{field} {dir}")
+            })
     }
 }
 
@@ -175,6 +182,7 @@ pub struct FieldsQuery {
 
 impl FieldsQuery {
     /// Parse fields into a vector of field names
+    #[must_use]
     pub fn get_fields(&self) -> Option<Vec<String>> {
         self.fields.as_ref().map(|fields| {
             fields
@@ -197,6 +205,7 @@ pub struct FilterQuery {
 
 impl FilterQuery {
     /// Parse the filter string into a structured filter
+    #[must_use]
     pub fn parse_filter(&self) -> Option<Value> {
         match &self.filter {
             Some(filter_str) => {
@@ -232,6 +241,7 @@ pub struct IncludeQuery {
 
 impl IncludeQuery {
     /// Parse include into a vector of relation names
+    #[must_use]
     pub fn get_includes(&self) -> Option<Vec<String>> {
         self.include.as_ref().map(|include| {
             include
@@ -268,6 +278,7 @@ pub struct StandardQuery {
 
 impl StandardQuery {
     /// Convert to limit/offset with defaults
+    #[must_use]
     pub fn to_limit_offset(&self) -> (i64, i64) {
         self.pagination.to_limit_offset(1, 100)
     }

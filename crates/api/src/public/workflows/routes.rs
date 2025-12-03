@@ -54,7 +54,7 @@ pub async fn get_workflow_data(
         Ok(Some(wf)) => wf,
         Ok(None) => return HttpResponse::NotFound().json(json!({"error": "Workflow not found"})),
         Err(e) => {
-            log::error!("Failed to get workflow: {}", e);
+            log::error!("Failed to get workflow: {e}");
             return HttpResponse::InternalServerError()
                 .json(json!({"error": "Internal server error"}));
         }
@@ -67,7 +67,7 @@ pub async fn get_workflow_data(
 
     // Validate pre-shared key if configured (sets extension for CombinedRequiredAuth)
     if let Err(e) = validate_provider_auth(&req, &workflow.config, &**state).await {
-        log::debug!("Provider pre-shared key auth failed: {}", e);
+        log::debug!("Provider pre-shared key auth failed: {e}");
         return HttpResponse::Unauthorized().json(json!({"error": "Authentication required"}));
     }
 
@@ -102,10 +102,10 @@ pub async fn get_workflow_data(
     let program = match DslProgram::from_config(&workflow.config) {
         Ok(p) => p,
         Err(e) => {
-            log::error!("Failed to parse DSL for workflow {}: {}", uuid, e);
+            log::error!("Failed to parse DSL for workflow {uuid}: {e}");
             return HttpResponse::BadRequest().json(json!({
                 "error": "Invalid workflow configuration",
-                "details": format!("{}", e),
+                "details": format!("{e}"),
                 "message": "The workflow DSL configuration is invalid or uses an outdated format. Please update the workflow configuration."
             }));
         }
@@ -158,7 +158,7 @@ pub async fn get_workflow_data(
                         }
                     }
                     Err(e) => {
-                        log::error!("Failed to query entities: {}", e);
+                        log::error!("Failed to query entities: {e}");
                         return HttpResponse::InternalServerError()
                             .json(json!({"error": "Failed to query source entities"}));
                     }
@@ -183,7 +183,7 @@ pub async fn get_workflow_data(
                 all_outputs.extend(outputs);
             }
             Err(e) => {
-                log::error!("Failed to execute workflow: {}", e);
+                log::error!("Failed to execute workflow: {e}");
                 return HttpResponse::InternalServerError()
                     .json(json!({"error": "Failed to execute workflow"}));
             }
@@ -222,7 +222,7 @@ pub async fn get_workflow_data(
                     return HttpResponse::Ok().content_type("text/csv").body(bytes);
                 }
                 Err(e) => {
-                    log::error!("Failed to serialize CSV: {}", e);
+                    log::error!("Failed to serialize CSV: {e}");
                     return HttpResponse::InternalServerError()
                         .json(json!({"error": "Failed to serialize data"}));
                 }
@@ -238,7 +238,7 @@ pub async fn get_workflow_data(
                         .body(bytes);
                 }
                 Err(e) => {
-                    log::error!("Failed to serialize JSON: {}", e);
+                    log::error!("Failed to serialize JSON: {e}");
                     return HttpResponse::InternalServerError()
                         .json(json!({"error": "Failed to serialize data"}));
                 }
@@ -282,7 +282,7 @@ pub async fn get_workflow_stats(
         Ok(Some(wf)) => wf,
         Ok(None) => return HttpResponse::NotFound().json(json!({"error": "Workflow not found"})),
         Err(e) => {
-            log::error!("Failed to get workflow: {}", e);
+            log::error!("Failed to get workflow: {e}");
             return HttpResponse::InternalServerError()
                 .json(json!({"error": "Internal server error"}));
         }
@@ -292,10 +292,10 @@ pub async fn get_workflow_stats(
     let program = match DslProgram::from_config(&workflow.config) {
         Ok(p) => p,
         Err(e) => {
-            log::error!("Failed to parse DSL for workflow {}: {}", uuid, e);
+            log::error!("Failed to parse DSL for workflow {uuid}: {e}");
             return HttpResponse::BadRequest().json(json!({
                 "error": "Invalid workflow configuration",
-                "details": format!("{}", e),
+                "details": format!("{e}"),
                 "message": "The workflow DSL configuration is invalid or uses an outdated format. Please update the workflow configuration."
             }));
         }
@@ -377,7 +377,7 @@ pub async fn post_workflow_ingest(
         Ok(Some(wf)) => wf,
         Ok(None) => return HttpResponse::NotFound().json(json!({"error": "Workflow not found"})),
         Err(e) => {
-            log::error!("Failed to get workflow: {}", e);
+            log::error!("Failed to get workflow: {e}");
             return HttpResponse::InternalServerError()
                 .json(json!({"error": "Internal server error"}));
         }
@@ -401,10 +401,10 @@ pub async fn post_workflow_ingest(
     let program = match DslProgram::from_config(&workflow.config) {
         Ok(p) => p,
         Err(e) => {
-            log::error!("Failed to parse DSL for workflow {}: {}", uuid, e);
+            log::error!("Failed to parse DSL for workflow {uuid}: {e}");
             return HttpResponse::BadRequest().json(json!({
                 "error": "Invalid workflow configuration",
-                "details": format!("{}", e),
+                "details": format!("{e}"),
                 "message": "The workflow DSL configuration is invalid or uses an outdated format. Please update the workflow configuration."
             }));
         }
@@ -436,7 +436,7 @@ pub async fn post_workflow_ingest(
             "status": "processing"
         })),
         Err(e) => {
-            log::error!("Failed to process workflow: {}", e);
+            log::error!("Failed to process workflow: {e}");
             HttpResponse::InternalServerError().json(json!({"error": "Failed to process workflow"}))
         }
     }

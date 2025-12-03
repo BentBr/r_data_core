@@ -51,7 +51,7 @@ pub async fn list_workflow_versions(
     let rows = match versioning_repo.list_workflow_versions(workflow_uuid).await {
         Ok(rows) => rows,
         Err(e) => {
-            error!("Failed to list workflow versions: {}", e);
+            error!("Failed to list workflow versions: {e}");
             return ApiResponse::<()>::internal_error("Failed to list versions");
         }
     };
@@ -63,7 +63,7 @@ pub async fn list_workflow_versions(
     {
         Ok(metadata) => metadata,
         Err(e) => {
-            error!("Failed to get current workflow metadata: {}", e);
+            error!("Failed to get current workflow metadata: {e}");
             return ApiResponse::<()>::internal_error("Failed to get current metadata");
         }
     };
@@ -177,7 +177,7 @@ pub async fn get_workflow_version(
             }
         }
         Err(e) => {
-            error!("Failed to get workflow version: {}", e);
+            error!("Failed to get workflow version: {e}");
             return ApiResponse::<()>::internal_error("Failed to get version");
         }
     }

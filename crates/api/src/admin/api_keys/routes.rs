@@ -97,11 +97,11 @@ pub async fn list_api_keys(
             ApiResponse::ok_paginated(api_keys, total, page, per_page)
         }
         (Err(e), _) => {
-            error!("Failed to list API keys: {}", e);
+            error!("Failed to list API keys: {e}");
             ApiResponse::<()>::internal_error("Failed to retrieve API keys")
         }
         (_, Err(e)) => {
-            error!("Failed to count API keys: {}", e);
+            error!("Failed to count API keys: {e}");
             ApiResponse::<()>::internal_error("Failed to count API keys")
         }
     }
@@ -143,7 +143,8 @@ pub async fn create_api_key(
     let creator_uuid = match Uuid::parse_str(&auth.0.sub) {
         Ok(uuid) => uuid,
         Err(e) => {
-            error!("Invalid UUID in auth token: {} - {}", auth.0.sub, e);
+            let sub = &auth.0.sub;
+            error!("Invalid UUID in auth token: {sub} - {e}");
             return ApiResponse::<()>::internal_error("Invalid authentication token");
         }
     };
@@ -162,7 +163,7 @@ pub async fn create_api_key(
             // Proceed with creation
         }
         Err(e) => {
-            error!("Failed to check for existing API key: {}", e);
+            error!("Failed to check for existing API key: {e}");
             return ApiResponse::<()>::internal_error("Failed to check for existing API key");
         }
     }
@@ -193,16 +194,16 @@ pub async fn create_api_key(
                 ApiResponse::<ApiKeyCreatedResponse>::created(response)
             }
             Ok(None) => {
-                error!("API key created but not found: {}", uuid);
+                error!("API key created but not found: {uuid}");
                 ApiResponse::<()>::internal_error("API key created but not found")
             }
             Err(e) => {
-                error!("Failed to retrieve created API key: {}", e);
+                error!("Failed to retrieve created API key: {e}");
                 ApiResponse::<()>::internal_error("Failed to retrieve created API key")
             }
         },
         Err(e) => {
-            error!("Failed to create API key: {}", e);
+            error!("Failed to create API key: {e}");
             ApiResponse::<()>::internal_error("Failed to create API key")
         }
     }
@@ -262,14 +263,14 @@ pub async fn revoke_api_key(
             match repo.revoke(api_key_uuid).await {
                 Ok(_) => ApiResponse::<()>::message("API key revoked successfully"),
                 Err(e) => {
-                    error!("Failed to revoke API key: {}", e);
+                    error!("Failed to revoke API key: {e}");
                     ApiResponse::<()>::internal_error("Failed to revoke API key")
                 }
             }
         }
         Ok(None) => ApiResponse::<()>::not_found("API key"),
         Err(e) => {
-            error!("Failed to retrieve API key: {}", e);
+            error!("Failed to retrieve API key: {e}");
             ApiResponse::<()>::internal_error("Failed to retrieve API key")
         }
     }
@@ -317,7 +318,8 @@ pub async fn reassign_api_key(
     let user_uuid = match Uuid::parse_str(&auth.0.sub) {
         Ok(uuid) => uuid,
         Err(e) => {
-            error!("Invalid UUID in auth token: {} - {}", auth.0.sub, e);
+            let sub = &auth.0.sub;
+            error!("Invalid UUID in auth token: {sub} - {e}");
             return ApiResponse::<()>::internal_error("Invalid authentication token");
         }
     };
@@ -347,20 +349,20 @@ pub async fn reassign_api_key(
                     match repo.reassign(api_key_uuid, new_user_uuid).await {
                         Ok(_) => ApiResponse::<()>::message("API key reassigned successfully"),
                         Err(e) => {
-                            error!("Failed to reassign API key: {}", e);
+                            error!("Failed to reassign API key: {e}");
                             ApiResponse::<()>::internal_error("Failed to reassign API key")
                         }
                     }
                 }
                 Err(e) => {
-                    error!("Failed to check for existing API key: {}", e);
+                    error!("Failed to check for existing API key: {e}");
                     ApiResponse::<()>::internal_error("Failed to check for existing API key")
                 }
             }
         }
         Ok(None) => ApiResponse::<()>::not_found("API key"),
         Err(e) => {
-            error!("Failed to retrieve API key: {}", e);
+            error!("Failed to retrieve API key: {e}");
             ApiResponse::<()>::internal_error("Failed to retrieve API key")
         }
     }

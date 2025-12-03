@@ -81,11 +81,11 @@ async fn list_entity_definitions(
             ApiResponse::ok_paginated(schema_definitions, total, page, per_page)
         }
         (Err(e), _) => {
-            error!("Failed to list entity definitions: {}", e);
+            error!("Failed to list entity definitions: {e}");
             ApiResponse::<()>::internal_error("Failed to retrieve entity definitions")
         }
         (_, Err(e)) => {
-            error!("Failed to count entity definitions: {}", e);
+            error!("Failed to count entity definitions: {e}");
             ApiResponse::<()>::internal_error("Failed to count entity definitions")
         }
     }
@@ -139,7 +139,7 @@ async fn get_entity_definition(
             ApiResponse::<()>::not_found("Entity definition")
         }
         Err(e) => {
-            error!("Failed to retrieve entity definition: {}", e);
+            error!("Failed to retrieve entity definition: {e}");
             ApiResponse::<()>::internal_error("Failed to retrieve entity definition")
         }
     }
@@ -184,8 +184,8 @@ async fn create_entity_definition(
     // Get authentication info from the RequiredAuth extractor
     let creator_uuid = match Uuid::parse_str(&auth.0.sub) {
         Ok(uuid) => {
-            debug!("Required auth claims: {:?}", auth);
-            debug!("Parsed UUID from auth token: {}", uuid);
+            debug!("Required auth claims: {auth:?}");
+            debug!("Parsed UUID from auth token: {uuid}");
             uuid
         }
         Err(e) => {
@@ -208,8 +208,9 @@ async fn create_entity_definition(
     }
 
     // Log UUIDs for debugging
-    debug!("Class Definition UUID: {}", entity_def.uuid);
-    debug!("Creator UUID (from token): {}", creator_uuid);
+    let uuid = entity_def.uuid;
+    debug!("Class Definition UUID: {uuid}");
+    debug!("Creator UUID (from token): {creator_uuid}");
 
     // Set server-controlled fields
     let now = OffsetDateTime::now_utc();
@@ -242,7 +243,7 @@ async fn create_entity_definition(
 
     // Validate entity definition
     if let Err(e) = entity_def.validate() {
-        return ApiResponse::<()>::unprocessable_entity(&format!("Validation failed: {}", e));
+        return ApiResponse::<()>::unprocessable_entity(&format!("Validation failed: {e}"));
     }
 
     // Create the entity definition using the service
@@ -264,11 +265,11 @@ async fn create_entity_definition(
             }))
         }
         Err(r_data_core_core::error::Error::ClassAlreadyExists(msg)) => {
-            error!("Entity type already exists: {}", msg);
+            error!("Entity type already exists: {msg}");
             ApiResponse::<()>::conflict(&msg)
         }
         Err(r_data_core_core::error::Error::Validation(msg)) => {
-            error!("Validation error when creating entity definition: {}", msg);
+            error!("Validation error when creating entity definition: {msg}");
             ApiResponse::<()>::unprocessable_entity(&msg)
         }
         Err(e) => {
@@ -279,10 +280,10 @@ async fn create_entity_definition(
             );
 
             // Add more detailed logging for diagnosis
-            debug!("Class definition details: {:#?}", entity_def);
-            debug!("Error details: {:#?}", e);
+            debug!("Class definition details: {entity_def:#?}");
+            debug!("Error details: {e:#?}");
 
-            ApiResponse::<()>::internal_error(&format!("Failed to create entity definition: {}", e))
+            ApiResponse::<()>::internal_error(&format!("Failed to create entity definition: {e}"))
         }
     }
 }
@@ -344,7 +345,7 @@ async fn update_entity_definition(
         }
         Err(e) => {
             return HttpResponse::InternalServerError().json(json!({
-                "error": format!("Failed to retrieve entity definition: {}", e)
+                "error": format!("Failed to retrieve entity definition: {e}")
             }));
         }
     };
@@ -362,7 +363,7 @@ async fn update_entity_definition(
     // Validate the definition
     if let Err(e) = updated_def.validate() {
         return HttpResponse::UnprocessableEntity().json(json!({
-            "error": format!("Validation failed: {}", e),
+            "error": format!("Validation failed: {e}"),
         }));
     }
 
@@ -380,8 +381,8 @@ async fn update_entity_definition(
             ApiResponse::<()>::bad_request(&msg)
         }
         Err(e) => {
-            error!("Failed to update entity definition: {}", e);
-            ApiResponse::<()>::internal_error(&format!("Failed to update entity definition: {}", e))
+            error!("Failed to update entity definition: {e}");
+            ApiResponse::<()>::internal_error(&format!("Failed to update entity definition: {e}"))
         }
     }
 }
@@ -426,8 +427,8 @@ async fn delete_entity_definition(
             ApiResponse::<()>::bad_request(&msg)
         }
         Err(e) => {
-            error!("Failed to delete entity definition: {}", e);
-            ApiResponse::<()>::internal_error(&format!("Failed to delete entity definition: {}", e))
+            error!("Failed to delete entity definition: {e}");
+            ApiResponse::<()>::internal_error(&format!("Failed to delete entity definition: {e}"))
         }
     }
 }
@@ -472,19 +473,18 @@ async fn apply_entity_definition_schema(
                 } else {
                     let (entity_type, _uuid, error) = &failed[0];
                     ApiResponse::<()>::internal_error(&format!(
-                        "Failed to apply schema for {}: {}",
-                        entity_type, error
+                        "Failed to apply schema for {entity_type}: {error}"
                     ))
                 }
             } else {
                 // If applying schema for all definitions
                 if failed.is_empty() {
                     ApiResponse::ok(json!({
-                        "message": format!("Applied schema for {} entity definitions", success_count)
+                        "message": format!("Applied schema for {success_count} entity definitions")
                     }))
                 } else {
                     ApiResponse::ok(json!({
-                        "message": format!("Applied schema for {} entity definitions, {} failed", success_count, failed.len()),
+                        "message": format!("Applied schema for {success_count} entity definitions, {} failed", failed.len()),
                         "successful": success_count,
                         "failed": failed
                     }))
@@ -495,8 +495,8 @@ async fn apply_entity_definition_schema(
             ApiResponse::<()>::not_found("Entity definition")
         }
         Err(e) => {
-            error!("Failed to apply schema: {}", e);
-            ApiResponse::<()>::internal_error(&format!("Failed to apply schema: {}", e))
+            error!("Failed to apply schema: {e}");
+            ApiResponse::<()>::internal_error(&format!("Failed to apply schema: {e}"))
         }
     }
 }
@@ -522,7 +522,7 @@ struct EntityFieldInfo {
     system: bool,
 }
 
-/// List all fields for an entity definition by entity_type, including system fields
+/// List all fields for an entity definition by `entity_type`, including system fields
 #[utoipa::path(
     get,
     path = "/admin/api/v1/entity-definitions/{entity_type}/fields",
@@ -561,7 +561,7 @@ async fn list_entity_fields_by_type(
         Err(r_data_core_core::error::Error::NotFound(_)) => {
             ApiResponse::<()>::not_found("Entity definition")
         }
-        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to load fields: {}", e)),
+        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to load fields: {e}")),
     }
 }
 
@@ -597,7 +597,7 @@ pub async fn list_entity_definition_versions(
     {
         Ok(rows) => rows,
         Err(e) => {
-            error!("Failed to list entity definition versions: {}", e);
+            error!("Failed to list entity definition versions: {e}");
             return ApiResponse::<()>::internal_error("Failed to list versions");
         }
     };
@@ -609,7 +609,7 @@ pub async fn list_entity_definition_versions(
     {
         Ok(metadata) => metadata,
         Err(e) => {
-            error!("Failed to get current entity definition metadata: {}", e);
+            error!("Failed to get current entity definition metadata: {e}");
             return ApiResponse::<()>::internal_error("Failed to get current metadata");
         }
     };
@@ -716,7 +716,7 @@ pub async fn get_entity_definition_version(
                         }
                         Err(r_data_core_core::error::Error::NotFound(_)) => {}
                         Err(e) => {
-                            error!("Failed to get entity definition: {}", e);
+                            error!("Failed to get entity definition: {e}");
                             return ApiResponse::<()>::internal_error(
                                 "Failed to get entity definition",
                             );
@@ -726,7 +726,7 @@ pub async fn get_entity_definition_version(
             }
         }
         Err(e) => {
-            error!("Failed to get entity definition version: {}", e);
+            error!("Failed to get entity definition version: {e}");
             return ApiResponse::<()>::internal_error("Failed to get version");
         }
     }

@@ -386,19 +386,6 @@ Swagger:
 /admin/api/docs/
 
 ## Todos
-
-- add routes
-  - workflows
-    - export
-      - json, xml, csv
-      - graphql
-    - import
-      - json, xml, csv
-      - web
-      - webhooks
-    - manipulate data
-  - versions
-  - permissions
 - update readme
 - add options for custom tables (like bricks)
 - ~~have a tree view for entities~~

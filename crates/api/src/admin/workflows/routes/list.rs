@@ -72,10 +72,9 @@ pub async fn list_all_workflow_runs(
         Err(e) => {
             error!(
                 target: "workflows",
-                "list_all_workflow_runs failed: {:#?}",
-                e
+                "list_all_workflow_runs failed: {e:#?}"
             );
-            ApiResponse::<()>::internal_error(&format!("Failed to list runs: {}", e))
+            ApiResponse::<()>::internal_error(&format!("Failed to list runs: {e}"))
         }
     }
 }
@@ -136,7 +135,7 @@ pub async fn list_workflows(
                 .collect();
             ApiResponse::ok_paginated(summaries, total, page, per_page)
         }
-        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to list workflows: {}", e)),
+        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to list workflows: {e}")),
     }
 }
 
@@ -200,8 +199,8 @@ pub async fn list_workflow_runs(
             ApiResponse::ok_paginated(summaries, total, page, per_page)
         }
         Err(e) => {
-            error!(target: "workflows", "list_workflow_runs failed: {:#?}", e);
-            ApiResponse::<()>::internal_error(&format!("Failed to list runs: {}", e))
+            error!(target: "workflows", "list_workflow_runs failed: {e:#?}");
+            ApiResponse::<()>::internal_error(&format!("Failed to list runs: {e}"))
         }
     }
 }

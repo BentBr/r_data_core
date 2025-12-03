@@ -13,7 +13,7 @@ use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
 /// Shared application state
 ///
-/// This is the concrete implementation of ApiStateTrait used in the main application.
+/// This is the concrete implementation of `ApiStateTrait` used in the main application.
 /// It holds all the services and dependencies needed by the API routes.
 pub struct ApiState {
     /// Database connection pool

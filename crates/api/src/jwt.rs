@@ -11,8 +11,8 @@ use r_data_core_core::permissions::permission_scheme::{PermissionScheme, Resourc
 use utoipa::ToSchema;
 
 // Token expiry constants
-pub const ACCESS_TOKEN_EXPIRY_SECONDS: u64 = 1800; // 30 minutes (short-lived access token)
-pub const REFRESH_TOKEN_EXPIRY_SECONDS: u64 = 2592000; // 30 days
+pub const ACCESS_TOKEN_EXPIRY_SECONDS: u64 = 1_800; // 30 minutes (short-lived access token)
+pub const REFRESH_TOKEN_EXPIRY_SECONDS: u64 = 2_592_000; // 30 days
 
 /// Claims for authentication
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -70,7 +70,8 @@ pub fn generate_jwt(
 ) -> Result<String> {
     let user_uuid = user.uuid;
 
-    log::debug!("Generating JWT for user: {}", user.username);
+    let username = &user.username;
+    log::debug!("Generating JWT for user: {username}");
 
     // Create expiration time
     let now = OffsetDateTime::now_utc();
@@ -158,31 +159,106 @@ fn merge_permissions_from_multiple_schemes(
 #[must_use]
 fn generate_all_permissions() -> Vec<String> {
     vec![
-        format!("{}:read", ResourceNamespace::Workflows.as_str()),
-        format!("{}:create", ResourceNamespace::Workflows.as_str()),
-        format!("{}:update", ResourceNamespace::Workflows.as_str()),
-        format!("{}:delete", ResourceNamespace::Workflows.as_str()),
-        format!("{}:execute", ResourceNamespace::Workflows.as_str()),
-        format!("{}:read", ResourceNamespace::Entities.as_str()),
-        format!("{}:create", ResourceNamespace::Entities.as_str()),
-        format!("{}:update", ResourceNamespace::Entities.as_str()),
-        format!("{}:delete", ResourceNamespace::Entities.as_str()),
-        format!("{}:read", ResourceNamespace::EntityDefinitions.as_str()),
-        format!("{}:create", ResourceNamespace::EntityDefinitions.as_str()),
-        format!("{}:update", ResourceNamespace::EntityDefinitions.as_str()),
-        format!("{}:delete", ResourceNamespace::EntityDefinitions.as_str()),
-        format!("{}:read", ResourceNamespace::ApiKeys.as_str()),
-        format!("{}:create", ResourceNamespace::ApiKeys.as_str()),
-        format!("{}:update", ResourceNamespace::ApiKeys.as_str()),
-        format!("{}:delete", ResourceNamespace::ApiKeys.as_str()),
-        format!("{}:read", ResourceNamespace::PermissionSchemes.as_str()),
-        format!("{}:create", ResourceNamespace::PermissionSchemes.as_str()),
-        format!("{}:update", ResourceNamespace::PermissionSchemes.as_str()),
-        format!("{}:delete", ResourceNamespace::PermissionSchemes.as_str()),
-        format!("{}:read", ResourceNamespace::System.as_str()),
-        format!("{}:create", ResourceNamespace::System.as_str()),
-        format!("{}:update", ResourceNamespace::System.as_str()),
-        format!("{}:delete", ResourceNamespace::System.as_str()),
+        {
+            let ns = ResourceNamespace::Workflows.as_str();
+            format!("{ns}:read")
+        },
+        {
+            let ns = ResourceNamespace::Workflows.as_str();
+            format!("{ns}:create")
+        },
+        {
+            let ns = ResourceNamespace::Workflows.as_str();
+            format!("{ns}:update")
+        },
+        {
+            let ns = ResourceNamespace::Workflows.as_str();
+            format!("{ns}:delete")
+        },
+        {
+            let ns = ResourceNamespace::Workflows.as_str();
+            format!("{ns}:execute")
+        },
+        {
+            let ns = ResourceNamespace::Entities.as_str();
+            format!("{ns}:read")
+        },
+        {
+            let ns = ResourceNamespace::Entities.as_str();
+            format!("{ns}:create")
+        },
+        {
+            let ns = ResourceNamespace::Entities.as_str();
+            format!("{ns}:update")
+        },
+        {
+            let ns = ResourceNamespace::Entities.as_str();
+            format!("{ns}:delete")
+        },
+        {
+            let ns = ResourceNamespace::EntityDefinitions.as_str();
+            format!("{ns}:read")
+        },
+        {
+            let ns = ResourceNamespace::EntityDefinitions.as_str();
+            format!("{ns}:create")
+        },
+        {
+            let ns = ResourceNamespace::EntityDefinitions.as_str();
+            format!("{ns}:update")
+        },
+        {
+            let ns = ResourceNamespace::EntityDefinitions.as_str();
+            format!("{ns}:delete")
+        },
+        {
+            let ns = ResourceNamespace::ApiKeys.as_str();
+            format!("{ns}:read")
+        },
+        {
+            let ns = ResourceNamespace::ApiKeys.as_str();
+            format!("{ns}:create")
+        },
+        {
+            let ns = ResourceNamespace::ApiKeys.as_str();
+            format!("{ns}:update")
+        },
+        {
+            let ns = ResourceNamespace::ApiKeys.as_str();
+            format!("{ns}:delete")
+        },
+        {
+            let ns = ResourceNamespace::PermissionSchemes.as_str();
+            format!("{ns}:read")
+        },
+        {
+            let ns = ResourceNamespace::PermissionSchemes.as_str();
+            format!("{ns}:create")
+        },
+        {
+            let ns = ResourceNamespace::PermissionSchemes.as_str();
+            format!("{ns}:update")
+        },
+        {
+            let ns = ResourceNamespace::PermissionSchemes.as_str();
+            format!("{ns}:delete")
+        },
+        {
+            let ns = ResourceNamespace::System.as_str();
+            format!("{ns}:read")
+        },
+        {
+            let ns = ResourceNamespace::System.as_str();
+            format!("{ns}:create")
+        },
+        {
+            let ns = ResourceNamespace::System.as_str();
+            format!("{ns}:update")
+        },
+        {
+            let ns = ResourceNamespace::System.as_str();
+            format!("{ns}:delete")
+        },
     ]
 }
 
@@ -205,7 +281,7 @@ pub fn verify_jwt(token: &str, secret: &str) -> Result<AuthUserClaims> {
     ) {
         Ok(token_data) => Ok(token_data.claims),
         Err(e) => {
-            log::error!("JWT validation error: {}", e);
+            log::error!("JWT validation error: {e}");
             Err(r_data_core_core::error::Error::Auth(format!(
                 "Token validation error: {e}"
             )))

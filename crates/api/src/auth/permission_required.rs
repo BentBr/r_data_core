@@ -13,7 +13,7 @@ use crate::response::ApiResponse;
 
 /// Extractor that requires a specific permission
 ///
-/// This extractor combines authentication (RequiredAuth) with permission checking.
+/// This extractor combines authentication (`RequiredAuth`) with permission checking.
 /// If the user doesn't have the required permission, it returns a 403 Forbidden response.
 ///
 /// # Example
@@ -32,7 +32,7 @@ pub struct PermissionRequired {
 }
 
 impl PermissionRequired {
-    /// Create a new PermissionRequired extractor
+    /// Create a new `PermissionRequired` extractor
     pub fn new(
         auth: RequiredAuth,
         namespace: ResourceNamespace,
@@ -60,7 +60,7 @@ impl FromRequest for PermissionRequired {
     }
 }
 
-/// Macro to create a PermissionRequired extractor
+/// Macro to create a `PermissionRequired` extractor
 ///
 /// # Usage
 /// ```rust,ignore
@@ -102,9 +102,9 @@ pub fn check_permission_and_respond(
     Ok(())
 }
 
-/// Extension trait for RequiredAuth to add permission checking
+/// Extension trait for `RequiredAuth` to add permission checking
 pub trait RequiredAuthExt {
-    /// Check if the authenticated user has a specific permission
+    /// Check if the authenticated user has a specific `permission`
     fn has_permission(
         &self,
         namespace: &ResourceNamespace,
@@ -113,7 +113,7 @@ pub trait RequiredAuthExt {
     ) -> bool;
 
     /// Check permission and return an error response if denied
-    /// Returns an ApiResponse that can be used as a Responder
+    /// Returns an `ApiResponse` that can be used as a `Responder`
     fn require_permission(
         &self,
         namespace: &ResourceNamespace,

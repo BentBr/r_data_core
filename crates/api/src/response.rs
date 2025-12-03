@@ -137,6 +137,7 @@ where
         }
     }
 
+    #[must_use]
     pub fn error(message: &str) -> ApiResponse<()> {
         ApiResponse {
             status: Status::Error,
@@ -147,6 +148,7 @@ where
     }
 
     /// Create an error response with error code and metadata
+    #[must_use]
     pub fn error_with_meta(
         message: &str,
         error_code: &str,
@@ -230,7 +232,7 @@ impl ApiResponse<()> {
     pub fn not_found(resource: &str) -> HttpResponse {
         let response = Self {
             status: Status::Error,
-            message: format!("{} not found", resource),
+            message: format!("{resource} not found"),
             data: None,
             meta: Some(ResponseMeta {
                 pagination: None,
@@ -299,7 +301,7 @@ impl ApiResponse<()> {
                 custom: Some(serde_json::json!({"error_code": "UNAUTHORIZED"})),
             }),
         };
-        log::debug!("Creating unauthorized response with message: {}", message);
+        log::debug!("Creating unauthorized response with message: {message}");
         response.to_http_response(StatusCode::UNAUTHORIZED)
     }
 
@@ -376,13 +378,13 @@ pub enum ApiError {
 impl fmt::Display for ApiError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ApiError::NotFound(msg) => write!(f, "Not found: {}", msg),
-            ApiError::InternalError(msg) => write!(f, "Internal error: {}", msg),
-            ApiError::BadRequest(msg) => write!(f, "Bad request: {}", msg),
-            ApiError::Unauthorized(msg) => write!(f, "Unauthorized: {}", msg),
-            ApiError::Forbidden(msg) => write!(f, "Forbidden: {}", msg),
-            ApiError::Inactive(msg) => write!(f, "Inactive: {}", msg),
-            ApiError::UnprocessableEntity(msg) => write!(f, "Unprocessable entity: {}", msg),
+            Self::NotFound(msg) => write!(f, "Not found: {msg}"),
+            Self::InternalError(msg) => write!(f, "Internal error: {msg}"),
+            Self::BadRequest(msg) => write!(f, "Bad request: {msg}"),
+            Self::Unauthorized(msg) => write!(f, "Unauthorized: {msg}"),
+            Self::Forbidden(msg) => write!(f, "Forbidden: {msg}"),
+            Self::Inactive(msg) => write!(f, "Inactive: {msg}"),
+            Self::UnprocessableEntity(msg) => write!(f, "Unprocessable entity: {msg}"),
         }
     }
 }
@@ -402,13 +404,13 @@ impl ResponseError for ApiError {
 
     fn error_response(&self) -> HttpResponse {
         match self {
-            ApiError::NotFound(resource) => ApiResponse::<()>::not_found(resource),
-            ApiError::InternalError(msg) => ApiResponse::<()>::internal_error(msg),
-            ApiError::BadRequest(msg) => ApiResponse::<()>::bad_request(msg),
-            ApiError::Unauthorized(msg) => ApiResponse::<()>::unauthorized(msg),
-            ApiError::Forbidden(msg) => ApiResponse::<()>::forbidden(msg),
-            ApiError::Inactive(msg) => ApiResponse::<()>::inactive(msg),
-            ApiError::UnprocessableEntity(msg) => ApiResponse::<()>::unprocessable_entity(msg),
+            Self::NotFound(resource) => ApiResponse::<()>::not_found(resource),
+            Self::InternalError(msg) => ApiResponse::<()>::internal_error(msg),
+            Self::BadRequest(msg) => ApiResponse::<()>::bad_request(msg),
+            Self::Unauthorized(msg) => ApiResponse::<()>::unauthorized(msg),
+            Self::Forbidden(msg) => ApiResponse::<()>::forbidden(msg),
+            Self::Inactive(msg) => ApiResponse::<()>::inactive(msg),
+            Self::UnprocessableEntity(msg) => ApiResponse::<()>::unprocessable_entity(msg),
         }
     }
 }

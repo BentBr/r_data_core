@@ -48,7 +48,7 @@ pub async fn query_entities(
                 "error": msg
             })),
             _ => HttpResponse::InternalServerError().json(json!({
-                "error": format!("Server error: {}", e)
+                "error": format!("Server error: {e}")
             })),
         },
     }

@@ -16,7 +16,7 @@ use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceN
 /// `true` if the user has permission, `false` otherwise
 ///
 /// # Notes
-/// SuperAdmin always has all permissions
+/// `SuperAdmin` always has all permissions
 #[must_use]
 pub fn has_permission(
     claims: &AuthUserClaims,
@@ -42,11 +42,12 @@ pub fn has_permission(
     }
 
     // Build permission string to check
-    let perm_str = format!("{}", permission_type).to_lowercase();
+    let perm_str = format!("{permission_type}").to_lowercase();
+    let namespace_str = namespace.as_str();
     let permission_string = if let Some(p) = path {
-        format!("{}:{}:{}", namespace.as_str(), p, perm_str)
+        format!("{namespace_str}:{p}:{perm_str}")
     } else {
-        format!("{}:{}", namespace.as_str(), perm_str)
+        format!("{namespace_str}:{perm_str}")
     };
 
     // Check if user has the permission
@@ -55,12 +56,13 @@ pub fn has_permission(
         p == &permission_string
             // Or for entities with path, check if permission allows the path
             || (matches!(namespace, ResourceNamespace::Entities)
-                && p.starts_with(&format!("{}:", namespace.as_str()))
-                && p.ends_with(&format!(":{}", perm_str))
+                && p.starts_with(&format!("{namespace_str}:"))
+                && p.ends_with(&format!(":{perm_str}"))
                 && path.map_or(false, |req_path| {
                     // Extract path from permission string (format: "entities:/path:read")
-                    if let Some(perm_path) = p.strip_prefix(&format!("{}:", namespace.as_str())) {
-                        if let Some(perm_path) = perm_path.strip_suffix(&format!(":{}", perm_str)) {
+                    let namespace_str = namespace.as_str();
+                    if let Some(perm_path) = p.strip_prefix(&format!("{namespace_str}:")) {
+                        if let Some(perm_path) = perm_path.strip_suffix(&format!(":{perm_str}")) {
                             // Check if requested path starts with permission path
                             return req_path.starts_with(perm_path);
                         }
@@ -117,8 +119,7 @@ pub async fn has_permission_for_api_key(
 
     if schemes.is_empty() {
         debug!(
-            "Permission check: API key {} has no permission schemes assigned",
-            api_key_uuid
+            "Permission check: API key {api_key_uuid} has no permission schemes assigned"
         );
         return Ok(false);
     }
@@ -156,10 +157,9 @@ pub async fn has_permission_for_api_key(
 
                             if allowed {
                                 permission_set.insert(format!(
-                                    "{}:{}:{}",
+                                    "{}:{requested_path}:{}",
                                     namespace.as_str(),
-                                    requested_path,
-                                    format!("{}", permission_type).to_lowercase()
+                                    format!("{permission_type}").to_lowercase()
                                 ));
                             }
                         } else {
@@ -170,19 +170,19 @@ pub async fn has_permission_for_api_key(
                                 .and_then(|c| c.get("path"))
                                 .is_some();
                             if !has_path_constraint {
+                                let perm_type_str = format!("{permission_type}").to_lowercase();
                                 permission_set.insert(format!(
-                                    "{}:{}",
-                                    namespace.as_str(),
-                                    format!("{}", permission_type).to_lowercase()
+                                    "{}:{perm_type_str}",
+                                    namespace.as_str()
                                 ));
                             }
                         }
                     } else {
                         // Non-entities namespace, no path checking needed
+                        let perm_type_str = format!("{permission_type}").to_lowercase();
                         permission_set.insert(format!(
-                            "{}:{}",
-                            namespace.as_str(),
-                            format!("{}", permission_type).to_lowercase()
+                            "{}:{perm_type_str}",
+                            namespace.as_str()
                         ));
                     }
                 }
@@ -191,11 +191,12 @@ pub async fn has_permission_for_api_key(
     }
 
     // Build permission string to check
-    let perm_str = format!("{}", permission_type).to_lowercase();
+    let perm_str = format!("{permission_type}").to_lowercase();
+    let namespace_str = namespace.as_str();
     let permission_string = if let Some(p) = path {
-        format!("{}:{}:{}", namespace.as_str(), p, perm_str)
+        format!("{namespace_str}:{p}:{perm_str}")
     } else {
-        format!("{}:{}", namespace.as_str(), perm_str)
+        format!("{namespace_str}:{perm_str}")
     };
 
     // Check if merged permissions include the required permission
@@ -203,13 +204,13 @@ pub async fn has_permission_for_api_key(
         || (matches!(namespace, ResourceNamespace::Entities)
             && path.is_some()
             && permission_set.iter().any(|p| {
-                p.starts_with(&format!("{}:", namespace.as_str()))
-                    && p.ends_with(&format!(":{}", perm_str))
+                p.starts_with(&format!("{namespace_str}:"))
+                    && p.ends_with(&format!(":{perm_str}"))
                     && if let Some(req_path) = path {
-                        if let Some(perm_path) = p.strip_prefix(&format!("{}:", namespace.as_str()))
+                        if let Some(perm_path) = p.strip_prefix(&format!("{namespace_str}:"))
                         {
                             if let Some(perm_path) =
-                                perm_path.strip_suffix(&format!(":{}", perm_str))
+                                perm_path.strip_suffix(&format!(":{perm_str}"))
                             {
                                 return req_path.starts_with(perm_path);
                             }

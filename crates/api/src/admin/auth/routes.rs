@@ -51,7 +51,7 @@ pub async fn admin_login(
             // Validate the request data using the Validate trait
             if let Err(errors) = inner.validate() {
                 // Format validation errors into a readable message
-                let error_message = format!("Validation error: {}", errors);
+                let error_message = format!("Validation error: {errors}");
                 return ApiResponse::unprocessable_entity(&error_message);
             }
             inner
@@ -65,7 +65,8 @@ pub async fn admin_login(
     let repo = AdminUserRepository::new(Arc::new(data.db_pool().clone()));
 
     // Debug: Log the login attempt
-    log::debug!("Login attempt for username: {}", login_req.username);
+    let username = &login_req.username;
+    log::debug!("Login attempt for username: {username}");
 
     // Find the user
     let user_result = repo.find_by_username_or_email(&login_req.username).await;
@@ -78,7 +79,7 @@ pub async fn admin_login(
             return ApiResponse::unauthorized("Invalid credentials");
         }
         Err(e) => {
-            log::error!("Database error: {:?}", e);
+            log::error!("Database error: {e:?}");
             return ApiResponse::internal_error("Authentication failed");
         }
     };
@@ -95,14 +96,15 @@ pub async fn admin_login(
 
     // Check if user is active
     if !user.is_active {
-        log::debug!("User account is inactive: {}", user.username);
+        let username = &user.username;
+        log::debug!("User account is inactive: {username}");
         return ApiResponse::inactive("Account not active");
     }
 
     // Update last login time
     if let Err(e) = repo.update_last_login(&user.uuid).await {
         // Log the error but continue with authentication
-        log::error!("Failed to update last login: {:?}", e);
+        log::error!("Failed to update last login: {e:?}");
     }
 
     // Load all permission schemes for user (if not SuperAdmin or super_admin)
@@ -125,7 +127,7 @@ pub async fn admin_login(
                 s
             }
             Err(e) => {
-                log::warn!("Failed to load permission schemes for user: {}", e);
+                log::warn!("Failed to load permission schemes for user: {e}");
                 vec![]
             }
         }
@@ -138,7 +140,7 @@ pub async fn admin_login(
     let access_token = match generate_access_token(&user, &access_token_config, &schemes) {
         Ok(token) => token,
         Err(e) => {
-            log::error!("Failed to generate access token: {:?}", e);
+            log::error!("Failed to generate access token: {e:?}");
             return ApiResponse::internal_error("Authentication failed");
         }
     };
@@ -148,7 +150,7 @@ pub async fn admin_login(
     let refresh_token_hash = match RefreshToken::hash_token(&refresh_token) {
         Ok(hash) => hash,
         Err(e) => {
-            log::error!("Failed to hash refresh token: {:?}", e);
+            log::error!("Failed to hash refresh token: {e:?}");
             return ApiResponse::internal_error("Authentication failed");
         }
     };
@@ -179,7 +181,7 @@ pub async fn admin_login(
         )
         .await
     {
-        log::error!("Failed to store refresh token: {:?}", e);
+        log::error!("Failed to store refresh token: {e:?}");
         return ApiResponse::internal_error("Authentication failed");
     }
 
@@ -232,7 +234,7 @@ pub async fn admin_register(
     let register_req = register_req.into_inner();
     if let Err(errors) = register_req.validate() {
         // Format validation errors into a readable message
-        let error_message = format!("Validation error: {}", errors);
+        let error_message = format!("Validation error: {errors}");
         return ApiResponse::unprocessable_entity(&error_message);
     }
 
@@ -268,7 +270,7 @@ pub async fn admin_register(
         }
         Ok(None) => false,
         Err(e) => {
-            log::error!("Error checking for existing user: {:?}", e);
+            log::error!("Error checking for existing user: {e:?}");
             return ApiResponse::internal_error("Registration failed");
         }
     };
@@ -282,7 +284,7 @@ pub async fn admin_register(
         }
         Ok(None) => false,
         Err(e) => {
-            log::error!("Error checking for existing email: {:?}", e);
+            log::error!("Error checking for existing email: {e:?}");
             return ApiResponse::internal_error("Registration failed");
         }
     };
@@ -320,7 +322,7 @@ pub async fn admin_register(
         }
         Err(e) => {
             // Log the detailed error for debugging
-            log::error!("User registration failed: {:?}", e);
+            log::error!("User registration failed: {e:?}");
             ApiResponse::internal_error("Registration failed")
         }
     }
@@ -350,7 +352,7 @@ pub async fn admin_logout(
     let token_hash = match RefreshToken::hash_token(&request.refresh_token) {
         Ok(hash) => hash,
         Err(e) => {
-            log::error!("Failed to hash refresh token for logout: {:?}", e);
+            log::error!("Failed to hash refresh token for logout: {e:?}");
             return ApiResponse::bad_request("Invalid token format");
         }
     };
@@ -362,7 +364,7 @@ pub async fn admin_logout(
             ApiResponse::message("Logout successful")
         }
         Err(e) => {
-            log::error!("Failed to revoke refresh token during logout: {:?}", e);
+            log::error!("Failed to revoke refresh token during logout: {e:?}");
             ApiResponse::internal_error("Logout failed")
         }
     }
@@ -393,7 +395,7 @@ pub async fn admin_refresh_token(
     let token_hash = match RefreshToken::hash_token(&request.refresh_token) {
         Ok(hash) => hash,
         Err(e) => {
-            log::error!("Failed to hash refresh token: {:?}", e);
+            log::error!("Failed to hash refresh token: {e:?}");
             return ApiResponse::unauthorized("Invalid refresh token");
         }
     };
@@ -406,7 +408,7 @@ pub async fn admin_refresh_token(
             return ApiResponse::unauthorized("Invalid refresh token");
         }
         Err(e) => {
-            log::error!("Database error finding refresh token: {:?}", e);
+            log::error!("Database error finding refresh token: {e:?}");
             return ApiResponse::internal_error("Authentication failed");
         }
     };
@@ -425,7 +427,7 @@ pub async fn admin_refresh_token(
             return ApiResponse::unauthorized("Invalid refresh token");
         }
         Err(e) => {
-            log::error!("Database error finding user: {:?}", e);
+            log::error!("Database error finding user: {e:?}");
             return ApiResponse::internal_error("Authentication failed");
         }
     };
@@ -460,7 +462,7 @@ pub async fn admin_refresh_token(
                 s
             }
             Err(e) => {
-                log::warn!("Failed to load permission schemes for user: {}", e);
+                log::warn!("Failed to load permission schemes for user: {e}");
                 vec![]
             }
         }
@@ -472,7 +474,7 @@ pub async fn admin_refresh_token(
     let new_access_token = match generate_access_token(&user, &access_token_config, &schemes) {
         Ok(token) => token,
         Err(e) => {
-            log::error!("Failed to generate new access token: {:?}", e);
+            log::error!("Failed to generate new access token: {e:?}");
             return ApiResponse::internal_error("Token refresh failed");
         }
     };
@@ -482,7 +484,7 @@ pub async fn admin_refresh_token(
     let new_refresh_token_hash = match RefreshToken::hash_token(&new_refresh_token_string) {
         Ok(hash) => hash,
         Err(e) => {
-            log::error!("Failed to hash new refresh token: {:?}", e);
+            log::error!("Failed to hash new refresh token: {e:?}");
             return ApiResponse::internal_error("Token refresh failed");
         }
     };
@@ -498,7 +500,7 @@ pub async fn admin_refresh_token(
 
     // Update the old refresh token as used
     if let Err(e) = refresh_repo.update_last_used(refresh_token.id).await {
-        log::error!("Failed to update refresh token last used: {:?}", e);
+        log::error!("Failed to update refresh token last used: {e:?}");
     }
 
     // Create new refresh token in database
@@ -512,13 +514,13 @@ pub async fn admin_refresh_token(
         )
         .await
     {
-        log::error!("Failed to store new refresh token: {:?}", e);
+        log::error!("Failed to store new refresh token: {e:?}");
         return ApiResponse::internal_error("Token refresh failed");
     }
 
     // Revoke the old refresh token
     if let Err(e) = refresh_repo.revoke_by_id(refresh_token.id).await {
-        log::error!("Failed to revoke old refresh token: {:?}", e);
+        log::error!("Failed to revoke old refresh token: {e:?}");
         // Continue anyway since new token was created
     }
 
@@ -573,8 +575,9 @@ pub async fn admin_revoke_all_tokens(
     // Revoke all refresh tokens for the user
     match refresh_repo.revoke_all_for_user(user_uuid).await {
         Ok(count) => {
-            log::info!("Revoked {} refresh tokens for user {}", count, claims.name);
-            ApiResponse::ok(format!("Revoked {} active sessions", count))
+            let name = &claims.name;
+            log::info!("Revoked {count} refresh tokens for user {name}");
+            ApiResponse::ok(format!("Revoked {count} active sessions"))
         }
         Err(e) => {
             log::error!(

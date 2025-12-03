@@ -82,11 +82,7 @@ where
                     // Log the error with context
                     error!(
                         target: "http",
-                        "HTTP {} {} -> 500 error: {} (request_id={})",
-                        method,
-                        path,
-                        err,
-                        request_id
+                        "HTTP {method} {path} -> 500 error: {err} (request_id={request_id})"
                     );
                     let response = handle_error(&err, Some(request_id));
                     Err(actix_web::error::InternalError::from_response("", response).into())

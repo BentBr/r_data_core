@@ -97,11 +97,11 @@ pub async fn list_permission_schemes(
             ApiResponse::ok_paginated(responses, total, page, per_page)
         }
         (Err(e), _) => {
-            error!("Failed to list permission schemes: {}", e);
+            error!("Failed to list permission schemes: {e}");
             ApiResponse::<()>::internal_error("Failed to retrieve permission schemes")
         }
         (_, Err(e)) => {
-            error!("Failed to count permission schemes: {}", e);
+            error!("Failed to count permission schemes: {e}");
             ApiResponse::<()>::internal_error("Failed to count permission schemes")
         }
     }
@@ -148,7 +148,7 @@ pub async fn get_permission_scheme(
         Ok(Some(scheme)) => ApiResponse::ok(PermissionSchemeResponse::from(&scheme)),
         Ok(None) => ApiResponse::<()>::not_found("Permission scheme not found"),
         Err(e) => {
-            error!("Failed to get permission scheme: {}", e);
+            error!("Failed to get permission scheme: {e}");
             ApiResponse::<()>::internal_error("Failed to retrieve permission scheme")
         }
     }
@@ -189,7 +189,8 @@ pub async fn create_permission_scheme(
     let creator_uuid = match Uuid::parse_str(&auth.0.sub) {
         Ok(uuid) => uuid,
         Err(e) => {
-            error!("Invalid UUID in auth token: {} - {}", auth.0.sub, e);
+            let sub = &auth.0.sub;
+            error!("Invalid UUID in auth token: {sub} - {e}");
             return ApiResponse::<()>::internal_error("Invalid authentication token");
         }
     };
@@ -209,8 +210,8 @@ pub async fn create_permission_scheme(
             match Permission::try_from(perm.clone()) {
                 Ok(p) => converted_permissions.push(p),
                 Err(e) => {
-                    error!("Invalid permission in request: {}", e);
-                    return ApiResponse::<()>::bad_request(&format!("Invalid permission: {}", e));
+                    error!("Invalid permission in request: {e}");
+                    return ApiResponse::<()>::bad_request(&format!("Invalid permission: {e}"));
                 }
             }
         }
@@ -231,13 +232,13 @@ pub async fn create_permission_scheme(
                 }
                 Ok(None) => ApiResponse::<()>::internal_error("Failed to retrieve created scheme"),
                 Err(e) => {
-                    error!("Failed to retrieve created scheme: {}", e);
+                    error!("Failed to retrieve created scheme: {e}");
                     ApiResponse::<()>::internal_error("Failed to retrieve created scheme")
                 }
             }
         }
         Err(e) => {
-            error!("Failed to create permission scheme: {}", e);
+            error!("Failed to create permission scheme: {e}");
             ApiResponse::<()>::internal_error("Failed to create permission scheme")
         }
     }
@@ -283,7 +284,8 @@ pub async fn update_permission_scheme(
     let updater_uuid = match Uuid::parse_str(&auth.0.sub) {
         Ok(uuid) => uuid,
         Err(e) => {
-            error!("Invalid UUID in auth token: {} - {}", auth.0.sub, e);
+            let sub = &auth.0.sub;
+            error!("Invalid UUID in auth token: {sub} - {e}");
             return ApiResponse::<()>::internal_error("Invalid authentication token");
         }
     };
@@ -295,7 +297,7 @@ pub async fn update_permission_scheme(
         Ok(Some(s)) => s,
         Ok(None) => return ApiResponse::<()>::not_found("Permission scheme not found"),
         Err(e) => {
-            error!("Failed to get permission scheme: {}", e);
+            error!("Failed to get permission scheme: {e}");
             return ApiResponse::<()>::internal_error("Failed to retrieve permission scheme");
         }
     };
@@ -317,8 +319,8 @@ pub async fn update_permission_scheme(
             match Permission::try_from(perm.clone()) {
                 Ok(p) => converted_permissions.push(p),
                 Err(e) => {
-                    error!("Invalid permission in request: {}", e);
-                    return ApiResponse::<()>::bad_request(&format!("Invalid permission: {}", e));
+                    error!("Invalid permission in request: {e}");
+                    return ApiResponse::<()>::bad_request(&format!("Invalid permission: {e}"));
                 }
             }
         }
@@ -335,13 +337,13 @@ pub async fn update_permission_scheme(
                 }
                 Ok(None) => ApiResponse::<()>::internal_error("Failed to retrieve updated scheme"),
                 Err(e) => {
-                    error!("Failed to retrieve updated scheme: {}", e);
+                    error!("Failed to retrieve updated scheme: {e}");
                     ApiResponse::<()>::internal_error("Failed to retrieve updated scheme")
                 }
             }
         }
         Err(e) => {
-            error!("Failed to update permission scheme: {}", e);
+            error!("Failed to update permission scheme: {e}");
             ApiResponse::<()>::internal_error("Failed to update permission scheme")
         }
     }
@@ -394,7 +396,7 @@ pub async fn delete_permission_scheme(
     match service.delete_scheme(uuid).await {
         Ok(()) => ApiResponse::ok_with_message((), "Permission scheme deleted successfully"),
         Err(e) => {
-            error!("Failed to delete permission scheme: {}", e);
+            error!("Failed to delete permission scheme: {e}");
             ApiResponse::<()>::internal_error("Failed to delete permission scheme")
         }
     }
@@ -459,7 +461,7 @@ pub async fn assign_schemes_to_user(
             ApiResponse::ok_with_message((), "Permission schemes assigned successfully")
         }
         Err(e) => {
-            error!("Failed to assign permission schemes to user: {}", e);
+            error!("Failed to assign permission schemes to user: {e}");
             ApiResponse::<()>::internal_error("Failed to assign permission schemes")
         }
     }
@@ -527,7 +529,7 @@ pub async fn assign_schemes_to_api_key(
             ApiResponse::ok_with_message((), "Permission schemes assigned successfully")
         }
         Err(e) => {
-            error!("Failed to assign permission schemes to API key: {}", e);
+            error!("Failed to assign permission schemes to API key: {e}");
             ApiResponse::<()>::internal_error("Failed to assign permission schemes")
         }
     }

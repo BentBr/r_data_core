@@ -34,8 +34,9 @@ impl Default for ApiAuth {
 
 impl ApiAuth {
     #[allow(dead_code)] // Middleware method for future use
+    #[must_use]
     pub fn new() -> Self {
-        ApiAuth
+        Self
     }
 }
 
@@ -91,14 +92,13 @@ where
             // Try API key authentication
             if let Ok(Some((key, user_uuid))) = extract_and_validate_api_key(&request).await {
                 log::debug!(
-                    "API key authentication successful, user_uuid: {}",
-                    user_uuid
+                    "API key authentication successful, user_uuid: {user_uuid}"
                 );
                 log::debug!("API key UUID: {:?}", key.uuid);
 
                 // Add API key info to request extensions
                 let key_uuid = key.uuid;
-                log::debug!("Using API key UUID: {}", key_uuid);
+                log::debug!("Using API key UUID: {key_uuid}");
 
                 req.extensions_mut().insert(ApiKeyInfo {
                     uuid: key_uuid,

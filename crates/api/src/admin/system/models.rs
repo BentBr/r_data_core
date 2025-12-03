@@ -8,7 +8,7 @@ use r_data_core_core::settings::EntityVersioningSettings;
 /// DTO for entity versioning settings (API layer wrapper)
 ///
 /// This is a thin wrapper around the core `EntityVersioningSettings` type
-/// to add OpenAPI schema generation support.
+/// to add `OpenAPI` schema generation support.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct EntityVersioningSettingsDto {
     /// Whether entity versioning is enabled

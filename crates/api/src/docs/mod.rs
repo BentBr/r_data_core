@@ -202,7 +202,7 @@ impl Modify for UuidSchemaAddon {
     }
 }
 
-/// Custom schema for time::OffsetDateTime
+/// Custom schema for `time::OffsetDateTime`
 pub struct DateTimeSchemaAddon;
 
 impl Modify for DateTimeSchemaAddon {
@@ -250,7 +250,7 @@ impl Modify for ModelSchemaAddon {
     }
 }
 
-/// Custom schema for serde_json::Value
+/// Custom schema for `serde_json::Value`
 pub struct JsonValueSchemaAddon;
 
 impl Modify for JsonValueSchemaAddon {
@@ -331,22 +331,22 @@ impl Modify for JsonValueSchemaAddon {
 )]
 struct PublicApiDoc;
 
-/// Generate the OpenAPI specification for admin endpoints
+/// Generate the `OpenAPI` specification for admin endpoints
 fn generate_admin_openapi_spec() -> utoipa::openapi::OpenApi {
     AdminApiDoc::openapi()
 }
 
-/// Generate the OpenAPI specification for public endpoints
+/// Generate the `OpenAPI` specification for public endpoints
 fn generate_public_openapi_spec() -> utoipa::openapi::OpenApi {
     PublicApiDoc::openapi()
 }
 
-/// Admin OpenAPI documentation endpoint
+/// Admin `OpenAPI` documentation endpoint
 pub async fn admin_openapi_json(_req: HttpRequest) -> HttpResponse {
     HttpResponse::Ok().json(generate_admin_openapi_spec())
 }
 
-/// Public OpenAPI documentation endpoint
+/// Public `OpenAPI` documentation endpoint
 pub async fn public_openapi_json(_req: HttpRequest) -> HttpResponse {
     HttpResponse::Ok().json(generate_public_openapi_spec())
 }

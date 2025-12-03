@@ -26,11 +26,12 @@ fn extract_jwt_from_request(req: &HttpRequest) -> Option<AuthUserClaims> {
                     let token = &auth_str[7..]; // Remove "Bearer " prefix
                     match crate::jwt::verify_jwt(token, state.jwt_secret()) {
                         Ok(claims) => {
-                            debug!("JWT validation successful for user: {}", claims.name);
+                            let name = &claims.name;
+                            debug!("JWT validation successful for user: {name}");
                             return Some(claims);
                         }
                         Err(e) => {
-                            debug!("JWT validation failed: {:?}", e);
+                            debug!("JWT validation failed: {e:?}");
                         }
                     }
                 }
@@ -66,7 +67,7 @@ impl FromRequest for RequiredAuth {
         debug!("Handling required authentication FromRequest");
 
         match get_or_validate_jwt(req) {
-            Some(claims) => ready(Ok(RequiredAuth(claims))),
+            Some(claims) => ready(Ok(Self(claims))),
             None => ready(Err(actix_web::error::ErrorUnauthorized(
                 "Authentication required",
             ))),
@@ -77,6 +78,7 @@ impl FromRequest for RequiredAuth {
 impl RequiredAuth {
     /// Returns the authenticated user's UUID parsed from JWT claims subject.
     /// None if parsing fails.
+    #[must_use]
     pub fn user_uuid(&self) -> Option<Uuid> {
         Uuid::parse_str(&self.0.sub).ok()
     }
@@ -91,7 +93,7 @@ impl FromRequest for OptionalAuth {
 
         // Return option based on whether claims were found
         let claims = get_or_validate_jwt(req);
-        ready(Ok(OptionalAuth(claims)))
+        ready(Ok(Self(claims)))
     }
 }
 
@@ -117,7 +119,7 @@ impl FromRequest for CombinedRequiredAuth {
         Box::pin(async move {
             // Check for JWT auth first
             if let Some(jwt_claims) = get_or_validate_jwt(&req) {
-                return Ok(CombinedRequiredAuth {
+                return Ok(Self {
                     jwt_claims: Some(jwt_claims),
                     api_key_info: None,
                     pre_shared_key_valid: false,
@@ -126,7 +128,7 @@ impl FromRequest for CombinedRequiredAuth {
 
             // Check for API key in extensions
             if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
-                return Ok(CombinedRequiredAuth {
+                return Ok(Self {
                     jwt_claims: None,
                     api_key_info: Some(api_key_info.clone()),
                     pre_shared_key_valid: false,
@@ -153,7 +155,7 @@ impl FromRequest for CombinedRequiredAuth {
                                 expires_at: key.expires_at,
                             });
 
-                            return Ok(CombinedRequiredAuth {
+                            return Ok(Self {
                                 jwt_claims: None,
                                 api_key_info: Some(ApiKeyInfo {
                                     uuid: key_uuid,
@@ -169,7 +171,7 @@ impl FromRequest for CombinedRequiredAuth {
                             debug!("API key not found or invalid");
                         }
                         Err(e) => {
-                            debug!("API key validation error: {:?}", e);
+                            debug!("API key validation error: {e:?}");
                         }
                     }
                 }
@@ -178,7 +180,7 @@ impl FromRequest for CombinedRequiredAuth {
             // Check for pre-shared key in extensions (set by middleware or route handler)
             if let Some(valid) = req.extensions().get::<bool>() {
                 if *valid {
-                    return Ok(CombinedRequiredAuth {
+                    return Ok(Self {
                         jwt_claims: None,
                         api_key_info: None,
                         pre_shared_key_valid: true,
@@ -196,6 +198,7 @@ impl FromRequest for CombinedRequiredAuth {
 
 impl CombinedRequiredAuth {
     /// Get user UUID from either JWT claims or API key info
+    #[must_use]
     pub fn get_user_uuid(&self) -> Option<Uuid> {
         // Extract from API key information
         if let Some(api_key_info) = &self.api_key_info {

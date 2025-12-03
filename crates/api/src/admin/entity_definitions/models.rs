@@ -116,8 +116,8 @@ pub enum FieldConstraints {
     None,
 }
 
-/// Schema for options source in OpenAPI docs
-/// Defines how to populate options for Select and MultiSelect fields
+/// Schema for options source in `OpenAPI` docs
+/// Defines how to populate options for `Select` and `MultiSelect` fields
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(tag = "type")]
 pub enum OptionsSourceSchema {
@@ -141,7 +141,7 @@ pub enum OptionsSourceSchema {
     },
 }
 
-/// Schema for select options in OpenAPI docs
+/// Schema for select options in `OpenAPI` docs
 /// Used for defining individual options in fixed option lists
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct SelectOptionSchema {
@@ -151,7 +151,7 @@ pub struct SelectOptionSchema {
     pub label: String,
 }
 
-/// Schema for UI settings in OpenAPI docs
+/// Schema for UI settings in `OpenAPI` docs
 /// Controls how fields are rendered in forms and lists
 #[derive(Debug, Serialize, Deserialize, ToSchema, Default)]
 pub struct UiSettingsSchema {
@@ -214,7 +214,7 @@ pub enum FieldTypeSchema {
     File,
 }
 
-/// Schema for field definitions in OpenAPI docs
+/// Schema for field definitions in `OpenAPI` docs
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct FieldDefinitionSchema {
     /// Field name (must be unique within class and contain only alphanumeric characters, underscores, no spaces)
@@ -241,7 +241,7 @@ pub struct FieldDefinitionSchema {
     pub ui_settings: UiSettingsSchema,
 }
 
-/// Schema for entity definitions in OpenAPI docs
+/// Schema for entity definitions in `OpenAPI` docs
 /// Used to define entity types with their fields and metadata
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[schema(title = "EntityDefinitionSchema")]

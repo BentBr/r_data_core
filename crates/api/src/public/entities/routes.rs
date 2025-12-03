@@ -42,7 +42,7 @@ pub async fn list_available_entities(
     match repository.list_available_entity_types().await {
         Ok(entities) => HttpResponse::Ok().json(entities),
         Err(e) => HttpResponse::InternalServerError().json(json!({
-            "error": format!("Failed to list entities: {}", e)
+            "error": format!("Failed to list entities: {e}")
         })),
     }
 }
@@ -109,7 +109,7 @@ pub async fn list_by_path(
         }
         Err(e) => HttpResponse::InternalServerError().json(json!({
             "status": "Error",
-            "message": format!("Server error: {}", e),
+            "message": format!("Server error: {e}"),
         })),
     }
 }
@@ -161,7 +161,7 @@ pub async fn list_entity_versions(
             ApiResponse::ok(out)
         }
         Err(e) => {
-            log::error!("Failed to list versions: {}", e);
+            log::error!("Failed to list versions: {e}");
             ApiResponse::<()>::internal_error("Failed to list versions")
         }
     }
@@ -233,7 +233,7 @@ pub async fn get_entity_version(
             }
         }
         Err(e) => {
-            log::error!("Failed to get version: {}", e);
+            log::error!("Failed to get version: {e}");
             return ApiResponse::<()>::internal_error("Failed to get version");
         }
     }
@@ -307,7 +307,7 @@ pub async fn query_entities(
         }
         Err(e) => HttpResponse::InternalServerError().json(json!({
             "status": "Error",
-            "message": format!("Server error: {}", e),
+            "message": format!("Server error: {e}"),
         })),
     }
 }

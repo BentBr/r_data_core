@@ -60,27 +60,24 @@ pub async fn run_workflow_now(
                 {
                     Ok(_) => {
                         info!(
-                            "Successfully enqueued fetch job for workflow {} (run: {})",
-                            uuid, run_uuid
+                            "Successfully enqueued fetch job for workflow {uuid} (run: {run_uuid})"
                         );
                         ApiResponse::<()>::message("Workflow run enqueued")
                     }
                     Err(e) => {
                         error!(
-                            "Failed to enqueue fetch job for workflow {} (run: {}): {}",
-                            uuid, run_uuid, e
+                            "Failed to enqueue fetch job for workflow {uuid} (run: {run_uuid}): {e}"
                         );
                         ApiResponse::<()>::internal_error(&format!(
-                            "Failed to enqueue job to Redis: {}",
-                            e
+                            "Failed to enqueue job to Redis: {e}"
                         ))
                     }
                 }
             }
-            Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to enqueue run: {}", e)),
+            Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to enqueue run: {e}")),
         },
         Ok(None) => ApiResponse::<()>::not_found("Workflow"),
-        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to fetch workflow: {}", e)),
+        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to fetch workflow: {e}")),
     }
 }
 
@@ -125,7 +122,7 @@ pub async fn run_workflow_now_upload(
         Ok(Some(_)) => {}
         Ok(None) => return ApiResponse::<()>::not_found("Workflow"),
         Err(e) => {
-            return ApiResponse::<()>::internal_error(&format!("Failed to fetch workflow: {}", e))
+            return ApiResponse::<()>::internal_error(&format!("Failed to fetch workflow: {e}"))
         }
     }
 
@@ -163,7 +160,7 @@ pub async fn run_workflow_now_upload(
                 .await
             {
                 Ok(_) => {
-                    info!("Successfully enqueued fetch job for uploaded workflow {} (run: {}, staged: {})", workflow_uuid, run_uuid, staged);
+                    info!("Successfully enqueued fetch job for uploaded workflow {workflow_uuid} (run: {run_uuid}, staged: {staged})");
                     ApiResponse::<serde_json::Value>::ok(serde_json::json!({
                         "run_uuid": run_uuid,
                         "staged_items": staged
@@ -171,8 +168,7 @@ pub async fn run_workflow_now_upload(
                 }
                 Err(e) => {
                     error!(
-                        "Failed to enqueue fetch job for uploaded workflow {} (run: {}): {}",
-                        workflow_uuid, run_uuid, e
+                        "Failed to enqueue fetch job for uploaded workflow {workflow_uuid} (run: {run_uuid}): {e}"
                     );
                     // Still return success for the upload, but log the enqueue failure
                     ApiResponse::<serde_json::Value>::ok(serde_json::json!({
@@ -184,13 +180,13 @@ pub async fn run_workflow_now_upload(
             }
         }
         Err(e) => {
-            error!(target: "workflows", "run_workflow_now_upload failed: {:#?}", e);
+            error!(target: "workflows", "run_workflow_now_upload failed: {e:#?}");
             // Treat CSV parse issues as 422 to surface validation to the UI
             let msg = e.to_string();
             if msg.contains("CSV") || msg.contains("Failed to read") {
                 ApiResponse::<()>::unprocessable_entity(&msg)
             } else {
-                ApiResponse::<()>::internal_error(&format!("Failed to process upload: {}", msg))
+                ApiResponse::<()>::internal_error(&format!("Failed to process upload: {msg}"))
             }
         }
     }
@@ -234,7 +230,7 @@ pub async fn list_workflow_run_logs(
     // Return 404 if run does not exist
     match state.workflow_service().run_exists(run_uuid).await {
         Ok(false) => return ApiResponse::<()>::not_found("Workflow run not found"),
-        Err(e) => return ApiResponse::<()>::internal_error(&format!("Failed to check run: {}", e)),
+        Err(e) => return ApiResponse::<()>::internal_error(&format!("Failed to check run: {e}")),
         Ok(true) => {}
     }
 
@@ -257,8 +253,8 @@ pub async fn list_workflow_run_logs(
             ApiResponse::ok_paginated(logs, total, page, per_page)
         }
         Err(e) => {
-            error!(target: "workflows", "list_workflow_run_logs failed: {:#?}", e);
-            ApiResponse::<()>::internal_error(&format!("Failed to list run logs: {}", e))
+            error!(target: "workflows", "list_workflow_run_logs failed: {e:#?}");
+            ApiResponse::<()>::internal_error(&format!("Failed to list run logs: {e}"))
         }
     }
 }

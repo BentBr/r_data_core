@@ -45,7 +45,7 @@ impl TryFrom<PermissionResponse> for Permission {
         let resource_type = ResourceNamespace::try_from_str(&resource_type_str)
             .ok_or_else(|| format!("Invalid resource type: {}", response.resource_type))?;
 
-        Ok(Permission {
+        Ok(Self {
             resource_type,
             permission_type: response.permission_type,
             access_level: response.access_level,

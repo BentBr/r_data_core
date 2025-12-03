@@ -58,7 +58,7 @@ where
                     service_clone.call(req).await
                 }
                 Err(e) => {
-                    log::error!("JWT validation error: {:?}", e);
+                    log::error!("JWT validation error: {e:?}");
                     service_clone.call(req).await
                 }
             }
@@ -79,7 +79,8 @@ where
     forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        log::debug!("JwtAuthMiddleware processing path: {}", req.path());
+        let path = req.path();
+        log::debug!("JwtAuthMiddleware processing path: {path}");
 
         // For all other paths, use process_auth to handle authentication
         self.process_auth(req, self.service.clone())

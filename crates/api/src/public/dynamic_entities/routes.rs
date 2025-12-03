@@ -218,8 +218,7 @@ pub async fn create_entity(
             Ok(entity_def) => {
                 if !entity_def.published {
                     return ApiResponse::<()>::not_found(&format!(
-                        "Entity type {} not found or not published",
-                        entity_type
+                        "Entity type {entity_type} not found or not published"
                     ));
                 }
 
@@ -330,7 +329,7 @@ pub async fn get_entity(
     let uuid = match Uuid::parse_str(&uuid_str) {
         Ok(uuid) => uuid,
         Err(_) => {
-            return ApiResponse::<()>::bad_request(&format!("Invalid UUID format: {}", uuid_str));
+            return ApiResponse::<()>::bad_request(&format!("Invalid UUID format: {uuid_str}"));
         }
     };
 
@@ -385,7 +384,7 @@ pub async fn update_entity(
     let uuid = match Uuid::parse_str(&uuid_str) {
         Ok(id) => id,
         Err(_) => {
-            return ApiResponse::<()>::bad_request(&format!("Invalid UUID: {}", uuid_str));
+            return ApiResponse::<()>::bad_request(&format!("Invalid UUID: {uuid_str}"));
         }
     };
 
@@ -471,7 +470,7 @@ pub async fn delete_entity(
     let uuid = match Uuid::parse_str(&uuid_str) {
         Ok(id) => id,
         Err(_) => {
-            return ApiResponse::<()>::bad_request(&format!("Invalid UUID: {}", uuid_str));
+            return ApiResponse::<()>::bad_request(&format!("Invalid UUID: {uuid_str}"));
         }
     };
 
@@ -496,11 +495,11 @@ fn handle_entity_error(error: r_data_core_core::error::Error, entity_type: &str)
             ApiResponse::<()>::unprocessable_entity(&msg)
         }
         r_data_core_core::error::Error::Database(_) => {
-            error!("Database error: {}", error);
+            error!("Database error: {error}");
             ApiResponse::<()>::internal_error("Database error")
         }
         _ => {
-            error!("Internal error: {}", error);
+            error!("Internal error: {error}");
             ApiResponse::<()>::internal_error("Internal server error")
         }
     }

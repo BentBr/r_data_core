@@ -46,7 +46,7 @@ pub async fn get_entity_versioning_settings(
     match service.get_entity_versioning_settings().await {
         Ok(settings) => ApiResponse::ok(EntityVersioningSettingsDto::from(settings)),
         Err(e) => {
-            log::error!("Failed to load settings: {}", e);
+            log::error!("Failed to load settings: {e}");
             ApiResponse::<()>::internal_error("Failed to load settings")
         }
     }
@@ -86,7 +86,7 @@ pub async fn update_entity_versioning_settings(
     let mut current = match service.get_entity_versioning_settings().await {
         Ok(s) => s,
         Err(e) => {
-            log::error!("Failed to read current settings: {}", e);
+            log::error!("Failed to read current settings: {e}");
             return ApiResponse::<()>::internal_error("Failed to read current settings");
         }
     };
@@ -115,7 +115,7 @@ pub async fn update_entity_versioning_settings(
     {
         Ok(()) => ApiResponse::ok(EntityVersioningSettingsDto::from(current)),
         Err(e) => {
-            log::error!("Failed to update settings: {}", e);
+            log::error!("Failed to update settings: {e}");
             ApiResponse::<()>::internal_error("Failed to update settings")
         }
     }

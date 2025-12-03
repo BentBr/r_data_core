@@ -27,6 +27,7 @@ impl Default for CombinedAuth {
 impl CombinedAuth {
     /// Create a new instance of the combined authentication middleware
     #[allow(dead_code)] // Middleware method for future use
+    #[must_use]
     pub fn new() -> Self {
         Self {}
     }
@@ -82,8 +83,7 @@ where
                 Some(state) => state,
                 None => {
                     log::error!(
-                        "Failed to extract API state from request for path: {}",
-                        path
+                        "Failed to extract API state from request for path: {path}"
                     );
                     return Err(ErrorUnauthorized("Missing application state"));
                 }
@@ -105,12 +105,11 @@ where
                 Ok(None) => {
                     // JWT authentication failed, continue to API key
                     log::debug!(
-                        "JWT authentication failed, trying API key for path: {}",
-                        path
+                        "JWT authentication failed, trying API key for path: {path}"
                     );
                 }
                 Err(e) => {
-                    log::debug!("JWT authentication error: {:?}", e);
+                    log::debug!("JWT authentication error: {e:?}");
                     // Continue to API key auth even on JWT error
                 }
             }
@@ -140,12 +139,11 @@ where
                 Ok(None) => {
                     // API key authentication failed
                     log::debug!(
-                        "Authentication failed for path {}: both JWT and API key auth failed",
-                        path
+                        "Authentication failed for path {path}: both JWT and API key auth failed"
                     );
                 }
                 Err(e) => {
-                    log::debug!("API key authentication error: {:?}", e);
+                    log::debug!("API key authentication error: {e:?}");
                 }
             }
 
@@ -171,7 +169,7 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let path = req.path();
-        log::debug!("CombinedAuthMiddleware processing path: {}", path);
+        log::debug!("CombinedAuthMiddleware processing path: {path}");
 
         // Process authentication for all paths
         // The decision about which paths need auth is made at the route registration level
