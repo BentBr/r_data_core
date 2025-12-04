@@ -8,7 +8,8 @@ use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::entity_definition::schema::Schema;
 use r_data_core_core::error::Result;
 use r_data_core_core::field::types::FieldType;
-use r_data_core_core::field::FieldDefinition;
+use r_data_core_core::field::ui::UiSettings;
+use r_data_core_core::field::{FieldDefinition, FieldValidation};
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -52,9 +53,9 @@ fn create_test_entity_definition() -> EntityDefinition {
             indexed: true,
             filterable: true,
             default_value: None,
-            ui_settings: Default::default(),
-            constraints: Default::default(),
-            validation: Default::default(),
+            ui_settings: UiSettings::default(),
+            constraints: HashMap::default(),
+            validation: FieldValidation::default(),
         },
         FieldDefinition {
             name: "age".to_string(),
@@ -65,9 +66,9 @@ fn create_test_entity_definition() -> EntityDefinition {
             indexed: false,
             filterable: false,
             default_value: None,
-            ui_settings: Default::default(),
-            constraints: Default::default(),
-            validation: Default::default(),
+            ui_settings: UiSettings::default(),
+            constraints: HashMap::default(),
+            validation: FieldValidation::default(),
         },
     ];
 
@@ -226,9 +227,9 @@ async fn test_create_entity_definition_duplicate_field_names() -> Result<()> {
         indexed: false,
         filterable: false,
         default_value: None,
-        ui_settings: Default::default(),
-        constraints: Default::default(),
-        validation: Default::default(),
+        ui_settings: UiSettings::default(),
+        constraints: HashMap::default(),
+        validation: FieldValidation::default(),
     });
 
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));

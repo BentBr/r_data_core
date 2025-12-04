@@ -128,12 +128,12 @@ mod dynamic_entity_api_tests {
             queue: test_queue_client_async().await,
         };
 
-        let app_state = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));
+        let app_data = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));
 
         // Build test app
         let app = test::init_service(
             App::new()
-                .app_data(app_state.clone())
+                .app_data(app_data.clone())
                 .configure(configure_app),
         )
         .await;

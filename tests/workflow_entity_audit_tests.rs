@@ -20,6 +20,7 @@ use r_data_core_test_support::{
 };
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)] // Test function with comprehensive workflow testing
 async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result<()> {
     let pool = setup_test_db().await;
 
@@ -110,25 +111,24 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
     let logs = wf_service_with_entities
         .list_run_logs_paginated(run_uuid, 10, 0)
         .await?;
-    eprintln!("Run logs after processing: {:?}", logs);
+    eprintln!("Run logs after processing: {logs:?}");
 
     if let Err(e) = result {
-        eprintln!("Workflow processing failed: {:?}", e);
+        eprintln!("Workflow processing failed: {e:?}");
         return Err(e);
     }
 
     // Check processed/failed counts
     let (processed, failed) = result.unwrap();
-    eprintln!("Processed: {}, Failed: {}", processed, failed);
+    eprintln!("Processed: {processed}, Failed: {failed}");
 
     if processed == 0 && failed == 0 {
         // Check if items were actually staged
         let wf_repo_check = WorkflowRepository::new(pool.clone());
         let staged_count = wf_repo_check.count_raw_items_for_run(run_uuid).await?;
-        eprintln!("Staged items count: {}", staged_count);
+        eprintln!("Staged items count: {staged_count}");
         return Err(anyhow::anyhow!(
-            "No items were processed. Staged: {}",
-            staged_count
+            "No items were processed. Staged: {staged_count}"
         ));
     }
 
@@ -182,6 +182,7 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)] // Test function with comprehensive workflow testing
 async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result<()> {
     let pool = setup_test_db().await;
 
@@ -304,25 +305,24 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     let logs = wf_service_with_entities
         .list_run_logs_paginated(run_uuid, 10, 0)
         .await?;
-    eprintln!("Run logs after processing: {:?}", logs);
+    eprintln!("Run logs after processing: {logs:?}");
 
     if let Err(e) = result {
-        eprintln!("Workflow processing failed: {:?}", e);
+        eprintln!("Workflow processing failed: {e:?}");
         return Err(e);
     }
 
     // Check processed/failed counts
     let (processed, failed) = result.unwrap();
-    eprintln!("Processed: {}, Failed: {}", processed, failed);
+    eprintln!("Processed: {processed}, Failed: {failed}");
 
     if processed == 0 && failed == 0 {
         // Check if items were actually staged
         let wf_repo_check = WorkflowRepository::new(pool.clone());
         let staged_count = wf_repo_check.count_raw_items_for_run(run_uuid).await?;
-        eprintln!("Staged items count: {}", staged_count);
+        eprintln!("Staged items count: {staged_count}");
         return Err(anyhow::anyhow!(
-            "No items were processed. Staged: {}",
-            staged_count
+            "No items were processed. Staged: {staged_count}"
         ));
     }
 

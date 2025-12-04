@@ -22,6 +22,7 @@ use r_data_core_test_support::{
 };
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)] // E2E test with comprehensive workflow testing
 async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> {
     // Skip test if REDIS_URL not present
     let Ok(redis_url) = std::env::var("REDIS_URL") else {

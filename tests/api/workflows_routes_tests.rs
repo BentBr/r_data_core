@@ -80,10 +80,10 @@ async fn setup_app_and_token() -> anyhow::Result<(
         queue: test_queue_client_async().await,
     };
 
-    let app_state = web::Data::new(ApiStateWrapper::new(api_state));
+    let app_data = web::Data::new(ApiStateWrapper::new(api_state));
     let app = test::init_service(
         App::new()
-            .app_data(app_state.clone())
+            .app_data(app_data.clone())
             .configure(configure_app),
     )
     .await;

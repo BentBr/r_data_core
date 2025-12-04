@@ -117,20 +117,20 @@ async fn test_list_available_entity_types() -> Result<()> {
     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
     // List available entity types
-    let entity_types = pub_repo.list_available_entity_types().await?;
+    let available_types = pub_repo.list_available_entity_types().await?;
 
     // Should include both entity types
     assert!(
-        entity_types.iter().any(|et| et.name == entity_type1),
+        available_types.iter().any(|et| et.name == entity_type1),
         "Should include entity_type1"
     );
     assert!(
-        entity_types.iter().any(|et| et.name == entity_type2),
+        available_types.iter().any(|et| et.name == entity_type2),
         "Should include entity_type2"
     );
 
     // Check entity counts
-    let type1 = entity_types
+    let type1 = available_types
         .iter()
         .find(|et| et.name == entity_type1)
         .unwrap();

@@ -232,8 +232,7 @@ mod dynamic_entity_tests {
         // Read the JSON file
         let json_content = std::fs::read_to_string(json_path).map_err(|e| {
             r_data_core_core::error::Error::Unknown(format!(
-                "Failed to read JSON file {}: {}",
-                json_path, e
+                "Failed to read JSON file {json_path}: {e}"
             ))
         })?;
 
@@ -241,8 +240,7 @@ mod dynamic_entity_tests {
         let mut entity_def: EntityDefinition =
             serde_json::from_str(&json_content).map_err(|e| {
                 r_data_core_core::error::Error::Unknown(format!(
-                    "Failed to parse JSON file {}: {}",
-                    json_path, e
+                    "Failed to parse JSON file {json_path}: {e}"
                 ))
             })?;
 
@@ -391,7 +389,7 @@ mod dynamic_entity_tests {
         )
         .await?;
 
-        println!("Created entity type: {}", entity_type);
+        println!("Created entity type: {entity_type}");
 
         // Create dynamic entity service
         let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
@@ -668,7 +666,7 @@ mod dynamic_entity_tests {
         )
         .await?;
 
-        println!("Testing pagination with entity type: {}", entity_type);
+        println!("Testing pagination with entity type: {entity_type}");
 
         // Create repositories and services for this test
         let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
@@ -770,7 +768,7 @@ mod dynamic_entity_tests {
         )
         .await?;
 
-        println!("Created entity type: {}", entity_type);
+        println!("Created entity type: {entity_type}");
 
         // Create dynamic entity service
         let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
@@ -873,15 +871,7 @@ mod dynamic_entity_tests {
         let pool = setup_test_db().await;
 
         // Create a simple entity definition
-        let entity_type = format!("test_entity_{}", Uuid::now_v7().simple());
-
-        // Create a simple entity definition
-        let mut entity_def = EntityDefinition::default();
-        entity_def.entity_type = entity_type.clone();
-        entity_def.display_name = format!("Test {}", entity_type);
-        entity_def.description = Some("Test entity".to_string());
-        entity_def.created_by = Uuid::now_v7();
-        entity_def.published = true;
+        let entity_type = format!("test_entity_{}", Uuid::now_v7().simple().to_string());
 
         // Create a simple field definition
         let mut fields = Vec::new();
@@ -891,7 +881,17 @@ mod dynamic_entity_tests {
             r_data_core_core::field::types::FieldType::String,
         );
         fields.push(field);
-        entity_def.fields = fields;
+
+        // Create a simple entity definition
+        let entity_def = EntityDefinition {
+            entity_type: entity_type.clone(),
+            display_name: format!("Test {entity_type}"),
+            description: Some("Test entity".to_string()),
+            created_by: Uuid::now_v7(),
+            published: true,
+            fields,
+            ..Default::default()
+        };
 
         // Create entity definition in the database
         let class_repo = EntityDefinitionRepository::new(pool.clone());

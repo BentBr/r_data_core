@@ -39,8 +39,7 @@ mod validation_tests {
     fn create_entity_definition_from_json(json_data: Value) -> Result<EntityDefinition> {
         serde_json::from_value(json_data).map_err(|e| {
             r_data_core_core::error::Error::Validation(format!(
-                "Failed to deserialize entity definition: {}",
-                e
+                "Failed to deserialize entity definition: {e}"
             ))
         })
     }
@@ -74,8 +73,7 @@ mod validation_tests {
         let result = valid_entity.validate();
         assert!(
             result.is_ok(),
-            "Valid email should pass validation: {:?}",
-            result
+            "Valid email should pass validation: {result:?}"
         );
 
         // Test invalid email patterns
@@ -102,8 +100,7 @@ mod validation_tests {
             let result = invalid_entity.validate();
             assert!(
                 result.is_err(),
-                "Invalid email '{}' should fail validation",
-                invalid_email
+                "Invalid email '{invalid_email}' should fail validation"
             );
         }
 
@@ -150,9 +147,7 @@ mod validation_tests {
             let result = valid_entity.validate();
             assert!(
                 result.is_ok(),
-                "Valid SKU '{}' should pass validation: {:?}",
-                valid_sku,
-                result
+                "Valid SKU '{valid_sku}' should pass validation: {result:?}"
             );
         }
 
@@ -192,8 +187,7 @@ mod validation_tests {
             let result = invalid_entity.validate();
             assert!(
                 result.is_err(),
-                "Invalid SKU '{}' should fail validation",
-                invalid_sku
+                "Invalid SKU '{invalid_sku}' should fail validation"
             );
         }
 
@@ -201,6 +195,7 @@ mod validation_tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)] // Test function with comprehensive validation scenarios
     fn test_range_validation_numeric() -> Result<()> {
         // Load product entity definition which has numeric range validation
         let json_data = load_json_example("product_entity_definition.json")?;
@@ -235,9 +230,7 @@ mod validation_tests {
             let result = valid_entity.validate();
             assert!(
                 result.is_ok(),
-                "Valid price {} should pass validation: {:?}",
-                price,
-                result
+                "Valid price {price} should pass validation: {result:?}"
             );
         }
 
@@ -266,9 +259,7 @@ mod validation_tests {
             let result = valid_entity.validate();
             assert!(
                 result.is_ok(),
-                "Valid quantity {} should pass validation: {:?}",
-                quantity,
-                result
+                "Valid quantity {quantity} should pass validation: {result:?}"
             );
         }
 
@@ -301,8 +292,7 @@ mod validation_tests {
             let result = invalid_entity.validate();
             assert!(
                 result.is_err(),
-                "Invalid price {} should fail validation",
-                price
+                "Invalid price {price} should fail validation"
             );
         }
 
@@ -331,8 +321,7 @@ mod validation_tests {
             let result = invalid_entity.validate();
             assert!(
                 result.is_err(),
-                "Invalid quantity {} should fail validation",
-                quantity
+                "Invalid quantity {quantity} should fail validation"
             );
         }
 
@@ -373,9 +362,7 @@ mod validation_tests {
             let result = valid_entity.validate();
             assert!(
                 result.is_ok(),
-                "Valid tax category '{}' should pass validation: {:?}",
-                tax_category,
-                result
+                "Valid tax category '{tax_category}' should pass validation: {result:?}"
             );
         }
 
@@ -407,8 +394,7 @@ mod validation_tests {
             let result = invalid_entity.validate();
             assert!(
                 result.is_err(),
-                "Invalid tax category '{}' should fail validation",
-                tax_category
+                "Invalid tax category '{tax_category}' should fail validation"
             );
         }
 
@@ -446,7 +432,7 @@ mod validation_tests {
         valid_data.insert("newsletter_opt_in".to_string(), json!(true));
         valid_data.insert("phone".to_string(), json!("")); // Optional field
 
-        let valid_entity = create_test_entity("user", valid_data, entity_def.clone());
+        let valid_entity = create_test_entity("user", valid_data, entity_def);
         let result = valid_entity.validate();
         assert!(
             result.is_ok(),
@@ -490,7 +476,7 @@ mod validation_tests {
         valid_data.insert("newsletter_opt_in".to_string(), json!(true));
         valid_data.insert("phone".to_string(), Value::Null); // Optional field
 
-        let valid_entity = create_test_entity("user", valid_data, entity_def.clone());
+        let valid_entity = create_test_entity("user", valid_data, entity_def);
         let result = valid_entity.validate();
         assert!(result.is_ok(), "Null optional field should pass validation");
 
@@ -522,7 +508,7 @@ mod validation_tests {
         partial_data.insert("first_name".to_string(), json!("John"));
         // Missing last_name, role, status, newsletter_opt_in (all required)
 
-        let partial_entity = create_test_entity("user", partial_data.clone(), entity_def.clone());
+        let partial_entity = create_test_entity("user", partial_data, entity_def);
         let result = partial_entity.validate();
         assert!(
             result.is_err(),
@@ -566,8 +552,7 @@ mod validation_tests {
         let result = valid_entity.validate();
         assert!(
             result.is_ok(),
-            "Comprehensive valid product should pass validation: {:?}",
-            result
+            "Comprehensive valid product should pass validation: {result:?}"
         );
 
         // Test product with multiple validation errors
@@ -591,7 +576,7 @@ mod validation_tests {
             json!("Invalid product description"),
         );
 
-        let invalid_entity = create_test_entity("product", invalid_data, entity_def.clone());
+        let invalid_entity = create_test_entity("product", invalid_data, entity_def);
         let result = invalid_entity.validate();
         assert!(
             result.is_err(),

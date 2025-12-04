@@ -82,7 +82,9 @@ impl ApiStateTrait for ApiState {
     }
 
     fn cache_manager_ref(&self) -> &dyn std::any::Any {
-        &*self.cache_manager
+        // Return a reference to the Arc itself, not the inner value
+        // This allows downcasting back to &Arc<CacheManager>
+        &self.cache_manager
     }
 
     fn workflow_service_ref(&self) -> &dyn std::any::Any {

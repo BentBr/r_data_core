@@ -270,8 +270,8 @@ mod dynamic_entity_api_tests {
         };
 
         // Build test app
-        let app_state = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));
-        test::init_service(App::new().app_data(app_state).configure(configure_app)).await
+        let app_data = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));
+        test::init_service(App::new().app_data(app_data).configure(configure_app)).await
     }
 
     #[actix_web::test]

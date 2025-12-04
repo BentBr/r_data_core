@@ -40,8 +40,9 @@ impl TryFrom<PermissionResponse> for Permission {
     type Error = String;
 
     fn try_from(response: PermissionResponse) -> Result<Self, Self::Error> {
-        // Convert to lowercase for matching (API sends capitalized, but from_str expects lowercase)
-        let resource_type_str = response.resource_type.to_lowercase();
+        // Convert PascalCase to snake_case (lowercase)
+        // Handles both "EntityDefinitions" -> "entity_definitions" and "entity_definitions" -> "entity_definitions"
+        let resource_type_str = pascal_to_snake_case(&response.resource_type);
         let resource_type = ResourceNamespace::try_from_str(&resource_type_str)
             .ok_or_else(|| format!("Invalid resource type: {}", response.resource_type))?;
 
@@ -53,6 +54,19 @@ impl TryFrom<PermissionResponse> for Permission {
             constraints: response.constraints,
         })
     }
+}
+
+/// Convert `PascalCase` to `snake_case`
+/// Example: "`EntityDefinitions`" -> "`entity_definitions`", "`ApiKeys`" -> "`api_keys`"
+pub(crate) fn pascal_to_snake_case(s: &str) -> String {
+    let mut result = String::new();
+    for (i, c) in s.chars().enumerate() {
+        if c.is_uppercase() && i > 0 {
+            result.push('_');
+        }
+        result.push(c.to_lowercase().next().unwrap_or(c));
+    }
+    result
 }
 
 /// Permission scheme response DTO
@@ -144,4 +158,133 @@ pub struct UpdatePermissionSchemeRequest {
 pub struct AssignSchemesRequest {
     /// UUIDs of permission schemes to assign
     pub scheme_uuids: Vec<Uuid>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use r_data_core_core::permissions::permission_scheme::{AccessLevel, PermissionType};
+
+    #[test]
+    fn test_pascal_to_snake_case() {
+        // Test PascalCase conversion
+        assert_eq!(
+            pascal_to_snake_case("EntityDefinitions"),
+            "entity_definitions"
+        );
+        assert_eq!(pascal_to_snake_case("ApiKeys"), "api_keys");
+        assert_eq!(
+            pascal_to_snake_case("PermissionSchemes"),
+            "permission_schemes"
+        );
+
+        // Test single word (no underscores needed)
+        assert_eq!(pascal_to_snake_case("Workflows"), "workflows");
+        assert_eq!(pascal_to_snake_case("Entities"), "entities");
+        assert_eq!(pascal_to_snake_case("System"), "system");
+
+        // Test already snake_case (should remain unchanged)
+        assert_eq!(
+            pascal_to_snake_case("entity_definitions"),
+            "entity_definitions"
+        );
+        assert_eq!(pascal_to_snake_case("api_keys"), "api_keys");
+        assert_eq!(pascal_to_snake_case("workflows"), "workflows");
+
+        // Test lowercase (should remain unchanged)
+        assert_eq!(pascal_to_snake_case("workflows"), "workflows");
+        assert_eq!(pascal_to_snake_case("entities"), "entities");
+    }
+
+    #[test]
+    fn test_permission_response_try_from_with_pascal_case() {
+        // Test that PermissionResponse with PascalCase resource_type converts correctly
+        let response = PermissionResponse {
+            resource_type: "EntityDefinitions".to_string(),
+            permission_type: PermissionType::Read,
+            access_level: AccessLevel::All,
+            resource_uuids: Vec::new(),
+            constraints: None,
+        };
+
+        let permission = Permission::try_from(response);
+        assert!(permission.is_ok());
+        assert_eq!(
+            permission.unwrap().resource_type,
+            ResourceNamespace::EntityDefinitions
+        );
+    }
+
+    #[test]
+    fn test_permission_response_try_from_with_snake_case() {
+        // Test that PermissionResponse with snake_case resource_type still works
+        let response = PermissionResponse {
+            resource_type: "entity_definitions".to_string(),
+            permission_type: PermissionType::Read,
+            access_level: AccessLevel::All,
+            resource_uuids: Vec::new(),
+            constraints: None,
+        };
+
+        let permission = Permission::try_from(response);
+        assert!(permission.is_ok());
+        assert_eq!(
+            permission.unwrap().resource_type,
+            ResourceNamespace::EntityDefinitions
+        );
+    }
+
+    #[test]
+    fn test_permission_response_try_from_all_resource_types() {
+        let test_cases = vec![
+            ("Workflows", ResourceNamespace::Workflows),
+            ("workflows", ResourceNamespace::Workflows),
+            ("Entities", ResourceNamespace::Entities),
+            ("entities", ResourceNamespace::Entities),
+            ("EntityDefinitions", ResourceNamespace::EntityDefinitions),
+            ("entity_definitions", ResourceNamespace::EntityDefinitions),
+            ("ApiKeys", ResourceNamespace::ApiKeys),
+            ("api_keys", ResourceNamespace::ApiKeys),
+            ("PermissionSchemes", ResourceNamespace::PermissionSchemes),
+            ("permission_schemes", ResourceNamespace::PermissionSchemes),
+            ("System", ResourceNamespace::System),
+            ("system", ResourceNamespace::System),
+        ];
+
+        for (resource_type_str, expected_namespace) in test_cases {
+            let response = PermissionResponse {
+                resource_type: resource_type_str.to_string(),
+                permission_type: PermissionType::Read,
+                access_level: AccessLevel::All,
+                resource_uuids: Vec::new(),
+                constraints: None,
+            };
+
+            let permission = Permission::try_from(response);
+            assert!(
+                permission.is_ok(),
+                "Failed to convert resource_type: {resource_type_str}"
+            );
+            assert_eq!(
+                permission.unwrap().resource_type,
+                expected_namespace,
+                "Resource type mismatch for: {resource_type_str}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_permission_response_try_from_invalid_resource_type() {
+        let response = PermissionResponse {
+            resource_type: "InvalidResourceType".to_string(),
+            permission_type: PermissionType::Read,
+            access_level: AccessLevel::All,
+            resource_uuids: Vec::new(),
+            constraints: None,
+        };
+
+        let permission = Permission::try_from(response);
+        assert!(permission.is_err());
+        assert!(permission.unwrap_err().contains("Invalid resource type"));
+    }
 }

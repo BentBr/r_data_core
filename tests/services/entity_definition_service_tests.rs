@@ -145,7 +145,7 @@ async fn test_get_entity_definition_by_uuid_found() -> Result<()> {
 
     mock_repo
         .expect_get_by_uuid()
-        .with(eq(test_uuid.clone()))
+        .with(eq(test_uuid))
         .return_once(move |_| Ok(Some(expected_definition)));
 
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
@@ -167,7 +167,7 @@ async fn test_get_entity_definition_by_uuid_not_found() -> Result<()> {
 
     mock_repo
         .expect_get_by_uuid()
-        .with(eq(test_uuid.clone()))
+        .with(eq(test_uuid))
         .return_once(|_| Ok(None));
 
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
@@ -325,7 +325,7 @@ async fn test_update_entity_definition_success() -> Result<()> {
     // Return the existing definition for validation
     mock_repo
         .expect_get_by_uuid()
-        .with(eq(test_uuid.clone()))
+        .with(eq(test_uuid))
         .return_once(move |_| Ok(Some(definition_clone)));
 
     // No other definition with the same entity type
@@ -365,7 +365,7 @@ async fn test_update_entity_definition_not_found() -> Result<()> {
     // No existing definition found
     mock_repo
         .expect_get_by_uuid()
-        .with(eq(test_uuid.clone()))
+        .with(eq(test_uuid))
         .return_once(|_| Ok(None));
 
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
@@ -395,7 +395,7 @@ async fn test_delete_entity_definition_success() -> Result<()> {
     // Set up expectations for a entity definition existing
     mock_repo
         .expect_get_by_uuid()
-        .with(eq(test_uuid.clone()))
+        .with(eq(test_uuid))
         .return_once(move |_| Ok(Some(test_definition)));
 
     // Expect a call to check if the view exists
@@ -430,7 +430,7 @@ async fn test_delete_entity_definition_with_records() -> Result<()> {
     // Set up expectations for a entity definition existing
     mock_repo
         .expect_get_by_uuid()
-        .with(eq(test_uuid.clone()))
+        .with(eq(test_uuid))
         .return_once(move |_| Ok(Some(test_definition)));
 
     // Expect a call to check if the view exists
@@ -470,7 +470,7 @@ async fn test_delete_entity_definition_not_found() -> Result<()> {
     // No existing definition found
     mock_repo
         .expect_get_by_uuid()
-        .with(eq(test_uuid.clone()))
+        .with(eq(test_uuid))
         .return_once(|_| Ok(None));
 
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));

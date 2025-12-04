@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { UuidSchema } from './base'
+import { UuidSchema, NullableUuidSchema } from './base'
 
 // Enums
 export const ResourceNamespaceSchema = z.enum([
@@ -30,7 +30,7 @@ export const PermissionSchema = z.object({
     permission_type: PermissionTypeSchema,
     access_level: AccessLevelSchema,
     resource_uuids: z.array(UuidSchema),
-    constraints: z.record(z.unknown()).optional(),
+    constraints: z.record(z.string(), z.unknown()).optional(),
 })
 
 // Permission Scheme schema
@@ -40,11 +40,11 @@ export const PermissionSchemeSchema = z.object({
     description: z.string().nullable(),
     is_system: z.boolean(),
     super_admin: z.boolean(),
-    role_permissions: z.record(z.array(PermissionSchema)),
+    role_permissions: z.record(z.string(), z.array(PermissionSchema)),
     created_at: z.string(),
     updated_at: z.string(),
-    created_by: UuidSchema,
-    updated_by: UuidSchema.nullable(),
+    created_by: NullableUuidSchema,
+    updated_by: NullableUuidSchema,
     published: z.boolean(),
     version: z.number(),
 })
@@ -54,14 +54,14 @@ export const CreatePermissionSchemeRequestSchema = z.object({
     name: z.string(),
     description: z.string().nullable().optional(),
     super_admin: z.boolean().optional(),
-    role_permissions: z.record(z.array(PermissionSchema)),
+    role_permissions: z.record(z.string(), z.array(PermissionSchema)),
 })
 
 export const UpdatePermissionSchemeRequestSchema = z.object({
     name: z.string(),
     description: z.string().nullable().optional(),
     super_admin: z.boolean().optional(),
-    role_permissions: z.record(z.array(PermissionSchema)),
+    role_permissions: z.record(z.string(), z.array(PermissionSchema)),
 })
 
 export const AssignSchemesRequestSchema = z.object({

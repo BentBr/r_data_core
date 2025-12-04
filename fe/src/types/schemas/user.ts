@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { UuidSchema, TimestampSchema } from './base'
+import { UuidSchema, TimestampSchema, NullableUuidSchema } from './base'
 
 // Email validation helper
 const emailValidation = z
@@ -38,7 +38,7 @@ export const UserResponseSchema = z.object({
     failed_login_attempts: z.number(),
     created_at: TimestampSchema,
     updated_at: TimestampSchema,
-    created_by: UuidSchema,
+    created_by: NullableUuidSchema,
 })
 
 // Create user request schema

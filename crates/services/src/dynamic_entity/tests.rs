@@ -12,6 +12,8 @@ use uuid::Uuid;
 use crate::entity_definition::EntityDefinitionService;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::error::Result;
+use r_data_core_core::field::options::FieldValidation;
+use r_data_core_core::field::ui::UiSettings;
 use r_data_core_core::DynamicEntity;
 use r_data_core_persistence::DynamicEntityRepositoryTrait;
 
@@ -86,8 +88,8 @@ fn create_test_entity_definition() -> EntityDefinition {
                 indexed: true,
                 filterable: true,
                 default_value: None,
-                validation: r_data_core_core::field::FieldValidation::default(),
-                ui_settings: r_data_core_core::field::UiSettings::default(),
+                validation: FieldValidation::default(),
+                ui_settings: UiSettings::default(),
                 constraints: HashMap::new(),
             },
             FieldDefinition {
@@ -99,8 +101,8 @@ fn create_test_entity_definition() -> EntityDefinition {
                 indexed: false,
                 filterable: true,
                 default_value: None,
-                validation: r_data_core_core::field::FieldValidation::default(),
-                ui_settings: r_data_core_core::field::UiSettings::default(),
+                validation: FieldValidation::default(),
+                ui_settings: UiSettings::default(),
                 constraints: HashMap::new(),
             },
         ],
@@ -179,7 +181,7 @@ async fn test_get_entity_by_uuid() -> Result<()> {
     repo.expect_get_by_type()
         .with(
             predicate::eq(entity_type),
-            predicate::eq(uuid.clone()),
+            predicate::eq(uuid),
             predicate::eq(None),
         )
         .returning(|_, _, _| Ok(Some(create_test_entity())));
@@ -266,7 +268,7 @@ async fn test_create_entity_missing_required_field() -> Result<()> {
         Err(r_data_core_core::error::Error::Validation(msg)) => {
             assert!(msg.contains("Required field 'name' is missing"));
         }
-        _ => panic!("Expected validation error, got: {:?}", result),
+        _ => panic!("Expected validation error, got: {result:?}"),
     }
 
     Ok(())
@@ -282,7 +284,7 @@ fn test_get_entity_by_uuid_sync() {
     let uuid = Uuid::nil();
 
     repo.expect_get_by_type()
-        .with(eq(entity_type), eq(uuid.clone()), eq(None))
+        .with(eq(entity_type), eq(uuid), eq(None))
         .returning(|_, _, _| Ok(Some(create_test_entity())));
 
     class_repo

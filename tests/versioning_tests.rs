@@ -154,12 +154,14 @@ async fn test_entity_definition_update_creates_snapshot_and_increments_version()
     let def_repo = EntityDefinitionRepository::new(pool.clone());
     let def_service = EntityDefinitionService::new_without_cache(std::sync::Arc::new(def_repo));
 
-    let mut def = r_data_core_core::entity_definition::definition::EntityDefinition::default();
-    def.entity_type = entity_type.clone();
-    def.display_name = "Ver Def".to_string();
-    def.description = Some("d".to_string());
-    def.published = true;
-    def.created_by = Uuid::now_v7();
+    let def = r_data_core_core::entity_definition::definition::EntityDefinition {
+        entity_type: entity_type.clone(),
+        display_name: "Ver Def".to_string(),
+        description: Some("d".to_string()),
+        published: true,
+        created_by: Uuid::now_v7(),
+        ..Default::default()
+    };
     let def_uuid = def_service.create_entity_definition(&def).await.unwrap();
 
     // Before version
@@ -267,6 +269,7 @@ async fn test_maintenance_prunes_by_age_and_count() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)] // Test function with comprehensive versioning scenarios
 async fn test_version_creation_and_endpoint_output() {
     let pool = setup_test_db().await;
     let entity_type = unique_entity_type("ver_endpoint");
@@ -417,6 +420,7 @@ async fn test_version_creation_and_endpoint_output() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)] // Test function with comprehensive versioning scenarios
 async fn test_version_creator_names_in_json_response() {
     let pool = setup_test_db().await;
     let entity_type = unique_entity_type("ver_names");

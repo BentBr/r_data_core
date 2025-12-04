@@ -140,6 +140,20 @@
         },
     }
 
+    const resetForm = () => {
+        formData.value = {
+            username: '',
+            email: '',
+            password: '',
+            first_name: '',
+            last_name: '',
+            role: '',
+            is_active: true,
+            super_admin: false,
+        }
+        formValid.value = false
+    }
+
     // Watch for editing user changes
     watch(
         () => props.editingUser,
@@ -170,20 +184,6 @@
             }
         }
     )
-
-    const resetForm = () => {
-        formData.value = {
-            username: '',
-            email: '',
-            password: '',
-            first_name: '',
-            last_name: '',
-            role: '',
-            is_active: true,
-            super_admin: false,
-        }
-        formValid.value = false
-    }
 
     const handleClose = () => {
         emit('update:modelValue', false)
