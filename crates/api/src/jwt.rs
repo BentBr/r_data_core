@@ -83,12 +83,14 @@ pub fn generate_jwt(
             r_data_core_core::error::Error::Auth("Could not create token expiration".to_string())
         })?;
 
-    // Check super_admin flag first, then SuperAdmin role
-    let is_super_admin = user.super_admin || matches!(user.role, UserRole::SuperAdmin);
+    // Check super_admin flag first, then SuperAdmin role, then scheme super_admin flags
+    let user_is_super_admin = user.super_admin || matches!(user.role, UserRole::SuperAdmin);
+    let scheme_is_super_admin = schemes.iter().any(|scheme| scheme.super_admin);
+    let is_super_admin = user_is_super_admin || scheme_is_super_admin;
 
     // Extract permissions from schemes
     let permissions = if is_super_admin {
-        // SuperAdmin or super_admin flag gets all permissions for all namespaces
+        // SuperAdmin or super_admin flag (user or scheme) gets all permissions for all namespaces
         generate_all_permissions()
     } else if !schemes.is_empty() {
         // Merge permissions from all schemes for user's role
@@ -320,8 +322,8 @@ mod tests {
         assert_eq!(claims.name, user.username);
         assert_eq!(claims.email, user.email);
         assert_eq!(claims.role, "SuperAdmin");
-        assert_eq!(claims.is_super_admin, false); // User has SuperAdmin role but not super_admin flag
-                                                  // SuperAdmin should have all permissions
+        assert!(!claims.is_super_admin); // User has SuperAdmin role but not super_admin flag
+                                         // SuperAdmin should have all permissions
         assert!(!claims.permissions.is_empty());
     }
 
@@ -417,7 +419,7 @@ mod tests {
         let config = create_test_config();
 
         // Test with a very long expiry (100 years)
-        let result = generate_jwt(&user, &config, 3153600000, &[]);
+        let result = generate_jwt(&user, &config, 3_153_600_000, &[]);
         assert!(result.is_ok());
 
         let token = result.unwrap();

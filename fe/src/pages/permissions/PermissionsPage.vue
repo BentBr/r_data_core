@@ -9,7 +9,7 @@
                                 icon="mdi-shield-account"
                                 class="mr-3"
                             />
-                            <span class="text-h4">Users and Roles</span>
+                            <span class="text-h4">{{ t('permissions.page.title') }}</span>
                         </div>
                     </v-card-title>
 
@@ -23,27 +23,29 @@
                                     icon="mdi-shield-account"
                                     class="mr-2"
                                 />
-                                Permission Schemes
+                                {{ t('permissions.page.tabs.schemes') }}
                             </v-tab>
                             <v-tab value="users">
                                 <v-icon
                                     icon="mdi-account-group"
                                     class="mr-2"
                                 />
-                                Users and Roles
+                                {{ t('permissions.page.tabs.users') }}
                             </v-tab>
                         </v-tabs>
 
                         <v-window v-model="activeTab">
                             <v-window-item value="schemes">
                                 <div class="d-flex align-center justify-space-between pa-4">
-                                    <h3 class="text-h6">Permission Schemes</h3>
+                                    <h3 class="text-h6">
+                                        {{ t('permissions.page.schemes.title') }}
+                                    </h3>
                                     <v-btn
                                         color="primary"
                                         prepend-icon="mdi-plus"
                                         @click="openCreateDialog"
                                     >
-                                        New Permission Scheme
+                                        {{ t('permissions.page.schemes.new_button') }}
                                     </v-btn>
                                 </div>
 
@@ -52,7 +54,7 @@
                                     :headers="tableHeaders"
                                     :loading="loading"
                                     :error="error"
-                                    loading-text="Loading permission schemes..."
+                                    :loading-text="t('permissions.page.schemes.loading')"
                                     :current-page="currentPage"
                                     :items-per-page="itemsPerPage"
                                     :total-items="totalItems"
@@ -78,7 +80,10 @@
                                     <!-- Description Column -->
                                     <template #item.description="{ item }">
                                         <span class="text-body-2 text-medium-emphasis">
-                                            {{ item.description || 'No description' }}
+                                            {{
+                                                item.description ||
+                                                t('permissions.page.schemes.no_description')
+                                            }}
                                         </span>
                                     </template>
 
@@ -90,7 +95,7 @@
                                             variant="outlined"
                                         >
                                             {{ Object.keys(item.role_permissions || {}).length }}
-                                            roles
+                                            {{ t('permissions.page.schemes.roles') }}
                                         </v-chip>
                                     </template>
 
@@ -127,14 +132,14 @@
 
                             <v-window-item value="users">
                                 <div class="d-flex align-center justify-space-between pa-4">
-                                    <h3 class="text-h6">Users and Roles</h3>
+                                    <h3 class="text-h6">{{ t('permissions.page.users.title') }}</h3>
                                     <v-btn
                                         v-if="canCreateUser"
                                         color="primary"
                                         prepend-icon="mdi-plus"
                                         @click="openCreateUserDialog"
                                     >
-                                        New User
+                                        {{ t('permissions.page.users.new_button') }}
                                     </v-btn>
                                 </div>
                                 <PaginatedDataTable
@@ -142,7 +147,7 @@
                                     :headers="userTableHeaders"
                                     :loading="usersLoading"
                                     :error="usersError"
-                                    loading-text="Loading users..."
+                                    :loading-text="t('permissions.page.users.loading')"
                                     :current-page="usersCurrentPage"
                                     :items-per-page="usersItemsPerPage"
                                     :total-items="usersTotalItems"
@@ -187,7 +192,11 @@
                                             size="small"
                                             :color="item.is_active ? 'success' : 'error'"
                                         >
-                                            {{ item.is_active ? 'Active' : 'Inactive' }}
+                                            {{
+                                                item.is_active
+                                                    ? t('permissions.page.users.status.active')
+                                                    : t('permissions.page.users.status.inactive')
+                                            }}
                                         </v-chip>
                                     </template>
 
@@ -245,7 +254,7 @@
             @confirm="deleteScheme"
         >
             <p>
-                Are you sure you want to delete the permission scheme "{{ schemeToDelete?.name }}"?
+                {{ t('permissions.page.schemes.delete.message', { name: schemeToDelete?.name }) }}
             </p>
         </DialogManager>
 
@@ -256,7 +265,11 @@
             :loading="deletingUser"
             @confirm="deleteUser"
         >
-            <p>Are you sure you want to delete the user "{{ userToDelete?.username }}"?</p>
+            <p>
+                {{
+                    t('permissions.page.users.delete.message', { username: userToDelete?.username })
+                }}
+            </p>
         </DialogManager>
 
         <!-- Snackbar -->
@@ -285,7 +298,10 @@
     import { useUsers } from '@/composables/useUsers'
     import { usePagination } from '@/composables/usePagination'
     import { useAuthStore } from '@/stores/auth'
+    import { useTranslations } from '@/composables/useTranslations'
     import type { UserResponse, CreateUserRequest, UpdateUserRequest } from '@/types/schemas'
+
+    const { t } = useTranslations()
 
     const { currentSnackbar } = useSnackbar()
     const {
@@ -311,12 +327,12 @@
     const authStore = useAuthStore()
 
     // Permission checks
-    const canCreateScheme = computed(
-        () => authStore.isSuperAdmin || authStore.hasPermission('PermissionSchemes', 'Create')
-    )
-    const canCreateUser = computed(
-        () => authStore.isSuperAdmin || authStore.hasPermission('PermissionSchemes', 'Admin')
-    )
+    const canCreateUser = computed(() => {
+        if (authStore.isSuperAdmin) {
+            return true
+        }
+        return authStore.hasPermission('PermissionSchemes', 'Admin')
+    })
 
     // Reactive state
     const activeTab = ref('schemes')
@@ -392,35 +408,39 @@
 
     // Table headers
     const tableHeaders = computed(() => [
-        { title: 'Name', key: 'name', sortable: true },
-        { title: 'Description', key: 'description', sortable: false },
-        { title: 'Roles', key: 'roles_count', sortable: false },
-        { title: 'Created', key: 'created_at', sortable: true },
-        { title: 'Actions', key: 'actions', sortable: false },
+        { title: t('permissions.page.schemes.table.name'), key: 'name', sortable: true },
+        {
+            title: t('permissions.page.schemes.table.description'),
+            key: 'description',
+            sortable: false,
+        },
+        { title: t('permissions.page.schemes.table.roles'), key: 'roles_count', sortable: false },
+        { title: t('permissions.page.schemes.table.created'), key: 'created_at', sortable: true },
+        { title: t('permissions.page.schemes.table.actions'), key: 'actions', sortable: false },
     ])
 
     // User table headers
     const userTableHeaders = computed(() => [
-        { title: 'Username', key: 'username', sortable: true },
-        { title: 'Email', key: 'email', sortable: true },
-        { title: 'Role', key: 'role', sortable: true },
-        { title: 'Status', key: 'is_active', sortable: true },
-        { title: 'Created', key: 'created_at', sortable: true },
-        { title: 'Actions', key: 'actions', sortable: false },
+        { title: t('permissions.page.users.table.username'), key: 'username', sortable: true },
+        { title: t('permissions.page.users.table.email'), key: 'email', sortable: true },
+        { title: t('permissions.page.users.table.role'), key: 'role', sortable: true },
+        { title: t('permissions.page.users.table.status'), key: 'is_active', sortable: true },
+        { title: t('permissions.page.users.table.created'), key: 'created_at', sortable: true },
+        { title: t('permissions.page.users.table.actions'), key: 'actions', sortable: false },
     ])
 
     // Dialog config
     const deleteDialogConfig = computed(() => ({
-        title: 'Delete Permission Scheme',
-        confirmText: 'Delete',
-        cancelText: 'Cancel',
+        title: t('permissions.page.schemes.delete.title'),
+        confirmText: t('permissions.page.schemes.delete.confirm'),
+        cancelText: t('permissions.page.schemes.delete.cancel'),
         maxWidth: '400px',
     }))
 
     const deleteUserDialogConfig = computed(() => ({
-        title: 'Delete User',
-        confirmText: 'Delete',
-        cancelText: 'Cancel',
+        title: t('permissions.page.users.delete.title'),
+        confirmText: t('permissions.page.users.delete.confirm'),
+        cancelText: t('permissions.page.users.delete.cancel'),
         maxWidth: '400px',
     }))
 

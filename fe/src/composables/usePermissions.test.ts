@@ -1,20 +1,28 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useAuthStore } from '@/stores/auth'
 
+const mockStore = {
+    isSuperAdmin: false,
+    allowedRoutes: ['/dashboard', '/workflows'],
+    hasPermission: vi.fn((namespace: string, permissionType: string) => {
+        if (mockStore.isSuperAdmin) {
+            return true
+        }
+        if (namespace === 'PermissionSchemes' && permissionType === 'Create') {
+            return true
+        }
+        return false
+    }),
+    canAccessRoute: vi.fn((route: string) => {
+        if (mockStore.isSuperAdmin) {
+            return true
+        }
+        return mockStore.allowedRoutes.includes(route)
+    }),
+}
+
 vi.mock('@/stores/auth', () => ({
-    useAuthStore: vi.fn(() => ({
-        isSuperAdmin: false,
-        allowedRoutes: ['/dashboard', '/workflows'],
-        hasPermission: vi.fn((namespace: string, permissionType: string) => {
-            if (namespace === 'PermissionSchemes' && permissionType === 'Create') {
-                return true
-            }
-            return false
-        }),
-        canAccessRoute: vi.fn((route: string) => {
-            return ['/dashboard', '/workflows'].includes(route)
-        }),
-    })),
+    useAuthStore: vi.fn(() => mockStore),
 }))
 
 describe('usePermissions', () => {

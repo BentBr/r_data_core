@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  clippy:
+  backend:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,8 +27,71 @@ jobs:
         with:
           workspaces: .
 
+      - name: Cache cargo bin directory
+        id: cache-cargo-bin
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-bin-
+
+      - name: Install cargo-audit
+        run: |
+          if ! command -v cargo-audit &> /dev/null; then
+            cargo install cargo-audit --locked
+          fi
+
       - name: Clippy (strict)
         run: |
           cargo clippy --workspace --all-targets --all-features -- \
             -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery
 
+      - name: Format check
+        run: cargo fmt --check --all
+
+      - name: Security audit
+        run: cargo audit
+
+      - name: Run tests
+        run: RUST_LOG=warning cargo test --workspace -- --test-threads=1
+
+      - name: Build verification
+        run: cargo build --workspace --all-features
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: fe/package-lock.json
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: fe/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install dependencies
+        working-directory: fe
+        run: npm ci
+
+      - name: Lint
+        working-directory: fe
+        run: npm run lint
+
+      - name: Run tests
+        working-directory: fe
+        run: npm run test
+
+      - name: Security audit
+        working-directory: fe
+        run: npm audit --audit-level=moderate

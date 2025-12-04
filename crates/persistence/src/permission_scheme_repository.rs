@@ -39,6 +39,7 @@ impl PermissionSchemeRepository {
             SELECT
                 uuid, path, name, description,
                 rules as "rules: serde_json::Value",
+                super_admin,
                 created_at, updated_at, created_by, updated_by,
                 published, version
             FROM permission_schemes
@@ -74,6 +75,7 @@ impl PermissionSchemeRepository {
             SELECT
                 uuid, path, name, description,
                 rules as "rules: serde_json::Value",
+                super_admin,
                 created_at, updated_at, created_by, updated_by,
                 published, version
             FROM permission_schemes
@@ -111,8 +113,8 @@ impl PermissionSchemeRepository {
 
         sqlx::query(
             "
-            INSERT INTO permission_schemes (uuid, path, name, description, rules, created_by, published, version)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            INSERT INTO permission_schemes (uuid, path, name, description, rules, super_admin, created_by, published, version)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             ",
         )
         .bind(uuid)
@@ -120,6 +122,7 @@ impl PermissionSchemeRepository {
         .bind(&scheme.name)
         .bind(&scheme.description)
         .bind(rules_json)
+        .bind(scheme.super_admin)
         .bind(created_by)
         .bind(scheme.base.published)
         .bind(scheme.base.version)
@@ -145,7 +148,7 @@ impl PermissionSchemeRepository {
         sqlx::query(
             "
             UPDATE permission_schemes
-            SET name = $2, description = $3, rules = $4, updated_by = $5, updated_at = NOW(), version = version + 1
+            SET name = $2, description = $3, rules = $4, super_admin = $5, updated_by = $6, updated_at = NOW(), version = version + 1
             WHERE uuid = $1
             ",
         )
@@ -153,6 +156,7 @@ impl PermissionSchemeRepository {
         .bind(&scheme.name)
         .bind(&scheme.description)
         .bind(rules_json)
+        .bind(scheme.super_admin)
         .bind(updated_by)
         .execute(&self.pool)
         .await
@@ -192,6 +196,7 @@ impl PermissionSchemeRepository {
             SELECT
                 uuid, path, name, description,
                 rules as "rules: serde_json::Value",
+                super_admin,
                 created_at, updated_at, created_by, updated_by,
                 published, version
             FROM permission_schemes
@@ -268,6 +273,7 @@ fn permission_scheme_from_row(row: &PgRow) -> std::result::Result<PermissionSche
     let path: String = row.try_get("path")?;
     let name: String = row.try_get("name")?;
     let description: Option<String> = row.try_get("description").ok();
+    let super_admin: bool = row.try_get("super_admin").unwrap_or(false);
     let created_at: time::OffsetDateTime = row.try_get("created_at")?;
     let updated_at: time::OffsetDateTime = row.try_get("updated_at")?;
     let created_by: Uuid = row.try_get("created_by")?;
@@ -304,6 +310,7 @@ fn permission_scheme_from_row(row: &PgRow) -> std::result::Result<PermissionSche
         name,
         description,
         is_system: false, // System schemes are determined by application logic
+        super_admin,
         role_permissions,
     })
 }

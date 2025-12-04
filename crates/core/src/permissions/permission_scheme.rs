@@ -170,8 +170,12 @@ pub struct PermissionScheme {
     /// Whether this is a system scheme (cannot be modified)
     pub is_system: bool,
 
+    /// Whether this scheme grants super admin privileges
+    /// Users with a `super_admin` scheme have all permissions regardless of `role_permissions`
+    pub super_admin: bool,
+
     /// Role-based permissions
-    /// Key is role name (e.g., `"MyRole"`), value is list of permissions for that role
+    /// Key is a role name (e.g., `"MyRole"`); value is a list of permissions for that role
     pub role_permissions: HashMap<String, Vec<Permission>>,
 }
 
@@ -187,6 +191,7 @@ impl PermissionScheme {
             name,
             description: None,
             is_system: false,
+            super_admin: false,
             role_permissions: HashMap::new(),
         }
     }

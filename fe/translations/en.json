@@ -409,6 +409,107 @@
       "logout_subtitle": "Sign out of your account"
     }
   },
+  "users": {
+    "dialog": {
+      "create_title": "Create User",
+      "edit_title": "Edit User",
+      "username": "Username",
+      "email": "Email",
+      "password": "Password",
+      "password_hint": "Leave empty to keep current password",
+      "first_name": "First Name",
+      "last_name": "Last Name",
+      "role": "Role",
+      "role_hint": "Role name (e.g., 'Editor', 'Viewer', 'SuperAdmin')",
+      "active": "Active",
+      "active_hint": "Whether the user account is active",
+      "super_admin": "Super Admin",
+      "super_admin_hint": "Super admin users have all permissions regardless of assigned schemes",
+      "cancel": "Cancel",
+      "create": "Create",
+      "update": "Update",
+      "validation": {
+        "required": "This field is required",
+        "email_invalid": "Must be a valid email",
+        "min_length": "Must be at least {min} characters"
+      }
+    },
+    "table": {
+      "username": "Username",
+      "email": "Email",
+      "full_name": "Full Name",
+      "role": "Role",
+      "status": "Status",
+      "is_active": "Active",
+      "super_admin": "Super Admin",
+      "actions": "Actions"
+    }
+  },
+  "permissions": {
+    "dialog": {
+      "create_title": "Create Permission Scheme",
+      "edit_title": "Edit Permission Scheme",
+      "name": "Name",
+      "description": "Description",
+      "super_admin": "Super Admin",
+      "super_admin_hint": "Users with this scheme will have all permissions regardless of role permissions",
+      "roles_permissions": "Roles & Permissions",
+      "add_role": "Add Role",
+      "cancel": "Cancel",
+      "create": "Create",
+      "update": "Update"
+    },
+    "page": {
+      "title": "Users and Roles",
+      "tabs": {
+        "schemes": "Permission Schemes",
+        "users": "Users and Roles"
+      },
+      "schemes": {
+        "title": "Permission Schemes",
+        "new_button": "New Permission Scheme",
+        "loading": "Loading permission schemes...",
+        "no_description": "No description",
+        "roles": "roles",
+        "table": {
+          "name": "Name",
+          "description": "Description",
+          "roles": "Roles",
+          "created": "Created",
+          "actions": "Actions"
+        },
+        "delete": {
+          "title": "Delete Permission Scheme",
+          "message": "Are you sure you want to delete the permission scheme \"{name}\"?",
+          "confirm": "Delete",
+          "cancel": "Cancel"
+        }
+      },
+      "users": {
+        "title": "Users and Roles",
+        "new_button": "New User",
+        "loading": "Loading users...",
+        "status": {
+          "active": "Active",
+          "inactive": "Inactive"
+        },
+        "table": {
+          "username": "Username",
+          "email": "Email",
+          "role": "Role",
+          "status": "Status",
+          "created": "Created",
+          "actions": "Actions"
+        },
+        "delete": {
+          "title": "Delete User",
+          "message": "Are you sure you want to delete the user \"{username}\"?",
+          "confirm": "Delete",
+          "cancel": "Cancel"
+        }
+      }
+    }
+  },
   "system": {
     "admin": {
       "title": "System Administration"

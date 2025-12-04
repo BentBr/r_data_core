@@ -7,7 +7,7 @@
     >
         <v-card>
             <v-card-title>
-                {{ editingUser ? 'Edit User' : 'Create User' }}
+                {{ editingUser ? t('users.dialog.edit_title') : t('users.dialog.create_title') }}
             </v-card-title>
             <v-card-text>
                 <v-form
@@ -17,54 +17,54 @@
                     <v-text-field
                         v-if="!editingUser"
                         v-model="formData.username"
-                        label="Username"
+                        :label="t('users.dialog.username')"
                         :rules="[rules.required, rules.minLength(3)]"
                         required
                     />
                     <v-text-field
                         v-model="formData.email"
-                        label="Email"
+                        :label="t('users.dialog.email')"
                         type="email"
                         :rules="[rules.required, rules.email]"
                         required
                     />
                     <v-text-field
                         v-model="formData.password"
-                        label="Password"
+                        :label="t('users.dialog.password')"
                         type="password"
                         :rules="editingUser ? [] : [rules.required, rules.minLength(8)]"
                         :required="!editingUser"
-                        :hint="editingUser ? 'Leave empty to keep current password' : ''"
+                        :hint="editingUser ? t('users.dialog.password_hint') : ''"
                         persistent-hint
                     />
                     <v-text-field
                         v-model="formData.first_name"
-                        label="First Name"
+                        :label="t('users.dialog.first_name')"
                         :rules="[rules.required]"
                         required
                     />
                     <v-text-field
                         v-model="formData.last_name"
-                        label="Last Name"
+                        :label="t('users.dialog.last_name')"
                         :rules="[rules.required]"
                         required
                     />
                     <v-text-field
                         v-model="formData.role"
-                        label="Role"
-                        hint="Role name (e.g., 'Editor', 'Viewer', 'SuperAdmin')"
+                        :label="t('users.dialog.role')"
+                        :hint="t('users.dialog.role_hint')"
                         persistent-hint
                     />
                     <v-checkbox
                         v-model="formData.is_active"
-                        label="Active"
-                        hint="Whether the user account is active"
+                        :label="t('users.dialog.active')"
+                        :hint="t('users.dialog.active_hint')"
                         persistent-hint
                     />
                     <v-checkbox
                         v-model="formData.super_admin"
-                        label="Super Admin"
-                        hint="Super admin users have all permissions regardless of assigned schemes"
+                        :label="t('users.dialog.super_admin')"
+                        :hint="t('users.dialog.super_admin_hint')"
                         persistent-hint
                     />
                 </v-form>
@@ -75,7 +75,7 @@
                     variant="text"
                     @click="handleClose"
                 >
-                    Cancel
+                    {{ t('users.dialog.cancel') }}
                 </v-btn>
                 <v-btn
                     color="primary"
@@ -83,7 +83,7 @@
                     :disabled="!formValid"
                     @click="handleSave"
                 >
-                    {{ editingUser ? 'Update' : 'Create' }}
+                    {{ editingUser ? t('users.dialog.update') : t('users.dialog.create') }}
                 </v-btn>
             </v-card-actions>
         </v-card>
@@ -92,7 +92,10 @@
 
 <script setup lang="ts">
     import { ref, watch } from 'vue'
+    import { useTranslations } from '@/composables/useTranslations'
     import type { UserResponse, CreateUserRequest, UpdateUserRequest } from '@/types/schemas'
+
+    const { t } = useTranslations()
 
     interface Props {
         modelValue: boolean
@@ -122,18 +125,18 @@
     })
 
     const rules = {
-        required: (v: string) => !!v || 'This field is required',
+        required: (v: string) => !!v || t('users.dialog.validation.required'),
         email: (v: string) => {
             if (!v) {
                 return true
             }
-            return /.+@.+\..+/.test(v) || 'Must be a valid email'
+            return /.+@.+\..+/.test(v) || t('users.dialog.validation.email_invalid')
         },
         minLength: (min: number) => (v: string) => {
             if (!v) {
                 return true
             }
-            return v.length >= min || `Must be at least ${min} characters`
+            return v.length >= min || t('users.dialog.validation.min_length', { min })
         },
     }
 
@@ -145,8 +148,8 @@
                 formData.value = {
                     email: newUser.email,
                     password: '',
-                    first_name: newUser.first_name || '',
-                    last_name: newUser.last_name || '',
+                    first_name: newUser.first_name ?? '',
+                    last_name: newUser.last_name ?? '',
                     role: newUser.role,
                     is_active: newUser.is_active,
                     super_admin: newUser.super_admin,
@@ -197,7 +200,7 @@
                 email: formData.value.email,
                 first_name: formData.value.first_name,
                 last_name: formData.value.last_name,
-                role: formData.value.role || undefined,
+                role: formData.value.role ?? undefined,
                 is_active: formData.value.is_active,
                 super_admin: formData.value.super_admin,
             }
@@ -213,7 +216,7 @@
                 password: formData.value.password,
                 first_name: formData.value.first_name,
                 last_name: formData.value.last_name,
-                role: formData.value.role || undefined,
+                role: formData.value.role ?? undefined,
                 is_active: formData.value.is_active,
                 super_admin: formData.value.super_admin,
             }

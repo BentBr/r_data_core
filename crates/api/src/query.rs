@@ -356,12 +356,12 @@ mod tests {
 
         // Test very large numbers
         let query = PaginationQuery {
-            page: Some(999999),
-            per_page: Some(999999),
+            page: Some(999_999),
+            per_page: Some(999_999),
             limit: None,
             offset: None,
         };
-        assert_eq!(query.get_page(1), 999999);
+        assert_eq!(query.get_page(1), 999_999);
         assert_eq!(query.get_per_page(20, 100), 100); // Should be clamped to max 100
     }
 

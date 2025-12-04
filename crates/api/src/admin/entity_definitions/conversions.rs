@@ -32,6 +32,7 @@ pub fn entity_definition_to_schema_model(def: &EntityDefinition) -> EntityDefini
 }
 
 /// Convert `FieldDefinition` to API schema model
+#[allow(clippy::too_many_lines)] // Conversion function with many field mappings
 pub fn field_definition_to_schema_model(field: &FieldDefinition) -> FieldDefinitionSchema {
     let field_type_clone = field.field_type.clone();
     let field_type = field_type_to_schema(&field_type_clone);

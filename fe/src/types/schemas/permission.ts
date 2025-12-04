@@ -39,6 +39,7 @@ export const PermissionSchemeSchema = z.object({
     name: z.string(),
     description: z.string().nullable(),
     is_system: z.boolean(),
+    super_admin: z.boolean(),
     role_permissions: z.record(z.array(PermissionSchema)),
     created_at: z.string(),
     updated_at: z.string(),
@@ -52,12 +53,14 @@ export const PermissionSchemeSchema = z.object({
 export const CreatePermissionSchemeRequestSchema = z.object({
     name: z.string(),
     description: z.string().nullable().optional(),
+    super_admin: z.boolean().optional(),
     role_permissions: z.record(z.array(PermissionSchema)),
 })
 
 export const UpdatePermissionSchemeRequestSchema = z.object({
     name: z.string(),
     description: z.string().nullable().optional(),
+    super_admin: z.boolean().optional(),
     role_permissions: z.record(z.array(PermissionSchema)),
 })
 

@@ -409,6 +409,107 @@
       "logout_subtitle": "Von Ihrem Konto abmelden"
     }
   },
+  "users": {
+    "dialog": {
+      "create_title": "Benutzer erstellen",
+      "edit_title": "Benutzer bearbeiten",
+      "username": "Benutzername",
+      "email": "E-Mail",
+      "password": "Passwort",
+      "password_hint": "Leer lassen, um das aktuelle Passwort beizubehalten",
+      "first_name": "Vorname",
+      "last_name": "Nachname",
+      "role": "Rolle",
+      "role_hint": "Rollenname (z.B. 'Editor', 'Viewer', 'SuperAdmin')",
+      "active": "Aktiv",
+      "active_hint": "Ob das Benutzerkonto aktiv ist",
+      "super_admin": "Super-Administrator",
+      "super_admin_hint": "Super-Administratoren haben alle Berechtigungen unabhängig von zugewiesenen Schemas",
+      "cancel": "Abbrechen",
+      "create": "Erstellen",
+      "update": "Aktualisieren",
+      "validation": {
+        "required": "Dieses Feld ist erforderlich",
+        "email_invalid": "Muss eine gültige E-Mail-Adresse sein",
+        "min_length": "Muss mindestens {min} Zeichen lang sein"
+      }
+    },
+    "table": {
+      "username": "Benutzername",
+      "email": "E-Mail",
+      "full_name": "Vollständiger Name",
+      "role": "Rolle",
+      "status": "Status",
+      "is_active": "Aktiv",
+      "super_admin": "Super-Administrator",
+      "actions": "Aktionen"
+    }
+  },
+  "permissions": {
+    "dialog": {
+      "create_title": "Berechtigungsschema erstellen",
+      "edit_title": "Berechtigungsschema bearbeiten",
+      "name": "Name",
+      "description": "Beschreibung",
+      "super_admin": "Super-Administrator",
+      "super_admin_hint": "Benutzer mit diesem Schema haben alle Berechtigungen unabhängig von Rollenberechtigungen",
+      "roles_permissions": "Rollen & Berechtigungen",
+      "add_role": "Rolle hinzufügen",
+      "cancel": "Abbrechen",
+      "create": "Erstellen",
+      "update": "Aktualisieren"
+    },
+    "page": {
+      "title": "Benutzer und Rollen",
+      "tabs": {
+        "schemes": "Berechtigungsschemas",
+        "users": "Benutzer und Rollen"
+      },
+      "schemes": {
+        "title": "Berechtigungsschemas",
+        "new_button": "Neues Berechtigungsschema",
+        "loading": "Berechtigungsschemas werden geladen...",
+        "no_description": "Keine Beschreibung",
+        "roles": "Rollen",
+        "table": {
+          "name": "Name",
+          "description": "Beschreibung",
+          "roles": "Rollen",
+          "created": "Erstellt",
+          "actions": "Aktionen"
+        },
+        "delete": {
+          "title": "Berechtigungsschema löschen",
+          "message": "Sind Sie sicher, dass Sie das Berechtigungsschema \"{name}\" löschen möchten?",
+          "confirm": "Löschen",
+          "cancel": "Abbrechen"
+        }
+      },
+      "users": {
+        "title": "Benutzer und Rollen",
+        "new_button": "Neuer Benutzer",
+        "loading": "Benutzer werden geladen...",
+        "status": {
+          "active": "Aktiv",
+          "inactive": "Inaktiv"
+        },
+        "table": {
+          "username": "Benutzername",
+          "email": "E-Mail",
+          "role": "Rolle",
+          "status": "Status",
+          "created": "Erstellt",
+          "actions": "Aktionen"
+        },
+        "delete": {
+          "title": "Benutzer löschen",
+          "message": "Sind Sie sicher, dass Sie den Benutzer \"{username}\" löschen möchten?",
+          "confirm": "Löschen",
+          "cancel": "Abbrechen"
+        }
+      }
+    }
+  },
   "system": {
     "admin": {
       "title": "Systemverwaltung"

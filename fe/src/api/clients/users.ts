@@ -1,11 +1,5 @@
 import { z } from 'zod'
-import {
-    ApiResponseSchema,
-    PaginatedApiResponseSchema,
-    UserResponseSchema,
-    CreateUserRequestSchema,
-    UpdateUserRequestSchema,
-} from '@/types/schemas'
+import { ApiResponseSchema, PaginatedApiResponseSchema, UserResponseSchema } from '@/types/schemas'
 import type { UserResponse, CreateUserRequest, UpdateUserRequest } from '@/types/schemas'
 import { BaseTypedHttpClient } from './base'
 

@@ -7,7 +7,11 @@
     >
         <v-card>
             <v-card-title>
-                {{ editingScheme ? 'Edit Permission Scheme' : 'Create Permission Scheme' }}
+                {{
+                    editingScheme
+                        ? t('permissions.dialog.edit_title')
+                        : t('permissions.dialog.create_title')
+                }}
             </v-card-title>
             <v-card-text>
                 <v-form
@@ -16,26 +20,26 @@
                 >
                     <v-text-field
                         v-model="formData.name"
-                        label="Name"
+                        :label="t('permissions.dialog.name')"
                         :rules="[rules.required]"
                         required
                     />
                     <v-textarea
                         v-model="formData.description"
-                        label="Description"
+                        :label="t('permissions.dialog.description')"
                         rows="2"
                     />
 
                     <v-checkbox
-                        v-model="formData.isSuperAdmin"
-                        label="Super Admin"
-                        hint="Add SuperAdmin role with all permissions"
+                        v-model="formData.super_admin"
+                        :label="t('permissions.dialog.super_admin')"
+                        :hint="t('permissions.dialog.super_admin_hint')"
                         persistent-hint
                     />
 
                     <v-divider class="my-4" />
 
-                    <div class="text-h6 mb-4">Roles & Permissions</div>
+                    <div class="text-h6 mb-4">{{ t('permissions.dialog.roles_permissions') }}</div>
 
                     <RolePermissionsEditor
                         v-for="(permissions, roleName, index) in formData.role_permissions"
@@ -58,7 +62,7 @@
                         prepend-icon="mdi-plus"
                         @click="addRole"
                     >
-                        Add Role
+                        {{ t('permissions.dialog.add_role') }}
                     </v-btn>
                 </v-form>
             </v-card-text>
@@ -68,7 +72,7 @@
                     variant="text"
                     @click="handleClose"
                 >
-                    Cancel
+                    {{ t('permissions.dialog.cancel') }}
                 </v-btn>
                 <v-btn
                     color="primary"
@@ -76,7 +80,11 @@
                     :disabled="!formValid"
                     @click="handleSave"
                 >
-                    {{ editingScheme ? 'Update' : 'Create' }}
+                    {{
+                        editingScheme
+                            ? t('permissions.dialog.update')
+                            : t('permissions.dialog.create')
+                    }}
                 </v-btn>
             </v-card-actions>
         </v-card>
@@ -85,7 +93,10 @@
 
 <script setup lang="ts">
     import { ref, watch } from 'vue'
+    import { useTranslations } from '@/composables/useTranslations'
     import RolePermissionsEditor from './RolePermissionsEditor.vue'
+
+    const { t } = useTranslations()
     import type {
         PermissionScheme,
         CreatePermissionSchemeRequest,
@@ -124,12 +135,12 @@
         name: string
         description: string | null
         role_permissions: Record<string, Permission[]>
-        isSuperAdmin: boolean
+        super_admin: boolean
     }>({
         name: '',
         description: null,
         role_permissions: {},
-        isSuperAdmin: false,
+        super_admin: false,
     })
 
     const roleNames = ref<string[]>([])
@@ -147,20 +158,11 @@
                     const rolePerms = JSON.parse(
                         JSON.stringify(props.editingScheme.role_permissions)
                     )
-                    // Check if SuperAdmin role exists with all permissions
-                    const hasSuperAdmin =
-                        'SuperAdmin' in rolePerms &&
-                        rolePerms.SuperAdmin.some(
-                            (p: Permission) =>
-                                p.resource_type === '*' &&
-                                p.permission_type === 'Admin' &&
-                                p.access_level === 'All'
-                        )
                     formData.value = {
                         name: props.editingScheme.name,
                         description: props.editingScheme.description ?? null,
                         role_permissions: rolePerms,
-                        isSuperAdmin: hasSuperAdmin,
+                        super_admin: props.editingScheme.super_admin ?? false,
                     }
                     roleNames.value = Object.keys(formData.value.role_permissions)
                 } else {
@@ -168,7 +170,7 @@
                         name: '',
                         description: null,
                         role_permissions: {},
-                        isSuperAdmin: false,
+                        super_admin: false,
                     }
                     roleNames.value = []
                 }
@@ -207,7 +209,7 @@
             permission_type: 'Read',
             access_level: 'All',
             resource_uuids: [],
-            constraints: null,
+            constraints: undefined,
         })
     }
 
@@ -227,22 +229,10 @@
             updatedRolePermissions[newName] = formData.value.role_permissions[oldName] || []
         })
 
-        // Add SuperAdmin role if checkbox is checked
-        if (formData.value.isSuperAdmin) {
-            updatedRolePermissions.SuperAdmin = [
-                {
-                    resource_type: '*',
-                    permission_type: 'Admin',
-                    access_level: 'All',
-                    resource_uuids: [],
-                    constraints: null,
-                },
-            ]
-        }
-
         const requestData = {
             name: formData.value.name,
             description: formData.value.description,
+            super_admin: formData.value.super_admin,
             role_permissions: updatedRolePermissions,
         }
 

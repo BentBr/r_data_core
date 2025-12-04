@@ -66,6 +66,8 @@ pub struct PermissionSchemeResponse {
     pub description: Option<String>,
     /// Whether this is a system scheme
     pub is_system: bool,
+    /// Whether this scheme grants super admin privileges
+    pub super_admin: bool,
     /// Role-based permissions
     pub role_permissions: std::collections::HashMap<String, Vec<PermissionResponse>>,
     /// When the scheme was created
@@ -99,6 +101,7 @@ impl From<&PermissionScheme> for PermissionSchemeResponse {
             name: scheme.name.clone(),
             description: scheme.description.clone(),
             is_system: scheme.is_system,
+            super_admin: scheme.super_admin,
             role_permissions,
             created_at: scheme.base.created_at,
             updated_at: scheme.base.updated_at,
@@ -117,6 +120,8 @@ pub struct CreatePermissionSchemeRequest {
     pub name: String,
     /// Optional description
     pub description: Option<String>,
+    /// Whether this scheme grants super admin privileges
+    pub super_admin: Option<bool>,
     /// Role-based permissions
     pub role_permissions: std::collections::HashMap<String, Vec<PermissionResponse>>,
 }
@@ -128,6 +133,8 @@ pub struct UpdatePermissionSchemeRequest {
     pub name: String,
     /// Optional description
     pub description: Option<String>,
+    /// Whether this scheme grants super admin privileges
+    pub super_admin: Option<bool>,
     /// Role-based permissions
     pub role_permissions: std::collections::HashMap<String, Vec<PermissionResponse>>,
 }

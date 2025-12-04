@@ -404,6 +404,55 @@ export const useAuthStore = defineStore('auth', () => {
         error.value = null
     }
 
+    const decodeAndStorePermissions = (token: string): void => {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]))
+            permissions.value = (payload.permissions as string[]) || []
+            isSuperAdmin.value = payload.is_super_admin === true
+        } catch (err) {
+            if (env.enableApiLogging) {
+                console.error('[Auth] Failed to decode permissions from token:', err)
+            }
+            permissions.value = []
+            isSuperAdmin.value = false
+        }
+    }
+
+    const loadUserPermissions = async (): Promise<void> => {
+        try {
+            const response = await typedHttpClient.getUserPermissions()
+            isSuperAdmin.value = response.is_super_admin || false
+            allowedRoutes.value = response.allowed_routes || []
+            permissions.value = response.permissions || []
+        } catch (err) {
+            if (env.enableApiLogging) {
+                console.error('[Auth] Failed to load user permissions:', err)
+            }
+            // Don't throw, just use empty permissions
+            allowedRoutes.value = []
+            permissions.value = []
+        }
+    }
+
+    const canAccessRoute = (route: string): boolean => {
+        // Super admin can access all routes
+        if (isSuperAdmin.value) {
+            return true
+        }
+        // Check if route is in allowed routes
+        return allowedRoutes.value.includes(route)
+    }
+
+    const hasPermission = (namespace: string, permissionType: string): boolean => {
+        // Super admin has all permissions
+        if (isSuperAdmin.value) {
+            return true
+        }
+        // Check if user has the specific permission
+        const permissionString = `${namespace}:${permissionType.toLowerCase()}`
+        return permissions.value.includes(permissionString)
+    }
+
     // Initialize auth status on store creation
     // Note: We can't await in the store initialization, so we'll call it without await
     // The router guard will handle the async auth check

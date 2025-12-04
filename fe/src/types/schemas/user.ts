@@ -1,11 +1,17 @@
 import { z } from 'zod'
 import { UuidSchema, TimestampSchema } from './base'
 
+// Email validation helper
+const emailValidation = z
+    .string()
+    .min(1, 'Email is required')
+    .refine(val => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), 'Invalid email format')
+
 // User schema (for login response)
 export const UserSchema = z.object({
     uuid: UuidSchema,
     username: z.string(),
-    email: z.string().email(),
+    email: emailValidation,
     first_name: z.string(),
     last_name: z.string(),
     role: z.string(),
@@ -19,7 +25,7 @@ export const UserSchema = z.object({
 export const UserResponseSchema = z.object({
     uuid: UuidSchema,
     username: z.string(),
-    email: z.string().email(),
+    email: emailValidation,
     full_name: z.string(),
     first_name: z.string().nullable(),
     last_name: z.string().nullable(),
@@ -38,7 +44,7 @@ export const UserResponseSchema = z.object({
 // Create user request schema
 export const CreateUserRequestSchema = z.object({
     username: z.string().min(3).max(50),
-    email: z.string().email(),
+    email: emailValidation,
     password: z.string().min(8),
     first_name: z.string(),
     last_name: z.string(),
@@ -49,7 +55,7 @@ export const CreateUserRequestSchema = z.object({
 
 // Update user request schema
 export const UpdateUserRequestSchema = z.object({
-    email: z.string().email().optional(),
+    email: emailValidation.optional(),
     password: z.string().min(8).optional(),
     first_name: z.string().optional(),
     last_name: z.string().optional(),

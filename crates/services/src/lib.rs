@@ -3,6 +3,7 @@
 pub mod adapters;
 pub mod admin_user;
 pub mod api_key;
+pub mod auth;
 pub mod bootstrap;
 pub mod dynamic_entity;
 pub mod entity_definition;
@@ -19,6 +20,7 @@ pub use adapters::{
 };
 pub use admin_user::AdminUserService;
 pub use api_key::ApiKeyService;
+pub use auth::AuthService;
 pub use bootstrap::{init_cache_manager, init_logger_with_default, init_pg_pool};
 pub use dynamic_entity::DynamicEntityService;
 pub use entity_definition::{EntityDefinitionService, ServiceEntityFieldInfo};
