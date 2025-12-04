@@ -77,17 +77,6 @@ jobs:
         run: |
           sqlx migrate run
 
-      - name: Prepare sqlx queries (including tests)
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/rdata_test
-        run: |
-          # Prepare all queries including test queries
-          cargo sqlx prepare --workspace -- --all-targets || true
-          # Verify the cache exists
-          if [ ! -d ".sqlx" ]; then
-            echo "Warning: .sqlx directory not found, queries may not be cached"
-          fi
-
       - name: Clippy (strict)
         env:
           SQLX_OFFLINE: true
