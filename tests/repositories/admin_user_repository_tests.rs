@@ -58,8 +58,7 @@ async fn test_create_and_find_admin_user() -> Result<()> {
     let found_by_uuid = repo.find_by_uuid(&user_uuid).await?;
     assert!(
         found_by_uuid.is_some(),
-        "User with UUID {} should exist",
-        user_uuid
+        "User with UUID {user_uuid} should exist"
     );
 
     // Update last login

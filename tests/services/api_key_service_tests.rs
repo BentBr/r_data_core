@@ -73,11 +73,10 @@ async fn test_create_api_key_with_invalid_user_uuid() -> Result<()> {
             let err_string = e.to_string();
             assert!(
                 err_string.contains("foreign key constraint"),
-                "Expected foreign key constraint error, got: {}",
-                err_string
+                "Expected foreign key constraint error, got: {err_string}"
             );
         }
-        _ => panic!("Expected database error, got: {:?}", result),
+        _ => panic!("Expected database error, got: {result:?}"),
     }
 
     Ok(())
@@ -150,11 +149,10 @@ async fn test_create_api_key_with_long_name() -> Result<()> {
             let err_string = e.to_string();
             assert!(
                 err_string.contains("too long"),
-                "Expected 'too long' error, got: {}",
-                err_string
+                "Expected 'too long' error, got: {err_string}"
             );
         }
-        _ => panic!("Expected database error, got: {:?}", result),
+        _ => panic!("Expected database error, got: {result:?}"),
     }
 
     Ok(())
@@ -266,7 +264,7 @@ async fn test_revoke_key_unauthorized() -> Result<()> {
         Err(r_data_core_core::error::Error::Forbidden(msg)) => {
             assert_eq!(msg, "You don't have permission to revoke this API key");
         }
-        _ => panic!("Expected Forbidden error, got: {:?}", result),
+        _ => panic!("Expected Forbidden error, got: {result:?}"),
     }
 
     Ok(())

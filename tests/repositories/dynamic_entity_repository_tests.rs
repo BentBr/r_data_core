@@ -388,8 +388,8 @@ async fn test_field_name_case_handling() -> Result<()> {
             filterable: true,
             indexed: false,
             default_value: None,
-            validation: Default::default(),
-            ui_settings: Default::default(),
+            validation: r_data_core_core::field::FieldValidation::default(),
+            ui_settings: r_data_core_core::field::ui::UiSettings::default(),
             constraints: HashMap::new(),
         },
         FieldDefinition {
@@ -401,8 +401,8 @@ async fn test_field_name_case_handling() -> Result<()> {
             filterable: true,
             indexed: false,
             default_value: None,
-            validation: Default::default(),
-            ui_settings: Default::default(),
+            validation: r_data_core_core::field::FieldValidation::default(),
+            ui_settings: r_data_core_core::field::ui::UiSettings::default(),
             constraints: HashMap::new(),
         },
         FieldDefinition {
@@ -414,8 +414,8 @@ async fn test_field_name_case_handling() -> Result<()> {
             filterable: true,
             indexed: true,
             default_value: None,
-            validation: Default::default(),
-            ui_settings: Default::default(),
+            validation: r_data_core_core::field::FieldValidation::default(),
+            ui_settings: r_data_core_core::field::ui::UiSettings::default(),
             constraints: HashMap::new(),
         },
     ];

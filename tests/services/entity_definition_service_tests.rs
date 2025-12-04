@@ -57,8 +57,8 @@ fn create_test_entity_definition() -> EntityDefinition {
                 indexed: true,
                 filterable: true,
                 default_value: None,
-                validation: Default::default(),
-                ui_settings: Default::default(),
+                validation: r_data_core_core::field::FieldValidation::default(),
+                ui_settings: r_data_core_core::field::ui::UiSettings::default(),
                 constraints: HashMap::new(),
             },
             FieldDefinition {
@@ -70,8 +70,8 @@ fn create_test_entity_definition() -> EntityDefinition {
                 indexed: false,
                 filterable: true,
                 default_value: None,
-                validation: Default::default(),
-                ui_settings: Default::default(),
+                validation: r_data_core_core::field::FieldValidation::default(),
+                ui_settings: r_data_core_core::field::ui::UiSettings::default(),
                 constraints: HashMap::new(),
             },
         ],
@@ -104,8 +104,8 @@ fn create_entity_definition_with_duplicate_fields() -> EntityDefinition {
         indexed: true,
         filterable: true,
         default_value: None,
-        validation: Default::default(),
-        ui_settings: Default::default(),
+        validation: r_data_core_core::field::FieldValidation::default(),
+        ui_settings: r_data_core_core::field::ui::UiSettings::default(),
         constraints: HashMap::new(),
     });
     def

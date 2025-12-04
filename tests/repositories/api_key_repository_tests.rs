@@ -96,11 +96,10 @@ async fn test_create_api_key_with_non_existent_user() -> Result<()> {
             // Verify it's a foreign key constraint violation
             assert!(
                 db_error.to_string().contains("foreign key constraint"),
-                "Expected foreign key constraint error, got: {}",
-                db_error
+                "Expected foreign key constraint error, got: {db_error}"
             );
         }
-        Err(other) => panic!("Expected database error, got: {:?}", other),
+        Err(other) => panic!("Expected database error, got: {other:?}"),
         Ok(_) => panic!("Expected error but operation succeeded"),
     }
 
@@ -183,9 +182,7 @@ async fn test_api_key_last_used_update() -> Result<()> {
 
     assert!(
         latest_used_at > first_used_at,
-        "last_used_at should be updated: first={:?}, latest={:?}",
-        first_used_at,
-        latest_used_at
+        "last_used_at should be updated: first={first_used_at:?}, latest={latest_used_at:?}"
     );
 
     Ok(())
@@ -241,8 +238,7 @@ async fn test_expired_api_key() -> Result<()> {
     let expired_key = repo.get_by_uuid(key_uuid).await?;
     assert!(
         expired_key.is_some(),
-        "Key should be retrievable for uuid {}",
-        key_uuid
+        "Key should be retrievable for uuid {key_uuid}"
     );
     let key = expired_key.unwrap();
     assert!(key.expires_at.is_some());

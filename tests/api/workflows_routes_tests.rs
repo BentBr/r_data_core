@@ -279,7 +279,7 @@ async fn update_workflow_sets_updated_by() -> anyhow::Result<()> {
     if !status.is_success() {
         let body = test::read_body(resp).await;
         let body_str = String::from_utf8_lossy(&body);
-        panic!("status: {}. Response body: {}", status, body_str);
+        panic!("status: {status}. Response body: {body_str}");
     }
 
     // verify updated_by set

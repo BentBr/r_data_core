@@ -155,7 +155,7 @@ impl MockEntityDefinitionService {
             ));
         }
 
-        let mut definition = EntityDefinition {
+        let definition = EntityDefinition {
             entity_type: "test_entity".to_string(),
             published: self.entity_type_published,
             ..Default::default()

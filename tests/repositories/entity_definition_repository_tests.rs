@@ -186,7 +186,7 @@ async fn test_update_entity_definition() {
             indexed: false,
             filterable: true,
             default_value: None,
-            validation: Default::default(),
+            validation: r_data_core_core::field::FieldValidation::default(),
             ui_settings: UiSettings::default(),
             constraints: HashMap::new(),
         }],
@@ -237,13 +237,11 @@ async fn test_update_entity_definition() {
     // Verify both fields exist in the table
     assert!(
         columns.contains_key("field1"),
-        "field1 not found, but columns: {:?}",
-        columns
+        "field1 not found, but columns: {columns:?}"
     );
     assert!(
         columns.contains_key("field2"),
-        "field2 not found, but columns: {:?}",
-        columns
+        "field2 not found, but columns: {columns:?}"
     );
 
     // Clean up
@@ -279,7 +277,7 @@ async fn test_delete_entity_definition() {
             indexed: false,
             filterable: true,
             default_value: None,
-            validation: Default::default(),
+            validation: r_data_core_core::field::FieldValidation::default(),
             ui_settings: UiSettings::default(),
             constraints: HashMap::new(),
         }],
@@ -376,35 +374,29 @@ async fn test_table_operations() {
     // Verify the table has all the expected columns
     assert!(
         columns.contains_key("uuid"),
-        "uuid not found, but columns: {:?}",
-        columns
+        "uuid not found, but columns: {columns:?}"
     );
     assert!(
         columns.contains_key("created_at"),
-        "created_at not found, but columns: {:?}",
-        columns
+        "created_at not found, but columns: {columns:?}"
     );
     assert!(
         columns.contains_key("updated_at"),
-        "updated_at not found, but columns: {:?}",
-        columns
+        "updated_at not found, but columns: {columns:?}"
     );
     assert!(
         columns.contains_key("created_by"),
-        "created_by not found, but columns: {:?}",
-        columns
+        "created_by not found, but columns: {columns:?}"
     );
 
     // Check that our custom fields are there
     assert!(
         columns.contains_key("column1"),
-        "column1 not found, but columns: {:?}",
-        columns
+        "column1 not found, but columns: {columns:?}"
     );
     assert!(
         columns.contains_key("column2"),
-        "column2 not found, but columns: {:?}",
-        columns
+        "column2 not found, but columns: {columns:?}"
     );
 
     // Verify data types
