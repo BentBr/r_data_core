@@ -41,7 +41,7 @@ fn to_dynamic_entity_response(entity: DynamicEntity) -> DynamicEntityResponse {
 async fn validate_requested_fields(
     data: &web::Data<ApiStateWrapper>,
     entity_type: &str,
-    fields: &Option<Vec<String>>,
+    fields: Option<&Vec<String>>,
 ) -> Result<(), HttpResponse> {
     if let Some(fields) = fields {
         let entity_def_service = data.entity_definition_service();
@@ -133,7 +133,7 @@ pub async fn list_entities(
     let search_query = query.filter.q.clone();
 
     // Validate requested fields
-    if let Err(response) = validate_requested_fields(&data, &entity_type, &fields).await {
+    if let Err(response) = validate_requested_fields(&data, &entity_type, fields.as_ref()).await {
         return response;
     }
 
@@ -190,6 +190,7 @@ pub async fn list_entities(
         ("apiKey" = [])
     )
 )]
+#[allow(clippy::implicit_hasher)] // Actix Web extractor doesn't support generic hashers
 pub async fn create_entity(
     data: web::Data<ApiStateWrapper>,
     path: web::Path<String>,
@@ -318,7 +319,7 @@ pub async fn get_entity(
     let _includes = query.include.get_includes();
 
     // Validate requested fields
-    if let Err(response) = validate_requested_fields(&data, &entity_type, &fields).await {
+    if let Err(response) = validate_requested_fields(&data, &entity_type, fields.as_ref()).await {
         return response;
     }
 
@@ -367,6 +368,7 @@ pub async fn get_entity(
         ("apiKey" = [])
     )
 )]
+#[allow(clippy::implicit_hasher)] // Actix Web extractor doesn't support generic hashers
 pub async fn update_entity(
     data: web::Data<ApiStateWrapper>,
     path: web::Path<(String, String)>,

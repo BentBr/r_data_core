@@ -156,10 +156,12 @@ pub async fn admin_login(
     };
 
     // Calculate expiration times
+    #[allow(clippy::cast_possible_wrap)]
     let access_expires_at = OffsetDateTime::now_utc()
         .checked_add(Duration::seconds(ACCESS_TOKEN_EXPIRY_SECONDS as i64)) // 30 minutes
         .unwrap_or_else(OffsetDateTime::now_utc);
 
+    #[allow(clippy::cast_possible_wrap)]
     let refresh_expires_at = OffsetDateTime::now_utc()
         .checked_add(Duration::seconds(REFRESH_TOKEN_EXPIRY_SECONDS as i64))
         .unwrap_or_else(OffsetDateTime::now_utc);
@@ -487,10 +489,12 @@ pub async fn admin_refresh_token(
     };
 
     // Calculate expiration times
+    #[allow(clippy::cast_possible_wrap)]
     let access_expires_at = OffsetDateTime::now_utc()
         .checked_add(Duration::seconds(ACCESS_TOKEN_EXPIRY_SECONDS as i64)) // 30 minutes
         .unwrap_or_else(OffsetDateTime::now_utc);
 
+    #[allow(clippy::cast_possible_wrap)]
     let refresh_expires_at = OffsetDateTime::now_utc()
         .checked_add(Duration::seconds(REFRESH_TOKEN_EXPIRY_SECONDS as i64))
         .unwrap_or_else(OffsetDateTime::now_utc);
@@ -556,6 +560,7 @@ pub async fn admin_revoke_all_tokens(
     let Some(claims) = extensions.get::<AuthUserClaims>() else {
         return ApiResponse::unauthorized("Authentication required");
     };
+    let claims = claims.clone();
 
     let Ok(user_uuid) = Uuid::parse_str(&claims.sub) else {
         return ApiResponse::unauthorized("Invalid user ID in token");

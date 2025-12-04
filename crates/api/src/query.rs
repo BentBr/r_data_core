@@ -211,28 +211,23 @@ impl FilterQuery {
     /// Parse the filter string into a structured filter
     #[must_use]
     pub fn parse_filter(&self) -> Option<Value> {
-        match &self.filter {
-            Some(filter_str) => {
-                // Try to parse as JSON first
-                serde_json::from_str(filter_str).ok().or_else(|| {
-                    // If that fails, treat as compact filter syntax
-                    // Example: "status:active,type:user"
-                    let mut map = HashMap::new();
-                    for part in filter_str.split(',') {
-                        if let Some((key, value)) = part.split_once(':') {
-                            map.insert(
-                                key.trim().to_string(),
-                                Value::String(value.trim().to_string()),
-                            );
-                        }
+        self.filter.as_ref().map(|filter_str| {
+            // Try to parse as JSON first
+            serde_json::from_str(filter_str).unwrap_or_else(|_| {
+                // If that fails, treat as compact filter syntax
+                // Example: "status:active,type:user"
+                let mut map = HashMap::new();
+                for part in filter_str.split(',') {
+                    if let Some((key, value)) = part.split_once(':') {
+                        map.insert(
+                            key.trim().to_string(),
+                            Value::String(value.trim().to_string()),
+                        );
                     }
-                    Some(Value::Object(serde_json::Map::from_iter(
-                        map.into_iter().map(|(k, v)| (k, v)),
-                    )))
-                })
-            }
-            None => None,
-        }
+                }
+                Value::Object(serde_json::Map::from_iter(map))
+            })
+        })
     }
 }
 

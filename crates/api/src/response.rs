@@ -114,6 +114,7 @@ where
     /// # Panics
     /// This function may panic if `per_page` is 0 (division by zero)
     pub fn paginated(data: T, total: i64, page: i64, per_page: i64) -> Self {
+        #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
         let total_pages = (total as f64 / per_page as f64).ceil() as i64;
 
         let pagination = PaginationMeta {

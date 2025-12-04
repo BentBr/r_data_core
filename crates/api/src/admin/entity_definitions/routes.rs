@@ -463,32 +463,35 @@ async fn apply_entity_definition_schema(
         .await
     {
         Ok((_success_count, failed)) => {
-            if let Some(uuid) = uuid_option {
-                // If a specific UUID was provided
-                if failed.is_empty() {
-                    ApiResponse::ok(json!({
-                        "message": "Database schema applied successfully",
-                        "uuid": uuid
-                    }))
-                } else {
-                    let (entity_type, _uuid, error) = &failed[0];
-                    ApiResponse::<()>::internal_error(&format!(
-                        "Failed to apply schema for {entity_type}: {error}"
-                    ))
-                }
-            } else {
-                // No UUID provided - return general success message
-                if failed.is_empty() {
-                    ApiResponse::ok(json!({
-                        "message": "Database schema applied successfully for all definitions"
-                    }))
-                } else {
-                    let (entity_type, _uuid, error) = &failed[0];
-                    ApiResponse::<()>::internal_error(&format!(
-                        "Failed to apply schema for {entity_type}: {error}"
-                    ))
-                }
-            }
+            uuid_option.map_or_else(
+                || {
+                    // No UUID provided - return general success message
+                    if failed.is_empty() {
+                        ApiResponse::ok(json!({
+                            "message": "Database schema applied successfully for all definitions"
+                        }))
+                    } else {
+                        let (entity_type, _uuid, error) = &failed[0];
+                        ApiResponse::<()>::internal_error(&format!(
+                            "Failed to apply schema for {entity_type}: {error}"
+                        ))
+                    }
+                },
+                |uuid| {
+                    // If a specific UUID was provided
+                    if failed.is_empty() {
+                        ApiResponse::ok(json!({
+                            "message": "Database schema applied successfully",
+                            "uuid": uuid
+                        }))
+                    } else {
+                        let (entity_type, _uuid, error) = &failed[0];
+                        ApiResponse::<()>::internal_error(&format!(
+                            "Failed to apply schema for {entity_type}: {error}"
+                        ))
+                    }
+                },
+            )
         }
         Err(r_data_core_core::error::Error::NotFound(_)) => {
             ApiResponse::<()>::not_found("Entity definition")

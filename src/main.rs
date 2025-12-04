@@ -197,7 +197,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(r_data_core_api::middleware::create_error_handlers())
             .wrap(Logger::new("%a %{User-Agent}i %r %s %D"))
             .wrap(cors)
-            .configure(move |cfg| r_data_core_api::configure_app_with_options(cfg, api_config))
+            .configure(move |cfg| r_data_core_api::configure_app_with_options(cfg, &api_config))
             .default_service(web::route().to(default_404_handler))
     })
     .bind(bind_address)?

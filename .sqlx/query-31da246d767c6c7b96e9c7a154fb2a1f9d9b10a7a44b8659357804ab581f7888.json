@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM refresh_tokens",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "31da246d767c6c7b96e9c7a154fb2a1f9d9b10a7a44b8659357804ab581f7888"
+}

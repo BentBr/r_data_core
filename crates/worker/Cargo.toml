@@ -12,6 +12,10 @@ path = "src/bin/worker.rs"
 name = "r_data_core_worker"
 path = "src/main.rs"
 
+[[bin]]
+name = "r_data_core_maintenance"
+path = "src/bin/maintenance.rs"
+
 [dependencies]
 log = "0.4"
 tokio = { version = "1.35", features = ["full"] }

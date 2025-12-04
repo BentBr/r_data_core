@@ -69,6 +69,7 @@ services:
             args:
                 RUST_VERSION: "1.88.0"
                 BUILD_MODE: "debug"
+                PACKAGE_NAME: "r_data_core"
                 BINARY_NAME: "r_data_core"
                 RUST_LOG_LEVEL: "info"
         container_name: rdata_app
@@ -112,7 +113,8 @@ services:
             args:
                 RUST_VERSION: "1.88.0"
                 BUILD_MODE: "debug"
-                BINARY_NAME: "worker"
+                PACKAGE_NAME: "r_data_core_worker"
+                BINARY_NAME: "r_data_core_worker"
                 RUST_LOG_LEVEL: "info"
         container_name: rdata_worker
         volumes:
@@ -145,7 +147,8 @@ services:
             args:
                 RUST_VERSION: "1.88.0"
                 BUILD_MODE: "debug"
-                BINARY_NAME: "maintenance"
+                PACKAGE_NAME: "r_data_core_worker"
+                BINARY_NAME: "r_data_core_maintenance"
                 RUST_LOG_LEVEL: "info"
         container_name: rdata_worker_maintenance
         volumes:

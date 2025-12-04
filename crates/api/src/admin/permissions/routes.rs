@@ -446,7 +446,7 @@ pub async fn assign_schemes_to_user(
     let repo = AdminUserRepository::new(pool);
 
     // Verify user exists
-    if let Ok(None) = repo.find_by_uuid(&user_uuid).await {
+    if matches!(repo.find_by_uuid(&user_uuid).await, Ok(None)) {
         return ApiResponse::<()>::not_found("User not found");
     }
 

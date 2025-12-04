@@ -105,7 +105,7 @@ pub async fn list_by_path(
         .await
     {
         Ok((nodes, total)) => {
-            ApiResponse::ok_paginated(nodes, total, (offset / limit) as i64 + 1, limit)
+            ApiResponse::ok_paginated(nodes, total, offset / limit + 1, limit)
         }
         Err(e) => HttpResponse::InternalServerError().json(json!({
             "status": "Error",

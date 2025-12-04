@@ -107,7 +107,7 @@ fn handle_error(err: &Error, req_id: Option<Uuid>) -> HttpResponse {
         data: None as Option<()>,
         meta: Some(ResponseMeta {
             pagination: None,
-            request_id: req_id.or(Some(Uuid::now_v7())),
+            request_id: req_id.or_else(|| Some(Uuid::now_v7())),
             timestamp: Some(time::OffsetDateTime::now_utc().to_string()),
             custom: Some(serde_json::json!({"error_code": error_code})),
         }),

@@ -80,7 +80,7 @@ where
 
         // Get the API state before moving into the future
         let state_result = req.app_data::<web::Data<ApiStateWrapper>>().cloned();
-        let service_clone = service.clone();
+        let service_clone = Rc::clone(&service);
 
         Box::pin(async move {
             // Handle state extraction

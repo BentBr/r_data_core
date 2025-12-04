@@ -14,6 +14,16 @@ use r_data_core_core::admin_user::ApiKey;
 
 use std::result::Result as StdResult;
 
+/// Extract JWT token string from Authorization header (removes "Bearer " prefix)
+/// Returns None if no valid Authorization header is found
+#[must_use]
+pub fn extract_jwt_token_string(req: &HttpRequest) -> Option<&str> {
+    req.headers()
+        .get(header::AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+        .and_then(|auth_header| auth_header.strip_prefix("Bearer "))
+}
+
 /// Extract and validate JWT token from request headers
 ///
 /// # Errors
@@ -22,36 +32,27 @@ pub async fn extract_and_validate_jwt(
     req: &HttpRequest,
     jwt_secret: &str,
 ) -> StdResult<Option<AuthUserClaims>, ActixError> {
-    // Extract Authorization header
-    if let Some(auth_header) = req
-        .headers()
-        .get(header::AUTHORIZATION)
-        .and_then(|h| h.to_str().ok())
-    {
-        // Check for Bearer prefix
-        if auth_header.starts_with("Bearer ") {
-            let token = &auth_header[7..]; // Remove "Bearer " prefix
+    // Extract JWT token string
+    if let Some(token) = extract_jwt_token_string(req) {
+        // Only log token length, not the token itself
+        debug!(
+            "Processing JWT token for path: {} (token length: {})",
+            req.path(),
+            token.len()
+        );
 
-            // Only log token length, not the token itself
-            debug!(
-                "Processing JWT token for path: {} (token length: {})",
-                req.path(),
-                token.len()
-            );
-
-            // Verify JWT token
-            return match verify_jwt(token, jwt_secret) {
-                Ok(claims) => {
-                    let name = &claims.name;
-                    debug!("JWT auth successful for user: {name}");
-                    Ok(Some(claims))
-                }
-                Err(err) => {
-                    log::error!("JWT verification failed: {err}");
-                    Ok(None)
-                }
-            };
-        }
+        // Verify JWT token
+        return match verify_jwt(token, jwt_secret) {
+            Ok(claims) => {
+                let name = &claims.name;
+                debug!("JWT auth successful for user: {name}");
+                Ok(Some(claims))
+            }
+            Err(err) => {
+                log::error!("JWT verification failed: {err}");
+                Ok(None)
+            }
+        };
     }
 
     let path = req.path();

@@ -145,7 +145,7 @@ pub async fn has_permission_for_api_key(
                                 .as_ref()
                                 .and_then(|c| c.get("path"))
                                 .and_then(|v| v.as_str())
-                                .map_or(true, |allowed_path| {
+                                .is_some_and(|allowed_path| {
                                     // Exact match or prefix match
                                     requested_path == allowed_path
                                         || requested_path.starts_with(allowed_path)
@@ -201,7 +201,7 @@ pub async fn has_permission_for_api_key(
             && permission_set.iter().any(|p| {
                 p.starts_with(&format!("{namespace_str}:"))
                     && p.ends_with(&format!(":{perm_str}"))
-                    && path.map_or(false, |req_path| {
+                    && path.is_some_and(|req_path| {
                         if let Some(perm_path) = p.strip_prefix(&format!("{namespace_str}:")) {
                             if let Some(perm_path) = perm_path.strip_suffix(&format!(":{perm_str}")) {
                                 return req_path.starts_with(perm_path);

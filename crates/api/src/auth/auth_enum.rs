@@ -8,7 +8,7 @@ use std::pin::Pin;
 use uuid::Uuid;
 
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
-use crate::auth::{extract_and_validate_api_key, ApiKeyInfo};
+use crate::auth::{extract_and_validate_api_key, extract_jwt_token_string, ApiKeyInfo};
 use crate::jwt::AuthUserClaims;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,20 +20,15 @@ pub enum AuthMethod {
 /// Extract and verify JWT from the Authorization header
 fn extract_jwt_from_request(req: &HttpRequest) -> Option<AuthUserClaims> {
     if let Some(state) = req.app_data::<actix_web::web::Data<ApiStateWrapper>>() {
-        if let Some(auth_header) = req.headers().get("Authorization") {
-            if let Ok(auth_str) = auth_header.to_str() {
-                if auth_str.starts_with("Bearer ") {
-                    let token = &auth_str[7..]; // Remove "Bearer " prefix
-                    match crate::jwt::verify_jwt(token, state.jwt_secret()) {
-                        Ok(claims) => {
-                            let name = &claims.name;
-                            debug!("JWT validation successful for user: {name}");
-                            return Some(claims);
-                        }
-                        Err(e) => {
-                            debug!("JWT validation failed: {e:?}");
-                        }
-                    }
+        if let Some(token) = extract_jwt_token_string(req) {
+            match crate::jwt::verify_jwt(token, state.jwt_secret()) {
+                Ok(claims) => {
+                    let name = &claims.name;
+                    debug!("JWT validation successful for user: {name}");
+                    return Some(claims);
+                }
+                Err(e) => {
+                    debug!("JWT validation failed: {e:?}");
                 }
             }
         }

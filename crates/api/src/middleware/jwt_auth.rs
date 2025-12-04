@@ -31,7 +31,7 @@ where
     ) -> LocalBoxFuture<'static, Result<ServiceResponse<B>, Error>> {
         let request = req.request().clone();
         let state_result = req.app_data::<web::Data<ApiStateWrapper>>().cloned();
-        let service_clone = service.clone();
+        let service_clone = Rc::clone(&service);
 
         Box::pin(async move {
             let Some(state) = state_result else {

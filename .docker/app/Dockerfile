@@ -2,6 +2,7 @@
 ARG RUST_VERSION=1.88.0
 ARG BUILD_MODE=release
 ARG BINARY_NAME=r_data_core
+ARG PACKAGE_NAME=r_data_core
 ARG RUST_LOG_LEVEL=warning
 
 # Builder stage with optimized caching
@@ -10,6 +11,7 @@ FROM rust:${RUST_VERSION}-slim AS builder
 # Re-declare build args inside this stage so they are available to RUN steps
 ARG BUILD_MODE
 ARG BINARY_NAME
+ARG PACKAGE_NAME
 
 LABEL org.opencontainers.image.title="R Data Core"
 LABEL org.opencontainers.image.description="R Data Core Backend. Easy rust-backed performant MDM"
@@ -38,15 +40,16 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/usr/src/r_data_core/target \
     if [ "${BUILD_MODE}" = "release" ]; then \
-        cargo build --release --bin ${BINARY_NAME} || true; \
+        cargo build --release --package ${PACKAGE_NAME} --bin ${BINARY_NAME} || true; \
     else \
-        cargo build --bin ${BINARY_NAME} || true; \
+        cargo build --package ${PACKAGE_NAME} --bin ${BINARY_NAME} || true; \
     fi
 
 # Copy source code and migrations
 COPY src/ ./src/
 COPY migrations/ ./migrations/
 COPY .sqlx/ ./.sqlx/
+COPY crates/ ./crates/
 
 # Build the actual binary
 # Note: We don't cache the target directory here to ensure source changes trigger rebuilds
@@ -55,9 +58,9 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     cargo clean && \
     if [ "${BUILD_MODE}" = "release" ]; then \
-        cargo build --release --bin ${BINARY_NAME}; \
+        cargo build --release --package ${PACKAGE_NAME} --bin ${BINARY_NAME}; \
     else \
-        cargo build --bin ${BINARY_NAME}; \
+        cargo build --package ${PACKAGE_NAME} --bin ${BINARY_NAME}; \
     fi
 
 # Final stage

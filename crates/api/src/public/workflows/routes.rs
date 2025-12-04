@@ -81,20 +81,15 @@ pub async fn get_workflow_data(
         use crate::auth::auth_enum::CombinedRequiredAuth;
         use actix_web::FromRequest;
         let mut payload = actix_web::dev::Payload::None;
-        match CombinedRequiredAuth::from_request(&req, &mut payload).await {
-            Ok(_) => {
-                // Authentication successful
-            }
-            Err(_) => {
-                // Check if pre-shared key was required
-                if extract_provider_auth_config(&workflow.config).is_some() {
-                    return HttpResponse::Unauthorized()
-                        .json(json!({"error": "Authentication required"}));
-                }
-                // If no pre-shared key required, still need JWT/API key
+        if CombinedRequiredAuth::from_request(&req, &mut payload).await.is_err() {
+            // Check if pre-shared key was required
+            if extract_provider_auth_config(&workflow.config).is_some() {
                 return HttpResponse::Unauthorized()
                     .json(json!({"error": "Authentication required"}));
             }
+            // If no pre-shared key required, still need JWT/API key
+            return HttpResponse::Unauthorized()
+                .json(json!({"error": "Authentication required"}));
         }
     }
 
@@ -445,36 +440,34 @@ fn validate_provider_auth(
     _state: &dyn ApiStateTrait,
 ) -> Result<(), String> {
     // Check for pre-shared key in config first
-    if let Some(auth_config) = extract_provider_auth_config(config) {
-        if let AuthConfig::PreSharedKey {
-            key,
-            location,
-            field_name,
-        } = auth_config
-        {
-            let provided_key = match location {
-                KeyLocation::Header => req
-                    .headers()
-                    .get(&field_name)
-                    .and_then(|v| v.to_str().ok())
-                    .map(std::string::ToString::to_string),
-                KeyLocation::Body => {
-                    // Body extraction would need to be done in the route handler
-                    // For now, we'll check header only
-                    None
-                }
-            };
-
-            if let Some(provided) = provided_key {
-                if provided == key {
-                    // Set extension so CombinedRequiredAuth can pick it up
-                    req.extensions_mut().insert(true);
-                    return Ok(());
-                }
+    if let Some(AuthConfig::PreSharedKey {
+        key,
+        location,
+        field_name,
+    }) = extract_provider_auth_config(config)
+    {
+        let provided_key = match location {
+            KeyLocation::Header => req
+                .headers()
+                .get(&field_name)
+                .and_then(|v| v.to_str().ok())
+                .map(std::string::ToString::to_string),
+            KeyLocation::Body => {
+                // Body extraction would need to be done in the route handler
+                // For now, we'll check header only
+                None
             }
-            // Pre-shared key was required but invalid
-            return Err("Invalid pre-shared key".to_string());
+        };
+
+        if let Some(provided) = provided_key {
+            if provided == key {
+                // Set extension so CombinedRequiredAuth can pick it up
+                req.extensions_mut().insert(true);
+                return Ok(());
+            }
         }
+        // Pre-shared key was required but invalid
+        return Err("Invalid pre-shared key".to_string());
     }
 
     // Fall back to JWT/API key via CombinedRequiredAuth

@@ -21,7 +21,7 @@ static DB_READY: AtomicBool = AtomicBool::new(false);
 pub fn unique_entity_type(base: &str) -> String {
     let mut counter = ENTITY_TYPE_COUNTER
         .lock()
-        .unwrap_or_else(|e| e.into_inner());
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let count = *counter;
     *counter = count + 1;
     drop(counter);
