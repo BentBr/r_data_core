@@ -23,10 +23,7 @@ pub enum HttpMethod {
 impl HttpMethod {
     #[must_use]
     pub const fn requires_body(&self) -> bool {
-        matches!(
-            self,
-            Self::Post | Self::Put | Self::Patch | Self::Delete
-        )
+        matches!(self, Self::Post | Self::Put | Self::Patch | Self::Delete)
     }
 }
 

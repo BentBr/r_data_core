@@ -706,8 +706,8 @@ pub async fn get_entity_definition_version(
                         .await
                     {
                         Ok(def) => {
-                            let current_json =
-                                serde_json::to_value(&def).unwrap_or_else(|_| serde_json::json!({}));
+                            let current_json = serde_json::to_value(&def)
+                                .unwrap_or_else(|_| serde_json::json!({}));
                             let payload = EntityDefinitionVersionPayload {
                                 version_number,
                                 created_at: updated_at,

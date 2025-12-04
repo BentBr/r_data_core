@@ -46,14 +46,30 @@ pub fn field_definition_to_schema_model(field: &FieldDefinition) -> FieldDefinit
             })
         }
         FieldType::Integer => FieldConstraints::Integer(NumericConstraints {
-            min: field.validation.min_value.as_ref().and_then(serde_json::Value::as_f64),
-            max: field.validation.max_value.as_ref().and_then(serde_json::Value::as_f64),
+            min: field
+                .validation
+                .min_value
+                .as_ref()
+                .and_then(serde_json::Value::as_f64),
+            max: field
+                .validation
+                .max_value
+                .as_ref()
+                .and_then(serde_json::Value::as_f64),
             precision: None,
             positive_only: field.validation.positive_only,
         }),
         FieldType::Float => FieldConstraints::Float(NumericConstraints {
-            min: field.validation.min_value.as_ref().and_then(serde_json::Value::as_f64),
-            max: field.validation.max_value.as_ref().and_then(serde_json::Value::as_f64),
+            min: field
+                .validation
+                .min_value
+                .as_ref()
+                .and_then(serde_json::Value::as_f64),
+            max: field
+                .validation
+                .max_value
+                .as_ref()
+                .and_then(serde_json::Value::as_f64),
             precision: None,
             positive_only: field.validation.positive_only,
         }),

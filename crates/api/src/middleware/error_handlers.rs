@@ -16,20 +16,17 @@ impl AppErrorHandlers {
         let status = res.response().status();
 
         // Extract the original error message
-        let error = res
-            .response()
-            .error()
-            .map_or_else(
-                || {
-                    // For unauthorized responses without an error, use a specific message
-                    if status == StatusCode::UNAUTHORIZED {
-                        "Invalid credentials".to_string()
-                    } else {
-                        "Unknown error".to_string()
-                    }
-                },
-                ToString::to_string,
-            );
+        let error = res.response().error().map_or_else(
+            || {
+                // For unauthorized responses without an error, use a specific message
+                if status == StatusCode::UNAUTHORIZED {
+                    "Invalid credentials".to_string()
+                } else {
+                    "Unknown error".to_string()
+                }
+            },
+            ToString::to_string,
+        );
 
         log::debug!("Error handler called for status {status}: {error}");
 

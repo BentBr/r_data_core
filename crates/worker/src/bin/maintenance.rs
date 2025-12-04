@@ -1,12 +1,12 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use log::{error, info};
-use tokio_cron_scheduler::JobScheduler;
 use r_data_core_core::config::load_maintenance_config;
 use r_data_core_core::maintenance::MaintenanceTask;
 use r_data_core_services::bootstrap::{init_cache_manager, init_logger_with_default, init_pg_pool};
 use r_data_core_worker::context::TaskContext;
 use r_data_core_worker::tasks::version_purger::VersionPurgerTask;
+use tokio_cron_scheduler::JobScheduler;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -66,4 +66,3 @@ async fn main() -> anyhow::Result<()> {
     futures::future::pending::<()>().await;
     Ok(())
 }
-

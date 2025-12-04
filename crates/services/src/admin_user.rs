@@ -43,7 +43,8 @@ impl AdminUserService {
         let Some(user) = self
             .repository
             .find_by_username_or_email(username_or_email)
-            .await? else {
+            .await?
+        else {
             return Ok(None);
         };
 

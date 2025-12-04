@@ -85,9 +85,7 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<
             }
             // Validate format-specific options
             if format.format_type.as_str() == "csv" {
-                if let Some(delimiter) =
-                    format.options.get("delimiter").and_then(|v| v.as_str())
-                {
+                if let Some(delimiter) = format.options.get("delimiter").and_then(|v| v.as_str()) {
                     if delimiter.len() != 1 {
                         bail!("DSL step {idx}: to.format.format.options.delimiter must be a single character");
                     }
@@ -120,9 +118,7 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<
                         bail!("DSL step {idx}: to.format.output.push.destination.destination_type must not be empty");
                     }
                     if destination.destination_type.as_str() == "uri" {
-                        if let Some(uri) =
-                            destination.config.get("uri").and_then(|v| v.as_str())
-                        {
+                        if let Some(uri) = destination.config.get("uri").and_then(|v| v.as_str()) {
                             if uri.trim().is_empty() {
                                 bail!("DSL step {idx}: to.format.output.push.destination.config.uri must not be empty");
                             }

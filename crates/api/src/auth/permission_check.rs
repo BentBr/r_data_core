@@ -16,7 +16,7 @@ use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceN
 /// `true` if the user has permission, `false` otherwise
 ///
 /// # Notes
-/// `SuperAdmin` always has all permissions
+/// `SuperAdmin` role or `super_admin` flag always has all permissions
 #[must_use]
 pub fn has_permission(
     claims: &AuthUserClaims,
@@ -120,9 +120,7 @@ pub async fn has_permission_for_api_key(
         .await?;
 
     if schemes.is_empty() {
-        debug!(
-            "Permission check: API key {api_key_uuid} has no permission schemes assigned"
-        );
+        debug!("Permission check: API key {api_key_uuid} has no permission schemes assigned");
         return Ok(false);
     }
 
@@ -141,7 +139,8 @@ pub async fn has_permission_for_api_key(
                     if matches!(namespace, ResourceNamespace::Entities) {
                         if let Some(requested_path) = path {
                             // Check if path constraint allows this path
-                            let allowed = permission.constraints
+                            let allowed = permission
+                                .constraints
                                 .as_ref()
                                 .and_then(|c| c.get("path"))
                                 .and_then(|v| v.as_str())
@@ -167,19 +166,14 @@ pub async fn has_permission_for_api_key(
                                 .is_some();
                             if !has_path_constraint {
                                 let perm_type_str = format!("{permission_type}").to_lowercase();
-                                permission_set.insert(format!(
-                                    "{}:{perm_type_str}",
-                                    namespace.as_str()
-                                ));
+                                permission_set
+                                    .insert(format!("{}:{perm_type_str}", namespace.as_str()));
                             }
                         }
                     } else {
                         // Non-entities namespace, no path checking needed
                         let perm_type_str = format!("{permission_type}").to_lowercase();
-                        permission_set.insert(format!(
-                            "{}:{perm_type_str}",
-                            namespace.as_str()
-                        ));
+                        permission_set.insert(format!("{}:{perm_type_str}", namespace.as_str()));
                     }
                 }
             }
@@ -203,7 +197,8 @@ pub async fn has_permission_for_api_key(
                     && p.ends_with(&format!(":{perm_str}"))
                     && path.is_some_and(|req_path| {
                         if let Some(perm_path) = p.strip_prefix(&format!("{namespace_str}:")) {
-                            if let Some(perm_path) = perm_path.strip_suffix(&format!(":{perm_str}")) {
+                            if let Some(perm_path) = perm_path.strip_suffix(&format!(":{perm_str}"))
+                            {
                                 return req_path.starts_with(perm_path);
                             }
                         }

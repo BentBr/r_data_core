@@ -34,15 +34,16 @@ async fn test_redis_cache_connection_if_available() {
         .await
         .expect("set should succeed");
 
-    let retrieved: Option<serde_json::Value> = cache
-        .get(&test_key)
-        .await
-        .expect("get should succeed");
+    let retrieved: Option<serde_json::Value> =
+        cache.get(&test_key).await.expect("get should succeed");
 
     assert_eq!(retrieved, Some(test_data));
 
     // Cleanup
-    cache.delete(&test_key).await.expect("delete should succeed");
+    cache
+        .delete(&test_key)
+        .await
+        .expect("delete should succeed");
 }
 
 #[tokio::test]
@@ -71,11 +72,15 @@ async fn test_redis_cache_ping_connection_if_available() {
         .await
         .expect("set should succeed after successful connection");
 
-    let retrieved: Option<serde_json::Value> = cache.get(&test_key).await.expect("get should succeed");
+    let retrieved: Option<serde_json::Value> =
+        cache.get(&test_key).await.expect("get should succeed");
     assert_eq!(retrieved, Some(test_data));
 
     // Cleanup
-    cache.delete(&test_key).await.expect("delete should succeed");
+    cache
+        .delete(&test_key)
+        .await
+        .expect("delete should succeed");
 }
 
 #[tokio::test]
@@ -126,6 +131,8 @@ async fn test_redis_cache_query_async_api_if_available() {
     assert_eq!(deleted, 2);
 
     // Cleanup
-    cache.delete(&test_key).await.expect("delete should succeed");
+    cache
+        .delete(&test_key)
+        .await
+        .expect("delete should succeed");
 }
-

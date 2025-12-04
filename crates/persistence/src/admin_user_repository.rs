@@ -23,9 +23,7 @@ fn hash_password(password: &str) -> Result<String> {
     argon2
         .hash_password(password.as_bytes(), &salt)
         .map_err(|e| {
-            r_data_core_core::error::Error::PasswordHash(format!(
-                "Failed to hash password: {e}"
-            ))
+            r_data_core_core::error::Error::PasswordHash(format!("Failed to hash password: {e}"))
         })
         .map(|hash| hash.to_string())
 }

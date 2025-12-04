@@ -592,22 +592,49 @@ mod tests {
 
         // Exact match
         let constraints = serde_json::json!({"path": "/projects"});
-        assert!(PermissionScheme::check_path_constraint(Some(&constraints), "/projects"));
-        assert!(!PermissionScheme::check_path_constraint(Some(&constraints), "/project")); // Not exact
+        assert!(PermissionScheme::check_path_constraint(
+            Some(&constraints),
+            "/projects"
+        ));
+        assert!(!PermissionScheme::check_path_constraint(
+            Some(&constraints),
+            "/project"
+        )); // Not exact
 
         // Prefix match
-        assert!(PermissionScheme::check_path_constraint(Some(&constraints), "/projects/sub"));
-        assert!(PermissionScheme::check_path_constraint(Some(&constraints), "/projects/sub/deep"));
+        assert!(PermissionScheme::check_path_constraint(
+            Some(&constraints),
+            "/projects/sub"
+        ));
+        assert!(PermissionScheme::check_path_constraint(
+            Some(&constraints),
+            "/projects/sub/deep"
+        ));
 
         // Non-matching paths
-        assert!(!PermissionScheme::check_path_constraint(Some(&constraints), "/other"));
-        assert!(!PermissionScheme::check_path_constraint(Some(&constraints), "/projectx")); // Prefix but not valid
+        assert!(!PermissionScheme::check_path_constraint(
+            Some(&constraints),
+            "/other"
+        ));
+        assert!(!PermissionScheme::check_path_constraint(
+            Some(&constraints),
+            "/projectx"
+        )); // Prefix but not valid
 
         // Wildcard match
         let wildcard_constraints = serde_json::json!({"path": "/projects/*"});
-        assert!(PermissionScheme::check_path_constraint(Some(&wildcard_constraints), "/projects/sub"));
-        assert!(PermissionScheme::check_path_constraint(Some(&wildcard_constraints), "/projects/sub/deep"));
-        assert!(!PermissionScheme::check_path_constraint(Some(&wildcard_constraints), "/projects"));
+        assert!(PermissionScheme::check_path_constraint(
+            Some(&wildcard_constraints),
+            "/projects/sub"
+        ));
+        assert!(PermissionScheme::check_path_constraint(
+            Some(&wildcard_constraints),
+            "/projects/sub/deep"
+        ));
+        assert!(!PermissionScheme::check_path_constraint(
+            Some(&wildcard_constraints),
+            "/projects"
+        ));
         // Exact match still works
     }
 

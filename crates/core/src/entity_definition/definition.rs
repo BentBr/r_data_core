@@ -412,7 +412,10 @@ impl EntityDefinition {
                     let _ = write!(sql, "CREATE TABLE IF NOT EXISTS {relation_table} (\n");
                     let entity_lower = self.entity_type.to_lowercase();
                     let target_lower = target_class.to_lowercase();
-                    let _ = write!(sql, "    {entity_lower}_uuid UUID NOT NULL REFERENCES {table_name} (uuid),\n");
+                    let _ = write!(
+                        sql,
+                        "    {entity_lower}_uuid UUID NOT NULL REFERENCES {table_name} (uuid),\n"
+                    );
                     let _ = write!(sql, "    {target_lower}_uuid UUID NOT NULL,\n");
                     sql.push_str(
                         "    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n",

@@ -46,7 +46,7 @@ describe('SystemPage', () => {
         const wrapper = mount(SystemPage)
 
         await wrapper.vm.$nextTick()
-        await new Promise((resolve) => setTimeout(resolve, 100))
+        await new Promise(resolve => setTimeout(resolve, 100))
 
         // Set form values as strings (as v-text-field would)
         const form = wrapper.vm.form
@@ -78,7 +78,7 @@ describe('SystemPage', () => {
         const wrapper = mount(SystemPage)
 
         await wrapper.vm.$nextTick()
-        await new Promise((resolve) => setTimeout(resolve, 100))
+        await new Promise(resolve => setTimeout(resolve, 100))
 
         // Set form values as empty strings
         const form = wrapper.vm.form
@@ -110,7 +110,7 @@ describe('SystemPage', () => {
         const wrapper = mount(SystemPage)
 
         await wrapper.vm.$nextTick()
-        await new Promise((resolve) => setTimeout(resolve, 100))
+        await new Promise(resolve => setTimeout(resolve, 100))
 
         // Form should be populated with the values
         expect(wrapper.vm.form.max_versions).toBe(10)
@@ -131,7 +131,7 @@ describe('SystemPage', () => {
         const wrapper = mount(SystemPage)
 
         await wrapper.vm.$nextTick()
-        await new Promise((resolve) => setTimeout(resolve, 100))
+        await new Promise(resolve => setTimeout(resolve, 100))
 
         // Trigger save
         await wrapper.vm.save()
@@ -147,10 +147,9 @@ describe('SystemPage', () => {
         const wrapper = mount(SystemPage)
 
         await wrapper.vm.$nextTick()
-        await new Promise((resolve) => setTimeout(resolve, 100))
+        await new Promise(resolve => setTimeout(resolve, 100))
 
         // Verify error was shown
         expect(showError).toHaveBeenCalled()
     })
 })
-

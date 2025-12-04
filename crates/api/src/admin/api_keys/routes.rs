@@ -340,11 +340,9 @@ pub async fn reassign_api_key(
 
             // Check if the key with the same name already exists for the new user
             match repo.get_by_name(new_user_uuid, &key.name).await {
-                Ok(Some(_)) => {
-                    ApiResponse::<()>::conflict(
-                        "An API key with this name already exists for the target user",
-                    )
-                }
+                Ok(Some(_)) => ApiResponse::<()>::conflict(
+                    "An API key with this name already exists for the target user",
+                ),
                 Ok(None) => {
                     // Reassign the key
                     match repo.reassign(api_key_uuid, new_user_uuid).await {

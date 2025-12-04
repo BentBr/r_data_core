@@ -53,12 +53,10 @@ impl PermissionSchemeRepository {
         row.map_or_else(
             || Ok(None),
             |r| {
-                permission_scheme_from_row(&r)
-                    .map(Some)
-                    .map_err(|e| {
-                        log::error!("Failed to deserialize permission scheme: {e}");
-                        Error::Unknown(format!("Failed to deserialize permission scheme: {e}"))
-                    })
+                permission_scheme_from_row(&r).map(Some).map_err(|e| {
+                    log::error!("Failed to deserialize permission scheme: {e}");
+                    Error::Unknown(format!("Failed to deserialize permission scheme: {e}"))
+                })
             },
         )
     }
@@ -90,12 +88,10 @@ impl PermissionSchemeRepository {
         row.map_or_else(
             || Ok(None),
             |r| {
-                permission_scheme_from_row(&r)
-                    .map(Some)
-                    .map_err(|e| {
-                        log::error!("Failed to deserialize permission scheme: {e}");
-                        Error::Unknown(format!("Failed to deserialize permission scheme: {e}"))
-                    })
+                permission_scheme_from_row(&r).map(Some).map_err(|e| {
+                    log::error!("Failed to deserialize permission scheme: {e}");
+                    Error::Unknown(format!("Failed to deserialize permission scheme: {e}"))
+                })
             },
         )
     }

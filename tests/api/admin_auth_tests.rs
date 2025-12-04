@@ -6,8 +6,8 @@
 #[cfg(test)]
 mod tests {
     use r_data_core_persistence::{
-    AdminUserRepository, AdminUserRepositoryTrait, CreateAdminUserParams,
-};
+        AdminUserRepository, AdminUserRepositoryTrait, CreateAdminUserParams,
+    };
     use std::sync::Arc;
     use uuid::Uuid;
 

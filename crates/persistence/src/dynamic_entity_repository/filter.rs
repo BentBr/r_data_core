@@ -29,7 +29,12 @@ pub async fn filter_entities_impl(
     );
 
     // Add sort and pagination
-    add_sort_and_pagination(&mut query, params.sort.as_ref(), params.limit, params.offset);
+    add_sort_and_pagination(
+        &mut query,
+        params.sort.as_ref(),
+        params.limit,
+        params.offset,
+    );
 
     debug!("Executing filter query: {query}");
 

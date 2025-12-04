@@ -87,9 +87,7 @@ async fn main() -> std::io::Result<()> {
                     Arc::new(manager)
                 }
                 Err(e) => {
-                    error!(
-                        "Failed to initialize Redis cache: {e}, falling back to in-memory only"
-                    );
+                    error!("Failed to initialize Redis cache: {e}, falling back to in-memory only");
                     Arc::new(CacheManager::new(config.cache.clone()))
                 }
             }

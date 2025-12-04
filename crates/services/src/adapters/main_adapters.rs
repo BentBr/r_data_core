@@ -37,9 +37,7 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepositoryAdapter {
     }
 
     async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<EntityDefinition>> {
-        log::debug!(
-            "EntityDefinitionRepositoryAdapter::get_by_uuid called with uuid: {uuid}"
-        );
+        log::debug!("EntityDefinitionRepositoryAdapter::get_by_uuid called with uuid: {uuid}");
         self.inner.get_by_uuid(uuid).await
     }
 
@@ -229,7 +227,9 @@ impl r_data_core_persistence::AdminUserRepositoryTrait for AdminUserRepositoryAd
         username_or_email: &str,
     ) -> r_data_core_core::error::Result<Option<r_data_core_core::admin_user::AdminUser>> {
         log::debug!("AdminUserRepositoryAdapter::find_by_username_or_email called with username_or_email: {username_or_email}");
-        self.inner.find_by_username_or_email(username_or_email).await
+        self.inner
+            .find_by_username_or_email(username_or_email)
+            .await
     }
 
     async fn find_by_uuid(

@@ -1,6 +1,6 @@
 use serde_json::Value as JsonValue;
-use sqlx::{Row, Transaction};
 use sqlx::Postgres;
+use sqlx::{Row, Transaction};
 use uuid::Uuid;
 
 use crate::dynamic_entity_utils;
@@ -19,12 +19,13 @@ pub async fn update_entity(repo: &DynamicEntityRepository, entity: &DynamicEntit
     entity.validate()?;
 
     // Extract UUID from the entity
-    let uuid = dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "uuid")
-        .ok_or_else(|| {
-            r_data_core_core::error::Error::Validation(
-                "Entity is missing a valid UUID".to_string(),
-            )
-        })?;
+    let uuid =
+        dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "uuid")
+            .ok_or_else(|| {
+                r_data_core_core::error::Error::Validation(
+                    "Entity is missing a valid UUID".to_string(),
+                )
+            })?;
 
     // Start a transaction
     let mut tx = repo.pool.begin().await?;
@@ -44,10 +45,8 @@ pub async fn update_entity(repo: &DynamicEntityRepository, entity: &DynamicEntit
         .and_then(JsonValue::as_bool)
         .unwrap_or(false);
     // Extract updated_by if present for snapshot attribution
-    let updated_by = dynamic_entity_utils::extract_uuid_from_entity_field_data(
-        &entity.field_data,
-        "updated_by",
-    );
+    let updated_by =
+        dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "updated_by");
     if !skip_versioning {
         // Create snapshot BEFORE incrementing version - must be within transaction
         dynamic_entity_versioning::snapshot_pre_update(&mut tx, uuid, updated_by).await?;
@@ -93,16 +92,18 @@ async fn update_registry(
         param_index += 1;
     }
 
-    if let Some(published) = entity.field_data.get("published").and_then(JsonValue::as_bool) {
+    if let Some(published) = entity
+        .field_data
+        .get("published")
+        .and_then(JsonValue::as_bool)
+    {
         update_clauses.push(format!("published = ${param_index}"));
         published_param = Some(published);
         param_index += 1;
     }
 
-    let updated_by = dynamic_entity_utils::extract_uuid_from_entity_field_data(
-        &entity.field_data,
-        "updated_by",
-    );
+    let updated_by =
+        dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "updated_by");
 
     if let Some(item) = updated_by {
         update_clauses.push(format!("updated_by = ${param_index}"));
@@ -203,8 +204,14 @@ async fn update_entity_table(
 
     // Registry fields that should not be included in the entity table
     let registry_fields = [
-        "entity_type", "path", "created_at", "updated_at", "created_by", "updated_by",
-        "published", "version",
+        "entity_type",
+        "path",
+        "created_at",
+        "updated_at",
+        "created_by",
+        "updated_by",
+        "published",
+        "version",
     ];
 
     // Build SET clauses for entity-specific fields with proper parameterization
@@ -268,4 +275,3 @@ async fn update_entity_table(
 
     Ok(())
 }
-

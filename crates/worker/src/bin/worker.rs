@@ -1,6 +1,5 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-
 use log::{debug, error, info};
 use std::collections::HashMap;
 use std::sync::Arc;

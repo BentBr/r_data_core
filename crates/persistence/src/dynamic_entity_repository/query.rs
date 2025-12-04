@@ -12,10 +12,7 @@ use super::DynamicEntityRepository;
 ///
 /// # Errors
 /// Returns an error if the database query fails
-pub async fn count_entities_impl(
-    repo: &DynamicEntityRepository,
-    entity_type: &str,
-) -> Result<i64> {
+pub async fn count_entities_impl(repo: &DynamicEntityRepository, entity_type: &str) -> Result<i64> {
     // Use the view for this entity type
     let view_name = dynamic_entity_utils::get_view_name(entity_type);
 
@@ -357,4 +354,3 @@ pub async fn delete_by_type_impl(
 
     Ok(())
 }
-

@@ -150,8 +150,7 @@ impl RequiredAuthExt for RequiredAuth {
                 "Insufficient permissions to perform {} on {}",
                 permission_type,
                 namespace.as_str()
-            ))
-            );
+            )));
         }
         Ok(())
     }

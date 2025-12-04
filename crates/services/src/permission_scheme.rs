@@ -40,11 +40,7 @@ impl PermissionSchemeService {
     /// * `cache_manager` - Cache manager for caching schemes
     /// * `cache_ttl` - Optional cache TTL in seconds (uses `entity_definition_ttl` if None)
     #[must_use]
-    pub fn new(
-        pool: PgPool,
-        cache_manager: Arc<CacheManager>,
-        cache_ttl: Option<u64>,
-    ) -> Self {
+    pub fn new(pool: PgPool, cache_manager: Arc<CacheManager>, cache_ttl: Option<u64>) -> Self {
         Self {
             repository: PermissionSchemeRepository::new(pool.clone()),
             pool,
@@ -99,7 +95,11 @@ impl PermissionSchemeService {
         let cache_key = Self::user_permissions_cache_key(&user_uuid, role);
 
         // Try cache first
-        if let Ok(Some(cached)) = self.cache_manager.get::<MergedPermissions>(&cache_key).await {
+        if let Ok(Some(cached)) = self
+            .cache_manager
+            .get::<MergedPermissions>(&cache_key)
+            .await
+        {
             return Ok(cached.permissions);
         }
 
@@ -152,7 +152,11 @@ impl PermissionSchemeService {
         let cache_key = Self::api_key_permissions_cache_key(&api_key_uuid);
 
         // Try cache first
-        if let Ok(Some(cached)) = self.cache_manager.get::<MergedPermissions>(&cache_key).await {
+        if let Ok(Some(cached)) = self
+            .cache_manager
+            .get::<MergedPermissions>(&cache_key)
+            .await
+        {
             return Ok(cached.permissions);
         }
 
@@ -173,9 +177,7 @@ impl PermissionSchemeService {
                         .as_ref()
                         .and_then(|c| c.get("path"))
                         .map_or_else(
-                            || {
-                                format!("{}:{}", permission.resource_type.as_str(), perm_str)
-                            },
+                            || format!("{}:{}", permission.resource_type.as_str(), perm_str),
                             |path| {
                                 format!(
                                     "{}:{}:{}",
@@ -296,7 +298,8 @@ impl PermissionSchemeService {
             .await
         {
             for api_key_uuid in api_key_uuids {
-                self.invalidate_api_key_permissions_cache(&api_key_uuid).await;
+                self.invalidate_api_key_permissions_cache(&api_key_uuid)
+                    .await;
             }
         }
     }
@@ -394,7 +397,8 @@ impl PermissionSchemeService {
         self.repository.update(scheme, updated_by).await?;
 
         // Invalidate all caches for this scheme and all users/API keys that reference it
-        self.invalidate_all_caches_for_scheme(scheme.base.uuid).await;
+        self.invalidate_all_caches_for_scheme(scheme.base.uuid)
+            .await;
 
         Ok(())
     }
@@ -450,7 +454,11 @@ impl PermissionSchemeService {
         let cache_key = Self::user_schemes_cache_key(&user_uuid);
 
         // Try cache first
-        if let Ok(Some(cached)) = self.cache_manager.get::<UserPermissionSchemes>(&cache_key).await {
+        if let Ok(Some(cached)) = self
+            .cache_manager
+            .get::<UserPermissionSchemes>(&cache_key)
+            .await
+        {
             // Load schemes from cached UUIDs
             let mut schemes = Vec::new();
             for uuid in &cached.scheme_uuids {
@@ -501,7 +509,11 @@ impl PermissionSchemeService {
         let cache_key = Self::api_key_schemes_cache_key(&api_key_uuid);
 
         // Try cache first
-        if let Ok(Some(cached)) = self.cache_manager.get::<UserPermissionSchemes>(&cache_key).await {
+        if let Ok(Some(cached)) = self
+            .cache_manager
+            .get::<UserPermissionSchemes>(&cache_key)
+            .await
+        {
             // Load schemes from cached UUIDs
             let mut schemes = Vec::new();
             for uuid in &cached.scheme_uuids {

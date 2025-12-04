@@ -46,7 +46,9 @@ pub fn random_string(prefix: &str) -> String {
 #[allow(clippy::await_holding_lock, clippy::future_not_send)] // MutexGuard is intentionally held across await for test isolation
 pub async fn setup_test_db() -> PgPool {
     // Get global lock for the entire test run
-    let _guard = GLOBAL_TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = GLOBAL_TEST_MUTEX
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
 
     info!("Setting up test database with global lock acquired");
 

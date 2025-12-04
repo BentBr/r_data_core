@@ -57,9 +57,7 @@ pub async fn find_existing_entity<S: std::hash::BuildHasher>(
             normalized_field_data
                 .get(key_field)
                 .or_else(|| original_field_data.get(key_field))
-                .or_else(|| {
-                    produced.as_object().and_then(|obj| obj.get(key_field))
-                })
+                .or_else(|| produced.as_object().and_then(|obj| obj.get(key_field)))
                 .and_then(|v| v.as_str())
                 .map(std::string::ToString::to_string)
         })

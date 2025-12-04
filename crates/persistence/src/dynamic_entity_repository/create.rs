@@ -1,6 +1,6 @@
 use serde_json::Value as JsonValue;
-use sqlx::{Row, Transaction};
 use sqlx::Postgres;
+use sqlx::{Row, Transaction};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -27,12 +27,13 @@ pub async fn create_entity(repo: &DynamicEntityRepository, entity: &DynamicEntit
     entity.validate()?;
 
     // Extract UUID from the entity
-    let uuid = dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "uuid")
-        .ok_or_else(|| {
-            r_data_core_core::error::Error::Validation(
-                "Entity is missing a valid UUID".to_string(),
-            )
-        })?;
+    let uuid =
+        dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "uuid")
+            .ok_or_else(|| {
+                r_data_core_core::error::Error::Validation(
+                    "Entity is missing a valid UUID".to_string(),
+                )
+            })?;
 
     // Extract the path (default root) and mandatory key
     let mut path = entity
@@ -140,14 +141,10 @@ async fn insert_into_registry(
     // Extract metadata fields or use defaults
     let created_at = extract_timestamp(&entity.field_data, "created_at");
     let updated_at = extract_timestamp(&entity.field_data, "updated_at");
-    let created_by = dynamic_entity_utils::extract_uuid_from_entity_field_data(
-        &entity.field_data,
-        "created_by",
-    );
-    let updated_by = dynamic_entity_utils::extract_uuid_from_entity_field_data(
-        &entity.field_data,
-        "updated_by",
-    );
+    let created_by =
+        dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "created_by");
+    let updated_by =
+        dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "updated_by");
     let published = entity
         .field_data
         .get("published")
@@ -220,8 +217,14 @@ async fn insert_into_entity_table(
 
     // Registry fields that should not be included in the entity table
     let registry_fields = [
-        "entity_type", "path", "created_at", "updated_at", "created_by", "updated_by",
-        "published", "version",
+        "entity_type",
+        "path",
+        "created_at",
+        "updated_at",
+        "created_by",
+        "updated_by",
+        "published",
+        "version",
     ];
 
     // Build query for entity-specific table
@@ -268,17 +271,17 @@ async fn insert_into_entity_table(
 }
 
 /// Extract timestamp from field data
-fn extract_timestamp(field_data: &std::collections::HashMap<String, JsonValue>, key: &str) -> OffsetDateTime {
+fn extract_timestamp(
+    field_data: &std::collections::HashMap<String, JsonValue>,
+    key: &str,
+) -> OffsetDateTime {
     field_data
         .get(key)
         .and_then(|v| v.as_str())
-        .map_or_else(
-            OffsetDateTime::now_utc,
-            |s| {
-                OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)
-                    .unwrap_or_else(|_| OffsetDateTime::now_utc())
-            },
-        )
+        .map_or_else(OffsetDateTime::now_utc, |s| {
+            OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)
+                .unwrap_or_else(|_| OffsetDateTime::now_utc())
+        })
 }
 
 /// Format JSON value for SQL insertion
@@ -297,4 +300,3 @@ fn format_value_for_sql(value: &JsonValue) -> String {
         _ => format!("'{}'", value.to_string().replace('\'', "''")), // For complex types
     }
 }
-

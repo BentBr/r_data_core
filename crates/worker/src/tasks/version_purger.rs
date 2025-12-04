@@ -3,12 +3,14 @@
 use async_trait::async_trait;
 use log::{info, warn};
 
-use r_data_core_core::maintenance::MaintenanceTask;
-use r_data_core_core::maintenance::task::TaskContext;
-use r_data_core_core::versioning::purger_trait::VersionPurger;
 use r_data_core_core::cache::CacheManager;
+use r_data_core_core::maintenance::task::TaskContext;
+use r_data_core_core::maintenance::MaintenanceTask;
+use r_data_core_core::versioning::purger_trait::VersionPurger;
+use r_data_core_persistence::{
+    EntityDefinitionVersioningRepository, VersionRepository, WorkflowVersioningRepository,
+};
 use r_data_core_services::SettingsService;
-use r_data_core_persistence::{VersionRepository, WorkflowVersioningRepository, EntityDefinitionVersioningRepository};
 
 /// Maintenance task that purges old entity versions based on configured settings
 pub struct VersionPurgerTask {
@@ -48,18 +50,15 @@ impl MaintenanceTask for VersionPurgerTask {
 
         // Get settings service
         // TODO: Move SettingsService to appropriate crate
-        let cache_manager =
-            CacheManager::new(r_data_core_core::config::CacheConfig {
-                entity_definition_ttl: 3600,
-                api_key_ttl: 600,
-                enabled: true,
-                ttl: 3600,
-                max_size: 10000,
-            });
-        let settings_service = SettingsService::new(
-            pool.clone(),
-            std::sync::Arc::new(cache_manager),
-        );
+        let cache_manager = CacheManager::new(r_data_core_core::config::CacheConfig {
+            entity_definition_ttl: 3600,
+            api_key_ttl: 600,
+            enabled: true,
+            ttl: 3600,
+            max_size: 10000,
+        });
+        let settings_service =
+            SettingsService::new(pool.clone(), std::sync::Arc::new(cache_manager));
 
         let settings = match settings_service.get_entity_versioning_settings().await {
             Ok(s) => s,

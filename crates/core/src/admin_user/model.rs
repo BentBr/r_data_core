@@ -44,7 +44,6 @@ impl UserRole {
             Self::Custom(name) => name,
         }
     }
-
 }
 
 impl FromStr for UserRole {

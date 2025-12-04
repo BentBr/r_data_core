@@ -80,9 +80,7 @@ where
         Box::pin(async move {
             // Handle state extraction
             let Some(state) = state_result else {
-                log::error!(
-                    "Failed to extract API state from request for path: {path}"
-                );
+                log::error!("Failed to extract API state from request for path: {path}");
                 return Err(ErrorUnauthorized("Missing application state"));
             };
 
@@ -101,9 +99,7 @@ where
                 }
                 Ok(None) => {
                     // JWT authentication failed, continue to API key
-                    log::debug!(
-                        "JWT authentication failed, trying API key for path: {path}"
-                    );
+                    log::debug!("JWT authentication failed, trying API key for path: {path}");
                 }
                 Err(e) => {
                     log::debug!("JWT authentication error: {e:?}");

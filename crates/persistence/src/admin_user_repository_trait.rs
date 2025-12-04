@@ -96,10 +96,7 @@ pub trait AdminUserRepositoryTrait: Send + Sync {
     async fn update_last_login(&self, uuid: &Uuid) -> Result<()>;
 
     /// Create a new admin user
-    async fn create_admin_user<'a>(
-        &self,
-        params: &CreateAdminUserParams<'a>,
-    ) -> Result<Uuid>;
+    async fn create_admin_user<'a>(&self, params: &CreateAdminUserParams<'a>) -> Result<Uuid>;
 
     /// Update an admin user
     async fn update_admin_user(&self, user: &AdminUser) -> Result<()>;

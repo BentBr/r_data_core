@@ -149,7 +149,9 @@ pub async fn run_workflow_now_upload(
     }
 
     // Extract file from multipart before any Send-requiring operations
-    let file_bytes = extract_file_from_multipart(payload).await.unwrap_or_default();
+    let file_bytes = extract_file_from_multipart(payload)
+        .await
+        .unwrap_or_default();
     if file_bytes.is_empty() {
         return ApiResponse::<()>::bad_request("Missing file");
     }

@@ -90,9 +90,7 @@ where
 
             // Try API key authentication
             if let Ok(Some((key, user_uuid))) = extract_and_validate_api_key(&request).await {
-                log::debug!(
-                    "API key authentication successful, user_uuid: {user_uuid}"
-                );
+                log::debug!("API key authentication successful, user_uuid: {user_uuid}");
                 log::debug!("API key UUID: {:?}", key.uuid);
 
                 // Add API key info to request extensions

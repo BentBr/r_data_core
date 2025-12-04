@@ -67,9 +67,7 @@ impl ApalisRedisQueue {
             .query_async(&mut conn)
             .await
             .with_context(|| format!("failed to RPUSH job to Redis key '{key}'"))?;
-        log::info!(
-            "Successfully enqueued job: RPUSH returned length {result} for key '{key}'"
-        );
+        log::info!("Successfully enqueued job: RPUSH returned length {result} for key '{key}'");
         Ok(())
     }
 

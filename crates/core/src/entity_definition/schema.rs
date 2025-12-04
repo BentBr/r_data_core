@@ -30,12 +30,10 @@ impl Schema {
                 for (field_name, field_def) in props {
                     if let Some(field_type) = field_def.get("type") {
                         let sql_type = match field_type.as_str() {
-                            Some("string") => {
-                                field_def.get("maxLength").map_or_else(
-                                    || "TEXT".to_string(),
-                                    |max_length| format!("VARCHAR({max_length})"),
-                                )
-                            }
+                            Some("string") => field_def.get("maxLength").map_or_else(
+                                || "TEXT".to_string(),
+                                |max_length| format!("VARCHAR({max_length})"),
+                            ),
                             Some("number") => "NUMERIC".to_string(),
                             Some("integer") => "BIGINT".to_string(),
                             Some("boolean") => "BOOLEAN".to_string(),

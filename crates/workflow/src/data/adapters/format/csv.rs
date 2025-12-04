@@ -74,7 +74,10 @@ impl FormatHandler for CsvFormatHandler {
                 None => {
                     for (i, field) in rec.iter().enumerate() {
                         let col_num = i + 1;
-                        obj.insert(format!("col_{col_num}"), serde_json::Value::String(field.to_string()));
+                        obj.insert(
+                            format!("col_{col_num}"),
+                            serde_json::Value::String(field.to_string()),
+                        );
                     }
                 }
             }

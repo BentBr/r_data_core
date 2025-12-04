@@ -6,6 +6,7 @@ pub mod dsl;
 pub mod entity_definitions;
 pub mod permissions;
 pub mod system;
+pub mod users;
 pub mod workflows;
 
 use actix_web::web;
@@ -23,6 +24,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
             .service(web::scope("/dsl").configure(dsl::register_routes))
             .service(web::scope("/api-keys").configure(api_keys::register_routes))
             .service(web::scope("/permissions").configure(permissions::register_routes))
+            .service(web::scope("/users").configure(users::register_routes))
             .service(web::scope("/system").configure(system::register_routes)),
     );
 }

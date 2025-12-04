@@ -32,21 +32,19 @@ async fn create_test_entity_definition(
         group_name: None,
         allow_children: true,
         icon: None,
-        fields: vec![
-            FieldDefinition {
-                name: "name".to_string(),
-                display_name: "Name".to_string(),
-                description: Some("Name field".to_string()),
-                field_type: FieldType::String,
-                required: true,
-                indexed: true,
-                filterable: true,
-                default_value: None,
-                validation: Default::default(),
-                ui_settings: Default::default(),
-                constraints: HashMap::new(),
-            },
-        ],
+        fields: vec![FieldDefinition {
+            name: "name".to_string(),
+            display_name: "Name".to_string(),
+            description: Some("Name field".to_string()),
+            field_type: FieldType::String,
+            required: true,
+            indexed: true,
+            filterable: true,
+            default_value: None,
+            validation: Default::default(),
+            ui_settings: Default::default(),
+            constraints: HashMap::new(),
+        }],
         schema: Default::default(),
         created_at: OffsetDateTime::now_utc(),
         updated_at: OffsetDateTime::now_utc(),
@@ -108,8 +106,10 @@ async fn test_list_available_entity_types() -> Result<()> {
 
     // Create entities for counting
     let repo = DynamicEntityRepository::new(pool.clone());
-    let entity1 = create_test_dynamic_entity(&entity_def1, "Entity 1", "/", &Uuid::now_v7().to_string());
-    let entity2 = create_test_dynamic_entity(&entity_def1, "Entity 2", "/", &Uuid::now_v7().to_string());
+    let entity1 =
+        create_test_dynamic_entity(&entity_def1, "Entity 1", "/", &Uuid::now_v7().to_string());
+    let entity2 =
+        create_test_dynamic_entity(&entity_def1, "Entity 2", "/", &Uuid::now_v7().to_string());
     repo.create(&entity1).await?;
     repo.create(&entity2).await?;
 
@@ -210,7 +210,12 @@ async fn test_browse_by_path_pagination() -> Result<()> {
     // Create multiple entities
     let repo = DynamicEntityRepository::new(pool.clone());
     for i in 0..10 {
-        let entity = create_test_dynamic_entity(&entity_def, &format!("Entity {}", i), "/", &Uuid::now_v7().to_string());
+        let entity = create_test_dynamic_entity(
+            &entity_def,
+            &format!("Entity {}", i),
+            "/",
+            &Uuid::now_v7().to_string(),
+        );
         repo.create(&entity).await?;
     }
 
@@ -225,4 +230,3 @@ async fn test_browse_by_path_pagination() -> Result<()> {
 
     Ok(())
 }
-

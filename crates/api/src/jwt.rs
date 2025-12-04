@@ -187,9 +187,13 @@ fn generate_standard_permissions(ns: &ResourceNamespace) -> Vec<String> {
 fn generate_all_permissions() -> Vec<String> {
     let mut permissions = generate_workflow_permissions();
     permissions.extend(generate_standard_permissions(&ResourceNamespace::Entities));
-    permissions.extend(generate_standard_permissions(&ResourceNamespace::EntityDefinitions));
+    permissions.extend(generate_standard_permissions(
+        &ResourceNamespace::EntityDefinitions,
+    ));
     permissions.extend(generate_standard_permissions(&ResourceNamespace::ApiKeys));
-    permissions.extend(generate_standard_permissions(&ResourceNamespace::PermissionSchemes));
+    permissions.extend(generate_standard_permissions(
+        &ResourceNamespace::PermissionSchemes,
+    ));
     permissions.extend(generate_standard_permissions(&ResourceNamespace::System));
     permissions
 }

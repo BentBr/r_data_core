@@ -281,8 +281,10 @@ mod filter_entities_tests {
         let _uuids = create_test_entities(&db_pool, &entity_type, 20).await?;
 
         // Search for entities with "Test Entity 1" in name
-        let params = FilterEntitiesParams::new(100, 0)
-            .with_search(Some(("Test Entity 1".to_string(), vec!["name".to_string()])));
+        let params = FilterEntitiesParams::new(100, 0).with_search(Some((
+            "Test Entity 1".to_string(),
+            vec!["name".to_string()],
+        )));
         let search_result = repository.filter_entities(&entity_type, &params).await?;
 
         // Should find entities with "Test Entity 1" in the name (1, 10-19)

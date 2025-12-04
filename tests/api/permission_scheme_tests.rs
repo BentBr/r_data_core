@@ -17,8 +17,7 @@ use r_data_core_services::{
 };
 use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_test_support::{
-    clear_test_db, create_test_admin_user, setup_test_db,
-    test_queue_client_async,
+    clear_test_db, create_test_admin_user, setup_test_db, test_queue_client_async,
 };
 use serial_test::serial;
 use std::collections::HashMap;
@@ -897,12 +896,7 @@ mod tests {
 
         // Create an API key
         let api_key_uuid = api_key_repo
-            .create_new_api_key(
-                "Test API Key",
-                "Test description",
-                admin_user_uuid,
-                30,
-            )
+            .create_new_api_key("Test API Key", "Test description", admin_user_uuid, 30)
             .await?
             .0;
 
@@ -1089,7 +1083,10 @@ mod tests {
             .get_schemes_for_user(user_uuid, &user_repo)
             .await?;
         assert_eq!(schemes1.len(), 1, "Should have 1 scheme");
-        assert_eq!(schemes1[0].name, "AutoInvalidateScheme", "Initial name should match");
+        assert_eq!(
+            schemes1[0].name, "AutoInvalidateScheme",
+            "Initial name should match"
+        );
 
         // Update the scheme - should automatically invalidate cache
         let mut scheme_to_update = scheme_service.get_scheme(scheme_uuid).await?.unwrap();
@@ -1227,8 +1224,14 @@ mod tests {
             .get_merged_permissions_for_user(viewer_uuid, "Viewer", &user_repo)
             .await?;
 
-        assert_eq!(editor_perms1, editor_perms2, "Editor permissions should be cached");
-        assert_eq!(viewer_perms1, viewer_perms2, "Viewer permissions should be cached");
+        assert_eq!(
+            editor_perms1, editor_perms2,
+            "Editor permissions should be cached"
+        );
+        assert_eq!(
+            viewer_perms1, viewer_perms2,
+            "Viewer permissions should be cached"
+        );
 
         clear_test_db(&pool).await?;
         Ok(())
@@ -1306,7 +1309,11 @@ mod tests {
         let schemes2 = scheme_service
             .get_schemes_for_user(user_uuid, &user_repo)
             .await?;
-        assert_eq!(schemes2.len(), 1, "Should still load from DB after cache invalidation");
+        assert_eq!(
+            schemes2.len(),
+            1,
+            "Should still load from DB after cache invalidation"
+        );
 
         clear_test_db(&pool).await?;
         Ok(())
@@ -1362,7 +1369,11 @@ mod tests {
         let perms = scheme_service
             .get_merged_permissions_for_user(user_uuid, "Editor", &user_repo)
             .await?;
-        assert_eq!(perms.len(), 0, "User with no schemes should have no permissions");
+        assert_eq!(
+            perms.len(),
+            0,
+            "User with no schemes should have no permissions"
+        );
 
         // Create a scheme with no permissions for a specific role
         let mut empty_scheme = PermissionScheme::new("EmptyScheme".to_string());
@@ -1388,7 +1399,8 @@ mod tests {
             .get_merged_permissions_for_user(user_uuid, "Editor", &user_repo)
             .await?;
         assert_eq!(
-            perms2.len(), 0,
+            perms2.len(),
+            0,
             "User with scheme but no permissions for role should have empty permissions"
         );
 
@@ -1397,7 +1409,8 @@ mod tests {
             .get_merged_permissions_for_user(user_uuid, "Viewer", &user_repo)
             .await?;
         assert_eq!(
-            perms3.len(), 0,
+            perms3.len(),
+            0,
             "User with scheme but different role should have empty permissions"
         );
 
@@ -1453,12 +1466,7 @@ mod tests {
         user_repo.update_admin_user(&user).await?;
 
         let api_key_uuid = api_key_repo
-            .create_new_api_key(
-                "Test API Key",
-                "Test description",
-                admin_user_uuid,
-                30,
-            )
+            .create_new_api_key("Test API Key", "Test description", admin_user_uuid, 30)
             .await?
             .0;
 
@@ -1487,7 +1495,10 @@ mod tests {
         assert_eq!(user_schemes1.len(), 1, "User should have 1 scheme");
         assert_eq!(api_key_schemes1.len(), 1, "API key should have 1 scheme");
         assert!(!user_perms1.is_empty(), "User should have permissions");
-        assert!(!api_key_perms1.is_empty(), "API key should have permissions");
+        assert!(
+            !api_key_perms1.is_empty(),
+            "API key should have permissions"
+        );
 
         // Update the scheme - should invalidate all related caches
         let mut scheme_to_update = scheme_service.get_scheme(scheme_uuid).await?.unwrap();
@@ -1550,7 +1561,9 @@ mod tests {
             "User should have the new Delete permission"
         );
         assert!(
-            api_key_perms2.iter().any(|p| p.contains("workflows:delete")),
+            api_key_perms2
+                .iter()
+                .any(|p| p.contains("workflows:delete")),
             "API key should have the new Delete permission"
         );
 

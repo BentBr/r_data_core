@@ -56,6 +56,14 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         crate::admin::permissions::routes::delete_permission_scheme,
         crate::admin::permissions::routes::assign_schemes_to_user,
         crate::admin::permissions::routes::assign_schemes_to_api_key,
+        crate::admin::users::routes::list_users,
+        crate::admin::users::routes::get_user,
+        crate::admin::users::routes::create_user,
+        crate::admin::users::routes::update_user,
+        crate::admin::users::routes::delete_user,
+        crate::admin::users::routes::get_user_schemes,
+        crate::admin::users::routes::assign_schemes_to_user,
+        crate::admin::auth::routes::get_user_permissions,
     ),
     components(
         schemas(
@@ -120,7 +128,10 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
             crate::admin::permissions::models::CreatePermissionSchemeRequest,
             crate::admin::permissions::models::UpdatePermissionSchemeRequest,
             crate::admin::permissions::models::AssignSchemesRequest,
-            crate::admin::permissions::models::PermissionResponse
+            crate::admin::permissions::models::PermissionResponse,
+            crate::admin::users::models::UserResponse,
+            crate::admin::users::models::CreateUserRequest,
+            crate::admin::users::models::UpdateUserRequest
         )
     ),
     modifiers(&SecurityAddon, &UuidSchemaAddon, &DateTimeSchemaAddon, &ModelSchemaAddon, &JsonValueSchemaAddon),
@@ -133,6 +144,7 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         (name = "DSL", description = "Workflow DSL validation and options"),
         (name = "system", description = "System settings management"),
         (name = "permissions", description = "Permission scheme management"),
+        (name = "users", description = "User management"),
     ),
     info(
         title = "R Data Core Admin API",

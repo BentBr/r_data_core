@@ -56,8 +56,8 @@ async fn collect_entity_input_data(
                 })?;
 
             for entity in entities {
-                let entity_json: JsonValue = serde_json::to_value(&entity.field_data)
-                    .unwrap_or_else(|_| json!({}));
+                let entity_json: JsonValue =
+                    serde_json::to_value(&entity.field_data).unwrap_or_else(|_| json!({}));
                 input_data.push(entity_json);
             }
         }
@@ -79,7 +79,13 @@ async fn collect_entity_input_data(
 fn execute_workflow_and_collect_outputs(
     program: &DslProgram,
     input_data: Vec<JsonValue>,
-) -> Result<(Vec<JsonValue>, Option<r_data_core_workflow::dsl::FormatConfig>), HttpResponse> {
+) -> Result<
+    (
+        Vec<JsonValue>,
+        Option<r_data_core_workflow::dsl::FormatConfig>,
+    ),
+    HttpResponse,
+> {
     let mut all_outputs = Vec::new();
     for input in input_data {
         let outputs = program.execute(&input).map_err(|e| {
@@ -169,7 +175,7 @@ pub async fn get_workflow_data(
     // Extract pre-shared key status and clone request before any await points
     let has_pre_shared_key = req.extensions().get::<bool>().copied().unwrap_or(false);
     let req_clone = req.clone(); // Clone request for use in async block
-    
+
     // Use CombinedRequiredAuth to validate JWT/API key (or check pre-shared key extension)
     // Note: We can't use the extractor directly here since we need workflow config first
     // So we manually check the extension set by validate_provider_auth
@@ -179,15 +185,17 @@ pub async fn get_workflow_data(
         use crate::auth::auth_enum::CombinedRequiredAuth;
         use actix_web::FromRequest;
         let mut payload = actix_web::dev::Payload::None;
-        if CombinedRequiredAuth::from_request(&req_clone, &mut payload).await.is_err() {
+        if CombinedRequiredAuth::from_request(&req_clone, &mut payload)
+            .await
+            .is_err()
+        {
             // Check if pre-shared key was required
             if extract_provider_auth_config(&workflow.config).is_some() {
                 return HttpResponse::Unauthorized()
                     .json(json!({"error": "Authentication required"}));
             }
             // If no pre-shared key required, still need JWT/API key
-            return HttpResponse::Unauthorized()
-                .json(json!({"error": "Authentication required"}));
+            return HttpResponse::Unauthorized().json(json!({"error": "Authentication required"}));
         }
     }
 

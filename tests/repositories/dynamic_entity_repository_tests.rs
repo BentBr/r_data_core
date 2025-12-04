@@ -242,7 +242,8 @@ async fn test_list_entities_by_parent() -> Result<()> {
     // Test filter by parent - using filter_entities method
     let filters = HashMap::from([("parent_uuid".to_string(), json!(parent_uuid.to_string()))]);
     let params = FilterEntitiesParams::new(10, 0).with_filters(Some(filters));
-    let children = repo.filter_entities(&entity_def.entity_type, &params)
+    let children = repo
+        .filter_entities(&entity_def.entity_type, &params)
         .await?;
     assert_eq!(children.len(), 2);
 
@@ -298,7 +299,8 @@ async fn test_filter_entities() -> Result<()> {
     // Test filtering with the filter_entities method
     let filters = HashMap::from([("age".to_string(), json!(30))]);
     let params = FilterEntitiesParams::new(10, 0).with_filters(Some(filters));
-    let filtered = repo.filter_entities(&entity_def.entity_type, &params)
+    let filtered = repo
+        .filter_entities(&entity_def.entity_type, &params)
         .await?;
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].get::<String>("name")?, "Bob");

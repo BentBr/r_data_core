@@ -1,6 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use actix_web::{post, web, Responder};
+use actix_web::{get, post, web, Responder};
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -8,8 +8,7 @@ use uuid::Uuid;
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::{OptionalAuth, RequiredAuth};
 use crate::jwt::{
-    generate_access_token, ACCESS_TOKEN_EXPIRY_SECONDS,
-    REFRESH_TOKEN_EXPIRY_SECONDS,
+    generate_access_token, ACCESS_TOKEN_EXPIRY_SECONDS, REFRESH_TOKEN_EXPIRY_SECONDS,
 };
 use crate::response::ApiResponse;
 use r_data_core_core::admin_user::{AdminUser, UserRole};
@@ -99,11 +98,10 @@ fn generate_tokens_for_user(
     // Use short-lived expiration for access tokens
     let mut access_token_config = data.api_config().clone();
     access_token_config.jwt_expiration = ACCESS_TOKEN_EXPIRY_SECONDS;
-    let access_token = generate_access_token(user, &access_token_config, schemes)
-        .map_err(|e| {
-            log::error!("Failed to generate access token: {e:?}");
-            ApiResponse::<()>::internal_error("Token generation failed")
-        })?;
+    let access_token = generate_access_token(user, &access_token_config, schemes).map_err(|e| {
+        log::error!("Failed to generate access token: {e:?}");
+        ApiResponse::<()>::internal_error("Token generation failed")
+    })?;
 
     // Generate refresh token
     let refresh_token = RefreshToken::generate_token();
@@ -123,7 +121,13 @@ fn generate_tokens_for_user(
         .checked_add(Duration::seconds(REFRESH_TOKEN_EXPIRY_SECONDS as i64))
         .unwrap_or_else(OffsetDateTime::now_utc);
 
-    Ok((access_token, refresh_token, refresh_token_hash, access_expires_at, refresh_expires_at))
+    Ok((
+        access_token,
+        refresh_token,
+        refresh_token_hash,
+        access_expires_at,
+        refresh_expires_at,
+    ))
 }
 
 /// Login endpoint for admin users
@@ -518,11 +522,16 @@ pub async fn admin_refresh_token(
 
     // Load permission schemes and generate tokens
     let schemes = load_user_permission_schemes(&user, &data, &admin_repo).await;
-    let (new_access_token, new_refresh_token_string, new_refresh_token_hash, access_expires_at, refresh_expires_at) =
-        match generate_tokens_for_user(&user, &data, &schemes) {
-            Ok(tokens) => tokens,
-            Err(response) => return response,
-        };
+    let (
+        new_access_token,
+        new_refresh_token_string,
+        new_refresh_token_hash,
+        access_expires_at,
+        refresh_expires_at,
+    ) = match generate_tokens_for_user(&user, &data, &schemes) {
+        Ok(tokens) => tokens,
+        Err(response) => return response,
+    };
 
     // Update the old refresh token as used
     if let Err(e) = refresh_repo.update_last_used(refresh_token.id).await {
@@ -605,11 +614,90 @@ pub async fn admin_revoke_all_tokens(
     }
 }
 
+/// Get user's allowed routes and permissions
+#[utoipa::path(
+    get,
+    path = "/admin/api/v1/auth/permissions",
+    tag = "admin-auth",
+    responses(
+        (status = 200, description = "User permissions and allowed routes", body = serde_json::Value),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt" = [])
+    )
+)]
+#[get("/auth/permissions")]
+pub async fn get_user_permissions(auth: RequiredAuth) -> impl Responder {
+    use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
+
+    let claims = &auth.0;
+
+    // Map routes to required permissions
+    let route_permissions: Vec<(&str, ResourceNamespace, PermissionType)> = vec![
+        (
+            "/dashboard",
+            ResourceNamespace::System,
+            PermissionType::Read,
+        ),
+        (
+            "/workflows",
+            ResourceNamespace::Workflows,
+            PermissionType::Read,
+        ),
+        (
+            "/entity-definitions",
+            ResourceNamespace::EntityDefinitions,
+            PermissionType::Read,
+        ),
+        (
+            "/entities",
+            ResourceNamespace::Entities,
+            PermissionType::Read,
+        ),
+        (
+            "/api-keys",
+            ResourceNamespace::ApiKeys,
+            PermissionType::Read,
+        ),
+        (
+            "/permissions",
+            ResourceNamespace::PermissionSchemes,
+            PermissionType::Read,
+        ),
+        ("/system", ResourceNamespace::System, PermissionType::Read),
+    ];
+
+    // Check which routes the user can access
+    let allowed_routes: Vec<String> = route_permissions
+        .iter()
+        .filter_map(|(route, namespace, perm_type)| {
+            if crate::auth::permission_check::has_permission(claims, namespace, perm_type, None) {
+                Some(route.to_string())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Build response
+    let response = serde_json::json!({
+        "is_super_admin": claims.is_super_admin,
+        "role": claims.role,
+        "permissions": claims.permissions,
+        "allowed_routes": allowed_routes,
+    });
+
+    ApiResponse::ok(response)
+}
+
 /// Register auth routes
 pub fn register_routes(cfg: &mut actix_web::web::ServiceConfig) {
     cfg.service(admin_login)
         .service(admin_register)
         .service(admin_logout)
         .service(admin_refresh_token)
-        .service(admin_revoke_all_tokens);
+        .service(admin_revoke_all_tokens)
+        .service(get_user_permissions);
 }

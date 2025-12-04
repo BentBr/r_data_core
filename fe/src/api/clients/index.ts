@@ -152,10 +152,31 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     async revokeAllTokens(...args: Parameters<AuthClient['revokeAllTokens']>) {
         return this.authClient.revokeAllTokens(...args)
     }
+    async getUserPermissions(...args: Parameters<AuthClient['getUserPermissions']>) {
+        return this.authClient.getUserPermissions(...args)
+    }
 
     // Users
     async getUsers(...args: Parameters<UsersClient['getUsers']>) {
         return this.usersClient.getUsers(...args)
+    }
+    async getUser(...args: Parameters<UsersClient['getUser']>) {
+        return this.usersClient.getUser(...args)
+    }
+    async createUser(...args: Parameters<UsersClient['createUser']>) {
+        return this.usersClient.createUser(...args)
+    }
+    async updateUser(...args: Parameters<UsersClient['updateUser']>) {
+        return this.usersClient.updateUser(...args)
+    }
+    async deleteUser(...args: Parameters<UsersClient['deleteUser']>) {
+        return this.usersClient.deleteUser(...args)
+    }
+    async getUserSchemes(...args: Parameters<UsersClient['getUserSchemes']>) {
+        return this.usersClient.getUserSchemes(...args)
+    }
+    async assignSchemesToUser(...args: Parameters<UsersClient['assignSchemesToUser']>) {
+        return this.usersClient.assignSchemesToUser(...args)
     }
 
     // Entities

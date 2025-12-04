@@ -414,7 +414,7 @@ impl ResponseError for ApiError {
             Self::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::BadRequest(_) => StatusCode::BAD_REQUEST,
             Self::Unauthorized(_) => StatusCode::UNAUTHORIZED,
-            Self::Forbidden(_) | Self::Inactive(_)  => StatusCode::FORBIDDEN,
+            Self::Forbidden(_) | Self::Inactive(_) => StatusCode::FORBIDDEN,
             Self::UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
         }
     }

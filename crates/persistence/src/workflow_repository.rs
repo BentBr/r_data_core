@@ -313,7 +313,8 @@ impl WorkflowRepository {
         let mut out = Vec::with_capacity(rows.len());
         for r in rows {
             let uuid: Uuid = r.try_get(0).unwrap();
-            let cron: String = r.try_get::<Option<String>, _>(1)
+            let cron: String = r
+                .try_get::<Option<String>, _>(1)
                 .ok()
                 .flatten()
                 .unwrap_or_default();

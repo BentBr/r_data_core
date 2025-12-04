@@ -171,17 +171,19 @@ fn build_files_and_folders(
         let folder_path = if prefix == "/" {
             format!("/{seg}")
         } else {
-                format!("{prefix}/{seg}")
+            format!("{prefix}/{seg}")
         };
 
-        folder_map.entry(seg.to_string()).or_insert_with(|| BrowseNode {
-            kind: BrowseKind::Folder,
-            name: seg.to_string(),
-            path: folder_path,
-            entity_uuid: None,
-            entity_type: None,
-            has_children: Some(true),
-        });
+        folder_map
+            .entry(seg.to_string())
+            .or_insert_with(|| BrowseNode {
+                kind: BrowseKind::Folder,
+                name: seg.to_string(),
+                path: folder_path,
+                entity_uuid: None,
+                entity_type: None,
+                has_children: Some(true),
+            });
     }
 
     (folder_map, files, file_names)

@@ -14,9 +14,9 @@ where
     value.map_or_else(
         || Ok(None),
         |s| {
-            s.parse::<i64>()
-                .map(Some)
-                .map_err(|_| D::Error::custom(format!("invalid type: string \"{s}\", expected i64")))
+            s.parse::<i64>().map(Some).map_err(|_| {
+                D::Error::custom(format!("invalid type: string \"{s}\", expected i64"))
+            })
         },
     )
 }
@@ -131,8 +131,10 @@ impl PaginationQuery {
     pub fn get_per_page(&self, default: i64, max_limit: i64) -> i64 {
         self.per_page.map_or_else(
             || {
-                self.limit
-                    .map_or_else(|| default.clamp(1, max_limit), |limit| limit.clamp(1, max_limit))
+                self.limit.map_or_else(
+                    || default.clamp(1, max_limit),
+                    |limit| limit.clamp(1, max_limit),
+                )
             },
             |per_page| per_page.clamp(1, max_limit),
         )
@@ -168,12 +170,10 @@ impl SortingQuery {
     /// Get the sort SQL clause if `sort_by` is provided
     #[must_use]
     pub fn get_sort_clause(&self) -> Option<String> {
-        self.sort_by
-            .as_ref()
-            .map(|field| {
-                let dir = self.get_sort_direction();
-                format!("{field} {dir}")
-            })
+        self.sort_by.as_ref().map(|field| {
+            let dir = self.get_sort_direction();
+            format!("{field} {dir}")
+        })
     }
 }
 

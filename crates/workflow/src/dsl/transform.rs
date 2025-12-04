@@ -126,7 +126,9 @@ fn validate_operand(idx: usize, side: &str, op: &Operand, safe_field: &Regex) ->
                 bail!("DSL step {idx}: transform.arithmetic.{side} external filter requires field and value");
             }
             if !safe_field.is_match(field) {
-                bail!("DSL step {idx}: transform.arithmetic.{side} external field path must be safe");
+                bail!(
+                    "DSL step {idx}: transform.arithmetic.{side} external field path must be safe"
+                );
             }
         }
     }

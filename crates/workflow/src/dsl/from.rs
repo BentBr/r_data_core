@@ -71,9 +71,7 @@ pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> R
             }
             // Validate format-specific options
             if format.format_type.as_str() == "csv" {
-                if let Some(delimiter) =
-                    format.options.get("delimiter").and_then(|v| v.as_str())
-                {
+                if let Some(delimiter) = format.options.get("delimiter").and_then(|v| v.as_str()) {
                     if delimiter.len() != 1 {
                         bail!("DSL step {idx}: from.format.format.options.delimiter must be a single character");
                     }
@@ -98,7 +96,9 @@ pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> R
                 "uri" => {
                     if let Some(uri) = source.config.get("uri").and_then(|v| v.as_str()) {
                         if uri.trim().is_empty() {
-                            bail!("DSL step {idx}: from.format.source.config.uri must not be empty");
+                            bail!(
+                                "DSL step {idx}: from.format.source.config.uri must not be empty"
+                            );
                         }
                         if !uri.starts_with("http://") && !uri.starts_with("https://") {
                             bail!("DSL step {idx}: from.format.source.config.uri must start with http:// or https://");

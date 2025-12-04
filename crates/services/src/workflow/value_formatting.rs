@@ -22,21 +22,17 @@ fn cast_to_boolean(value: Value) -> Value {
             "true" | "yes" | "1" | "on" => Value::Bool(true),
             "false" | "no" | "0" | "off" | "" => Value::Bool(false),
             _ => {
-                log::warn!(
-                    "Cannot convert string '{s}' to boolean, defaulting to false"
-                );
+                log::warn!("Cannot convert string '{s}' to boolean, defaulting to false");
                 Value::Bool(false)
             }
         },
-        Value::Number(n) => {
-            n.as_i64().map_or_else(
-                || {
-                    n.as_f64()
-                        .map_or(Value::Bool(false), |f| Value::Bool(f != 0.0))
-                },
-                |i| Value::Bool(i != 0),
-            )
-        }
+        Value::Number(n) => n.as_i64().map_or_else(
+            || {
+                n.as_f64()
+                    .map_or(Value::Bool(false), |f| Value::Bool(f != 0.0))
+            },
+            |i| Value::Bool(i != 0),
+        ),
         Value::Null => Value::Null,
         _ => {
             log::warn!("Cannot convert {value:?} to boolean, defaulting to false");
@@ -49,17 +45,16 @@ fn cast_to_boolean(value: Value) -> Value {
 fn cast_to_integer(value: Value) -> Value {
     match &value {
         Value::Number(n) if n.is_i64() => value,
-        Value::Number(n) if n.is_u64() => {
-            n.as_i64().map_or(value, |i| Value::Number(serde_json::Number::from(i)))
-        }
-        Value::String(s) => s.parse::<i64>()
-            .map_or_else(
-                |_| {
-                    log::warn!("Cannot convert string '{s}' to integer");
-                    value.clone()
-                },
-                |i| Value::Number(serde_json::Number::from(i)),
-            ),
+        Value::Number(n) if n.is_u64() => n
+            .as_i64()
+            .map_or(value, |i| Value::Number(serde_json::Number::from(i))),
+        Value::String(s) => s.parse::<i64>().map_or_else(
+            |_| {
+                log::warn!("Cannot convert string '{s}' to integer");
+                value.clone()
+            },
+            |i| Value::Number(serde_json::Number::from(i)),
+        ),
         Value::Null => Value::Null,
         _ => value,
     }
@@ -75,12 +70,14 @@ fn cast_to_float(value: Value) -> Value {
                 value
             }
         }
-        Value::String(s) => if let Ok(f) = s.parse::<f64>() {
-            serde_json::Number::from_f64(f).map_or(value, Value::Number)
-        } else {
-            log::warn!("Cannot convert string '{s}' to float");
-            value
-        },
+        Value::String(s) => {
+            if let Ok(f) = s.parse::<f64>() {
+                serde_json::Number::from_f64(f).map_or(value, Value::Number)
+            } else {
+                log::warn!("Cannot convert string '{s}' to float");
+                value
+            }
+        }
         Value::Null => Value::Null,
         _ => value,
     }

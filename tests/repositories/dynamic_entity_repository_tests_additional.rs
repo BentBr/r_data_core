@@ -139,11 +139,13 @@ async fn test_query_by_parent() -> Result<()> {
     let child1_path = format!("/{}", child1_uuid);
     let child2_path = format!("/{}", child2_uuid);
 
-    let mut child1 = create_test_dynamic_entity_with_uuid_and_path(&created_def, child1_uuid, &child1_path);
+    let mut child1 =
+        create_test_dynamic_entity_with_uuid_and_path(&created_def, child1_uuid, &child1_path);
     child1.set("parent_uuid", parent_uuid.to_string())?;
     repo.create(&child1).await?;
 
-    let mut child2 = create_test_dynamic_entity_with_uuid_and_path(&created_def, child2_uuid, &child2_path);
+    let mut child2 =
+        create_test_dynamic_entity_with_uuid_and_path(&created_def, child2_uuid, &child2_path);
     child2.set("parent_uuid", parent_uuid.to_string())?;
     repo.create(&child2).await?;
 
@@ -152,20 +154,14 @@ async fn test_query_by_parent() -> Result<()> {
         .query_by_parent(&entity_type, parent_uuid, 100, 0)
         .await?;
     assert_eq!(children.len(), 2, "Should find 2 children");
-    
+
     // Verify we got the correct children
     let found_uuids: Vec<Uuid> = children
         .iter()
         .map(|e| e.get::<Uuid>("uuid").unwrap())
         .collect();
-    assert!(
-        found_uuids.contains(&child1_uuid),
-        "Should include child1"
-    );
-    assert!(
-        found_uuids.contains(&child2_uuid),
-        "Should include child2"
-    );
+    assert!(found_uuids.contains(&child1_uuid), "Should include child1");
+    assert!(found_uuids.contains(&child2_uuid), "Should include child2");
     assert!(
         !found_uuids.contains(&parent_uuid),
         "Should not include parent"
@@ -228,7 +224,7 @@ async fn test_query_by_path() -> Result<()> {
         .query_by_path(&entity_type, parent_path, 100, 0)
         .await?;
     assert_eq!(path_entities.len(), 2, "Should find 2 entities at the path");
-    
+
     // Verify we got the correct entities
     let found_uuids: Vec<Uuid> = path_entities
         .iter()
@@ -305,8 +301,10 @@ async fn test_has_children() -> Result<()> {
 
     // Now should have children
     let has_children = repo.has_children(&parent_uuid).await?;
-    assert!(has_children, "Parent should have children after creating child");
+    assert!(
+        has_children,
+        "Parent should have children after creating child"
+    );
 
     Ok(())
 }
-

@@ -80,8 +80,7 @@ impl WorkflowService {
         created_by: Uuid,
     ) -> anyhow::Result<Uuid> {
         if let Some(expr) = &req.schedule_cron {
-            Schedule::from_str(expr)
-                .map_err(|e| anyhow::anyhow!("Invalid cron schedule: {e}"))?;
+            Schedule::from_str(expr).map_err(|e| anyhow::anyhow!("Invalid cron schedule: {e}"))?;
         }
         // Strict DSL: parse and validate
         let program = r_data_core_workflow::dsl::DslProgram::from_config(&req.config)?;
@@ -100,8 +99,7 @@ impl WorkflowService {
         updated_by: Uuid,
     ) -> anyhow::Result<()> {
         if let Some(expr) = &req.schedule_cron {
-            Schedule::from_str(expr)
-                .map_err(|e| anyhow::anyhow!("Invalid cron schedule: {e}"))?;
+            Schedule::from_str(expr).map_err(|e| anyhow::anyhow!("Invalid cron schedule: {e}"))?;
         }
         // Strict DSL: parse and validate
         let program = r_data_core_workflow::dsl::DslProgram::from_config(&req.config)?;
@@ -586,8 +584,8 @@ impl WorkflowService {
                                 ..
                             } = to_def
                             {
-                                    // Serialize data using format handler
-                                    let format_handler: Box<
+                                // Serialize data using format handler
+                                let format_handler: Box<
                                         dyn r_data_core_workflow::data::adapters::format::FormatHandler,
                                     > = match format.format_type.as_str() {
                                         "csv" => Box::new(
@@ -614,31 +612,31 @@ impl WorkflowService {
                                         }
                                     };
 
-                                    // Serialize to bytes (clone produced since it may be used later for Entity outputs)
-                                    let data_bytes = match format_handler
-                                        .serialize(std::slice::from_ref(&produced), &format.options)
-                                    {
-                                        Ok(bytes) => bytes,
-                                        Err(e) => {
-                                            let _ = self
-                                                .repo
-                                                .insert_run_log(
-                                                    run_uuid,
-                                                    "error",
-                                                    "Failed to serialize data for push",
-                                                    Some(serde_json::json!({
-                                                        "item_uuid": item_uuid,
-                                                        "error": e.to_string()
-                                                    })),
-                                                )
-                                                .await;
-                                            entity_ops_ok = false;
-                                            break;
-                                        }
-                                    };
+                                // Serialize to bytes (clone produced since it may be used later for Entity outputs)
+                                let data_bytes = match format_handler
+                                    .serialize(std::slice::from_ref(&produced), &format.options)
+                                {
+                                    Ok(bytes) => bytes,
+                                    Err(e) => {
+                                        let _ = self
+                                            .repo
+                                            .insert_run_log(
+                                                run_uuid,
+                                                "error",
+                                                "Failed to serialize data for push",
+                                                Some(serde_json::json!({
+                                                    "item_uuid": item_uuid,
+                                                    "error": e.to_string()
+                                                })),
+                                            )
+                                            .await;
+                                        entity_ops_ok = false;
+                                        break;
+                                    }
+                                };
 
-                                    // Create auth provider
-                                    let auth_provider = destination
+                                // Create auth provider
+                                let auth_provider = destination
                                         .auth
                                         .as_ref()
                                         .map(|auth_cfg| {
@@ -646,15 +644,15 @@ impl WorkflowService {
                                         })
                                         .transpose()?;
 
-                                    // Create destination context
-                                    let dest_ctx = r_data_core_workflow::data::adapters::destination::DestinationContext {
+                                // Create destination context
+                                let dest_ctx = r_data_core_workflow::data::adapters::destination::DestinationContext {
                                         auth: auth_provider,
                                         method: method.as_ref().copied(),
                                         config: destination.config.clone(),
                                     };
 
-                                    // Get appropriate destination based on destination_type
-                                    let dest_adapter: Box<
+                                // Get appropriate destination based on destination_type
+                                let dest_adapter: Box<
                                         dyn r_data_core_workflow::data::adapters::destination::DataDestination,
                                     > = if destination.destination_type.as_str() == "uri" {
                                         Box::new(
@@ -677,24 +675,24 @@ impl WorkflowService {
                                         break;
                                     };
 
-                                    // Push data
-                                    if let Err(e) = dest_adapter.push(&dest_ctx, data_bytes).await {
-                                        let _ = self
-                                            .repo
-                                            .insert_run_log(
-                                                run_uuid,
-                                                "error",
-                                                "Failed to push data to destination",
-                                                Some(serde_json::json!({
-                                                    "item_uuid": item_uuid,
-                                                    "destination_type": destination.destination_type,
-                                                    "error": e.to_string()
-                                                })),
-                                            )
-                                            .await;
-                                        entity_ops_ok = false;
-                                        break;
-                                    }
+                                // Push data
+                                if let Err(e) = dest_adapter.push(&dest_ctx, data_bytes).await {
+                                    let _ = self
+                                        .repo
+                                        .insert_run_log(
+                                            run_uuid,
+                                            "error",
+                                            "Failed to push data to destination",
+                                            Some(serde_json::json!({
+                                                "item_uuid": item_uuid,
+                                                "destination_type": destination.destination_type,
+                                                "error": e.to_string()
+                                            })),
+                                        )
+                                        .await;
+                                    entity_ops_ok = false;
+                                    break;
+                                }
                             }
 
                             // Handle Entity outputs

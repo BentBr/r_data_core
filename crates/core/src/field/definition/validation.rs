@@ -128,8 +128,7 @@ impl FieldDefinition {
         if let Some(crate::field::options::OptionsSource::Fixed { options }) =
             &self.validation.options_source
         {
-            let valid_options: Vec<&String> =
-                options.iter().map(|opt| &opt.value).collect();
+            let valid_options: Vec<&String> = options.iter().map(|opt| &opt.value).collect();
 
             if !valid_options.contains(&&s.to_string()) {
                 return Err(Error::Validation(format!(
@@ -376,8 +375,7 @@ impl FieldDefinition {
         if let Some(crate::field::options::OptionsSource::Fixed { options }) =
             &self.validation.options_source
         {
-            let valid_options: Vec<&String> =
-                options.iter().map(|opt| &opt.value).collect();
+            let valid_options: Vec<&String> = options.iter().map(|opt| &opt.value).collect();
 
             if !valid_options.contains(&&selected.to_string()) {
                 return Err(Error::Validation(format!(
@@ -415,8 +413,7 @@ impl FieldDefinition {
         if let Some(crate::field::options::OptionsSource::Fixed { options }) =
             &self.validation.options_source
         {
-            let valid_options: Vec<&String> =
-                options.iter().map(|opt| &opt.value).collect();
+            let valid_options: Vec<&String> = options.iter().map(|opt| &opt.value).collect();
 
             for item in selected {
                 let item_str = item.as_str().unwrap();

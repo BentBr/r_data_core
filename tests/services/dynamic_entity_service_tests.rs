@@ -15,7 +15,6 @@ use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core_core::DynamicEntity;
 use r_data_core_persistence::{DynamicEntityRepositoryTrait, FilterEntitiesParams};
 
-
 // Create a mock for DynamicEntityRepositoryTrait
 mockall::mock! {
     pub DynamicEntityRepositoryTrait {}

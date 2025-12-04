@@ -23,7 +23,9 @@ use crate::database::GLOBAL_TEST_MUTEX;
 #[allow(clippy::await_holding_lock, clippy::future_not_send)] // MutexGuard is intentionally held across await for test isolation
 pub async fn create_test_entity_definition(pool: &PgPool, entity_type: &str) -> Result<Uuid> {
     // Acquire a lock for database operations
-    let _guard = GLOBAL_TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = GLOBAL_TEST_MUTEX
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
 
     // Create a simple entity definition for testing
     let mut entity_def = EntityDefinition {
@@ -103,7 +105,9 @@ pub async fn create_test_entity(
     email: &str,
 ) -> Result<Uuid> {
     // Acquire a lock for database operations
-    let _guard = GLOBAL_TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = GLOBAL_TEST_MUTEX
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
 
     let uuid = Uuid::now_v7();
     let created_by = Uuid::now_v7();
@@ -162,7 +166,9 @@ pub async fn create_test_entity(
 #[allow(clippy::await_holding_lock, clippy::future_not_send)] // MutexGuard is intentionally held across await for test isolation
 pub async fn create_test_admin_user(pool: &PgPool) -> Result<Uuid> {
     // Acquire a lock for database operations
-    let _guard = GLOBAL_TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = GLOBAL_TEST_MUTEX
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
 
     // Generate a truly unique username with UUID
     let uuid = Uuid::now_v7();
@@ -222,7 +228,9 @@ pub async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
     use r_data_core_core::admin_user::ApiKey;
 
     // Acquire a lock for database operations
-    let _guard = GLOBAL_TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = GLOBAL_TEST_MUTEX
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
 
     // Create an admin user first with unique values
     let admin_uuid = Uuid::now_v7();
@@ -289,7 +297,9 @@ pub fn get_test_user_username() -> String {
 #[allow(clippy::await_holding_lock, clippy::future_not_send)] // MutexGuard is intentionally held across await for test isolation
 pub async fn create_entity_definition_from_json(pool: &PgPool, json_path: &str) -> Result<Uuid> {
     // Acquire a lock for database operations
-    let _guard = GLOBAL_TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = GLOBAL_TEST_MUTEX
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
 
     // Read the JSON file
     let json_content = std::fs::read_to_string(json_path).map_err(|e| {

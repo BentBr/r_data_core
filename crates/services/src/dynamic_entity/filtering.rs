@@ -130,7 +130,10 @@ impl DynamicEntityService {
             .with_search(search_fields)
             .with_sort(sort_info)
             .with_fields(fields);
-        let entities = self.repository.filter_entities(entity_type, &params).await?;
+        let entities = self
+            .repository
+            .filter_entities(entity_type, &params)
+            .await?;
 
         Ok((entities, total))
     }

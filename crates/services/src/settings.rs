@@ -47,12 +47,9 @@ impl SettingsService {
         let settings: EntityVersioningSettings = repo
             .get_value(SystemSettingKey::EntityVersioning)
             .await?
-            .map_or_else(
-                EntityVersioningSettings::default,
-                |value| {
-                    serde_json::from_value::<EntityVersioningSettings>(value).unwrap_or_default()
-                },
-            );
+            .map_or_else(EntityVersioningSettings::default, |value| {
+                serde_json::from_value::<EntityVersioningSettings>(value).unwrap_or_default()
+            });
 
         // Cache the settings
         let _ = self

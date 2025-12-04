@@ -153,4 +153,3 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
         self.count_entities(entity_type).await
     }
 }
-

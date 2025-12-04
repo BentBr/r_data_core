@@ -12,5 +12,6 @@ pub mod entity_definition_integration_tests;
 pub mod permission_scheme_tests;
 pub mod provider_workflow_endpoints_tests;
 pub mod refresh_token_integration_tests;
+pub mod users_tests;
 pub mod workflows;
 pub mod workflows_routes_tests;

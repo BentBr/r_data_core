@@ -21,9 +21,7 @@ pub fn validate_mapping<H: std::hash::BuildHasher>(
     // Allow empty mappings
     for (k, v) in mapping {
         if !safe_field.is_match(k) || !safe_field.is_match(v) {
-            bail!(
-                "DSL step {idx}: mapping contains unsafe field names ('{k}' -> '{v}')"
-            );
+            bail!("DSL step {idx}: mapping contains unsafe field names ('{k}' -> '{v}')");
         }
     }
     Ok(())

@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use r_data_core_core::maintenance::task::TaskContext as TaskContextTrait;
 use r_data_core_core::cache::CacheManager;
+use r_data_core_core::maintenance::task::TaskContext as TaskContextTrait;
 use sqlx::PgPool;
 
 /// Context provided to maintenance tasks for execution
