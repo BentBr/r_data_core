@@ -88,7 +88,19 @@ vi.mock('@/composables/usePermissionSchemes', () => ({
 }))
 
 vi.mock('@/composables/useTranslations', () => ({
-    useTranslations: () => ({ t: (k: string) => k.split('.').pop() }),
+    useTranslations: () => ({
+        t: (k: string) => {
+            // Return a more readable translation for common keys
+            const translations: Record<string, string> = {
+                'permissions.page.title': 'Users and Roles',
+                'permissions.page.tabs.schemes': 'Permission Schemes',
+                'permissions.page.tabs.users': 'Users and Roles',
+                'permissions.page.schemes.title': 'Permission Schemes',
+                'permissions.page.schemes.new_button': 'New Permission Scheme',
+            }
+            return translations[k] || k.split('.').pop() || k
+        },
+    }),
 }))
 
 const showSuccess = vi.fn()
@@ -108,6 +120,41 @@ vi.mock('@/composables/usePagination', () => ({
         state: { page: 1, itemsPerPage: 20 },
         setPage: mockSetPage,
         setItemsPerPage: mockSetItemsPerPage,
+    }),
+}))
+
+vi.mock('@/stores/auth', () => ({
+    useAuthStore: () => ({
+        isSuperAdmin: false,
+        hasPermission: vi.fn(() => true),
+    }),
+}))
+
+const mockUsersLoading = ref(false)
+const mockUsersError = ref('')
+const mockUsers = ref([])
+
+vi.mock('@/composables/useUsers', () => ({
+    useUsers: () => ({
+        loading: mockUsersLoading,
+        error: mockUsersError,
+        users: mockUsers,
+        loadUsers: vi.fn().mockResolvedValue({
+            data: [],
+            meta: {
+                pagination: {
+                    total: 0,
+                    page: 1,
+                    per_page: 20,
+                    total_pages: 1,
+                    has_previous: false,
+                    has_next: false,
+                },
+            },
+        }),
+        createUser: vi.fn(),
+        updateUser: vi.fn(),
+        deleteUser: vi.fn(),
     }),
 }))
 
@@ -132,11 +179,15 @@ const mockSchemes: PermissionScheme[] = [
         created_by: 'user-1',
         updated_by: null,
         is_system: false,
+        super_admin: false,
+        published: false,
+        version: 1,
     },
     {
         uuid: 'scheme-2',
         name: 'Viewer Scheme',
         description: 'Read-only permissions',
+        super_admin: false,
         role_permissions: {
             Viewer: [
                 {
@@ -153,6 +204,8 @@ const mockSchemes: PermissionScheme[] = [
         created_by: 'user-1',
         updated_by: null,
         is_system: false,
+        published: false,
+        version: 1,
     },
 ]
 
@@ -162,6 +215,9 @@ describe('PermissionsPage', () => {
         mockLoading.value = false
         mockError.value = ''
         mockSchemesList.value = []
+        mockUsersLoading.value = false
+        mockUsersError.value = ''
+        mockUsers.value = []
 
         // Setup loadSchemes - the wrapper will handle updating mockSchemesList
         mockGetPermissionSchemes.mockResolvedValue({
@@ -184,7 +240,13 @@ describe('PermissionsPage', () => {
     })
 
     it('renders correctly and loads permission schemes', async () => {
-        const wrapper = mount(PermissionsPage)
+        const wrapper = mount(PermissionsPage, {
+            global: {
+                stubs: {
+                    UserDialog: true,
+                },
+            },
+        })
 
         // Wait for initial load
         await vi.waitUntil(() => mockGetPermissionSchemes.mock.calls.length > 0, { timeout: 1000 })
@@ -197,7 +259,13 @@ describe('PermissionsPage', () => {
     })
 
     it('opens create dialog when "New Permission Scheme" button is clicked', async () => {
-        const wrapper = mount(PermissionsPage)
+        const wrapper = mount(PermissionsPage, {
+            global: {
+                stubs: {
+                    UserDialog: true,
+                },
+            },
+        })
         await vi.waitUntil(() => mockGetPermissionSchemes.mock.calls.length > 0, { timeout: 1000 })
         await wrapper.vm.$nextTick()
 
@@ -213,7 +281,13 @@ describe('PermissionsPage', () => {
     })
 
     it('opens edit dialog with pre-filled data', async () => {
-        const wrapper = mount(PermissionsPage)
+        const wrapper = mount(PermissionsPage, {
+            global: {
+                stubs: {
+                    UserDialog: true,
+                },
+            },
+        })
         await vi.waitUntil(() => mockGetPermissionSchemes.mock.calls.length > 0, { timeout: 1000 })
         await wrapper.vm.$nextTick()
 
@@ -227,7 +301,13 @@ describe('PermissionsPage', () => {
     })
 
     it('creates a new permission scheme', async () => {
-        const wrapper = mount(PermissionsPage)
+        const wrapper = mount(PermissionsPage, {
+            global: {
+                stubs: {
+                    UserDialog: true,
+                },
+            },
+        })
         await vi.waitUntil(() => mockGetPermissionSchemes.mock.calls.length > 0, { timeout: 1000 })
         await wrapper.vm.$nextTick()
 
@@ -258,7 +338,13 @@ describe('PermissionsPage', () => {
     })
 
     it('updates an existing permission scheme', async () => {
-        const wrapper = mount(PermissionsPage)
+        const wrapper = mount(PermissionsPage, {
+            global: {
+                stubs: {
+                    UserDialog: true,
+                },
+            },
+        })
         await vi.waitUntil(() => mockGetPermissionSchemes.mock.calls.length > 0, { timeout: 1000 })
         await wrapper.vm.$nextTick()
 
@@ -283,7 +369,13 @@ describe('PermissionsPage', () => {
     })
 
     it('deletes a permission scheme with confirmation', async () => {
-        const wrapper = mount(PermissionsPage)
+        const wrapper = mount(PermissionsPage, {
+            global: {
+                stubs: {
+                    UserDialog: true,
+                },
+            },
+        })
         await vi.waitUntil(() => mockGetPermissionSchemes.mock.calls.length > 0, { timeout: 1000 })
         await wrapper.vm.$nextTick()
 
@@ -304,7 +396,13 @@ describe('PermissionsPage', () => {
     })
 
     it('handles pagination changes', async () => {
-        const wrapper = mount(PermissionsPage)
+        const wrapper = mount(PermissionsPage, {
+            global: {
+                stubs: {
+                    UserDialog: true,
+                },
+            },
+        })
         await vi.waitUntil(() => mockGetPermissionSchemes.mock.calls.length > 0, { timeout: 1000 })
         await wrapper.vm.$nextTick()
 
@@ -317,7 +415,13 @@ describe('PermissionsPage', () => {
     })
 
     it('handles items per page changes', async () => {
-        const wrapper = mount(PermissionsPage)
+        const wrapper = mount(PermissionsPage, {
+            global: {
+                stubs: {
+                    UserDialog: true,
+                },
+            },
+        })
         await vi.waitUntil(() => mockGetPermissionSchemes.mock.calls.length > 0, { timeout: 1000 })
         await wrapper.vm.$nextTick()
 
@@ -335,7 +439,13 @@ describe('PermissionsPage', () => {
     it('handles errors when loading schemes', async () => {
         mockGetPermissionSchemes.mockRejectedValue(new Error('Network error'))
 
-        const wrapper = mount(PermissionsPage)
+        const wrapper = mount(PermissionsPage, {
+            global: {
+                stubs: {
+                    UserDialog: true,
+                },
+            },
+        })
         await vi.waitUntil(() => mockGetPermissionSchemes.mock.calls.length > 0, { timeout: 1000 })
         await wrapper.vm.$nextTick()
 
@@ -344,7 +454,13 @@ describe('PermissionsPage', () => {
     })
 
     it('handles errors when creating scheme', async () => {
-        const wrapper = mount(PermissionsPage)
+        const wrapper = mount(PermissionsPage, {
+            global: {
+                stubs: {
+                    UserDialog: true,
+                },
+            },
+        })
         await vi.waitUntil(() => mockGetPermissionSchemes.mock.calls.length > 0, { timeout: 1000 })
         await wrapper.vm.$nextTick()
 
@@ -367,7 +483,13 @@ describe('PermissionsPage', () => {
     })
 
     it('closes dialog when cancel is clicked', async () => {
-        const wrapper = mount(PermissionsPage)
+        const wrapper = mount(PermissionsPage, {
+            global: {
+                stubs: {
+                    UserDialog: true,
+                },
+            },
+        })
         await vi.waitUntil(() => mockGetPermissionSchemes.mock.calls.length > 0, { timeout: 1000 })
         await wrapper.vm.$nextTick()
 
@@ -386,7 +508,13 @@ describe('PermissionsPage', () => {
     })
 
     it('formats dates correctly', async () => {
-        const wrapper = mount(PermissionsPage)
+        const wrapper = mount(PermissionsPage, {
+            global: {
+                stubs: {
+                    UserDialog: true,
+                },
+            },
+        })
         await vi.waitUntil(() => mockGetPermissionSchemes.mock.calls.length > 0, { timeout: 1000 })
         await wrapper.vm.$nextTick()
 

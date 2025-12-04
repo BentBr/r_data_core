@@ -4,7 +4,9 @@ use actix_web::{http::StatusCode, test, web, App};
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
 use r_data_core_core::error::Result;
-use r_data_core_core::permissions::permission_scheme::PermissionScheme;
+use r_data_core_core::permissions::permission_scheme::{
+    AccessLevel, Permission, PermissionScheme, PermissionType, ResourceNamespace,
+};
 use r_data_core_persistence::WorkflowRepository;
 use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait, ApiKeyRepository};
 use r_data_core_services::{
@@ -98,11 +100,20 @@ async fn get_auth_token(
         Response = actix_web::dev::ServiceResponse,
         Error = actix_web::Error,
     >,
+    pool: &sqlx::PgPool,
 ) -> String {
+    // Get the test admin user that was created (super_admin = true)
+    let username: String = sqlx::query_scalar(
+        "SELECT username FROM admin_users WHERE super_admin = true ORDER BY created_at DESC LIMIT 1"
+    )
+    .fetch_one(pool)
+    .await
+    .expect("Test admin user should exist");
+
     let login_req = test::TestRequest::post()
         .uri("/admin/api/v1/auth/login")
-        .set_json(&serde_json::json!({
-            "username": "admin",
+        .set_json(serde_json::json!({
+            "username": username,
             "password": "adminadmin"
         }))
         .to_request();
@@ -117,8 +128,8 @@ async fn get_auth_token(
 #[serial]
 #[tokio::test]
 async fn test_list_users() {
-    let (app, _pool, _user_uuid) = setup_test_app().await.unwrap();
-    let token = get_auth_token(&app).await;
+    let (app, pool, _user_uuid) = setup_test_app().await.unwrap();
+    let token = get_auth_token(&app, &pool).await;
 
     let req = test::TestRequest::get()
         .uri("/admin/api/v1/users")
@@ -135,8 +146,8 @@ async fn test_list_users() {
 #[serial]
 #[tokio::test]
 async fn test_get_user() {
-    let (app, _pool, user_uuid) = setup_test_app().await.unwrap();
-    let token = get_auth_token(&app).await;
+    let (app, pool, user_uuid) = setup_test_app().await.unwrap();
+    let token = get_auth_token(&app, &pool).await;
 
     let req = test::TestRequest::get()
         .uri(&format!("/admin/api/v1/users/{user_uuid}"))
@@ -153,8 +164,8 @@ async fn test_get_user() {
 #[serial]
 #[tokio::test]
 async fn test_create_user() {
-    let (app, _pool, _user_uuid) = setup_test_app().await.unwrap();
-    let token = get_auth_token(&app).await;
+    let (app, pool, _user_uuid) = setup_test_app().await.unwrap();
+    let token = get_auth_token(&app, &pool).await;
 
     let create_req = serde_json::json!({
         "username": "testuser",
@@ -183,8 +194,8 @@ async fn test_create_user() {
 #[serial]
 #[tokio::test]
 async fn test_update_user() {
-    let (app, _pool, user_uuid) = setup_test_app().await.unwrap();
-    let token = get_auth_token(&app).await;
+    let (app, pool, user_uuid) = setup_test_app().await.unwrap();
+    let token = get_auth_token(&app, &pool).await;
 
     let update_req = serde_json::json!({
         "email": "updated@example.com",
@@ -211,7 +222,7 @@ async fn test_update_user() {
 #[tokio::test]
 async fn test_delete_user() {
     let (app, pool, _user_uuid) = setup_test_app().await.unwrap();
-    let token = get_auth_token(&app).await;
+    let token = get_auth_token(&app, &pool).await;
 
     // Create a user to delete
     let repo = AdminUserRepository::new(Arc::new(pool.clone()));
@@ -239,8 +250,8 @@ async fn test_delete_user() {
 #[serial]
 #[tokio::test]
 async fn test_get_user_schemes() {
-    let (app, _pool, user_uuid) = setup_test_app().await.unwrap();
-    let token = get_auth_token(&app).await;
+    let (app, pool, user_uuid) = setup_test_app().await.unwrap();
+    let token = get_auth_token(&app, &pool).await;
 
     let req = test::TestRequest::get()
         .uri(&format!("/admin/api/v1/users/{user_uuid}/schemes"))
@@ -258,7 +269,7 @@ async fn test_get_user_schemes() {
 #[tokio::test]
 async fn test_assign_schemes_to_user() {
     let (app, pool, user_uuid) = setup_test_app().await.unwrap();
-    let token = get_auth_token(&app).await;
+    let token = get_auth_token(&app, &pool).await;
 
     // Create a permission scheme
     let scheme_service = r_data_core_services::PermissionSchemeService::new(
@@ -319,7 +330,7 @@ async fn test_super_admin_has_all_permissions() {
     // Login as super admin
     let login_req = test::TestRequest::post()
         .uri("/admin/api/v1/auth/login")
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "username": "superadmin",
             "password": "password123"
         }))
@@ -372,7 +383,7 @@ async fn test_super_admin_has_all_permissions_from_user_flag() {
     // Login as super admin
     let login_req = test::TestRequest::post()
         .uri("/admin/api/v1/auth/login")
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "username": "superadmin_flag",
             "password": "password123"
         }))
@@ -440,7 +451,7 @@ async fn test_super_admin_has_all_permissions_from_permission() {
     // Login as the user
     let login_req = test::TestRequest::post()
         .uri("/admin/api/v1/auth/login")
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "username": "superadmin_scheme",
             "password": "password123"
         }))
@@ -471,6 +482,10 @@ async fn test_super_admin_has_all_permissions_from_permission() {
 #[serial]
 #[tokio::test]
 async fn test_super_admin_flag_on_scheme_grants_all_permissions() {
+    // Decode JWT to verify is_super_admin is set
+    use jsonwebtoken::{decode, DecodingKey, Validation};
+    use r_data_core_api::jwt::AuthUserClaims;
+
     let (app, pool, user_uuid) = setup_test_app().await.unwrap();
 
     // Create a permission scheme with super_admin flag set to true
@@ -531,7 +546,7 @@ async fn test_super_admin_flag_on_scheme_grants_all_permissions() {
     // Login as the user
     let login_req = test::TestRequest::post()
         .uri("/admin/api/v1/auth/login")
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "username": "regular_user_scheme",
             "password": "password123"
         }))
@@ -542,10 +557,6 @@ async fn test_super_admin_flag_on_scheme_grants_all_permissions() {
 
     let body: serde_json::Value = test::read_body_json(resp).await;
     let token = body["data"]["access_token"].as_str().unwrap().to_string();
-
-    // Decode JWT to verify is_super_admin is set
-    use jsonwebtoken::{decode, DecodingKey, Validation};
-    use r_data_core_api::jwt::AuthUserClaims;
 
     let jwt_secret = "test_secret";
     let validation = Validation::default();
@@ -585,6 +596,186 @@ async fn test_super_admin_flag_on_scheme_grants_all_permissions() {
 
 #[serial]
 #[tokio::test]
+async fn test_user_management_permissions() {
+    let (app, pool, admin_user_uuid) = setup_test_app().await.unwrap();
+    let admin_token = get_auth_token(&app, &pool).await;
+
+    // Create a permission scheme for regular users (no admin permissions)
+    let scheme_service = PermissionSchemeService::new(
+        pool.clone(),
+        Arc::new(CacheManager::new(CacheConfig::default())),
+        None,
+    );
+    let mut regular_scheme = PermissionScheme::new("Regular User Scheme".to_string());
+    regular_scheme.role_permissions.insert(
+        "User".to_string(),
+        vec![Permission {
+            resource_type: ResourceNamespace::Workflows,
+            permission_type: PermissionType::Read,
+            access_level: AccessLevel::All,
+            resource_uuids: vec![],
+            constraints: None,
+        }],
+    );
+    let regular_scheme_uuid = scheme_service
+        .create_scheme(&regular_scheme, admin_user_uuid)
+        .await
+        .unwrap();
+
+    // Create a regular user (not super_admin, with limited permissions)
+    let repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let regular_user_params = r_data_core_persistence::CreateAdminUserParams {
+        username: "regular_user",
+        email: "regular@example.com",
+        password: "password123",
+        first_name: "Regular",
+        last_name: "User",
+        role: Some("User"),
+        is_active: true,
+        creator_uuid: admin_user_uuid,
+    };
+    let regular_user_uuid = repo.create_admin_user(&regular_user_params).await.unwrap();
+    repo.update_user_schemes(regular_user_uuid, &[regular_scheme_uuid])
+        .await
+        .unwrap();
+
+    // Login as regular user
+    let regular_login_req = test::TestRequest::post()
+        .uri("/admin/api/v1/auth/login")
+        .set_json(serde_json::json!({
+            "username": "regular_user",
+            "password": "password123"
+        }))
+        .to_request();
+    let regular_resp = test::call_service(&app, regular_login_req).await;
+    assert_eq!(regular_resp.status(), StatusCode::OK);
+    let regular_body: serde_json::Value = test::read_body_json(regular_resp).await;
+    let regular_token = regular_body["data"]["access_token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    // Regular user should NOT be able to create users (no PermissionSchemes:Admin permission)
+    let create_req = test::TestRequest::post()
+        .uri("/admin/api/v1/users")
+        .insert_header(("Authorization", format!("Bearer {regular_token}")))
+        .set_json(serde_json::json!({
+            "username": "newuser",
+            "email": "newuser@example.com",
+            "password": "password123",
+            "first_name": "New",
+            "last_name": "User",
+            "is_active": true
+        }))
+        .to_request();
+    let create_resp = test::call_service(&app, create_req).await;
+    assert_eq!(
+        create_resp.status(),
+        StatusCode::FORBIDDEN,
+        "Regular user should not be able to create users"
+    );
+
+    // Create an admin user (with PermissionSchemes:Admin permission)
+    let mut admin_scheme = PermissionScheme::new("Admin Scheme".to_string());
+    admin_scheme.role_permissions.insert(
+        "Admin".to_string(),
+        vec![Permission {
+            resource_type: ResourceNamespace::PermissionSchemes,
+            permission_type: PermissionType::Admin,
+            access_level: AccessLevel::All,
+            resource_uuids: vec![],
+            constraints: None,
+        }],
+    );
+    let admin_scheme_uuid = scheme_service
+        .create_scheme(&admin_scheme, admin_user_uuid)
+        .await
+        .unwrap();
+
+    let admin_user_params = r_data_core_persistence::CreateAdminUserParams {
+        username: "admin_user",
+        email: "admin_user@example.com",
+        password: "password123",
+        first_name: "Admin",
+        last_name: "User",
+        role: Some("Admin"),
+        is_active: true,
+        creator_uuid: admin_user_uuid,
+    };
+    let admin_user_uuid = repo.create_admin_user(&admin_user_params).await.unwrap();
+    repo.update_user_schemes(admin_user_uuid, &[admin_scheme_uuid])
+        .await
+        .unwrap();
+
+    // Login as admin user
+    let admin_user_login_req = test::TestRequest::post()
+        .uri("/admin/api/v1/auth/login")
+        .set_json(serde_json::json!({
+            "username": "admin_user",
+            "password": "password123"
+        }))
+        .to_request();
+    let admin_user_resp = test::call_service(&app, admin_user_login_req).await;
+    assert_eq!(admin_user_resp.status(), StatusCode::OK);
+    let admin_user_body: serde_json::Value = test::read_body_json(admin_user_resp).await;
+    let admin_user_token = admin_user_body["data"]["access_token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    // Admin user SHOULD be able to create regular users
+    let admin_create_req = test::TestRequest::post()
+        .uri("/admin/api/v1/users")
+        .insert_header(("Authorization", format!("Bearer {admin_user_token}")))
+        .set_json(serde_json::json!({
+            "username": "newuser_by_admin",
+            "email": "newuser_by_admin@example.com",
+            "password": "password123",
+            "first_name": "New",
+            "last_name": "User",
+            "is_active": true
+        }))
+        .to_request();
+    let admin_create_resp = test::call_service(&app, admin_create_req).await;
+    assert_eq!(
+        admin_create_resp.status(),
+        StatusCode::CREATED,
+        "Admin user should be able to create users"
+    );
+
+    // Admin user should be able to update regular users
+    let admin_update_regular_req = test::TestRequest::put()
+        .uri(&format!("/admin/api/v1/users/{regular_user_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {admin_user_token}")))
+        .set_json(serde_json::json!({
+            "email": "updated_by_admin@example.com"
+        }))
+        .to_request();
+    let admin_update_regular_resp = test::call_service(&app, admin_update_regular_req).await;
+    assert_eq!(
+        admin_update_regular_resp.status(),
+        StatusCode::OK,
+        "Admin should be able to update regular users"
+    );
+
+    // Super admin (from setup) SHOULD be able to update admin users
+    let super_admin_update_req = test::TestRequest::put()
+        .uri(&format!("/admin/api/v1/users/{admin_user_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {admin_token}")))
+        .set_json(serde_json::json!({
+            "email": "updated_by_superadmin@example.com"
+        }))
+        .to_request();
+    let super_admin_update_resp = test::call_service(&app, super_admin_update_req).await;
+    assert_eq!(
+        super_admin_update_resp.status(),
+        StatusCode::OK,
+        "Super admin should be able to update admin users"
+    );
+}
+
+#[serial]
+#[tokio::test]
 async fn test_email_uniqueness() {
     let (app, pool, user_uuid) = setup_test_app().await.unwrap();
 
@@ -614,14 +805,17 @@ async fn test_email_uniqueness() {
         creator_uuid: user_uuid,
     };
 
-    // Should fail with conflict
+    // Should fail with conflict - repository will return an error
     let result = repo.create_admin_user(&params2).await;
-    assert!(result.is_err());
+    assert!(
+        result.is_err(),
+        "Creating user with duplicate email should fail"
+    );
 
     // Also test via API endpoint
     let login_req = test::TestRequest::post()
         .uri("/admin/api/v1/auth/login")
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "username": "user1",
             "password": "password123"
         }))
@@ -637,7 +831,7 @@ async fn test_email_uniqueness() {
     let create_req = test::TestRequest::post()
         .uri("/admin/api/v1/users")
         .insert_header(("Authorization", format!("Bearer {token}")))
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "username": "user3",
             "email": "test@example.com", // Duplicate email
             "password": "password123",
