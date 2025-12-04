@@ -57,7 +57,7 @@ pub fn has_permission(
             || (matches!(namespace, ResourceNamespace::Entities)
                 && p.starts_with(&format!("{namespace_str}:"))
                 && p.ends_with(&format!(":{perm_str}"))
-                && path.map_or(false, |req_path| {
+                && path.is_some_and(|req_path| {
                     // Extract path from permission string (format: "entities:/path:read")
                     let namespace_str = namespace.as_str();
                     if let Some(perm_path) = p.strip_prefix(&format!("{namespace_str}:")) {

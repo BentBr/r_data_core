@@ -41,6 +41,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
         ("preSharedKey" = [])
     )
 )]
+#[allow(clippy::future_not_send)] // HttpRequest is not Send, but Actix Web handles this internally
 #[get("/{uuid}")]
 pub async fn get_workflow_data(
     path: web::Path<Uuid>,
@@ -71,17 +72,20 @@ pub async fn get_workflow_data(
         return HttpResponse::Unauthorized().json(json!({"error": "Authentication required"}));
     }
 
+    // Extract pre-shared key status and clone request before any await points
+    let has_pre_shared_key = req.extensions().get::<bool>().copied().unwrap_or(false);
+    let req_clone = req.clone(); // Clone request for use in async block
+    
     // Use CombinedRequiredAuth to validate JWT/API key (or check pre-shared key extension)
     // Note: We can't use the extractor directly here since we need workflow config first
     // So we manually check the extension set by validate_provider_auth
-    let has_pre_shared_key = req.extensions().get::<bool>().copied().unwrap_or(false);
     if !has_pre_shared_key {
         // Try to validate via CombinedRequiredAuth (JWT/API key)
-        // We'll create a temporary request to use the extractor
+        // Use cloned request to avoid Send issues
         use crate::auth::auth_enum::CombinedRequiredAuth;
         use actix_web::FromRequest;
         let mut payload = actix_web::dev::Payload::None;
-        if CombinedRequiredAuth::from_request(&req, &mut payload).await.is_err() {
+        if CombinedRequiredAuth::from_request(&req_clone, &mut payload).await.is_err() {
             // Check if pre-shared key was required
             if extract_provider_auth_config(&workflow.config).is_some() {
                 return HttpResponse::Unauthorized()

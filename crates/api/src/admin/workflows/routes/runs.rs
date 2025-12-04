@@ -16,6 +16,27 @@ use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceN
 use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::FetchAndStageJob;
 
+/// Extract file from multipart payload
+/// This function processes the multipart stream and returns the file bytes.
+/// It doesn't need to be Send since it's the only async operation on the payload.
+#[allow(clippy::future_not_send)] // Multipart is not Send, but this is the only async operation on it
+async fn extract_file_from_multipart(mut payload: Multipart) -> Result<Vec<u8>, String> {
+    let mut file_bytes: Vec<u8> = Vec::new();
+    while let Some(Ok(mut field)) = payload.next().await {
+        let name = field.name().to_string();
+        if name != "file" {
+            // drain non-file fields
+            while let Some(Ok(_)) = field.next().await {}
+            continue;
+        }
+        while let Some(Ok(chunk)) = field.next().await {
+            file_bytes.extend_from_slice(&chunk);
+        }
+        break;
+    }
+    Ok(file_bytes)
+}
+
 /// Trigger a workflow by UUID immediately
 #[utoipa::path(
     post,
@@ -99,11 +120,12 @@ pub async fn run_workflow_now(
     ),
     security(("jwt" = []))
 )]
+#[allow(clippy::future_not_send)] // Calls extract_file_from_multipart which is not Send
 #[post("/{uuid}/run/upload")]
 pub async fn run_workflow_now_upload(
     state: web::Data<ApiStateWrapper>,
     path: web::Path<Uuid>,
-    mut payload: Multipart,
+    payload: Multipart,
     auth: RequiredAuth,
 ) -> impl Responder {
     // Check permission
@@ -126,20 +148,8 @@ pub async fn run_workflow_now_upload(
         }
     }
 
-    // Read multipart, find first 'file' part
-    let mut file_bytes: Vec<u8> = Vec::new();
-    while let Some(Ok(mut field)) = payload.next().await {
-        let name = field.name().to_string();
-        if name != "file" {
-            // drain non-file fields
-            while let Some(Ok(_)) = field.next().await {}
-            continue;
-        }
-        while let Some(Ok(chunk)) = field.next().await {
-            file_bytes.extend_from_slice(&chunk);
-        }
-        break;
-    }
+    // Extract file from multipart before any Send-requiring operations
+    let file_bytes = extract_file_from_multipart(payload).await.unwrap_or_default();
     if file_bytes.is_empty() {
         return ApiResponse::<()>::bad_request("Missing file");
     }

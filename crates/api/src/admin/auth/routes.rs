@@ -1,14 +1,14 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use actix_web::{post, web, HttpMessage, HttpRequest, Responder};
+use actix_web::{post, web, Responder};
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
-use crate::auth::auth_enum::OptionalAuth;
+use crate::auth::auth_enum::{OptionalAuth, RequiredAuth};
 use crate::jwt::{
-    generate_access_token, AuthUserClaims, ACCESS_TOKEN_EXPIRY_SECONDS,
+    generate_access_token, ACCESS_TOKEN_EXPIRY_SECONDS,
     REFRESH_TOKEN_EXPIRY_SECONDS,
 };
 use crate::response::ApiResponse;
@@ -553,14 +553,10 @@ pub async fn admin_refresh_token(
 #[post("/auth/revoke-all")]
 pub async fn admin_revoke_all_tokens(
     data: web::Data<ApiStateWrapper>,
-    req: HttpRequest,
+    auth: RequiredAuth,
 ) -> impl Responder {
-    // Extract user claims from JWT
-    let extensions = req.extensions();
-    let Some(claims) = extensions.get::<AuthUserClaims>() else {
-        return ApiResponse::unauthorized("Authentication required");
-    };
-    let claims = claims.clone();
+    // Extract user claims from JWT (already extracted via RequiredAuth extractor)
+    let claims = auth.0;
 
     let Ok(user_uuid) = Uuid::parse_str(&claims.sub) else {
         return ApiResponse::unauthorized("Invalid user ID in token");

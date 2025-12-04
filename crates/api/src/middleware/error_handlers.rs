@@ -27,7 +27,7 @@ impl AppErrorHandlers {
                         "Unknown error".to_string()
                     }
                 },
-                |e| e.to_string(),
+                ToString::to_string,
             );
 
         log::debug!("Error handler called for status {status}: {error}");

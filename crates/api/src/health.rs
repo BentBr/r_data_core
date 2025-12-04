@@ -9,7 +9,7 @@ use crate::models::HealthData;
 ///
 /// # Panics
 /// This function may panic if UUID generation fails or date formatting fails
-#[allow(clippy::unused_async)] // Required by Actix Web handler signature
+#[allow(clippy::unused_async, clippy::future_not_send)] // Required by Actix Web handler signature; HttpRequest is not Send
 pub async fn health_check_handler(req: HttpRequest) -> impl Responder {
     // Generate UUID for this health check
     let health_id = Uuid::now_v7();
@@ -49,6 +49,7 @@ pub async fn health_check_handler(req: HttpRequest) -> impl Responder {
     ),
     security()
 )]
+#[allow(clippy::future_not_send)] // HttpRequest is not Send, but Actix Web handles this internally
 #[get("/admin/api/v1/health")]
 pub async fn admin_health_check(req: HttpRequest) -> impl Responder {
     health_check_handler(req).await
@@ -64,6 +65,7 @@ pub async fn admin_health_check(req: HttpRequest) -> impl Responder {
     ),
     security()
 )]
+#[allow(clippy::future_not_send)] // HttpRequest is not Send, but Actix Web handles this internally
 #[get("/api/v1/health")]
 pub async fn public_health_check(req: HttpRequest) -> impl Responder {
     health_check_handler(req).await

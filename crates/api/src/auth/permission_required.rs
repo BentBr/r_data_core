@@ -34,6 +34,7 @@ pub struct PermissionRequired {
 impl PermissionRequired {
     /// Create a new `PermissionRequired` extractor
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // RequiredAuth is not const-constructible
     pub fn new(
         auth: RequiredAuth,
         namespace: ResourceNamespace,

@@ -76,7 +76,9 @@ pub fn generate_jwt(
     // Create expiration time
     let now = OffsetDateTime::now_utc();
     let expiration = now
-        .checked_add(Duration::seconds(expiration_seconds as i64))
+        .checked_add(Duration::seconds(
+            i64::try_from(expiration_seconds).unwrap_or(i64::MAX),
+        ))
         .ok_or_else(|| {
             r_data_core_core::error::Error::Auth("Could not create token expiration".to_string())
         })?;

@@ -28,7 +28,7 @@ impl CombinedAuth {
     /// Create a new instance of the combined authentication middleware
     #[allow(dead_code)] // Middleware method for future use
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 }
