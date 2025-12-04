@@ -181,11 +181,11 @@ pub async fn create_user(
 
     // Check if username or email already exists
     if let Ok(Some(_)) = repo.find_by_username_or_email(&req.username).await {
-        return ApiResponse::unprocessable_entity("Username already exists");
+        return ApiResponse::conflict("Username already exists");
     }
 
     if let Ok(Some(_)) = repo.find_by_username_or_email(&req.email).await {
-        return ApiResponse::unprocessable_entity("Email already in use");
+        return ApiResponse::conflict("Email already in use");
     }
 
     // Extract creator UUID from auth claims
@@ -311,7 +311,7 @@ pub async fn update_user(
         // Check if email is already in use by another user
         if let Ok(Some(existing)) = repo.find_by_username_or_email(email).await {
             if existing.uuid != user_uuid {
-                return ApiResponse::unprocessable_entity("Email already in use");
+                return ApiResponse::conflict("Email already in use");
             }
         }
         user.email.clone_from(email);

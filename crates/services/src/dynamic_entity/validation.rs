@@ -133,6 +133,9 @@ impl DynamicEntityService {
     }
 
     /// Validate an entity against its entity definition - exported for testing
+    ///
+    /// # Errors
+    /// Returns an error if validation fails
     #[cfg(test)]
     pub fn validate_entity_for_test(&self, entity: &DynamicEntity) -> Result<()> {
         Self::validate_entity(entity)

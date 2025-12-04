@@ -236,6 +236,10 @@ mod tests {
             async fn update_last_used(&self, uuid: Uuid) -> Result<()>;
             async fn reassign(&self, uuid: Uuid, new_user_uuid: Uuid) -> Result<()>;
             async fn count_by_user(&self, user_uuid: Uuid) -> Result<i64>;
+            async fn get_api_key_permission_schemes(&self, api_key_uuid: Uuid) -> Result<Vec<Uuid>>;
+            async fn assign_permission_scheme(&self, api_key_uuid: Uuid, scheme_uuid: Uuid) -> Result<()>;
+            async fn unassign_permission_scheme(&self, api_key_uuid: Uuid, scheme_uuid: Uuid) -> Result<()>;
+            async fn update_api_key_schemes(&self, api_key_uuid: Uuid, scheme_uuids: &[Uuid]) -> Result<()>;
         }
     }
 
@@ -255,7 +259,7 @@ mod tests {
                 eq(user_uuid),
                 eq(30),
             )
-            .returning(move |_, _, _, _| Ok((key_uuid, key_value.to_string())));
+            .returning(move |_, _, _, _| Ok((key_uuid, (*key_value).to_string())));
 
         let service = ApiKeyService::new(Arc::new(mock_repo));
         let result = service
@@ -448,7 +452,7 @@ mod tests {
                     "Expected 'not found' in error message"
                 );
             }
-            _ => panic!("Expected NotFound error, got: {:?}", result),
+            _ => panic!("Expected NotFound error, got: {result:?}"),
         }
     }
 }

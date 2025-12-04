@@ -28,6 +28,7 @@ vi.mock('@/env-check', () => ({
         devMode: false,
         defaultPageSize: 10,
     },
+    buildApiUrl: (endpoint: string) => `http://localhost:3000${endpoint}`,
 }))
 
 // Create a test client class

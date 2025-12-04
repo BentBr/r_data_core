@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { env } from '@/env-check'
+import { env, buildApiUrl } from '@/env-check'
 import { useAuthStore } from '@/stores/auth'
 import { getRefreshToken } from '@/utils/cookies'
 import { ValidationErrorResponseSchema } from '@/types/schemas'
@@ -19,7 +19,6 @@ export type ApiResponse<T> = {
  * Provides core request handling, authentication, and validation
  */
 export class BaseTypedHttpClient {
-    protected baseURL = env.apiBaseUrl
     protected enableLogging = env.enableApiLogging
     protected devMode = env.devMode
     private isRefreshing = false // Flag to prevent concurrent refresh attempts
@@ -74,11 +73,12 @@ export class BaseTypedHttpClient {
         }
 
         try {
+            const fullUrl = buildApiUrl(endpoint)
             if (this.enableLogging) {
-                console.log(`[API] ${config.method ?? 'GET'} ${this.baseURL}${endpoint}`)
+                console.log(`[API] ${config.method ?? 'GET'} ${fullUrl}`)
             }
 
-            const response = await fetch(`${this.baseURL}${endpoint}`, config)
+            const response = await fetch(fullUrl, config)
 
             if (!response.ok) {
                 if (response.status === 401) {
@@ -106,7 +106,7 @@ export class BaseTypedHttpClient {
                                     },
                                 }
                                 const retryResponse = await fetch(
-                                    `${this.baseURL}${endpoint}`,
+                                    buildApiUrl(endpoint),
                                     retryConfig
                                 )
 
@@ -339,11 +339,12 @@ export class BaseTypedHttpClient {
         }
 
         try {
+            const fullUrl = buildApiUrl(endpoint)
             if (this.enableLogging) {
-                console.log(`[API] ${config.method ?? 'GET'} ${this.baseURL}${endpoint}`)
+                console.log(`[API] ${config.method ?? 'GET'} ${fullUrl}`)
             }
 
-            const response = await fetch(`${this.baseURL}${endpoint}`, config)
+            const response = await fetch(fullUrl, config)
 
             if (!response.ok) {
                 if (response.status === 401) {
@@ -371,7 +372,7 @@ export class BaseTypedHttpClient {
                                     },
                                 }
                                 const retryResponse = await fetch(
-                                    `${this.baseURL}${endpoint}`,
+                                    buildApiUrl(endpoint),
                                     retryConfig
                                 )
 

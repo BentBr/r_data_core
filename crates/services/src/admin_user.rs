@@ -198,14 +198,7 @@ mod tests {
             async fn update_last_login(&self, uuid: &Uuid) -> Result<()>;
             async fn create_admin_user<'a>(
                 &self,
-                username: &str,
-                email: &str,
-                password: &str,
-                first_name: &str,
-                last_name: &str,
-                role: Option<&'a str>,
-                is_active: bool,
-                creator_uuid: Uuid,
+                params: &r_data_core_persistence::admin_user_repository_trait::CreateAdminUserParams<'a>,
             ) -> Result<Uuid>;
             async fn update_admin_user(&self, user: &AdminUser) -> Result<()>;
             async fn delete_admin_user(&self, uuid: &Uuid) -> Result<()>;
@@ -230,7 +223,7 @@ mod tests {
             status: UserStatus::Active,
             last_login: None,
             failed_login_attempts: 0,
-            permission_scheme_uuid: None,
+            super_admin: false,
             first_name: Some("Test".to_string()),
             last_name: Some("User".to_string()),
             is_active: true,
@@ -279,15 +272,15 @@ mod tests {
             .returning(|_| Ok(None));
 
         mock_repo.expect_create_admin_user().returning(
-            move |username, email, password, first_name, last_name, role, is_active, creator| {
-                assert_eq!(username, "newuser");
-                assert_eq!(email, "new@example.com");
-                assert_eq!(password, "password123");
-                assert_eq!(first_name, "New");
-                assert_eq!(last_name, "User");
-                assert!(role.is_none());
-                assert!(is_active);
-                assert_eq!(creator, creator_uuid);
+            move |params: &r_data_core_persistence::admin_user_repository_trait::CreateAdminUserParams| {
+                assert_eq!(params.username, "newuser");
+                assert_eq!(params.email, "new@example.com");
+                assert_eq!(params.password, "password123");
+                assert_eq!(params.first_name, "New");
+                assert_eq!(params.last_name, "User");
+                assert!(params.role.is_none());
+                assert!(params.is_active);
+                assert_eq!(params.creator_uuid, creator_uuid);
                 Ok(user_uuid)
             },
         );
@@ -329,7 +322,7 @@ mod tests {
             status: UserStatus::Active,
             last_login: None,
             failed_login_attempts: 0,
-            permission_scheme_uuid: None,
+            super_admin: false,
             first_name: Some("Existing".to_string()),
             last_name: Some("User".to_string()),
             is_active: true,

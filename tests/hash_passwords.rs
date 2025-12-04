@@ -9,7 +9,7 @@ fn test_hash_password_binary() {
 
     // Run the binary
     let output = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--package",
             "r_data_core_core",
@@ -29,7 +29,7 @@ fn test_hash_password_binary() {
 
     // Verify the output contains expected elements
     assert!(
-        output_str.contains(&format!("Password: {}", test_password)),
+        output_str.contains(&format!("Password: {test_password}")),
         "Output should contain the input password"
     );
     assert!(
@@ -74,7 +74,7 @@ fn test_hash_password_binary() {
 fn test_hash_password_binary_no_args() {
     // Test with no arguments (should show usage and exit successfully)
     let output = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--package",
             "r_data_core_core",
@@ -107,7 +107,7 @@ fn test_hash_password_binary_empty_password() {
 
     // Run the binary
     let output = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--package",
             "r_data_core_core",
@@ -159,7 +159,7 @@ fn test_hash_password_binary_special_characters() {
 
     // Run the binary
     let output = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--package",
             "r_data_core_core",
@@ -182,7 +182,7 @@ fn test_hash_password_binary_special_characters() {
 
     // Verify the output contains expected elements
     assert!(
-        output_str.contains(&format!("Password: {}", test_password)),
+        output_str.contains(&format!("Password: {test_password}")),
         "Output should contain the input password"
     );
     assert!(
@@ -211,7 +211,7 @@ fn test_hash_password_binary_sql_output() {
 
     // Run the binary
     let output = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--package",
             "r_data_core_core",
@@ -240,7 +240,7 @@ fn test_hash_password_binary_sql_output() {
 
     // Verify the SQL statement is complete and properly formatted
     assert!(
-        sql_line.ends_with(";"),
+        sql_line.ends_with(';'),
         "SQL statement should end with semicolon"
     );
 

@@ -21,8 +21,8 @@ async fn main() -> anyhow::Result<()> {
             cfg
         }
         Err(e) => {
-            error!("Failed to load configuration: {}", e);
-            return Err(anyhow::anyhow!("Failed to load configuration: {}", e));
+            error!("Failed to load configuration: {e}");
+            return Err(anyhow::anyhow!("Failed to load configuration: {e}"));
         }
     };
 
@@ -52,7 +52,7 @@ async fn main() -> anyhow::Result<()> {
                 let version_purger = VersionPurgerTask::new(cron);
                 let context = TaskContext::with_cache(pool, cache_manager);
                 if let Err(e) = version_purger.execute(&context).await {
-                    error!("Version purger task failed: {}", e);
+                    error!("Version purger task failed: {e}");
                 }
             })
         },

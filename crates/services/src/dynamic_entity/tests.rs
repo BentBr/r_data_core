@@ -28,12 +28,7 @@ mock! {
         async fn filter_entities(
             &self,
             entity_type: &str,
-            limit: i64,
-            offset: i64,
-            filters: Option<HashMap<serde_json::Value, serde_json::Value>>,
-            search: Option<(String, Vec<String>)>,
-            sort: Option<(String, String)>,
-            fields: Option<Vec<String>>
+            params: &r_data_core_persistence::dynamic_entity_repository_trait::FilterEntitiesParams,
         ) -> Result<Vec<DynamicEntity>>;
         async fn count_entities(&self, entity_type: &str) -> Result<i64>;
     }
@@ -91,8 +86,8 @@ fn create_test_entity_definition() -> EntityDefinition {
                 indexed: true,
                 filterable: true,
                 default_value: None,
-                validation: Default::default(),
-                ui_settings: Default::default(),
+                validation: r_data_core_core::field::FieldValidation::default(),
+                ui_settings: r_data_core_core::field::UiSettings::default(),
                 constraints: HashMap::new(),
             },
             FieldDefinition {
@@ -104,8 +99,8 @@ fn create_test_entity_definition() -> EntityDefinition {
                 indexed: false,
                 filterable: true,
                 default_value: None,
-                validation: Default::default(),
-                ui_settings: Default::default(),
+                validation: r_data_core_core::field::FieldValidation::default(),
+                ui_settings: r_data_core_core::field::UiSettings::default(),
                 constraints: HashMap::new(),
             },
         ],

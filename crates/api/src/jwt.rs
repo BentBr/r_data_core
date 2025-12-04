@@ -363,12 +363,12 @@ mod tests {
         let claims = AuthUserClaims {
             sub: user.uuid.to_string(),
             name: user.username.clone(),
-            email: user.email.clone(),
+            email: user.email,
             role: "SuperAdmin".to_string(),
             is_super_admin: false,
             permissions: vec!["workflows:read".to_string()],
-            exp: expired_time.unix_timestamp() as usize,
-            iat: now.unix_timestamp() as usize,
+            exp: usize::try_from(expired_time.unix_timestamp()).unwrap_or(0),
+            iat: usize::try_from(now.unix_timestamp()).unwrap_or(0),
         };
 
         let token = encode(
@@ -384,6 +384,7 @@ mod tests {
 
     #[test]
     fn test_auth_user_claims_serialization() {
+        let now_ts = OffsetDateTime::now_utc().unix_timestamp();
         let claims = AuthUserClaims {
             sub: "test-uuid".to_string(),
             name: "test_user".to_string(),
@@ -391,8 +392,8 @@ mod tests {
             role: "SuperAdmin".to_string(),
             is_super_admin: false,
             permissions: vec!["workflows:read".to_string()],
-            exp: OffsetDateTime::now_utc().unix_timestamp() as usize + 3600,
-            iat: OffsetDateTime::now_utc().unix_timestamp() as usize,
+            exp: usize::try_from(now_ts).unwrap_or(0).saturating_add(3600),
+            iat: usize::try_from(now_ts).unwrap_or(0),
         };
 
         let serialized = serde_json::to_string(&claims);

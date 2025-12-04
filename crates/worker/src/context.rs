@@ -19,12 +19,14 @@ pub struct TaskContext {
 impl TaskContext {
     /// Create a new task context with a database pool
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // PgPool is not const-constructible
     pub fn new(pool: PgPool) -> Self {
         Self { pool, cache: None }
     }
 
     /// Create a new task context with a database pool and cache manager
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // PgPool and Arc are not const-constructible
     pub fn with_cache(pool: PgPool, cache: Arc<CacheManager>) -> Self {
         Self {
             pool,

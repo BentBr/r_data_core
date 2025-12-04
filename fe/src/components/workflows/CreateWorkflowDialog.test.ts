@@ -77,7 +77,10 @@ describe('CreateWorkflowDialog', () => {
         const vm = wrapper.vm as {
             submit: () => Promise<void>
             configError?: string
+            configJson: string
         }
+        // Set valid JSON with empty steps to trigger DSL required error
+        vm.configJson = '{"steps": []}'
         await vm.submit()
 
         // Expect validation state set

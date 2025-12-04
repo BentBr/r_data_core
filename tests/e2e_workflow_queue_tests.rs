@@ -24,12 +24,9 @@ use r_data_core_test_support::{
 #[tokio::test]
 async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> {
     // Skip test if REDIS_URL not present
-    let redis_url = match std::env::var("REDIS_URL") {
-        Ok(url) => url,
-        Err(_) => {
-            eprintln!("Skipping e2e test: REDIS_URL not set");
-            return Ok(());
-        }
+    let Ok(redis_url) = std::env::var("REDIS_URL") else {
+        eprintln!("Skipping e2e test: REDIS_URL not set");
+        return Ok(());
     };
 
     // Use unique keys per test to avoid cross-test interference
@@ -144,8 +141,7 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
                     run_uuid,
                     "info",
                     &format!(
-                        "E2E Run processed (processed_items={}, failed_items={})",
-                        processed, failed
+                        "E2E Run processed (processed_items={processed}, failed_items={failed})"
                     ),
                     None,
                 )
@@ -156,10 +152,10 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
         }
         Err(e) => {
             let _ = repo
-                .insert_run_log(run_uuid, "error", &format!("E2E Run failed: {}", e), None)
+                .insert_run_log(run_uuid, "error", &format!("E2E Run failed: {e}"), None)
                 .await;
-            let _ = repo.mark_run_failure(run_uuid, &format!("{}", e)).await;
-            anyhow::bail!("processing failed: {}", e);
+            let _ = repo.mark_run_failure(run_uuid, &format!("{e}")).await;
+            anyhow::bail!("processing failed: {e}");
         }
     }
 

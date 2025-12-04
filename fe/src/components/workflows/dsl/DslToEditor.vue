@@ -160,7 +160,7 @@
     import { useTranslations } from '@/composables/useTranslations'
     import { useEntityDefinitions } from '@/composables/useEntityDefinitions'
     import { typedHttpClient } from '@/api/typed-client'
-    import { env } from '@/env-check'
+    import { buildApiUrl } from '@/env-check'
     import type { ToDef, AuthConfig, HttpMethod, OutputMode } from './dsl-utils'
     import { defaultCsvOptions } from './dsl-utils'
     import CsvOptionsEditor from './CsvOptionsEditor.vue'
@@ -178,9 +178,8 @@
     const { entityDefinitions, loadEntityDefinitions } = useEntityDefinitions()
 
     function getFullEndpointUri(): string {
-        const baseUrl = env.apiBaseUrl ?? window.location.origin
         const uuid = props.workflowUuid ?? '{workflow-uuid}'
-        return `${baseUrl}/api/v1/workflows/${uuid}`
+        return buildApiUrl(`/api/v1/workflows/${uuid}`)
     }
 
     const entityDefItems = ref<{ title: string; value: string }[]>([])

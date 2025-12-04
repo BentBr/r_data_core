@@ -9,6 +9,7 @@ import {
 } from '@/types/schemas'
 import { BaseTypedHttpClient } from './base'
 import { useAuthStore } from '@/stores/auth'
+import { buildApiUrl } from '@/env-check'
 
 export class WorkflowsClient extends BaseTypedHttpClient {
     async listWorkflows(): Promise<Array<z.infer<typeof WorkflowSchema>>> {
@@ -194,16 +195,13 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         })
         // Bypass JSON content-type; handle raw fetch here due to multipart
         const authStore = useAuthStore()
-        const res = await fetch(
-            `${this.baseURL}/admin/api/v1/workflows/${workflowUuid}/run/upload`,
-            {
-                method: 'POST',
-                headers: {
-                    ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
-                },
-                body: form,
-            }
-        )
+        const res = await fetch(buildApiUrl(`/admin/api/v1/workflows/${workflowUuid}/run/upload`), {
+            method: 'POST',
+            headers: {
+                ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+            },
+            body: form,
+        })
         if (!res.ok) {
             // Try to extract standardized error
             try {

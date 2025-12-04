@@ -12,12 +12,9 @@ async fn get_test_cache() -> Option<RedisCache> {
 
 #[tokio::test]
 async fn test_redis_cache_connection_if_available() {
-    let cache = match get_test_cache().await {
-        Some(c) => c,
-        None => {
-            println!("Skipping test: REDIS_URL not set");
-            return;
-        }
+    let Some(cache) = get_test_cache().await else {
+        println!("Skipping test: REDIS_URL not set");
+        return;
     };
 
     // Test that we can perform operations (connection works)
@@ -48,12 +45,9 @@ async fn test_redis_cache_connection_if_available() {
 
 #[tokio::test]
 async fn test_redis_cache_ping_connection_if_available() {
-    let cache = match get_test_cache().await {
-        Some(c) => c,
-        None => {
-            println!("Skipping test: REDIS_URL not set");
-            return;
-        }
+    let Some(cache) = get_test_cache().await else {
+        println!("Skipping test: REDIS_URL not set");
+        return;
     };
 
     // The cache should have been initialized with a successful PING
@@ -85,12 +79,9 @@ async fn test_redis_cache_ping_connection_if_available() {
 
 #[tokio::test]
 async fn test_redis_cache_query_async_api_if_available() {
-    let cache = match get_test_cache().await {
-        Some(c) => c,
-        None => {
-            println!("Skipping test: REDIS_URL not set");
-            return;
-        }
+    let Some(cache) = get_test_cache().await else {
+        println!("Skipping test: REDIS_URL not set");
+        return;
     };
 
     // Test that the updated query_async API works correctly

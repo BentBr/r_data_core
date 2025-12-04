@@ -79,7 +79,7 @@ mod tests {
                 assert_eq!(produced["lastName"], json!("Doe"));
                 assert_eq!(produced["username"], json!("jdoe"));
             }
-            _ => panic!("Expected Entity ToDef"),
+            ToDef::Format { .. } => panic!("Expected Entity ToDef"),
         }
     }
 
@@ -150,7 +150,7 @@ mod tests {
                 assert_eq!(filter.field, "status");
                 assert_eq!(filter.value, "active");
             }
-            _ => panic!("Expected Entity FromDef"),
+            FromDef::Format { .. } => panic!("Expected Entity FromDef"),
         }
     }
 
@@ -180,7 +180,7 @@ mod tests {
                 // Verify arithmetic transform was applied
                 assert_eq!(produced["price_with_tax"], json!(119.0));
             }
-            _ => panic!("Expected Entity ToDef"),
+            ToDef::Format { .. } => panic!("Expected Entity ToDef"),
         }
     }
 

@@ -408,15 +408,17 @@ mod tests {
         field_data.insert("published".to_string(), json!("true"));
         field_data.insert("created_at".to_string(), json!("2024-01-01"));
 
-        let def = EntityDefinition::new(
-            "test".to_string(),
-            "Test".to_string(),
-            None,
-            None,
-            false,
-            None,
-            vec![],
-            uuid::Uuid::now_v7(),
+        let def = EntityDefinition::from_params(
+            r_data_core_core::entity_definition::definition::EntityDefinitionParams {
+                entity_type: "test".to_string(),
+                display_name: "Test".to_string(),
+                description: None,
+                group_name: None,
+                allow_children: false,
+                icon: None,
+                fields: vec![],
+                created_by: uuid::Uuid::now_v7(),
+            },
         );
 
         let normalized = build_normalized_field_data(field_data, &def);

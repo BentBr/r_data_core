@@ -18,11 +18,12 @@ pub struct VersionPurgerTask {
 }
 
 impl VersionPurgerTask {
-    /// Create a new VersionPurgerTask with the given cron expression
+    /// Create a new `VersionPurgerTask` with the given cron expression
     ///
     /// # Arguments
     /// * `version_purger_cron` - Cron expression for scheduling this task
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // String is not const-constructible
     pub fn new(version_purger_cron: String) -> Self {
         Self {
             cron: version_purger_cron,
@@ -63,10 +64,7 @@ impl MaintenanceTask for VersionPurgerTask {
         let settings = match settings_service.get_entity_versioning_settings().await {
             Ok(s) => s,
             Err(e) => {
-                warn!(
-                    "[version_purger] Failed to retrieve entity versioning settings: {}",
-                    e
-                );
+                warn!("[version_purger] Failed to retrieve entity versioning settings: {e}");
                 return Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>);
             }
         };
@@ -78,8 +76,7 @@ impl MaintenanceTask for VersionPurgerTask {
         } = settings;
 
         info!(
-            "[version_purger] Entity versioning settings - enabled: {}, max_versions: {:?}, max_age_days: {:?}",
-            enabled, max_versions, max_age_days
+            "[version_purger] Entity versioning settings - enabled: {enabled}, max_versions: {max_versions:?}, max_age_days: {max_age_days:?}"
         );
 
         if !enabled {
@@ -101,22 +98,19 @@ impl MaintenanceTask for VersionPurgerTask {
         // Prune by age first if configured
         if let Some(days) = max_age_days {
             info!(
-                "[version_purger] Pruning versions older than {} days across all repositories",
-                days
+                "[version_purger] Pruning versions older than {days} days across all repositories"
             );
             for repo in &repositories {
                 let repo_name = repo.repository_name();
                 match repo.prune_older_than_days(days).await {
                     Ok(count) => {
                         info!(
-                            "[version_purger] Pruned {} versions older than {} days from {}",
-                            count, days, repo_name
+                            "[version_purger] Pruned {count} versions older than {days} days from {repo_name}"
                         );
                     }
                     Err(e) => {
                         warn!(
-                            "[version_purger] Failed to prune versions by age from {}: {}",
-                            repo_name, e
+                            "[version_purger] Failed to prune versions by age from {repo_name}: {e}"
                         );
                         return Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>);
                     }
@@ -129,22 +123,19 @@ impl MaintenanceTask for VersionPurgerTask {
         // Prune by count (preserve latest N per entity/workflow/definition)
         if let Some(keep) = max_versions {
             info!(
-                "[version_purger] Pruning versions, keeping latest {} per item across all repositories",
-                keep
+                "[version_purger] Pruning versions, keeping latest {keep} per item across all repositories"
             );
             for repo in &repositories {
                 let repo_name = repo.repository_name();
                 match repo.prune_keep_latest(keep).await {
                     Ok(count) => {
                         info!(
-                            "[version_purger] Pruned {} versions, kept latest {} per item from {}",
-                            count, keep, repo_name
+                            "[version_purger] Pruned {count} versions, kept latest {keep} per item from {repo_name}"
                         );
                     }
                     Err(e) => {
                         warn!(
-                            "[version_purger] Failed to prune versions by count from {}: {}",
-                            repo_name, e
+                            "[version_purger] Failed to prune versions by count from {repo_name}: {e}"
                         );
                         return Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>);
                     }

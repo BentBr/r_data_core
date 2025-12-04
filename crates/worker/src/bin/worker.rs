@@ -22,6 +22,7 @@ use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::FetchAndStageJob;
 
 #[tokio::main]
+#[allow(clippy::too_many_lines)] // Main function orchestrates many components
 async fn main() -> anyhow::Result<()> {
     // Basic logger init
     init_logger_with_default("info");
@@ -30,13 +31,13 @@ async fn main() -> anyhow::Result<()> {
 
     let config = match load_worker_config() {
         Ok(cfg) => {
-            debug!("Loaded conf: {:?}", cfg);
+            debug!("Loaded conf: {cfg:?}");
             info!("Configuration loaded successfully");
             cfg
         }
         Err(e) => {
-            error!("Failed to load configuration: {}", e);
-            panic!("Failed to load configuration: {}", e);
+            error!("Failed to load configuration: {e}");
+            panic!("Failed to load configuration: {e}");
         }
     };
 
@@ -62,7 +63,8 @@ async fn main() -> anyhow::Result<()> {
     let scheduler = JobScheduler::new().await?;
 
     let repo = WorkflowRepository::new(pool.clone());
-    let scheduled: Arc<Mutex<HashMap<Uuid, (Uuid, String)>>> = Arc::new(Mutex::new(HashMap::new()));
+    let scheduled_workflows: Arc<Mutex<HashMap<Uuid, (Uuid, String)>>> =
+        Arc::new(Mutex::new(HashMap::new()));
 
     // function to create a job for a workflow and return (job_id, cron)
     let schedule_job = |scheduler: JobScheduler,
@@ -81,8 +83,7 @@ async fn main() -> anyhow::Result<()> {
                 let queue_cfg = queue_cfg.clone();
                 Box::pin(async move {
                     info!(
-                        "Schedule: creating run and enqueueing fetch job for workflow {}",
-                        workflow_id
+                        "Schedule: creating run and enqueueing fetch job for workflow {workflow_id}"
                     );
                     let repo = WorkflowRepository::new(pool.clone());
                     // Use a separate trigger identifier to store provenance; DB returns run_uuid
@@ -107,18 +108,17 @@ async fn main() -> anyhow::Result<()> {
                                     })
                                     .await
                                 {
-                                    Ok(_) => {
-                                        info!("Successfully enqueued fetch job for workflow {} (run: {})", workflow_id, run_uuid);
+                                    Ok(()) => {
+                                        info!("Successfully enqueued fetch job for workflow {workflow_id} (run: {run_uuid})");
                                     }
                                     Err(e) => {
-                                        error!("Failed to enqueue fetch job for workflow {} (run: {}): {}", workflow_id, run_uuid, e);
+                                        error!("Failed to enqueue fetch job for workflow {workflow_id} (run: {run_uuid}): {e}");
                                     }
                                 }
                             }
                             Err(e) => {
                                 error!(
-                                    "Failed to create Redis queue client for workflow {}: {}",
-                                    workflow_id, e
+                                    "Failed to create Redis queue client for workflow {workflow_id}: {e}"
                                 );
                             }
                         }
@@ -152,7 +152,10 @@ async fn main() -> anyhow::Result<()> {
                 queue_cfg.clone(),
             )
             .await?;
-            scheduled.lock().await.insert(workflow_id, (job_id, cron));
+            scheduled_workflows
+                .lock()
+                .await
+                .insert(workflow_id, (job_id, cron));
         }
     }
 
@@ -164,7 +167,7 @@ async fn main() -> anyhow::Result<()> {
         let scheduler_clone = scheduler.clone();
         let repo_clone = WorkflowRepository::new(pool.clone());
         let pool_clone2 = pool.clone();
-        let scheduled_map = scheduled.clone();
+        let scheduled_map = scheduled_workflows.clone();
         let queue_cfg_reconcile = queue_cfg.clone();
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(
@@ -176,7 +179,7 @@ async fn main() -> anyhow::Result<()> {
                     let mut map = scheduled_map.lock().await;
                     // Current set from DB
                     let mut current_set: HashMap<Uuid, String> = HashMap::new();
-                    for (wf_id, cron) in db_workflows.iter() {
+                    for (wf_id, cron) in &db_workflows {
                         current_set.insert(*wf_id, cron.clone());
                     }
                     // Build existing set wf_id -> cron
@@ -298,8 +301,7 @@ async fn main() -> anyhow::Result<()> {
                                             run_uuid,
                                             "info",
                                             &format!(
-                                                "Run processed (processed_items={}, failed_items={})",
-                                                processed, failed
+                                                "Run processed (processed_items={processed}, failed_items={failed})"
                                             ),
                                             None,
                                         )
@@ -312,12 +314,11 @@ async fn main() -> anyhow::Result<()> {
                                         .insert_run_log(
                                             run_uuid,
                                             "error",
-                                            &format!("Run failed: {}", e),
+                                            &format!("Run failed: {e}"),
                                             None,
                                         )
                                         .await;
-                                    let _ =
-                                        repo.mark_run_failure(run_uuid, &format!("{}", e)).await;
+                                    let _ = repo.mark_run_failure(run_uuid, &format!("{e}")).await;
                                 }
                             }
                         } else {
@@ -335,7 +336,7 @@ async fn main() -> anyhow::Result<()> {
                         }
                     }
                     Err(e) => {
-                        error!("Queue pop failed: {}", e);
+                        error!("Queue pop failed: {e}");
                         // brief backoff before retrying to avoid hot loop
                         tokio::time::sleep(std::time::Duration::from_millis(250)).await;
                     }
