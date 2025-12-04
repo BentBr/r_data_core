@@ -12,7 +12,7 @@ export const UuidSchema = z.string().refine(
 // Nullable UUID schema that transforms nil UUIDs to null
 // Handles cases where backend returns Uuid::nil() (00000000-0000-0000-0000-000000000000) for NULL database values
 export const NullableUuidSchema = z.preprocess(
-    (val) => {
+    val => {
         // Transform nil UUID (00000000-0000-0000-0000-000000000000) to null
         if (val === '00000000-0000-0000-0000-000000000000' || val === null || val === undefined) {
             return null
