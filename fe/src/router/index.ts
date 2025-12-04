@@ -118,11 +118,12 @@ router.beforeEach(async (to, from, next) => {
             return
         }
 
-        // Check route permissions if route has permission metadata
-        if (to.meta.permission) {
+        // Check route permissions for all routes that require auth (except dashboard)
+        // Dashboard is always accessible if authenticated
+        if (to.name !== 'Dashboard') {
             const routePath = to.path
             if (!authStore.canAccessRoute(routePath)) {
-                // User doesn't have permission for this route, redirect to dashboard or login
+                // User doesn't have permission for this route, redirect to dashboard
                 next({
                     name: 'Dashboard',
                 })
