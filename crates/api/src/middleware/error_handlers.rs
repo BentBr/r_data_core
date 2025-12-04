@@ -11,6 +11,7 @@ use crate::response::ApiResponse;
 pub struct AppErrorHandlers;
 
 impl AppErrorHandlers {
+    #[allow(clippy::unnecessary_wraps)] // Actix Web error handler interface requires Result<ErrorHandlerResponse<B>>
     pub fn handle_error<B>(res: ServiceResponse<B>) -> Result<ErrorHandlerResponse<B>> {
         let status = res.response().status();
 

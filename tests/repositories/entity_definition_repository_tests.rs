@@ -1,7 +1,7 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 
 use crate::repositories::{get_entity_definition_repository_with_pool, TestRepository};
-use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::entity_definition::definition::{EntityDefinition, EntityDefinitionParams};
 use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use r_data_core_core::field::types::FieldType;
 use r_data_core_core::field::ui::UiSettings;
@@ -26,14 +26,14 @@ async fn test_create_and_get_entity_definition() {
     // Create test definition
     let creator_id = Uuid::now_v7();
 
-    let test_def = EntityDefinition::new(
-        "testentity".to_string(),
-        "Test Entity".to_string(),
-        Some("Test entity for repository tests".to_string()),
-        None,  // No group
-        false, // No children
-        None,  // No icon
-        vec![
+    let test_def = EntityDefinition::from_params(EntityDefinitionParams {
+        entity_type: "testentity".to_string(),
+        display_name: "Test Entity".to_string(),
+        description: Some("Test entity for repository tests".to_string()),
+        group_name: None,
+        allow_children: false,
+        icon: None,
+        fields: vec![
             FieldDefinition {
                 name: "name".to_string(),
                 display_name: "Name".to_string(),
@@ -61,8 +61,8 @@ async fn test_create_and_get_entity_definition() {
                 constraints: HashMap::new(),
             },
         ],
-        creator_id,
-    );
+        created_by: creator_id,
+    });
 
     // Save the definition
     let uuid = repository
@@ -109,14 +109,14 @@ async fn test_list_entity_definitions() {
 
     for i in 1..=3 {
         let entity_type = format!("testlist{}", i);
-        let definition = EntityDefinition::new(
-            entity_type.clone(),
-            format!("Test List {}", i),
-            Some(format!("Test definition {}", i)),
-            None,  // No group
-            false, // No children
-            None,  // No icon
-            vec![FieldDefinition {
+        let definition = EntityDefinition::from_params(EntityDefinitionParams {
+            entity_type: entity_type.clone(),
+            display_name: format!("Test List {i}"),
+            description: Some(format!("Test definition {i}")),
+            group_name: None,
+            allow_children: false,
+            icon: None,
+            fields: vec![FieldDefinition {
                 name: "name".to_string(),
                 display_name: "Name".to_string(),
                 description: None,
@@ -129,8 +129,8 @@ async fn test_list_entity_definitions() {
                 ui_settings: UiSettings::default(),
                 constraints: HashMap::new(),
             }],
-            creator_id,
-        );
+            created_by: creator_id,
+        });
 
         let uuid = repository.create(&definition).await.unwrap();
         uuids.push(uuid);
@@ -170,14 +170,14 @@ async fn test_update_entity_definition() {
 
     // Create a test definition
     let creator_id = Uuid::now_v7();
-    let definition = EntityDefinition::new(
-        "testupdate".to_string(),
-        "Original Title".to_string(),
-        Some("Original description".to_string()),
-        None,  // No group
-        false, // No children
-        None,  // No icon
-        vec![FieldDefinition {
+    let definition = EntityDefinition::from_params(EntityDefinitionParams {
+        entity_type: "testupdate".to_string(),
+        display_name: "Original Title".to_string(),
+        description: Some("Original description".to_string()),
+        group_name: None,
+        allow_children: false,
+        icon: None,
+        fields: vec![FieldDefinition {
             name: "field1".to_string(),
             display_name: "Field 1".to_string(),
             description: None,
@@ -190,8 +190,8 @@ async fn test_update_entity_definition() {
             ui_settings: UiSettings::default(),
             constraints: HashMap::new(),
         }],
-        creator_id,
-    );
+        created_by: creator_id,
+    });
 
     let uuid = repository.create(&definition).await.unwrap();
 
@@ -263,14 +263,14 @@ async fn test_delete_entity_definition() {
 
     // Create a test definition
     let creator_id = Uuid::now_v7();
-    let definition = EntityDefinition::new(
-        "testdelete".to_string(),
-        "Test Delete".to_string(),
-        None,
-        None,  // No group
-        false, // No children
-        None,  // No icon
-        vec![FieldDefinition {
+    let definition = EntityDefinition::from_params(EntityDefinitionParams {
+        entity_type: "testdelete".to_string(),
+        display_name: "Test Delete".to_string(),
+        description: None,
+        group_name: None,
+        allow_children: false,
+        icon: None,
+        fields: vec![FieldDefinition {
             name: "name".to_string(),
             display_name: "Name".to_string(),
             description: None,
@@ -283,8 +283,8 @@ async fn test_delete_entity_definition() {
             ui_settings: UiSettings::default(),
             constraints: HashMap::new(),
         }],
-        creator_id,
-    );
+        created_by: creator_id,
+    });
 
     let uuid = repository.create(&definition).await.unwrap();
 
@@ -322,14 +322,14 @@ async fn test_table_operations() {
 
     // Create a test definition
     let creator_id = Uuid::now_v7();
-    let definition = EntityDefinition::new(
-        "testtable".to_string(),
-        "Test Table".to_string(),
-        None,
-        None,  // No group
-        false, // No children
-        None,  // No icon
-        vec![
+    let definition = EntityDefinition::from_params(EntityDefinitionParams {
+        entity_type: "testtable".to_string(),
+        display_name: "Test Table".to_string(),
+        description: None,
+        group_name: None,
+        allow_children: false,
+        icon: None,
+        fields: vec![
             FieldDefinition {
                 name: "column1".to_string(),
                 display_name: "Column 1".to_string(),
@@ -357,8 +357,8 @@ async fn test_table_operations() {
                 constraints: HashMap::new(),
             },
         ],
-        creator_id,
-    );
+        created_by: creator_id,
+    });
 
     let uuid = repository.create(&definition).await.unwrap();
 

@@ -1,7 +1,7 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 
 use log::warn;
-use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::entity_definition::definition::{EntityDefinition, EntityDefinitionParams};
 use r_data_core_core::error::Result;
 use r_data_core_core::field::ui::UiSettings;
 use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
@@ -48,16 +48,16 @@ mod dynamic_entity_tests {
         entity_type: &str,
     ) -> Result<(Uuid, EntityDefinition)> {
         // Create a simple entity definition for testing
-        let mut entity_def = EntityDefinition::new(
-            entity_type.to_string(),
-            format!("Test {}", entity_type),
-            Some(format!("Test {} description", entity_type)),
-            None,
-            false,
-            None,
-            Vec::new(),
-            Uuid::now_v7(),
-        );
+        let mut entity_def = EntityDefinition::from_params(EntityDefinitionParams {
+            entity_type: entity_type.to_string(),
+            display_name: format!("Test {entity_type}"),
+            description: Some(format!("Test {entity_type} description")),
+            group_name: None,
+            allow_children: false,
+            icon: None,
+            fields: Vec::new(),
+            created_by: Uuid::now_v7(),
+        });
 
         entity_def.published = true; // Ensure the class is published
 

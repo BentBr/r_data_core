@@ -9,7 +9,101 @@ use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::CombinedRequiredAuth;
 use r_data_core_workflow::data::adapters::auth::{AuthConfig, KeyLocation};
 use r_data_core_workflow::data::adapters::format::FormatHandler;
-use r_data_core_workflow::dsl::DslProgram;
+use r_data_core_workflow::dsl::{DslProgram, FromDef, OutputMode, ToDef};
+use serde_json::Value as JsonValue;
+use std::collections::HashMap;
+
+/// Collect input data from entity sources in workflow steps
+async fn collect_entity_input_data(
+    program: &DslProgram,
+    state: &ApiStateWrapper,
+) -> Result<Vec<JsonValue>, HttpResponse> {
+    let mut input_data = Vec::new();
+
+    for step in &program.steps {
+        if let FromDef::Entity {
+            entity_definition,
+            filter,
+            ..
+        } = &step.from
+        {
+            let Some(entity_service) = state.dynamic_entity_service() else {
+                return Err(HttpResponse::InternalServerError()
+                    .json(json!({"error": "Entity service not available"})));
+            };
+
+            let mut filter_map = HashMap::new();
+            filter_map.insert(
+                filter.field.clone(),
+                JsonValue::String(filter.value.clone()),
+            );
+
+            let entities = entity_service
+                .filter_entities(
+                    entity_definition,
+                    1000,
+                    0,
+                    Some(filter_map),
+                    None,
+                    None,
+                    None,
+                )
+                .await
+                .map_err(|e| {
+                    log::error!("Failed to query entities: {e}");
+                    HttpResponse::InternalServerError()
+                        .json(json!({"error": "Failed to query source entities"}))
+                })?;
+
+            for entity in entities {
+                let entity_json: JsonValue = serde_json::to_value(&entity.field_data)
+                    .unwrap_or_else(|_| json!({}));
+                input_data.push(entity_json);
+            }
+        }
+    }
+
+    if input_data.is_empty() {
+        input_data.push(json!({}));
+    }
+
+    Ok(input_data)
+}
+
+/// Execute workflow and collect format outputs
+///
+/// # Errors
+///
+/// Returns `HttpResponse::InternalServerError` if:
+/// - Failed to execute workflow
+fn execute_workflow_and_collect_outputs(
+    program: &DslProgram,
+    input_data: Vec<JsonValue>,
+) -> Result<(Vec<JsonValue>, Option<r_data_core_workflow::dsl::FormatConfig>), HttpResponse> {
+    let mut all_outputs = Vec::new();
+    for input in input_data {
+        let outputs = program.execute(&input).map_err(|e| {
+            log::error!("Failed to execute workflow: {e}");
+            HttpResponse::InternalServerError().json(json!({"error": "Failed to execute workflow"}))
+        })?;
+        all_outputs.extend(outputs);
+    }
+
+    let mut format_outputs = Vec::new();
+    let mut format_config = None;
+    for (to_def, data) in all_outputs {
+        if let ToDef::Format { format, output, .. } = to_def {
+            if matches!(output, OutputMode::Api) {
+                if format_config.is_none() {
+                    format_config = Some(format.clone());
+                }
+                format_outputs.push(data);
+            }
+        }
+    }
+
+    Ok((format_outputs, format_config))
+}
 
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
@@ -111,97 +205,17 @@ pub async fn get_workflow_data(
     };
 
     // Collect input data from entity sources
-    let mut input_data = Vec::new();
+    let input_data = match collect_entity_input_data(&program, &state).await {
+        Ok(data) => data,
+        Err(resp) => return resp,
+    };
 
-    // Check if workflow has from.entity sources
-    for step in &program.steps {
-        if let r_data_core_workflow::dsl::FromDef::Entity {
-            entity_definition,
-            filter,
-            ..
-        } = &step.from
-        {
-            // Query entities based on filter
-            if let Some(entity_service) = state.dynamic_entity_service() {
-                use serde_json::Value as JsonValue;
-                use std::collections::HashMap;
-
-                // Build filter map from EntityFilter
-                let mut filter_map = HashMap::new();
-                filter_map.insert(
-                    filter.field.clone(),
-                    JsonValue::String(filter.value.clone()),
-                );
-
-                match entity_service
-                    .filter_entities(
-                        entity_definition,
-                        1000, // Limit to 1000 entities
-                        0,    // No offset
-                        Some(filter_map),
-                        None, // No search
-                        None, // No custom sort
-                        None, // All fields
-                    )
-                    .await
-                {
-                    Ok(entities) => {
-                        // Convert entities to JSON for workflow execution
-                        // DynamicEntity stores all fields in field_data HashMap
-                        for entity in entities {
-                            // Convert field_data HashMap directly to JSON object
-                            let entity_json: serde_json::Value =
-                                serde_json::to_value(&entity.field_data)
-                                    .unwrap_or_else(|_| json!({}));
-                            input_data.push(entity_json);
-                        }
-                    }
-                    Err(e) => {
-                        log::error!("Failed to query entities: {e}");
-                        return HttpResponse::InternalServerError()
-                            .json(json!({"error": "Failed to query source entities"}));
-                    }
-                }
-            } else {
-                return HttpResponse::InternalServerError()
-                    .json(json!({"error": "Entity service not available"}));
-            }
-        }
-    }
-
-    // If no entity sources, use empty input (for workflows that don't need entity input)
-    if input_data.is_empty() {
-        input_data.push(json!({}));
-    }
-
-    // Execute workflow for each input and collect outputs
-    let mut all_outputs = Vec::new();
-    for input in input_data {
-        match program.execute(&input) {
-            Ok(outputs) => {
-                all_outputs.extend(outputs);
-            }
-            Err(e) => {
-                log::error!("Failed to execute workflow: {e}");
-                return HttpResponse::InternalServerError()
-                    .json(json!({"error": "Failed to execute workflow"}));
-            }
-        }
-    }
-
-    // Find format output (CSV or JSON) and collect all data
-    let mut format_outputs = Vec::new();
-    let mut format_config = None;
-    for (to_def, data) in all_outputs {
-        if let r_data_core_workflow::dsl::ToDef::Format { format, output, .. } = to_def {
-            if matches!(output, r_data_core_workflow::dsl::OutputMode::Api) {
-                if format_config.is_none() {
-                    format_config = Some(format.clone());
-                }
-                format_outputs.push(data);
-            }
-        }
-    }
+    // Execute workflow and collect format outputs
+    let (format_outputs, format_config) =
+        match execute_workflow_and_collect_outputs(&program, input_data) {
+            Ok(result) => result,
+            Err(resp) => return resp,
+        };
 
     if format_outputs.is_empty() || format_config.is_none() {
         return HttpResponse::InternalServerError()

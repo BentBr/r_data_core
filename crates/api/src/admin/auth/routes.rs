@@ -12,7 +12,8 @@ use crate::jwt::{
     REFRESH_TOKEN_EXPIRY_SECONDS,
 };
 use crate::response::ApiResponse;
-use r_data_core_core::admin_user::UserRole;
+use r_data_core_core::admin_user::{AdminUser, UserRole};
+use r_data_core_core::permissions::permission_scheme::PermissionScheme;
 use r_data_core_core::refresh_token::RefreshToken;
 use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
 use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
@@ -22,6 +23,108 @@ use crate::admin::auth::models::{
     RefreshTokenRequest, RefreshTokenResponse,
 };
 use validator::Validate;
+
+/// Load permission schemes for a user
+async fn load_user_permission_schemes(
+    user: &AdminUser,
+    data: &ApiStateWrapper,
+    repo: &AdminUserRepository,
+) -> Vec<PermissionScheme> {
+    if user.super_admin || matches!(user.role, UserRole::SuperAdmin) {
+        // SuperAdmin or super_admin doesn't need schemes - handled in JWT generation
+        vec![]
+    } else {
+        // Load all user's permission schemes
+        match data
+            .permission_scheme_service()
+            .get_schemes_for_user(user.uuid, repo)
+            .await
+        {
+            Ok(s) => {
+                log::debug!(
+                    "Loaded {} permission schemes for user {}",
+                    s.len(),
+                    user.username
+                );
+                s
+            }
+            Err(e) => {
+                log::warn!("Failed to load permission schemes for user: {e}");
+                vec![]
+            }
+        }
+    }
+}
+
+/// Generate tokens and build login response
+fn build_login_response(
+    user: &AdminUser,
+    access_token: String,
+    refresh_token: String,
+    access_expires_at: OffsetDateTime,
+    refresh_expires_at: OffsetDateTime,
+) -> actix_web::HttpResponse {
+    ApiResponse::ok(AdminLoginResponse {
+        access_token,
+        refresh_token,
+        user_uuid: user.uuid.to_string(),
+        username: user.username.clone(),
+        role: format!("{:?}", user.role),
+        access_expires_at,
+        refresh_expires_at,
+    })
+}
+
+/// Build refresh token response
+fn build_refresh_response(
+    access_token: String,
+    refresh_token: String,
+    access_expires_at: OffsetDateTime,
+    refresh_expires_at: OffsetDateTime,
+) -> actix_web::HttpResponse {
+    ApiResponse::ok(RefreshTokenResponse {
+        access_token,
+        refresh_token,
+        access_expires_at,
+        refresh_expires_at,
+    })
+}
+
+/// Generate access and refresh tokens for a user
+fn generate_tokens_for_user(
+    user: &AdminUser,
+    data: &ApiStateWrapper,
+    schemes: &[PermissionScheme],
+) -> Result<(String, String, String, OffsetDateTime, OffsetDateTime), actix_web::HttpResponse> {
+    // Use short-lived expiration for access tokens
+    let mut access_token_config = data.api_config().clone();
+    access_token_config.jwt_expiration = ACCESS_TOKEN_EXPIRY_SECONDS;
+    let access_token = generate_access_token(user, &access_token_config, schemes)
+        .map_err(|e| {
+            log::error!("Failed to generate access token: {e:?}");
+            ApiResponse::<()>::internal_error("Token generation failed")
+        })?;
+
+    // Generate refresh token
+    let refresh_token = RefreshToken::generate_token();
+    let refresh_token_hash = RefreshToken::hash_token(&refresh_token).map_err(|e| {
+        log::error!("Failed to hash refresh token: {e:?}");
+        ApiResponse::<()>::internal_error("Token generation failed")
+    })?;
+
+    // Calculate expiration times
+    #[allow(clippy::cast_possible_wrap)]
+    let access_expires_at = OffsetDateTime::now_utc()
+        .checked_add(Duration::seconds(ACCESS_TOKEN_EXPIRY_SECONDS as i64))
+        .unwrap_or_else(OffsetDateTime::now_utc);
+
+    #[allow(clippy::cast_possible_wrap)]
+    let refresh_expires_at = OffsetDateTime::now_utc()
+        .checked_add(Duration::seconds(REFRESH_TOKEN_EXPIRY_SECONDS as i64))
+        .unwrap_or_else(OffsetDateTime::now_utc);
+
+    Ok((access_token, refresh_token, refresh_token_hash, access_expires_at, refresh_expires_at))
+}
 
 /// Login endpoint for admin users
 #[utoipa::path(
@@ -107,31 +210,8 @@ pub async fn admin_login(
         log::error!("Failed to update last login: {e:?}");
     }
 
-    // Load all permission schemes for user (if not SuperAdmin or super_admin)
-    let schemes = if user.super_admin || matches!(user.role, UserRole::SuperAdmin) {
-        // SuperAdmin or super_admin doesn't need schemes - handled in JWT generation
-        vec![]
-    } else {
-        // Load all user's permission schemes
-        match data
-            .permission_scheme_service()
-            .get_schemes_for_user(user.uuid, &repo)
-            .await
-        {
-            Ok(s) => {
-                log::debug!(
-                    "Loaded {} permission schemes for user {}",
-                    s.len(),
-                    user.username
-                );
-                s
-            }
-            Err(e) => {
-                log::warn!("Failed to load permission schemes for user: {e}");
-                vec![]
-            }
-        }
-    };
+    // Load all permission schemes for user
+    let schemes = load_user_permission_schemes(&user, &data, &repo).await;
 
     // Generate short-lived access token (30 minutes)
     // Use short-lived expiration for access tokens, but get secret from config
@@ -188,17 +268,13 @@ pub async fn admin_login(
     }
 
     // Build response
-    let response = AdminLoginResponse {
+    build_login_response(
+        &user,
         access_token,
         refresh_token,
-        user_uuid: user.uuid.to_string(),
-        username: user.username,
-        role: format!("{:?}", user.role),
         access_expires_at,
         refresh_expires_at,
-    };
-
-    ApiResponse::ok(response)
+    )
 }
 
 /// Register a new admin user endpoint
@@ -440,64 +516,13 @@ pub async fn admin_refresh_token(
         return ApiResponse::unauthorized("Account not active");
     }
 
-    // Generate new access token
-    // Load all permission schemes for user (if not SuperAdmin or super_admin)
-    let schemes = if user.super_admin || matches!(user.role, UserRole::SuperAdmin) {
-        // SuperAdmin or super_admin doesn't need schemes - handled in JWT generation
-        vec![]
-    } else {
-        // Load all user's permission schemes
-        match data
-            .permission_scheme_service()
-            .get_schemes_for_user(user.uuid, &admin_repo)
-            .await
-        {
-            Ok(s) => {
-                log::debug!(
-                    "Loaded {} permission schemes for user {} during token refresh",
-                    s.len(),
-                    user.username
-                );
-                s
-            }
-            Err(e) => {
-                log::warn!("Failed to load permission schemes for user: {e}");
-                vec![]
-            }
-        }
-    };
-
-    // Use short-lived expiration for access tokens, but get secret from config
-    let mut access_token_config = data.api_config().clone();
-    access_token_config.jwt_expiration = ACCESS_TOKEN_EXPIRY_SECONDS;
-    let new_access_token = match generate_access_token(&user, &access_token_config, &schemes) {
-        Ok(token) => token,
-        Err(e) => {
-            log::error!("Failed to generate new access token: {e:?}");
-            return ApiResponse::internal_error("Token refresh failed");
-        }
-    };
-
-    // Generate new refresh token
-    let new_refresh_token_string = RefreshToken::generate_token();
-    let new_refresh_token_hash = match RefreshToken::hash_token(&new_refresh_token_string) {
-        Ok(hash) => hash,
-        Err(e) => {
-            log::error!("Failed to hash new refresh token: {e:?}");
-            return ApiResponse::internal_error("Token refresh failed");
-        }
-    };
-
-    // Calculate expiration times
-    #[allow(clippy::cast_possible_wrap)]
-    let access_expires_at = OffsetDateTime::now_utc()
-        .checked_add(Duration::seconds(ACCESS_TOKEN_EXPIRY_SECONDS as i64)) // 30 minutes
-        .unwrap_or_else(OffsetDateTime::now_utc);
-
-    #[allow(clippy::cast_possible_wrap)]
-    let refresh_expires_at = OffsetDateTime::now_utc()
-        .checked_add(Duration::seconds(REFRESH_TOKEN_EXPIRY_SECONDS as i64))
-        .unwrap_or_else(OffsetDateTime::now_utc);
+    // Load permission schemes and generate tokens
+    let schemes = load_user_permission_schemes(&user, &data, &admin_repo).await;
+    let (new_access_token, new_refresh_token_string, new_refresh_token_hash, access_expires_at, refresh_expires_at) =
+        match generate_tokens_for_user(&user, &data, &schemes) {
+            Ok(tokens) => tokens,
+            Err(response) => return response,
+        };
 
     // Update the old refresh token as used
     if let Err(e) = refresh_repo.update_last_used(refresh_token.id).await {
@@ -526,14 +551,12 @@ pub async fn admin_refresh_token(
     }
 
     // Build response
-    let response = RefreshTokenResponse {
-        access_token: new_access_token,
-        refresh_token: new_refresh_token_string,
+    build_refresh_response(
+        new_access_token,
+        new_refresh_token_string,
         access_expires_at,
         refresh_expires_at,
-    };
-
-    ApiResponse::ok(response)
+    )
 }
 
 /// Revoke all refresh tokens for current user endpoint

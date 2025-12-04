@@ -157,111 +157,41 @@ fn merge_permissions_from_multiple_schemes(
 /// Generate all permissions for `SuperAdmin`
 ///
 /// # Returns
+/// Generate permission strings for workflows namespace (includes execute)
+#[must_use]
+fn generate_workflow_permissions() -> Vec<String> {
+    let ns = ResourceNamespace::Workflows.as_str();
+    vec![
+        format!("{ns}:read"),
+        format!("{ns}:create"),
+        format!("{ns}:update"),
+        format!("{ns}:delete"),
+        format!("{ns}:execute"),
+    ]
+}
+
+/// Generate permission strings for a namespace with standard CRUD operations
+#[must_use]
+fn generate_standard_permissions(ns: &ResourceNamespace) -> Vec<String> {
+    let ns_str = ns.as_str();
+    vec![
+        format!("{ns_str}:read"),
+        format!("{ns_str}:create"),
+        format!("{ns_str}:update"),
+        format!("{ns_str}:delete"),
+    ]
+}
+
 /// Vector of all permission strings for all namespaces
 #[must_use]
 fn generate_all_permissions() -> Vec<String> {
-    vec![
-        {
-            let ns = ResourceNamespace::Workflows.as_str();
-            format!("{ns}:read")
-        },
-        {
-            let ns = ResourceNamespace::Workflows.as_str();
-            format!("{ns}:create")
-        },
-        {
-            let ns = ResourceNamespace::Workflows.as_str();
-            format!("{ns}:update")
-        },
-        {
-            let ns = ResourceNamespace::Workflows.as_str();
-            format!("{ns}:delete")
-        },
-        {
-            let ns = ResourceNamespace::Workflows.as_str();
-            format!("{ns}:execute")
-        },
-        {
-            let ns = ResourceNamespace::Entities.as_str();
-            format!("{ns}:read")
-        },
-        {
-            let ns = ResourceNamespace::Entities.as_str();
-            format!("{ns}:create")
-        },
-        {
-            let ns = ResourceNamespace::Entities.as_str();
-            format!("{ns}:update")
-        },
-        {
-            let ns = ResourceNamespace::Entities.as_str();
-            format!("{ns}:delete")
-        },
-        {
-            let ns = ResourceNamespace::EntityDefinitions.as_str();
-            format!("{ns}:read")
-        },
-        {
-            let ns = ResourceNamespace::EntityDefinitions.as_str();
-            format!("{ns}:create")
-        },
-        {
-            let ns = ResourceNamespace::EntityDefinitions.as_str();
-            format!("{ns}:update")
-        },
-        {
-            let ns = ResourceNamespace::EntityDefinitions.as_str();
-            format!("{ns}:delete")
-        },
-        {
-            let ns = ResourceNamespace::ApiKeys.as_str();
-            format!("{ns}:read")
-        },
-        {
-            let ns = ResourceNamespace::ApiKeys.as_str();
-            format!("{ns}:create")
-        },
-        {
-            let ns = ResourceNamespace::ApiKeys.as_str();
-            format!("{ns}:update")
-        },
-        {
-            let ns = ResourceNamespace::ApiKeys.as_str();
-            format!("{ns}:delete")
-        },
-        {
-            let ns = ResourceNamespace::PermissionSchemes.as_str();
-            format!("{ns}:read")
-        },
-        {
-            let ns = ResourceNamespace::PermissionSchemes.as_str();
-            format!("{ns}:create")
-        },
-        {
-            let ns = ResourceNamespace::PermissionSchemes.as_str();
-            format!("{ns}:update")
-        },
-        {
-            let ns = ResourceNamespace::PermissionSchemes.as_str();
-            format!("{ns}:delete")
-        },
-        {
-            let ns = ResourceNamespace::System.as_str();
-            format!("{ns}:read")
-        },
-        {
-            let ns = ResourceNamespace::System.as_str();
-            format!("{ns}:create")
-        },
-        {
-            let ns = ResourceNamespace::System.as_str();
-            format!("{ns}:update")
-        },
-        {
-            let ns = ResourceNamespace::System.as_str();
-            format!("{ns}:delete")
-        },
-    ]
+    let mut permissions = generate_workflow_permissions();
+    permissions.extend(generate_standard_permissions(&ResourceNamespace::Entities));
+    permissions.extend(generate_standard_permissions(&ResourceNamespace::EntityDefinitions));
+    permissions.extend(generate_standard_permissions(&ResourceNamespace::ApiKeys));
+    permissions.extend(generate_standard_permissions(&ResourceNamespace::PermissionSchemes));
+    permissions.extend(generate_standard_permissions(&ResourceNamespace::System));
+    permissions
 }
 
 /// Verify and decode a JWT token

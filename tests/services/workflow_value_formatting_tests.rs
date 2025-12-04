@@ -1,6 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 
-use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::entity_definition::definition::{EntityDefinition, EntityDefinitionParams};
 use r_data_core_core::field::definition::FieldDefinition;
 use r_data_core_core::field::types::FieldType;
 use r_data_core_services::workflow::value_formatting::{
@@ -69,14 +69,14 @@ fn test_build_normalized_field_data_complex() {
         json!("123e4567-e89b-12d3-a456-426614174000"),
     );
 
-    let def = EntityDefinition::new(
-        "customer".to_string(),
-        "Customer".to_string(),
-        None,
-        None,
-        false,
-        None,
-        vec![
+    let def = EntityDefinition::from_params(EntityDefinitionParams {
+        entity_type: "customer".to_string(),
+        display_name: "Customer".to_string(),
+        description: None,
+        group_name: None,
+        allow_children: false,
+        icon: None,
+        fields: vec![
             FieldDefinition::new(
                 "newsletter".to_string(),
                 "Newsletter".to_string(),
@@ -84,8 +84,8 @@ fn test_build_normalized_field_data_complex() {
             ),
             FieldDefinition::new("crm".to_string(), "CRM".to_string(), FieldType::Boolean),
         ],
-        Uuid::now_v7(),
-    );
+        created_by: Uuid::now_v7(),
+    });
 
     let normalized = build_normalized_field_data(field_data, &def);
 

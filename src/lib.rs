@@ -24,7 +24,11 @@ pub use r_data_core_services::{
 
 use log::info;
 
-/// Initialize the r_data_core library
+/// Initialize the `r_data_core` library
+///
+/// # Errors
+///
+/// This function currently always returns `Ok(())` and does not produce errors.
 pub fn init() -> r_data_core_core::error::Result<()> {
     info!("Initializing r_data_core...");
     Ok(())

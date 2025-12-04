@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use mockall::predicate;
-use serde_json::{json, Value};
+use serde_json::json;
 use uuid::Uuid;
 
 use r_data_core_core::entity_definition::definition::EntityDefinition;
@@ -15,23 +15,6 @@ use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
 use r_data_core_core::DynamicEntity;
 use r_data_core_persistence::{DynamicEntityRepositoryTrait, FilterEntitiesParams};
 
-// Create a struct to represent DynamicFields since we can't use the trait directly
-#[derive(Default)]
-struct TestDynamicFields(HashMap<String, Value>);
-
-impl TestDynamicFields {
-    fn new() -> Self {
-        Self(HashMap::new())
-    }
-
-    fn insert(&mut self, key: String, value: Value) {
-        self.0.insert(key, value);
-    }
-
-    fn contains_key(&self, key: &str) -> bool {
-        self.0.contains_key(key)
-    }
-}
 
 // Create a mock for DynamicEntityRepositoryTrait
 mockall::mock! {

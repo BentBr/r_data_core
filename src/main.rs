@@ -39,13 +39,13 @@ async fn main() -> std::io::Result<()> {
     // Load environment variables and configure the application
     let config = match load_app_config() {
         Ok(cfg) => {
-            debug!("Loaded conf: {:?}", cfg);
+            debug!("Loaded conf: {cfg:?}");
             info!("Configuration loaded successfully");
             cfg
         }
         Err(e) => {
-            error!("Failed to load configuration: {}", e);
-            panic!("Failed to load configuration: {}", e);
+            error!("Failed to load configuration: {e}");
+            panic!("Failed to load configuration: {e}");
         }
     };
 
@@ -88,8 +88,7 @@ async fn main() -> std::io::Result<()> {
                 }
                 Err(e) => {
                     error!(
-                        "Failed to initialize Redis cache: {}, falling back to in-memory only",
-                        e
+                        "Failed to initialize Redis cache: {e}, falling back to in-memory only"
                     );
                     Arc::new(CacheManager::new(config.cache.clone()))
                 }
@@ -173,7 +172,7 @@ async fn main() -> std::io::Result<()> {
     let app_state = web::Data::new(ApiStateWrapper::new(api_state));
 
     let bind_address = format!("{}:{}", config.api.host, config.api.port);
-    info!("Starting HTTP server at http://{}", bind_address);
+    info!("Starting HTTP server at http://{bind_address}");
 
     // Start HTTP server
     HttpServer::new(move || {
