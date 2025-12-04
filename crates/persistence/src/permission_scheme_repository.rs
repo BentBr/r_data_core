@@ -50,13 +50,17 @@ impl PermissionSchemeRepository {
         .await
         .map_err(Error::Database)?;
 
-        Ok(row.map(|r| {
-            permission_scheme_from_row(&r).unwrap_or_else(|e| {
-                log::error!("Failed to deserialize permission scheme: {e}");
-                // Return empty scheme on error
-                PermissionScheme::new("Error".to_string())
-            })
-        }))
+        row.map_or_else(
+            || Ok(None),
+            |r| {
+                permission_scheme_from_row(&r)
+                    .map(Some)
+                    .map_err(|e| {
+                        log::error!("Failed to deserialize permission scheme: {e}");
+                        Error::Unknown(format!("Failed to deserialize permission scheme: {e}"))
+                    })
+            },
+        )
     }
 
     /// Get a permission scheme by name
@@ -83,12 +87,17 @@ impl PermissionSchemeRepository {
         .await
         .map_err(Error::Database)?;
 
-        Ok(row.map(|r| {
-            permission_scheme_from_row(&r).unwrap_or_else(|e| {
-                log::error!("Failed to deserialize permission scheme: {e}");
-                PermissionScheme::new("Error".to_string())
-            })
-        }))
+        row.map_or_else(
+            || Ok(None),
+            |r| {
+                permission_scheme_from_row(&r)
+                    .map(Some)
+                    .map_err(|e| {
+                        log::error!("Failed to deserialize permission scheme: {e}");
+                        Error::Unknown(format!("Failed to deserialize permission scheme: {e}"))
+                    })
+            },
+        )
     }
 
     /// Create a new permission scheme
@@ -283,7 +292,10 @@ fn permission_scheme_from_row(row: &PgRow) -> std::result::Result<PermissionSche
     };
 
     // Deserialize rules JSONB to role_permissions
-    let rules_json: serde_json::Value = row.try_get("rules")?;
+    // Try accessing with the type annotation name first, fall back to "rules"
+    let rules_json: serde_json::Value = row
+        .try_get("rules: serde_json::Value")
+        .or_else(|_| row.try_get("rules"))?;
     let role_permissions: HashMap<
         String,
         Vec<crate::core::permissions::permission_scheme::Permission>,

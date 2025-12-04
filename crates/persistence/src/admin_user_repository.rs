@@ -68,6 +68,28 @@ impl AdminUserRepository {
         Ok(schemes)
     }
 
+    /// Get all users that have a specific permission scheme assigned
+    ///
+    /// # Arguments
+    /// * `scheme_uuid` - Permission scheme UUID
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
+    pub async fn get_users_by_permission_scheme(&self, scheme_uuid: Uuid) -> Result<Vec<Uuid>> {
+        let users = sqlx::query_scalar::<_, Uuid>(
+            "SELECT user_uuid FROM admin_users_permission_schemes WHERE scheme_uuid = $1",
+        )
+        .bind(scheme_uuid)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error getting users by permission scheme: {e:?}");
+            r_data_core_core::error::Error::Database(e)
+        })?;
+
+        Ok(users)
+    }
+
     /// Assign a permission scheme to a user
     ///
     /// # Errors

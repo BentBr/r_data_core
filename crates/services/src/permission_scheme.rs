@@ -9,11 +9,25 @@ use r_data_core_core::cache::CacheManager;
 use r_data_core_core::error::Result;
 use r_data_core_core::permissions::permission_scheme::{Permission, PermissionScheme};
 use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository, PermissionSchemeRepository};
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+
+/// Cached user permission scheme UUIDs
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct UserPermissionSchemes {
+    scheme_uuids: Vec<Uuid>,
+}
+
+/// Cached merged permissions
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct MergedPermissions {
+    permissions: Vec<String>,
+}
 
 /// Service for managing permission schemes with caching
 pub struct PermissionSchemeService {
     repository: PermissionSchemeRepository,
+    pool: PgPool,
     cache_manager: Arc<CacheManager>,
     cache_ttl: Option<u64>,
 }
@@ -26,13 +40,14 @@ impl PermissionSchemeService {
     /// * `cache_manager` - Cache manager for caching schemes
     /// * `cache_ttl` - Optional cache TTL in seconds (uses `entity_definition_ttl` if None)
     #[must_use]
-    pub const fn new(
+    pub fn new(
         pool: PgPool,
         cache_manager: Arc<CacheManager>,
         cache_ttl: Option<u64>,
     ) -> Self {
         Self {
-            repository: PermissionSchemeRepository::new(pool),
+            repository: PermissionSchemeRepository::new(pool.clone()),
+            pool,
             cache_manager,
             cache_ttl,
         }
@@ -84,8 +99,8 @@ impl PermissionSchemeService {
         let cache_key = Self::user_permissions_cache_key(&user_uuid, role);
 
         // Try cache first
-        if let Ok(Some(cached)) = self.cache_manager.get::<Vec<String>>(&cache_key).await {
-            return Ok(cached);
+        if let Ok(Some(cached)) = self.cache_manager.get::<MergedPermissions>(&cache_key).await {
+            return Ok(cached.permissions);
         }
 
         // Load schemes and merge permissions
@@ -108,11 +123,10 @@ impl PermissionSchemeService {
 
         // Cache the merged permissions
         let ttl = self.cache_ttl;
-        if let Err(e) = self
-            .cache_manager
-            .set(&cache_key, &merged_permissions, ttl)
-            .await
-        {
+        let cached = MergedPermissions {
+            permissions: merged_permissions.clone(),
+        };
+        if let Err(e) = self.cache_manager.set(&cache_key, &cached, ttl).await {
             log::warn!("Failed to cache merged permissions for user {user_uuid}: {e}");
         }
 
@@ -138,8 +152,8 @@ impl PermissionSchemeService {
         let cache_key = Self::api_key_permissions_cache_key(&api_key_uuid);
 
         // Try cache first
-        if let Ok(Some(cached)) = self.cache_manager.get::<Vec<String>>(&cache_key).await {
-            return Ok(cached);
+        if let Ok(Some(cached)) = self.cache_manager.get::<MergedPermissions>(&cache_key).await {
+            return Ok(cached.permissions);
         }
 
         // Load schemes and merge permissions from all roles
@@ -181,11 +195,10 @@ impl PermissionSchemeService {
 
         // Cache the merged permissions
         let ttl = self.cache_ttl;
-        if let Err(e) = self
-            .cache_manager
-            .set(&cache_key, &merged_permissions, ttl)
-            .await
-        {
+        let cached = MergedPermissions {
+            permissions: merged_permissions.clone(),
+        };
+        if let Err(e) = self.cache_manager.set(&cache_key, &cached, ttl).await {
             log::warn!("Failed to cache merged permissions for API key {api_key_uuid}: {e}");
         }
 
@@ -195,20 +208,44 @@ impl PermissionSchemeService {
     /// Invalidate cached permissions for a user (all roles)
     ///
     /// This invalidates both the schemes cache and any cached merged permissions.
-    /// Since we don't know all roles, we invalidate the schemes cache which will
-    /// cause permissions to be recalculated on next access.
+    /// It queries the user's schemes to find all roles and invalidates merged permissions
+    /// for those roles.
     ///
     /// # Arguments
     /// * `user_uuid` - User UUID
     pub async fn invalidate_user_permissions_cache(&self, user_uuid: &Uuid) {
-        // Invalidate schemes cache - this will cause permissions to be recalculated
+        use r_data_core_persistence::AdminUserRepository;
+
+        // Invalidate schemes cache
         let cache_key = Self::user_schemes_cache_key(user_uuid);
         if let Err(e) = self.cache_manager.delete(&cache_key).await {
             log::warn!("Failed to invalidate user schemes cache {user_uuid}: {e}");
         }
-        // Note: We can't invalidate merged permissions cache for all roles since we don't know them.
-        // The merged permissions will be recalculated when get_merged_permissions_for_user is called
-        // because it will reload schemes (cache miss) and recalculate.
+
+        // Get user's schemes from DB to find all roles, then invalidate merged permissions for those roles
+        let user_repo = AdminUserRepository::new(Arc::new(self.pool.clone()));
+        if let Ok(scheme_uuids) = user_repo.get_user_permission_schemes(*user_uuid).await {
+            // Load schemes to get all roles
+            // Ignore errors when loading schemes - we're just trying to find roles to invalidate
+            let mut roles = std::collections::HashSet::new();
+            for scheme_uuid in scheme_uuids {
+                if let Ok(Some(scheme)) = self.get_scheme(scheme_uuid).await {
+                    roles.extend(scheme.role_permissions.keys().cloned());
+                }
+                // Scheme not found or error loading - skip it
+                // This can happen if scheme was deleted or there's a temporary error
+            }
+
+            // Invalidate merged permissions cache for all roles found
+            for role in roles {
+                let merged_cache_key = Self::user_permissions_cache_key(user_uuid, &role);
+                if let Err(e) = self.cache_manager.delete(&merged_cache_key).await {
+                    log::warn!(
+                        "Failed to invalidate merged permissions cache for user {user_uuid} role {role}: {e}"
+                    );
+                }
+            }
+        }
     }
 
     /// Invalidate cached permissions for an API key
@@ -225,6 +262,42 @@ impl PermissionSchemeService {
         let schemes_cache_key = Self::api_key_schemes_cache_key(api_key_uuid);
         if let Err(e) = self.cache_manager.delete(&schemes_cache_key).await {
             log::warn!("Failed to invalidate API key schemes cache {api_key_uuid}: {e}");
+        }
+    }
+
+    /// Invalidate all caches for users and API keys that reference a scheme
+    ///
+    /// This invalidates scheme caches, user scheme caches, API key scheme caches,
+    /// and all merged permissions caches for affected users/API keys.
+    ///
+    /// # Arguments
+    /// * `scheme_uuid` - Scheme UUID
+    async fn invalidate_all_caches_for_scheme(&self, scheme_uuid: Uuid) {
+        use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
+
+        // Invalidate scheme cache
+        let scheme_cache_key = Self::cache_key(&scheme_uuid);
+        if let Err(e) = self.cache_manager.delete(&scheme_cache_key).await {
+            log::warn!("Failed to invalidate scheme cache {scheme_uuid}: {e}");
+        }
+
+        // Find all users with this scheme
+        let user_repo = AdminUserRepository::new(Arc::new(self.pool.clone()));
+        if let Ok(user_uuids) = user_repo.get_users_by_permission_scheme(scheme_uuid).await {
+            for user_uuid in user_uuids {
+                self.invalidate_user_permissions_cache(&user_uuid).await;
+            }
+        }
+
+        // Find all API keys with this scheme
+        let api_key_repo = ApiKeyRepository::new(Arc::new(self.pool.clone()));
+        if let Ok(api_key_uuids) = api_key_repo
+            .get_api_keys_by_permission_scheme(scheme_uuid)
+            .await
+        {
+            for api_key_uuid in api_key_uuids {
+                self.invalidate_api_key_permissions_cache(&api_key_uuid).await;
+            }
         }
     }
 
@@ -320,18 +393,8 @@ impl PermissionSchemeService {
     pub async fn update_scheme(&self, scheme: &PermissionScheme, updated_by: Uuid) -> Result<()> {
         self.repository.update(scheme, updated_by).await?;
 
-        // Invalidate scheme cache
-        let cache_key = Self::cache_key(&scheme.base.uuid);
-        if let Err(e) = self.cache_manager.delete(&cache_key).await {
-            log::warn!(
-                "Failed to invalidate cache for permission scheme {}: {}",
-                scheme.base.uuid,
-                e
-            );
-        }
-
-        // Note: User/API key permission caches will be invalidated when schemes are reassigned
-        // or when they're accessed next (cache miss will trigger reload)
+        // Invalidate all caches for this scheme and all users/API keys that reference it
+        self.invalidate_all_caches_for_scheme(scheme.base.uuid).await;
 
         Ok(())
     }
@@ -344,13 +407,10 @@ impl PermissionSchemeService {
     /// # Errors
     /// Returns an error if database delete fails
     pub async fn delete_scheme(&self, uuid: Uuid) -> Result<()> {
-        self.repository.delete(uuid).await?;
+        // Invalidate all caches before deleting (so reverse lookups still work)
+        self.invalidate_all_caches_for_scheme(uuid).await;
 
-        // Invalidate cache
-        let cache_key = Self::cache_key(&uuid);
-        if let Err(e) = self.cache_manager.delete(&cache_key).await {
-            log::warn!("Failed to invalidate cache for permission scheme {uuid}: {e}");
-        }
+        self.repository.delete(uuid).await?;
 
         Ok(())
     }
@@ -390,11 +450,11 @@ impl PermissionSchemeService {
         let cache_key = Self::user_schemes_cache_key(&user_uuid);
 
         // Try cache first
-        if let Ok(Some(cached)) = self.cache_manager.get::<Vec<Uuid>>(&cache_key).await {
+        if let Ok(Some(cached)) = self.cache_manager.get::<UserPermissionSchemes>(&cache_key).await {
             // Load schemes from cached UUIDs
             let mut schemes = Vec::new();
-            for uuid in cached {
-                if let Some(scheme) = self.get_scheme(uuid).await? {
+            for uuid in &cached.scheme_uuids {
+                if let Some(scheme) = self.get_scheme(*uuid).await? {
                     schemes.push(scheme);
                 }
             }
@@ -408,7 +468,10 @@ impl PermissionSchemeService {
 
         // Cache the UUIDs
         let ttl = self.cache_ttl;
-        if let Err(e) = self.cache_manager.set(&cache_key, &scheme_uuids, ttl).await {
+        let cached = UserPermissionSchemes {
+            scheme_uuids: scheme_uuids.clone(),
+        };
+        if let Err(e) = self.cache_manager.set(&cache_key, &cached, ttl).await {
             log::warn!("Failed to cache user permission schemes {user_uuid}: {e}");
         }
 
@@ -438,11 +501,11 @@ impl PermissionSchemeService {
         let cache_key = Self::api_key_schemes_cache_key(&api_key_uuid);
 
         // Try cache first
-        if let Ok(Some(cached)) = self.cache_manager.get::<Vec<Uuid>>(&cache_key).await {
+        if let Ok(Some(cached)) = self.cache_manager.get::<UserPermissionSchemes>(&cache_key).await {
             // Load schemes from cached UUIDs
             let mut schemes = Vec::new();
-            for uuid in cached {
-                if let Some(scheme) = self.get_scheme(uuid).await? {
+            for uuid in &cached.scheme_uuids {
+                if let Some(scheme) = self.get_scheme(*uuid).await? {
                     schemes.push(scheme);
                 }
             }
@@ -456,7 +519,10 @@ impl PermissionSchemeService {
 
         // Cache the UUIDs
         let ttl = self.cache_ttl;
-        if let Err(e) = self.cache_manager.set(&cache_key, &scheme_uuids, ttl).await {
+        let cached = UserPermissionSchemes {
+            scheme_uuids: scheme_uuids.clone(),
+        };
+        if let Err(e) = self.cache_manager.set(&cache_key, &cached, ttl).await {
             log::warn!("Failed to cache API key permission schemes {api_key_uuid}: {e}");
         }
 

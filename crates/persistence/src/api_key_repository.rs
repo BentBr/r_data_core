@@ -42,6 +42,28 @@ impl ApiKeyRepository {
         Ok(schemes)
     }
 
+    /// Get all API keys that have a specific permission scheme assigned
+    ///
+    /// # Arguments
+    /// * `scheme_uuid` - Permission scheme UUID
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
+    pub async fn get_api_keys_by_permission_scheme(&self, scheme_uuid: Uuid) -> Result<Vec<Uuid>> {
+        let api_keys = sqlx::query_scalar::<_, Uuid>(
+            "SELECT api_key_uuid FROM api_keys_permission_schemes WHERE scheme_uuid = $1",
+        )
+        .bind(scheme_uuid)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error getting API keys by permission scheme: {e:?}");
+            r_data_core_core::error::Error::Database(e)
+        })?;
+
+        Ok(api_keys)
+    }
+
     /// Assign a permission scheme to an API key
     ///
     /// # Errors
