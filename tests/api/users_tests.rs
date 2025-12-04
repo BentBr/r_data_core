@@ -812,20 +812,8 @@ async fn test_email_uniqueness() {
         "Creating user with duplicate email should fail"
     );
 
-    // Also test via API endpoint
-    let login_req = test::TestRequest::post()
-        .uri("/admin/api/v1/auth/login")
-        .set_json(serde_json::json!({
-            "username": "user1",
-            "password": "password123"
-        }))
-        .to_request();
-
-    let resp = test::call_service(&app, login_req).await;
-    assert_eq!(resp.status(), StatusCode::OK);
-
-    let body: serde_json::Value = test::read_body_json(resp).await;
-    let token = body["data"]["access_token"].as_str().unwrap().to_string();
+    // Also test via API endpoint - use super admin token
+    let token = get_auth_token(&app, &pool).await;
 
     // Try to create user with duplicate email via API
     let create_req = test::TestRequest::post()

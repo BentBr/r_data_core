@@ -93,8 +93,10 @@ pub fn generate_jwt(
         // SuperAdmin or super_admin flag (user or scheme) gets all permissions for all namespaces
         generate_all_permissions()
     } else if !schemes.is_empty() {
-        // Merge permissions from all schemes for user's role
-        merge_permissions_from_multiple_schemes(schemes, user.role.as_str())
+        // Merge permissions from all schemes for all roles
+        // Since roles are defined in schemes and users may have multiple roles across schemes,
+        // we merge permissions from all roles in all assigned schemes
+        merge_permissions_from_all_scheme_roles(schemes)
     } else {
         // No schemes means no permissions
         Vec::new()
@@ -123,32 +125,33 @@ pub fn generate_jwt(
     Ok(token)
 }
 
-/// Merge permissions from multiple schemes for a role
+/// Merge permissions from all roles in all assigned schemes
 ///
-/// This combines all permissions from all schemes for the given role,
+/// This combines all permissions from all roles in all schemes,
 /// converting them to permission strings and deduplicating.
+/// This is used when users don't have a specific role stored,
+/// so we grant them all permissions from all roles in their assigned schemes.
 ///
 /// # Arguments
 /// * `schemes` - Vector of permission schemes
-/// * `role` - Role name to get permissions for
 ///
 /// # Returns
 /// Vector of merged permission strings (deduplicated)
 #[must_use]
-fn merge_permissions_from_multiple_schemes(
-    schemes: &[PermissionScheme],
-    role: &str,
-) -> Vec<String> {
+fn merge_permissions_from_all_scheme_roles(schemes: &[PermissionScheme]) -> Vec<String> {
     use std::collections::HashSet;
 
     let mut permission_set = HashSet::new();
     let mut merged_permissions = Vec::new();
 
     for scheme in schemes {
-        let scheme_permissions = scheme.get_permissions_as_strings(role);
-        for perm in scheme_permissions {
-            if permission_set.insert(perm.clone()) {
-                merged_permissions.push(perm);
+        // Get all roles in this scheme
+        for role_name in scheme.role_permissions.keys() {
+            let scheme_permissions = scheme.get_permissions_as_strings(role_name);
+            for perm in scheme_permissions {
+                if permission_set.insert(perm.clone()) {
+                    merged_permissions.push(perm);
+                }
             }
         }
     }
