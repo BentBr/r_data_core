@@ -27,11 +27,13 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
     let ed_adapter = EntityDefinitionRepositoryAdapter::new(ed_repo);
     let ed_service = EntityDefinitionService::new_without_cache(Arc::new(ed_adapter));
 
-    let mut entity_def = EntityDefinition::default();
-    entity_def.entity_type = entity_type.clone();
-    entity_def.display_name = format!("{entity_type} Class");
-    entity_def.description = Some(format!("Test description for {entity_type}"));
-    entity_def.published = true;
+    let mut entity_def = EntityDefinition {
+        entity_type: entity_type.clone(),
+        display_name: format!("{entity_type} Class"),
+        description: Some(format!("Test description for {entity_type}")),
+        published: true,
+        ..Default::default()
+    };
 
     // Add required fields
     use r_data_core_core::field::{FieldDefinition, FieldType};

@@ -190,7 +190,7 @@ mod dynamic_entity_api_tests {
         ];
 
         for (url, description) in test_cases {
-            println!("Testing: {}", description);
+            println!("Testing: {description}");
 
             let req = test::TestRequest::get()
                 .uri(url)
@@ -219,11 +219,11 @@ mod dynamic_entity_api_tests {
 
                 // If it's a 400, it should be for a different reason (like invalid entity type)
                 if status.as_u16() == 400 {
-                    println!("Got 400 for {}: {}", description, body_str);
+                    println!("Got 400 for {description}: {body_str}");
                 }
             }
 
-            println!("✓ {} - Status: {}", description, status);
+            println!("✓ {description} - Status: {status}");
         }
     }
 
@@ -247,15 +247,11 @@ mod dynamic_entity_api_tests {
 
             assert!(
                 !body_str.contains("invalid type: string") && !body_str.contains("expected i64"),
-                "Query deserialization error still occurring: {}",
-                body_str
+                "Query deserialization error still occurring: {body_str}"
             );
         }
 
-        println!(
-            "✓ Pagination query parameters test passed - Status: {}",
-            status
-        );
+        println!("✓ Pagination query parameters test passed - Status: {status}");
     }
 
     #[actix_web::test]
@@ -294,7 +290,7 @@ mod dynamic_entity_api_tests {
                 );
             }
 
-            println!("✓ String to integer conversion test passed for {}", url);
+            println!("✓ String to integer conversion test passed for {url}");
         }
     }
 

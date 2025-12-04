@@ -141,7 +141,7 @@ docker compose down -v && docker compose up -d redis postgres && sleep 7 && carg
 
 update sqlx:
 ```bash
-cargo sqlx prepare --workspace
+cargo sqlx prepare --workspace -- --all-targets
 ```
 
 testing:

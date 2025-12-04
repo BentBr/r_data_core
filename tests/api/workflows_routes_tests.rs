@@ -581,7 +581,7 @@ async fn run_workflow_now_enqueues_job_to_redis_if_available() -> anyhow::Result
 
     // Call run_workflow_now endpoint
     let req = test::TestRequest::post()
-        .uri(&format!("/admin/api/v1/workflows/{}/run", wf_uuid))
+        .uri(&format!("/admin/api/v1/workflows/{wf_uuid}/run"))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
     let resp = test::call_service(&app, req).await;

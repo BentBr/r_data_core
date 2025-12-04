@@ -37,8 +37,8 @@ fn create_test_entity_definition_struct() -> EntityDefinition {
                 indexed: true,
                 filterable: true,
                 default_value: None,
-                validation: Default::default(),
-                ui_settings: Default::default(),
+                validation: r_data_core_core::field::FieldValidation::default(),
+                ui_settings: r_data_core_core::field::ui::UiSettings::default(),
                 constraints: HashMap::new(),
             },
             FieldDefinition {
@@ -50,8 +50,8 @@ fn create_test_entity_definition_struct() -> EntityDefinition {
                 indexed: false,
                 filterable: true,
                 default_value: None,
-                validation: Default::default(),
-                ui_settings: Default::default(),
+                validation: r_data_core_core::field::FieldValidation::default(),
+                ui_settings: r_data_core_core::field::ui::UiSettings::default(),
                 constraints: HashMap::new(),
             },
         ],
@@ -369,11 +369,13 @@ async fn test_field_name_case_handling() -> Result<()> {
     let entity_type = unique_entity_type("Customer");
 
     // Create entity definition with camelCase field names
-    let mut entity_def = EntityDefinition::default();
-    entity_def.entity_type = entity_type.clone();
-    entity_def.display_name = format!("{entity_type} Entity");
-    entity_def.published = true;
-    entity_def.created_by = Uuid::now_v7();
+    let mut entity_def = EntityDefinition {
+        entity_type: entity_type.clone(),
+        display_name: format!("{entity_type} Entity"),
+        published: true,
+        created_by: Uuid::now_v7(),
+        ..Default::default()
+    };
 
     // Add fields with camelCase names (like firstName, lastName)
     entity_def.fields = vec![
@@ -567,8 +569,7 @@ async fn test_field_name_case_handling() -> Result<()> {
 
     // Verify database still has lowercase columns
     let updated_row = sqlx::query(&format!(
-        "SELECT firstname, lastname FROM {} WHERE uuid = $1",
-        table_name
+        "SELECT firstname, lastname FROM {table_name} WHERE uuid = $1"
     ))
     .bind(uuid)
     .fetch_optional(&pool)

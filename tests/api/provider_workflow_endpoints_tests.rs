@@ -463,7 +463,7 @@ async fn test_provider_endpoint_stats() -> anyhow::Result<()> {
 
     // Test stats endpoint
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{}/stats", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}/stats"))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 

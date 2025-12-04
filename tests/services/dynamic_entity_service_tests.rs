@@ -56,14 +56,15 @@ impl MockEntityDefinitionService {
     ) -> Result<EntityDefinition> {
         if !self.entity_type_exists {
             return Err(r_data_core_core::error::Error::NotFound(format!(
-                "Class definition for entity type '{}' not found",
-                entity_type
+                "Class definition for entity type '{entity_type}' not found"
             )));
         }
 
-        let mut definition = EntityDefinition::default();
-        definition.entity_type = entity_type.to_string();
-        definition.published = self.entity_type_published;
+        let mut definition = EntityDefinition {
+            entity_type: entity_type.to_string(),
+            published: self.entity_type_published,
+            ..Default::default()
+        };
 
         // Add fields to the definition
         let required_field = FieldDefinition {
@@ -154,9 +155,11 @@ impl MockEntityDefinitionService {
             ));
         }
 
-        let mut definition = EntityDefinition::default();
-        definition.entity_type = "test_entity".to_string();
-        definition.published = self.entity_type_published;
+        let mut definition = EntityDefinition {
+            entity_type: "test_entity".to_string(),
+            published: self.entity_type_published,
+            ..Default::default()
+        };
 
         Ok(definition)
     }
@@ -218,8 +221,7 @@ impl TestService {
 
         if !entity_def.published {
             return Err(r_data_core_core::error::Error::NotFound(format!(
-                "Entity type '{}' not found or not published",
-                entity_type
+                "Entity type '{entity_type}' not found or not published"
             )));
         }
 

@@ -24,11 +24,13 @@ mod dynamic_entity_api_tests {
     // Helper to create a test entity definition for user entity
     async fn create_user_entity_definition(db_pool: &sqlx::PgPool) -> Result<Uuid> {
         // Create a simple entity definition for testing
-        let mut entity_def = EntityDefinition::default();
-        entity_def.entity_type = "user".to_string();
-        entity_def.display_name = "Test User".to_string();
-        entity_def.description = Some("Test description for User".to_string());
-        entity_def.published = true;
+        let mut entity_def = EntityDefinition {
+            entity_type: "user".to_string(),
+            display_name: "Test User".to_string(),
+            description: Some("Test description for User".to_string()),
+            published: true,
+            ..Default::default()
+        };
 
         // Add fields to the entity definition
         let mut fields = Vec::new();
@@ -308,8 +310,7 @@ mod dynamic_entity_api_tests {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
             panic!(
-                "API call failed with status: {}. Response body: {}",
-                status, body_str
+                "API call failed with status: {status}. Response body: {body_str}"
             );
         }
 
@@ -372,8 +373,7 @@ mod dynamic_entity_api_tests {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
             panic!(
-                "API call failed with status: {}. Response body: {}",
-                status, body_str
+                "API call failed with status: {status}. Response body: {body_str}"
             );
         }
 
@@ -403,8 +403,7 @@ mod dynamic_entity_api_tests {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
             panic!(
-                "API call failed with status: {}. Response body: {}",
-                status, body_str
+                "API call failed with status: {status}. Response body: {body_str}"
             );
         }
 
@@ -451,8 +450,7 @@ mod dynamic_entity_api_tests {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
             panic!(
-                "API call failed with status: {}. Response body: {}",
-                status, body_str
+                "API call failed with status: {status}. Response body: {body_str}"
             );
         }
 
@@ -487,8 +485,7 @@ mod dynamic_entity_api_tests {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
             panic!(
-                "API call failed with status: {}. Response body: {}",
-                status, body_str
+                "API call failed with status: {status}. Response body: {body_str}"
             );
         }
 
@@ -546,8 +543,7 @@ mod dynamic_entity_api_tests {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
             panic!(
-                "API call failed with status: {}. Response body: {}",
-                status, body_str
+                "API call failed with status: {status}. Response body: {body_str}"
             );
         }
 

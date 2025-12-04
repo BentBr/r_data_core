@@ -24,11 +24,13 @@ mod filter_entities_tests {
     // Helper to create a test entity definition
     async fn create_test_entity_definition(db_pool: &PgPool, entity_type: &str) -> Result<Uuid> {
         // Create a simple entity definition for testing
-        let mut entity_def = EntityDefinition::default();
-        entity_def.entity_type = entity_type.to_string();
-        entity_def.display_name = format!("Test {entity_type}");
-        entity_def.description = Some(format!("Test description for {entity_type}"));
-        entity_def.published = true;
+        let mut entity_def = EntityDefinition {
+            entity_type: entity_type.to_string(),
+            display_name: format!("Test {entity_type}"),
+            description: Some(format!("Test description for {entity_type}")),
+            published: true,
+            ..Default::default()
+        };
 
         // Add fields to the entity definition
         let mut fields = Vec::new();
