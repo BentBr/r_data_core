@@ -7,6 +7,9 @@ use sqlx::PgPool;
 use std::sync::Arc;
 
 /// Create a test queue client asynchronously
+///
+/// # Panics
+/// Panics if `ApalisRedisQueue::from_parts` fails
 #[must_use]
 pub async fn test_queue_client_async() -> Arc<ApalisRedisQueue> {
     // Use env if provided, otherwise fall back to localhost defaults.
@@ -24,6 +27,9 @@ pub async fn test_queue_client_async() -> Arc<ApalisRedisQueue> {
 }
 
 /// Create a test queue client synchronously (for blocking contexts)
+///
+/// # Panics
+/// Panics if runtime creation or queue construction fails
 #[must_use]
 pub fn test_queue_client() -> Arc<ApalisRedisQueue> {
     // For sync contexts, use spawn_blocking to avoid blocking the async runtime

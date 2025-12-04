@@ -142,6 +142,7 @@ pub fn wrap_api_state<T: ApiStateTrait + 'static>(state: T) -> ApiStateWrapper {
     ApiStateWrapper::new(state)
 }
 
+#[allow(clippy::struct_excessive_bools)] // Configuration flags are intentionally separate
 pub struct ApiConfiguration {
     pub enable_auth: bool,
     pub enable_admin: bool,

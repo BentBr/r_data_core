@@ -17,6 +17,9 @@ static ENTITY_TYPE_COUNTER: Mutex<u32> = Mutex::new(0);
 static DB_READY: AtomicBool = AtomicBool::new(false);
 
 /// Generate a unique entity type name to avoid conflicts between tests
+///
+/// # Panics
+/// May panic if the mutex is poisoned
 #[must_use]
 pub fn unique_entity_type(base: &str) -> String {
     let mut counter = ENTITY_TYPE_COUNTER
@@ -36,10 +39,14 @@ pub fn random_string(prefix: &str) -> String {
 }
 
 /// Set up a test database connection
+///
+/// # Panics
+/// Panics if `DATABASE_URL` is not set in `.env.test` or if database connection fails
 #[must_use]
+#[allow(clippy::await_holding_lock, clippy::future_not_send)] // MutexGuard is intentionally held across await for test isolation
 pub async fn setup_test_db() -> PgPool {
     // Get global lock for the entire test run
-    let _guard = GLOBAL_TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = GLOBAL_TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
     info!("Setting up test database with global lock acquired");
 
@@ -61,7 +68,14 @@ pub async fn setup_test_db() -> PgPool {
     // Check if we need to initialize the database
     let db_initialized = DB_READY.load(std::sync::atomic::Ordering::Acquire);
 
-    if !db_initialized {
+    // Invert condition to avoid unnecessary_not lint
+    if db_initialized {
+        // If database is already initialized, just clear the data
+        if let Err(e) = fast_clear_test_db(&pool).await {
+            warn!("Warning: Failed to clear test database: {e}");
+        }
+    } else {
+        info!("First-time database initialization");
         info!("First-time database initialization");
 
         // First clean the database if it exists already
@@ -86,11 +100,6 @@ pub async fn setup_test_db() -> PgPool {
 
         // Set the initialization flag to avoid redoing this work
         DB_READY.store(true, std::sync::atomic::Ordering::Release);
-    } else {
-        // If database is already initialized, just clear the data
-        if let Err(e) = fast_clear_test_db(&pool).await {
-            warn!("Warning: Failed to clear test database: {e}");
-        }
     }
 
     // Return the dedicated pool for this test
@@ -98,6 +107,9 @@ pub async fn setup_test_db() -> PgPool {
 }
 
 /// Clear all data from the database - optimized version for faster test runs
+///
+/// # Errors
+/// Returns an error if database operations fail
 pub async fn fast_clear_test_db(pool: &PgPool) -> Result<()> {
     debug!("Fast clearing test database data");
 
@@ -110,13 +122,13 @@ pub async fn fast_clear_test_db(pool: &PgPool) -> Result<()> {
         .await?;
 
     // Get the main entity tables
-    let mut tables = Vec::new();
-
     // Clear these key tables but NOT entity_definitions to avoid race conditions
-    tables.push("entities_registry".to_string());
-    tables.push("admin_users".to_string());
-    tables.push("api_keys".to_string());
-    tables.push("refresh_tokens".to_string());
+    let mut tables = vec![
+        "entities_registry".to_string(),
+        "admin_users".to_string(),
+        "api_keys".to_string(),
+        "refresh_tokens".to_string(),
+    ];
 
     // Also find all entity_* tables
     let entity_tables: Vec<String> = sqlx::query(
@@ -156,6 +168,9 @@ pub async fn fast_clear_test_db(pool: &PgPool) -> Result<()> {
 }
 
 /// Clear entity definitions separately when needed
+///
+/// # Errors
+/// Returns an error if database operations fail
 pub async fn clear_entity_definitions(pool: &PgPool) -> Result<()> {
     debug!("Clearing entity definitions");
 
@@ -168,6 +183,9 @@ pub async fn clear_entity_definitions(pool: &PgPool) -> Result<()> {
 }
 
 /// Clear all data from the database - original thorough version
+///
+/// # Errors
+/// Returns an error if database operations fail
 pub async fn clear_test_db(pool: &PgPool) -> Result<()> {
     info!("Clearing test database data");
 
@@ -216,6 +234,9 @@ pub async fn clear_test_db(pool: &PgPool) -> Result<()> {
 }
 
 /// Clear only refresh tokens table
+///
+/// # Errors
+/// Returns an error if database operations fail
 pub async fn clear_refresh_tokens(pool: &PgPool) -> Result<()> {
     sqlx::query!("DELETE FROM refresh_tokens")
         .execute(pool)

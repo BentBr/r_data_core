@@ -4,7 +4,7 @@ pub mod cron;
 pub mod crud;
 pub mod list;
 pub mod runs;
-mod utils;
+pub mod utils;
 pub mod versions;
 
 use actix_web::web;
