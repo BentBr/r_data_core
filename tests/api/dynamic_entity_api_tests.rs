@@ -200,8 +200,7 @@ mod dynamic_entity_api_tests {
                 admin_uuid,
                 30,
             )
-            .await
-            .map_err(r_data_core_core::error::Error::from)?;
+            .await?;
 
         Ok(key_value)
     }
@@ -434,7 +433,7 @@ mod dynamic_entity_api_tests {
         // Check searched results
         let users = body["data"].as_array().unwrap();
         assert!(
-            users.len() >= 1,
+            !users.is_empty(),
             "Should find at least one user matching search"
         );
 

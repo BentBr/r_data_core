@@ -102,7 +102,7 @@ fn create_test_dynamic_entity_with_uuid_and_path(
     }
 }
 
-/// Test query_by_parent method
+/// Test `query_by_parent` method
 #[tokio::test]
 async fn test_query_by_parent() -> Result<()> {
     use r_data_core_persistence::EntityDefinitionRepository;
@@ -170,7 +170,7 @@ async fn test_query_by_parent() -> Result<()> {
     Ok(())
 }
 
-/// Test query_by_path method
+/// Test `query_by_path` method
 #[tokio::test]
 async fn test_query_by_path() -> Result<()> {
     use r_data_core_persistence::EntityDefinitionRepository;
@@ -259,7 +259,7 @@ async fn test_query_by_path() -> Result<()> {
     Ok(())
 }
 
-/// Test has_children method
+/// Test `has_children` method
 #[tokio::test]
 async fn test_has_children() -> Result<()> {
     use r_data_core_persistence::EntityDefinitionRepository;

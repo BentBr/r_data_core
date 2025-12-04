@@ -43,7 +43,7 @@ struct MockEntityDefinitionService {
 }
 
 impl MockEntityDefinitionService {
-    fn new(entity_type_exists: bool, entity_type_published: bool) -> Self {
+    const fn new(entity_type_exists: bool, entity_type_published: bool) -> Self {
         Self {
             entity_type_exists,
             entity_type_published,

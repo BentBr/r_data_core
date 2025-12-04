@@ -268,7 +268,7 @@ mod tests {
                                         if let Ok(key_uuid) = uuid::Uuid::parse_str(&key_uuid_str) {
                                             // Actually revoke the key in the database
                                             match repo_clone.revoke(key_uuid).await {
-                                                Ok(_) => {
+                                                Ok(()) => {
                                                     HttpResponse::Ok().json(serde_json::json!({
                                                         "status": "success",
                                                         "message": "API key revoked"

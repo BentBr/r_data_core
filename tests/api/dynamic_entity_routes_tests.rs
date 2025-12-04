@@ -211,10 +211,7 @@ mod dynamic_entity_api_tests {
                 assert!(
                     !body_str.contains("invalid type: string")
                         && !body_str.contains("expected i64"),
-                    "Query deserialization error occurred for {}: {} - Body: {}",
-                    description,
-                    url,
-                    body_str
+                    "Query deserialization error occurred for {description}: {url} - Body: {body_str}"
                 );
 
                 // If it's a 400, it should be for a different reason (like invalid entity type)
@@ -284,9 +281,7 @@ mod dynamic_entity_api_tests {
                 assert!(
                     !body_str.contains("invalid type: string")
                         && !body_str.contains("expected i64"),
-                    "String to integer conversion failed for {}: {}",
-                    url,
-                    body_str
+                    "String to integer conversion failed for {url}: {body_str}"
                 );
             }
 
@@ -397,14 +392,11 @@ mod dynamic_entity_api_tests {
                 assert!(
                     !body_str.contains("invalid type: string")
                         && !body_str.contains("expected i64"),
-                    "Include parameter test failed for {}: {} - Body: {}",
-                    description,
-                    url,
-                    body_str
+                    "Include parameter test failed for {description}: {url} - Body: {body_str}"
                 );
             }
 
-            println!("✓ Include parameter test passed for {}", description);
+            println!("✓ Include parameter test passed for {description}");
         }
     }
 }

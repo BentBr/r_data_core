@@ -440,14 +440,14 @@ async fn test_create_entity_definition_from_json_examples() {
         std::fs::read_to_string(".example_files/json_examples/order_entity_definition.json")
             .expect("Failed to read order JSON example");
 
-    let examples = vec![product_json, user_json, order_json];
-    let example_names = vec!["product", "user", "order"];
+    let examples = [product_json, user_json, order_json];
+    let example_names = ["product", "user", "order"];
     let mut created_uuids = Vec::new();
 
     for (i, json_str) in examples.iter().enumerate() {
         // Parse JSON to EntityDefinition
         let name = &example_names[i];
-        let mut definition: EntityDefinition = serde_json::from_str(&json_str).unwrap_or_else(|_| {
+        let mut definition: EntityDefinition = serde_json::from_str(json_str).unwrap_or_else(|_| {
             panic!("Failed to parse {name} JSON example")
         });
 

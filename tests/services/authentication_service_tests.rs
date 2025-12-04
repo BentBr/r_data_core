@@ -337,7 +337,7 @@ mod tests {
             .with(eq(special_key))
             .returning(|_| Ok(None));
 
-        let result = mock_repo.find_api_key_for_auth(&special_key).await?;
+        let result = mock_repo.find_api_key_for_auth(special_key).await?;
         assert!(result.is_none());
 
         Ok(())

@@ -246,13 +246,11 @@ async fn test_create_entity_definition_duplicate_entity_type() -> Result<()> {
         Err(r_data_core_core::error::Error::ClassAlreadyExists(e)) => {
             assert!(
                 e.contains("already exists"),
-                "Error should mention duplicate entity type: {}",
-                e
+                "Error should mention duplicate entity type: {e}"
             );
         }
         _ => panic!(
-            "Expected validation error for duplicate entity type, got: {:?}",
-            result
+            "Expected validation error for duplicate entity type, got: {result:?}"
         ),
     }
 
@@ -276,8 +274,7 @@ async fn test_create_entity_definition_invalid_entity_type() -> Result<()> {
         Err(r_data_core_core::error::Error::Validation(e)) => {
             assert!(
                 e.contains("must start with a letter") && e.contains("Entity type"),
-                "Error should mention invalid entity type format: {}",
-                e
+                "Error should mention invalid entity type format: {e}"
             );
         }
         _ => panic!("Expected validation error for invalid entity type"),

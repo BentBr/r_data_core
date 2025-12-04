@@ -229,18 +229,15 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
     for (idx, result) in results.iter().enumerate() {
         assert_eq!(
             result.0, first_result.0,
-            "Run {}: Staged items count differs from first run",
-            idx
+            "Run {idx}: Staged items count differs from first run"
         );
         assert_eq!(
             result.1, first_result.1,
-            "Run {}: Processed items count differs from first run",
-            idx
+            "Run {idx}: Processed items count differs from first run"
         );
         assert_eq!(
             result.2, first_result.2,
-            "Run {}: Failed items count differs from first run",
-            idx
+            "Run {idx}: Failed items count differs from first run"
         );
         assert_eq!(
             result.3, first_result.3,

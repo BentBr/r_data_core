@@ -216,9 +216,8 @@ mod filter_entities_tests {
         // Verify all retrieved entities are active
         for entity in &active_entities {
             let active_value = entity.field_data.get("active").unwrap();
-            assert_eq!(
+            assert!(
                 active_value.as_bool().unwrap(),
-                true,
                 "All filtered entities should be active"
             );
         }
@@ -291,7 +290,7 @@ mod filter_entities_tests {
 
         // Should find entities with "Test Entity 1" in the name (1, 10-19)
         assert!(
-            search_result.len() >= 1,
+            !search_result.is_empty(),
             "Should find at least one entity with search term"
         );
 

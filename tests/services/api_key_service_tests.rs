@@ -219,7 +219,7 @@ async fn test_revoke_nonexistent_key() -> Result<()> {
         Err(r_data_core_core::error::Error::NotFound(msg)) => {
             assert_eq!(msg, "API key not found");
         }
-        _ => panic!("Expected NotFound error, got: {:?}", result),
+        _ => panic!("Expected NotFound error, got: {result:?}"),
     }
 
     Ok(())
@@ -288,7 +288,7 @@ async fn test_negative_expiration_days() -> Result<()> {
         Err(r_data_core_core::error::Error::Validation(msg)) => {
             assert_eq!(msg, "Expiration days cannot be negative");
         }
-        _ => panic!("Expected Validation error, got: {:?}", result),
+        _ => panic!("Expected Validation error, got: {result:?}"),
     }
 
     Ok(())
@@ -367,7 +367,7 @@ async fn test_reassign_nonexistent_key() -> Result<()> {
                 "Expected 'not found' in error message"
             );
         }
-        _ => panic!("Expected NotFound error, got: {:?}", result),
+        _ => panic!("Expected NotFound error, got: {result:?}"),
     }
 
     Ok(())
