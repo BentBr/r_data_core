@@ -488,8 +488,15 @@ async fn test_super_admin_flag_on_scheme_grants_all_permissions() {
         .unwrap();
 
     // Verify the scheme was created with super_admin flag
-    let created_scheme = scheme_service.get_scheme(scheme_uuid).await.unwrap().unwrap();
-    assert!(created_scheme.super_admin, "Scheme should have super_admin flag set to true");
+    let created_scheme = scheme_service
+        .get_scheme(scheme_uuid)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        created_scheme.super_admin,
+        "Scheme should have super_admin flag set to true"
+    );
 
     // Create a regular user (not super_admin) and assign the super admin scheme
     let repo = AdminUserRepository::new(Arc::new(pool.clone()));
@@ -506,8 +513,15 @@ async fn test_super_admin_flag_on_scheme_grants_all_permissions() {
     let regular_user_uuid = repo.create_admin_user(&params).await.unwrap();
 
     // Verify user is not super_admin
-    let user = repo.find_by_uuid(&regular_user_uuid).await.unwrap().unwrap();
-    assert!(!user.super_admin, "User should not be super_admin initially");
+    let user = repo
+        .find_by_uuid(&regular_user_uuid)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        !user.super_admin,
+        "User should not be super_admin initially"
+    );
 
     // Assign the super admin scheme to the user
     repo.update_user_schemes(regular_user_uuid, &[scheme_uuid])
@@ -532,19 +546,21 @@ async fn test_super_admin_flag_on_scheme_grants_all_permissions() {
     // Decode JWT to verify is_super_admin is set
     use jsonwebtoken::{decode, DecodingKey, Validation};
     use r_data_core_api::jwt::AuthUserClaims;
-    use r_data_core_core::config::ApiConfig;
-    
-    let api_config = ApiConfig::from_env().unwrap();
+
+    let jwt_secret = "test_secret";
     let validation = Validation::default();
     let token_data = decode::<AuthUserClaims>(
         &token,
-        &DecodingKey::from_secret(api_config.jwt_secret.as_bytes()),
+        &DecodingKey::from_secret(jwt_secret.as_bytes()),
         &validation,
     )
     .unwrap();
-    
-    // User with super_admin scheme should have is_super_admin = true in JWT
-    assert!(token_data.claims.is_super_admin, "JWT should have is_super_admin = true when user has super_admin scheme");
+
+    // User with a super_admin scheme should have is_super_admin = true in JWT
+    assert!(
+        token_data.claims.is_super_admin,
+        "JWT should have is_super_admin = true when user has super_admin scheme"
+    );
 
     // Get permissions endpoint should also reflect super_admin status
     let req = test::TestRequest::get()
@@ -556,9 +572,15 @@ async fn test_super_admin_flag_on_scheme_grants_all_permissions() {
     assert_eq!(resp.status(), StatusCode::OK);
 
     let body: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(body["data"]["is_super_admin"], true, "Permissions endpoint should return is_super_admin = true");
+    assert_eq!(
+        body["data"]["is_super_admin"], true,
+        "Permissions endpoint should return is_super_admin = true"
+    );
     let allowed_routes = body["data"]["allowed_routes"].as_array().unwrap();
-    assert!(allowed_routes.len() >= 7, "Super admin should have access to all defined routes");
+    assert!(
+        allowed_routes.len() >= 7,
+        "Super admin should have access to all defined routes"
+    );
 }
 
 #[serial]

@@ -279,7 +279,6 @@
 
 <script setup lang="ts">
     import { ref, computed, onMounted, watch } from 'vue'
-    import { usePagination } from '@/composables/usePagination'
     import { usePermissionSchemes } from '@/composables/usePermissionSchemes'
     import type {
         PermissionScheme,
