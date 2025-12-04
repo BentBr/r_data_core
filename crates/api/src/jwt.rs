@@ -23,7 +23,7 @@ pub struct AuthUserClaims {
     pub name: String,
     /// Email
     pub email: String,
-    /// User role (SuperAdmin or custom role name)
+    /// User role (`SuperAdmin` or custom role name)
     pub role: String,
     /// Super admin flag - overrides all permissions
     pub is_super_admin: bool,
@@ -40,7 +40,7 @@ pub struct AuthUserClaims {
 /// # Arguments
 /// * `user` - Admin user
 /// * `config` - API configuration containing JWT secret and expiration
-/// * `schemes` - Vector of permission schemes (if empty, user has no permissions except SuperAdmin/super_admin)
+/// * `schemes` - Vector of permission schemes (if empty, user has no permissions except `SuperAdmin`/`super_admin`)
 ///
 /// # Errors
 /// Returns an error if token generation fails
@@ -58,7 +58,7 @@ pub fn generate_access_token(
 /// * `user` - Admin user
 /// * `config` - API configuration containing JWT secret
 /// * `expiration_seconds` - Token expiration in seconds (overrides config if provided)
-/// * `schemes` - Vector of permission schemes (if empty, user has no permissions except SuperAdmin/super_admin)
+/// * `schemes` - Vector of permission schemes (if empty, user has no permissions except `SuperAdmin`/`super_admin`)
 ///
 /// # Errors
 /// Returns an error if token generation fails
@@ -152,7 +152,7 @@ fn merge_permissions_from_multiple_schemes(
     merged_permissions
 }
 
-/// Generate all permissions for SuperAdmin
+/// Generate all permissions for `SuperAdmin`
 ///
 /// # Returns
 /// Vector of all permission strings for all namespaces

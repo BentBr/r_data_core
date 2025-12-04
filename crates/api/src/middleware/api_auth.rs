@@ -79,14 +79,13 @@ where
         let request = req.request().clone();
 
         // Get the API state before moving into the future
-        let state_result = req.app_data::<web::Data<ApiStateWrapper>>().cloned();
+        let state_result = req.app_data::<web::Data<ApiStateWrapper>>().map(web::Data::clone);
         let service_clone = service.clone();
 
         Box::pin(async move {
             // Handle state extraction
-            let _state = match state_result {
-                Some(state) => state,
-                None => return Err(ErrorUnauthorized("Missing application state")),
+            let Some(_state) = state_result else {
+                return Err(ErrorUnauthorized("Missing application state"));
             };
 
             // Try API key authentication

@@ -66,7 +66,7 @@ pub async fn get_workflow_data(
     }
 
     // Validate pre-shared key if configured (sets extension for CombinedRequiredAuth)
-    if let Err(e) = validate_provider_auth(&req, &workflow.config, &**state).await {
+    if let Err(e) = validate_provider_auth(&req, &workflow.config, &**state) {
         log::debug!("Provider pre-shared key auth failed: {e}");
         return HttpResponse::Unauthorized().json(json!({"error": "Authentication required"}));
     }
@@ -218,13 +218,11 @@ pub async fn get_workflow_data(
             let handler =
                 r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new();
             match handler.serialize(&all_data, &format.options) {
-                Ok(bytes) => {
-                    return HttpResponse::Ok().content_type("text/csv").body(bytes);
-                }
+                Ok(bytes) => HttpResponse::Ok().content_type("text/csv").body(bytes),
                 Err(e) => {
                     log::error!("Failed to serialize CSV: {e}");
-                    return HttpResponse::InternalServerError()
-                        .json(json!({"error": "Failed to serialize data"}));
+                    HttpResponse::InternalServerError()
+                        .json(json!({"error": "Failed to serialize data"}))
                 }
             }
         }
@@ -232,21 +230,17 @@ pub async fn get_workflow_data(
             let handler =
                 r_data_core_workflow::data::adapters::format::json::JsonFormatHandler::new();
             match handler.serialize(&all_data, &format.options) {
-                Ok(bytes) => {
-                    return HttpResponse::Ok()
-                        .content_type("application/json")
-                        .body(bytes);
-                }
+                Ok(bytes) => HttpResponse::Ok()
+                    .content_type("application/json")
+                    .body(bytes),
                 Err(e) => {
                     log::error!("Failed to serialize JSON: {e}");
-                    return HttpResponse::InternalServerError()
-                        .json(json!({"error": "Failed to serialize data"}));
+                    HttpResponse::InternalServerError()
+                        .json(json!({"error": "Failed to serialize data"}))
                 }
             }
         }
-        _ => {
-            return HttpResponse::NotImplemented().json(json!({"error": "Format not supported"}));
-        }
+        _ => HttpResponse::NotImplemented().json(json!({"error": "Format not supported"})),
     }
 }
 
@@ -443,8 +437,9 @@ pub async fn post_workflow_ingest(
 }
 
 /// Validate provider authentication (JWT, API key, or pre-shared key)
-/// Sets request extension for pre-shared keys so CombinedRequiredAuth can pick it up
-async fn validate_provider_auth(
+/// Sets request extension for pre-shared keys so `CombinedRequiredAuth` can pick it up
+#[allow(clippy::unused_async)] // May need async in future
+fn validate_provider_auth(
     req: &HttpRequest,
     config: &serde_json::Value,
     _state: &dyn ApiStateTrait,

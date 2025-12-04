@@ -15,6 +15,9 @@ use r_data_core_core::admin_user::ApiKey;
 use std::result::Result as StdResult;
 
 /// Extract and validate JWT token from request headers
+///
+/// # Errors
+/// Returns an error if JWT validation fails
 pub async fn extract_and_validate_jwt(
     req: &HttpRequest,
     jwt_secret: &str,
@@ -59,6 +62,9 @@ pub async fn extract_and_validate_jwt(
 /// Extract and validate API key from request headers
 /// This function uses `ApiKeyService` with caching support
 /// `ApiState` should always be available in normal operation
+///
+/// # Errors
+/// Returns an error if API key validation fails or if the API state is missing
 pub async fn extract_and_validate_api_key(
     req: &HttpRequest,
 ) -> StdResult<Option<(ApiKey, Uuid)>, ActixError> {

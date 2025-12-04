@@ -6,6 +6,10 @@ use uuid::Uuid;
 use crate::models::HealthData;
 
 /// Common health check handler for both admin and public API routes
+///
+/// # Panics
+/// This function may panic if UUID generation fails or date formatting fails
+#[allow(clippy::unused_async)] // Required by Actix Web handler signature
 pub async fn health_check_handler(req: HttpRequest) -> impl Responder {
     // Generate UUID for this health check
     let health_id = Uuid::now_v7();

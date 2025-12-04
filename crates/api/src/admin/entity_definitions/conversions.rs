@@ -34,7 +34,7 @@ pub fn entity_definition_to_schema_model(def: &EntityDefinition) -> EntityDefini
 /// Convert `FieldDefinition` to API schema model
 pub fn field_definition_to_schema_model(field: &FieldDefinition) -> FieldDefinitionSchema {
     let field_type_clone = field.field_type.clone();
-    let field_type = field_type_to_schema(field_type_clone.clone());
+    let field_type = field_type_to_schema(&field_type_clone);
 
     let constraints = match field_type_clone {
         FieldType::String | FieldType::Text | FieldType::Wysiwyg => {
@@ -46,14 +46,14 @@ pub fn field_definition_to_schema_model(field: &FieldDefinition) -> FieldDefinit
             })
         }
         FieldType::Integer => FieldConstraints::Integer(NumericConstraints {
-            min: field.validation.min_value.as_ref().and_then(|v| v.as_f64()),
-            max: field.validation.max_value.as_ref().and_then(|v| v.as_f64()),
+            min: field.validation.min_value.as_ref().and_then(serde_json::Value::as_f64),
+            max: field.validation.max_value.as_ref().and_then(serde_json::Value::as_f64),
             precision: None,
             positive_only: field.validation.positive_only,
         }),
         FieldType::Float => FieldConstraints::Float(NumericConstraints {
-            min: field.validation.min_value.as_ref().and_then(|v| v.as_f64()),
-            max: field.validation.max_value.as_ref().and_then(|v| v.as_f64()),
+            min: field.validation.min_value.as_ref().and_then(serde_json::Value::as_f64),
+            max: field.validation.max_value.as_ref().and_then(serde_json::Value::as_f64),
             precision: None,
             positive_only: field.validation.positive_only,
         }),
@@ -126,8 +126,8 @@ pub fn field_definition_to_schema_model(field: &FieldDefinition) -> FieldDefinit
 }
 
 /// Convert `FieldType` to `FieldTypeSchema`
-fn field_type_to_schema(field_type: FieldType) -> FieldTypeSchema {
-    match field_type {
+fn field_type_to_schema(field_type: &FieldType) -> FieldTypeSchema {
+    match *field_type {
         FieldType::String => FieldTypeSchema::String,
         FieldType::Text => FieldTypeSchema::Text,
         FieldType::Wysiwyg => FieldTypeSchema::Wysiwyg,

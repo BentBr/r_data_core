@@ -511,7 +511,7 @@ pub async fn assign_schemes_to_api_key(
     let repo = ApiKeyRepository::new(pool);
 
     // Verify API key exists
-    if let Ok(None) = repo.get_by_uuid(api_key_uuid).await {
+    if matches!(repo.get_by_uuid(api_key_uuid).await, Ok(None)) {
         return ApiResponse::<()>::not_found("API key not found");
     }
 

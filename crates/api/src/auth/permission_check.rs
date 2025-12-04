@@ -44,11 +44,10 @@ pub fn has_permission(
     // Build permission string to check
     let perm_str = format!("{permission_type}").to_lowercase();
     let namespace_str = namespace.as_str();
-    let permission_string = if let Some(p) = path {
-        format!("{namespace_str}:{p}:{perm_str}")
-    } else {
-        format!("{namespace_str}:{perm_str}")
-    };
+    let permission_string = path.map_or_else(
+        || format!("{namespace_str}:{perm_str}"),
+        |p| format!("{namespace_str}:{p}:{perm_str}"),
+    );
 
     // Check if user has the permission
     let has_perm = claims.permissions.iter().any(|p| {
@@ -102,6 +101,9 @@ pub fn has_permission(
 ///
 /// # Note
 /// API keys don't have roles, so permissions from all roles in assigned schemes are merged
+///
+/// # Errors
+/// Returns an error if the API key cannot be found or if there's a database error
 pub async fn has_permission_for_api_key(
     api_key_uuid: uuid::Uuid,
     namespace: &ResourceNamespace,
@@ -139,21 +141,15 @@ pub async fn has_permission_for_api_key(
                     if matches!(namespace, ResourceNamespace::Entities) {
                         if let Some(requested_path) = path {
                             // Check if path constraint allows this path
-                            let allowed = if let Some(constraints) = &permission.constraints {
-                                if let Some(path_value) = constraints.get("path") {
-                                    if let Some(allowed_path) = path_value.as_str() {
-                                        // Exact match or prefix match
-                                        requested_path == allowed_path
-                                            || requested_path.starts_with(allowed_path)
-                                    } else {
-                                        false
-                                    }
-                                } else {
-                                    true // No path constraint means all paths allowed
-                                }
-                            } else {
-                                true // No constraints means all paths allowed
-                            };
+                            let allowed = permission.constraints
+                                .as_ref()
+                                .and_then(|c| c.get("path"))
+                                .and_then(|v| v.as_str())
+                                .map_or(true, |allowed_path| {
+                                    // Exact match or prefix match
+                                    requested_path == allowed_path
+                                        || requested_path.starts_with(allowed_path)
+                                });
 
                             if allowed {
                                 permission_set.insert(format!(
@@ -193,11 +189,10 @@ pub async fn has_permission_for_api_key(
     // Build permission string to check
     let perm_str = format!("{permission_type}").to_lowercase();
     let namespace_str = namespace.as_str();
-    let permission_string = if let Some(p) = path {
-        format!("{namespace_str}:{p}:{perm_str}")
-    } else {
-        format!("{namespace_str}:{perm_str}")
-    };
+    let permission_string = path.map_or_else(
+        || format!("{namespace_str}:{perm_str}"),
+        |p| format!("{namespace_str}:{p}:{perm_str}"),
+    );
 
     // Check if merged permissions include the required permission
     let has_perm = permission_set.contains(&permission_string)

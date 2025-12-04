@@ -158,11 +158,11 @@ pub async fn admin_login(
     // Calculate expiration times
     let access_expires_at = OffsetDateTime::now_utc()
         .checked_add(Duration::seconds(ACCESS_TOKEN_EXPIRY_SECONDS as i64)) // 30 minutes
-        .unwrap_or(OffsetDateTime::now_utc());
+        .unwrap_or_else(OffsetDateTime::now_utc);
 
     let refresh_expires_at = OffsetDateTime::now_utc()
         .checked_add(Duration::seconds(REFRESH_TOKEN_EXPIRY_SECONDS as i64))
-        .unwrap_or(OffsetDateTime::now_utc());
+        .unwrap_or_else(OffsetDateTime::now_utc);
 
     // Store refresh token in database
     let refresh_repo = RefreshTokenRepository::new(data.db_pool().clone());
@@ -223,11 +223,8 @@ pub async fn admin_register(
     auth: OptionalAuth,
 ) -> impl Responder {
     // Check if JSON body is provided
-    let register_req = match register_req {
-        Some(req) => req,
-        None => {
-            return ApiResponse::bad_request("Missing or invalid JSON body");
-        }
+    let Some(register_req) = register_req else {
+        return ApiResponse::bad_request("Missing or invalid JSON body");
     };
 
     // Validate the request data using the Validate trait
@@ -239,8 +236,9 @@ pub async fn admin_register(
     }
 
     // Get authentication info from the OptionalAuth extractor
-    let (is_authenticated, creator_uuid) = match &auth.0 {
-        Some(claims) => {
+    let (is_authenticated, creator_uuid) = auth.0.as_ref().map_or_else(
+        || (false, Uuid::nil()),
+        |claims| {
             // Extract the UUID
             let creator = match Uuid::parse_str(&claims.sub) {
                 Ok(uuid) => uuid,
@@ -254,9 +252,8 @@ pub async fn admin_register(
                 }
             };
             (true, creator)
-        }
-        None => (false, Uuid::nil()),
-    };
+        },
+    );
 
     // Create repository
     let repo = AdminUserRepository::new(Arc::new(data.db_pool().clone()));
@@ -359,7 +356,7 @@ pub async fn admin_logout(
 
     // Revoke the refresh token
     match refresh_repo.revoke_by_token_hash(&token_hash).await {
-        Ok(_) => {
+        Ok(()) => {
             log::info!("User logged out successfully, refresh token revoked");
             ApiResponse::message("Logout successful")
         }
@@ -492,11 +489,11 @@ pub async fn admin_refresh_token(
     // Calculate expiration times
     let access_expires_at = OffsetDateTime::now_utc()
         .checked_add(Duration::seconds(ACCESS_TOKEN_EXPIRY_SECONDS as i64)) // 30 minutes
-        .unwrap_or(OffsetDateTime::now_utc());
+        .unwrap_or_else(OffsetDateTime::now_utc);
 
     let refresh_expires_at = OffsetDateTime::now_utc()
         .checked_add(Duration::seconds(REFRESH_TOKEN_EXPIRY_SECONDS as i64))
-        .unwrap_or(OffsetDateTime::now_utc());
+        .unwrap_or_else(OffsetDateTime::now_utc);
 
     // Update the old refresh token as used
     if let Err(e) = refresh_repo.update_last_used(refresh_token.id).await {
@@ -556,18 +553,12 @@ pub async fn admin_revoke_all_tokens(
 ) -> impl Responder {
     // Extract user claims from JWT
     let extensions = req.extensions();
-    let claims = match extensions.get::<AuthUserClaims>() {
-        Some(claims) => claims,
-        None => {
-            return ApiResponse::unauthorized("Authentication required");
-        }
+    let Some(claims) = extensions.get::<AuthUserClaims>() else {
+        return ApiResponse::unauthorized("Authentication required");
     };
 
-    let user_uuid = match Uuid::parse_str(&claims.sub) {
-        Ok(uuid) => uuid,
-        Err(_) => {
-            return ApiResponse::unauthorized("Invalid user ID in token");
-        }
+    let Ok(user_uuid) = Uuid::parse_str(&claims.sub) else {
+        return ApiResponse::unauthorized("Invalid user ID in token");
     };
 
     let refresh_repo = RefreshTokenRepository::new(data.db_pool().clone());

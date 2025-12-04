@@ -23,15 +23,18 @@ where
         );
         let state = req.app_data::<web::Data<ApiStateWrapper>>().cloned();
 
-        if let Some(ref s) = state {
-            log::debug!("API state found successfully");
-            Ok(s.clone())
-        } else {
-            log::error!("Failed to find API state in request");
-            Err(actix_web::error::ErrorUnauthorized(
-                "Missing application state",
-            ))
-        }
+        state.as_ref().map_or_else(
+            || {
+                log::error!("Failed to find API state in request");
+                Err(actix_web::error::ErrorUnauthorized(
+                    "Missing application state",
+                ))
+            },
+            |s| {
+                log::debug!("API state found successfully");
+                Ok(s.clone())
+            },
+        )
     }
 
     /// Process the authentication and call the inner service

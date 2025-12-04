@@ -161,10 +161,10 @@ impl Default for ApiConfiguration {
 }
 
 pub fn configure_app(cfg: &mut web::ServiceConfig) {
-    configure_app_with_options(cfg, ApiConfiguration::default());
+    configure_app_with_options(cfg, &ApiConfiguration::default());
 }
 
-pub fn configure_app_with_options(cfg: &mut web::ServiceConfig, options: ApiConfiguration) {
+pub fn configure_app_with_options(cfg: &mut web::ServiceConfig, options: &ApiConfiguration) {
     // Add health check endpoints
     cfg.service(health::admin_health_check)
         .service(health::public_health_check);

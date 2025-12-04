@@ -110,9 +110,8 @@ pub async fn create_workflow(
     }
 
     // Determine creator from required auth (JWT)
-    let created_by = match auth.user_uuid() {
-        Some(u) => u,
-        None => return ApiResponse::<()>::internal_error("No authentication claims found"),
+    let Some(created_by) = auth.user_uuid() else {
+        return ApiResponse::<()>::internal_error("No authentication claims found");
     };
 
     let created = state.workflow_service().create(&body.0, created_by).await;
@@ -167,9 +166,8 @@ pub async fn update_workflow(
     }
 
     let uuid = path.into_inner();
-    let updated_by = match auth.user_uuid() {
-        Some(u) => u,
-        None => return ApiResponse::<()>::internal_error("No authentication claims found"),
+    let Some(updated_by) = auth.user_uuid() else {
+        return ApiResponse::<()>::internal_error("No authentication claims found");
     };
     // Validate cron format early to return Symfony-style 422
     if let Some(cron_str) = &body.schedule_cron {
@@ -191,7 +189,7 @@ pub async fn update_workflow(
         .await;
 
     match res {
-        Ok(_) => ApiResponse::<()>::message("Updated"),
+        Ok(()) => ApiResponse::<()>::message("Updated"),
         Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to update: {e}")),
     }
 }
@@ -226,7 +224,7 @@ pub async fn delete_workflow(
     let uuid = path.into_inner();
     let res = state.workflow_service().delete(uuid).await;
     match res {
-        Ok(_) => ApiResponse::<()>::message("Deleted"),
+        Ok(()) => ApiResponse::<()>::message("Deleted"),
         Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to delete: {e}")),
     }
 }

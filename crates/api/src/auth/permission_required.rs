@@ -33,6 +33,7 @@ pub struct PermissionRequired {
 
 impl PermissionRequired {
     /// Create a new `PermissionRequired` extractor
+    #[must_use]
     pub fn new(
         auth: RequiredAuth,
         namespace: ResourceNamespace,
@@ -79,6 +80,9 @@ macro_rules! permission_required {
 }
 
 /// Helper function to check permission and return appropriate response
+///
+/// # Errors
+/// Returns an error response if the user doesn't have the required permission
 pub fn check_permission_and_respond(
     auth: &RequiredAuth,
     namespace: &ResourceNamespace,
@@ -96,8 +100,7 @@ pub fn check_permission_and_respond(
             "Insufficient permissions to perform {} on {}",
             permission_type,
             namespace.as_str()
-        ))
-        .into());
+        )));
     }
     Ok(())
 }
@@ -114,6 +117,9 @@ pub trait RequiredAuthExt {
 
     /// Check permission and return an error response if denied
     /// Returns an `ApiResponse` that can be used as a `Responder`
+    ///
+    /// # Errors
+    /// Returns an error response if the user doesn't have the required permission
     fn require_permission(
         &self,
         namespace: &ResourceNamespace,

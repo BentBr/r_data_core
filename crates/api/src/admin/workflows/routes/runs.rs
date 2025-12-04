@@ -58,7 +58,7 @@ pub async fn run_workflow_now(
                     })
                     .await
                 {
-                    Ok(_) => {
+                    Ok(()) => {
                         info!(
                             "Successfully enqueued fetch job for workflow {uuid} (run: {run_uuid})"
                         );
@@ -159,7 +159,7 @@ pub async fn run_workflow_now_upload(
                 })
                 .await
             {
-                Ok(_) => {
+                Ok(()) => {
                     info!("Successfully enqueued fetch job for uploaded workflow {workflow_uuid} (run: {run_uuid}, staged: {staged})");
                     ApiResponse::<serde_json::Value>::ok(serde_json::json!({
                         "run_uuid": run_uuid,

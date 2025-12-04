@@ -202,9 +202,7 @@ pub async fn list_from_options(auth: RequiredAuth) -> impl Responder {
                 "delimiter": ","
             }),
         },
-        mapping: [("price".to_string(), "price".to_string())]
-            .into_iter()
-            .collect(),
+        mapping: std::iter::once(("price".to_string(), "price".to_string())).collect(),
     })
     .unwrap();
     let ex_json = serde_json::to_value(FromDef::Format {
@@ -219,9 +217,7 @@ pub async fn list_from_options(auth: RequiredAuth) -> impl Responder {
             format_type: "json".to_string(),
             options: serde_json::json!({}),
         },
-        mapping: [("amount".to_string(), "amount".to_string())]
-            .into_iter()
-            .collect(),
+        mapping: std::iter::once(("amount".to_string(), "amount".to_string())).collect(),
     })
     .unwrap();
     let ex_entity = serde_json::to_value(FromDef::Entity {
@@ -230,9 +226,7 @@ pub async fn list_from_options(auth: RequiredAuth) -> impl Responder {
             field: "sku".to_string(),
             value: "ABC-001".to_string(),
         },
-        mapping: [("price".to_string(), "price".to_string())]
-            .into_iter()
-            .collect(),
+        mapping: std::iter::once(("price".to_string(), "price".to_string())).collect(),
     })
     .unwrap();
     let resp = DslOptionsAndExamplesResponse {
@@ -403,9 +397,7 @@ pub async fn list_to_options(auth: RequiredAuth) -> impl Responder {
                 "delimiter": ","
             }),
         },
-        mapping: [("price".to_string(), "entity.total".to_string())]
-            .into_iter()
-            .collect(),
+        mapping: std::iter::once(("price".to_string(), "entity.total".to_string())).collect(),
     })
     .unwrap();
     let ex_json = serde_json::to_value(ToDef::Format {
@@ -414,9 +406,7 @@ pub async fn list_to_options(auth: RequiredAuth) -> impl Responder {
             format_type: "json".to_string(),
             options: serde_json::json!({}),
         },
-        mapping: [("price".to_string(), "entity.total".to_string())]
-            .into_iter()
-            .collect(),
+        mapping: std::iter::once(("price".to_string(), "entity.total".to_string())).collect(),
     })
     .unwrap();
     let ex_entity = serde_json::to_value(ToDef::Entity {
@@ -425,9 +415,7 @@ pub async fn list_to_options(auth: RequiredAuth) -> impl Responder {
         mode: EntityWriteMode::Create,
         identify: None,
         update_key: None,
-        mapping: [("price".to_string(), "price".to_string())]
-            .into_iter()
-            .collect(),
+        mapping: std::iter::once(("price".to_string(), "price".to_string())).collect(),
     })
     .unwrap();
     let resp = DslOptionsAndExamplesResponse {

@@ -102,11 +102,8 @@ pub async fn update_entity_versioning_settings(
     }
 
     // Determine user performing the update
-    let updated_by = match auth.user_uuid() {
-        Some(u) => u,
-        None => {
-            return ApiResponse::<()>::internal_error("No authentication claims found for update")
-        }
+    let Some(updated_by) = auth.user_uuid() else {
+        return ApiResponse::<()>::internal_error("No authentication claims found for update");
     };
 
     match service

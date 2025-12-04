@@ -11,16 +11,17 @@ where
     use serde::de::Error;
 
     let value = Option::<String>::deserialize(deserializer)?;
-    match value {
-        Some(s) => s
-            .parse::<i64>()
-            .map(Some)
-            .map_err(|_| D::Error::custom(format!("invalid type: string \"{s}\", expected i64"))),
-        None => Ok(None),
-    }
+    value.map_or_else(
+        || Ok(None),
+        |s| {
+            s.parse::<i64>()
+                .map(Some)
+                .map_err(|_| D::Error::custom(format!("invalid type: string \"{s}\", expected i64")))
+        },
+    )
 }
 
-/// Flexible pagination query parameters that support both page/per_page and limit/offset
+/// Flexible pagination query parameters that support both `page`/`per_page` and `limit`/`offset`
 ///
 /// This struct provides a unified pagination interface that supports two common pagination patterns:
 ///
@@ -46,7 +47,7 @@ pub struct PaginationQuery {
     #[serde(deserialize_with = "deserialize_optional_i64", default)]
     pub per_page: Option<i64>,
 
-    /// Limit (alternative to per_page) - defaults to 20, max 100
+    /// Limit (alternative to `per_page`) - defaults to 20, max 100
     /// Use with `offset` for offset-based pagination
     #[serde(deserialize_with = "deserialize_optional_i64", default)]
     pub limit: Option<i64>,
@@ -96,42 +97,45 @@ impl PaginationQuery {
     /// Get the page number (for response metadata)
     #[must_use]
     pub fn get_page(&self, default: i64) -> i64 {
-        if let Some(page) = self.page {
-            page.max(1)
-        } else if let (Some(limit), Some(offset)) = (self.limit, self.offset) {
-            // Calculate page from limit/offset
-            if limit > 0 {
-                (offset / limit) + 1
-            } else {
-                default
-            }
-        } else if let Some(limit) = self.limit {
-            // If only limit is provided, use offset or default to 0
-            let offset = self.offset.unwrap_or(0);
-            if limit > 0 {
-                (offset / limit) + 1
-            } else {
-                default
-            }
-        } else if let Some(_per_page) = self.per_page {
-            // If per_page is provided, calculate from page or use default
-            let page = self.page.unwrap_or(default);
-            page.max(1)
-        } else {
-            default
-        }
+        self.page.map_or_else(
+            || {
+                if let (Some(limit), Some(offset)) = (self.limit, self.offset) {
+                    // Calculate page from limit/offset
+                    if limit > 0 {
+                        (offset / limit) + 1
+                    } else {
+                        default
+                    }
+                } else if let Some(limit) = self.limit {
+                    // If only limit is provided, use offset or default to 0
+                    let offset = self.offset.unwrap_or(0);
+                    if limit > 0 {
+                        (offset / limit) + 1
+                    } else {
+                        default
+                    }
+                } else if let Some(_per_page) = self.per_page {
+                    // If per_page is provided, calculate from page or use default
+                    let page = self.page.unwrap_or(default);
+                    page.max(1)
+                } else {
+                    default
+                }
+            },
+            |page| page.max(1),
+        )
     }
 
-    /// Get the per_page value (for response metadata)
+    /// Get the `per_page` value (for response metadata)
     #[must_use]
     pub fn get_per_page(&self, default: i64, max_limit: i64) -> i64 {
-        if let Some(per_page) = self.per_page {
-            per_page.clamp(1, max_limit)
-        } else if let Some(limit) = self.limit {
-            limit.clamp(1, max_limit)
-        } else {
-            default.clamp(1, max_limit)
-        }
+        self.per_page.map_or_else(
+            || {
+                self.limit
+                    .map_or_else(|| default.clamp(1, max_limit), |limit| limit.clamp(1, max_limit))
+            },
+            |per_page| per_page.clamp(1, max_limit),
+        )
     }
 }
 
@@ -148,17 +152,17 @@ impl SortingQuery {
     /// Get the sort direction as uppercase
     #[must_use]
     pub fn get_sort_direction(&self) -> String {
-        match &self.sort_direction {
-            Some(dir) => {
+        self.sort_direction.as_ref().map_or_else(
+            || "ASC".to_string(),
+            |dir| {
                 let dir = dir.to_uppercase();
                 if dir == "ASC" || dir == "DESC" {
                     dir
                 } else {
                     "ASC".to_string()
                 }
-            }
-            None => "ASC".to_string(),
-        }
+            },
+        )
     }
 
     /// Get the sort SQL clause if sort_by is provided

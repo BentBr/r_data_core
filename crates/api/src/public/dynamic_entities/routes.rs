@@ -199,13 +199,10 @@ pub async fn create_entity(
     let entity_type = path.into_inner();
 
     // Get the user's UUID from either API key or JWT
-    let user_uuid = match auth.get_user_uuid() {
-        Some(uuid) => uuid,
-        None => {
-            return ApiResponse::<()>::unauthorized(
-                "User UUID could not be determined from authentication",
-            );
-        }
+    let Some(user_uuid) = auth.get_user_uuid() else {
+        return ApiResponse::<()>::unauthorized(
+            "User UUID could not be determined from authentication",
+        );
     };
 
     if let Some(service) = data.dynamic_entity_service() {
@@ -264,7 +261,7 @@ pub async fn create_entity(
                 };
 
                 match service.create_entity(&dynamic_entity).await {
-                    Ok(_) => {
+                    Ok(()) => {
                         let response_data = EntityResponse { uuid, entity_type };
                         ApiResponse::<EntityResponse>::created(response_data)
                     }
@@ -326,11 +323,8 @@ pub async fn get_entity(
     }
 
     // Parse UUID
-    let uuid = match Uuid::parse_str(&uuid_str) {
-        Ok(uuid) => uuid,
-        Err(_) => {
-            return ApiResponse::<()>::bad_request(&format!("Invalid UUID format: {uuid_str}"));
-        }
+    let Ok(uuid) = Uuid::parse_str(&uuid_str) else {
+        return ApiResponse::<()>::bad_request(&format!("Invalid UUID format: {uuid_str}"));
     };
 
     if let Some(service) = data.dynamic_entity_service() {
@@ -343,8 +337,7 @@ pub async fn get_entity(
                 ApiResponse::ok(response)
             }
             Ok(None) => ApiResponse::<()>::not_found(&format!(
-                "Entity of type '{}' with UUID '{}' not found",
-                entity_type, uuid
+                "Entity of type '{entity_type}' with UUID '{uuid}' not found"
             )),
             Err(e) => handle_entity_error(e, &entity_type),
         }
@@ -381,21 +374,15 @@ pub async fn update_entity(
     auth: CombinedRequiredAuth,
 ) -> HttpResponse {
     let (entity_type, uuid_str) = path.into_inner();
-    let uuid = match Uuid::parse_str(&uuid_str) {
-        Ok(id) => id,
-        Err(_) => {
-            return ApiResponse::<()>::bad_request(&format!("Invalid UUID: {uuid_str}"));
-        }
+    let Ok(uuid) = Uuid::parse_str(&uuid_str) else {
+        return ApiResponse::<()>::bad_request(&format!("Invalid UUID: {uuid_str}"));
     };
 
     // Get the user's UUID
-    let user_uuid = match auth.get_user_uuid() {
-        Some(id) => id,
-        None => {
-            return ApiResponse::<()>::unauthorized(
-                "User UUID could not be determined from authentication",
-            );
-        }
+    let Some(user_uuid) = auth.get_user_uuid() else {
+        return ApiResponse::<()>::unauthorized(
+            "User UUID could not be determined from authentication",
+        );
     };
 
     if let Some(service) = data.dynamic_entity_service() {
@@ -417,7 +404,7 @@ pub async fn update_entity(
                 }
 
                 match service.update_entity(&existing_entity).await {
-                    Ok(_) => {
+                    Ok(()) => {
                         let response_data = EntityResponse { uuid, entity_type };
                         ApiResponse::ok(response_data)
                     }
@@ -432,8 +419,7 @@ pub async fn update_entity(
                 }
             }
             Ok(None) => ApiResponse::<()>::not_found(&format!(
-                "Entity with UUID {} not found in type {}",
-                uuid, entity_type
+                "Entity with UUID {uuid} not found in type {entity_type}"
             )),
             Err(e) => handle_entity_error(e, &entity_type),
         }
@@ -467,11 +453,8 @@ pub async fn delete_entity(
     _: CombinedRequiredAuth,
 ) -> HttpResponse {
     let (entity_type, uuid_str) = path.into_inner();
-    let uuid = match Uuid::parse_str(&uuid_str) {
-        Ok(id) => id,
-        Err(_) => {
-            return ApiResponse::<()>::bad_request(&format!("Invalid UUID: {uuid_str}"));
-        }
+    let Ok(uuid) = Uuid::parse_str(&uuid_str) else {
+        return ApiResponse::<()>::bad_request(&format!("Invalid UUID: {uuid_str}"));
     };
 
     if let Some(service) = data.dynamic_entity_service() {
@@ -488,8 +471,7 @@ pub async fn delete_entity(
 fn handle_entity_error(error: r_data_core_core::error::Error, entity_type: &str) -> HttpResponse {
     match error {
         r_data_core_core::error::Error::NotFound(_) => ApiResponse::<()>::not_found(&format!(
-            "Entity type '{}' not found or not published",
-            entity_type
+            "Entity type '{entity_type}' not found or not published"
         )),
         r_data_core_core::error::Error::Validation(msg) => {
             ApiResponse::<()>::unprocessable_entity(&msg)

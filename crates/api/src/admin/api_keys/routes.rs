@@ -261,7 +261,7 @@ pub async fn revoke_api_key(
 
             // Revoke the key
             match repo.revoke(api_key_uuid).await {
-                Ok(_) => ApiResponse::<()>::message("API key revoked successfully"),
+                Ok(()) => ApiResponse::<()>::message("API key revoked successfully"),
                 Err(e) => {
                     error!("Failed to revoke API key: {e}");
                     ApiResponse::<()>::internal_error("Failed to revoke API key")
@@ -340,14 +340,14 @@ pub async fn reassign_api_key(
             // Check if the key with the same name already exists for the new user
             match repo.get_by_name(new_user_uuid, &key.name).await {
                 Ok(Some(_)) => {
-                    return ApiResponse::<()>::conflict(
+                    ApiResponse::<()>::conflict(
                         "An API key with this name already exists for the target user",
-                    );
+                    )
                 }
                 Ok(None) => {
                     // Reassign the key
                     match repo.reassign(api_key_uuid, new_user_uuid).await {
-                        Ok(_) => ApiResponse::<()>::message("API key reassigned successfully"),
+                        Ok(()) => ApiResponse::<()>::message("API key reassigned successfully"),
                         Err(e) => {
                             error!("Failed to reassign API key: {e}");
                             ApiResponse::<()>::internal_error("Failed to reassign API key")

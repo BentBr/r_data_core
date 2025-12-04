@@ -74,19 +74,16 @@ where
         let path = request.path().to_string();
 
         // Get the API state
-        let state_result = req.app_data::<web::Data<ApiStateWrapper>>().cloned();
+        let state_result = req.app_data::<web::Data<ApiStateWrapper>>().map(web::Data::clone);
         let service_clone = service.clone();
 
         Box::pin(async move {
             // Handle state extraction
-            let state = match state_result {
-                Some(state) => state,
-                None => {
-                    log::error!(
-                        "Failed to extract API state from request for path: {path}"
-                    );
-                    return Err(ErrorUnauthorized("Missing application state"));
-                }
+            let Some(state) = state_result else {
+                log::error!(
+                    "Failed to extract API state from request for path: {path}"
+                );
+                return Err(ErrorUnauthorized("Missing application state"));
             };
 
             // Try JWT authentication first
@@ -116,8 +113,8 @@ where
 
             // Try API key authentication if JWT failed
             // Note: extract_and_validate_api_key needs access to ApiState from the request
-            // We need to use req.request() which has access to app_data
-            let api_key_result = extract_and_validate_api_key(req.request()).await;
+            // We need to use the cloned request which has access to app_data
+            let api_key_result = extract_and_validate_api_key(&request).await;
             match api_key_result {
                 Ok(Some((key, user_uuid))) => {
                     let key_uuid = key.uuid;

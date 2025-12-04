@@ -373,7 +373,7 @@ async fn update_entity_definition(
         .update_entity_definition(&path.uuid, &updated_def)
         .await
     {
-        Ok(_) => ApiResponse::ok(json!({
+        Ok(()) => ApiResponse::ok(json!({
             "message": "Class definition updated successfully",
             "uuid": path.uuid
         })),
@@ -417,7 +417,7 @@ async fn delete_entity_definition(
         .delete_entity_definition(&path.uuid)
         .await
     {
-        Ok(_) => ApiResponse::ok(json!({
+        Ok(()) => ApiResponse::ok(json!({
             "message": "Class definition deleted successfully"
         })),
         Err(r_data_core_core::error::Error::NotFound(_)) => {

@@ -66,12 +66,14 @@ impl FromRequest for RequiredAuth {
     fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
         debug!("Handling required authentication FromRequest");
 
-        match get_or_validate_jwt(req) {
-            Some(claims) => ready(Ok(Self(claims))),
-            None => ready(Err(actix_web::error::ErrorUnauthorized(
-                "Authentication required",
-            ))),
-        }
+        get_or_validate_jwt(req).map_or_else(
+            || {
+                ready(Err(actix_web::error::ErrorUnauthorized(
+                    "Authentication required",
+                )))
+            },
+            |claims| ready(Ok(Self(claims))),
+        )
     }
 }
 

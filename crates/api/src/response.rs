@@ -12,7 +12,7 @@ pub struct ValidationViolation {
     pub field: String,
     /// The error message for this field
     pub message: String,
-    /// Optional error code (e.g., "NOT_BLANK", "NOT_NULL")
+    /// Optional error code (e.g., `"NOT_BLANK"`, `"NOT_NULL"`)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub code: Option<String>,
 }
@@ -110,6 +110,9 @@ where
     }
 
     /// Create a paginated success response
+    ///
+    /// # Panics
+    /// This function may panic if `per_page` is 0 (division by zero)
     pub fn paginated(data: T, total: i64, page: i64, per_page: i64) -> Self {
         let total_pages = (total as f64 / per_page as f64).ceil() as i64;
 
@@ -148,6 +151,9 @@ where
     }
 
     /// Create an error response with error code and metadata
+    ///
+    /// # Panics
+    /// This function may panic if JSON serialization fails
     #[must_use]
     pub fn error_with_meta(
         message: &str,
@@ -209,6 +215,7 @@ where
 
 // Default responses
 impl ApiResponse<()> {
+    #[must_use]
     pub fn message(message: &str) -> HttpResponse {
         let response = Self {
             status: Status::Success,
@@ -219,6 +226,7 @@ impl ApiResponse<()> {
         response.to_http_response(StatusCode::OK)
     }
 
+    #[must_use]
     pub fn created_message(message: &str) -> HttpResponse {
         let response = Self {
             status: Status::Success,
@@ -229,6 +237,7 @@ impl ApiResponse<()> {
         response.to_http_response(StatusCode::CREATED)
     }
 
+    #[must_use]
     pub fn not_found(resource: &str) -> HttpResponse {
         let response = Self {
             status: Status::Error,
@@ -244,6 +253,7 @@ impl ApiResponse<()> {
         response.to_http_response(StatusCode::NOT_FOUND)
     }
 
+    #[must_use]
     pub fn conflict(message: &str) -> HttpResponse {
         let response = Self {
             status: Status::Error,
@@ -259,6 +269,7 @@ impl ApiResponse<()> {
         response.to_http_response(StatusCode::CONFLICT)
     }
 
+    #[must_use]
     pub fn internal_error(message: &str) -> HttpResponse {
         let response = Self {
             status: Status::Error,
@@ -274,6 +285,7 @@ impl ApiResponse<()> {
         response.to_http_response(StatusCode::INTERNAL_SERVER_ERROR)
     }
 
+    #[must_use]
     pub fn bad_request(message: &str) -> HttpResponse {
         let response = Self {
             status: Status::Error,
@@ -289,6 +301,7 @@ impl ApiResponse<()> {
         response.to_http_response(StatusCode::BAD_REQUEST)
     }
 
+    #[must_use]
     pub fn unauthorized(message: &str) -> HttpResponse {
         let response = Self {
             status: Status::Error,
@@ -305,6 +318,7 @@ impl ApiResponse<()> {
         response.to_http_response(StatusCode::UNAUTHORIZED)
     }
 
+    #[must_use]
     pub fn forbidden(message: &str) -> HttpResponse {
         let response = Self {
             status: Status::Error,
@@ -320,6 +334,7 @@ impl ApiResponse<()> {
         response.to_http_response(StatusCode::FORBIDDEN)
     }
 
+    #[must_use]
     pub fn inactive(message: &str) -> HttpResponse {
         let response = Self {
             status: Status::Error,
@@ -335,6 +350,7 @@ impl ApiResponse<()> {
         response.to_http_response(StatusCode::FORBIDDEN)
     }
 
+    #[must_use]
     pub fn unprocessable_entity(message: &str) -> HttpResponse {
         let response = Self {
             status: Status::Error,
@@ -392,13 +408,13 @@ impl fmt::Display for ApiError {
 impl ResponseError for ApiError {
     fn status_code(&self) -> StatusCode {
         match self {
-            ApiError::NotFound(_) => StatusCode::NOT_FOUND,
-            ApiError::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            ApiError::BadRequest(_) => StatusCode::BAD_REQUEST,
-            ApiError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
-            ApiError::Forbidden(_) => StatusCode::FORBIDDEN,
-            ApiError::Inactive(_) => StatusCode::FORBIDDEN,
-            ApiError::UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::NotFound(_) => StatusCode::NOT_FOUND,
+            Self::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::BadRequest(_) => StatusCode::BAD_REQUEST,
+            Self::Unauthorized(_) => StatusCode::UNAUTHORIZED,
+            Self::Forbidden(_) => StatusCode::FORBIDDEN,
+            Self::Inactive(_) => StatusCode::FORBIDDEN,
+            Self::UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
         }
     }
 
