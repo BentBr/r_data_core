@@ -3041,6 +3041,7 @@ dependencies = [
  "env_logger",
  "futures",
  "log",
+ "mockall",
  "r_data_core_core",
  "r_data_core_persistence",
  "r_data_core_workflow",

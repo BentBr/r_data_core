@@ -25,3 +25,6 @@ regex = "1.10"
 futures = "0.3"
 tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
 
+[dev-dependencies]
+mockall = "0.12"
+
