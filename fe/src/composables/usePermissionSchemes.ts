@@ -24,8 +24,10 @@ export function usePermissionSchemes() {
             return response
         } catch (err) {
             console.error('Failed to load permission schemes:', err)
-            error.value = err instanceof Error ? err.message : 'Failed to load permission schemes'
-            showError(error.value)
+            const errorMessage =
+                err instanceof Error ? err.message : 'Failed to load permission schemes'
+            error.value = errorMessage
+            showError(errorMessage)
             throw err
         } finally {
             loading.value = false

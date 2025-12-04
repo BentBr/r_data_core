@@ -71,8 +71,8 @@
 
     const form = ref<{
         enabled: boolean
-        max_versions: number | null
-        max_age_days: number | null
+        max_versions: number | string | null
+        max_age_days: number | string | null
     }>({
         enabled: true,
         max_versions: null,
@@ -96,7 +96,23 @@
     const save = async () => {
         saving.value = true
         try {
-            await typedHttpClient.updateEntityVersioningSettings(form.value)
+            // Convert string inputs to numbers or null
+            const payload = {
+                enabled: form.value.enabled,
+                max_versions:
+                    form.value.max_versions === null ||
+                    form.value.max_versions === '' ||
+                    Number.isNaN(Number(form.value.max_versions))
+                        ? null
+                        : Number(form.value.max_versions),
+                max_age_days:
+                    form.value.max_age_days === null ||
+                    form.value.max_age_days === '' ||
+                    Number.isNaN(Number(form.value.max_age_days))
+                        ? null
+                        : Number(form.value.max_age_days),
+            }
+            await typedHttpClient.updateEntityVersioningSettings(payload)
             showSuccess(t('system.versioning.save_success'))
         } catch {
             showError(t('system.versioning.save_failed'))

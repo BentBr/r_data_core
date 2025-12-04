@@ -26,6 +26,13 @@
                         rows="2"
                     />
 
+                    <v-checkbox
+                        v-model="formData.isSuperAdmin"
+                        label="Super Admin"
+                        hint="Add SuperAdmin role with all permissions"
+                        persistent-hint
+                    />
+
                     <v-divider class="my-4" />
 
                     <div class="text-h6 mb-4">Roles & Permissions</div>
@@ -117,10 +124,12 @@
         name: string
         description: string | null
         role_permissions: Record<string, Permission[]>
+        isSuperAdmin: boolean
     }>({
         name: '',
         description: null,
         role_permissions: {},
+        isSuperAdmin: false,
     })
 
     const roleNames = ref<string[]>([])
@@ -135,12 +144,23 @@
         () => {
             if (props.modelValue) {
                 if (props.editingScheme) {
+                    const rolePerms = JSON.parse(
+                        JSON.stringify(props.editingScheme.role_permissions)
+                    )
+                    // Check if SuperAdmin role exists with all permissions
+                    const hasSuperAdmin =
+                        'SuperAdmin' in rolePerms &&
+                        rolePerms.SuperAdmin.some(
+                            (p: Permission) =>
+                                p.resource_type === '*' &&
+                                p.permission_type === 'Admin' &&
+                                p.access_level === 'All'
+                        )
                     formData.value = {
                         name: props.editingScheme.name,
                         description: props.editingScheme.description ?? null,
-                        role_permissions: JSON.parse(
-                            JSON.stringify(props.editingScheme.role_permissions)
-                        ),
+                        role_permissions: rolePerms,
+                        isSuperAdmin: hasSuperAdmin,
                     }
                     roleNames.value = Object.keys(formData.value.role_permissions)
                 } else {
@@ -148,6 +168,7 @@
                         name: '',
                         description: null,
                         role_permissions: {},
+                        isSuperAdmin: false,
                     }
                     roleNames.value = []
                 }
@@ -205,6 +226,19 @@
             const oldName = Object.keys(formData.value.role_permissions)[index]
             updatedRolePermissions[newName] = formData.value.role_permissions[oldName] || []
         })
+
+        // Add SuperAdmin role if checkbox is checked
+        if (formData.value.isSuperAdmin) {
+            updatedRolePermissions.SuperAdmin = [
+                {
+                    resource_type: '*',
+                    permission_type: 'Admin',
+                    access_level: 'All',
+                    resource_uuids: [],
+                    constraints: null,
+                },
+            ]
+        }
 
         const requestData = {
             name: formData.value.name,

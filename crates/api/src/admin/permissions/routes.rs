@@ -70,15 +70,6 @@ pub async fn list_permission_schemes(
         return resp;
     }
 
-    // Check permission
-    if let Err(resp) = auth.require_permission(
-        &ResourceNamespace::PermissionSchemes,
-        &PermissionType::Read,
-        None,
-    ) {
-        return resp;
-    }
-
     let (limit, offset) = query.to_limit_offset(20, 100);
     let page = query.get_page(1);
     let per_page = query.get_per_page(20, 100);

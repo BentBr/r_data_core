@@ -114,7 +114,7 @@ services:
                 RUST_VERSION: "1.88.0"
                 BUILD_MODE: "debug"
                 PACKAGE_NAME: "r_data_core_worker"
-                BINARY_NAME: "r_data_core_worker"
+                BINARY_NAME: "worker"
                 RUST_LOG_LEVEL: "info"
         container_name: rdata_worker
         volumes:
