@@ -235,7 +235,7 @@ impl Modify for ModelSchemaAddon {
             // First collect the keys that need to be renamed
             for key in components.schemas.keys() {
                 if key.contains("crate.api.admin.entity_definitions.models.") {
-                    let new_key = key.split('.').last().unwrap_or(key).to_string();
+                    let new_key = key.split('.').next_back().unwrap_or(key).to_string();
                     schemas_to_rename.push((key.clone(), new_key));
                 }
             }

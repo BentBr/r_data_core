@@ -164,6 +164,10 @@ pub fn configure_app(cfg: &mut web::ServiceConfig) {
     configure_app_with_options(cfg, &ApiConfiguration::default());
 }
 
+async fn not_found_handler() -> impl actix_web::Responder {
+    ApiResponse::<()>::not_found("API resource not found")
+}
+
 pub fn configure_app_with_options(cfg: &mut web::ServiceConfig, options: &ApiConfiguration) {
     // Add health check endpoints
     cfg.service(health::admin_health_check)
@@ -188,9 +192,6 @@ pub fn configure_app_with_options(cfg: &mut web::ServiceConfig, options: &ApiCon
         log::warn!("Documentation routes are DISABLED");
     }
 
-    async fn not_found_handler() -> impl actix_web::Responder {
-        ApiResponse::<()>::not_found("API resource not found")
-    }
     let scope = scope.default_service(web::route().to(not_found_handler));
 
     cfg.service(scope);

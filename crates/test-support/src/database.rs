@@ -24,7 +24,9 @@ pub fn unique_entity_type(base: &str) -> String {
         .unwrap_or_else(|e| e.into_inner());
     let count = *counter;
     *counter = count + 1;
-    format!("{}_{}", base, count)
+    drop(counter);
+
+    format!("{base}_{count}")
 }
 
 /// Generate a random string for testing
@@ -46,7 +48,7 @@ pub async fn setup_test_db() -> PgPool {
 
     // Get database URL
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not set in .env.test");
-    info!("Connecting to test database: {}", database_url);
+    info!("Connecting to test database: {database_url}");
 
     // Create a dedicated connection pool for this test - use smaller pool and timeout for tests
     let pool = PgPoolOptions::new()
@@ -72,12 +74,12 @@ pub async fn setup_test_db() -> PgPool {
         // Run migrations - this handles schema creation
         info!("Running database migrations");
         match sqlx::migrate!("../../migrations").run(&pool).await {
-            Ok(_) => info!("Database migrations completed successfully"),
+            Ok(()) => info!("Database migrations completed successfully"),
             Err(e) => {
                 if e.to_string().contains("already exists") {
                     info!("Some migration objects already exist, continuing");
                 } else {
-                    panic!("Failed to run migrations: {}", e);
+                    panic!("Failed to run migrations: {e}");
                 }
             }
         }
@@ -87,7 +89,7 @@ pub async fn setup_test_db() -> PgPool {
     } else {
         // If database is already initialized, just clear the data
         if let Err(e) = fast_clear_test_db(&pool).await {
-            warn!("Warning: Failed to clear test database: {}", e);
+            warn!("Warning: Failed to clear test database: {e}");
         }
     }
 
@@ -132,12 +134,12 @@ pub async fn fast_clear_test_db(pool: &PgPool) -> Result<()> {
     if !tables.is_empty() {
         let tables_sql = tables
             .iter()
-            .map(|t| format!("\"{}\"", t))
+            .map(|t| format!("\"{t}\""))
             .collect::<Vec<_>>()
             .join(", ");
 
-        let truncate_sql = format!("TRUNCATE TABLE {} CASCADE", tables_sql);
-        debug!("Truncating tables: {}", truncate_sql);
+        let truncate_sql = format!("TRUNCATE TABLE {tables_sql} CASCADE");
+        debug!("Truncating tables: {truncate_sql}");
         sqlx::query(&truncate_sql).execute(&mut *tx).await?;
     }
 
@@ -192,12 +194,12 @@ pub async fn clear_test_db(pool: &PgPool) -> Result<()> {
     if !tables.is_empty() {
         let tables_sql = tables
             .iter()
-            .map(|t| format!("\"{}\"", t))
+            .map(|t| format!("\"{t}\""))
             .collect::<Vec<_>>()
             .join(", ");
 
-        let truncate_sql = format!("TRUNCATE TABLE {} CASCADE", tables_sql);
-        info!("Truncating tables: {}", truncate_sql);
+        let truncate_sql = format!("TRUNCATE TABLE {tables_sql} CASCADE");
+        info!("Truncating tables: {truncate_sql}");
         sqlx::query(&truncate_sql).execute(&mut *tx).await?;
     }
 

@@ -104,8 +104,8 @@ pub fn generate_jwt(
         role: user.role.as_str().to_string(),
         is_super_admin,
         permissions,
-        exp: expiration.unix_timestamp() as usize,
-        iat: now.unix_timestamp() as usize,
+        exp: usize::try_from(expiration.unix_timestamp()).unwrap_or(0),
+        iat: usize::try_from(now.unix_timestamp()).unwrap_or(0),
     };
 
     // Generate the token

@@ -459,7 +459,7 @@ pub async fn delete_entity(
 
     if let Some(service) = data.dynamic_entity_service() {
         match service.delete_entity(&entity_type, &uuid).await {
-            Ok(_) => ApiResponse::<()>::message("Successfully deleted the entity"),
+            Ok(()) => ApiResponse::<()>::message("Successfully deleted the entity"),
             Err(e) => handle_entity_error(e, &entity_type),
         }
     } else {

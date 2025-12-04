@@ -131,7 +131,7 @@ pub async fn has_permission_for_api_key(
     let mut permission_set = HashSet::new();
     for scheme in &schemes {
         // Get permissions from all roles in the scheme
-        for (_role, permissions) in &scheme.role_permissions {
+        for permissions in scheme.role_permissions.values() {
             for permission in permissions {
                 // Only check permissions that match the requested namespace and type
                 if permission.resource_type == *namespace
@@ -201,19 +201,14 @@ pub async fn has_permission_for_api_key(
             && permission_set.iter().any(|p| {
                 p.starts_with(&format!("{namespace_str}:"))
                     && p.ends_with(&format!(":{perm_str}"))
-                    && if let Some(req_path) = path {
-                        if let Some(perm_path) = p.strip_prefix(&format!("{namespace_str}:"))
-                        {
-                            if let Some(perm_path) =
-                                perm_path.strip_suffix(&format!(":{perm_str}"))
-                            {
+                    && path.map_or(false, |req_path| {
+                        if let Some(perm_path) = p.strip_prefix(&format!("{namespace_str}:")) {
+                            if let Some(perm_path) = perm_path.strip_suffix(&format!(":{perm_str}")) {
                                 return req_path.starts_with(perm_path);
                             }
                         }
                         false
-                    } else {
-                        false
-                    }
+                    })
             }));
 
     debug!(

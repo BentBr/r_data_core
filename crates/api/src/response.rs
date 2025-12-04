@@ -26,7 +26,7 @@ pub struct ValidationErrorResponse {
     pub violations: Vec<ValidationViolation>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum Status {
     Success,
     Error,
@@ -367,6 +367,7 @@ impl ApiResponse<()> {
     }
 
     /// Create a validation error response with field-specific violations (Symfony-style)
+    #[must_use]
     pub fn unprocessable_entity_with_violations(
         message: &str,
         violations: Vec<ValidationViolation>,
@@ -412,8 +413,7 @@ impl ResponseError for ApiError {
             Self::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::BadRequest(_) => StatusCode::BAD_REQUEST,
             Self::Unauthorized(_) => StatusCode::UNAUTHORIZED,
-            Self::Forbidden(_) => StatusCode::FORBIDDEN,
-            Self::Inactive(_) => StatusCode::FORBIDDEN,
+            Self::Forbidden(_) | Self::Inactive(_)  => StatusCode::FORBIDDEN,
             Self::UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
         }
     }

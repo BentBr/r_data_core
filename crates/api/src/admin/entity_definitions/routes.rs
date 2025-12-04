@@ -221,7 +221,7 @@ async fn create_entity_definition(
     entity_def.version = 1;
 
     // Ensure schema is properly initialized with entity_type
-    if entity_def.schema.properties.get("entity_type").is_none() {
+    if !entity_def.schema.properties.contains_key("entity_type") {
         let mut properties = entity_def.schema.properties.clone();
         properties.insert(
             "entity_type".to_string(),
@@ -462,13 +462,13 @@ async fn apply_entity_definition_schema(
         .apply_schema(uuid_option)
         .await
     {
-        Ok((success_count, failed)) => {
-            if uuid_option.is_some() {
+        Ok((_success_count, failed)) => {
+            if let Some(uuid) = uuid_option {
                 // If a specific UUID was provided
                 if failed.is_empty() {
                     ApiResponse::ok(json!({
                         "message": "Database schema applied successfully",
-                        "uuid": uuid_option.unwrap()
+                        "uuid": uuid
                     }))
                 } else {
                     let (entity_type, _uuid, error) = &failed[0];
@@ -477,17 +477,16 @@ async fn apply_entity_definition_schema(
                     ))
                 }
             } else {
-                // If applying schema for all definitions
+                // No UUID provided - return general success message
                 if failed.is_empty() {
                     ApiResponse::ok(json!({
-                        "message": format!("Applied schema for {success_count} entity definitions")
+                        "message": "Database schema applied successfully for all definitions"
                     }))
                 } else {
-                    ApiResponse::ok(json!({
-                        "message": format!("Applied schema for {success_count} entity definitions, {} failed", failed.len()),
-                        "successful": success_count,
-                        "failed": failed
-                    }))
+                    let (entity_type, _uuid, error) = &failed[0];
+                    ApiResponse::<()>::internal_error(&format!(
+                        "Failed to apply schema for {entity_type}: {error}"
+                    ))
                 }
             }
         }
@@ -705,7 +704,7 @@ pub async fn get_entity_definition_version(
                     {
                         Ok(def) => {
                             let current_json =
-                                serde_json::to_value(&def).unwrap_or(serde_json::json!({}));
+                                serde_json::to_value(&def).unwrap_or_else(|_| serde_json::json!({}));
                             let payload = EntityDefinitionVersionPayload {
                                 version_number,
                                 created_at: updated_at,

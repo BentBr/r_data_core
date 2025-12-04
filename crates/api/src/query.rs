@@ -165,7 +165,7 @@ impl SortingQuery {
         )
     }
 
-    /// Get the sort SQL clause if sort_by is provided
+    /// Get the sort SQL clause if `sort_by` is provided
     #[must_use]
     pub fn get_sort_clause(&self) -> Option<String> {
         self.sort_by

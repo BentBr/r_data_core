@@ -457,7 +457,7 @@ fn validate_provider_auth(
                     .headers()
                     .get(&field_name)
                     .and_then(|v| v.to_str().ok())
-                    .map(|s| s.to_string()),
+                    .map(std::string::ToString::to_string),
                 KeyLocation::Body => {
                     // Body extraction would need to be done in the route handler
                     // For now, we'll check header only

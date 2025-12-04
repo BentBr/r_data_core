@@ -150,7 +150,7 @@ impl RequiredAuthExt for RequiredAuth {
                 permission_type,
                 namespace.as_str()
             ))
-            .into());
+            );
         }
         Ok(())
     }

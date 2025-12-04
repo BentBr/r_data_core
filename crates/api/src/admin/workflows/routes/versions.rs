@@ -164,7 +164,7 @@ pub async fn get_workflow_version(
                     // This is the current version, fetch from workflows table
                     if let Ok(Some(workflow)) = state.workflow_service().get(workflow_uuid).await {
                         let current_json =
-                            serde_json::to_value(&workflow).unwrap_or(serde_json::json!({}));
+                            serde_json::to_value(&workflow).unwrap_or_else(|_| serde_json::json!({}));
                         let payload = WorkflowVersionPayload {
                             version_number,
                             created_at: updated_at,

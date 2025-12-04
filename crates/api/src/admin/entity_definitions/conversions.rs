@@ -126,7 +126,8 @@ pub fn field_definition_to_schema_model(field: &FieldDefinition) -> FieldDefinit
 }
 
 /// Convert `FieldType` to `FieldTypeSchema`
-fn field_type_to_schema(field_type: &FieldType) -> FieldTypeSchema {
+#[must_use]
+pub const fn field_type_to_schema(field_type: &FieldType) -> FieldTypeSchema {
     match *field_type {
         FieldType::String => FieldTypeSchema::String,
         FieldType::Text => FieldTypeSchema::Text,
@@ -136,8 +137,7 @@ fn field_type_to_schema(field_type: &FieldType) -> FieldTypeSchema {
         FieldType::Boolean => FieldTypeSchema::Boolean,
         FieldType::DateTime => FieldTypeSchema::DateTime,
         FieldType::Date => FieldTypeSchema::Date,
-        FieldType::Json => FieldTypeSchema::Object,
-        FieldType::Object => FieldTypeSchema::Object,
+        FieldType::Json | FieldType::Object => FieldTypeSchema::Object,
         FieldType::Array => FieldTypeSchema::Array,
         FieldType::Uuid => FieldTypeSchema::Uuid,
         FieldType::ManyToOne => FieldTypeSchema::ManyToOne,

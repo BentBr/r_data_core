@@ -74,7 +74,7 @@ where
         let path = request.path().to_string();
 
         // Get the API state
-        let state_result = req.app_data::<web::Data<ApiStateWrapper>>().map(web::Data::clone);
+        let state_result = req.app_data::<web::Data<ApiStateWrapper>>().cloned();
         let service_clone = service.clone();
 
         Box::pin(async move {

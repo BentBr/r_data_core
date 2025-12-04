@@ -18,7 +18,7 @@ impl AppErrorHandlers {
         let error = res
             .response()
             .error()
-            .map(|e| e.to_string())
+            .map(std::string::ToString::to_string)
             .unwrap_or_else(|| {
                 // For unauthorized responses without an error, use a specific message
                 if status == StatusCode::UNAUTHORIZED {

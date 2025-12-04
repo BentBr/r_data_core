@@ -24,8 +24,8 @@ pub async fn create_test_entity_definition(pool: &PgPool, entity_type: &str) -> 
     // Create a simple entity definition for testing
     let mut entity_def = EntityDefinition::default();
     entity_def.entity_type = entity_type.to_string();
-    entity_def.display_name = format!("{} Class", entity_type);
-    entity_def.description = Some(format!("Test description for {}", entity_type));
+    entity_def.display_name = format!("{entity_type} Class");
+    entity_def.description = Some(format!("Test description for {entity_type}"));
     entity_def.published = true;
 
     // Add fields to the entity definition
@@ -167,13 +167,13 @@ pub async fn create_test_admin_user(pool: &PgPool) -> Result<Uuid> {
     let exists = count > 0;
 
     if exists {
-        log::debug!("User already exists, returning UUID: {}", uuid);
+        log::debug!("User already exists, returning UUID: {uuid}");
         tx.commit().await?;
         return Ok(uuid);
     }
 
     // Create a new admin user with super_admin = true for tests
-    log::debug!("Creating test admin user: {}", username);
+    log::debug!("Creating test admin user: {username}");
     sqlx::query("INSERT INTO admin_users (uuid, username, email, password_hash, first_name, last_name, is_active, created_at, updated_at, created_by, super_admin)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $1, $9)")
         .bind(uuid)
@@ -192,23 +192,23 @@ pub async fn create_test_admin_user(pool: &PgPool) -> Result<Uuid> {
     log::debug!("Committing new admin user transaction");
     tx.commit().await?;
 
-    log::debug!("Created test admin user with UUID: {}", uuid);
+    log::debug!("Created test admin user with UUID: {uuid}");
     Ok(uuid)
 }
 
 /// Create a test API key
 pub async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
+    use r_data_core_core::admin_user::ApiKey;
+
     // Acquire a lock for database operations
     let _guard = GLOBAL_TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
-
-    use r_data_core_core::admin_user::ApiKey;
 
     // Create an admin user first with unique values
     let admin_uuid = Uuid::now_v7();
     let created_by = Uuid::now_v7();
     let unique_id = Uuid::now_v7().simple();
-    let username = format!("test_admin_{}", unique_id);
-    let email = format!("admin_{}@example.test", unique_id);
+    let username = format!("test_admin_{unique_id}");
+    let email = format!("admin_{unique_id}@example.test");
 
     sqlx::query(
         "INSERT INTO admin_users (uuid, path, username, email, password_hash, created_at, created_by, published)

@@ -11,7 +11,7 @@ use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::{extract_and_validate_api_key, ApiKeyInfo};
 use crate::jwt::AuthUserClaims;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuthMethod {
     Jwt,
     ApiKey,

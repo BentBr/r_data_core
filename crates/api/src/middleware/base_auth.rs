@@ -16,6 +16,9 @@ where
     B: 'static,
 {
     /// Get API state from the request
+    ///
+    /// # Errors
+    /// Returns an error if the API state is not found in the request
     fn get_state(&self, req: &ServiceRequest) -> Result<web::Data<ApiStateWrapper>, Error> {
         log::debug!(
             "AuthMiddlewareService::get_state called for path: {}",

@@ -220,7 +220,7 @@ pub async fn create_permission_scheme(
 
     let mut scheme =
         r_data_core_core::permissions::permission_scheme::PermissionScheme::new(req.name.clone());
-    scheme.description = req.description.clone();
+    scheme.description.clone_from(&req.description);
     scheme.role_permissions = role_permissions;
 
     match service.create_scheme(&scheme, creator_uuid).await {
@@ -308,8 +308,8 @@ pub async fn update_permission_scheme(
     }
 
     // Update fields
-    scheme.name = req.name.clone();
-    scheme.description = req.description.clone();
+    scheme.name.clone_from(&req.name);
+    scheme.description.clone_from(&req.description);
 
     // Convert and update permissions
     let mut role_permissions = std::collections::HashMap::new();
