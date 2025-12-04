@@ -136,8 +136,8 @@ async fn test_query_by_parent() -> Result<()> {
     // Create child entities
     let child1_uuid = Uuid::now_v7();
     let child2_uuid = Uuid::now_v7();
-    let child1_path = format!("/{}", child1_uuid);
-    let child2_path = format!("/{}", child2_uuid);
+    let child1_path = format!("/{child1_uuid}");
+    let child2_path = format!("/{child2_uuid}");
 
     let mut child1 =
         create_test_dynamic_entity_with_uuid_and_path(&created_def, child1_uuid, &child1_path);

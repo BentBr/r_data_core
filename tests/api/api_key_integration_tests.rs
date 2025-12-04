@@ -302,7 +302,7 @@ mod tests {
 
         // Test API key revocation (send valid API key header)
         let req = test::TestRequest::delete()
-            .uri(&format!("/api/admin/api-keys/{}", key_uuid))
+            .uri(&format!("/api/admin/api-keys/{key_uuid}"))
             .insert_header(("X-API-Key", key_value.clone()))
             .to_request();
 
@@ -792,8 +792,8 @@ mod tests {
         // Create multiple API keys
         for i in 1..=25 {
             repo.create_new_api_key(
-                &format!("Key {}", i),
-                &format!("Description {}", i),
+                &format!("Key {i}"),
+                &format!("Description {i}"),
                 user_uuid,
                 30,
             )
@@ -846,8 +846,8 @@ mod tests {
         // Create multiple API keys
         for i in 1..=25 {
             repo.create_new_api_key(
-                &format!("Key {}", i),
-                &format!("Description {}", i),
+                &format!("Key {i}"),
+                &format!("Description {i}"),
                 user_uuid,
                 30,
             )

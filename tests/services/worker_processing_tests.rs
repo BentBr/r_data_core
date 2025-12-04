@@ -25,7 +25,7 @@ async fn run_now_creates_queued_run_and_worker_marks_success() {
 
     // Create a consumer workflow (enabled, no cron) with minimal valid DSL config
     let req = CreateWorkflowRequest {
-        name: format!("test-wf-{}", Uuid::now_v7()),
+        name: format!("test-wf-{}", Uuid::now_v7().simple()),
         description: Some("test".into()),
         kind: WorkflowKind::Consumer.to_string(),
         enabled: true,

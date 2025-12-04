@@ -114,7 +114,7 @@ async fn create_workflow_uses_required_auth_and_sets_created_by() -> anyhow::Res
 
     // Minimal valid request
     let payload = serde_json::json!({
-        "name": format!("wf-route-create-{}", Uuid::now_v7()),
+        "name": format!("wf-route-create-{}", Uuid::now_v7().simple()),
         "description": "route test",
         "kind": WorkflowKind::Consumer.to_string(),
         "enabled": true,
@@ -194,7 +194,7 @@ async fn update_workflow_sets_updated_by() -> anyhow::Result<()> {
         .fetch_one(&pool)
         .await?;
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("wf-route-update-{}", Uuid::now_v7()),
+        name: format!("wf-route-update-{}", Uuid::now_v7().simple()),
         description: Some("route test".to_string()),
         kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
@@ -233,7 +233,7 @@ async fn update_workflow_sets_updated_by() -> anyhow::Result<()> {
 
     // Now update via route with auth; expect updated_by set
     let update_payload = serde_json::json!({
-        "name": format!("wf-route-update-{}-patched", Uuid::now_v7()),
+        "name": format!("wf-route-update-{}-patched", Uuid::now_v7().simple()),
         "description": "updated",
         "kind": WorkflowKind::Consumer.to_string(),
         "enabled": false,
@@ -270,7 +270,7 @@ async fn update_workflow_sets_updated_by() -> anyhow::Result<()> {
     });
 
     let req = test::TestRequest::put()
-        .uri(&format!("/admin/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/admin/api/v1/workflows/{wf_uuid}"))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .set_json(update_payload)
         .to_request();
@@ -299,7 +299,7 @@ async fn create_workflow_accepts_valid_complex_dsl_config() -> anyhow::Result<()
 
     // Valid complex DSL config with mappings
     let payload = serde_json::json!({
-        "name": format!("wf-valid-complex-{}", Uuid::now_v7()),
+        "name": format!("wf-valid-complex-{}", Uuid::now_v7().simple()),
         "description": "test complex DSL",
         "kind": WorkflowKind::Consumer.to_string(),
         "enabled": true,
@@ -368,7 +368,7 @@ async fn create_workflow_rejects_invalid_dsl_config_missing_from() -> anyhow::Re
 
     // Invalid DSL config - missing 'from'
     let payload = serde_json::json!({
-        "name": format!("wf-invalid-{}", Uuid::now_v7()),
+        "name": format!("wf-invalid-{}", Uuid::now_v7().simple()),
         "description": "test invalid DSL",
         "kind": WorkflowKind::Consumer.to_string(),
         "enabled": true,
@@ -412,7 +412,7 @@ async fn create_workflow_rejects_invalid_dsl_config_empty_steps() -> anyhow::Res
 
     // Invalid DSL config - empty steps array
     let payload = serde_json::json!({
-        "name": format!("wf-invalid-empty-{}", Uuid::now_v7()),
+        "name": format!("wf-invalid-empty-{}", Uuid::now_v7().simple()),
         "description": "test invalid DSL",
         "kind": WorkflowKind::Consumer.to_string(),
         "enabled": true,
@@ -447,7 +447,7 @@ async fn update_workflow_validates_dsl_config() -> anyhow::Result<()> {
         .fetch_one(&pool)
         .await?;
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("wf-update-validate-{}", Uuid::now_v7()),
+        name: format!("wf-update-validate-{}", Uuid::now_v7().simple()),
         description: Some("test".to_string()),
         kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
@@ -486,7 +486,7 @@ async fn update_workflow_validates_dsl_config() -> anyhow::Result<()> {
 
     // Try to update with invalid DSL config
     let update_payload = serde_json::json!({
-        "name": format!("wf-update-validate-{}", Uuid::now_v7()),
+        "name": format!("wf-update-validate-{}", Uuid::now_v7().simple()),
         "description": "updated",
         "kind": WorkflowKind::Consumer.to_string(),
         "enabled": true,
@@ -514,7 +514,7 @@ async fn update_workflow_validates_dsl_config() -> anyhow::Result<()> {
     });
 
     let req = test::TestRequest::put()
-        .uri(&format!("/admin/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/admin/api/v1/workflows/{wf_uuid}"))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .set_json(update_payload)
         .to_request();
@@ -537,7 +537,7 @@ async fn run_workflow_now_enqueues_job_to_redis_if_available() -> anyhow::Result
         .fetch_one(&pool)
         .await?;
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("wf-run-now-test-{}", Uuid::now_v7()),
+        name: format!("wf-run-now-test-{}", Uuid::now_v7().simple()),
         description: Some("test".to_string()),
         kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
@@ -577,7 +577,7 @@ async fn run_workflow_now_enqueues_job_to_redis_if_available() -> anyhow::Result
     // Check if Redis is available
     let redis_url = std::env::var("REDIS_URL").ok();
     let fetch_key = std::env::var("QUEUE_FETCH_KEY")
-        .unwrap_or_else(|_| format!("test_queue:fetch:{}", Uuid::now_v7()));
+        .unwrap_or_else(|_| format!("test_queue:fetch:{}", Uuid::now_v7().simple()));
 
     // Call run_workflow_now endpoint
     let req = test::TestRequest::post()

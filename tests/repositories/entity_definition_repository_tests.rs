@@ -43,7 +43,7 @@ async fn test_create_and_get_entity_definition() {
                 indexed: true,
                 filterable: true,
                 default_value: None,
-                validation: Default::default(),
+                validation: r_data_core_core::field::FieldValidation::default(),
                 ui_settings: UiSettings::default(),
                 constraints: HashMap::new(),
             },
@@ -56,7 +56,7 @@ async fn test_create_and_get_entity_definition() {
                 indexed: false,
                 filterable: false,
                 default_value: None,
-                validation: Default::default(),
+                validation: r_data_core_core::field::FieldValidation::default(),
                 ui_settings: UiSettings::default(),
                 constraints: HashMap::new(),
             },
@@ -108,7 +108,7 @@ async fn test_list_entity_definitions() {
     let mut uuids = Vec::new();
 
     for i in 1..=3 {
-        let entity_type = format!("testlist{}", i);
+        let entity_type = format!("testlist{i}");
         let definition = EntityDefinition::from_params(EntityDefinitionParams {
             entity_type: entity_type.clone(),
             display_name: format!("Test List {i}"),
@@ -125,7 +125,7 @@ async fn test_list_entity_definitions() {
                 indexed: false,
                 filterable: true,
                 default_value: None,
-                validation: Default::default(),
+                validation: r_data_core_core::field::FieldValidation::default(),
                 ui_settings: UiSettings::default(),
                 constraints: HashMap::new(),
             }],
@@ -339,7 +339,7 @@ async fn test_table_operations() {
                 indexed: false,
                 filterable: true,
                 default_value: None,
-                validation: Default::default(),
+                validation: r_data_core_core::field::FieldValidation::default(),
                 ui_settings: UiSettings::default(),
                 constraints: HashMap::new(),
             },
@@ -352,7 +352,7 @@ async fn test_table_operations() {
                 indexed: true,
                 filterable: true,
                 default_value: None,
-                validation: Default::default(),
+                validation: r_data_core_core::field::FieldValidation::default(),
                 ui_settings: UiSettings::default(),
                 constraints: HashMap::new(),
             },

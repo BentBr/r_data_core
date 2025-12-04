@@ -52,7 +52,7 @@ async fn create_sets_created_by_and_fk_enforced() -> anyhow::Result<()> {
     });
 
     let req = CreateWorkflowRequest {
-        name: format!("wf-create-{}", Uuid::now_v7()),
+        name: format!("wf-create-{}", Uuid::now_v7().simple()),
         description: Some("audit test".to_string()),
         kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
@@ -127,7 +127,7 @@ async fn update_sets_updated_by_and_fk_enforced() -> anyhow::Result<()> {
 
     // Create base workflow
     let create_req = CreateWorkflowRequest {
-        name: format!("wf-update-{}", Uuid::now_v7()),
+        name: format!("wf-update-{}", Uuid::now_v7().simple()),
         description: Some("audit test".to_string()),
         kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
@@ -139,7 +139,7 @@ async fn update_sets_updated_by_and_fk_enforced() -> anyhow::Result<()> {
 
     // Update and set updated_by
     let update_req = UpdateWorkflowRequest {
-        name: format!("wf-update-{}-edited", Uuid::now_v7()),
+        name: format!("wf-update-{}-edited", Uuid::now_v7().simple()),
         description: Some("edited".to_string()),
         kind: WorkflowKind::Consumer.to_string(),
         enabled: false,

@@ -9,6 +9,29 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rdata_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,21 +65,42 @@ jobs:
             cargo install cargo-audit --locked
           fi
 
+      - name: Install sqlx-cli
+        run: |
+          if ! command -v sqlx &> /dev/null; then
+            cargo install sqlx-cli --no-default-features --features postgres --locked
+          fi
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/rdata_test
+        run: |
+          sqlx migrate run
+
       - name: Clippy (strict)
+        env:
+          SQLX_OFFLINE: true
         run: |
           cargo clippy --workspace --all-targets --all-features -- \
             -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery
 
       - name: Format check
+        env:
+          SQLX_OFFLINE: true
         run: cargo fmt --check --all
 
       - name: Security audit
         run: cargo audit
 
       - name: Run tests
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/rdata_test
+          REDIS_URL: redis://localhost:6379
         run: RUST_LOG=warning cargo test --workspace -- --test-threads=1
 
       - name: Build verification
+        env:
+          SQLX_OFFLINE: true
         run: cargo build --workspace --all-features
 
   frontend:

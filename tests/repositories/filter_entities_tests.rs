@@ -26,8 +26,8 @@ mod filter_entities_tests {
         // Create a simple entity definition for testing
         let mut entity_def = EntityDefinition::default();
         entity_def.entity_type = entity_type.to_string();
-        entity_def.display_name = format!("Test {}", entity_type);
-        entity_def.description = Some(format!("Test description for {}", entity_type));
+        entity_def.display_name = format!("Test {entity_type}");
+        entity_def.description = Some(format!("Test description for {entity_type}"));
         entity_def.published = true;
 
         // Add fields to the entity definition
@@ -153,10 +153,10 @@ mod filter_entities_tests {
             field_data.insert("uuid".to_string(), json!(uuid.to_string()));
             field_data.insert(
                 "entity_key".to_string(),
-                json!(format!("test-entity-{}", i)),
+                json!(format!("test-entity-{i}")),
             );
-            field_data.insert("name".to_string(), json!(format!("Test Entity {}", i)));
-            field_data.insert("email".to_string(), json!(format!("test{}@example.com", i)));
+            field_data.insert("name".to_string(), json!(format!("Test Entity {i}")));
+            field_data.insert("email".to_string(), json!(format!("test{i}@example.com")));
             field_data.insert("age".to_string(), json!(20 + i));
             field_data.insert("active".to_string(), json!(i % 2 == 0));
             field_data.insert("created_by".to_string(), json!(created_by.to_string()));
@@ -176,7 +176,7 @@ mod filter_entities_tests {
 
     // Ensure we use a unique entity type for each test to avoid conflicts
     fn unique_entity_type(base: &str) -> String {
-        format!("{}_{}", base, Uuid::now_v7().simple())
+        format!("{base}_{}", Uuid::now_v7().simple())
     }
 
     #[tokio::test]

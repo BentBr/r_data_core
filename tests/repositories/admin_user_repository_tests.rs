@@ -20,7 +20,7 @@ async fn test_create_and_find_admin_user() -> Result<()> {
     let repo = AdminUserRepository::new(Arc::new(pool.clone()));
 
     let username = random_string("test_user");
-    let email = format!("{}@example.com", username);
+    let email = format!("{username}@example.com");
     let first_name = "Test";
     let last_name = "User";
     let password = "password123";

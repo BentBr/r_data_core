@@ -28,8 +28,8 @@ mod tests {
 
         // Generate a username and email that won't conflict
         let unique_id = Uuid::now_v7().to_string()[0..8].to_string();
-        let username = format!("test_user_{}", unique_id);
-        let email = format!("test{}@example.com", unique_id);
+        let username = format!("test_user_{unique_id}");
+        let email = format!("test{unique_id}@example.com");
         let test_password = "Test123!";
 
         // Create the admin user directly in the database

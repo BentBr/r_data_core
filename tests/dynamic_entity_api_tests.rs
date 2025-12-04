@@ -210,7 +210,7 @@ mod dynamic_entity_tests {
         entity.field_data.insert("path".to_string(), json!("/"));
         entity.field_data.insert(
             "entity_key".to_string(),
-            json!(format!("{}-{}", entity_type, entity_uuid.simple())),
+            json!(format!("{entity_type}-{}", entity_uuid.simple())),
         );
 
         entity
@@ -399,7 +399,6 @@ mod dynamic_entity_tests {
             DynamicEntityService::new(dynamic_entity_repository.clone(), Arc::new(class_service));
 
         // Create 5 test entities with different attributes
-        let mut created_uuids = Vec::new();
         for i in 1..=5 {
             let mut entity = DynamicEntity {
                 entity_type: entity_type.clone(),
@@ -416,16 +415,16 @@ mod dynamic_entity_tests {
                 .insert("uuid".to_string(), json!(uuid.to_string()));
             entity
                 .field_data
-                .insert("email".to_string(), json!(format!("user{}@example.com", i)));
+                .insert("email".to_string(), json!(format!("user{i}@example.com")));
             entity
                 .field_data
-                .insert("username".to_string(), json!(format!("user{}", i)));
+                .insert("username".to_string(), json!(format!("user{i}")));
             entity
                 .field_data
-                .insert("first_name".to_string(), json!(format!("User{}", i)));
+                .insert("first_name".to_string(), json!(format!("User{i}")));
             entity
                 .field_data
-                .insert("last_name".to_string(), json!(format!("Test{}", i)));
+                .insert("last_name".to_string(), json!(format!("Test{i}")));
             entity.field_data.insert(
                 "role".to_string(),
                 json!(if i % 2 == 0 { "admin" } else { "customer" }),
@@ -455,13 +454,12 @@ mod dynamic_entity_tests {
             entity.field_data.insert("path".to_string(), json!("/"));
             entity.field_data.insert(
                 "entity_key".to_string(),
-                json!(format!("{}-{}", entity_type, uuid.simple())),
+                json!(format!("{entity_type}-{}", uuid.simple())),
             );
 
             // Insert using the service
             dynamic_entity_service.create_entity(&entity).await?;
             let entity_uuid = get_entity_uuid(&entity).unwrap();
-            created_uuids.push(entity_uuid);
 
             // Ensure it's published
             ensure_entity_published(&pool, &entity_uuid, &entity_type).await?;
@@ -549,16 +547,16 @@ mod dynamic_entity_tests {
                 .insert("uuid".to_string(), json!(uuid.to_string()));
             entity
                 .field_data
-                .insert("email".to_string(), json!(format!("user{}@example.com", i)));
+                .insert("email".to_string(), json!(format!("user{i}@example.com")));
             entity
                 .field_data
-                .insert("username".to_string(), json!(format!("user{}", i)));
+                .insert("username".to_string(), json!(format!("user{i}")));
             entity
                 .field_data
-                .insert("first_name".to_string(), json!(format!("User{}", i)));
+                .insert("first_name".to_string(), json!(format!("User{i}")));
             entity
                 .field_data
-                .insert("last_name".to_string(), json!(format!("Test{}", i)));
+                .insert("last_name".to_string(), json!(format!("Test{i}")));
             entity
                 .field_data
                 .insert("role".to_string(), json!("customer"));
@@ -574,7 +572,7 @@ mod dynamic_entity_tests {
             entity.field_data.insert("path".to_string(), json!("/"));
             entity.field_data.insert(
                 "entity_key".to_string(),
-                json!(format!("{}-{}", entity_type, uuid.simple())),
+                json!(format!("{entity_type}-{}", uuid.simple())),
             );
 
             // Create the entity
@@ -690,16 +688,16 @@ mod dynamic_entity_tests {
                 .insert("uuid".to_string(), json!(uuid.to_string()));
             entity
                 .field_data
-                .insert("email".to_string(), json!(format!("user{}@example.com", i)));
+                .insert("email".to_string(), json!(format!("user{i}@example.com")));
             entity
                 .field_data
-                .insert("username".to_string(), json!(format!("user{}", i)));
+                .insert("username".to_string(), json!(format!("user{i}")));
             entity
                 .field_data
-                .insert("first_name".to_string(), json!(format!("User{}", i)));
+                .insert("first_name".to_string(), json!(format!("User{i}")));
             entity
                 .field_data
-                .insert("last_name".to_string(), json!(format!("Test{}", i)));
+                .insert("last_name".to_string(), json!(format!("Test{i}")));
             entity
                 .field_data
                 .insert("role".to_string(), json!("customer"));
@@ -715,7 +713,7 @@ mod dynamic_entity_tests {
             entity.field_data.insert("path".to_string(), json!("/"));
             entity.field_data.insert(
                 "entity_key".to_string(),
-                json!(format!("{}-{}", entity_type, uuid.simple())),
+                json!(format!("{entity_type}-{}", uuid.simple())),
             );
 
             // Create the entity
@@ -778,7 +776,6 @@ mod dynamic_entity_tests {
             DynamicEntityService::new(dynamic_entity_repository, Arc::new(class_service));
 
         // Create a few test entities
-        let mut created_uuids = Vec::new();
         for i in 1..=3 {
             let mut entity = DynamicEntity {
                 entity_type: entity_type.clone(),
@@ -793,16 +790,16 @@ mod dynamic_entity_tests {
                 .insert("uuid".to_string(), json!(uuid.to_string()));
             entity
                 .field_data
-                .insert("email".to_string(), json!(format!("user{}@example.com", i)));
+                .insert("email".to_string(), json!(format!("user{i}@example.com")));
             entity
                 .field_data
-                .insert("username".to_string(), json!(format!("user{}", i)));
+                .insert("username".to_string(), json!(format!("user{i}")));
             entity
                 .field_data
-                .insert("first_name".to_string(), json!(format!("User{}", i)));
+                .insert("first_name".to_string(), json!(format!("User{i}")));
             entity
                 .field_data
-                .insert("last_name".to_string(), json!(format!("Test{}", i)));
+                .insert("last_name".to_string(), json!(format!("Test{i}")));
             entity
                 .field_data
                 .insert("role".to_string(), json!("customer"));
@@ -830,13 +827,12 @@ mod dynamic_entity_tests {
             entity.field_data.insert("path".to_string(), json!("/"));
             entity.field_data.insert(
                 "entity_key".to_string(),
-                json!(format!("{}-{}", entity_type, uuid.simple())),
+                json!(format!("{entity_type}-{}", uuid.simple())),
             );
 
             // Insert using the service
             dynamic_entity_service.create_entity(&entity).await?;
             let entity_uuid = get_entity_uuid(&entity).unwrap();
-            created_uuids.push(entity_uuid);
 
             // Ensure it's published
             ensure_entity_published(&pool, &entity_uuid, &entity_type).await?;
@@ -871,7 +867,7 @@ mod dynamic_entity_tests {
         let pool = setup_test_db().await;
 
         // Create a simple entity definition
-        let entity_type = format!("test_entity_{}", Uuid::now_v7().simple().to_string());
+        let entity_type = format!("test_entity_{}", Uuid::now_v7().simple());
 
         // Create a simple field definition
         let mut fields = Vec::new();
@@ -937,7 +933,7 @@ mod dynamic_entity_tests {
         entity.field_data.insert("path".to_string(), json!("/"));
         entity.field_data.insert(
             "entity_key".to_string(),
-            json!(format!("{}-{}", entity_type, uuid.simple())),
+            json!(format!("{entity_type}-{}", uuid.simple())),
         );
 
         // Create a repository and service for dynamic entities
@@ -948,7 +944,7 @@ mod dynamic_entity_tests {
         dynamic_service.create_entity(&entity).await?;
 
         // Retrieve the entity
-        let entity_uuid = Uuid::parse_str(&entity.field_data["uuid"].as_str().unwrap())
+        let entity_uuid = Uuid::parse_str(entity.field_data["uuid"].as_str().unwrap())
             .map_err(|e| r_data_core_core::error::Error::Conversion(e.to_string()))?;
         let retrieved = dynamic_service
             .get_entity_by_uuid(&entity_type, &entity_uuid, None)
@@ -976,19 +972,21 @@ mod dynamic_entity_tests {
         // Create a simple entity definition
         let entity_type = unique_entity_type("test_file");
 
-        let mut entity_def = EntityDefinition::default();
-        entity_def.entity_type = entity_type.clone();
-        entity_def.display_name = format!("Test {}", entity_type);
-        entity_def.description = Some("Test entity".to_string());
-        entity_def.created_by = Uuid::now_v7();
-        entity_def.published = true;
-
         let field = r_data_core_core::field::FieldDefinition::new(
             "name".to_string(),
             "Name".to_string(),
             r_data_core_core::field::types::FieldType::String,
         );
-        entity_def.fields = vec![field];
+
+        let entity_def = EntityDefinition {
+            entity_type: entity_type.clone(),
+            display_name: format!("Test {entity_type}"),
+            description: Some("Test entity".to_string()),
+            created_by: Uuid::now_v7(),
+            published: true,
+            fields: vec![field],
+            ..Default::default()
+        };
 
         // Create entity definition in the database
         let class_repo = EntityDefinitionRepository::new(pool.clone());
@@ -1132,19 +1130,21 @@ mod dynamic_entity_tests {
         // Create a simple entity definition
         let entity_type = unique_entity_type("test_file");
 
-        let mut entity_def = EntityDefinition::default();
-        entity_def.entity_type = entity_type.clone();
-        entity_def.display_name = format!("Test {}", entity_type);
-        entity_def.description = Some("Test entity".to_string());
-        entity_def.created_by = Uuid::now_v7();
-        entity_def.published = true;
-
         let field = r_data_core_core::field::FieldDefinition::new(
             "name".to_string(),
             "Name".to_string(),
             r_data_core_core::field::types::FieldType::String,
         );
-        entity_def.fields = vec![field];
+
+        let entity_def = EntityDefinition {
+            entity_type: entity_type.clone(),
+            display_name: format!("Test {entity_type}"),
+            description: Some("Test entity".to_string()),
+            created_by: Uuid::now_v7(),
+            published: true,
+            fields: vec![field],
+            ..Default::default()
+        };
 
         // Create entity definition in the database
         let class_repo = EntityDefinitionRepository::new(pool.clone());

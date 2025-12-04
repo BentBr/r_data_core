@@ -27,8 +27,8 @@ async fn create_test_entity_definition(
     let entity_def = EntityDefinition {
         uuid: Uuid::now_v7(),
         entity_type: entity_type.to_string(),
-        display_name: format!("Test {}", entity_type),
-        description: Some(format!("Test description for {}", entity_type)),
+        display_name: format!("Test {entity_type}"),
+        description: Some(format!("Test description for {entity_type}")),
         group_name: None,
         allow_children: true,
         icon: None,
@@ -155,8 +155,8 @@ async fn test_browse_by_path() -> Result<()> {
     // Root level entities - use entity_key as the key
     let root1_uuid = Uuid::now_v7();
     let root2_uuid = Uuid::now_v7();
-    let root1_key = format!("root1-{}", root1_uuid);
-    let root2_key = format!("root2-{}", root2_uuid);
+    let root1_key = format!("root1-{root1_uuid}");
+    let root2_key = format!("root2-{root2_uuid}");
     let root1 = create_test_dynamic_entity(&entity_def, "Root 1", "/", &root1_key);
     let root2 = create_test_dynamic_entity(&entity_def, "Root 2", "/", &root2_key);
     repo.create(&root1).await?;
@@ -164,11 +164,11 @@ async fn test_browse_by_path() -> Result<()> {
 
     // Get root1 UUID and path for child
     let root1_uuid = root1.get::<Uuid>("uuid")?;
-    let root1_path = format!("/{}", root1_key);
+    let root1_path = format!("/{root1_key}");
 
     // Child entities
     let child1_uuid = Uuid::now_v7();
-    let child1_key = format!("child1-{}", child1_uuid);
+    let child1_key = format!("child1-{child1_uuid}");
     let mut child1 = create_test_dynamic_entity(&entity_def, "Child 1", &root1_path, &child1_key);
     child1.set("parent_uuid", root1_uuid.to_string())?;
     repo.create(&child1).await?;
@@ -212,7 +212,7 @@ async fn test_browse_by_path_pagination() -> Result<()> {
     for i in 0..10 {
         let entity = create_test_dynamic_entity(
             &entity_def,
-            &format!("Entity {}", i),
+            &format!("Entity {i}"),
             "/",
             &Uuid::now_v7().to_string(),
         );

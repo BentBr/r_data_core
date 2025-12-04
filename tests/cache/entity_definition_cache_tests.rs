@@ -49,9 +49,9 @@ fn create_test_entity_definition() -> EntityDefinition {
         indexed: true,
         filterable: true,
         default_value: None,
-        ui_settings: Default::default(),
-        constraints: Default::default(),
-        validation: Default::default(),
+        ui_settings: r_data_core_core::field::ui::UiSettings::default(),
+        constraints: std::collections::HashMap::default(),
+        validation: r_data_core_core::field::FieldValidation::default(),
     }];
 
     let mut properties = HashMap::new();

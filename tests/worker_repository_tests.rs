@@ -20,7 +20,7 @@ async fn get_workflow_uuid_for_run_round_trip() -> anyhow::Result<()> {
 
     // Create a workflow
     let req = CreateWorkflowRequest {
-        name: format!("worker-test-{}", Uuid::now_v7()),
+        name: format!("worker-test-{}", Uuid::now_v7().simple()),
         description: Some("worker test".to_string()),
         kind: WorkflowKind::Consumer.to_string(),
         enabled: true,

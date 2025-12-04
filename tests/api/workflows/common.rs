@@ -138,7 +138,7 @@ pub async fn create_consumer_workflow(
 ) -> anyhow::Result<Uuid> {
     let repo = WorkflowRepository::new(pool.clone());
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("consumer-wf-{}", Uuid::now_v7()),
+        name: format!("consumer-wf-{}", Uuid::now_v7().simple()),
         description: Some("Consumer workflow test".to_string()),
         kind: WorkflowKind::Consumer.to_string(),
         enabled,
@@ -156,7 +156,7 @@ pub async fn create_provider_workflow(
 ) -> anyhow::Result<Uuid> {
     let repo = WorkflowRepository::new(pool.clone());
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("provider-wf-{}", Uuid::now_v7()),
+        name: format!("provider-wf-{}", Uuid::now_v7().simple()),
         description: Some("Provider workflow test".to_string()),
         kind: WorkflowKind::Provider.to_string(),
         enabled: true,

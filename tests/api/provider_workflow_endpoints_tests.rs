@@ -133,7 +133,7 @@ async fn create_provider_workflow(
 ) -> anyhow::Result<Uuid> {
     let repo = WorkflowRepository::new(pool.clone());
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("provider-wf-{}", Uuid::now_v7()),
+        name: format!("provider-wf-{}", Uuid::now_v7().simple()),
         description: Some("Provider workflow test".to_string()),
         kind: WorkflowKind::Provider.to_string(),
         enabled: true,
@@ -151,7 +151,7 @@ async fn create_consumer_workflow_with_api_source(
 ) -> anyhow::Result<Uuid> {
     let repo = WorkflowRepository::new(pool.clone());
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("consumer-api-wf-{}", Uuid::now_v7()),
+        name: format!("consumer-api-wf-{}", Uuid::now_v7().simple()),
         description: Some("Consumer workflow with API source".to_string()),
         kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
@@ -207,7 +207,7 @@ async fn test_provider_endpoint_with_jwt_auth() -> anyhow::Result<()> {
 
     // Test GET endpoint with JWT
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
@@ -266,7 +266,7 @@ async fn test_provider_endpoint_with_api_key_auth() -> anyhow::Result<()> {
 
     // Test GET endpoint with API key
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("X-API-Key", api_key_value))
         .to_request();
 
@@ -330,7 +330,7 @@ async fn test_provider_endpoint_with_pre_shared_key() -> anyhow::Result<()> {
 
     // Test with correct pre-shared key
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("X-Pre-Shared-Key", "test-secret-key-123"))
         .to_request();
 
@@ -344,7 +344,7 @@ async fn test_provider_endpoint_with_pre_shared_key() -> anyhow::Result<()> {
 
     // Test with incorrect pre-shared key
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("X-Pre-Shared-Key", "wrong-key"))
         .to_request();
 
@@ -401,7 +401,7 @@ async fn test_provider_endpoint_without_auth() -> anyhow::Result<()> {
 
     // Test without auth
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .to_request();
 
     let resp = test::call_service(&app, req).await;
@@ -524,7 +524,7 @@ async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
     // Test POST endpoint with CSV data (matching the format_type in config)
     let csv_data: Vec<u8> = b"name,email\nJohn,john@example.com".to_vec();
     let req = test::TestRequest::post()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("Content-Type", "text/csv"))
         .set_payload(csv_data)
         .to_request();
@@ -595,7 +595,7 @@ async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
     // Create workflow as disabled
     let repo = WorkflowRepository::new(pool.clone());
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("consumer-api-disabled-{}", Uuid::now_v7()),
+        name: format!("consumer-api-disabled-{}", Uuid::now_v7().simple()),
         description: Some("Consumer workflow with API source (disabled)".to_string()),
         kind: WorkflowKind::Consumer.to_string(),
         enabled: false, // Disabled
@@ -608,7 +608,7 @@ async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
     // Test POST endpoint with CSV data
     let csv_data: Vec<u8> = b"name,email\nJohn,john@example.com".to_vec();
     let req = test::TestRequest::post()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("Content-Type", "text/csv"))
         .set_payload(csv_data)
         .to_request();
@@ -672,7 +672,7 @@ async fn test_provider_endpoint_returns_404_for_consumer_workflow() -> anyhow::R
 
     let repo = WorkflowRepository::new(pool.clone());
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("consumer-wf-{}", Uuid::now_v7()),
+        name: format!("consumer-wf-{}", Uuid::now_v7().simple()),
         description: Some("Consumer workflow".to_string()),
         kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
@@ -684,7 +684,7 @@ async fn test_provider_endpoint_returns_404_for_consumer_workflow() -> anyhow::R
 
     // Try to access as provider endpoint
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
@@ -743,7 +743,7 @@ async fn test_consumer_endpoint_post_returns_405_for_provider_workflow() -> anyh
     // Try to POST to provider workflow
     let payload: Vec<u8> = b"{}".to_vec();
     let req = test::TestRequest::post()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("Content-Type", "application/json"))
         .set_payload(payload)
         .to_request();

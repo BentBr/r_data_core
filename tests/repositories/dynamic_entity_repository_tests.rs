@@ -340,7 +340,7 @@ async fn test_count_entities() -> Result<()> {
     // Create multiple test entities
     for i in 0..5 {
         let mut entity = create_test_dynamic_entity(&created_def);
-        entity.set("name", format!("Test Entity {}", i))?;
+        entity.set("name", format!("Test Entity {i}"))?;
         repo.create(&entity).await?;
     }
 
@@ -371,7 +371,7 @@ async fn test_field_name_case_handling() -> Result<()> {
     // Create entity definition with camelCase field names
     let mut entity_def = EntityDefinition::default();
     entity_def.entity_type = entity_type.clone();
-    entity_def.display_name = format!("{} Entity", entity_type);
+    entity_def.display_name = format!("{entity_type} Entity");
     entity_def.published = true;
     entity_def.created_by = Uuid::now_v7();
 
@@ -457,8 +457,7 @@ async fn test_field_name_case_handling() -> Result<()> {
     // Test 2: Verify database stores columns in lowercase
     let table_name = format!("entity_{}", entity_type.to_lowercase());
     let row = sqlx::query(&format!(
-        "SELECT firstname, lastname, email FROM {} WHERE uuid = $1",
-        table_name
+        "SELECT firstname, lastname, email FROM {table_name} WHERE uuid = $1"
     ))
     .bind(uuid)
     .fetch_optional(&pool)

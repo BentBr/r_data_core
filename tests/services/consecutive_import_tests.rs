@@ -29,8 +29,8 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
 
     let mut entity_def = EntityDefinition::default();
     entity_def.entity_type = entity_type.clone();
-    entity_def.display_name = format!("{} Class", entity_type);
-    entity_def.description = Some(format!("Test description for {}", entity_type));
+    entity_def.display_name = format!("{entity_type} Class");
+    entity_def.description = Some(format!("Test description for {entity_type}"));
     entity_def.published = true;
 
     // Add required fields
@@ -83,7 +83,7 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
         .await
         .expect("create test admin user");
 
-    let workflow_name = format!("test-wf-{}", Uuid::now_v7());
+    let workflow_name = format!("test-wf-{}", Uuid::now_v7().simple());
     let workflow_config = json!({
         "steps": [
             {

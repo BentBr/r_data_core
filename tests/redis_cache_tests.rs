@@ -18,7 +18,7 @@ async fn test_redis_cache_connection_if_available() {
     };
 
     // Test that we can perform operations (connection works)
-    let test_key = format!("test:connection:{}", Uuid::now_v7());
+    let test_key = format!("test:connection:{}", Uuid::now_v7().simple());
     let test_data = json!({
         "id": Uuid::now_v7(),
         "name": "test",
@@ -53,7 +53,7 @@ async fn test_redis_cache_ping_connection_if_available() {
     // The cache should have been initialized with a successful PING
     // This test verifies that the connection test in RedisCache::new works
     // with the updated redis 0.32 API
-    let test_key = format!("test:ping:{}", Uuid::now_v7());
+    let test_key = format!("test:ping:{}", Uuid::now_v7().simple());
     let test_data = json!({
         "id": Uuid::now_v7(),
         "name": "ping_test",
@@ -86,7 +86,7 @@ async fn test_redis_cache_query_async_api_if_available() {
 
     // Test that the updated query_async API works correctly
     // This verifies the migration from query_async::<T, C> to query_async with type annotation
-    let test_key = format!("test:query_api:{}", Uuid::now_v7());
+    let test_key = format!("test:query_api:{}", Uuid::now_v7().simple());
     let test_data = json!({
         "id": Uuid::now_v7(),
         "name": "query_test",
@@ -103,7 +103,7 @@ async fn test_redis_cache_query_async_api_if_available() {
     assert_eq!(retrieved, Some(test_data.clone()));
 
     // Test delete_by_prefix which uses SCAN and DEL commands
-    let prefix = format!("test:query_api:{}", Uuid::now_v7());
+    let prefix = format!("test:query_api:{}", Uuid::now_v7().simple());
     let test_data2 = test_data.clone();
     cache
         .set(&format!("{prefix}:1"), &test_data2, Some(30))

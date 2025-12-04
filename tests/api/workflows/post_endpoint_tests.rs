@@ -69,7 +69,7 @@ async fn test_post_endpoint_accepts_csv_into_entities() -> anyhow::Result<()> {
     let csv_data: Vec<u8> =
         b"name,email\nJohn Doe,john@example.com\nJane Smith,jane@example.com".to_vec();
     let req = test::TestRequest::post()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("Content-Type", "text/csv"))
         .set_payload(csv_data)
         .to_request();
@@ -137,7 +137,7 @@ async fn test_post_endpoint_accepts_json_into_entities() -> anyhow::Result<()> {
     // Test POST endpoint with JSON data
     let json_data = r#"[{"name":"John Doe","email":"john@example.com"},{"name":"Jane Smith","email":"jane@example.com"}]"#;
     let req = test::TestRequest::post()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("Content-Type", "application/json"))
         .set_payload(json_data.as_bytes())
         .to_request();
@@ -207,7 +207,7 @@ async fn test_post_endpoint_csv_without_auth_currently_allowed() -> anyhow::Resu
     // Test POST without any auth headers
     let csv_data: Vec<u8> = b"name,email\nJohn,john@example.com".to_vec();
     let req = test::TestRequest::post()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("Content-Type", "text/csv"))
         .set_payload(csv_data)
         .to_request();
@@ -269,7 +269,7 @@ async fn test_post_endpoint_json_without_auth_currently_allowed() -> anyhow::Res
     // Test POST without any auth headers
     let json_data = r#"[{"name":"John","email":"john@example.com"}]"#;
     let req = test::TestRequest::post()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("Content-Type", "application/json"))
         .set_payload(json_data.as_bytes())
         .to_request();

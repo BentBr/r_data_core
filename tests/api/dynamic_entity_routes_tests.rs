@@ -52,14 +52,14 @@ mod dynamic_entity_api_tests {
             let uuid = create_test_entity(
                 &pool,
                 "user",
-                &format!("Root User {}", i),
-                &format!("root{}@example.com", i),
+                &format!("Root User {i}"),
+                &format!("root{i}@example.com"),
             )
             .await?;
             // Update path in entities_registry to root
             sqlx::query("UPDATE entities_registry SET path = '/', entity_key = $2 WHERE uuid = $1")
                 .bind(uuid)
-                .bind(format!("root-{}", i))
+                .bind(format!("root-{i}"))
                 .execute(&pool)
                 .await?;
         }

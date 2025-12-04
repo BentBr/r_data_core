@@ -126,7 +126,7 @@ cargo sqlx migrate run
 cargo run
 ```
 
-Run our applicaiton
+Run our application
 
 ```bash
 # Run the application with logging and backtrace enabled (info is defined in .env, debug for extensive output)
@@ -140,13 +140,11 @@ docker compose down -v && docker compose up -d redis postgres && sleep 7 && carg
 ```
 
 update sqlx:
-
 ```bash
-cargo sqlx prepare
+cargo sqlx prepare --workspace
 ```
 
 testing:
-
 ```bash
 # Only r_data_core unit tests
 # Unit tests can run concurrently

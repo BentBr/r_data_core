@@ -31,8 +31,8 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
     };
 
     // Use unique keys per test to avoid cross-test interference
-    let fetch_key = format!("test:e2e:queue:fetch:{}", Uuid::now_v7());
-    let process_key = format!("test:e2e:queue:process:{}", Uuid::now_v7());
+    let fetch_key = format!("test:e2e:queue:fetch:{}", Uuid::now_v7().simple());
+    let process_key = format!("test:e2e:queue:process:{}", Uuid::now_v7().simple());
     let queue = ApalisRedisQueue::from_parts(&redis_url, &fetch_key, &process_key)
         .await
         .expect("Failed to create Redis queue for e2e test");
@@ -83,7 +83,7 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
     });
 
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("e2e-wf-{}", Uuid::now_v7()),
+        name: format!("e2e-wf-{}", Uuid::now_v7().simple()),
         description: Some("e2e workflow".to_string()),
         kind: WorkflowKind::Consumer.to_string(),
         enabled: true,

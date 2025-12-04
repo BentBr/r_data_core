@@ -147,9 +147,9 @@ mod dynamic_entity_api_tests {
 
             let mut field_data = HashMap::new();
             field_data.insert("uuid".to_string(), json!(uuid.to_string()));
-            field_data.insert("entity_key".to_string(), json!(format!("user-{}", i)));
-            field_data.insert("name".to_string(), json!(format!("User {}", i)));
-            field_data.insert("email".to_string(), json!(format!("user{}@example.com", i)));
+            field_data.insert("entity_key".to_string(), json!(format!("user-{i}")));
+            field_data.insert("name".to_string(), json!(format!("User {i}")));
+            field_data.insert("email".to_string(), json!(format!("user{i}@example.com")));
             field_data.insert("age".to_string(), json!(20 + i));
             field_data.insert("active".to_string(), json!(i % 2 == 0));
             field_data.insert("created_by".to_string(), json!(created_by.to_string()));
@@ -536,7 +536,7 @@ mod dynamic_entity_api_tests {
 
         // Test GET /api/v1/user/{id} endpoint
         let req = test::TestRequest::get()
-            .uri(&format!("/api/v1/user/{}", user_id))
+            .uri(&format!("/api/v1/user/{user_id}"))
             .insert_header(("X-API-Key", api_key.clone()))
             .to_request();
 
@@ -581,7 +581,7 @@ mod dynamic_entity_api_tests {
         // Test with a non-existent UUID
         let fake_id = Uuid::now_v7();
         let req = test::TestRequest::get()
-            .uri(&format!("/api/v1/user/{}", fake_id))
+            .uri(&format!("/api/v1/user/{fake_id}"))
             .insert_header(("X-API-Key", api_key.clone()))
             .to_request();
 
