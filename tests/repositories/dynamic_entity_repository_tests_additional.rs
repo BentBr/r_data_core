@@ -53,7 +53,7 @@ fn create_test_entity_definition_struct() -> EntityDefinition {
                 constraints: HashMap::new(),
             },
         ],
-        schema: Default::default(),
+        schema: r_data_core_core::entity_definition::schema::Schema::default(),
         created_at: OffsetDateTime::now_utc(),
         updated_at: OffsetDateTime::now_utc(),
         created_by: Uuid::now_v7(),

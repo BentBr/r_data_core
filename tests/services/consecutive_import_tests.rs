@@ -2,6 +2,7 @@
 
 use r_data_core_api::admin::workflows::models::CreateWorkflowRequest;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::field::{FieldDefinition, FieldType};
 use r_data_core_persistence::DynamicEntityRepository;
 use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core_persistence::WorkflowRepository;
@@ -11,6 +12,7 @@ use r_data_core_services::{DynamicEntityService, EntityDefinitionService};
 use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_test_support::{create_test_admin_user, setup_test_db};
 use r_data_core_workflow::data::WorkflowKind;
+use r_data_core_workflow::data::adapters::format::FormatHandler;
 use serde_json::json;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -36,7 +38,6 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
     };
 
     // Add required fields
-    use r_data_core_core::field::{FieldDefinition, FieldType};
     let mut fields = Vec::new();
 
     let email_field = FieldDefinition {
@@ -159,7 +160,6 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
         "has_header": true,
         "delimiter": ","
     });
-    use r_data_core_workflow::data::adapters::format::FormatHandler;
     let payloads = r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new()
         .parse(csv_data.as_bytes(), &format_cfg)
         .expect("parse CSV");

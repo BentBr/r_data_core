@@ -39,7 +39,7 @@ fn test_normalize_field_data_by_type() {
         allow_children: false,
         icon: None,
         fields,
-        schema: Default::default(),
+        schema: r_data_core_core::entity_definition::schema::Schema::default(),
         created_at: time::OffsetDateTime::now_utc(),
         updated_at: time::OffsetDateTime::now_utc(),
         created_by: Uuid::now_v7(),

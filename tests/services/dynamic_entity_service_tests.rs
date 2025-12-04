@@ -50,6 +50,7 @@ impl MockEntityDefinitionService {
         }
     }
 
+    #[allow(clippy::unused_async)]
     async fn get_entity_definition_by_entity_type(
         &self,
         entity_type: &str,
@@ -148,6 +149,7 @@ impl MockEntityDefinitionService {
         Ok(definition)
     }
 
+    #[allow(clippy::unused_async)]
     async fn _get_entity_definition(&self, _uuid: &Uuid) -> Result<EntityDefinition> {
         if !self.entity_type_exists {
             return Err(r_data_core_core::error::Error::NotFound(

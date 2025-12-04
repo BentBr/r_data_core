@@ -210,7 +210,7 @@ async fn test_update_entity_definition() {
         indexed: true,
         filterable: true,
         default_value: None,
-        validation: Default::default(),
+        validation: r_data_core_core::field::FieldValidation::default(),
         ui_settings: UiSettings::default(),
         constraints: HashMap::new(),
     });
