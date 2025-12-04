@@ -74,7 +74,7 @@ bytes = "1.6"
 anyhow = "1.0"
 
 # Caching
-redis = { version = "0.25.4", features = ["tokio-comp", "connection-manager"] }
+redis = { version = "0.32", features = ["tokio-comp", "connection-manager"] }
 
 [workspace]
 members = [

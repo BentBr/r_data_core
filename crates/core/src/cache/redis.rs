@@ -7,6 +7,23 @@ use serde::{de::DeserializeOwned, Serialize};
 use crate::cache::backend::CacheBackend;
 use crate::error::{Error, Result};
 
+/// Test a Redis connection by sending a PING command
+///
+/// This is a utility function that can be used to verify a Redis connection is working.
+///
+/// # Arguments
+/// * `conn` - A mutable reference to a Redis multiplexed connection
+///
+/// # Errors
+/// Returns an error if the PING command fails
+pub async fn test_redis_connection(conn: &mut MultiplexedConnection) -> Result<()> {
+    let _: String = redis::cmd("PING")
+        .query_async(conn)
+        .await
+        .map_err(|e| Error::Cache(format!("Failed to ping Redis: {e}")))?;
+    Ok(())
+}
+
 /// Redis cache implementation
 pub struct RedisCache {
     /// Redis client
@@ -34,10 +51,7 @@ impl RedisCache {
             .await
             .map_err(|e| Error::Cache(format!("Failed to get Redis connection: {e}")))?;
 
-        redis::cmd("PING")
-            .query_async::<_, ()>(&mut conn)
-            .await
-            .map_err(|e| Error::Cache(format!("Failed to ping Redis: {e}")))?;
+        test_redis_connection(&mut conn).await?;
 
         Ok(Self {
             client,
@@ -107,8 +121,8 @@ impl CacheBackend for RedisCache {
     async fn clear(&self) -> Result<()> {
         let mut conn = self.get_connection().await?;
 
-        redis::cmd("FLUSHDB")
-            .query_async::<_, ()>(&mut conn)
+        let _: () = redis::cmd("FLUSHDB")
+            .query_async(&mut conn)
             .await
             .map_err(|e| Error::Cache(format!("Failed to clear Redis: {e}")))?;
 

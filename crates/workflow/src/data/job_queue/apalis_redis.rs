@@ -2,6 +2,7 @@ use super::JobQueue;
 use crate::data::jobs::{FetchAndStageJob, ProcessRawItemJob};
 use anyhow::Context;
 use async_trait::async_trait;
+use r_data_core_core::cache::test_redis_connection;
 use redis::{aio::MultiplexedConnection, Client};
 
 /// Redis-backed queue for workflow jobs.
@@ -28,10 +29,9 @@ impl ApalisRedisQueue {
             .get_multiplexed_async_connection()
             .await
             .context("failed to get initial Redis connection for testing")?;
-        redis::cmd("PING")
-            .query_async::<_, String>(&mut test_conn)
+        test_redis_connection(&mut test_conn)
             .await
-            .context("failed to ping Redis - connection test failed")?;
+            .map_err(|e| anyhow::anyhow!("failed to ping Redis - connection test failed: {e}"))?;
 
         log::info!(
             "Redis queue initialized: url={url}, fetch_key={fetch_key}, process_key={process_key}"

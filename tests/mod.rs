@@ -13,6 +13,7 @@ mod e2e_workflow_queue_tests;
 mod entity_type_column_test;
 mod hash_passwords;
 mod queue_integration_tests;
+mod redis_cache_tests;
 mod validation_tests;
 mod versioning_tests;
 mod worker_repository_tests;
