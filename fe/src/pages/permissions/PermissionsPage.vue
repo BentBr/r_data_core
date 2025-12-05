@@ -208,8 +208,11 @@
                                         >
                                             {{ (item.permissions || []).length }}
                                             {{
-                                                t('permissions.page.roles.permissions') ||
-                                                'permissions'
+                                                (item.permissions || []).length === 1
+                                                    ? t('permissions.page.roles.permission') ||
+                                                      'permission'
+                                                    : t('permissions.page.roles.permissions') ||
+                                                      'permissions'
                                             }}
                                         </v-chip>
                                     </template>
