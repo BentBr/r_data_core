@@ -4,7 +4,7 @@ use crate::auth::auth_enum::RequiredAuth;
 use crate::auth::permission_check;
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use log::{debug, error, info};
-use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
+use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 use serde::Serialize;
 use serde_json::json;
 use time::OffsetDateTime;

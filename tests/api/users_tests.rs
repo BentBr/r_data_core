@@ -5,14 +5,12 @@ use actix_web::{http::StatusCode, test, web, App};
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
 use r_data_core_core::error::Result;
-use r_data_core_core::permissions::permission_scheme::{
-    AccessLevel, Permission, PermissionScheme, PermissionType, ResourceNamespace,
+use r_data_core_core::permissions::role::{
+    AccessLevel, Permission, PermissionType, ResourceNamespace, Role,
 };
 use r_data_core_persistence::WorkflowRepository;
 use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait, ApiKeyRepository};
-use r_data_core_services::{
-    AdminUserService, ApiKeyService, EntityDefinitionService, PermissionSchemeService,
-};
+use r_data_core_services::{AdminUserService, ApiKeyService, EntityDefinitionService, RoleService};
 use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_test_support::{
     clear_test_db, create_test_admin_user, setup_test_db, test_queue_client_async,
@@ -71,11 +69,7 @@ async fn setup_test_app() -> Result<(
             enable_docs: true,
             cors_origins: vec![],
         },
-        permission_scheme_service: PermissionSchemeService::new(
-            pool.clone(),
-            cache_manager.clone(),
-            Some(3600),
-        ),
+        role_service: RoleService::new(pool.clone(), cache_manager.clone(), Some(3600)),
         cache_manager: cache_manager.clone(),
         api_key_service,
         admin_user_service,
@@ -250,12 +244,12 @@ async fn test_delete_user() {
 
 #[serial]
 #[tokio::test]
-async fn test_get_user_schemes() {
+async fn test_get_user_roles() {
     let (app, pool, user_uuid) = setup_test_app().await.unwrap();
     let token = get_auth_token(&app, &pool).await;
 
     let req = test::TestRequest::get()
-        .uri(&format!("/admin/api/v1/users/{user_uuid}/schemes"))
+        .uri(&format!("/admin/api/v1/users/{user_uuid}/roles"))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
@@ -268,12 +262,12 @@ async fn test_get_user_schemes() {
 
 #[serial]
 #[tokio::test]
-async fn test_assign_schemes_to_user() {
+async fn test_assign_roles_to_user() {
     let (app, pool, user_uuid) = setup_test_app().await.unwrap();
     let token = get_auth_token(&app, &pool).await;
 
-    // Create a permission scheme
-    let scheme_service = r_data_core_services::PermissionSchemeService::new(
+    // Create a role
+    let role_service = r_data_core_services::RoleService::new(
         pool.clone(),
         Arc::new(CacheManager::new(CacheConfig {
             entity_definition_ttl: 0,
@@ -285,17 +279,14 @@ async fn test_assign_schemes_to_user() {
         Some(3600),
     );
 
-    let mut scheme = PermissionScheme::new("Test Scheme".to_string());
-    scheme.description = Some("Test description".to_string());
-    let scheme_uuid = scheme_service
-        .create_scheme(&scheme, user_uuid)
-        .await
-        .unwrap();
+    let mut role = Role::new("Test Scheme".to_string());
+    role.description = Some("Test description".to_string());
+    let role_uuid = role_service.create_role(&role, user_uuid).await.unwrap();
 
-    let assign_req = vec![scheme_uuid.to_string()];
+    let assign_req = vec![role_uuid.to_string()];
 
     let req = test::TestRequest::put()
-        .uri(&format!("/admin/api/v1/users/{user_uuid}/schemes"))
+        .uri(&format!("/admin/api/v1/users/{user_uuid}/roles"))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .set_json(&assign_req)
         .to_request();
@@ -420,20 +411,17 @@ async fn test_super_admin_has_all_permissions_from_user_flag() {
 async fn test_super_admin_has_all_permissions_from_permission() {
     let (app, pool, user_uuid) = setup_test_app().await.unwrap();
 
-    // Create a permission scheme with super_admin flag
-    let scheme_service = PermissionSchemeService::new(
+    // Create a role with super_admin flag
+    let role_service = RoleService::new(
         pool.clone(),
         Arc::new(CacheManager::new(CacheConfig::default())),
         None,
     );
-    let mut scheme = PermissionScheme::new("Super Admin Scheme".to_string());
-    scheme.super_admin = true;
-    let scheme_uuid = scheme_service
-        .create_scheme(&scheme, user_uuid)
-        .await
-        .unwrap();
+    let mut role = Role::new("Super Admin Scheme".to_string());
+    role.super_admin = true;
+    let role_uuid = role_service.create_role(&role, user_uuid).await.unwrap();
 
-    // Create a regular user and assign the super admin scheme
+    // Create a regular user and assign the super admin role
     let repo = AdminUserRepository::new(Arc::new(pool.clone()));
     let params = r_data_core_persistence::CreateAdminUserParams {
         username: "superadmin_scheme",
@@ -448,7 +436,7 @@ async fn test_super_admin_has_all_permissions_from_permission() {
     let regular_user_uuid = repo.create_admin_user(&params).await.unwrap();
 
     // Assign the super admin scheme to the user
-    repo.update_user_schemes(regular_user_uuid, &[scheme_uuid])
+    repo.update_user_roles(regular_user_uuid, &[role_uuid])
         .await
         .unwrap();
 
@@ -492,29 +480,22 @@ async fn test_super_admin_flag_on_scheme_grants_all_permissions() {
 
     let (app, pool, user_uuid) = setup_test_app().await.unwrap();
 
-    // Create a permission scheme with super_admin flag set to true
-    let scheme_service = PermissionSchemeService::new(
+    // Create a role with super_admin flag set to true
+    let role_service = RoleService::new(
         pool.clone(),
         Arc::new(CacheManager::new(CacheConfig::default())),
         None,
     );
-    let mut scheme = PermissionScheme::new("Super Admin Scheme Flag Test".to_string());
-    scheme.super_admin = true;
-    scheme.description = Some("Test scheme with super_admin flag".to_string());
-    let scheme_uuid = scheme_service
-        .create_scheme(&scheme, user_uuid)
-        .await
-        .unwrap();
+    let mut role = Role::new("Super Admin Scheme Flag Test".to_string());
+    role.super_admin = true;
+    role.description = Some("Test scheme with super_admin flag".to_string());
+    let role_uuid = role_service.create_role(&role, user_uuid).await.unwrap();
 
-    // Verify the scheme was created with super_admin flag
-    let created_scheme = scheme_service
-        .get_scheme(scheme_uuid)
-        .await
-        .unwrap()
-        .unwrap();
+    // Verify the role was created with super_admin flag
+    let created_role = role_service.get_role(role_uuid).await.unwrap().unwrap();
     assert!(
-        created_scheme.super_admin,
-        "Scheme should have super_admin flag set to true"
+        created_role.super_admin,
+        "Role should have super_admin flag set to true"
     );
 
     // Create a regular user (not super_admin) and assign the super admin scheme
@@ -543,7 +524,7 @@ async fn test_super_admin_flag_on_scheme_grants_all_permissions() {
     );
 
     // Assign the super admin scheme to the user
-    repo.update_user_schemes(regular_user_uuid, &[scheme_uuid])
+    repo.update_user_roles(regular_user_uuid, &[role_uuid])
         .await
         .unwrap();
 
@@ -604,25 +585,22 @@ async fn test_user_management_permissions() {
     let (app, pool, admin_user_uuid) = setup_test_app().await.unwrap();
     let admin_token = get_auth_token(&app, &pool).await;
 
-    // Create a permission scheme for regular users (no admin permissions)
-    let scheme_service = PermissionSchemeService::new(
+    // Create a role for regular users (no admin permissions)
+    let role_service = RoleService::new(
         pool.clone(),
         Arc::new(CacheManager::new(CacheConfig::default())),
         None,
     );
-    let mut regular_scheme = PermissionScheme::new("Regular User Scheme".to_string());
-    regular_scheme.role_permissions.insert(
-        "User".to_string(),
-        vec![Permission {
-            resource_type: ResourceNamespace::Workflows,
-            permission_type: PermissionType::Read,
-            access_level: AccessLevel::All,
-            resource_uuids: vec![],
-            constraints: None,
-        }],
-    );
-    let regular_scheme_uuid = scheme_service
-        .create_scheme(&regular_scheme, admin_user_uuid)
+    let mut regular_role = Role::new("Regular User Scheme".to_string());
+    regular_role.permissions = vec![Permission {
+        resource_type: ResourceNamespace::Workflows,
+        permission_type: PermissionType::Read,
+        access_level: AccessLevel::All,
+        resource_uuids: vec![],
+        constraints: None,
+    }];
+    let regular_role_uuid = role_service
+        .create_role(&regular_role, admin_user_uuid)
         .await
         .unwrap();
 
@@ -639,7 +617,7 @@ async fn test_user_management_permissions() {
         creator_uuid: admin_user_uuid,
     };
     let regular_user_uuid = repo.create_admin_user(&regular_user_params).await.unwrap();
-    repo.update_user_schemes(regular_user_uuid, &[regular_scheme_uuid])
+    repo.update_user_roles(regular_user_uuid, &[regular_role_uuid])
         .await
         .unwrap();
 
@@ -659,7 +637,7 @@ async fn test_user_management_permissions() {
         .unwrap()
         .to_string();
 
-    // Regular user should NOT be able to create users (no PermissionSchemes:Admin permission)
+    // Regular user should NOT be able to create users (no Roles:Admin permission)
     let create_req = test::TestRequest::post()
         .uri("/admin/api/v1/users")
         .insert_header(("Authorization", format!("Bearer {regular_token}")))
@@ -679,20 +657,17 @@ async fn test_user_management_permissions() {
         "Regular user should not be able to create users"
     );
 
-    // Create an admin user (with PermissionSchemes:Admin permission)
-    let mut admin_scheme = PermissionScheme::new("Admin Scheme".to_string());
-    admin_scheme.role_permissions.insert(
-        "Admin".to_string(),
-        vec![Permission {
-            resource_type: ResourceNamespace::PermissionSchemes,
-            permission_type: PermissionType::Admin,
-            access_level: AccessLevel::All,
-            resource_uuids: vec![],
-            constraints: None,
-        }],
-    );
-    let admin_scheme_uuid = scheme_service
-        .create_scheme(&admin_scheme, admin_user_uuid)
+    // Create an admin user (with Roles:Admin permission)
+    let mut admin_role = Role::new("Admin Scheme".to_string());
+    admin_role.permissions = vec![Permission {
+        resource_type: ResourceNamespace::Roles,
+        permission_type: PermissionType::Admin,
+        access_level: AccessLevel::All,
+        resource_uuids: vec![],
+        constraints: None,
+    }];
+    let admin_role_uuid = role_service
+        .create_role(&admin_role, admin_user_uuid)
         .await
         .unwrap();
 
@@ -707,7 +682,7 @@ async fn test_user_management_permissions() {
         creator_uuid: admin_user_uuid,
     };
     let admin_user_uuid = repo.create_admin_user(&admin_user_params).await.unwrap();
-    repo.update_user_schemes(admin_user_uuid, &[admin_scheme_uuid])
+    repo.update_user_roles(admin_user_uuid, &[admin_role_uuid])
         .await
         .unwrap();
 

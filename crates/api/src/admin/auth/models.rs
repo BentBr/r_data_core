@@ -68,9 +68,6 @@ pub struct AdminLoginResponse {
     /// Username
     pub username: String,
 
-    /// User role
-    pub role: String,
-
     /// Access token expiration (RFC3339 timestamp)
     #[serde(with = "time::serde::rfc3339")]
     pub access_expires_at: OffsetDateTime,

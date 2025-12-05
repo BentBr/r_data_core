@@ -287,7 +287,7 @@ async fn create_test_app_with_api_key_repo(
             enable_docs: true,
             cors_origins: vec![],
         },
-        permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+        role_service: r_data_core_services::RoleService::new(
             pool.clone(),
             cache_manager.clone(),
             Some(0),

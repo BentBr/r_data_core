@@ -23,103 +23,93 @@ impl ApiKeyRepository {
         Self { pool }
     }
 
-    /// Get all permission schemes assigned to an API key
+    /// Get all roles assigned to an API key
     ///
     /// # Errors
     /// Returns an error if the database query fails
-    pub async fn get_api_key_permission_schemes(&self, api_key_uuid: Uuid) -> Result<Vec<Uuid>> {
-        let schemes = sqlx::query_scalar::<_, Uuid>(
-            "SELECT scheme_uuid FROM api_keys_permission_schemes WHERE api_key_uuid = $1",
+    pub async fn get_api_key_roles(&self, api_key_uuid: Uuid) -> Result<Vec<Uuid>> {
+        let roles = sqlx::query_scalar::<_, Uuid>(
+            "SELECT role_uuid FROM api_key_roles WHERE api_key_uuid = $1",
         )
         .bind(api_key_uuid)
         .fetch_all(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error getting API key permission schemes: {e:?}");
+            error!("Error getting API key roles: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
-        Ok(schemes)
+        Ok(roles)
     }
 
-    /// Get all API keys that have a specific permission scheme assigned
+    /// Get all API keys that have a specific role assigned
     ///
     /// # Arguments
-    /// * `scheme_uuid` - Permission scheme UUID
+    /// * `role_uuid` - Role UUID
     ///
     /// # Errors
     /// Returns an error if the database query fails
-    pub async fn get_api_keys_by_permission_scheme(&self, scheme_uuid: Uuid) -> Result<Vec<Uuid>> {
+    pub async fn get_api_keys_by_role(&self, role_uuid: Uuid) -> Result<Vec<Uuid>> {
         let api_keys = sqlx::query_scalar::<_, Uuid>(
-            "SELECT api_key_uuid FROM api_keys_permission_schemes WHERE scheme_uuid = $1",
+            "SELECT api_key_uuid FROM api_key_roles WHERE role_uuid = $1",
         )
-        .bind(scheme_uuid)
+        .bind(role_uuid)
         .fetch_all(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error getting API keys by permission scheme: {e:?}");
+            error!("Error getting API keys by role: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
         Ok(api_keys)
     }
 
-    /// Assign a permission scheme to an API key
+    /// Assign a role to an API key
     ///
     /// # Errors
     /// Returns an error if the database operation fails
-    pub async fn assign_permission_scheme(
-        &self,
-        api_key_uuid: Uuid,
-        scheme_uuid: Uuid,
-    ) -> Result<()> {
+    pub async fn assign_role(&self, api_key_uuid: Uuid, role_uuid: Uuid) -> Result<()> {
         sqlx::query(
-            "INSERT INTO api_keys_permission_schemes (api_key_uuid, scheme_uuid) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+            "INSERT INTO api_key_roles (api_key_uuid, role_uuid) VALUES ($1, $2) ON CONFLICT DO NOTHING",
         )
         .bind(api_key_uuid)
-        .bind(scheme_uuid)
+        .bind(role_uuid)
         .execute(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error assigning permission scheme to API key: {e:?}");
+            error!("Error assigning role to API key: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
         Ok(())
     }
 
-    /// Unassign a permission scheme from an API key
+    /// Unassign a role from an API key
     ///
     /// # Errors
     /// Returns an error if the database operation fails
-    pub async fn unassign_permission_scheme(
-        &self,
-        api_key_uuid: Uuid,
-        scheme_uuid: Uuid,
-    ) -> Result<()> {
-        sqlx::query(
-            "DELETE FROM api_keys_permission_schemes WHERE api_key_uuid = $1 AND scheme_uuid = $2",
-        )
-        .bind(api_key_uuid)
-        .bind(scheme_uuid)
-        .execute(&*self.pool)
-        .await
-        .map_err(|e| {
-            error!("Error unassigning permission scheme from API key: {e:?}");
-            r_data_core_core::error::Error::Database(e)
-        })?;
+    pub async fn unassign_role(&self, api_key_uuid: Uuid, role_uuid: Uuid) -> Result<()> {
+        sqlx::query("DELETE FROM api_key_roles WHERE api_key_uuid = $1 AND role_uuid = $2")
+            .bind(api_key_uuid)
+            .bind(role_uuid)
+            .execute(&*self.pool)
+            .await
+            .map_err(|e| {
+                error!("Error unassigning role from API key: {e:?}");
+                r_data_core_core::error::Error::Database(e)
+            })?;
 
         Ok(())
     }
 
-    /// Update all permission schemes for an API key (replace existing assignments)
+    /// Update all roles for an API key (replace existing assignments)
     ///
     /// # Errors
     /// Returns an error if the database transaction fails
-    pub async fn update_api_key_schemes(
+    pub async fn update_api_key_roles(
         &self,
         api_key_uuid: Uuid,
-        scheme_uuids: &[Uuid],
+        role_uuids: &[Uuid],
     ) -> Result<()> {
         // Start a transaction
         let mut tx = self.pool.begin().await.map_err(|e| {
@@ -128,28 +118,26 @@ impl ApiKeyRepository {
         })?;
 
         // Delete all existing assignments
-        sqlx::query("DELETE FROM api_keys_permission_schemes WHERE api_key_uuid = $1")
+        sqlx::query("DELETE FROM api_key_roles WHERE api_key_uuid = $1")
             .bind(api_key_uuid)
             .execute(&mut *tx)
             .await
             .map_err(|e| {
-                error!("Error deleting existing permission schemes: {e:?}");
+                error!("Error deleting existing roles: {e:?}");
                 r_data_core_core::error::Error::Database(e)
             })?;
 
         // Insert new assignments
-        for scheme_uuid in scheme_uuids {
-            sqlx::query(
-                "INSERT INTO api_keys_permission_schemes (api_key_uuid, scheme_uuid) VALUES ($1, $2)",
-            )
-            .bind(api_key_uuid)
-            .bind(scheme_uuid)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| {
-                error!("Error assigning permission scheme: {e:?}");
-                r_data_core_core::error::Error::Database(e)
-            })?;
+        for role_uuid in role_uuids {
+            sqlx::query("INSERT INTO api_key_roles (api_key_uuid, role_uuid) VALUES ($1, $2)")
+                .bind(api_key_uuid)
+                .bind(role_uuid)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| {
+                    error!("Error assigning role: {e:?}");
+                    r_data_core_core::error::Error::Database(e)
+                })?;
         }
 
         // Commit transaction
@@ -445,31 +433,23 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         Ok(())
     }
 
-    /// Get all permission schemes assigned to an API key
-    async fn get_api_key_permission_schemes(&self, api_key_uuid: Uuid) -> Result<Vec<Uuid>> {
-        Self::get_api_key_permission_schemes(self, api_key_uuid).await
+    /// Get all roles assigned to an API key
+    async fn get_api_key_roles(&self, api_key_uuid: Uuid) -> Result<Vec<Uuid>> {
+        Self::get_api_key_roles(self, api_key_uuid).await
     }
 
-    /// Assign a permission scheme to an API key
-    async fn assign_permission_scheme(&self, api_key_uuid: Uuid, scheme_uuid: Uuid) -> Result<()> {
-        Self::assign_permission_scheme(self, api_key_uuid, scheme_uuid).await
+    /// Assign a role to an API key
+    async fn assign_role(&self, api_key_uuid: Uuid, role_uuid: Uuid) -> Result<()> {
+        Self::assign_role(self, api_key_uuid, role_uuid).await
     }
 
-    /// Unassign a permission scheme from an API key
-    async fn unassign_permission_scheme(
-        &self,
-        api_key_uuid: Uuid,
-        scheme_uuid: Uuid,
-    ) -> Result<()> {
-        Self::unassign_permission_scheme(self, api_key_uuid, scheme_uuid).await
+    /// Unassign a role from an API key
+    async fn unassign_role(&self, api_key_uuid: Uuid, role_uuid: Uuid) -> Result<()> {
+        Self::unassign_role(self, api_key_uuid, role_uuid).await
     }
 
-    /// Update all permission schemes for an API key (replace existing assignments)
-    async fn update_api_key_schemes(
-        &self,
-        api_key_uuid: Uuid,
-        scheme_uuids: &[Uuid],
-    ) -> Result<()> {
-        Self::update_api_key_schemes(self, api_key_uuid, scheme_uuids).await
+    /// Update all roles for an API key (replace existing assignments)
+    async fn update_api_key_roles(&self, api_key_uuid: Uuid, role_uuids: &[Uuid]) -> Result<()> {
+        Self::update_api_key_roles(self, api_key_uuid, role_uuids).await
     }
 }

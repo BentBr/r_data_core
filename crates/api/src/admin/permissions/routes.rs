@@ -6,8 +6,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::admin::permissions::models::{
-    AssignSchemesRequest, CreatePermissionSchemeRequest, PermissionSchemeResponse,
-    UpdatePermissionSchemeRequest,
+    AssignRolesRequest, CreateRoleRequest, RoleResponse, UpdateRoleRequest,
 };
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
@@ -15,29 +14,27 @@ use crate::auth::permission_check;
 use crate::auth::RequiredAuthExt;
 use crate::query::PaginationQuery;
 use crate::response::ApiResponse;
-use r_data_core_core::permissions::permission_scheme::{
-    Permission, PermissionType, ResourceNamespace,
-};
+use r_data_core_core::permissions::role::{Permission, PermissionType, ResourceNamespace};
 use r_data_core_persistence::{
     AdminUserRepository, AdminUserRepositoryTrait, ApiKeyRepository, ApiKeyRepositoryTrait,
 };
 
-/// Register permission routes
+/// Register role routes
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(list_permission_schemes)
-        .service(get_permission_scheme)
-        .service(create_permission_scheme)
-        .service(update_permission_scheme)
-        .service(delete_permission_scheme)
-        .service(assign_schemes_to_user)
-        .service(assign_schemes_to_api_key);
+    cfg.service(list_roles)
+        .service(get_role)
+        .service(create_role)
+        .service(update_role)
+        .service(delete_role)
+        .service(assign_roles_to_user)
+        .service(assign_roles_to_api_key);
 }
 
-/// List all permission schemes with pagination
+/// List all roles with pagination
 #[utoipa::path(
     get,
-    path = "/admin/api/v1/permissions",
-    tag = "permissions",
+    path = "/admin/api/v1/roles",
+    tag = "roles",
     params(
         ("page" = Option<i64>, Query, description = "Page number (1-based, default: 1)"),
         ("per_page" = Option<i64>, Query, description = "Number of items per page (default: 20, max: 100)"),
@@ -45,7 +42,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
         ("offset" = Option<i64>, Query, description = "Number of items to skip (alternative to page-based pagination)")
     ),
     responses(
-        (status = 200, description = "List of permission schemes with pagination", body = Vec<PermissionSchemeResponse>),
+        (status = 200, description = "List of roles with pagination", body = Vec<RoleResponse>),
         (status = 400, description = "Bad request - invalid parameters"),
         (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden - insufficient permissions"),
@@ -56,17 +53,15 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
     )
 )]
 #[get("")]
-pub async fn list_permission_schemes(
+pub async fn list_roles(
     state: web::Data<ApiStateWrapper>,
     auth: RequiredAuth,
     query: web::Query<PaginationQuery>,
 ) -> impl Responder {
     // Check permission
-    if let Err(resp) = auth.require_permission(
-        &ResourceNamespace::PermissionSchemes,
-        &PermissionType::Read,
-        None,
-    ) {
+    if let Err(resp) =
+        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Read, None)
+    {
         return resp;
     }
 
@@ -74,43 +69,42 @@ pub async fn list_permission_schemes(
     let page = query.get_page(1);
     let per_page = query.get_per_page(20, 100);
 
-    let service = state.permission_scheme_service();
+    let service = state.role_service();
 
-    // Get both the schemes and the total count
-    let (schemes_result, count_result) =
-        tokio::join!(service.list_schemes(limit, offset), service.count_schemes());
+    // Get both the roles and the total count
+    let (roles_result, count_result) =
+        tokio::join!(service.list_roles(limit, offset), service.count_roles());
 
-    match (schemes_result, count_result) {
-        (Ok(schemes), Ok(total)) => {
-            let responses: Vec<PermissionSchemeResponse> =
-                schemes.iter().map(PermissionSchemeResponse::from).collect();
+    match (roles_result, count_result) {
+        (Ok(roles), Ok(total)) => {
+            let responses: Vec<RoleResponse> = roles.iter().map(RoleResponse::from).collect();
 
             ApiResponse::ok_paginated(responses, total, page, per_page)
         }
         (Err(e), _) => {
-            error!("Failed to list permission schemes: {e}");
-            ApiResponse::<()>::internal_error("Failed to retrieve permission schemes")
+            error!("Failed to list roles: {e}");
+            ApiResponse::<()>::internal_error("Failed to retrieve roles")
         }
         (_, Err(e)) => {
-            error!("Failed to count permission schemes: {e}");
-            ApiResponse::<()>::internal_error("Failed to count permission schemes")
+            error!("Failed to count roles: {e}");
+            ApiResponse::<()>::internal_error("Failed to count roles")
         }
     }
 }
 
-/// Get a specific permission scheme by UUID
+/// Get a specific role by UUID
 #[utoipa::path(
     get,
-    path = "/admin/api/v1/permissions/{uuid}",
-    tag = "permissions",
+    path = "/admin/api/v1/roles/{uuid}",
+    tag = "roles",
     params(
-        ("uuid" = Uuid, Path, description = "Permission scheme UUID")
+        ("uuid" = Uuid, Path, description = "Role UUID")
     ),
     responses(
-        (status = 200, description = "Permission scheme details", body = PermissionSchemeResponse),
+        (status = 200, description = "Role details", body = RoleResponse),
         (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden - insufficient permissions"),
-        (status = 404, description = "Permission scheme not found"),
+        (status = 404, description = "Role not found"),
         (status = 500, description = "Internal server error")
     ),
     security(
@@ -118,44 +112,42 @@ pub async fn list_permission_schemes(
     )
 )]
 #[get("/{uuid}")]
-pub async fn get_permission_scheme(
+pub async fn get_role(
     state: web::Data<ApiStateWrapper>,
     auth: RequiredAuth,
     path: web::Path<Uuid>,
 ) -> impl Responder {
     // Check permission
-    if let Err(resp) = auth.require_permission(
-        &ResourceNamespace::PermissionSchemes,
-        &PermissionType::Read,
-        None,
-    ) {
+    if let Err(resp) =
+        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Read, None)
+    {
         return resp;
     }
 
     let uuid = path.into_inner();
-    let service = state.permission_scheme_service();
+    let service = state.role_service();
 
-    match service.get_scheme(uuid).await {
-        Ok(Some(scheme)) => ApiResponse::ok(PermissionSchemeResponse::from(&scheme)),
-        Ok(None) => ApiResponse::<()>::not_found("Permission scheme not found"),
+    match service.get_role(uuid).await {
+        Ok(Some(role)) => ApiResponse::ok(RoleResponse::from(&role)),
+        Ok(None) => ApiResponse::<()>::not_found("Role not found"),
         Err(e) => {
-            error!("Failed to get permission scheme: {e}");
-            ApiResponse::<()>::internal_error("Failed to retrieve permission scheme")
+            error!("Failed to get role: {e}");
+            ApiResponse::<()>::internal_error("Failed to retrieve role")
         }
     }
 }
 
-/// Create a new permission scheme
+/// Create a new role
 #[utoipa::path(
     post,
-    path = "/admin/api/v1/permissions",
-    tag = "permissions",
-    request_body = CreatePermissionSchemeRequest,
+    path = "/admin/api/v1/roles",
+    tag = "roles",
+    request_body = CreateRoleRequest,
     responses(
-        (status = 201, description = "Permission scheme created successfully", body = PermissionSchemeResponse),
+        (status = 201, description = "Role created successfully", body = RoleResponse),
         (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden - insufficient permissions"),
-        (status = 409, description = "Conflict - permission scheme name already exists"),
+        (status = 409, description = "Conflict - role name already exists"),
         (status = 500, description = "Internal server error")
     ),
     security(
@@ -163,17 +155,15 @@ pub async fn get_permission_scheme(
     )
 )]
 #[post("")]
-pub async fn create_permission_scheme(
+pub async fn create_role(
     state: web::Data<ApiStateWrapper>,
     auth: RequiredAuth,
-    req: web::Json<CreatePermissionSchemeRequest>,
+    req: web::Json<CreateRoleRequest>,
 ) -> impl Responder {
     // Check permission
-    if let Err(resp) = auth.require_permission(
-        &ResourceNamespace::PermissionSchemes,
-        &PermissionType::Create,
-        None,
-    ) {
+    if let Err(resp) =
+        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Create, None)
+    {
         return resp;
     }
 
@@ -186,70 +176,75 @@ pub async fn create_permission_scheme(
         }
     };
 
-    let service = state.permission_scheme_service();
+    let service = state.role_service();
 
-    // Check if scheme with this name already exists
-    if let Ok(Some(_)) = service.get_scheme_by_name(&req.name).await {
-        return ApiResponse::<()>::conflict("A permission scheme with this name already exists");
+    // Check if role with this name already exists
+    if let Ok(Some(_)) = service.get_role_by_name(&req.name).await {
+        return ApiResponse::<()>::conflict("A role with this name already exists");
     }
 
     // Convert request to domain model
-    let mut role_permissions = std::collections::HashMap::new();
-    for (role, permissions) in &req.role_permissions {
-        let mut converted_permissions = Vec::new();
-        for perm in permissions {
-            match Permission::try_from(perm.clone()) {
-                Ok(p) => converted_permissions.push(p),
-                Err(e) => {
-                    error!("Invalid permission in request: {e}");
-                    return ApiResponse::<()>::bad_request(&format!("Invalid permission: {e}"));
-                }
+    let mut permissions = Vec::new();
+    for perm in &req.permissions {
+        match Permission::try_from(perm.clone()) {
+            Ok(p) => permissions.push(p),
+            Err(e) => {
+                error!("Invalid permission in request: {e}");
+                return ApiResponse::<()>::bad_request(&format!("Invalid permission: {e}"));
             }
         }
-        role_permissions.insert(role.clone(), converted_permissions);
     }
 
-    let mut scheme =
-        r_data_core_core::permissions::permission_scheme::PermissionScheme::new(req.name.clone());
-    scheme.description.clone_from(&req.description);
-    scheme.super_admin = req.super_admin.unwrap_or(false);
-    scheme.role_permissions = role_permissions;
+    // Validate: if super_admin is true, permissions should be empty (or ignored)
+    let super_admin = req.super_admin.unwrap_or(false);
+    if super_admin && !permissions.is_empty() {
+        // Allow but warn - super_admin takes precedence
+        log::warn!(
+            "Role {} has super_admin=true but also has permissions - permissions will be ignored",
+            req.name
+        );
+    }
 
-    match service.create_scheme(&scheme, creator_uuid).await {
+    let mut role = r_data_core_core::permissions::role::Role::new(req.name.clone());
+    role.description.clone_from(&req.description);
+    role.super_admin = super_admin;
+    role.permissions = permissions;
+
+    match service.create_role(&role, creator_uuid).await {
         Ok(uuid) => {
             // Reload to get full details
-            match service.get_scheme(uuid).await {
-                Ok(Some(created_scheme)) => {
-                    ApiResponse::<()>::created(PermissionSchemeResponse::from(&created_scheme))
+            match service.get_role(uuid).await {
+                Ok(Some(created_role)) => {
+                    ApiResponse::<()>::created(RoleResponse::from(&created_role))
                 }
-                Ok(None) => ApiResponse::<()>::internal_error("Failed to retrieve created scheme"),
+                Ok(None) => ApiResponse::<()>::internal_error("Failed to retrieve created role"),
                 Err(e) => {
-                    error!("Failed to retrieve created scheme: {e}");
-                    ApiResponse::<()>::internal_error("Failed to retrieve created scheme")
+                    error!("Failed to retrieve created role: {e}");
+                    ApiResponse::<()>::internal_error("Failed to retrieve created role")
                 }
             }
         }
         Err(e) => {
-            error!("Failed to create permission scheme: {e}");
-            ApiResponse::<()>::internal_error("Failed to create permission scheme")
+            error!("Failed to create role: {e}");
+            ApiResponse::<()>::internal_error("Failed to create role")
         }
     }
 }
 
-/// Update an existing permission scheme
+/// Update an existing role
 #[utoipa::path(
     put,
-    path = "/admin/api/v1/permissions/{uuid}",
-    tag = "permissions",
+    path = "/admin/api/v1/roles/{uuid}",
+    tag = "roles",
     params(
-        ("uuid" = Uuid, Path, description = "Permission scheme UUID")
+        ("uuid" = Uuid, Path, description = "Role UUID")
     ),
-    request_body = UpdatePermissionSchemeRequest,
+    request_body = UpdateRoleRequest,
     responses(
-        (status = 200, description = "Permission scheme updated successfully", body = PermissionSchemeResponse),
+        (status = 200, description = "Role updated successfully", body = RoleResponse),
         (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden - insufficient permissions"),
-        (status = 404, description = "Permission scheme not found"),
+        (status = 404, description = "Role not found"),
         (status = 500, description = "Internal server error")
     ),
     security(
@@ -257,18 +252,16 @@ pub async fn create_permission_scheme(
     )
 )]
 #[put("/{uuid}")]
-pub async fn update_permission_scheme(
+pub async fn update_role(
     state: web::Data<ApiStateWrapper>,
     auth: RequiredAuth,
     path: web::Path<Uuid>,
-    req: web::Json<UpdatePermissionSchemeRequest>,
+    req: web::Json<UpdateRoleRequest>,
 ) -> impl Responder {
     // Check permission
-    if let Err(resp) = auth.require_permission(
-        &ResourceNamespace::PermissionSchemes,
-        &PermissionType::Update,
-        None,
-    ) {
+    if let Err(resp) =
+        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Update, None)
+    {
         return resp;
     }
 
@@ -282,81 +275,85 @@ pub async fn update_permission_scheme(
         }
     };
 
-    let service = state.permission_scheme_service();
+    let service = state.role_service();
 
-    // Get existing scheme
-    let mut scheme = match service.get_scheme(uuid).await {
-        Ok(Some(s)) => s,
-        Ok(None) => return ApiResponse::<()>::not_found("Permission scheme not found"),
+    // Get existing role
+    let mut role = match service.get_role(uuid).await {
+        Ok(Some(r)) => r,
+        Ok(None) => return ApiResponse::<()>::not_found("Role not found"),
         Err(e) => {
-            error!("Failed to get permission scheme: {e}");
-            return ApiResponse::<()>::internal_error("Failed to retrieve permission scheme");
+            error!("Failed to get role: {e}");
+            return ApiResponse::<()>::internal_error("Failed to retrieve role");
         }
     };
 
-    // Check if it's a system scheme
-    if scheme.is_system {
-        return ApiResponse::<()>::forbidden("Cannot modify system permission schemes");
+    // Check if it's a system role
+    if role.is_system {
+        return ApiResponse::<()>::forbidden("Cannot modify system roles");
     }
 
     // Update fields
-    scheme.name.clone_from(&req.name);
-    scheme.description.clone_from(&req.description);
+    role.name.clone_from(&req.name);
+    role.description.clone_from(&req.description);
     if let Some(super_admin) = req.super_admin {
-        scheme.super_admin = super_admin;
+        role.super_admin = super_admin;
     }
 
     // Convert and update permissions
-    let mut role_permissions = std::collections::HashMap::new();
-    for (role, permissions) in &req.role_permissions {
-        let mut converted_permissions = Vec::new();
-        for perm in permissions {
-            match Permission::try_from(perm.clone()) {
-                Ok(p) => converted_permissions.push(p),
-                Err(e) => {
-                    error!("Invalid permission in request: {e}");
-                    return ApiResponse::<()>::bad_request(&format!("Invalid permission: {e}"));
-                }
+    let mut permissions = Vec::new();
+    for perm in &req.permissions {
+        match Permission::try_from(perm.clone()) {
+            Ok(p) => permissions.push(p),
+            Err(e) => {
+                error!("Invalid permission in request: {e}");
+                return ApiResponse::<()>::bad_request(&format!("Invalid permission: {e}"));
             }
         }
-        role_permissions.insert(role.clone(), converted_permissions);
     }
-    scheme.role_permissions = role_permissions;
 
-    match service.update_scheme(&scheme, updater_uuid).await {
+    // Validate: if super_admin is true, permissions should be empty (or ignored)
+    if role.super_admin && !permissions.is_empty() {
+        // Allow but warn - super_admin takes precedence
+        log::warn!(
+            "Role {} has super_admin=true but also has permissions - permissions will be ignored",
+            role.name
+        );
+    }
+
+    role.permissions = permissions;
+
+    match service.update_role(&role, updater_uuid).await {
         Ok(()) => {
             // Reload to get updated details
-            match service.get_scheme(uuid).await {
-                Ok(Some(updated_scheme)) => {
-                    ApiResponse::ok(PermissionSchemeResponse::from(&updated_scheme))
-                }
-                Ok(None) => ApiResponse::<()>::internal_error("Failed to retrieve updated scheme"),
+            match service.get_role(uuid).await {
+                Ok(Some(updated_role)) => ApiResponse::ok(RoleResponse::from(&updated_role)),
+                Ok(None) => ApiResponse::<()>::internal_error("Failed to retrieve updated role"),
                 Err(e) => {
-                    error!("Failed to retrieve updated scheme: {e}");
-                    ApiResponse::<()>::internal_error("Failed to retrieve updated scheme")
+                    error!("Failed to retrieve updated role: {e}");
+                    ApiResponse::<()>::internal_error("Failed to retrieve updated role")
                 }
             }
         }
         Err(e) => {
-            error!("Failed to update permission scheme: {e}");
-            ApiResponse::<()>::internal_error("Failed to update permission scheme")
+            error!("Failed to update role: {e}");
+            ApiResponse::<()>::internal_error("Failed to update role")
         }
     }
 }
 
-/// Delete a permission scheme
+/// Delete a role
 #[utoipa::path(
     delete,
-    path = "/admin/api/v1/permissions/{uuid}",
-    tag = "permissions",
+    path = "/admin/api/v1/roles/{uuid}",
+    tag = "roles",
     params(
-        ("uuid" = Uuid, Path, description = "Permission scheme UUID")
+        ("uuid" = Uuid, Path, description = "Role UUID")
     ),
     responses(
-        (status = 200, description = "Permission scheme deleted successfully"),
+        (status = 200, description = "Role deleted successfully"),
         (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden - insufficient permissions"),
-        (status = 404, description = "Permission scheme not found"),
+        (status = 404, description = "Role not found"),
         (status = 500, description = "Internal server error")
     ),
     security(
@@ -364,50 +361,48 @@ pub async fn update_permission_scheme(
     )
 )]
 #[delete("/{uuid}")]
-pub async fn delete_permission_scheme(
+pub async fn delete_role(
     state: web::Data<ApiStateWrapper>,
     auth: RequiredAuth,
     path: web::Path<Uuid>,
 ) -> impl Responder {
     // Check permission
-    if let Err(resp) = auth.require_permission(
-        &ResourceNamespace::PermissionSchemes,
-        &PermissionType::Delete,
-        None,
-    ) {
+    if let Err(resp) =
+        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Delete, None)
+    {
         return resp;
     }
 
     let uuid = path.into_inner();
-    let service = state.permission_scheme_service();
+    let service = state.role_service();
 
-    // Check if it's a system scheme
-    if let Ok(Some(scheme)) = service.get_scheme(uuid).await {
-        if scheme.is_system {
-            return ApiResponse::<()>::forbidden("Cannot delete system permission schemes");
+    // Check if it's a system role
+    if let Ok(Some(role)) = service.get_role(uuid).await {
+        if role.is_system {
+            return ApiResponse::<()>::forbidden("Cannot delete system roles");
         }
     }
 
-    match service.delete_scheme(uuid).await {
-        Ok(()) => ApiResponse::ok_with_message((), "Permission scheme deleted successfully"),
+    match service.delete_role(uuid).await {
+        Ok(()) => ApiResponse::ok_with_message((), "Role deleted successfully"),
         Err(e) => {
-            error!("Failed to delete permission scheme: {e}");
-            ApiResponse::<()>::internal_error("Failed to delete permission scheme")
+            error!("Failed to delete role: {e}");
+            ApiResponse::<()>::internal_error("Failed to delete role")
         }
     }
 }
 
-/// Assign permission schemes to a user
+/// Assign roles to a user
 #[utoipa::path(
     put,
-    path = "/admin/api/v1/permissions/users/{user_uuid}/schemes",
-    tag = "permissions",
+    path = "/admin/api/v1/roles/users/{user_uuid}/roles",
+    tag = "roles",
     params(
         ("user_uuid" = Uuid, Path, description = "User UUID")
     ),
-    request_body = AssignSchemesRequest,
+    request_body = AssignRolesRequest,
     responses(
-        (status = 200, description = "Permission schemes assigned successfully"),
+        (status = 200, description = "Roles assigned successfully"),
         (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden - insufficient permissions"),
         (status = 404, description = "User not found"),
@@ -417,23 +412,21 @@ pub async fn delete_permission_scheme(
         ("jwt" = [])
     )
 )]
-#[put("/users/{user_uuid}/schemes")]
-pub async fn assign_schemes_to_user(
+#[put("/users/{user_uuid}/roles")]
+pub async fn assign_roles_to_user(
     state: web::Data<ApiStateWrapper>,
     auth: RequiredAuth,
     path: web::Path<Uuid>,
-    req: web::Json<AssignSchemesRequest>,
+    req: web::Json<AssignRolesRequest>,
 ) -> impl Responder {
-    // Check permission (need permission to manage users or permission schemes)
+    // Check permission (need permission to manage users or roles)
     if !permission_check::has_permission(
         &auth.0,
-        &ResourceNamespace::PermissionSchemes,
+        &ResourceNamespace::Roles,
         &PermissionType::Update,
         None,
     ) {
-        return ApiResponse::<()>::forbidden(
-            "Insufficient permissions to assign permission schemes",
-        );
+        return ApiResponse::<()>::forbidden("Insufficient permissions to assign roles");
     }
 
     let user_uuid = path.into_inner();
@@ -445,34 +438,34 @@ pub async fn assign_schemes_to_user(
         return ApiResponse::<()>::not_found("User not found");
     }
 
-    // Update user's permission schemes
-    match repo.update_user_schemes(user_uuid, &req.scheme_uuids).await {
+    // Update user's roles
+    match repo.update_user_roles(user_uuid, &req.role_uuids).await {
         Ok(()) => {
             // Invalidate cached permissions for this user
             state
-                .permission_scheme_service()
+                .role_service()
                 .invalidate_user_permissions_cache(&user_uuid)
                 .await;
-            ApiResponse::ok_with_message((), "Permission schemes assigned successfully")
+            ApiResponse::ok_with_message((), "Roles assigned successfully")
         }
         Err(e) => {
-            error!("Failed to assign permission schemes to user: {e}");
-            ApiResponse::<()>::internal_error("Failed to assign permission schemes")
+            error!("Failed to assign roles to user: {e}");
+            ApiResponse::<()>::internal_error("Failed to assign roles")
         }
     }
 }
 
-/// Assign permission schemes to an API key
+/// Assign roles to an API key
 #[utoipa::path(
     put,
-    path = "/admin/api/v1/permissions/api-keys/{api_key_uuid}/schemes",
-    tag = "permissions",
+    path = "/admin/api/v1/roles/api-keys/{api_key_uuid}/roles",
+    tag = "roles",
     params(
         ("api_key_uuid" = Uuid, Path, description = "API key UUID")
     ),
-    request_body = AssignSchemesRequest,
+    request_body = AssignRolesRequest,
     responses(
-        (status = 200, description = "Permission schemes assigned successfully"),
+        (status = 200, description = "Roles assigned successfully"),
         (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden - insufficient permissions"),
         (status = 404, description = "API key not found"),
@@ -482,23 +475,21 @@ pub async fn assign_schemes_to_user(
         ("jwt" = [])
     )
 )]
-#[put("/api-keys/{api_key_uuid}/schemes")]
-pub async fn assign_schemes_to_api_key(
+#[put("/api-keys/{api_key_uuid}/roles")]
+pub async fn assign_roles_to_api_key(
     state: web::Data<ApiStateWrapper>,
     auth: RequiredAuth,
     path: web::Path<Uuid>,
-    req: web::Json<AssignSchemesRequest>,
+    req: web::Json<AssignRolesRequest>,
 ) -> impl Responder {
-    // Check permission (need permission to manage API keys or permission schemes)
+    // Check permission (need permission to manage API keys or roles)
     if !permission_check::has_permission(
         &auth.0,
-        &ResourceNamespace::PermissionSchemes,
+        &ResourceNamespace::Roles,
         &PermissionType::Update,
         None,
     ) {
-        return ApiResponse::<()>::forbidden(
-            "Insufficient permissions to assign permission schemes",
-        );
+        return ApiResponse::<()>::forbidden("Insufficient permissions to assign roles");
     }
 
     let api_key_uuid = path.into_inner();
@@ -510,22 +501,22 @@ pub async fn assign_schemes_to_api_key(
         return ApiResponse::<()>::not_found("API key not found");
     }
 
-    // Update API key's permission schemes
+    // Update API key's roles
     match repo
-        .update_api_key_schemes(api_key_uuid, &req.scheme_uuids)
+        .update_api_key_roles(api_key_uuid, &req.role_uuids)
         .await
     {
         Ok(()) => {
             // Invalidate cached permissions for this API key
             state
-                .permission_scheme_service()
+                .role_service()
                 .invalidate_api_key_permissions_cache(&api_key_uuid)
                 .await;
-            ApiResponse::ok_with_message((), "Permission schemes assigned successfully")
+            ApiResponse::ok_with_message((), "Roles assigned successfully")
         }
         Err(e) => {
-            error!("Failed to assign permission schemes to API key: {e}");
-            ApiResponse::<()>::internal_error("Failed to assign permission schemes")
+            error!("Failed to assign roles to API key: {e}");
+            ApiResponse::<()>::internal_error("Failed to assign roles")
         }
     }
 }

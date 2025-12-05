@@ -47,96 +47,88 @@ impl AdminUserRepository {
         Self { pool }
     }
 
-    /// Get all permission schemes assigned to a user
+    /// Get all roles assigned to a user
     ///
     /// # Errors
     /// Returns an error if the database query fails
-    pub async fn get_user_permission_schemes(&self, user_uuid: Uuid) -> Result<Vec<Uuid>> {
-        let schemes = sqlx::query_scalar::<_, Uuid>(
-            "SELECT scheme_uuid FROM admin_users_permission_schemes WHERE user_uuid = $1",
-        )
-        .bind(user_uuid)
-        .fetch_all(&*self.pool)
-        .await
-        .map_err(|e| {
-            error!("Error getting user permission schemes: {e:?}");
-            r_data_core_core::error::Error::Database(e)
-        })?;
+    pub async fn get_user_roles(&self, user_uuid: Uuid) -> Result<Vec<Uuid>> {
+        let roles =
+            sqlx::query_scalar::<_, Uuid>("SELECT role_uuid FROM user_roles WHERE user_uuid = $1")
+                .bind(user_uuid)
+                .fetch_all(&*self.pool)
+                .await
+                .map_err(|e| {
+                    error!("Error getting user roles: {e:?}");
+                    r_data_core_core::error::Error::Database(e)
+                })?;
 
-        Ok(schemes)
+        Ok(roles)
     }
 
-    /// Get all users that have a specific permission scheme assigned
+    /// Get all users that have a specific role assigned
     ///
     /// # Arguments
-    /// * `scheme_uuid` - Permission scheme UUID
+    /// * `role_uuid` - Role UUID
     ///
     /// # Errors
     /// Returns an error if the database query fails
-    pub async fn get_users_by_permission_scheme(&self, scheme_uuid: Uuid) -> Result<Vec<Uuid>> {
-        let users = sqlx::query_scalar::<_, Uuid>(
-            "SELECT user_uuid FROM admin_users_permission_schemes WHERE scheme_uuid = $1",
-        )
-        .bind(scheme_uuid)
-        .fetch_all(&*self.pool)
-        .await
-        .map_err(|e| {
-            error!("Error getting users by permission scheme: {e:?}");
-            r_data_core_core::error::Error::Database(e)
-        })?;
+    pub async fn get_users_by_role(&self, role_uuid: Uuid) -> Result<Vec<Uuid>> {
+        let users =
+            sqlx::query_scalar::<_, Uuid>("SELECT user_uuid FROM user_roles WHERE role_uuid = $1")
+                .bind(role_uuid)
+                .fetch_all(&*self.pool)
+                .await
+                .map_err(|e| {
+                    error!("Error getting users by role: {e:?}");
+                    r_data_core_core::error::Error::Database(e)
+                })?;
 
         Ok(users)
     }
 
-    /// Assign a permission scheme to a user
+    /// Assign a role to a user
     ///
     /// # Errors
     /// Returns an error if the database operation fails
-    pub async fn assign_permission_scheme(&self, user_uuid: Uuid, scheme_uuid: Uuid) -> Result<()> {
+    pub async fn assign_role(&self, user_uuid: Uuid, role_uuid: Uuid) -> Result<()> {
         sqlx::query(
-            "INSERT INTO admin_users_permission_schemes (user_uuid, scheme_uuid) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+            "INSERT INTO user_roles (user_uuid, role_uuid) VALUES ($1, $2) ON CONFLICT DO NOTHING",
         )
         .bind(user_uuid)
-        .bind(scheme_uuid)
+        .bind(role_uuid)
         .execute(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error assigning permission scheme to user: {e:?}");
+            error!("Error assigning role to user: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })?;
 
         Ok(())
     }
 
-    /// Unassign a permission scheme from a user
+    /// Unassign a role from a user
     ///
     /// # Errors
     /// Returns an error if the database operation fails
-    pub async fn unassign_permission_scheme(
-        &self,
-        user_uuid: Uuid,
-        scheme_uuid: Uuid,
-    ) -> Result<()> {
-        sqlx::query(
-            "DELETE FROM admin_users_permission_schemes WHERE user_uuid = $1 AND scheme_uuid = $2",
-        )
-        .bind(user_uuid)
-        .bind(scheme_uuid)
-        .execute(&*self.pool)
-        .await
-        .map_err(|e| {
-            error!("Error unassigning permission scheme from user: {e:?}");
-            r_data_core_core::error::Error::Database(e)
-        })?;
+    pub async fn unassign_role(&self, user_uuid: Uuid, role_uuid: Uuid) -> Result<()> {
+        sqlx::query("DELETE FROM user_roles WHERE user_uuid = $1 AND role_uuid = $2")
+            .bind(user_uuid)
+            .bind(role_uuid)
+            .execute(&*self.pool)
+            .await
+            .map_err(|e| {
+                error!("Error unassigning role from user: {e:?}");
+                r_data_core_core::error::Error::Database(e)
+            })?;
 
         Ok(())
     }
 
-    /// Update all permission schemes for a user (replace existing assignments)
+    /// Update all roles for a user (replace existing assignments)
     ///
     /// # Errors
     /// Returns an error if the database transaction fails
-    pub async fn update_user_schemes(&self, user_uuid: Uuid, scheme_uuids: &[Uuid]) -> Result<()> {
+    pub async fn update_user_roles(&self, user_uuid: Uuid, role_uuids: &[Uuid]) -> Result<()> {
         // Start a transaction
         let mut tx = self.pool.begin().await.map_err(|e| {
             error!("Error starting transaction: {e:?}");
@@ -144,28 +136,26 @@ impl AdminUserRepository {
         })?;
 
         // Delete all existing assignments
-        sqlx::query("DELETE FROM admin_users_permission_schemes WHERE user_uuid = $1")
+        sqlx::query("DELETE FROM user_roles WHERE user_uuid = $1")
             .bind(user_uuid)
             .execute(&mut *tx)
             .await
             .map_err(|e| {
-                error!("Error deleting existing permission schemes: {e:?}");
+                error!("Error deleting existing roles: {e:?}");
                 r_data_core_core::error::Error::Database(e)
             })?;
 
         // Insert new assignments
-        for scheme_uuid in scheme_uuids {
-            sqlx::query(
-                "INSERT INTO admin_users_permission_schemes (user_uuid, scheme_uuid) VALUES ($1, $2)",
-            )
-            .bind(user_uuid)
-            .bind(scheme_uuid)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| {
-                error!("Error assigning permission scheme: {e:?}");
-                r_data_core_core::error::Error::Database(e)
-            })?;
+        for role_uuid in role_uuids {
+            sqlx::query("INSERT INTO user_roles (user_uuid, role_uuid) VALUES ($1, $2)")
+                .bind(user_uuid)
+                .bind(role_uuid)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| {
+                    error!("Error assigning role: {e:?}");
+                    r_data_core_core::error::Error::Database(e)
+                })?;
         }
 
         // Commit transaction

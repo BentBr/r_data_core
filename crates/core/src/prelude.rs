@@ -1,5 +1,6 @@
 pub use crate::error::{Error, Result};
-pub use crate::permissions::permission_scheme::{AccessLevel, Permission, PermissionScheme, PermissionType};
+pub use crate::permissions::role::{AccessLevel, Permission, PermissionType, ResourceNamespace};
+pub use crate::permissions::role::Role;
 pub use crate::versioning::{Version, VersionManager};
 
 

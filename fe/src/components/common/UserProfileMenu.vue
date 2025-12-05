@@ -20,7 +20,7 @@
                             authStore.user?.username
                         }}</span>
                         <span class="text-caption text-medium-emphasis">{{
-                            authStore.user?.role
+                            authStore.isSuperAdmin ? 'Super Admin' : 'User'
                         }}</span>
                     </div>
                     <v-icon
@@ -48,7 +48,7 @@
                     {{ authStore.user?.username }}
                 </v-list-item-title>
                 <v-list-item-subtitle>
-                    {{ authStore.user?.role }}
+                    {{ authStore.isSuperAdmin ? 'Super Admin' : 'User' }}
                 </v-list-item-subtitle>
             </v-list-item>
 

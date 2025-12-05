@@ -2,4 +2,4 @@
 
 pub mod model;
 
-pub use model::{AdminUser, ApiKey, UserRole, UserStatus};
+pub use model::{AdminUser, ApiKey, UserStatus};

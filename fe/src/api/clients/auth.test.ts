@@ -51,7 +51,6 @@ describe('AuthClient', () => {
                     refresh_token: 'refresh-token-123',
                     user_uuid: '01234567-89ab-7def-8123-456789abcdef',
                     username: 'testuser',
-                    role: 'admin',
                     access_expires_at: '2024-12-31T23:59:59Z',
                     refresh_expires_at: '2025-12-31T23:59:59Z',
                 },
@@ -69,7 +68,6 @@ describe('AuthClient', () => {
             expect(result.refresh_token).toBe('refresh-token-123')
             expect(result.username).toBe('testuser')
             expect(result.user_uuid).toBe('01234567-89ab-7def-8123-456789abcdef')
-            expect(result.role).toBe('admin')
             expect(mockFetch).toHaveBeenCalledWith(
                 expect.stringContaining('/admin/api/v1/auth/login'),
                 expect.objectContaining({

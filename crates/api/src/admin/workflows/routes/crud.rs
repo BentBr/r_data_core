@@ -12,7 +12,7 @@ use crate::auth::auth_enum::RequiredAuth;
 use crate::auth::permission_check;
 use crate::response::ApiResponse;
 use crate::response::ValidationViolation;
-use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
+use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 use r_data_core_core::utils;
 
 /// Get details for one workflow by UUID

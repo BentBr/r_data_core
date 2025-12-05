@@ -8,7 +8,7 @@ const mockStore = {
         if (mockStore.isSuperAdmin) {
             return true
         }
-        if (namespace === 'PermissionSchemes' && permissionType === 'Create') {
+        if (namespace === 'Roles' && permissionType === 'Create') {
             return true
         }
         return false
@@ -39,8 +39,8 @@ describe('usePermissions', () => {
 
     it('should check if user has a specific permission', () => {
         const authStore = useAuthStore()
-        expect(authStore.hasPermission('PermissionSchemes', 'Create')).toBe(true)
-        expect(authStore.hasPermission('PermissionSchemes', 'Delete')).toBe(false)
+        expect(authStore.hasPermission('Roles', 'Create')).toBe(true)
+        expect(authStore.hasPermission('Roles', 'Delete')).toBe(false)
     })
 
     it('should return true for all routes if user is super admin', () => {

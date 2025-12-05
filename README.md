@@ -47,7 +47,7 @@ The project uses a dynamic entity model with the following key tables:
 - `workflow_runs`: Workflow execution runs
 - `admin_users`: Admin user accounts
 - `api_keys`: API keys for authentication
-- `permission_schemes`: Permission definitions
+- `roles`: Role definitions with permissions
 
 ## Requirements
 
@@ -408,7 +408,7 @@ Swagger:
 - uuid refactoring -> all in db
 - toDef ->update action -> by key -> dropdown of existing one
 - push all path / params / post body usages to dependency injection
-- permission scheme testing and creation
+- role testing and creation
   - entities: publish
   - workflows: activate
   - entity_definitions: publish

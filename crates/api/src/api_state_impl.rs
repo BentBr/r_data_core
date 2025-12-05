@@ -6,8 +6,8 @@ use std::sync::Arc;
 use crate::api_state::ApiStateTrait;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_services::{
-    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
-    PermissionSchemeService, WorkflowService,
+    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, RoleService,
+    WorkflowService,
 };
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
@@ -40,8 +40,8 @@ pub struct ApiState {
     /// Workflow service (data import/export workflows)
     pub workflow_service: WorkflowService,
 
-    /// Permission scheme service
-    pub permission_scheme_service: PermissionSchemeService,
+    /// Role service
+    pub role_service: RoleService,
 
     /// Queue client for producing jobs
     pub queue: Arc<ApalisRedisQueue>,
@@ -61,8 +61,8 @@ impl ApiStateTrait for ApiState {
         &self.api_key_service
     }
 
-    fn permission_scheme_service_ref(&self) -> &dyn std::any::Any {
-        &self.permission_scheme_service
+    fn role_service_ref(&self) -> &dyn std::any::Any {
+        &self.role_service
     }
 
     fn api_config_ref(&self) -> &dyn std::any::Any {

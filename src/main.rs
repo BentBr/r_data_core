@@ -23,8 +23,7 @@ use r_data_core_services::adapters::{
     AdminUserRepositoryAdapter, DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter,
 };
 use r_data_core_services::{
-    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
-    PermissionSchemeService,
+    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, RoleService,
 };
 use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
@@ -137,11 +136,11 @@ async fn main() -> std::io::Result<()> {
     let workflow_adapter = WorkflowRepositoryAdapter::new(workflow_repo);
     let workflow_service = WorkflowService::new(Arc::new(workflow_adapter));
 
-    // Initialize permission scheme service
-    let permission_scheme_service = PermissionSchemeService::new(
+    // Initialize role service
+    let role_service = RoleService::new(
         pool.clone(),
         cache_manager.clone(),
-        Some(config.cache.entity_definition_ttl), // Use entity_definition_ttl for scheme caching
+        Some(config.cache.entity_definition_ttl), // Use entity_definition_ttl for role caching
     );
     // Initialize mandatory queue client (fail fast if invalid)
     let queue_client = Arc::new(
@@ -163,7 +162,7 @@ async fn main() -> std::io::Result<()> {
         entity_definition_service,
         dynamic_entity_service: Some(Arc::new(dynamic_entity_service)),
         workflow_service,
-        permission_scheme_service,
+        role_service,
         queue: queue_client.clone(),
     };
 

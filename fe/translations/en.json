@@ -424,7 +424,7 @@
       "active": "Active",
       "active_hint": "Whether the user account is active",
       "super_admin": "Super Admin",
-      "super_admin_hint": "Super admin users have all permissions regardless of assigned schemes",
+      "super_admin_hint": "Super admin users have all permissions regardless of assigned roles",
       "cancel": "Cancel",
       "create": "Create",
       "update": "Update",
@@ -447,14 +447,14 @@
   },
   "permissions": {
     "dialog": {
-      "create_title": "Create Permission Scheme",
-      "edit_title": "Edit Permission Scheme",
+      "create_title": "Create Role",
+      "edit_title": "Edit Role",
       "name": "Name",
       "description": "Description",
       "super_admin": "Super Admin",
-      "super_admin_hint": "Users with this scheme will have all permissions regardless of role permissions",
-      "roles_permissions": "Roles & Permissions",
-      "add_role": "Add Role",
+      "super_admin_hint": "Users with this role will have all permissions regardless of assigned permissions",
+      "roles_permissions": "Permissions",
+      "add_role": "Add Permission",
       "cancel": "Cancel",
       "create": "Create",
       "update": "Update"
@@ -462,25 +462,24 @@
     "page": {
       "title": "Users and Roles",
       "tabs": {
-        "schemes": "Permission Schemes",
-        "users": "Users and Roles"
+        "roles": "Roles",
+        "users": "Users"
       },
-      "schemes": {
-        "title": "Permission Schemes",
-        "new_button": "New Permission Scheme",
-        "loading": "Loading permission schemes...",
+      "roles": {
+        "title": "Roles",
+        "new_button": "New Role",
+        "loading": "Loading roles...",
         "no_description": "No description",
-        "roles": "roles",
         "table": {
           "name": "Name",
           "description": "Description",
-          "roles": "Roles",
+          "permissions": "Permissions",
           "created": "Created",
           "actions": "Actions"
         },
         "delete": {
-          "title": "Delete Permission Scheme",
-          "message": "Are you sure you want to delete the permission scheme \"{name}\"?",
+          "title": "Delete Role",
+          "message": "Are you sure you want to delete the role \"{name}\"?",
           "confirm": "Delete",
           "cancel": "Cancel"
         }

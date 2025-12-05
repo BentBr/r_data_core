@@ -79,23 +79,22 @@ export function useUsers() {
         }
     }
 
-    const getUserSchemes = async (uuid: string) => {
+    const getUserRoles = async (uuid: string) => {
         try {
-            return await typedHttpClient.getUserSchemes(uuid)
+            return await typedHttpClient.getUserRoles(uuid)
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to load user schemes'
+            const message = err instanceof Error ? err.message : 'Failed to load user roles'
             showError(message)
             throw err
         }
     }
 
-    const assignSchemesToUser = async (uuid: string, schemeUuids: string[]) => {
+    const assignRolesToUser = async (uuid: string, roleUuids: string[]) => {
         try {
-            await typedHttpClient.assignSchemesToUser(uuid, schemeUuids)
-            showSuccess('Permission schemes assigned successfully')
+            await typedHttpClient.assignRolesToUser(uuid, roleUuids)
+            showSuccess('Roles assigned successfully')
         } catch (err) {
-            const message =
-                err instanceof Error ? err.message : 'Failed to assign permission schemes'
+            const message = err instanceof Error ? err.message : 'Failed to assign roles'
             showError(message)
             throw err
         }
@@ -110,7 +109,7 @@ export function useUsers() {
         updateUser,
         deleteUser,
         getUser,
-        getUserSchemes,
-        assignSchemesToUser,
+        getUserRoles,
+        assignRolesToUser,
     }
 }

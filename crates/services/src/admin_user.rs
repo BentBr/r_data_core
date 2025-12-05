@@ -184,7 +184,7 @@ mod tests {
     use async_trait::async_trait;
     use mockall::mock;
     use mockall::predicate::*;
-    use r_data_core_core::admin_user::{UserRole, UserStatus};
+    use r_data_core_core::admin_user::UserStatus;
     use r_data_core_core::domain::AbstractRDataEntity;
     use time::OffsetDateTime;
 
@@ -219,7 +219,6 @@ mod tests {
             email: "test@example.com".to_string(),
             password_hash: "$argon2id$v=19$m=19456,t=2,p=1$c29tZXNhbHQ$WwD1am7XJrm2JAMuY4QQVGRBfFmLwUJX7p4NCZEw9MU".to_string(), // Hash for "password123"
             full_name: "Test User".to_string(),
-            role: UserRole::Custom("Admin".to_string()),
             status: UserStatus::Active,
             last_login: None,
             failed_login_attempts: 0,
@@ -318,7 +317,6 @@ mod tests {
             email: "existing@example.com".to_string(),
             password_hash: "$argon2id$v=19$m=19456,t=2,p=1$c29tZXNhbHQ$WwD1am7XJrm2JAMuY4QQVGRBfFmLwUJX7p4NCZEw9MU".to_string(),
             full_name: "Existing User".to_string(),
-            role: UserRole::Custom("Admin".to_string()),
             status: UserStatus::Active,
             last_login: None,
             failed_login_attempts: 0,

@@ -26,9 +26,9 @@ BEFORE UPDATE ON admin_users
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
 
-DROP TRIGGER IF EXISTS set_timestamp ON permission_schemes;
+DROP TRIGGER IF EXISTS set_timestamp ON roles;
 CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON permission_schemes
+BEFORE UPDATE ON roles
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
 

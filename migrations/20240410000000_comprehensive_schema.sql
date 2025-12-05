@@ -552,13 +552,15 @@ CREATE TABLE IF NOT EXISTS admin_users (
 CREATE INDEX IF NOT EXISTS idx_admin_users_username ON admin_users(username);
 CREATE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users(email);
 
--- Permission Schemes Table
-CREATE TABLE IF NOT EXISTS permission_schemes (
+-- Roles Table
+CREATE TABLE IF NOT EXISTS roles (
     uuid UUID PRIMARY KEY DEFAULT uuidv7(),
-    path TEXT NOT NULL DEFAULT '/permissions',
+    path TEXT NOT NULL DEFAULT '/admin/roles',
     name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
-    rules JSONB NOT NULL,
+    permissions JSONB NOT NULL DEFAULT '[]'::jsonb,
+    is_system BOOLEAN NOT NULL DEFAULT FALSE,
+    super_admin BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_by UUID NOT NULL,
@@ -567,7 +569,8 @@ CREATE TABLE IF NOT EXISTS permission_schemes (
     version INTEGER NOT NULL DEFAULT 1
 );
 
-CREATE INDEX IF NOT EXISTS idx_permission_schemes_name ON permission_schemes(name);
+CREATE INDEX IF NOT EXISTS idx_roles_name ON roles(name);
+CREATE INDEX IF NOT EXISTS idx_roles_super_admin ON roles(super_admin);
 
 -- API Keys Table
 CREATE TABLE IF NOT EXISTS api_keys (

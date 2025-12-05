@@ -384,7 +384,7 @@ describe('FieldEditor', () => {
         }
 
         await wrapper.vm.$nextTick()
-        
+
         // Validate the form
         await wrapper.vm.formRef?.validate()
         await wrapper.vm.$nextTick()

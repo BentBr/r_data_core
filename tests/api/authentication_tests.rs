@@ -66,7 +66,7 @@ mod tests {
                 enable_docs: true,
                 cors_origins: vec![],
             },
-            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            role_service: r_data_core_services::RoleService::new(
                 pool.clone(),
                 cache_manager.clone(),
                 Some(0),
@@ -163,7 +163,7 @@ mod tests {
                 enable_docs: true,
                 cors_origins: vec![],
             },
-            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            role_service: r_data_core_services::RoleService::new(
                 pool.clone(),
                 cache_manager.clone(),
                 Some(0),
@@ -254,7 +254,7 @@ mod tests {
                 enable_docs: true,
                 cors_origins: vec![],
             },
-            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            role_service: r_data_core_services::RoleService::new(
                 pool.clone(),
                 cache_manager.clone(),
                 Some(0),
@@ -351,7 +351,7 @@ mod tests {
                 enable_docs: true,
                 cors_origins: vec![],
             },
-            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            role_service: r_data_core_services::RoleService::new(
                 pool.clone(),
                 cache_manager.clone(),
                 Some(0),
@@ -463,7 +463,7 @@ mod tests {
                 enable_docs: true,
                 cors_origins: vec![],
             },
-            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            role_service: r_data_core_services::RoleService::new(
                 pool.clone(),
                 cache_manager.clone(),
                 Some(0),
@@ -580,7 +580,7 @@ mod tests {
                 enable_docs: true,
                 cors_origins: vec![],
             },
-            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            role_service: r_data_core_services::RoleService::new(
                 pool.clone(),
                 cache_manager.clone(),
                 Some(0),
@@ -684,7 +684,7 @@ mod tests {
                 enable_docs: true,
                 cors_origins: vec![],
             },
-            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            role_service: r_data_core_services::RoleService::new(
                 pool.clone(),
                 cache_manager.clone(),
                 Some(0),
@@ -782,7 +782,7 @@ mod tests {
         let api_state = ApiState {
             db_pool: pool.clone(),
             api_config: api_config.clone(),
-            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            role_service: r_data_core_services::RoleService::new(
                 pool.clone(),
                 cache_manager.clone(),
                 Some(0),
