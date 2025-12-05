@@ -3,6 +3,8 @@
 pub mod admin_user_repository;
 pub mod admin_user_repository_trait;
 pub mod api_key_repository;
+pub mod dashboard_stats_repository;
+pub mod dashboard_stats_repository_trait;
 pub mod dynamic_entity_mapper;
 pub mod dynamic_entity_public_repository;
 pub mod dynamic_entity_query_repository;
@@ -35,6 +37,8 @@ pub use admin_user_repository_trait::{
     is_key_valid, AdminUserRepositoryTrait, ApiKeyRepositoryTrait, CreateAdminUserParams,
 };
 pub use api_key_repository::ApiKeyRepository;
+pub use dashboard_stats_repository::DashboardStatsRepository;
+pub use dashboard_stats_repository_trait::DashboardStatsRepositoryTrait;
 pub use dynamic_entity_public_repository::DynamicEntityPublicRepository;
 pub use dynamic_entity_query_repository::DynamicEntityQueryRepository;
 pub use dynamic_entity_query_repository_trait::DynamicEntityQueryRepositoryTrait;

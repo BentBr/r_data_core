@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { createRouter, createWebHistory } from 'vue-router'
 import WorkflowsPage from './WorkflowsPage.vue'
 
 const mockGetWorkflows = vi.fn()
@@ -39,6 +40,13 @@ vi.mock('@/composables/useSnackbar', () => ({
     }),
 }))
 
+const router = createRouter({
+    history: createWebHistory(),
+    routes: [
+        { path: '/workflows', component: WorkflowsPage },
+    ],
+})
+
 describe('WorkflowsPage', () => {
     beforeEach(() => {
         vi.clearAllMocks()
@@ -57,7 +65,11 @@ describe('WorkflowsPage', () => {
     })
 
     it('loads workflows and runs "run now" without upload', async () => {
-        const wrapper = mount(WorkflowsPage)
+        const wrapper = mount(WorkflowsPage, {
+            global: {
+                plugins: [router],
+            },
+        })
         // Wait for initial loadWorkflows
         await vi.waitUntil(() => mockGetWorkflows.mock.calls.length > 0, { timeout: 1000 })
         // Call exposed API to open and confirm
@@ -70,7 +82,11 @@ describe('WorkflowsPage', () => {
     })
 
     it('history tab includes "all" option', async () => {
-        const wrapper = mount(WorkflowsPage)
+        const wrapper = mount(WorkflowsPage, {
+            global: {
+                plugins: [router],
+            },
+        })
         await vi.waitUntil(() => mockGetWorkflows.mock.calls.length > 0, { timeout: 1000 })
         ;(wrapper.vm as any).activeTab = 'history'
         ;(wrapper.vm as any).selectedWorkflowUuid = 'all'
@@ -80,7 +96,11 @@ describe('WorkflowsPage', () => {
     })
 
     it('disables run button when upload enabled but no file selected', async () => {
-        const wrapper = mount(WorkflowsPage)
+        const wrapper = mount(WorkflowsPage, {
+            global: {
+                plugins: [router],
+            },
+        })
         await vi.waitUntil(() => mockGetWorkflows.mock.calls.length > 0, { timeout: 1000 })
         // Simulate state and assert disabled condition
         await (wrapper.vm as any).openRunNow('019a46aa-582d-7f51-8782-641a00ec534c')

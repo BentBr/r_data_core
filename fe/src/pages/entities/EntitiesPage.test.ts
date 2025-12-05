@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { createRouter, createWebHistory } from 'vue-router'
 import EntitiesPage from './EntitiesPage.vue'
 import type { DynamicEntity } from '@/types/schemas'
 
@@ -48,6 +49,13 @@ vi.mock('@/stores/auth', () => ({
     }),
 }))
 
+const router = createRouter({
+    history: createWebHistory(),
+    routes: [
+        { path: '/entities', component: EntitiesPage },
+    ],
+})
+
 describe('EntitiesPage - Path Detection Logic', () => {
     beforeEach(() => {
         vi.clearAllMocks()
@@ -66,7 +74,11 @@ describe('EntitiesPage - Path Detection Logic', () => {
     })
 
     it('createEntity calculates correct path for single-segment path', async () => {
-        const wrapper = mount(EntitiesPage)
+        const wrapper = mount(EntitiesPage, {
+            global: {
+                plugins: [router],
+            },
+        })
         await vi.waitUntil(() => mockGetEntityDefinitions.mock.calls.length > 0, { timeout: 1000 })
         await wrapper.vm.$nextTick()
 
@@ -93,7 +105,11 @@ describe('EntitiesPage - Path Detection Logic', () => {
     })
 
     it('createEntity calculates correct path for multi-segment path', async () => {
-        const wrapper = mount(EntitiesPage)
+        const wrapper = mount(EntitiesPage, {
+            global: {
+                plugins: [router],
+            },
+        })
         await vi.waitUntil(() => mockGetEntityDefinitions.mock.calls.length > 0, { timeout: 1000 })
         await wrapper.vm.$nextTick()
 
@@ -120,7 +136,11 @@ describe('EntitiesPage - Path Detection Logic', () => {
     })
 
     it('deleteEntity calculates correct path for single-segment path', async () => {
-        const wrapper = mount(EntitiesPage)
+        const wrapper = mount(EntitiesPage, {
+            global: {
+                plugins: [router],
+            },
+        })
         await vi.waitUntil(() => mockGetEntityDefinitions.mock.calls.length > 0, { timeout: 1000 })
         await wrapper.vm.$nextTick()
 
@@ -147,7 +167,11 @@ describe('EntitiesPage - Path Detection Logic', () => {
     })
 
     it('deleteEntity calculates correct path for multi-segment path', async () => {
-        const wrapper = mount(EntitiesPage)
+        const wrapper = mount(EntitiesPage, {
+            global: {
+                plugins: [router],
+            },
+        })
         await vi.waitUntil(() => mockGetEntityDefinitions.mock.calls.length > 0, { timeout: 1000 })
         await wrapper.vm.$nextTick()
 
@@ -174,7 +198,11 @@ describe('EntitiesPage - Path Detection Logic', () => {
     })
 
     it('deleteEntity handles root path correctly', async () => {
-        const wrapper = mount(EntitiesPage)
+        const wrapper = mount(EntitiesPage, {
+            global: {
+                plugins: [router],
+            },
+        })
         await vi.waitUntil(() => mockGetEntityDefinitions.mock.calls.length > 0, { timeout: 1000 })
         await wrapper.vm.$nextTick()
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref } from 'vue'
+import { createRouter, createWebHistory } from 'vue-router'
 import PermissionsPage from './PermissionsPage.vue'
 import type { Role } from '@/types/schemas'
 
@@ -127,6 +128,13 @@ vi.mock('@/stores/auth', () => ({
     }),
 }))
 
+const router = createRouter({
+    history: createWebHistory(),
+    routes: [
+        { path: '/permissions', component: PermissionsPage },
+    ],
+})
+
 const mockUsersLoading = ref(false)
 const mockUsersError = ref('')
 const mockUsers = ref([])
@@ -235,6 +243,7 @@ describe('PermissionsPage', () => {
     it('renders correctly and loads roles', async () => {
         const wrapper = mount(PermissionsPage, {
             global: {
+                plugins: [router],
                 stubs: {
                     UserDialog: true,
                     RoleDialog: true,
@@ -257,6 +266,7 @@ describe('PermissionsPage', () => {
     it('opens create dialog when "New Role" button is clicked', async () => {
         const wrapper = mount(PermissionsPage, {
             global: {
+                plugins: [router],
                 stubs: {
                     UserDialog: true,
                 },
@@ -279,6 +289,7 @@ describe('PermissionsPage', () => {
     it('opens edit dialog with pre-filled data', async () => {
         const wrapper = mount(PermissionsPage, {
             global: {
+                plugins: [router],
                 stubs: {
                     UserDialog: true,
                 },
@@ -299,6 +310,7 @@ describe('PermissionsPage', () => {
     it('creates a new role', async () => {
         const wrapper = mount(PermissionsPage, {
             global: {
+                plugins: [router],
                 stubs: {
                     UserDialog: true,
                 },
@@ -336,6 +348,7 @@ describe('PermissionsPage', () => {
     it('updates an existing role', async () => {
         const wrapper = mount(PermissionsPage, {
             global: {
+                plugins: [router],
                 stubs: {
                     UserDialog: true,
                 },
@@ -367,6 +380,7 @@ describe('PermissionsPage', () => {
     it('deletes a role with confirmation', async () => {
         const wrapper = mount(PermissionsPage, {
             global: {
+                plugins: [router],
                 stubs: {
                     UserDialog: true,
                 },
@@ -394,6 +408,7 @@ describe('PermissionsPage', () => {
     it('handles pagination changes', async () => {
         const wrapper = mount(PermissionsPage, {
             global: {
+                plugins: [router],
                 stubs: {
                     UserDialog: true,
                 },
@@ -413,6 +428,7 @@ describe('PermissionsPage', () => {
     it('handles items per page changes', async () => {
         const wrapper = mount(PermissionsPage, {
             global: {
+                plugins: [router],
                 stubs: {
                     UserDialog: true,
                 },
@@ -437,6 +453,7 @@ describe('PermissionsPage', () => {
 
         const wrapper = mount(PermissionsPage, {
             global: {
+                plugins: [router],
                 stubs: {
                     UserDialog: true,
                 },
@@ -452,6 +469,7 @@ describe('PermissionsPage', () => {
     it('handles errors when creating role', async () => {
         const wrapper = mount(PermissionsPage, {
             global: {
+                plugins: [router],
                 stubs: {
                     UserDialog: true,
                 },
@@ -481,6 +499,7 @@ describe('PermissionsPage', () => {
     it('closes dialog when cancel is clicked', async () => {
         const wrapper = mount(PermissionsPage, {
             global: {
+                plugins: [router],
                 stubs: {
                     UserDialog: true,
                 },
@@ -506,6 +525,7 @@ describe('PermissionsPage', () => {
     it('formats dates correctly', async () => {
         const wrapper = mount(PermissionsPage, {
             global: {
+                plugins: [router],
                 stubs: {
                     UserDialog: true,
                 },

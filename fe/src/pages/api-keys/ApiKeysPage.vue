@@ -200,7 +200,8 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, computed, onMounted, onUnmounted } from 'vue'
+    import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+    import { useRoute } from 'vue-router'
     import { useAuthStore } from '@/stores/auth'
     import { typedHttpClient } from '@/api/typed-client'
     import { useTranslations } from '@/composables/useTranslations'
@@ -215,6 +216,7 @@
     import PaginatedDataTable from '@/components/tables/PaginatedDataTable.vue'
 
     const authStore = useAuthStore()
+    const route = useRoute()
     const { t } = useTranslations()
     const { currentSnackbar, showSuccess, showError } = useSnackbar()
 
@@ -418,9 +420,17 @@
     }
 
     // Lifecycle
-    onMounted(() => {
+    onMounted(async () => {
         isComponentMounted.value = true
-        void loadApiKeys(currentPage.value, itemsPerPage.value)
+        await loadApiKeys(currentPage.value, itemsPerPage.value)
+
+        // Check for query params to open dialogs
+        if (route.query.create === 'true') {
+            await nextTick()
+            showCreateDialog.value = true
+            // Remove query param from URL
+            window.history.replaceState({}, '', '/api-keys')
+        }
     })
 
     onUnmounted(() => {

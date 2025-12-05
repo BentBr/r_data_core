@@ -6,8 +6,8 @@ use std::sync::Arc;
 use crate::api_state::ApiStateTrait;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_services::{
-    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, RoleService,
-    WorkflowService,
+    AdminUserService, ApiKeyService, DashboardStatsService, DynamicEntityService,
+    EntityDefinitionService, RoleService, WorkflowService,
 };
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
@@ -42,6 +42,9 @@ pub struct ApiState {
 
     /// Role service
     pub role_service: RoleService,
+
+    /// Dashboard stats service
+    pub dashboard_stats_service: DashboardStatsService,
 
     /// Queue client for producing jobs
     pub queue: Arc<ApalisRedisQueue>,
@@ -93,5 +96,9 @@ impl ApiStateTrait for ApiState {
 
     fn queue_ref(&self) -> &dyn std::any::Any {
         &self.queue
+    }
+
+    fn dashboard_stats_service_ref(&self) -> &dyn std::any::Any {
+        &self.dashboard_stats_service
     }
 }

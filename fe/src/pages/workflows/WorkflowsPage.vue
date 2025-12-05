@@ -1,5 +1,6 @@
 <script setup lang="ts">
-    import { ref, computed, onMounted, onUnmounted } from 'vue'
+    import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+    import { useRoute } from 'vue-router'
     import { typedHttpClient } from '@/api/typed-client'
     import { useTranslations } from '@/composables/useTranslations'
     import { usePagination } from '@/composables/usePagination'
@@ -60,6 +61,7 @@
     const uploadFile = ref<File | null>(null)
     const { currentSnackbar, showSuccess, showError } = useSnackbar()
     const { t } = useTranslations()
+    const route = useRoute()
 
     // Pagination
     const { state: paginationState, setPage, setItemsPerPage } = usePagination('workflows', 20)
@@ -186,9 +188,17 @@
         await loadWorkflows(1, newItemsPerPage)
     }
 
-    onMounted(() => {
+    onMounted(async () => {
         isComponentMounted.value = true
-        void loadWorkflows(currentPage.value, itemsPerPage.value)
+        await loadWorkflows(currentPage.value, itemsPerPage.value)
+
+        // Check for query params to open dialogs
+        if (route.query.create === 'true') {
+            await nextTick()
+            showCreate.value = true
+            // Remove query param from URL
+            window.history.replaceState({}, '', '/workflows')
+        }
     })
     onUnmounted(() => {
         isComponentMounted.value = false

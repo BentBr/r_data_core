@@ -64,6 +64,7 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         crate::admin::users::routes::get_user_roles,
         crate::admin::users::routes::assign_roles_to_user,
         crate::admin::auth::routes::get_user_permissions,
+        crate::admin::meta::routes::get_dashboard_stats,
     ),
     components(
         schemas(
@@ -129,6 +130,11 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
             crate::admin::permissions::models::UpdateRoleRequest,
             crate::admin::permissions::models::AssignRolesRequest,
             crate::admin::permissions::models::PermissionResponse,
+            crate::admin::meta::models::DashboardStats,
+            crate::admin::meta::models::EntityStats,
+            crate::admin::meta::models::EntityTypeCount,
+            crate::admin::meta::models::WorkflowStats,
+            crate::admin::meta::models::WorkflowWithLatestStatus,
             crate::admin::users::models::UserResponse,
             crate::admin::users::models::CreateUserRequest,
             crate::admin::users::models::UpdateUserRequest
@@ -145,6 +151,7 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         (name = "system", description = "System settings management"),
         (name = "permissions", description = "Role management"),
         (name = "users", description = "User management"),
+        (name = "meta", description = "Dashboard metadata and statistics"),
     ),
     info(
         title = "R Data Core Admin API",

@@ -131,6 +131,11 @@ mod tests {
 
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
+        let dashboard_stats_repository =
+            r_data_core_persistence::DashboardStatsRepository::new(pool.clone());
+        let dashboard_stats_service =
+            r_data_core_services::DashboardStatsService::new(Arc::new(dashboard_stats_repository));
+
         let api_state = ApiState {
             db_pool: pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
@@ -157,6 +162,7 @@ mod tests {
                     r_data_core_persistence::WorkflowRepository::new(pool.clone()),
                 ),
             )),
+            dashboard_stats_service,
             queue: test_queue_client_async().await,
         };
 
