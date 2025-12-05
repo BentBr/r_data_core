@@ -1,6 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 
-use dotenv::dotenv;
+use dotenvy::dotenv;
 use std::env;
 
 use crate::config::{

@@ -5,7 +5,7 @@ edition = "2021"
 license = "MIT"
 
 [dependencies]
-sqlx = { version = "0.8.4", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }
 tokio = { version = "1.35", features = ["full"] }
 uuid = { version = "1.6", features = ["v7", "serde"] }
 serde = { version = "1.0", features = ["derive"] }

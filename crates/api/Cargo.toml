@@ -19,7 +19,7 @@ r_data_core_services = { path = "../services" }
 # Entities/services will be migrated to core/persistence crates
 
 # Database
-sqlx = { version = "0.8.4", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }
 
 # Authentication
 jsonwebtoken = "9.2"
@@ -52,7 +52,7 @@ anyhow = "1.0"
 log = "0.4"
 
 # API documentation
-utoipa = { version = "4.1.0", features = ["actix_extras"] }
+utoipa = { version = "4.2", features = ["actix_extras"] }
 utoipa-swagger-ui = { version = "5.0", features = ["actix-web", "debug-embed"] }
 
 # Jobs & scheduling

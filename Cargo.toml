@@ -20,7 +20,7 @@ path = "src/main.rs"
 [dev-dependencies]
 mockall = "0.12"
 actix-http = "3.4"
-httpmock = "0.6"
+httpmock = "0.8.2"
 serial_test = { version = "2.0", features = ["async"] }
 tokio = { version = "1.35", features = ["full", "macros", "rt-multi-thread"] }
 lazy_static = "1.4"
@@ -39,7 +39,7 @@ r_data_core_workflow = { path = "crates/workflow" }
 r_data_core_test_support = { path = "crates/test-support"}
 
 # Database
-sqlx = { version = "0.8.4", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }
 tokio = { version = "1.35", features = ["full"] }
 
 # Authentication
@@ -67,7 +67,7 @@ log = "0.4"
 env_logger = "0.11"
 
 # Configuration
-dotenv = "0.15"
+dotenvy = "0.15"
 
 # CSV/bytes and general error handling
 bytes = "1.6"

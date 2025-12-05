@@ -53,7 +53,7 @@ pub async fn setup_test_db() -> PgPool {
     info!("Setting up test database with global lock acquired");
 
     // Load environment variables from .env.test
-    dotenv::from_filename(".env.test").ok();
+    dotenvy::from_filename(".env.test").ok();
 
     // Get database URL
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not set in .env.test");
