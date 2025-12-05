@@ -4,12 +4,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use uuid::Uuid;
+use utoipa::ToSchema;
 
 /// Entity type information for dynamic entities
 ///
 /// Represents an entity definition that can be used to create dynamic entity instances.
 /// Entity types are defined by entity definitions.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct EntityTypeInfo {
     pub name: String,
     pub display_name: String,
@@ -20,7 +21,7 @@ pub struct EntityTypeInfo {
 }
 
 /// Query parameters for entity filtering
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct EntityQuery {
     pub filter: Option<HashMap<String, Value>>,
     pub limit: Option<i64>,
@@ -30,7 +31,7 @@ pub struct EntityQuery {
 }
 
 /// Kind of browse node
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum BrowseKind {
     Folder,
@@ -41,7 +42,7 @@ pub enum BrowseKind {
 ///
 /// Represents either a folder (virtual path segment) or a file (dynamic entity instance)
 /// in the hierarchical structure of dynamic entities.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct BrowseNode {
     /// "folder" or "file"
@@ -61,7 +62,7 @@ pub struct BrowseNode {
 /// Advanced query for dynamic entities with complex filtering
 ///
 /// Used to query dynamic entity instances with advanced filtering capabilities.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct AdvancedEntityQuery {
     pub filter: Option<HashMap<String, Value>>,
     pub limit: Option<i64>,

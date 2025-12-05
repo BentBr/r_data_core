@@ -6,6 +6,7 @@ use serde_json::json;
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::CombinedRequiredAuth;
 use r_data_core_core::public_api::AdvancedEntityQuery;
+use r_data_core_core::DynamicEntity;
 use r_data_core_persistence::DynamicEntityQueryRepository;
 
 /// Advanced query for dynamic entities with more complex filtering

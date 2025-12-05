@@ -52,8 +52,8 @@ anyhow = "1.0"
 log = "0.4"
 
 # API documentation
-utoipa = { version = "4.2", features = ["actix_extras"] }
-utoipa-swagger-ui = { version = "5.0", features = ["actix-web", "debug-embed"] }
+utoipa = { version = "5.4.0", features = ["actix_extras", "time", "uuid"] }
+utoipa-swagger-ui = { version = "9.0.2", features = ["actix-web", "debug-embed"] }
 
 # Jobs & scheduling
 apalis = { version = "0.7.3", default-features = false, features = ["retry"] }

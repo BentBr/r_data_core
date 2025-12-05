@@ -20,6 +20,7 @@ use crate::response::ApiResponse;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_persistence::EntityDefinitionVersioningRepository;
 use utoipa::ToSchema;
+use crate::admin::entity_definitions::models::EntityDefinitionSchema;
 
 /// List entity definitions with pagination
 #[utoipa::path(

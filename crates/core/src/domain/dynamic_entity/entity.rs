@@ -124,7 +124,7 @@ pub struct DynamicEntity {
 
     /// The entity definition for this entity type
     #[serde(skip)]
-    #[schema(skip)]
+    #[schema(ignore)]
     pub definition: Arc<EntityDefinition>,
 }
 

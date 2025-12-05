@@ -9,6 +9,7 @@ use sqlx::{
 use std::collections::HashMap;
 use time::OffsetDateTime;
 use uuid::Uuid;
+use utoipa::ToSchema;
 
 use crate::error::{Error, Result};
 use crate::versioning::VersionedData;
@@ -38,7 +39,7 @@ pub trait DynamicFields {
 }
 
 /// The base entity from which all `RDataEntities` derive
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AbstractRDataEntity {
     /// Public UUID for API consumption
     pub uuid: Uuid,

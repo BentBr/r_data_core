@@ -3,9 +3,9 @@
 use actix_web::web;
 use actix_web::HttpResponse;
 use serde_json;
-use serde_json::json;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
-use utoipa::openapi::{ObjectBuilder, OpenApi as UtoipaOpenApi, SchemaFormat, SchemaType};
+use utoipa::openapi::schema::Type;
+use utoipa::openapi::{ObjectBuilder, OpenApi as UtoipaOpenApi, SchemaFormat};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::{Config, SwaggerUi};
 
@@ -205,10 +205,9 @@ impl Modify for UuidSchemaAddon {
             components.schemas.insert(
                 "Uuid".to_owned(),
                 ObjectBuilder::new()
-                    .schema_type(SchemaType::String)
+                    .schema_type(Type::String)
                     .format(Some(SchemaFormat::Custom("uuid".to_owned())))
                     .description(Some("UUID string"))
-                    .example(Some(json!("550e8400-e29b-41d4-a716-446655440000")))
                     .build()
                     .into(),
             );
@@ -226,10 +225,9 @@ impl Modify for DateTimeSchemaAddon {
             components.schemas.insert(
                 "OffsetDateTime".to_owned(),
                 ObjectBuilder::new()
-                    .schema_type(SchemaType::String)
+                    .schema_type(Type::String)
                     .format(Some(SchemaFormat::Custom("date-time".to_owned())))
                     .description(Some("ISO 8601 date and time with offset"))
-                    .example(Some(json!("2023-01-01T12:00:00Z")))
                     .build()
                     .into(),
             );
@@ -273,10 +271,7 @@ impl Modify for JsonValueSchemaAddon {
             // Create a simpler schema for JSON Value
             let schema = utoipa::openapi::Schema::Object(
                 ObjectBuilder::new()
-                    .schema_type(SchemaType::String)
-                    .format(Some(SchemaFormat::Custom("json".to_owned())))
                     .description(Some("JSON value"))
-                    .example(Some(serde_json::json!({"example": "value"})))
                     .build(),
             );
 

@@ -24,7 +24,7 @@ use uuid::Uuid;
 /// Only `SuperAdmin` is predefined. All other roles are custom and defined
 /// in permission schemes stored in the database.
 /// Use `as_str()` to get the string representation for permission checking.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub enum UserRole {
     /// Super administrator with full access to all namespaces
     SuperAdmin,
@@ -71,7 +71,7 @@ impl<'r> Decode<'r, sqlx::Postgres> for UserRole {
 }
 
 /// Admin user status
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub enum UserStatus {
     Active,
     Inactive,

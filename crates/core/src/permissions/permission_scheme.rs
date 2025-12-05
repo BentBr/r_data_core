@@ -4,12 +4,13 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Display;
 use uuid::Uuid;
+use utoipa::ToSchema;
 
 use crate::domain::AbstractRDataEntity;
 use crate::error::{Error, Result};
 
 /// Permission types that can be granted
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, ToSchema)]
 pub enum PermissionType {
     /// Read data
     Read,
@@ -52,7 +53,7 @@ impl Display for PermissionType {
 }
 
 /// Access level for a permission
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, ToSchema)]
 pub enum AccessLevel {
     /// No access granted
     None,
