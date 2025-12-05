@@ -19,7 +19,6 @@ use uuid::Uuid;
 /// # Errors
 /// Returns an error if entity definition creation fails
 pub async fn create_test_entity_definition(pool: &PgPool, entity_type: &str) -> Result<Uuid> {
-
     // Create a simple entity definition for testing
     let mut entity_def = EntityDefinition {
         entity_type: entity_type.to_string(),
@@ -96,7 +95,6 @@ pub async fn create_test_entity(
     name: &str,
     email: &str,
 ) -> Result<Uuid> {
-
     let uuid = Uuid::now_v7();
     let created_by = Uuid::now_v7();
 
@@ -152,7 +150,6 @@ pub async fn create_test_entity(
 /// # Errors
 /// Returns an error if database operations fail
 pub async fn create_test_admin_user(pool: &PgPool) -> Result<Uuid> {
-
     // Generate a truly unique username with UUID
     let uuid = Uuid::now_v7();
     let username = format!("test_admin_{}", uuid.simple());
@@ -272,7 +269,6 @@ pub fn get_test_user_username() -> String {
 /// # Errors
 /// Returns an error if file reading, parsing, or entity creation fails
 pub async fn create_entity_definition_from_json(pool: &PgPool, json_path: &str) -> Result<Uuid> {
-
     // Read the JSON file
     let json_content = std::fs::read_to_string(json_path).map_err(|e| {
         r_data_core_core::error::Error::Unknown(format!(

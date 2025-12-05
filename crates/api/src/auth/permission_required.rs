@@ -105,7 +105,7 @@ impl FromRequest for PermissionRequired {
 ///
 /// // For testing, we can verify the macro expands correctly
 /// type WorkflowsRead = permission_required!(Workflows, Read);
-/// 
+///
 /// // The macro returns the PermissionRequired type
 /// let _type_check: WorkflowsRead = PermissionRequired {
 ///     auth: RequiredAuth(AuthUserClaims {

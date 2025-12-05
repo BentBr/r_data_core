@@ -44,7 +44,7 @@ async fn setup_test_schema(pool: &PgPool, schema_name: &str) -> Result<()> {
 
     // Run migrations in the test schema context
     debug!("Running migrations in schema: {schema_name}");
-    
+
     match sqlx::migrate!("../../migrations").run(pool).await {
         Ok(()) => {
             debug!("Migrations completed successfully in schema: {schema_name}");
@@ -58,8 +58,8 @@ async fn setup_test_schema(pool: &PgPool, schema_name: &str) -> Result<()> {
                 // Convert MigrateError to our Error type
                 Err(r_data_core_core::error::Error::Database(
                     sqlx::Error::Configuration(
-                        format!("Failed to run migrations in schema {schema_name}: {e}").into()
-                    )
+                        format!("Failed to run migrations in schema {schema_name}: {e}").into(),
+                    ),
                 ))
             }
         }
@@ -68,7 +68,7 @@ async fn setup_test_schema(pool: &PgPool, schema_name: &str) -> Result<()> {
 
 /// Set up a test database connection with per-test schema isolation
 ///
-/// Each test gets its own PostgreSQL schema, allowing parallel execution
+/// Each test gets its own `PostgreSQL` schema, allowing parallel execution
 /// without conflicts. The schema is automatically created and migrations
 /// are run in the test-specific schema.
 ///
@@ -81,7 +81,7 @@ pub async fn setup_test_db() -> PgPool {
 
     // Get database URL
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not set in .env.test");
-    
+
     // Generate a unique schema name for this test
     let schema_name = generate_test_schema_name();
     debug!("Setting up test database with schema: {schema_name}");
@@ -127,7 +127,7 @@ pub async fn setup_test_db() -> PgPool {
     }
 
     debug!("Test database setup complete with schema: {schema_name}");
-    
+
     // Return the dedicated pool for this test
     pool
 }
