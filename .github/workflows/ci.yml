@@ -229,7 +229,33 @@ jobs:
           SQLX_OFFLINE: true
         run: cargo build --workspace --all-features
 
-  frontend:
+  frontend-prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: fe/package-lock.json
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: fe/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install dependencies
+        working-directory: fe
+        run: npm ci
+
+  frontend-lint:
+    needs: frontend-prepare
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -258,9 +284,61 @@ jobs:
         working-directory: fe
         run: npm run lint
 
+  frontend-tests:
+    needs: frontend-prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: fe/package-lock.json
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: fe/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install dependencies
+        working-directory: fe
+        run: npm ci
+
       - name: Run tests
         working-directory: fe
         run: npm run test
+
+  frontend-audit:
+    needs: frontend-prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: fe/package-lock.json
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: fe/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install dependencies
+        working-directory: fe
+        run: npm ci
 
       - name: Security audit
         working-directory: fe
