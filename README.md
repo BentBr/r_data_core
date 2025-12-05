@@ -386,8 +386,7 @@ Swagger:
 ## Todos
 - update readme
 - add options for custom tables (like bricks)
-- ~~have a tree view for entities~~
-  - have easy-creation of children
+- have easy-creation of children (entities)
 - test admin routes
 - connect dashboard data to backend
 - check entities and respective columns - we need proper creation and not everything serialized.

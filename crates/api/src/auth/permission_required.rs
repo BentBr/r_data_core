@@ -17,12 +17,34 @@ use crate::response::ApiResponse;
 /// If the user doesn't have the required permission, it returns a 403 Forbidden response.
 ///
 /// # Example
-/// ```rust,ignore
-/// async fn my_route(
-///     auth: PermissionRequired<{ ResourceNamespace::Workflows }, { PermissionType::Read }>,
-/// ) -> impl Responder {
-///     // User is authenticated and has permission
-/// }
+/// ```
+/// use r_data_core_api::auth::permission_required::PermissionRequired;
+/// use r_data_core_api::auth::auth_enum::RequiredAuth;
+/// use r_data_core_api::jwt::AuthUserClaims;
+/// use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
+/// use uuid::Uuid;
+///
+/// // Create a PermissionRequired instance manually
+/// let user_uuid = Uuid::now_v7();
+/// let auth = RequiredAuth(AuthUserClaims {
+///     sub: user_uuid.to_string(),
+///     name: "test_user".to_string(),
+///     email: "test@example.com".to_string(),
+///     is_super_admin: false,
+///     permissions: vec![],
+///     exp: 0,
+///     iat: 0,
+/// });
+///
+/// let permission = PermissionRequired::new(
+///     auth,
+///     ResourceNamespace::Workflows,
+///     PermissionType::Read,
+///     None,
+/// );
+///
+/// assert_eq!(permission.namespace, ResourceNamespace::Workflows);
+/// assert_eq!(permission.permission_type, PermissionType::Read);
 /// ```
 pub struct PermissionRequired {
     pub auth: RequiredAuth,
@@ -65,13 +87,40 @@ impl FromRequest for PermissionRequired {
 /// Macro to create a `PermissionRequired` extractor
 ///
 /// # Usage
-/// ```rust,ignore
-/// #[get("/workflows")]
-/// async fn list_workflows(
-///     permission: PermissionRequired<Workflows, Read>,
-/// ) -> impl Responder {
-///     // Handler code
-/// }
+/// ```
+/// use r_data_core_api::permission_required;
+/// use r_data_core_api::auth::permission_required::PermissionRequired;
+/// use r_data_core_api::auth::auth_enum::RequiredAuth;
+/// use r_data_core_api::jwt::AuthUserClaims;
+/// use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
+///
+/// // The macro expands to the PermissionRequired type
+/// // In actual route handlers, you would use it like:
+/// // #[get("/workflows")]
+/// // async fn list_workflows(
+/// //     permission: permission_required!(Workflows, Read),
+/// // ) -> impl Responder {
+/// //     // Handler code
+/// // }
+///
+/// // For testing, we can verify the macro expands correctly
+/// type WorkflowsRead = permission_required!(Workflows, Read);
+///
+/// // The macro returns the PermissionRequired type
+/// let _type_check: WorkflowsRead = PermissionRequired {
+///     auth: RequiredAuth(AuthUserClaims {
+///         sub: "".to_string(),
+///         name: "".to_string(),
+///         email: "".to_string(),
+///         is_super_admin: false,
+///         permissions: vec![],
+///         exp: 0,
+///         iat: 0,
+///     }),
+///     namespace: ResourceNamespace::Workflows,
+///     permission_type: PermissionType::Read,
+///     path: None,
+/// };
 /// ```
 #[macro_export]
 macro_rules! permission_required {

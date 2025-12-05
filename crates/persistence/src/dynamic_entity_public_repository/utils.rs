@@ -17,7 +17,7 @@ pub async fn get_entity_count(pool: &PgPool, entity_type: &str) -> Result<i64> {
         r#"
         SELECT EXISTS (
             SELECT FROM information_schema.tables
-            WHERE table_schema = 'public'
+            WHERE table_schema = current_schema()
             AND table_name = $1
         ) as "exists!"
         "#,

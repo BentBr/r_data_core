@@ -3,12 +3,17 @@ ALTER TABLE workflows
     ALTER COLUMN created_by SET NOT NULL;
 
 -- Add FK constraint if it does not exist
+-- Check in current schema to support per-test schema isolation
 DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1
-        FROM pg_constraint
-        WHERE conname = 'fk_workflows_created_by'
+        FROM pg_constraint c
+        JOIN pg_class t ON c.conrelid = t.oid
+        JOIN pg_namespace n ON t.relnamespace = n.oid
+        WHERE c.conname = 'fk_workflows_created_by'
+        AND n.nspname = current_schema()
+        AND t.relname = 'workflows'
     ) THEN
         ALTER TABLE workflows
             ADD CONSTRAINT fk_workflows_created_by
@@ -23,12 +28,17 @@ $$;
 CREATE INDEX IF NOT EXISTS idx_workflows_created_by ON workflows(created_by);
 
 -- Add FK constraint for updated_by (nullable)
+-- Check in current schema to support per-test schema isolation
 DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1
-        FROM pg_constraint
-        WHERE conname = 'fk_workflows_updated_by'
+        FROM pg_constraint c
+        JOIN pg_class t ON c.conrelid = t.oid
+        JOIN pg_namespace n ON t.relnamespace = n.oid
+        WHERE c.conname = 'fk_workflows_updated_by'
+        AND n.nspname = current_schema()
+        AND t.relname = 'workflows'
     ) THEN
         ALTER TABLE workflows
             ADD CONSTRAINT fk_workflows_updated_by

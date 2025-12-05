@@ -204,7 +204,7 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/rdata_test
           REDIS_URL: redis://localhost:6379
-        run: RUST_LOG=warning cargo test --workspace -- --test-threads=1
+        run: RUST_LOG=error cargo test --workspace
 
   backend-build:
     needs: backend-prepare

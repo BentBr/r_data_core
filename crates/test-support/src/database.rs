@@ -1,35 +1,17 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use log::{debug, info, warn};
+use log::{debug, info};
 use r_data_core_core::error::Result;
 use sqlx::{postgres::PgPoolOptions, postgres::PgRow, PgPool, Row};
-use std::sync::atomic::AtomicBool;
-use std::sync::Mutex;
 use std::time::Duration;
-
-/// Global mutex for DB operations
-pub static GLOBAL_TEST_MUTEX: Mutex<()> = Mutex::new(());
-
-/// Track the last used entity type to ensure uniqueness
-static ENTITY_TYPE_COUNTER: Mutex<u32> = Mutex::new(0);
-
-/// Keep track of DB initialization to avoid duplicate setups
-static DB_READY: AtomicBool = AtomicBool::new(false);
+use uuid::Uuid;
 
 /// Generate a unique entity type name to avoid conflicts between tests
-///
-/// # Panics
-/// May panic if the mutex is poisoned
+/// Uses UUID to ensure uniqueness across parallel tests
 #[must_use]
 pub fn unique_entity_type(base: &str) -> String {
-    let mut counter = ENTITY_TYPE_COUNTER
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let count = *counter;
-    *counter = count + 1;
-    drop(counter);
-
-    format!("{base}_{count}")
+    let uuid = Uuid::now_v7();
+    format!("{base}_{}", uuid.simple())
 }
 
 /// Generate a random string for testing
@@ -38,71 +20,113 @@ pub fn random_string(prefix: &str) -> String {
     format!("{}_{}", prefix, uuid::Uuid::now_v7())
 }
 
-/// Set up a test database connection
+/// Generate a unique schema name for a test
+/// Uses UUID to ensure uniqueness across parallel tests
+#[must_use]
+fn generate_test_schema_name() -> String {
+    let uuid = Uuid::now_v7();
+    // Use a shorter format to avoid PostgreSQL identifier length limits
+    format!("test_{}", uuid.simple())
+}
+
+/// Run migrations in the test schema
+///
+/// # Errors
+/// Returns an error if migration fails
+async fn setup_test_schema(pool: &PgPool, schema_name: &str) -> Result<()> {
+    // Ensure search_path is set before running migrations
+    // This is important because migrations need to run in the test schema
+    let mut conn = pool.acquire().await?;
+    sqlx::query(&format!("SET search_path TO \"{schema_name}\", public"))
+        .execute(&mut *conn)
+        .await?;
+    drop(conn);
+
+    // Run migrations in the test schema context
+    debug!("Running migrations in schema: {schema_name}");
+
+    match sqlx::migrate!("../../migrations").run(pool).await {
+        Ok(()) => {
+            debug!("Migrations completed successfully in schema: {schema_name}");
+            Ok(())
+        }
+        Err(e) => {
+            if e.to_string().contains("already exists") {
+                debug!("Some migration objects already exist in schema {schema_name}, continuing");
+                Ok(())
+            } else {
+                // Convert MigrateError to our Error type
+                Err(r_data_core_core::error::Error::Database(
+                    sqlx::Error::Configuration(
+                        format!("Failed to run migrations in schema {schema_name}: {e}").into(),
+                    ),
+                ))
+            }
+        }
+    }
+}
+
+/// Set up a test database connection with per-test schema isolation
+///
+/// Each test gets its own `PostgreSQL` schema, allowing parallel execution
+/// without conflicts. The schema is automatically created and migrations
+/// are run in the test-specific schema.
 ///
 /// # Panics
 /// Panics if `DATABASE_URL` is not set in `.env.test` or if database connection fails
 #[must_use]
-#[allow(clippy::await_holding_lock, clippy::future_not_send)] // MutexGuard is intentionally held across await for test isolation
 pub async fn setup_test_db() -> PgPool {
-    // Get global lock for the entire test run
-    let _guard = GLOBAL_TEST_MUTEX
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-
-    info!("Setting up test database with global lock acquired");
-
     // Load environment variables from .env.test
     dotenvy::from_filename(".env.test").ok();
 
     // Get database URL
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not set in .env.test");
-    info!("Connecting to test database: {database_url}");
 
-    // Create a dedicated connection pool for this test - use smaller pool and timeout for tests
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
+    // Generate a unique schema name for this test
+    let schema_name = generate_test_schema_name();
+    debug!("Setting up test database with schema: {schema_name}");
+
+    // Create a temporary connection to create the schema first
+    let temp_pool = PgPoolOptions::new()
+        .max_connections(1)
         .acquire_timeout(Duration::from_secs(10))
         .connect(&database_url)
         .await
         .expect("Failed to connect to test database");
 
-    // Check if we need to initialize the database
-    let db_initialized = DB_READY.load(std::sync::atomic::Ordering::Acquire);
+    // Create the schema first
+    sqlx::query(&format!("CREATE SCHEMA IF NOT EXISTS \"{schema_name}\""))
+        .execute(&temp_pool)
+        .await
+        .expect("Failed to create test schema");
 
-    // Invert condition to avoid unnecessary_not lint
-    if db_initialized {
-        // If database is already initialized, just clear the data
-        if let Err(e) = fast_clear_test_db(&pool).await {
-            warn!("Warning: Failed to clear test database: {e}");
-        }
-    } else {
-        info!("First-time database initialization");
-        info!("First-time database initialization");
-
-        // First clean the database if it exists already
-        info!("Dropping existing schema if any");
-        let _ = sqlx::query("DROP SCHEMA public CASCADE")
-            .execute(&pool)
-            .await;
-        let _ = sqlx::query("CREATE SCHEMA public").execute(&pool).await;
-
-        // Run migrations - this handles schema creation
-        info!("Running database migrations");
-        match sqlx::migrate!("../../migrations").run(&pool).await {
-            Ok(()) => info!("Database migrations completed successfully"),
-            Err(e) => {
-                if e.to_string().contains("already exists") {
-                    info!("Some migration objects already exist, continuing");
-                } else {
-                    panic!("Failed to run migrations: {e}");
-                }
+    // Now create the main pool with after_connect hook to set search_path
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .acquire_timeout(Duration::from_secs(10))
+        .after_connect({
+            let schema_name = schema_name.clone();
+            move |conn, _meta| {
+                let schema_name = schema_name.clone();
+                Box::pin(async move {
+                    // Set search_path on each new connection to use the test schema
+                    sqlx::query(&format!("SET search_path TO \"{schema_name}\", public"))
+                        .execute(conn)
+                        .await?;
+                    Ok(())
+                })
             }
-        }
+        })
+        .connect(&database_url)
+        .await
+        .expect("Failed to connect to test database");
 
-        // Set the initialization flag to avoid redoing this work
-        DB_READY.store(true, std::sync::atomic::Ordering::Release);
+    // Run migrations in the test schema
+    if let Err(e) = setup_test_schema(&pool, &schema_name).await {
+        panic!("Failed to set up test schema {schema_name}: {e}");
     }
+
+    debug!("Test database setup complete with schema: {schema_name}");
 
     // Return the dedicated pool for this test
     pool
@@ -132,10 +156,11 @@ pub async fn fast_clear_test_db(pool: &PgPool) -> Result<()> {
         "refresh_tokens".to_string(),
     ];
 
-    // Also find all entity_* tables
+    // Also find all entity_* tables in the current schema
+    // Use current_schema() to get the schema from search_path
     let entity_tables: Vec<String> = sqlx::query(
         "SELECT tablename FROM pg_catalog.pg_tables
-         WHERE schemaname = 'public'
+         WHERE schemaname = current_schema()
          AND tablename LIKE 'entity_%'",
     )
     .map(|row: PgRow| row.get::<String, _>(0))
@@ -199,10 +224,10 @@ pub async fn clear_test_db(pool: &PgPool) -> Result<()> {
         .execute(&mut *tx)
         .await?;
 
-    // Get all tables except migration table
+    // Get all tables except migration table in the current schema
     let tables: Vec<String> = sqlx::query(
         "SELECT tablename FROM pg_catalog.pg_tables
-         WHERE schemaname = 'public'
+         WHERE schemaname = current_schema()
          AND tablename != 'schema_migrations'
          AND tablename != '_sqlx_migrations'",
     )

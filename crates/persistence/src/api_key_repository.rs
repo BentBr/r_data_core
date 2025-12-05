@@ -2,7 +2,7 @@
 
 use crate::admin_user_repository_trait::{is_key_valid, ApiKeyRepositoryTrait};
 use async_trait::async_trait;
-use log::error;
+use log::{debug, error};
 use r_data_core_core::admin_user::ApiKey;
 use r_data_core_core::error::Result;
 use sqlx::{Pool, Postgres};
@@ -228,7 +228,16 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         .fetch_one(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error creating API key: {e:?}");
+            // Log foreign key constraint violations at debug level since they're often expected in tests
+            if let sqlx::Error::Database(db_err) = &e {
+                if db_err.code().as_deref() == Some("23503") {
+                    debug!("Foreign key constraint violation creating API key (expected in some tests): {e:?}");
+                } else {
+                    error!("Error creating API key: {e:?}");
+                }
+            } else {
+                error!("Error creating API key: {e:?}");
+            }
             r_data_core_core::error::Error::Database(e)
         })?;
 
@@ -390,7 +399,16 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         .fetch_one(&*self.pool)
         .await
         .map_err(|e| {
-            error!("Error creating API key: {e:?}");
+            // Log foreign key constraint violations at debug level since they're often expected in tests
+            if let sqlx::Error::Database(db_err) = &e {
+                if db_err.code().as_deref() == Some("23503") {
+                    debug!("Foreign key constraint violation creating API key (expected in some tests): {e:?}");
+                } else {
+                    error!("Error creating API key: {e:?}");
+                }
+            } else {
+                error!("Error creating API key: {e:?}");
+            }
             r_data_core_core::error::Error::Database(e)
         })?;
 
