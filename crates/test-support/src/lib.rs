@@ -7,7 +7,7 @@ pub mod queue;
 // Re-export commonly used items
 pub use database::{
     clear_entity_definitions, clear_refresh_tokens, clear_test_db, fast_clear_test_db,
-    random_string, setup_test_db, unique_entity_type, GLOBAL_TEST_MUTEX,
+    random_string, setup_test_db, unique_entity_type,
 };
 pub use entities::{
     create_entity_definition_from_json, create_test_admin_user, create_test_api_key,

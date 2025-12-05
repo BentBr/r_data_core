@@ -101,6 +101,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Helper function to create or update an entity-specific table
+-- Uses current_schema() for all schema-qualified queries to support per-test schema isolation
 CREATE OR REPLACE FUNCTION create_entity_table_and_view(entity_type_param TEXT)
 RETURNS VOID AS $$
 DECLARE
@@ -136,10 +137,11 @@ BEGIN
     END IF;
 
     -- Check if view exists before attempting to drop it
+    -- Use current_schema() to support per-test schema isolation
     EXECUTE format('
         SELECT EXISTS (
             SELECT FROM information_schema.views
-            WHERE table_schema = ''public''
+            WHERE table_schema = current_schema()
             AND table_name = %L
         )', view_name) INTO view_exists;
 
@@ -167,11 +169,12 @@ BEGIN
         table_name);
 
     -- Get existing columns
+    -- Use current_schema() to support per-test schema isolation
     FOR column_record IN
         EXECUTE format('
             SELECT column_name
             FROM information_schema.columns
-            WHERE table_schema = ''public'' AND table_name = %L
+            WHERE table_schema = current_schema() AND table_name = %L
             AND column_name <> ''uuid''
         ', table_name)
     LOOP
@@ -228,7 +231,7 @@ BEGIN
         EXECUTE format('
             SELECT EXISTS (
                 SELECT FROM information_schema.columns
-                WHERE table_schema = ''public''
+                WHERE table_schema = current_schema()
                 AND table_name = %L
                 AND column_name = %L
             )
@@ -245,7 +248,7 @@ BEGIN
                 BEGIN
                     EXECUTE format('
                         SELECT data_type FROM information_schema.columns
-                        WHERE table_schema = ''public''
+                        WHERE table_schema = current_schema()
                         AND table_name = %L
                         AND column_name = %L
                     ', table_name, field_name) INTO current_type;
@@ -337,11 +340,12 @@ BEGIN
     entity_field_separator := '';
 
     -- Get columns from entity table, excluding uuid
+    -- Use current_schema() to support per-test schema isolation
     FOR column_record IN
         EXECUTE format('
             SELECT column_name
             FROM information_schema.columns
-            WHERE table_schema = ''public'' AND table_name = %L
+            WHERE table_schema = current_schema() AND table_name = %L
             AND column_name <> ''uuid''
             ORDER BY ordinal_position
         ', table_name)
@@ -738,6 +742,7 @@ BEFORE UPDATE ON entities_versions
 FOR EACH ROW
 EXECUTE FUNCTION forbid_update_on_entities_versions();
 -- Create a trigger to update entity views when entity definitions change
+-- Uses current_schema() in called functions to support per-test schema isolation
 CREATE OR REPLACE FUNCTION entity_view_on_class_change()
 RETURNS TRIGGER AS $$
 BEGIN

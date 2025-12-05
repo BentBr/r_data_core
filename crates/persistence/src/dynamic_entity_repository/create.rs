@@ -199,7 +199,7 @@ async fn insert_into_entity_table(
     let columns_result = sqlx::query(
         "SELECT column_name
          FROM information_schema.columns
-         WHERE table_schema = 'public' AND table_name = $1",
+         WHERE table_schema = current_schema() AND table_name = $1",
     )
     .bind(&table_name)
     .fetch_all(&mut **tx)

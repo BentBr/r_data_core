@@ -33,7 +33,7 @@ impl EntityDefinitionRepository {
             r#"
             SELECT EXISTS (
                 SELECT FROM information_schema.views
-                WHERE table_schema = 'public' AND table_name = $1
+                WHERE table_schema = current_schema() AND table_name = $1
             ) as "exists!"
             "#,
             view_name
@@ -52,7 +52,7 @@ impl EntityDefinitionRepository {
             r#"
             SELECT EXISTS (
                 SELECT FROM information_schema.tables
-                WHERE table_schema = 'public' AND table_name = $1
+                WHERE table_schema = current_schema() AND table_name = $1
             ) as "exists!"
             "#,
             view_name
@@ -77,7 +77,7 @@ impl EntityDefinitionRepository {
             "
             SELECT column_name, data_type
             FROM information_schema.columns
-            WHERE table_schema = 'public' AND table_name = $1
+            WHERE table_schema = current_schema() AND table_name = $1
             ",
             view_name
         )
@@ -509,7 +509,7 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
             "
             SELECT table_name
             FROM information_schema.tables
-            WHERE table_schema = 'public'
+            WHERE table_schema = current_schema()
             AND table_name LIKE 'entity_%'
             "
         )

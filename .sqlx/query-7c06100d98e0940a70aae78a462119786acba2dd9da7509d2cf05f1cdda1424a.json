@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT column_name, data_type\n            FROM information_schema.columns\n            WHERE table_schema = 'public' AND table_name = $1\n            ",
+  "query": "\n            SELECT column_name, data_type\n            FROM information_schema.columns\n            WHERE table_schema = current_schema() AND table_name = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -24,5 +24,5 @@
       true
     ]
   },
-  "hash": "85bb5eaf2576e4510197e90ec85b820a24cde9ae28d5c05973e0ee01c4bb1fb8"
+  "hash": "7c06100d98e0940a70aae78a462119786acba2dd9da7509d2cf05f1cdda1424a"
 }

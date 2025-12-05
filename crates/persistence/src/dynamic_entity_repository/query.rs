@@ -22,7 +22,7 @@ pub async fn count_entities_impl(repo: &DynamicEntityRepository, entity_type: &s
         SELECT EXISTS (
             SELECT 1
             FROM information_schema.tables
-            WHERE table_schema = 'public'
+            WHERE table_schema = current_schema()
             AND table_name = $1
         ) AS "exists!"
         "#,
