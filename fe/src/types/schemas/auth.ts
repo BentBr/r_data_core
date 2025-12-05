@@ -12,7 +12,6 @@ export const LoginResponseSchema = z.object({
     refresh_token: z.string(),
     user_uuid: UuidSchema,
     username: z.string(),
-    role: z.string(),
     access_expires_at: TimestampSchema,
     refresh_expires_at: TimestampSchema,
 })

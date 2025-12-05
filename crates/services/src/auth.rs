@@ -17,7 +17,6 @@ impl AuthService {
     ///
     /// # Arguments
     /// * `is_super_admin` - Whether the user is a super admin
-    /// * `role` - User role
     /// * `permissions` - User permissions from JWT
     /// * `has_permission_fn` - Function to check if user has a specific permission
     ///
@@ -27,7 +26,6 @@ impl AuthService {
     pub fn get_user_permissions<F>(
         &self,
         is_super_admin: bool,
-        role: &str,
         permissions: &[String],
         has_permission_fn: F,
     ) -> Value
@@ -84,7 +82,6 @@ impl AuthService {
         // Build response
         serde_json::json!({
             "is_super_admin": is_super_admin,
-            "role": role,
             "permissions": permissions,
             "allowed_routes": allowed_routes,
         })

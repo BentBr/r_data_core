@@ -53,7 +53,6 @@ export class AuthClient extends BaseTypedHttpClient {
 
     async getUserPermissions(): Promise<{
         is_super_admin: boolean
-        role: string
         permissions: string[]
         allowed_routes: string[]
     }> {
@@ -62,7 +61,6 @@ export class AuthClient extends BaseTypedHttpClient {
             ApiResponseSchema(
                 z.object({
                     is_super_admin: z.boolean(),
-                    role: z.string(),
                     permissions: z.array(z.string()),
                     allowed_routes: z.array(z.string()),
                 })

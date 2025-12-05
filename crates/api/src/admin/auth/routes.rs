@@ -64,11 +64,6 @@ fn build_login_response(
         refresh_token,
         user_uuid: user.uuid.to_string(),
         username: user.username.clone(),
-        role: if user.super_admin {
-            "SuperAdmin".to_string()
-        } else {
-            "User".to_string()
-        },
         access_expires_at,
         refresh_expires_at,
     })
@@ -638,7 +633,6 @@ pub async fn get_user_permissions(auth: RequiredAuth) -> impl Responder {
     let auth_service = AuthService::new();
     let response = auth_service.get_user_permissions(
         claims.is_super_admin,
-        &claims.role,
         &claims.permissions,
         |namespace, perm_type| {
             crate::auth::permission_check::has_permission(claims, namespace, perm_type, None)

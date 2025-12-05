@@ -24,17 +24,11 @@ pub fn has_permission(
     permission_type: &PermissionType,
     path: Option<&str>,
 ) -> bool {
-    // SuperAdmin role or super_admin flag always has all permissions
-    if claims.is_super_admin || claims.role == "SuperAdmin" {
+    // Super admin flag always has all permissions
+    if claims.is_super_admin {
         debug!(
-            "Permission check: {} user '{}' (super_admin: {}) has all permissions for {}:{}",
-            if claims.is_super_admin {
-                "super_admin"
-            } else {
-                "SuperAdmin"
-            },
+            "Permission check: super_admin user '{}' has all permissions for {}:{}",
             claims.name,
-            claims.is_super_admin,
             namespace.as_str(),
             permission_type
         );
@@ -71,9 +65,9 @@ pub fn has_permission(
     });
 
     debug!(
-        "Permission check: user '{}' (role: {}) {} permission for {}:{} (path: {:?})",
+        "Permission check: user '{}' (super_admin: {}) {} permission for {}:{} (path: {:?})",
         claims.name,
-        claims.role,
+        claims.is_super_admin,
         if has_perm { "has" } else { "does not have" },
         namespace.as_str(),
         permission_type,
@@ -163,10 +157,10 @@ pub fn check_permission_with_log(
     let has_perm = has_permission(claims, namespace, permission_type, path);
 
     debug!(
-        "Action: {} | User: {} (role: {}) | Permission: {}:{} | Path: {:?} | Allowed: {}",
+        "Action: {} | User: {} (super_admin: {}) | Permission: {}:{} | Path: {:?} | Allowed: {}",
         action,
         claims.name,
-        claims.role,
+        claims.is_super_admin,
         namespace.as_str(),
         permission_type,
         path,

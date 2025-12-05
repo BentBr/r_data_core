@@ -56,7 +56,6 @@ fn create_test_jwt_token(user_uuid: &Uuid, secret: &str) -> String {
         sub: user_uuid.to_string(),
         name: "test_user".to_string(),
         email: "test@example.com".to_string(),
-        role: "SuperAdmin".to_string(),
         permissions,
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         exp: exp.unix_timestamp() as usize,

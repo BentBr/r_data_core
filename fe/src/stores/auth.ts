@@ -60,7 +60,7 @@ export const useAuthStore = defineStore('auth', () => {
             user.value = {
                 uuid: response.user_uuid,
                 username: response.username,
-                role: response.role,
+                role_uuids: [], // Will be loaded separately if needed
                 // Set default values for required User fields not in LoginResponse
                 email: '',
                 first_name: '',
@@ -82,7 +82,6 @@ export const useAuthStore = defineStore('auth', () => {
             if (env.enableApiLogging) {
                 console.log('[Auth] Login successful:', {
                     username: response.username,
-                    role: response.role,
                     expires_at: response.access_expires_at,
                 })
             }
@@ -250,17 +249,17 @@ export const useAuthStore = defineStore('auth', () => {
             // Restore user data from the new access token
             try {
                 const payload = JSON.parse(atob(response.access_token.split('.')[1]))
-                user.value = {
-                    uuid: payload.sub ?? '',
-                    username: payload.name ?? payload.username ?? '',
-                    role: payload.role ?? '',
-                    email: '',
-                    first_name: '',
-                    last_name: '',
-                    is_active: true,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                }
+                    user.value = {
+                        uuid: payload.sub ?? '',
+                        username: payload.name ?? payload.username ?? '',
+                        role_uuids: [], // Roles are not stored in JWT
+                        email: payload.email ?? '',
+                        first_name: '',
+                        last_name: '',
+                        is_active: true,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                    }
             } catch (err) {
                 if (env.enableApiLogging) {
                     console.error('[Auth] Failed to parse user data from token:', err)
@@ -337,9 +336,9 @@ export const useAuthStore = defineStore('auth', () => {
                     // Token is still valid, restore basic user info
                     user.value = {
                         uuid: payload.sub ?? '',
-                        username: payload.username ?? '',
-                        role: payload.role ?? '',
-                        email: '',
+                        username: payload.name ?? payload.username ?? '',
+                        role_uuids: [], // Roles are not stored in JWT
+                        email: payload.email ?? '',
                         first_name: '',
                         last_name: '',
                         is_active: true,

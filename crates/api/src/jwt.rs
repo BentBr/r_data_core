@@ -23,8 +23,6 @@ pub struct AuthUserClaims {
     pub name: String,
     /// Email
     pub email: String,
-    /// User role (`SuperAdmin` or custom role name)
-    pub role: String,
     /// Super admin flag - overrides all permissions
     pub is_super_admin: bool,
     /// Allowed actions in format: "namespace:action" or "namespace:path:action"
@@ -101,12 +99,10 @@ pub fn generate_jwt(
     };
 
     // Create claims
-    // Note: role field is kept for backward compatibility but users don't have a single role anymore
     let claims = AuthUserClaims {
         sub: user_uuid.to_string(),
         name: user.username.clone(),
         email: user.email.clone(),
-        role: String::new(), // Users don't have a single role anymore
         is_super_admin,
         permissions,
         exp: usize::try_from(expiration.unix_timestamp()).unwrap_or(0),
@@ -321,7 +317,6 @@ mod tests {
         assert_eq!(claims.sub, user.uuid.to_string());
         assert_eq!(claims.name, user.username);
         assert_eq!(claims.email, user.email);
-        assert_eq!(claims.role, "SuperAdmin");
         // User has super_admin flag set to true, so is_super_admin should be true
         assert!(claims.is_super_admin);
         // SuperAdmin should have all permissions
@@ -362,7 +357,6 @@ mod tests {
             sub: user.uuid.to_string(),
             name: user.username.clone(),
             email: user.email,
-            role: "SuperAdmin".to_string(),
             is_super_admin: false,
             permissions: vec!["workflows:read".to_string()],
             exp: usize::try_from(expired_time.unix_timestamp()).unwrap_or(0),
@@ -387,7 +381,6 @@ mod tests {
             sub: "test-uuid".to_string(),
             name: "test_user".to_string(),
             email: "test@example.com".to_string(),
-            role: "SuperAdmin".to_string(),
             is_super_admin: false,
             permissions: vec!["workflows:read".to_string()],
             exp: usize::try_from(now_ts).unwrap_or(0).saturating_add(3600),
@@ -402,7 +395,7 @@ mod tests {
         assert_eq!(deserialized.name, claims.name);
         assert_eq!(deserialized.email, claims.email);
         assert_eq!(deserialized.permissions, claims.permissions);
-        assert_eq!(deserialized.role, claims.role);
+        assert_eq!(deserialized.is_super_admin, claims.is_super_admin);
     }
 
     #[test]
