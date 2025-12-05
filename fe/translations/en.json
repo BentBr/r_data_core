@@ -419,8 +419,8 @@
       "password_hint": "Leave empty to keep current password",
       "first_name": "First Name",
       "last_name": "Last Name",
-      "role": "Role",
-      "role_hint": "Role name (e.g., 'Editor', 'Viewer', 'SuperAdmin')",
+      "roles": "Roles",
+      "roles_hint": "Select one or more roles for this user",
       "active": "Active",
       "active_hint": "Whether the user account is active",
       "super_admin": "Super Admin",
@@ -445,6 +445,22 @@
       "actions": "Actions"
     }
   },
+  "roles": {
+    "dialog": {
+      "create_title": "Create Role",
+      "edit_title": "Edit Role",
+      "name": "Name",
+      "description": "Description",
+      "super_admin": "Super Admin",
+      "super_admin_hint": "Users with this role will have all permissions regardless of assigned permissions",
+      "super_admin_disabled_hint": "Super Admin roles have all permissions. Individual permissions cannot be configured.",
+      "permissions": "Permissions",
+      "add_permission": "Add Permission",
+      "cancel": "Cancel",
+      "create": "Create",
+      "update": "Update"
+    }
+  },
   "permissions": {
     "dialog": {
       "create_title": "Create Role",
@@ -453,8 +469,9 @@
       "description": "Description",
       "super_admin": "Super Admin",
       "super_admin_hint": "Users with this role will have all permissions regardless of assigned permissions",
-      "roles_permissions": "Permissions",
-      "add_role": "Add Permission",
+      "super_admin_disabled_hint": "Super Admin roles have all permissions. Individual permissions cannot be configured.",
+      "permissions": "Permissions",
+      "add_permission": "Add Permission",
       "cancel": "Cancel",
       "create": "Create",
       "update": "Update"
@@ -470,6 +487,8 @@
         "new_button": "New Role",
         "loading": "Loading roles...",
         "no_description": "No description",
+        "permissions": "permissions",
+        "permission": "permission",
         "table": {
           "name": "Name",
           "description": "Description",
@@ -485,9 +504,10 @@
         }
       },
       "users": {
-        "title": "Users and Roles",
+        "title": "Users",
         "new_button": "New User",
         "loading": "Loading users...",
+        "no_roles": "No roles assigned",
         "status": {
           "active": "Active",
           "inactive": "Inactive"
@@ -495,7 +515,7 @@
         "table": {
           "username": "Username",
           "email": "Email",
-          "role": "Role",
+          "roles": "Roles",
           "status": "Status",
           "created": "Created",
           "actions": "Actions"

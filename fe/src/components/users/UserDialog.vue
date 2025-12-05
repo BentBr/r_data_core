@@ -133,14 +133,31 @@
         super_admin: false,
     })
 
-    onMounted(async () => {
+    const loadAvailableRoles = async () => {
         try {
             await loadRoles(1, 100) // Load all roles
             availableRoles.value = roles.value
         } catch (err) {
             console.error('Failed to load roles:', err)
         }
+    }
+
+    onMounted(async () => {
+        await loadAvailableRoles()
     })
+
+    // Watch for dialog opening to reload roles
+    watch(
+        () => props.modelValue,
+        async newValue => {
+            if (newValue) {
+                // Reload roles when dialog opens
+                await loadAvailableRoles()
+            } else {
+                resetForm()
+            }
+        }
+    )
 
     const rules = {
         required: (v: string) => !!v || t('users.dialog.validation.required'),
@@ -193,15 +210,6 @@
         { immediate: true }
     )
 
-    // Watch for dialog state changes
-    watch(
-        () => props.modelValue,
-        newValue => {
-            if (!newValue) {
-                resetForm()
-            }
-        }
-    )
 
     const handleClose = () => {
         emit('update:modelValue', false)

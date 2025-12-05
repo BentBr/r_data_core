@@ -419,8 +419,8 @@
       "password_hint": "Leer lassen, um das aktuelle Passwort beizubehalten",
       "first_name": "Vorname",
       "last_name": "Nachname",
-      "role": "Rolle",
-      "role_hint": "Rollenname (z.B. 'Editor', 'Viewer', 'SuperAdmin')",
+      "roles": "Rollen",
+      "roles_hint": "Wählen Sie eine oder mehrere Rollen für diesen Benutzer aus",
       "active": "Aktiv",
       "active_hint": "Ob das Benutzerkonto aktiv ist",
       "super_admin": "Super-Administrator",
@@ -445,6 +445,22 @@
       "actions": "Aktionen"
     }
   },
+  "roles": {
+    "dialog": {
+      "create_title": "Rolle erstellen",
+      "edit_title": "Rolle bearbeiten",
+      "name": "Name",
+      "description": "Beschreibung",
+      "super_admin": "Super-Administrator",
+      "super_admin_hint": "Benutzer mit dieser Rolle haben alle Berechtigungen unabhängig von zugewiesenen Berechtigungen",
+      "super_admin_disabled_hint": "Super-Administrator-Rollen haben alle Berechtigungen. Einzelne Berechtigungen können nicht konfiguriert werden.",
+      "permissions": "Berechtigungen",
+      "add_permission": "Berechtigung hinzufügen",
+      "cancel": "Abbrechen",
+      "create": "Erstellen",
+      "update": "Aktualisieren"
+    }
+  },
   "permissions": {
     "dialog": {
       "create_title": "Rolle erstellen",
@@ -453,8 +469,9 @@
       "description": "Beschreibung",
       "super_admin": "Super-Administrator",
       "super_admin_hint": "Benutzer mit dieser Rolle haben alle Berechtigungen unabhängig von zugewiesenen Berechtigungen",
-      "roles_permissions": "Berechtigungen",
-      "add_role": "Berechtigung hinzufügen",
+      "super_admin_disabled_hint": "Super-Administrator-Rollen haben alle Berechtigungen. Einzelne Berechtigungen können nicht konfiguriert werden.",
+      "permissions": "Berechtigungen",
+      "add_permission": "Berechtigung hinzufügen",
       "cancel": "Abbrechen",
       "create": "Erstellen",
       "update": "Aktualisieren"
@@ -470,6 +487,8 @@
         "new_button": "Neue Rolle",
         "loading": "Rollen werden geladen...",
         "no_description": "Keine Beschreibung",
+        "permissions": "Berechtigungen",
+        "permission": "Berechtigung",
         "table": {
           "name": "Name",
           "description": "Beschreibung",
@@ -485,9 +504,10 @@
         }
       },
       "users": {
-        "title": "Benutzer und Rollen",
+        "title": "Benutzer",
         "new_button": "Neuer Benutzer",
         "loading": "Benutzer werden geladen...",
+        "no_roles": "Keine Rollen zugewiesen",
         "status": {
           "active": "Aktiv",
           "inactive": "Inaktiv"
@@ -495,7 +515,7 @@
         "table": {
           "username": "Benutzername",
           "email": "E-Mail",
-          "role": "Rolle",
+          "roles": "Rollen",
           "status": "Status",
           "created": "Erstellt",
           "actions": "Aktionen"

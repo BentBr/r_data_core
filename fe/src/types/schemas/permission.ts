@@ -30,7 +30,7 @@ export const PermissionSchema = z.object({
     permission_type: PermissionTypeSchema,
     access_level: AccessLevelSchema,
     resource_uuids: z.array(UuidSchema),
-    constraints: z.record(z.string(), z.unknown()).optional(),
+    constraints: z.record(z.string(), z.unknown()).nullish(),
 })
 
 // Role schema
