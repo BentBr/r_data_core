@@ -10,10 +10,14 @@ use std::sync::Arc;
 
 /// Test validation using JSON examples from `.example_files/json_examples` directory
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod validation_tests {
     use super::*;
 
     /// Load a JSON example file
+    ///
+    /// # Errors
+    /// Returns an error if the file cannot be read or parsed
     fn load_json_example(filename: &str) -> Result<Value> {
         let path = format!(".example_files/json_examples/{filename}");
         let content = fs::read_to_string(&path).map_err(|e| {
@@ -25,6 +29,9 @@ mod validation_tests {
     }
 
     /// Load a JSON example file from the `trigger_validation` subfolder
+    ///
+    /// # Errors
+    /// Returns an error if the file cannot be read or parsed
     fn load_trigger_validation_example(filename: &str) -> Result<Value> {
         let path = format!(".example_files/json_examples/trigger_validation/{filename}");
         let content = fs::read_to_string(&path).map_err(|e| {
@@ -36,6 +43,9 @@ mod validation_tests {
     }
 
     /// Create an entity definition from JSON
+    ///
+    /// # Errors
+    /// Returns an error if the JSON cannot be deserialized into an `EntityDefinition`
     fn create_entity_definition_from_json(json_data: Value) -> Result<EntityDefinition> {
         serde_json::from_value(json_data).map_err(|e| {
             r_data_core_core::error::Error::Validation(format!(
@@ -45,6 +55,9 @@ mod validation_tests {
     }
 
     /// Create a dynamic entity for testing
+    ///
+    /// # Errors
+    /// Returns an error if field validation fails
     fn create_test_entity(
         entity_type: &str,
         data: HashMap<String, Value>,

@@ -18,6 +18,7 @@ use uuid::Uuid;
 // Import common test utilities
 use r_data_core_test_support::{create_test_admin_user, setup_test_db, test_queue_client_async};
 
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn setup_app_and_token() -> anyhow::Result<(
     impl actix_web::dev::Service<
         actix_http::Request,
@@ -109,6 +110,7 @@ async fn setup_app_and_token() -> anyhow::Result<(
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn create_workflow_uses_required_auth_and_sets_created_by() -> anyhow::Result<()> {
     let (app, pool, token) = setup_app_and_token().await?;
 
@@ -185,6 +187,7 @@ async fn create_workflow_uses_required_auth_and_sets_created_by() -> anyhow::Res
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn update_workflow_sets_updated_by() -> anyhow::Result<()> {
     let (app, pool, token) = setup_app_and_token().await?;
 
@@ -294,6 +297,7 @@ async fn update_workflow_sets_updated_by() -> anyhow::Result<()> {
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn create_workflow_accepts_valid_complex_dsl_config() -> anyhow::Result<()> {
     let (app, _pool, token) = setup_app_and_token().await?;
 
@@ -363,6 +367,7 @@ async fn create_workflow_accepts_valid_complex_dsl_config() -> anyhow::Result<()
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn create_workflow_rejects_invalid_dsl_config_missing_from() -> anyhow::Result<()> {
     let (app, _pool, token) = setup_app_and_token().await?;
 
@@ -407,6 +412,7 @@ async fn create_workflow_rejects_invalid_dsl_config_missing_from() -> anyhow::Re
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn create_workflow_rejects_invalid_dsl_config_empty_steps() -> anyhow::Result<()> {
     let (app, _pool, token) = setup_app_and_token().await?;
 
@@ -438,6 +444,7 @@ async fn create_workflow_rejects_invalid_dsl_config_empty_steps() -> anyhow::Res
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn update_workflow_validates_dsl_config() -> anyhow::Result<()> {
     let (app, pool, token) = setup_app_and_token().await?;
 
@@ -528,6 +535,7 @@ async fn update_workflow_validates_dsl_config() -> anyhow::Result<()> {
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn run_workflow_now_enqueues_job_to_redis_if_available() -> anyhow::Result<()> {
     let (app, pool, token) = setup_app_and_token().await?;
 

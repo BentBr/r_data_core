@@ -82,9 +82,7 @@ fn test_persistence_context() {
 #[test]
 fn test_entity_lookup_result_enum() {
     // Test that the enum variants exist
-    let _found = EntityLookupResult::NotFound;
+    let found = EntityLookupResult::NotFound;
+    let _ = found; // Suppress unused variable warning
     // In real tests, we'd create a DynamicEntity for Found variant
 }
-
-// Integration tests would go here and test the full persistence flow
-// They would require database setup and proper test fixtures

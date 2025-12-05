@@ -19,6 +19,7 @@ use uuid::Uuid;
 
 /// Test that consecutive imports of the same file produce identical outcomes
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_consecutive_imports_produce_identical_outcomes() {
     // Setup test database
     let pool = setup_test_db().await;

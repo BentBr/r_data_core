@@ -58,7 +58,9 @@ fn create_test_jwt_token(user_uuid: &Uuid, secret: &str) -> String {
         email: "test@example.com".to_string(),
         role: "SuperAdmin".to_string(),
         permissions,
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         exp: exp.unix_timestamp() as usize,
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         iat: now.unix_timestamp() as usize,
         is_super_admin: false,
     };
@@ -80,6 +82,9 @@ mod tests {
     use serial_test::serial;
 
     /// Test HTTP API pagination functionality for entity definitions
+    ///
+    /// # Errors
+    /// Returns an error if the test setup or API call fails
     #[tokio::test]
     #[serial]
     async fn test_entity_definition_http_pagination() -> Result<()> {

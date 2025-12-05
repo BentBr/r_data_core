@@ -20,6 +20,7 @@ pub struct TestRepository {
     pub db_pool: PgPool,
 }
 
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 pub async fn get_entity_definition_repository_with_pool() -> TestRepository {
     let pool = setup_test_db().await;
     let repository = Arc::new(EntityDefinitionRepository::new(pool.clone()));

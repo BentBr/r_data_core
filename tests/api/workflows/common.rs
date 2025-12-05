@@ -22,6 +22,11 @@ use r_data_core_workflow::data::WorkflowKind;
 use std::sync::Arc;
 use uuid::Uuid;
 
+/// Setup test app with entities
+///
+/// # Errors
+/// Returns an error if test setup fails
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 pub async fn setup_app_with_entities() -> anyhow::Result<(
     impl actix_web::dev::Service<
         actix_http::Request,
@@ -129,6 +134,10 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
     Ok((app, pool, token, api_key_value))
 }
 
+/// Create a consumer workflow for testing
+///
+/// # Errors
+/// Returns an error if workflow creation fails
 pub async fn create_consumer_workflow(
     pool: &sqlx::PgPool,
     creator_uuid: Uuid,
@@ -149,6 +158,10 @@ pub async fn create_consumer_workflow(
     repo.create(&create_req, creator_uuid).await
 }
 
+/// Create a provider workflow for testing
+///
+/// # Errors
+/// Returns an error if workflow creation fails
 pub async fn create_provider_workflow(
     pool: &sqlx::PgPool,
     creator_uuid: Uuid,

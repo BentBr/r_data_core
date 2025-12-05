@@ -18,6 +18,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod dynamic_entity_api_tests {
     use super::*;
 
@@ -206,6 +207,7 @@ mod dynamic_entity_api_tests {
     }
 
     // Helper to create app test services
+    #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn create_test_app(
         db_pool: sqlx::PgPool,
     ) -> impl actix_web::dev::Service<

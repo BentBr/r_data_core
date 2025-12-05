@@ -260,6 +260,10 @@ impl TestService {
     }
 }
 
+/// Test successful listing of entities
+///
+/// # Errors
+/// Returns an error if the test setup fails
 #[tokio::test]
 async fn test_list_entities_success() -> Result<()> {
     // Arrange
@@ -323,6 +327,10 @@ async fn test_list_entities_unpublished_type() {
     }
 }
 
+/// Test successful creation of entity
+///
+/// # Errors
+/// Returns an error if the test setup fails
 #[tokio::test]
 async fn test_create_entity_success() -> Result<()> {
     // Arrange

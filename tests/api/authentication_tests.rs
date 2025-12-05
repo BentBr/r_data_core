@@ -92,18 +92,17 @@ mod tests {
                         .wrap(r_data_core_api::middleware::ApiAuth)
                         .to(|req: HttpRequest| async move {
                             // Check if API key info was added to request extensions
-                            if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
-                                HttpResponse::Ok().json(serde_json::json!({
+                            req.extensions().get::<ApiKeyInfo>().map_or_else(
+                                || HttpResponse::Unauthorized().json(serde_json::json!({
+                                    "status": "error",
+                                    "message": "No API key found"
+                                })),
+                                |api_key_info| HttpResponse::Ok().json(serde_json::json!({
                                     "status": "success",
                                     "api_key_uuid": api_key_info.uuid,
                                     "user_uuid": api_key_info.user_uuid
-                                }))
-                            } else {
-                                HttpResponse::Unauthorized().json(serde_json::json!({
-                                    "status": "error",
-                                    "message": "No API key found"
-                                }))
-                            }
+                                })),
+                            )
                         }),
                 ),
         )
@@ -185,18 +184,17 @@ mod tests {
                     .service(web::resource("/test").wrap(ApiAuth).to(
                         |req: HttpRequest| async move {
                             // Check if API key info was added to request extensions
-                            if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
-                                HttpResponse::Ok().json(serde_json::json!({
+                            req.extensions().get::<ApiKeyInfo>().map_or_else(
+                                || HttpResponse::Unauthorized().json(serde_json::json!({
+                                    "status": "error",
+                                    "message": "No API key found"
+                                })),
+                                |api_key_info| HttpResponse::Ok().json(serde_json::json!({
                                     "status": "success",
                                     "api_key_uuid": api_key_info.uuid,
                                     "user_uuid": api_key_info.user_uuid
-                                }))
-                            } else {
-                                HttpResponse::Unauthorized().json(serde_json::json!({
-                                    "status": "error",
-                                    "message": "No API key found"
-                                }))
-                            }
+                                })),
+                            )
                         },
                     )),
             )
@@ -273,18 +271,17 @@ mod tests {
                         .wrap(r_data_core_api::middleware::ApiAuth)
                         .to(|req: HttpRequest| async move {
                             // Check if API key info was added to request extensions
-                            if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
-                                HttpResponse::Ok().json(serde_json::json!({
+                            req.extensions().get::<ApiKeyInfo>().map_or_else(
+                                || HttpResponse::Unauthorized().json(serde_json::json!({
+                                    "status": "error",
+                                    "message": "No API key found"
+                                })),
+                                |api_key_info| HttpResponse::Ok().json(serde_json::json!({
                                     "status": "success",
                                     "api_key_uuid": api_key_info.uuid,
                                     "user_uuid": api_key_info.user_uuid
-                                }))
-                            } else {
-                                HttpResponse::Unauthorized().json(serde_json::json!({
-                                    "status": "error",
-                                    "message": "No API key found"
-                                }))
-                            }
+                                })),
+                            )
                         }),
                 ),
         )
@@ -367,6 +364,7 @@ mod tests {
                         .wrap(r_data_core_api::middleware::CombinedAuth)
                         .to(|req: HttpRequest| async move {
                             // Check if authentication info was added to request extensions
+                            #[allow(clippy::option_if_let_else)]
                             if let Some(claims) = req.extensions().get::<AuthUserClaims>() {
                                 HttpResponse::Ok().json(serde_json::json!({
                                     "status": "success",
@@ -482,6 +480,7 @@ mod tests {
                         .wrap(r_data_core_api::middleware::CombinedAuth)
                         .to(|req: HttpRequest| async move {
                             // Check if authentication info was added to request extensions
+                            #[allow(clippy::option_if_let_else)]
                             if let Some(claims) = req.extensions().get::<AuthUserClaims>() {
                                 HttpResponse::Ok().json(serde_json::json!({
                                     "status": "success",
@@ -598,18 +597,17 @@ mod tests {
                         .wrap(r_data_core_api::middleware::ApiAuth)
                         .to(|req: HttpRequest| async move {
                             // Check if API key info was added to request extensions
-                            if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
-                                HttpResponse::Ok().json(serde_json::json!({
+                            req.extensions().get::<ApiKeyInfo>().map_or_else(
+                                || HttpResponse::Unauthorized().json(serde_json::json!({
+                                    "status": "error",
+                                    "message": "No API key found"
+                                })),
+                                |api_key_info| HttpResponse::Ok().json(serde_json::json!({
                                     "status": "success",
                                     "api_key_uuid": api_key_info.uuid,
                                     "user_uuid": api_key_info.user_uuid
-                                }))
-                            } else {
-                                HttpResponse::Unauthorized().json(serde_json::json!({
-                                    "status": "error",
-                                    "message": "No API key found"
-                                }))
-                            }
+                                })),
+                            )
                         }),
                 ),
         )
@@ -694,18 +692,17 @@ mod tests {
                     .service(web::resource("/test").wrap(ApiAuth).to(
                         |req: HttpRequest| async move {
                             // Check if API key info was added to request extensions
-                            if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
-                                HttpResponse::Ok().json(serde_json::json!({
+                            req.extensions().get::<ApiKeyInfo>().map_or_else(
+                                || HttpResponse::Unauthorized().json(serde_json::json!({
+                                    "status": "error",
+                                    "message": "No API key found"
+                                })),
+                                |api_key_info| HttpResponse::Ok().json(serde_json::json!({
                                     "status": "success",
                                     "api_key_uuid": api_key_info.uuid,
                                     "user_uuid": api_key_info.user_uuid
-                                }))
-                            } else {
-                                HttpResponse::Unauthorized().json(serde_json::json!({
-                                    "status": "error",
-                                    "message": "No API key found"
-                                }))
-                            }
+                                })),
+                            )
                         },
                     )),
             )

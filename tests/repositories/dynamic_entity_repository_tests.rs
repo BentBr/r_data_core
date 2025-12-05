@@ -356,6 +356,7 @@ async fn test_count_entities() -> Result<()> {
 /// - Database stores in lowercase (firstname, lastname)
 /// - API returns in entity definition case (firstName, lastName)
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_field_name_case_handling() -> Result<()> {
     use r_data_core_persistence::EntityDefinitionRepository;
     use r_data_core_services::EntityDefinitionService;

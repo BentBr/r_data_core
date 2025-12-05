@@ -58,7 +58,9 @@ fn create_test_jwt_token(user_uuid: &Uuid, secret: &str) -> String {
         email: "test@example.com".to_string(),
         role: "SuperAdmin".to_string(),
         permissions,
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         exp: exp.unix_timestamp() as usize,
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         iat: now.unix_timestamp() as usize,
         is_super_admin: false,
     };
@@ -81,6 +83,9 @@ mod tests {
     use serial_test::serial;
 
     /// Test listing API keys through the API
+    ///
+    /// # Errors
+    /// Returns an error if the test setup or API call fails
     #[tokio::test]
     #[serial]
     async fn test_list_api_keys_integration() -> Result<()> {
@@ -188,6 +193,9 @@ mod tests {
     }
 
     /// Test revoking API key through the API
+    ///
+    /// # Errors
+    /// Returns an error if the test setup or API call fails
     #[tokio::test]
     #[serial]
     async fn test_revoke_api_key_integration() -> Result<()> {
@@ -263,7 +271,9 @@ mod tests {
                                 let repo_clone = repo_for_handler.clone();
                                 async move {
                                     // Simulate API key revocation endpoint
-                                    if let Some(_auth) = req.extensions().get::<ApiKeyInfo>() {
+                                    #[allow(clippy::option_if_let_else)]
+                                    let auth_check = req.extensions().get::<ApiKeyInfo>().is_some();
+                                    if auth_check {
                                         let key_uuid_str = path.into_inner();
                                         if let Ok(key_uuid) = uuid::Uuid::parse_str(&key_uuid_str) {
                                             // Actually revoke the key in the database
@@ -318,6 +328,9 @@ mod tests {
     }
 
     /// Test using API key to access protected endpoint
+    ///
+    /// # Errors
+    /// Returns an error if the test setup or API call fails
     #[tokio::test]
     #[serial]
     async fn test_api_key_protected_endpoint() -> Result<()> {
@@ -381,17 +394,16 @@ mod tests {
                     .service(web::resource("/protected").wrap(ApiAuth::new()).route(
                         web::get().to(move |req: HttpRequest| async move {
                             // Simulate protected endpoint
-                            if let Some(_auth) = req.extensions().get::<ApiKeyInfo>() {
-                                HttpResponse::Ok().json(serde_json::json!({
-                                    "status": "success",
-                                    "message": "Access granted"
-                                }))
-                            } else {
-                                HttpResponse::Unauthorized().json(serde_json::json!({
+                            req.extensions().get::<ApiKeyInfo>().map_or_else(
+                                || HttpResponse::Unauthorized().json(serde_json::json!({
                                     "status": "error",
                                     "message": "Unauthorized"
-                                }))
-                            }
+                                })),
+                                |_auth| HttpResponse::Ok().json(serde_json::json!({
+                                    "status": "success",
+                                    "message": "Access granted"
+                                })),
+                            )
                         }),
                     )),
             )
@@ -411,6 +423,9 @@ mod tests {
     }
 
     /// Test expired API key access
+    ///
+    /// # Errors
+    /// Returns an error if the test setup or API call fails
     #[tokio::test]
     #[serial]
     async fn test_expired_api_key_integration() -> Result<()> {
@@ -482,17 +497,16 @@ mod tests {
                     .service(web::resource("/protected").wrap(ApiAuth::new()).route(
                         web::get().to(move |req: HttpRequest| async move {
                             // Simulate protected endpoint
-                            if let Some(_auth) = req.extensions().get::<ApiKeyInfo>() {
-                                HttpResponse::Ok().json(serde_json::json!({
-                                    "status": "success",
-                                    "message": "Access granted"
-                                }))
-                            } else {
-                                HttpResponse::Unauthorized().json(serde_json::json!({
+                            req.extensions().get::<ApiKeyInfo>().map_or_else(
+                                || HttpResponse::Unauthorized().json(serde_json::json!({
                                     "status": "error",
                                     "message": "Unauthorized"
-                                }))
-                            }
+                                })),
+                                |_auth| HttpResponse::Ok().json(serde_json::json!({
+                                    "status": "success",
+                                    "message": "Access granted"
+                                })),
+                            )
                         }),
                     )),
             )
@@ -512,6 +526,9 @@ mod tests {
     }
 
     /// Test API key usage tracking
+    ///
+    /// # Errors
+    /// Returns an error if the test setup or API call fails
     #[tokio::test]
     #[serial]
     async fn test_api_key_usage_tracking() -> Result<()> {
@@ -590,17 +607,16 @@ mod tests {
                     .service(web::resource("/protected").wrap(ApiAuth::new()).route(
                         web::get().to(move |req: HttpRequest| async move {
                             // Simulate protected endpoint
-                            if let Some(_auth) = req.extensions().get::<ApiKeyInfo>() {
-                                HttpResponse::Ok().json(serde_json::json!({
-                                    "status": "success",
-                                    "message": "Access granted"
-                                }))
-                            } else {
-                                HttpResponse::Unauthorized().json(serde_json::json!({
+                            req.extensions().get::<ApiKeyInfo>().map_or_else(
+                                || HttpResponse::Unauthorized().json(serde_json::json!({
                                     "status": "error",
                                     "message": "Unauthorized"
-                                }))
-                            }
+                                })),
+                                |_auth| HttpResponse::Ok().json(serde_json::json!({
+                                    "status": "success",
+                                    "message": "Access granted"
+                                })),
+                            )
                         }),
                     )),
             )
@@ -624,6 +640,9 @@ mod tests {
     }
 
     /// Test API key creation validation
+    ///
+    /// # Errors
+    /// Returns an error if the test setup or API call fails
     #[tokio::test]
     #[serial]
     async fn test_api_key_creation_validation() -> Result<()> {
@@ -654,6 +673,9 @@ mod tests {
     }
 
     /// Test API key reassignment
+    ///
+    /// # Errors
+    /// Returns an error if the test setup or API call fails
     #[tokio::test]
     #[serial]
     async fn test_api_key_reassignment() -> Result<()> {
@@ -683,6 +705,9 @@ mod tests {
     }
 
     /// Test concurrent API key usage
+    ///
+    /// # Errors
+    /// Returns an error if the test setup or API call fails
     #[tokio::test]
     #[serial]
     async fn test_concurrent_api_key_usage() -> Result<()> {
@@ -746,17 +771,16 @@ mod tests {
                     .service(web::resource("/protected").wrap(ApiAuth::new()).route(
                         web::get().to(move |req: HttpRequest| async move {
                             // Simulate protected endpoint
-                            if let Some(_auth) = req.extensions().get::<ApiKeyInfo>() {
-                                HttpResponse::Ok().json(serde_json::json!({
-                                    "status": "success",
-                                    "message": "Access granted"
-                                }))
-                            } else {
-                                HttpResponse::Unauthorized().json(serde_json::json!({
+                            req.extensions().get::<ApiKeyInfo>().map_or_else(
+                                || HttpResponse::Unauthorized().json(serde_json::json!({
                                     "status": "error",
                                     "message": "Unauthorized"
-                                }))
-                            }
+                                })),
+                                |_auth| HttpResponse::Ok().json(serde_json::json!({
+                                    "status": "success",
+                                    "message": "Access granted"
+                                })),
+                            )
                         }),
                     )),
             )
@@ -782,6 +806,9 @@ mod tests {
     }
 
     /// Test API key pagination functionality
+    ///
+    /// # Errors
+    /// Returns an error if the test setup or API call fails
     #[tokio::test]
     #[serial]
     async fn test_api_key_pagination() -> Result<()> {
@@ -836,6 +863,9 @@ mod tests {
     }
 
     /// Test HTTP API pagination functionality for API keys
+    ///
+    /// # Errors
+    /// Returns an error if the test setup or API call fails
     #[tokio::test]
     #[serial]
     async fn test_api_key_http_pagination() -> Result<()> {

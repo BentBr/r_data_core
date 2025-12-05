@@ -20,9 +20,11 @@ use r_data_core_test_support::{
 };
 
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod dynamic_entity_api_tests {
     use super::*;
 
+    #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn setup_test_app() -> Result<
         impl actix_web::dev::Service<
             actix_http::Request,
@@ -142,6 +144,7 @@ mod dynamic_entity_api_tests {
     }
 
     #[actix_web::test]
+    #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_query_parameter_deserialization_fix() {
         let app = setup_test_app().await.expect("Failed to setup test app");
 
@@ -225,6 +228,7 @@ mod dynamic_entity_api_tests {
     }
 
     #[actix_web::test]
+    #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_pagination_query_parameters() {
         let app = setup_test_app().await.expect("Failed to setup test app");
 
@@ -252,6 +256,7 @@ mod dynamic_entity_api_tests {
     }
 
     #[actix_web::test]
+    #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_various_string_to_integer_conversions() {
         let app = setup_test_app().await.expect("Failed to setup test app");
 
@@ -290,6 +295,7 @@ mod dynamic_entity_api_tests {
     }
 
     #[actix_web::test]
+    #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_browse_by_path_endpoint() {
         let app = setup_test_app().await.expect("Failed to setup test app");
 
@@ -319,6 +325,7 @@ mod dynamic_entity_api_tests {
     }
 
     #[actix_web::test]
+    #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_unique_key_per_path_conflict() {
         let app = setup_test_app().await.expect("Failed to setup test app");
 
@@ -352,6 +359,7 @@ mod dynamic_entity_api_tests {
     }
 
     #[actix_web::test]
+    #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_include_parameter_with_pagination() {
         let app = setup_test_app().await.expect("Failed to setup test app");
 

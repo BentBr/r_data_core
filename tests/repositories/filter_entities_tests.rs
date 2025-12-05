@@ -18,6 +18,7 @@ use r_data_core_persistence::{
 use r_data_core_test_support::{clear_test_db, setup_test_db};
 
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod filter_entities_tests {
     use super::*;
 
