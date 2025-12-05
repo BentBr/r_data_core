@@ -7,7 +7,7 @@ use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::auth::permission_check;
 use crate::response::ApiResponse;
-use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
+use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 use r_data_core_services::SettingsService;
 
 /// Register system routes

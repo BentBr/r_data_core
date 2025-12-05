@@ -70,35 +70,21 @@ impl ApiKeyRepositoryTrait for ApiKeyRepositoryAdapter {
         self.inner.count_by_user(user_uuid).await
     }
 
-    async fn get_api_key_permission_schemes(&self, api_key_uuid: Uuid) -> Result<Vec<Uuid>> {
-        self.inner
-            .get_api_key_permission_schemes(api_key_uuid)
-            .await
+    async fn get_api_key_roles(&self, api_key_uuid: Uuid) -> Result<Vec<Uuid>> {
+        self.inner.get_api_key_roles(api_key_uuid).await
     }
 
-    async fn assign_permission_scheme(&self, api_key_uuid: Uuid, scheme_uuid: Uuid) -> Result<()> {
-        self.inner
-            .assign_permission_scheme(api_key_uuid, scheme_uuid)
-            .await
+    async fn assign_role(&self, api_key_uuid: Uuid, role_uuid: Uuid) -> Result<()> {
+        self.inner.assign_role(api_key_uuid, role_uuid).await
     }
 
-    async fn unassign_permission_scheme(
-        &self,
-        api_key_uuid: Uuid,
-        scheme_uuid: Uuid,
-    ) -> Result<()> {
-        self.inner
-            .unassign_permission_scheme(api_key_uuid, scheme_uuid)
-            .await
+    async fn unassign_role(&self, api_key_uuid: Uuid, role_uuid: Uuid) -> Result<()> {
+        self.inner.unassign_role(api_key_uuid, role_uuid).await
     }
 
-    async fn update_api_key_schemes(
-        &self,
-        api_key_uuid: Uuid,
-        scheme_uuids: &[Uuid],
-    ) -> Result<()> {
+    async fn update_api_key_roles(&self, api_key_uuid: Uuid, role_uuids: &[Uuid]) -> Result<()> {
         self.inner
-            .update_api_key_schemes(api_key_uuid, scheme_uuids)
+            .update_api_key_roles(api_key_uuid, role_uuids)
             .await
     }
 }

@@ -5,8 +5,8 @@ use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use r_data_core_core::permissions::permission_scheme::{
-    AccessLevel, Permission, PermissionScheme, PermissionType, ResourceNamespace,
+use r_data_core_core::permissions::role::{
+    AccessLevel, Permission, PermissionType, ResourceNamespace, Role,
 };
 
 /// Permission response DTO (for API serialization)
@@ -69,101 +69,97 @@ pub(crate) fn pascal_to_snake_case(s: &str) -> String {
     result
 }
 
-/// Permission scheme response DTO
+/// Role response DTO
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct PermissionSchemeResponse {
-    /// UUID of the scheme
+pub struct RoleResponse {
+    /// UUID of the role
     pub uuid: Uuid,
-    /// Name of the scheme
+    /// Name of the role
     pub name: String,
-    /// Description of the scheme
+    /// Description of the role
     pub description: Option<String>,
-    /// Whether this is a system scheme
+    /// Whether this is a system role
     pub is_system: bool,
-    /// Whether this scheme grants super admin privileges
+    /// Whether this role grants super admin privileges
     pub super_admin: bool,
-    /// Role-based permissions
-    pub role_permissions: std::collections::HashMap<String, Vec<PermissionResponse>>,
-    /// When the scheme was created
+    /// Direct permissions for this role
+    pub permissions: Vec<PermissionResponse>,
+    /// When the role was created
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
-    /// When the scheme was last updated
+    /// When the role was last updated
     #[serde(with = "time::serde::rfc3339")]
     pub updated_at: OffsetDateTime,
-    /// UUID of the user who created the scheme
+    /// UUID of the user who created the role
     pub created_by: Uuid,
-    /// UUID of the user who last updated the scheme
+    /// UUID of the user who last updated the role
     pub updated_by: Option<Uuid>,
-    /// Whether the scheme is published
+    /// Whether the role is published
     pub published: bool,
     /// Version number
     pub version: i32,
 }
 
-impl From<&PermissionScheme> for PermissionSchemeResponse {
-    fn from(scheme: &PermissionScheme) -> Self {
-        let mut role_permissions = std::collections::HashMap::new();
-        for (role, permissions) in &scheme.role_permissions {
-            role_permissions.insert(
-                role.clone(),
-                permissions.iter().map(PermissionResponse::from).collect(),
-            );
-        }
-
+impl From<&Role> for RoleResponse {
+    fn from(role: &Role) -> Self {
         Self {
-            uuid: scheme.base.uuid,
-            name: scheme.name.clone(),
-            description: scheme.description.clone(),
-            is_system: scheme.is_system,
-            super_admin: scheme.super_admin,
-            role_permissions,
-            created_at: scheme.base.created_at,
-            updated_at: scheme.base.updated_at,
-            created_by: scheme.base.created_by,
-            updated_by: scheme.base.updated_by,
-            published: scheme.base.published,
-            version: scheme.base.version,
+            uuid: role.base.uuid,
+            name: role.name.clone(),
+            description: role.description.clone(),
+            is_system: role.is_system,
+            super_admin: role.super_admin,
+            permissions: role
+                .permissions
+                .iter()
+                .map(PermissionResponse::from)
+                .collect(),
+            created_at: role.base.created_at,
+            updated_at: role.base.updated_at,
+            created_by: role.base.created_by,
+            updated_by: role.base.updated_by,
+            published: role.base.published,
+            version: role.base.version,
         }
     }
 }
 
-/// Request to create a new permission scheme
+/// Request to create a new role
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct CreatePermissionSchemeRequest {
-    /// Name of the scheme
+pub struct CreateRoleRequest {
+    /// Name of the role
     pub name: String,
     /// Optional description
     pub description: Option<String>,
-    /// Whether this scheme grants super admin privileges
+    /// Whether this role grants super admin privileges
     pub super_admin: Option<bool>,
-    /// Role-based permissions
-    pub role_permissions: std::collections::HashMap<String, Vec<PermissionResponse>>,
+    /// Direct permissions for this role
+    pub permissions: Vec<PermissionResponse>,
 }
 
-/// Request to update an existing permission scheme
+/// Request to update an existing role
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct UpdatePermissionSchemeRequest {
-    /// Name of the scheme
+pub struct UpdateRoleRequest {
+    /// Name of the role
     pub name: String,
     /// Optional description
     pub description: Option<String>,
-    /// Whether this scheme grants super admin privileges
+    /// Whether this role grants super admin privileges
     pub super_admin: Option<bool>,
-    /// Role-based permissions
-    pub role_permissions: std::collections::HashMap<String, Vec<PermissionResponse>>,
+    /// Direct permissions for this role
+    pub permissions: Vec<PermissionResponse>,
 }
 
-/// Request to assign permission schemes to a user or API key
+/// Request to assign roles to a user or API key
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct AssignSchemesRequest {
-    /// UUIDs of permission schemes to assign
-    pub scheme_uuids: Vec<Uuid>,
+pub struct AssignRolesRequest {
+    /// UUIDs of roles to assign
+    pub role_uuids: Vec<Uuid>,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use r_data_core_core::permissions::permission_scheme::{AccessLevel, PermissionType};
+    use r_data_core_core::permissions::role::{AccessLevel, PermissionType};
 
     #[test]
     fn test_pascal_to_snake_case() {
@@ -173,10 +169,7 @@ mod tests {
             "entity_definitions"
         );
         assert_eq!(pascal_to_snake_case("ApiKeys"), "api_keys");
-        assert_eq!(
-            pascal_to_snake_case("PermissionSchemes"),
-            "permission_schemes"
-        );
+        assert_eq!(pascal_to_snake_case("Roles"), "roles");
 
         // Test single word (no underscores needed)
         assert_eq!(pascal_to_snake_case("Workflows"), "workflows");
@@ -245,8 +238,8 @@ mod tests {
             ("entity_definitions", ResourceNamespace::EntityDefinitions),
             ("ApiKeys", ResourceNamespace::ApiKeys),
             ("api_keys", ResourceNamespace::ApiKeys),
-            ("PermissionSchemes", ResourceNamespace::PermissionSchemes),
-            ("permission_schemes", ResourceNamespace::PermissionSchemes),
+            ("Roles", ResourceNamespace::Roles),
+            ("roles", ResourceNamespace::Roles),
             ("System", ResourceNamespace::System),
             ("system", ResourceNamespace::System),
         ];

@@ -5,7 +5,7 @@ use actix_web::{get, post, web, Responder};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::auth::permission_check;
 use crate::response::{ApiResponse, ValidationViolation};
-use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
+use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 use r_data_core_workflow::dsl::{
     ArithmeticOp, ArithmeticTransform, ConcatTransform, DslProgram, DslStep, EntityFilter,
     EntityWriteMode, FormatConfig, FromDef, Operand, OutputMode, SourceConfig, StringOperand,

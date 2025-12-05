@@ -42,10 +42,10 @@ fn create_test_jwt_token(user_uuid: &Uuid, secret: &str) -> String {
         "api_keys:create".to_string(),
         "api_keys:update".to_string(),
         "api_keys:delete".to_string(),
-        "permission_schemes:read".to_string(),
-        "permission_schemes:create".to_string(),
-        "permission_schemes:update".to_string(),
-        "permission_schemes:delete".to_string(),
+        "roles:read".to_string(),
+        "roles:create".to_string(),
+        "roles:update".to_string(),
+        "roles:delete".to_string(),
         "system:read".to_string(),
         "system:create".to_string(),
         "system:update".to_string(),
@@ -134,7 +134,7 @@ mod tests {
                 enable_docs: true,
                 cors_origins: vec![],
             },
-            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            role_service: r_data_core_services::RoleService::new(
                 pool.clone(),
                 cache_manager.clone(),
                 Some(0),
@@ -244,7 +244,7 @@ mod tests {
                 enable_docs: true,
                 cors_origins: vec![],
             },
-            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            role_service: r_data_core_services::RoleService::new(
                 pool.clone(),
                 cache_manager.clone(),
                 Some(0),
@@ -371,7 +371,7 @@ mod tests {
                 enable_docs: true,
                 cors_origins: vec![],
             },
-            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            role_service: r_data_core_services::RoleService::new(
                 pool.clone(),
                 cache_manager.clone(),
                 Some(0),
@@ -478,7 +478,7 @@ mod tests {
                 enable_docs: true,
                 cors_origins: vec![],
             },
-            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            role_service: r_data_core_services::RoleService::new(
                 pool.clone(),
                 cache_manager.clone(),
                 Some(0),
@@ -592,7 +592,7 @@ mod tests {
                 enable_docs: true,
                 cors_origins: vec![],
             },
-            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            role_service: r_data_core_services::RoleService::new(
                 pool.clone(),
                 cache_manager.clone(),
                 Some(0),
@@ -760,7 +760,7 @@ mod tests {
                 enable_docs: true,
                 cors_origins: vec![],
             },
-            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            role_service: r_data_core_services::RoleService::new(
                 pool.clone(),
                 cache_manager.clone(),
                 Some(0),
@@ -928,7 +928,7 @@ mod tests {
                 enable_docs: true,
                 cors_origins: vec![],
             },
-            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            role_service: r_data_core_services::RoleService::new(
                 pool.clone(),
                 cache_manager.clone(),
                 Some(0),

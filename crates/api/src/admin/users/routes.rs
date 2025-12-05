@@ -11,12 +11,10 @@ use crate::auth::auth_enum::RequiredAuth;
 use crate::auth::RequiredAuthExt;
 use crate::query::PaginationQuery;
 use crate::response::ApiResponse;
-use r_data_core_core::admin_user::UserRole;
-use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
+use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 use r_data_core_persistence::{
     AdminUserRepository, AdminUserRepositoryTrait, CreateAdminUserParams,
 };
-use std::str::FromStr;
 use validator::Validate;
 
 /// Register user routes
@@ -26,8 +24,8 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
         .service(create_user)
         .service(update_user)
         .service(delete_user)
-        .service(get_user_schemes)
-        .service(assign_schemes_to_user);
+        .service(get_user_roles)
+        .service(assign_roles_to_user);
 }
 
 /// List all users with pagination
@@ -58,12 +56,10 @@ pub async fn list_users(
     auth: RequiredAuth,
     query: web::Query<PaginationQuery>,
 ) -> impl Responder {
-    // Check permission - need PermissionSchemes:Admin to manage users
-    if let Err(resp) = auth.require_permission(
-        &ResourceNamespace::PermissionSchemes,
-        &PermissionType::Admin,
-        None,
-    ) {
+    // Check permission - need Roles:Admin to manage users
+    if let Err(resp) =
+        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Admin, None)
+    {
         return resp;
     }
 
@@ -80,7 +76,12 @@ pub async fn list_users(
             // In a real implementation, you'd want a separate count query
             #[allow(clippy::cast_possible_wrap)]
             let total = users.len() as i64;
-            let responses: Vec<UserResponse> = users.iter().map(UserResponse::from).collect();
+            // Load role_uuids for each user
+            let mut responses = Vec::new();
+            for user in &users {
+                let role_uuids = repo.get_user_roles(user.uuid).await.unwrap_or_default();
+                responses.push(UserResponse::from_with_roles(user, &role_uuids));
+            }
             ApiResponse::ok_paginated(responses, total, page, per_page)
         }
         Err(e) => {
@@ -116,11 +117,9 @@ pub async fn get_user(
     path: web::Path<Uuid>,
 ) -> impl Responder {
     // Check permission
-    if let Err(resp) = auth.require_permission(
-        &ResourceNamespace::PermissionSchemes,
-        &PermissionType::Admin,
-        None,
-    ) {
+    if let Err(resp) =
+        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Admin, None)
+    {
         return resp;
     }
 
@@ -129,7 +128,10 @@ pub async fn get_user(
     let repo = AdminUserRepository::new(pool);
 
     match repo.find_by_uuid(&user_uuid).await {
-        Ok(Some(user)) => ApiResponse::ok(UserResponse::from(&user)),
+        Ok(Some(user)) => {
+            let role_uuids = repo.get_user_roles(user_uuid).await.unwrap_or_default();
+            ApiResponse::ok(UserResponse::from_with_roles(&user, &role_uuids))
+        }
         Ok(None) => ApiResponse::<()>::not_found("User not found"),
         Err(e) => {
             error!("Failed to get user: {e}");
@@ -163,11 +165,9 @@ pub async fn create_user(
     req: web::Json<CreateUserRequest>,
 ) -> impl Responder {
     // Check permission
-    if let Err(resp) = auth.require_permission(
-        &ResourceNamespace::PermissionSchemes,
-        &PermissionType::Admin,
-        None,
-    ) {
+    if let Err(resp) =
+        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Admin, None)
+    {
         return resp;
     }
 
@@ -204,7 +204,7 @@ pub async fn create_user(
         password: &req.password,
         first_name: &req.first_name,
         last_name: &req.last_name,
-        role: req.role.as_deref(),
+        role: None, // No longer using role field
         is_active: req.is_active.unwrap_or(true),
         creator_uuid,
     };
@@ -228,12 +228,26 @@ pub async fn create_user(
                             user = updated;
                         }
                     }
+                    // Assign roles if provided
+                    if let Some(role_uuids) = &req.role_uuids {
+                        if let Err(e) = repo.update_user_roles(user_uuid, role_uuids).await {
+                            error!("Failed to assign roles to user: {e}");
+                            return ApiResponse::<()>::internal_error(
+                                "User created but failed to assign roles",
+                            );
+                        }
+                    }
                     // Invalidate cache for the new user
                     state
-                        .permission_scheme_service()
+                        .role_service()
                         .invalidate_user_permissions_cache(&user_uuid)
                         .await;
-                    ApiResponse::<UserResponse>::created(UserResponse::from(&user))
+                    // Load role_uuids for response
+                    let role_uuids = repo.get_user_roles(user_uuid).await.unwrap_or_default();
+                    ApiResponse::<UserResponse>::created(UserResponse::from_with_roles(
+                        &user,
+                        &role_uuids,
+                    ))
                 }
                 Ok(None) => ApiResponse::<()>::internal_error("User created but not found"),
                 Err(e) => {
@@ -279,11 +293,9 @@ pub async fn update_user(
     req: web::Json<UpdateUserRequest>,
 ) -> impl Responder {
     // Check permission
-    if let Err(resp) = auth.require_permission(
-        &ResourceNamespace::PermissionSchemes,
-        &PermissionType::Admin,
-        None,
-    ) {
+    if let Err(resp) =
+        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Admin, None)
+    {
         return resp;
     }
 
@@ -339,9 +351,12 @@ pub async fn update_user(
         }
     }
 
-    if let Some(role_str) = &req.role {
-        user.role =
-            UserRole::from_str(role_str).unwrap_or_else(|()| UserRole::Custom(role_str.clone()));
+    // Update roles if provided
+    if let Some(role_uuids) = &req.role_uuids {
+        if let Err(e) = repo.update_user_roles(user_uuid, role_uuids).await {
+            error!("Failed to update user roles: {e}");
+            return ApiResponse::<()>::internal_error("Failed to update user roles");
+        }
     }
 
     if let Some(is_active) = req.is_active {
@@ -375,10 +390,12 @@ pub async fn update_user(
         Ok(()) => {
             // Invalidate cache for the updated user
             state
-                .permission_scheme_service()
+                .role_service()
                 .invalidate_user_permissions_cache(&user_uuid)
                 .await;
-            ApiResponse::ok(UserResponse::from(&user))
+            // Load role_uuids for response
+            let role_uuids = repo.get_user_roles(user_uuid).await.unwrap_or_default();
+            ApiResponse::ok(UserResponse::from_with_roles(&user, &role_uuids))
         }
         Err(e) => {
             error!("Failed to update user: {e}");
@@ -413,11 +430,9 @@ pub async fn delete_user(
     path: web::Path<Uuid>,
 ) -> impl Responder {
     // Check permission
-    if let Err(resp) = auth.require_permission(
-        &ResourceNamespace::PermissionSchemes,
-        &PermissionType::Admin,
-        None,
-    ) {
+    if let Err(resp) =
+        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Admin, None)
+    {
         return resp;
     }
 
@@ -434,7 +449,7 @@ pub async fn delete_user(
         Ok(()) => {
             // Invalidate cache for the deleted user
             state
-                .permission_scheme_service()
+                .role_service()
                 .invalidate_user_permissions_cache(&user_uuid)
                 .await;
             ApiResponse::ok_with_message((), "User deleted successfully")
@@ -446,16 +461,16 @@ pub async fn delete_user(
     }
 }
 
-/// Get user's permission schemes
+/// Get user's roles
 #[utoipa::path(
     get,
-    path = "/admin/api/v1/users/{uuid}/schemes",
+    path = "/admin/api/v1/users/{uuid}/roles",
     tag = "users",
     params(
         ("uuid" = Uuid, Path, description = "User UUID")
     ),
     responses(
-        (status = 200, description = "List of permission scheme UUIDs", body = Vec<Uuid>),
+        (status = 200, description = "List of role UUIDs", body = Vec<Uuid>),
         (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden - insufficient permissions"),
         (status = 404, description = "User not found"),
@@ -465,18 +480,16 @@ pub async fn delete_user(
         ("jwt" = [])
     )
 )]
-#[get("/{uuid}/schemes")]
-pub async fn get_user_schemes(
+#[get("/{uuid}/roles")]
+pub async fn get_user_roles(
     state: web::Data<ApiStateWrapper>,
     auth: RequiredAuth,
     path: web::Path<Uuid>,
 ) -> impl Responder {
     // Check permission
-    if let Err(resp) = auth.require_permission(
-        &ResourceNamespace::PermissionSchemes,
-        &PermissionType::Admin,
-        None,
-    ) {
+    if let Err(resp) =
+        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Admin, None)
+    {
         return resp;
     }
 
@@ -489,26 +502,26 @@ pub async fn get_user_schemes(
         return ApiResponse::<()>::not_found("User not found");
     }
 
-    match repo.get_user_permission_schemes(user_uuid).await {
-        Ok(scheme_uuids) => ApiResponse::ok(scheme_uuids),
+    match repo.get_user_roles(user_uuid).await {
+        Ok(role_uuids) => ApiResponse::ok(role_uuids),
         Err(e) => {
-            error!("Failed to get user permission schemes: {e}");
-            ApiResponse::<()>::internal_error("Failed to retrieve permission schemes")
+            error!("Failed to get user roles: {e}");
+            ApiResponse::<()>::internal_error("Failed to retrieve roles")
         }
     }
 }
 
-/// Assign permission schemes to a user
+/// Assign roles to a user
 #[utoipa::path(
     put,
-    path = "/admin/api/v1/users/{uuid}/schemes",
+    path = "/admin/api/v1/users/{uuid}/roles",
     tag = "users",
     params(
         ("uuid" = Uuid, Path, description = "User UUID")
     ),
-    request_body(content = Vec<Uuid>, description = "List of permission scheme UUIDs"),
+    request_body(content = Vec<Uuid>, description = "List of role UUIDs"),
     responses(
-        (status = 200, description = "Permission schemes assigned successfully"),
+        (status = 200, description = "Roles assigned successfully"),
         (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden - insufficient permissions"),
         (status = 404, description = "User not found"),
@@ -518,19 +531,17 @@ pub async fn get_user_schemes(
         ("jwt" = [])
     )
 )]
-#[put("/{uuid}/schemes")]
-pub async fn assign_schemes_to_user(
+#[put("/{uuid}/roles")]
+pub async fn assign_roles_to_user(
     state: web::Data<ApiStateWrapper>,
     auth: RequiredAuth,
     path: web::Path<Uuid>,
     req: web::Json<Vec<Uuid>>,
 ) -> impl Responder {
     // Check permission
-    if let Err(resp) = auth.require_permission(
-        &ResourceNamespace::PermissionSchemes,
-        &PermissionType::Admin,
-        None,
-    ) {
+    if let Err(resp) =
+        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Admin, None)
+    {
         return resp;
     }
 
@@ -543,18 +554,18 @@ pub async fn assign_schemes_to_user(
         return ApiResponse::<()>::not_found("User not found");
     }
 
-    match repo.update_user_schemes(user_uuid, &req.into_inner()).await {
+    match repo.update_user_roles(user_uuid, &req.into_inner()).await {
         Ok(()) => {
             // Invalidate cached permissions for this user
             state
-                .permission_scheme_service()
+                .role_service()
                 .invalidate_user_permissions_cache(&user_uuid)
                 .await;
-            ApiResponse::ok_with_message((), "Permission schemes assigned successfully")
+            ApiResponse::ok_with_message((), "Roles assigned successfully")
         }
         Err(e) => {
-            error!("Failed to assign permission schemes to user: {e}");
-            ApiResponse::<()>::internal_error("Failed to assign permission schemes")
+            error!("Failed to assign roles to user: {e}");
+            ApiResponse::<()>::internal_error("Failed to assign roles")
         }
     }
 }

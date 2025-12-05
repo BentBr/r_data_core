@@ -23,8 +23,8 @@ pub struct UserResponse {
     pub first_name: Option<String>,
     /// Last name
     pub last_name: Option<String>,
-    /// User role
-    pub role: String,
+    /// Role UUIDs assigned to this user
+    pub role_uuids: Vec<Uuid>,
     /// User account status
     pub status: String,
     /// Whether user is active
@@ -48,8 +48,10 @@ pub struct UserResponse {
     pub created_by: Uuid,
 }
 
-impl From<&AdminUser> for UserResponse {
-    fn from(user: &AdminUser) -> Self {
+impl UserResponse {
+    /// Create a `UserResponse` from an `AdminUser` with role UUIDs
+    #[must_use]
+    pub fn from_with_roles(user: &AdminUser, role_uuids: &[Uuid]) -> Self {
         Self {
             uuid: user.uuid,
             username: user.username.clone(),
@@ -57,7 +59,7 @@ impl From<&AdminUser> for UserResponse {
             full_name: user.full_name.clone(),
             first_name: user.first_name.clone(),
             last_name: user.last_name.clone(),
-            role: user.role.as_str().to_string(),
+            role_uuids: role_uuids.to_vec(),
             status: format!("{:?}", user.status),
             is_active: user.is_active,
             is_admin: user.is_admin,
@@ -87,8 +89,8 @@ pub struct CreateUserRequest {
     pub first_name: String,
     /// Last name
     pub last_name: String,
-    /// User role (optional, defaults to Custom("Default"))
-    pub role: Option<String>,
+    /// Role UUIDs to assign to this user (optional)
+    pub role_uuids: Option<Vec<Uuid>>,
     /// Whether user is active
     pub is_active: Option<bool>,
     /// Super admin flag
@@ -108,8 +110,8 @@ pub struct UpdateUserRequest {
     pub first_name: Option<String>,
     /// Last name (optional)
     pub last_name: Option<String>,
-    /// User role (optional)
-    pub role: Option<String>,
+    /// Role UUIDs to assign to this user (optional)
+    pub role_uuids: Option<Vec<Uuid>>,
     /// Whether user is active (optional)
     pub is_active: Option<bool>,
     /// Super admin flag (optional)

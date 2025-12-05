@@ -58,20 +58,20 @@ export class UsersClient extends BaseTypedHttpClient {
         )
     }
 
-    async getUserSchemes(uuid: string): Promise<string[]> {
+    async getUserRoles(uuid: string): Promise<string[]> {
         return this.request(
-            `/admin/api/v1/users/${uuid}/schemes`,
+            `/admin/api/v1/users/${uuid}/roles`,
             ApiResponseSchema(z.array(z.string()))
         )
     }
 
-    async assignSchemesToUser(uuid: string, schemeUuids: string[]): Promise<{ message: string }> {
+    async assignRolesToUser(uuid: string, roleUuids: string[]): Promise<{ message: string }> {
         return this.request(
-            `/admin/api/v1/users/${uuid}/schemes`,
+            `/admin/api/v1/users/${uuid}/roles`,
             ApiResponseSchema(z.object({ message: z.string() })),
             {
                 method: 'PUT',
-                body: JSON.stringify(schemeUuids),
+                body: JSON.stringify(roleUuids),
             }
         )
     }

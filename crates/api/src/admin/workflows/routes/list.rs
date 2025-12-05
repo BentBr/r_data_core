@@ -11,7 +11,7 @@ use crate::auth::auth_enum::RequiredAuth;
 use crate::auth::permission_check;
 use crate::query::PaginationQuery;
 use crate::response::ApiResponse;
-use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
+use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 
 /// List all workflow runs across all workflows
 #[utoipa::path(

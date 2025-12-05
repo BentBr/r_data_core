@@ -9,7 +9,7 @@ import { AuthClient } from './auth'
 import { UsersClient } from './users'
 import { EntitiesClient } from './entities'
 import { SystemClient } from './system'
-import { PermissionsClient } from './permissions'
+import { RolesClient } from './roles'
 
 /**
  * Main typed HTTP client that combines all domain-specific clients
@@ -24,7 +24,7 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     private usersClient = new UsersClient()
     private entitiesClient = new EntitiesClient()
     private systemClient = new SystemClient()
-    private permissionsClient = new PermissionsClient()
+    private rolesClient = new RolesClient()
 
     // Entity Definitions
     async getEntityDefinitions(
@@ -172,11 +172,11 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     async deleteUser(...args: Parameters<UsersClient['deleteUser']>) {
         return this.usersClient.deleteUser(...args)
     }
-    async getUserSchemes(...args: Parameters<UsersClient['getUserSchemes']>) {
-        return this.usersClient.getUserSchemes(...args)
+    async getUserRoles(...args: Parameters<UsersClient['getUserRoles']>) {
+        return this.usersClient.getUserRoles(...args)
     }
-    async assignSchemesToUser(...args: Parameters<UsersClient['assignSchemesToUser']>) {
-        return this.usersClient.assignSchemesToUser(...args)
+    async assignRolesToUser(...args: Parameters<UsersClient['assignRolesToUser']>) {
+        return this.usersClient.assignRolesToUser(...args)
     }
 
     // Entities
@@ -220,27 +220,24 @@ export class TypedHttpClient extends BaseTypedHttpClient {
         return this.systemClient.updateEntityVersioningSettings(...args)
     }
 
-    // Permissions
-    async getPermissionSchemes(...args: Parameters<PermissionsClient['getPermissionSchemes']>) {
-        return this.permissionsClient.getPermissionSchemes(...args)
+    // Roles
+    async getRoles(...args: Parameters<RolesClient['getRoles']>) {
+        return this.rolesClient.getRoles(...args)
     }
-    async getPermissionScheme(...args: Parameters<PermissionsClient['getPermissionScheme']>) {
-        return this.permissionsClient.getPermissionScheme(...args)
+    async getRole(...args: Parameters<RolesClient['getRole']>) {
+        return this.rolesClient.getRole(...args)
     }
-    async createPermissionScheme(...args: Parameters<PermissionsClient['createPermissionScheme']>) {
-        return this.permissionsClient.createPermissionScheme(...args)
+    async createRole(...args: Parameters<RolesClient['createRole']>) {
+        return this.rolesClient.createRole(...args)
     }
-    async updatePermissionScheme(...args: Parameters<PermissionsClient['updatePermissionScheme']>) {
-        return this.permissionsClient.updatePermissionScheme(...args)
+    async updateRole(...args: Parameters<RolesClient['updateRole']>) {
+        return this.rolesClient.updateRole(...args)
     }
-    async deletePermissionScheme(...args: Parameters<PermissionsClient['deletePermissionScheme']>) {
-        return this.permissionsClient.deletePermissionScheme(...args)
+    async deleteRole(...args: Parameters<RolesClient['deleteRole']>) {
+        return this.rolesClient.deleteRole(...args)
     }
-    async assignSchemesToUser(...args: Parameters<PermissionsClient['assignSchemesToUser']>) {
-        return this.permissionsClient.assignSchemesToUser(...args)
-    }
-    async assignSchemesToApiKey(...args: Parameters<PermissionsClient['assignSchemesToApiKey']>) {
-        return this.permissionsClient.assignSchemesToApiKey(...args)
+    async assignRolesToApiKey(...args: Parameters<RolesClient['assignRolesToApiKey']>) {
+        return this.rolesClient.assignRolesToApiKey(...args)
     }
 }
 
@@ -252,4 +249,4 @@ export { WorkflowsClient } from './workflows'
 export { AuthClient } from './auth'
 export { UsersClient } from './users'
 export { EntitiesClient } from './entities'
-export { PermissionsClient } from './permissions'
+export { RolesClient } from './roles'

@@ -10,8 +10,8 @@ vi.mock('@/api/typed-client', () => ({
         createUser: vi.fn(),
         updateUser: vi.fn(),
         deleteUser: vi.fn(),
-        getUserSchemes: vi.fn(),
-        assignSchemesToUser: vi.fn(),
+        getUserRoles: vi.fn(),
+        assignRolesToUser: vi.fn(),
     },
 }))
 

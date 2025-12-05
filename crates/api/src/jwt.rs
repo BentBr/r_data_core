@@ -4,10 +4,10 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 
-use r_data_core_core::admin_user::{AdminUser, UserRole};
+use r_data_core_core::admin_user::AdminUser;
 use r_data_core_core::config::ApiConfig;
 use r_data_core_core::error::Result;
-use r_data_core_core::permissions::permission_scheme::{PermissionScheme, ResourceNamespace};
+use r_data_core_core::permissions::role::{ResourceNamespace, Role};
 use utoipa::ToSchema;
 
 // Token expiry constants
@@ -40,16 +40,16 @@ pub struct AuthUserClaims {
 /// # Arguments
 /// * `user` - Admin user
 /// * `config` - API configuration containing JWT secret and expiration
-/// * `schemes` - Vector of permission schemes (if empty, user has no permissions except `SuperAdmin`/`super_admin`)
+/// * `roles` - Vector of roles (if empty, user has no permissions except `super_admin`)
 ///
 /// # Errors
 /// Returns an error if token generation fails
 pub fn generate_access_token(
     user: &AdminUser,
     config: &ApiConfig,
-    schemes: &[PermissionScheme],
+    roles: &[Role],
 ) -> Result<String> {
-    generate_jwt(user, config, ACCESS_TOKEN_EXPIRY_SECONDS, schemes)
+    generate_jwt(user, config, ACCESS_TOKEN_EXPIRY_SECONDS, roles)
 }
 
 /// Generate a JWT token for a user
@@ -58,7 +58,7 @@ pub fn generate_access_token(
 /// * `user` - Admin user
 /// * `config` - API configuration containing JWT secret
 /// * `expiration_seconds` - Token expiration in seconds (overrides config if provided)
-/// * `schemes` - Vector of permission schemes (if empty, user has no permissions except `SuperAdmin`/`super_admin`)
+/// * `roles` - Vector of roles (if empty, user has no permissions except `super_admin`)
 ///
 /// # Errors
 /// Returns an error if token generation fails
@@ -66,7 +66,7 @@ pub fn generate_jwt(
     user: &AdminUser,
     config: &ApiConfig,
     expiration_seconds: u64,
-    schemes: &[PermissionScheme],
+    roles: &[Role],
 ) -> Result<String> {
     let user_uuid = user.uuid;
 
@@ -83,31 +83,30 @@ pub fn generate_jwt(
             r_data_core_core::error::Error::Auth("Could not create token expiration".to_string())
         })?;
 
-    // Check super_admin flag first, then SuperAdmin role, then scheme super_admin flags
-    let user_is_super_admin = user.super_admin || matches!(user.role, UserRole::SuperAdmin);
-    let scheme_is_super_admin = schemes.iter().any(|scheme| scheme.super_admin);
-    let is_super_admin = user_is_super_admin || scheme_is_super_admin;
+    // Check super_admin flag first, then role super_admin flags
+    let user_is_super_admin = user.super_admin;
+    let role_is_super_admin = roles.iter().any(|role| role.super_admin);
+    let is_super_admin = user_is_super_admin || role_is_super_admin;
 
-    // Extract permissions from schemes
+    // Extract permissions from roles
     let permissions = if is_super_admin {
-        // SuperAdmin or super_admin flag (user or scheme) gets all permissions for all namespaces
+        // Super admin (user or role) gets all permissions for all namespaces
         generate_all_permissions()
-    } else if !schemes.is_empty() {
-        // Merge permissions from all schemes for all roles
-        // Since roles are defined in schemes and users may have multiple roles across schemes,
-        // we merge permissions from all roles in all assigned schemes
-        merge_permissions_from_all_scheme_roles(schemes)
+    } else if !roles.is_empty() {
+        // Merge permissions from all roles
+        merge_permissions_from_roles(roles)
     } else {
-        // No schemes means no permissions
+        // No roles means no permissions
         Vec::new()
     };
 
     // Create claims
+    // Note: role field is kept for backward compatibility but users don't have a single role anymore
     let claims = AuthUserClaims {
         sub: user_uuid.to_string(),
         name: user.username.clone(),
         email: user.email.clone(),
-        role: user.role.as_str().to_string(),
+        role: String::new(), // Users don't have a single role anymore
         is_super_admin,
         permissions,
         exp: usize::try_from(expiration.unix_timestamp()).unwrap_or(0),
@@ -125,33 +124,34 @@ pub fn generate_jwt(
     Ok(token)
 }
 
-/// Merge permissions from all roles in all assigned schemes
+/// Merge permissions from all roles
 ///
-/// This combines all permissions from all roles in all schemes,
+/// This combines all permissions from all roles,
 /// converting them to permission strings and deduplicating.
-/// This is used when users don't have a specific role stored,
-/// so we grant them all permissions from all roles in their assigned schemes.
 ///
 /// # Arguments
-/// * `schemes` - Vector of permission schemes
+/// * `roles` - Vector of roles
 ///
 /// # Returns
 /// Vector of merged permission strings (deduplicated)
 #[must_use]
-fn merge_permissions_from_all_scheme_roles(schemes: &[PermissionScheme]) -> Vec<String> {
+fn merge_permissions_from_roles(roles: &[Role]) -> Vec<String> {
     use std::collections::HashSet;
 
     let mut permission_set = HashSet::new();
     let mut merged_permissions = Vec::new();
 
-    for scheme in schemes {
-        // Get all roles in this scheme
-        for role_name in scheme.role_permissions.keys() {
-            let scheme_permissions = scheme.get_permissions_as_strings(role_name);
-            for perm in scheme_permissions {
-                if permission_set.insert(perm.clone()) {
-                    merged_permissions.push(perm);
-                }
+    for role in roles {
+        // Skip super_admin roles (handled at higher level)
+        if role.super_admin {
+            continue;
+        }
+
+        // Get all permissions from this role
+        let role_permissions = role.get_permissions_as_strings();
+        for perm in role_permissions {
+            if permission_set.insert(perm.clone()) {
+                merged_permissions.push(perm);
             }
         }
     }
@@ -196,9 +196,7 @@ fn generate_all_permissions() -> Vec<String> {
         &ResourceNamespace::EntityDefinitions,
     ));
     permissions.extend(generate_standard_permissions(&ResourceNamespace::ApiKeys));
-    permissions.extend(generate_standard_permissions(
-        &ResourceNamespace::PermissionSchemes,
-    ));
+    permissions.extend(generate_standard_permissions(&ResourceNamespace::Roles));
     permissions.extend(generate_standard_permissions(&ResourceNamespace::System));
     permissions
 }
@@ -260,11 +258,10 @@ mod tests {
             email: "test@example.com".to_string(),
             password_hash: "hashed_password".to_string(),
             full_name: "Test User".to_string(),
-            role: UserRole::SuperAdmin,
             status: UserStatus::Active,
             last_login: None,
             failed_login_attempts: 0,
-            super_admin: false,
+            super_admin: true,
             uuid: Uuid::now_v7(),
             first_name: Some("Test".to_string()),
             last_name: Some("User".to_string()),
@@ -325,8 +322,7 @@ mod tests {
         assert_eq!(claims.name, user.username);
         assert_eq!(claims.email, user.email);
         assert_eq!(claims.role, "SuperAdmin");
-        // User has SuperAdmin role, so is_super_admin should be true
-        // (UserRole::SuperAdmin makes is_super_admin true regardless of super_admin flag)
+        // User has super_admin flag set to true, so is_super_admin should be true
         assert!(claims.is_super_admin);
         // SuperAdmin should have all permissions
         assert!(!claims.permissions.is_empty());

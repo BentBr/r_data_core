@@ -424,7 +424,7 @@
       "active": "Aktiv",
       "active_hint": "Ob das Benutzerkonto aktiv ist",
       "super_admin": "Super-Administrator",
-      "super_admin_hint": "Super-Administratoren haben alle Berechtigungen unabhängig von zugewiesenen Schemas",
+      "super_admin_hint": "Super-Administratoren haben alle Berechtigungen unabhängig von zugewiesenen Rollen",
       "cancel": "Abbrechen",
       "create": "Erstellen",
       "update": "Aktualisieren",
@@ -447,14 +447,14 @@
   },
   "permissions": {
     "dialog": {
-      "create_title": "Berechtigungsschema erstellen",
-      "edit_title": "Berechtigungsschema bearbeiten",
+      "create_title": "Rolle erstellen",
+      "edit_title": "Rolle bearbeiten",
       "name": "Name",
       "description": "Beschreibung",
       "super_admin": "Super-Administrator",
-      "super_admin_hint": "Benutzer mit diesem Schema haben alle Berechtigungen unabhängig von Rollenberechtigungen",
-      "roles_permissions": "Rollen & Berechtigungen",
-      "add_role": "Rolle hinzufügen",
+      "super_admin_hint": "Benutzer mit dieser Rolle haben alle Berechtigungen unabhängig von zugewiesenen Berechtigungen",
+      "roles_permissions": "Berechtigungen",
+      "add_role": "Berechtigung hinzufügen",
       "cancel": "Abbrechen",
       "create": "Erstellen",
       "update": "Aktualisieren"
@@ -462,25 +462,24 @@
     "page": {
       "title": "Benutzer und Rollen",
       "tabs": {
-        "schemes": "Berechtigungsschemas",
-        "users": "Benutzer und Rollen"
-      },
-      "schemes": {
-        "title": "Berechtigungsschemas",
-        "new_button": "Neues Berechtigungsschema",
-        "loading": "Berechtigungsschemas werden geladen...",
-        "no_description": "Keine Beschreibung",
         "roles": "Rollen",
+        "users": "Benutzer"
+      },
+      "roles": {
+        "title": "Rollen",
+        "new_button": "Neue Rolle",
+        "loading": "Rollen werden geladen...",
+        "no_description": "Keine Beschreibung",
         "table": {
           "name": "Name",
           "description": "Beschreibung",
-          "roles": "Rollen",
+          "permissions": "Berechtigungen",
           "created": "Erstellt",
           "actions": "Aktionen"
         },
         "delete": {
-          "title": "Berechtigungsschema löschen",
-          "message": "Sind Sie sicher, dass Sie das Berechtigungsschema \"{name}\" löschen möchten?",
+          "title": "Rolle löschen",
+          "message": "Sind Sie sicher, dass Sie die Rolle \"{name}\" löschen möchten?",
           "confirm": "Löschen",
           "cancel": "Abbrechen"
         }

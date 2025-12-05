@@ -12,7 +12,7 @@ use crate::auth::auth_enum::RequiredAuth;
 use crate::auth::permission_check;
 use crate::query::PaginationQuery;
 use crate::response::ApiResponse;
-use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
+use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::FetchAndStageJob;
 

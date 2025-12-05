@@ -5,7 +5,7 @@ use actix_web::{
 };
 use futures::future::{ready, Ready};
 use log::debug;
-use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
+use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 
 use crate::auth::auth_enum::RequiredAuth;
 use crate::auth::permission_check;

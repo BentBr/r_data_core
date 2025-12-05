@@ -14,11 +14,11 @@ pub mod dynamic_entity_versioning;
 pub mod entity_definition_repository;
 pub mod entity_definition_versioning_repository;
 pub mod entity_definition_versioning_repository_trait;
-pub mod permission_scheme_repository;
-pub mod permission_scheme_repository_trait;
 pub mod refresh_token_repository;
 pub mod refresh_token_repository_trait;
 pub mod repository;
+pub mod role_repository;
+pub mod role_repository_trait;
 pub mod settings_repository;
 pub mod settings_repository_trait;
 pub mod version_repository;
@@ -46,11 +46,11 @@ pub use entity_definition_versioning_repository::{
     EntityDefinitionVersioningRepository,
 };
 pub use entity_definition_versioning_repository_trait::EntityDefinitionVersioningRepositoryTrait;
-pub use permission_scheme_repository::PermissionSchemeRepository;
-pub use permission_scheme_repository_trait::PermissionSchemeRepositoryTrait;
 pub use refresh_token_repository::RefreshTokenRepository;
 pub use refresh_token_repository_trait::RefreshTokenRepositoryTrait;
 pub use repository::{EntityRepository, PgPoolExtension};
+pub use role_repository::RoleRepository;
+pub use role_repository_trait::RoleRepositoryTrait;
 pub use settings_repository::SystemSettingsRepository;
 pub use settings_repository_trait::SettingsRepositoryTrait;
 pub use version_repository::{EntityVersionMeta, EntityVersionPayload, VersionRepository};

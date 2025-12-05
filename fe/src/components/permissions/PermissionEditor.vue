@@ -9,6 +9,7 @@
                 :items="resourceTypes"
                 label="Resource Type"
                 density="compact"
+                :disabled="disabled"
                 @update:model-value="updateField('resource_type', $event)"
             />
         </v-col>
@@ -21,6 +22,7 @@
                 :items="permissionTypes"
                 label="Permission Type"
                 density="compact"
+                :disabled="disabled"
                 @update:model-value="updateField('permission_type', $event)"
             />
         </v-col>
@@ -33,6 +35,7 @@
                 :items="accessLevels"
                 label="Access Level"
                 density="compact"
+                :disabled="disabled"
                 @update:model-value="updateField('access_level', $event)"
             />
         </v-col>
@@ -45,6 +48,7 @@
                 variant="text"
                 color="error"
                 size="small"
+                :disabled="disabled"
                 @click="$emit('remove')"
             />
         </v-col>
@@ -64,9 +68,12 @@
         resourceTypes: ResourceNamespace[]
         permissionTypes: PermissionType[]
         accessLevels: AccessLevel[]
+        disabled?: boolean
     }
 
-    const props = defineProps<Props>()
+    const props = withDefaults(defineProps<Props>(), {
+        disabled: false,
+    })
 
     const emit = defineEmits<{
         update: [permission: Permission]

@@ -49,11 +49,17 @@
                         :rules="[rules.required]"
                         required
                     />
-                    <v-text-field
-                        v-model="formData.role"
-                        :label="t('users.dialog.role')"
-                        :hint="t('users.dialog.role_hint')"
+                    <v-select
+                        v-model="formData.role_uuids"
+                        :label="t('users.dialog.roles')"
+                        :items="availableRoles"
+                        item-title="name"
+                        item-value="uuid"
+                        multiple
+                        chips
+                        :hint="t('users.dialog.roles_hint')"
                         persistent-hint
+                        :loading="loadingRoles"
                     />
                     <v-checkbox
                         v-model="formData.is_active"
@@ -91,11 +97,13 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, watch } from 'vue'
+    import { ref, watch, onMounted } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
-    import type { UserResponse, CreateUserRequest, UpdateUserRequest } from '@/types/schemas'
+    import { useRoles } from '@/composables/useRoles'
+    import type { UserResponse, CreateUserRequest, UpdateUserRequest, Role } from '@/types/schemas'
 
     const { t } = useTranslations()
+    const { loadRoles, roles, loading: loadingRoles } = useRoles()
 
     interface Props {
         modelValue: boolean
@@ -112,6 +120,7 @@
 
     const formRef = ref()
     const formValid = ref(false)
+    const availableRoles = ref<Role[]>([])
 
     const formData = ref<CreateUserRequest & { is_active?: boolean; super_admin?: boolean }>({
         username: '',
@@ -119,9 +128,18 @@
         password: '',
         first_name: '',
         last_name: '',
-        role: '',
+        role_uuids: [],
         is_active: true,
         super_admin: false,
+    })
+
+    onMounted(async () => {
+        try {
+            await loadRoles(1, 100) // Load all roles
+            availableRoles.value = roles.value
+        } catch (err) {
+            console.error('Failed to load roles:', err)
+        }
     })
 
     const rules = {
@@ -147,7 +165,7 @@
             password: '',
             first_name: '',
             last_name: '',
-            role: '',
+            role_uuids: [],
             is_active: true,
             super_admin: false,
         }
@@ -164,7 +182,7 @@
                     password: '',
                     first_name: newUser.first_name ?? '',
                     last_name: newUser.last_name ?? '',
-                    role: newUser.role,
+                    role_uuids: newUser.role_uuids ?? [],
                     is_active: newUser.is_active,
                     super_admin: newUser.super_admin,
                 }
@@ -200,7 +218,7 @@
                 email: formData.value.email,
                 first_name: formData.value.first_name,
                 last_name: formData.value.last_name,
-                role: formData.value.role ?? undefined,
+                role_uuids: formData.value.role_uuids ?? undefined,
                 is_active: formData.value.is_active,
                 super_admin: formData.value.super_admin,
             }
@@ -216,7 +234,7 @@
                 password: formData.value.password,
                 first_name: formData.value.first_name,
                 last_name: formData.value.last_name,
-                role: formData.value.role ?? undefined,
+                role_uuids: formData.value.role_uuids ?? undefined,
                 is_active: formData.value.is_active,
                 super_admin: formData.value.super_admin,
             }

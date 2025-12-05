@@ -9,7 +9,7 @@ pub trait ApiStateTrait: Send + Sync + 'static {
     fn db_pool(&self) -> &PgPool;
     fn jwt_secret(&self) -> &str;
     fn api_key_service_ref(&self) -> &dyn std::any::Any;
-    fn permission_scheme_service_ref(&self) -> &dyn std::any::Any;
+    fn role_service_ref(&self) -> &dyn std::any::Any;
     fn api_config_ref(&self) -> &dyn std::any::Any;
     fn entity_definition_service_ref(&self) -> &dyn std::any::Any;
     fn dynamic_entity_service_ref(&self) -> Option<&dyn std::any::Any>;
@@ -24,11 +24,11 @@ pub trait ApiStateTrait: Send + Sync + 'static {
             .expect("ApiState must provide ApiConfig")
     }
 
-    /// Get permission scheme service - helper method that downcasts from `permission_scheme_service_ref`
-    fn permission_scheme_service(&self) -> &r_data_core_services::PermissionSchemeService {
-        self.permission_scheme_service_ref()
-            .downcast_ref::<r_data_core_services::PermissionSchemeService>()
-            .expect("ApiState must provide PermissionSchemeService")
+    /// Get role service - helper method that downcasts from `role_service_ref`
+    fn role_service(&self) -> &r_data_core_services::RoleService {
+        self.role_service_ref()
+            .downcast_ref::<r_data_core_services::RoleService>()
+            .expect("ApiState must provide RoleService")
     }
 
     /// Get entity definition service - helper method that downcasts from `entity_definition_service_ref`
@@ -96,8 +96,8 @@ impl ApiStateTrait for ApiStateWrapper {
         self.0.api_key_service_ref()
     }
 
-    fn permission_scheme_service_ref(&self) -> &dyn std::any::Any {
-        self.0.permission_scheme_service_ref()
+    fn role_service_ref(&self) -> &dyn std::any::Any {
+        self.0.role_service_ref()
     }
 
     fn api_config_ref(&self) -> &dyn std::any::Any {

@@ -1,6 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use r_data_core_core::permissions::permission_scheme::{PermissionType, ResourceNamespace};
+use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 use serde_json::Value;
 
 /// Service for authentication and authorization operations
@@ -63,7 +63,7 @@ impl AuthService {
             ),
             (
                 "/permissions",
-                ResourceNamespace::PermissionSchemes,
+                ResourceNamespace::Roles,
                 PermissionType::Read,
             ),
             ("/system", ResourceNamespace::System, PermissionType::Read),

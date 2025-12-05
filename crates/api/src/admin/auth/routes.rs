@@ -11,8 +11,8 @@ use crate::jwt::{
     generate_access_token, ACCESS_TOKEN_EXPIRY_SECONDS, REFRESH_TOKEN_EXPIRY_SECONDS,
 };
 use crate::response::ApiResponse;
-use r_data_core_core::admin_user::{AdminUser, UserRole};
-use r_data_core_core::permissions::permission_scheme::PermissionScheme;
+use r_data_core_core::admin_user::AdminUser;
+use r_data_core_core::permissions::role::Role;
 use r_data_core_core::refresh_token::RefreshToken;
 use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
 use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
@@ -23,32 +23,28 @@ use crate::admin::auth::models::{
 };
 use validator::Validate;
 
-/// Load permission schemes for a user
-async fn load_user_permission_schemes(
+/// Load roles for a user
+async fn load_user_roles(
     user: &AdminUser,
     data: &ApiStateWrapper,
     repo: &AdminUserRepository,
-) -> Vec<PermissionScheme> {
-    if user.super_admin || matches!(user.role, UserRole::SuperAdmin) {
-        // SuperAdmin or super_admin doesn't need schemes - handled in JWT generation
+) -> Vec<r_data_core_core::permissions::role::Role> {
+    if user.super_admin {
+        // Super admin doesn't need roles - handled in JWT generation
         vec![]
     } else {
-        // Load all user's permission schemes
+        // Load all user's roles
         match data
-            .permission_scheme_service()
-            .get_schemes_for_user(user.uuid, repo)
+            .role_service()
+            .get_roles_for_user(user.uuid, repo)
             .await
         {
-            Ok(s) => {
-                log::debug!(
-                    "Loaded {} permission schemes for user {}",
-                    s.len(),
-                    user.username
-                );
-                s
+            Ok(r) => {
+                log::debug!("Loaded {} roles for user {}", r.len(), user.username);
+                r
             }
             Err(e) => {
-                log::warn!("Failed to load permission schemes for user: {e}");
+                log::warn!("Failed to load roles for user: {e}");
                 vec![]
             }
         }
@@ -68,7 +64,11 @@ fn build_login_response(
         refresh_token,
         user_uuid: user.uuid.to_string(),
         username: user.username.clone(),
-        role: format!("{:?}", user.role),
+        role: if user.super_admin {
+            "SuperAdmin".to_string()
+        } else {
+            "User".to_string()
+        },
         access_expires_at,
         refresh_expires_at,
     })
@@ -93,12 +93,12 @@ fn build_refresh_response(
 fn generate_tokens_for_user(
     user: &AdminUser,
     data: &ApiStateWrapper,
-    schemes: &[PermissionScheme],
+    roles: &[Role],
 ) -> Result<(String, String, String, OffsetDateTime, OffsetDateTime), actix_web::HttpResponse> {
     // Use short-lived expiration for access tokens
     let mut access_token_config = data.api_config().clone();
     access_token_config.jwt_expiration = ACCESS_TOKEN_EXPIRY_SECONDS;
-    let access_token = generate_access_token(user, &access_token_config, schemes).map_err(|e| {
+    let access_token = generate_access_token(user, &access_token_config, roles).map_err(|e| {
         log::error!("Failed to generate access token: {e:?}");
         ApiResponse::<()>::internal_error("Token generation failed")
     })?;
@@ -214,14 +214,14 @@ pub async fn admin_login(
         log::error!("Failed to update last login: {e:?}");
     }
 
-    // Load all permission schemes for user
-    let schemes = load_user_permission_schemes(&user, &data, &repo).await;
+    // Load all roles for user
+    let roles = load_user_roles(&user, &data, &repo).await;
 
     // Generate short-lived access token (30 minutes)
     // Use short-lived expiration for access tokens, but get secret from config
     let mut access_token_config = data.api_config().clone();
     access_token_config.jwt_expiration = ACCESS_TOKEN_EXPIRY_SECONDS;
-    let access_token = match generate_access_token(&user, &access_token_config, &schemes) {
+    let access_token = match generate_access_token(&user, &access_token_config, &roles) {
         Ok(token) => token,
         Err(e) => {
             log::error!("Failed to generate access token: {e:?}");
@@ -520,15 +520,15 @@ pub async fn admin_refresh_token(
         return ApiResponse::unauthorized("Account not active");
     }
 
-    // Load permission schemes and generate tokens
-    let schemes = load_user_permission_schemes(&user, &data, &admin_repo).await;
+    // Load roles and generate tokens
+    let roles = load_user_roles(&user, &data, &admin_repo).await;
     let (
         new_access_token,
         new_refresh_token_string,
         new_refresh_token_hash,
         access_expires_at,
         refresh_expires_at,
-    ) = match generate_tokens_for_user(&user, &data, &schemes) {
+    ) = match generate_tokens_for_user(&user, &data, &roles) {
         Ok(tokens) => tokens,
         Err(response) => return response,
     };

@@ -9,7 +9,7 @@ export * from './workflow'
 export * from './api-key'
 export * from './user'
 export * from './dsl'
-export * from './permission'
+export * from './role'
 
 // Re-export types that are commonly used
 import type { z } from 'zod'
@@ -49,15 +49,15 @@ import type {
 } from './api-key'
 import type { User } from './user'
 import type {
-    PermissionScheme,
+    Role,
     Permission,
-    CreatePermissionSchemeRequest,
-    UpdatePermissionSchemeRequest,
-    AssignSchemesRequest,
+    CreateRoleRequest,
+    UpdateRoleRequest,
+    AssignRolesRequest,
     ResourceNamespace,
     PermissionType,
     AccessLevel,
-} from './permission'
+} from './role'
 
 // Common type exports
 export type Pagination = z.infer<typeof PaginationSchema>
@@ -94,11 +94,11 @@ export type {
     ReassignApiKeyRequest,
     ReassignApiKeyResponse,
     User,
-    PermissionScheme,
+    Role,
     Permission,
-    CreatePermissionSchemeRequest,
-    UpdatePermissionSchemeRequest,
-    AssignSchemesRequest,
+    CreateRoleRequest,
+    UpdateRoleRequest,
+    AssignRolesRequest,
     ResourceNamespace,
     PermissionType,
     AccessLevel,

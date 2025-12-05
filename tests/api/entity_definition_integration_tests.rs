@@ -39,10 +39,10 @@ fn create_test_jwt_token(user_uuid: &Uuid, secret: &str) -> String {
         "api_keys:create",
         "api_keys:update",
         "api_keys:delete",
-        "permission_schemes:read",
-        "permission_schemes:create",
-        "permission_schemes:update",
-        "permission_schemes:delete",
+        "roles:read",
+        "roles:create",
+        "roles:update",
+        "roles:delete",
         "system:read",
         "system:create",
         "system:update",
@@ -143,7 +143,7 @@ mod tests {
                 enable_docs: true,
                 cors_origins: vec![],
             },
-            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            role_service: r_data_core_services::RoleService::new(
                 pool.clone(),
                 cache_manager.clone(),
                 Some(0),

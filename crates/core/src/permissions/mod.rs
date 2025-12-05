@@ -1,13 +1,13 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-pub mod permission_scheme;
+pub mod role;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::error::Result;
-use permission_scheme::{AccessLevel, Permission, PermissionType, ResourceNamespace};
+use role::{AccessLevel, Permission, PermissionType, ResourceNamespace};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PermissionContext {

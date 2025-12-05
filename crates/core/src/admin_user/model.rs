@@ -14,61 +14,9 @@ use sqlx::{
     postgres::{PgRow, PgTypeInfo, PgValueRef},
     FromRow, Row, Type,
 };
-use std::str::FromStr;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
-
-/// Admin user roles
-///
-/// Only `SuperAdmin` is predefined. All other roles are custom and defined
-/// in permission schemes stored in the database.
-/// Use `as_str()` to get the string representation for permission checking.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
-pub enum UserRole {
-    /// Super administrator with full access to all namespaces
-    SuperAdmin,
-    /// Custom role (name stored in the string, permissions defined in permission scheme)
-    Custom(String),
-}
-
-impl UserRole {
-    /// Get the string representation of the role for permission scheme lookups
-    ///
-    /// # Returns
-    /// String representation matching permission scheme role names
-    #[must_use]
-    pub fn as_str(&self) -> &str {
-        match self {
-            Self::SuperAdmin => "SuperAdmin",
-            Self::Custom(name) => name,
-        }
-    }
-}
-
-impl FromStr for UserRole {
-    type Err = ();
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        Ok(match s {
-            "SuperAdmin" => Self::SuperAdmin,
-            other => Self::Custom(other.to_string()),
-        })
-    }
-}
-
-impl Type<sqlx::Postgres> for UserRole {
-    fn type_info() -> PgTypeInfo {
-        PgTypeInfo::with_name("VARCHAR")
-    }
-}
-
-impl<'r> Decode<'r, sqlx::Postgres> for UserRole {
-    fn decode(value: PgValueRef<'r>) -> std::result::Result<Self, sqlx::error::BoxDynError> {
-        let value = <String as Decode<sqlx::Postgres>>::decode(value)?;
-        Self::from_str(&value).map_err(|()| "Invalid user role".into())
-    }
-}
 
 /// Admin user status
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
@@ -119,9 +67,6 @@ pub struct AdminUser {
     /// Full name
     pub full_name: String,
 
-    /// User role
-    pub role: UserRole,
-
     /// User account status
     pub status: UserStatus,
 
@@ -168,7 +113,6 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
         let last_login: Option<OffsetDateTime> = row.try_get("last_login").ok().flatten();
 
         // Use default values for fields that might not exist in the DB
-        let role = UserRole::Custom("Default".to_string()); // Default role
         let status = UserStatus::Active; // Default status
         let failed_login_attempts = 0; // Default value
         let super_admin = row.try_get("super_admin").unwrap_or(false); // Default to false
@@ -180,7 +124,6 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
             email,
             password_hash,
             full_name,
-            role,
             status,
             last_login,
             failed_login_attempts,
@@ -218,7 +161,6 @@ pub struct AdminUserBuilder {
     email: String,
     password_hash: String,
     full_name: String,
-    role: UserRole,
     status: UserStatus,
     super_admin: bool,
     first_name: String,
@@ -235,7 +177,6 @@ impl AdminUserBuilder {
         email: String,
         password_hash: String,
         full_name: String,
-        role: UserRole,
         status: UserStatus,
         super_admin: bool,
         first_name: String,
@@ -248,7 +189,6 @@ impl AdminUserBuilder {
             email,
             password_hash,
             full_name,
-            role,
             status,
             super_admin,
             first_name,
@@ -269,7 +209,6 @@ impl AdminUserBuilder {
             email: self.email,
             password_hash: self.password_hash,
             full_name: self.full_name,
-            role: self.role,
             status: self.status,
             last_login: None,
             failed_login_attempts: 0,
@@ -298,7 +237,6 @@ impl AdminUser {
         email: String,
         password_hash: String,
         full_name: String,
-        role: UserRole,
         status: UserStatus,
         super_admin: bool,
         first_name: String,
@@ -311,7 +249,6 @@ impl AdminUser {
             email,
             password_hash,
             full_name,
-            role,
             status,
             super_admin,
             first_name,
@@ -367,52 +304,44 @@ impl AdminUser {
             .is_ok()
     }
 
-    /// Check if the user has a specific permission using the permission scheme
+    /// Check if the user has a specific permission using roles
     ///
-    /// This method checks if the user's role has the specified permission type
-    /// for the given namespace according to the permission scheme.
+    /// This method checks if any of the user's roles has the specified permission type
+    /// for the given namespace.
     ///
     /// # Arguments
-    /// * `scheme` - Permission scheme to check against
+    /// * `roles` - Vector of roles assigned to the user
     /// * `namespace` - Resource namespace
     /// * `permission_type` - Type of permission to check
     /// * `path` - Optional path constraint (for entities namespace)
     ///
     /// # Returns
-    /// `true` if the user's role has the permission, `false` otherwise
+    /// `true` if any of the user's roles has the permission, `false` otherwise
     ///
     /// # Note
-    /// `SuperAdmin` always returns `true` for all permissions.
+    /// `super_admin` flag or any role with `super_admin` always returns `true` for all permissions.
     #[must_use]
     pub fn has_permission(
         &self,
-        scheme: &crate::permissions::permission_scheme::PermissionScheme,
-        namespace: &crate::permissions::permission_scheme::ResourceNamespace,
-        permission_type: &crate::permissions::permission_scheme::PermissionType,
+        roles: &[crate::permissions::role::Role],
+        namespace: &crate::permissions::role::ResourceNamespace,
+        permission_type: &crate::permissions::role::PermissionType,
         path: Option<&str>,
     ) -> bool {
-        // SuperAdmin role or super_admin flag has all permissions
-        if self.super_admin || matches!(self.role, UserRole::SuperAdmin) {
+        // super_admin flag has all permissions
+        if self.super_admin {
             return true;
         }
 
-        scheme.has_permission(self.role.as_str(), namespace, permission_type, path)
-    }
+        // Check if any role is super_admin
+        if roles.iter().any(|role| role.super_admin) {
+            return true;
+        }
 
-    /// Check if the user has a specific permission (simple string-based check for backward compatibility)
-    ///
-    /// This is a simplified check that returns true for `SuperAdmin` and Admin roles.
-    /// For proper permission checking, use `has_permission` with a permission scheme.
-    ///
-    /// # Arguments
-    /// * `_permission` - Permission string (not used, kept for backward compatibility)
-    ///
-    /// # Returns
-    /// `true` if the user is `SuperAdmin` or Admin, `false` otherwise
-    #[must_use]
-    #[deprecated(note = "Use has_permission with PermissionScheme instead")]
-    pub const fn has_permission_simple(&self, _permission: &str) -> bool {
-        matches!(self.role, UserRole::SuperAdmin)
+        // Check if any role has the permission
+        roles
+            .iter()
+            .any(|role| role.has_permission(namespace, permission_type, path))
     }
 
     /// Record a successful login
@@ -533,24 +462,9 @@ impl ApiKey {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::permissions::permission_scheme::{
-        AccessLevel, Permission, PermissionScheme, PermissionType, ResourceNamespace,
+    use crate::permissions::role::{
+        AccessLevel, Permission, PermissionType, ResourceNamespace, Role,
     };
-
-    #[test]
-    fn test_user_role_as_str() {
-        assert_eq!(UserRole::SuperAdmin.as_str(), "SuperAdmin");
-        assert_eq!(UserRole::Custom("MyRole".to_string()).as_str(), "MyRole");
-    }
-
-    #[test]
-    fn test_user_role_from_str() {
-        assert_eq!(UserRole::from_str("SuperAdmin"), Ok(UserRole::SuperAdmin));
-        assert_eq!(
-            UserRole::from_str("MyRole"),
-            Ok(UserRole::Custom("MyRole".to_string()))
-        );
-    }
 
     #[test]
     fn test_admin_user_has_permission_superadmin() {
@@ -559,9 +473,8 @@ mod tests {
             "admin@test.com".to_string(),
             "hash".to_string(),
             "Admin User".to_string(),
-            UserRole::SuperAdmin,
             UserStatus::Active,
-            false, // super_admin flag
+            true, // super_admin flag
             "Admin".to_string(),
             "User".to_string(),
             true,
@@ -569,17 +482,17 @@ mod tests {
         )
         .build();
 
-        let scheme = PermissionScheme::new("Test".to_string());
+        let roles = vec![];
 
-        // SuperAdmin should have all permissions
+        // Super admin should have all permissions
         assert!(user.has_permission(
-            &scheme,
+            &roles,
             &ResourceNamespace::Workflows,
             &PermissionType::Read,
             None
         ));
         assert!(user.has_permission(
-            &scheme,
+            &roles,
             &ResourceNamespace::Entities,
             &PermissionType::Delete,
             Some("/any/path")
@@ -587,13 +500,12 @@ mod tests {
     }
 
     #[test]
-    fn test_admin_user_has_permission_custom_role() {
+    fn test_admin_user_has_permission_with_role() {
         let user = AdminUserBuilder::new(
             "user".to_string(),
             "user@test.com".to_string(),
             "hash".to_string(),
             "Test User".to_string(),
-            UserRole::Custom("MyRole".to_string()),
             UserStatus::Active,
             false, // super_admin flag
             "Test".to_string(),
@@ -603,23 +515,21 @@ mod tests {
         )
         .build();
 
-        let mut scheme = PermissionScheme::new("Test".to_string());
-        scheme
-            .add_permission(
-                "MyRole",
-                Permission {
-                    resource_type: ResourceNamespace::Workflows,
-                    permission_type: PermissionType::Read,
-                    access_level: AccessLevel::All,
-                    resource_uuids: vec![],
-                    constraints: None,
-                },
-            )
-            .unwrap();
+        let mut role = Role::new("MyRole".to_string());
+        role.add_permission(Permission {
+            resource_type: ResourceNamespace::Workflows,
+            permission_type: PermissionType::Read,
+            access_level: AccessLevel::All,
+            resource_uuids: vec![],
+            constraints: None,
+        })
+        .unwrap();
+
+        let roles = vec![role];
 
         // User has read permission
         assert!(user.has_permission(
-            &scheme,
+            &roles,
             &ResourceNamespace::Workflows,
             &PermissionType::Read,
             None
@@ -627,10 +537,45 @@ mod tests {
 
         // User does not have create permission
         assert!(!user.has_permission(
-            &scheme,
+            &roles,
             &ResourceNamespace::Workflows,
             &PermissionType::Create,
             None
+        ));
+    }
+
+    #[test]
+    fn test_admin_user_has_permission_with_super_admin_role() {
+        let user = AdminUserBuilder::new(
+            "user".to_string(),
+            "user@test.com".to_string(),
+            "hash".to_string(),
+            "Test User".to_string(),
+            UserStatus::Active,
+            false, // super_admin flag
+            "Test".to_string(),
+            "User".to_string(),
+            true,
+            false,
+        )
+        .build();
+
+        let mut role = Role::new("SuperAdminRole".to_string());
+        role.super_admin = true;
+        let roles = vec![role];
+
+        // User with super_admin role should have all permissions
+        assert!(user.has_permission(
+            &roles,
+            &ResourceNamespace::Workflows,
+            &PermissionType::Read,
+            None
+        ));
+        assert!(user.has_permission(
+            &roles,
+            &ResourceNamespace::Entities,
+            &PermissionType::Delete,
+            Some("/any/path")
         ));
     }
 }

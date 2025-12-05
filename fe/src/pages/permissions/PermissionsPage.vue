@@ -9,7 +9,9 @@
                                 icon="mdi-shield-account"
                                 class="mr-3"
                             />
-                            <span class="text-h4">{{ t('permissions.page.title') }}</span>
+                            <span class="text-h4">{{
+                                t('permissions.page.title') || 'Users & Roles'
+                            }}</span>
                         </div>
                     </v-card-title>
 
@@ -18,128 +20,35 @@
                             v-model="activeTab"
                             bg-color="primary"
                         >
-                            <v-tab value="schemes">
-                                <v-icon
-                                    icon="mdi-shield-account"
-                                    class="mr-2"
-                                />
-                                {{ t('permissions.page.tabs.schemes') }}
-                            </v-tab>
                             <v-tab value="users">
                                 <v-icon
                                     icon="mdi-account-group"
                                     class="mr-2"
                                 />
-                                {{ t('permissions.page.tabs.users') }}
+                                {{ t('permissions.page.tabs.users') || 'Users' }}
+                            </v-tab>
+                            <v-tab value="roles">
+                                <v-icon
+                                    icon="mdi-shield-account"
+                                    class="mr-2"
+                                />
+                                {{ t('permissions.page.tabs.roles') || 'Roles' }}
                             </v-tab>
                         </v-tabs>
 
                         <v-window v-model="activeTab">
-                            <v-window-item value="schemes">
-                                <div class="d-flex align-center justify-space-between pa-4">
-                                    <h3 class="text-h6">
-                                        {{ t('permissions.page.schemes.title') }}
-                                    </h3>
-                                    <v-btn
-                                        color="primary"
-                                        prepend-icon="mdi-plus"
-                                        @click="openCreateDialog"
-                                    >
-                                        {{ t('permissions.page.schemes.new_button') }}
-                                    </v-btn>
-                                </div>
-
-                                <PaginatedDataTable
-                                    :items="schemes"
-                                    :headers="tableHeaders"
-                                    :loading="loading"
-                                    :error="error"
-                                    :loading-text="t('permissions.page.schemes.loading')"
-                                    :current-page="currentPage"
-                                    :items-per-page="itemsPerPage"
-                                    :total-items="totalItems"
-                                    :total-pages="totalPages"
-                                    :has-next="paginationMeta?.has_next"
-                                    :has-previous="paginationMeta?.has_previous"
-                                    @update:page="handlePageChange"
-                                    @update:items-per-page="handleItemsPerPageChange"
-                                >
-                                    <!-- Name Column -->
-                                    <template #item.name="{ item }">
-                                        <div class="d-flex align-center">
-                                            <v-icon
-                                                v-if="item.is_system"
-                                                icon="mdi-shield-lock"
-                                                color="warning"
-                                                class="mr-2"
-                                            />
-                                            <span>{{ item.name }}</span>
-                                        </div>
-                                    </template>
-
-                                    <!-- Description Column -->
-                                    <template #item.description="{ item }">
-                                        <span class="text-body-2 text-medium-emphasis">
-                                            {{
-                                                item.description ||
-                                                t('permissions.page.schemes.no_description')
-                                            }}
-                                        </span>
-                                    </template>
-
-                                    <!-- Roles Count Column -->
-                                    <template #item.roles_count="{ item }">
-                                        <v-chip
-                                            size="small"
-                                            color="primary"
-                                            variant="outlined"
-                                        >
-                                            {{ Object.keys(item.role_permissions || {}).length }}
-                                            {{ t('permissions.page.schemes.roles') }}
-                                        </v-chip>
-                                    </template>
-
-                                    <!-- Created At Column -->
-                                    <template #item.created_at="{ item }">
-                                        <span class="text-body-2">
-                                            {{ formatDate(item.created_at) }}
-                                        </span>
-                                    </template>
-
-                                    <!-- Actions Column -->
-                                    <template #item.actions="{ item }">
-                                        <div class="d-flex gap-2">
-                                            <v-btn
-                                                icon="mdi-pencil"
-                                                variant="text"
-                                                size="small"
-                                                color="info"
-                                                :disabled="item.is_system"
-                                                @click="openEditDialog(item)"
-                                            />
-                                            <v-btn
-                                                icon="mdi-delete"
-                                                variant="text"
-                                                size="small"
-                                                color="error"
-                                                :disabled="item.is_system"
-                                                @click="confirmDelete(item)"
-                                            />
-                                        </div>
-                                    </template>
-                                </PaginatedDataTable>
-                            </v-window-item>
-
                             <v-window-item value="users">
                                 <div class="d-flex align-center justify-space-between pa-4">
-                                    <h3 class="text-h6">{{ t('permissions.page.users.title') }}</h3>
+                                    <h3 class="text-h6">
+                                        {{ t('permissions.page.users.title') || 'Users' }}
+                                    </h3>
                                     <v-btn
                                         v-if="canCreateUser"
                                         color="primary"
                                         prepend-icon="mdi-plus"
                                         @click="openCreateUserDialog"
                                     >
-                                        {{ t('permissions.page.users.new_button') }}
+                                        {{ t('permissions.page.users.new_button') || 'New User' }}
                                     </v-btn>
                                 </div>
                                 <PaginatedDataTable
@@ -175,15 +84,28 @@
                                         <span>{{ item.email }}</span>
                                     </template>
 
-                                    <!-- Role Column -->
-                                    <template #item.role="{ item }">
-                                        <v-chip
-                                            size="small"
-                                            :color="item.super_admin ? 'warning' : 'primary'"
-                                            variant="outlined"
-                                        >
-                                            {{ item.role }}
-                                        </v-chip>
+                                    <!-- Roles Column -->
+                                    <template #item.roles="{ item }">
+                                        <div class="d-flex gap-1 flex-wrap">
+                                            <v-chip
+                                                v-for="roleName in getRoleNamesForUser(item)"
+                                                :key="roleName"
+                                                size="small"
+                                                color="primary"
+                                                variant="outlined"
+                                            >
+                                                {{ roleName }}
+                                            </v-chip>
+                                            <span
+                                                v-if="getRoleNamesForUser(item).length === 0"
+                                                class="text-body-2 text-medium-emphasis"
+                                            >
+                                                {{
+                                                    t('permissions.page.users.no_roles') ||
+                                                    'No roles'
+                                                }}
+                                            </span>
+                                        </div>
                                     </template>
 
                                     <!-- Status Column -->
@@ -221,21 +143,122 @@
                                     </template>
                                 </PaginatedDataTable>
                             </v-window-item>
+
+                            <v-window-item value="roles">
+                                <div class="d-flex align-center justify-space-between pa-4">
+                                    <h3 class="text-h6">
+                                        {{ t('permissions.page.roles.title') || 'Roles' }}
+                                    </h3>
+                                    <v-btn
+                                        color="primary"
+                                        prepend-icon="mdi-plus"
+                                        @click="openCreateDialog"
+                                    >
+                                        {{ t('permissions.page.roles.new_button') || 'New Role' }}
+                                    </v-btn>
+                                </div>
+
+                                <PaginatedDataTable
+                                    :items="roles"
+                                    :headers="tableHeaders"
+                                    :loading="loading"
+                                    :error="error"
+                                    :loading-text="
+                                        t('permissions.page.roles.loading') || 'Loading roles...'
+                                    "
+                                    :current-page="currentPage"
+                                    :items-per-page="itemsPerPage"
+                                    :total-items="totalItems"
+                                    :total-pages="totalPages"
+                                    :has-next="paginationMeta?.has_next"
+                                    :has-previous="paginationMeta?.has_previous"
+                                    @update:page="handlePageChange"
+                                    @update:items-per-page="handleItemsPerPageChange"
+                                >
+                                    <!-- Name Column -->
+                                    <template #item.name="{ item }">
+                                        <div class="d-flex align-center">
+                                            <v-icon
+                                                v-if="item.is_system"
+                                                icon="mdi-shield-lock"
+                                                color="warning"
+                                                class="mr-2"
+                                            />
+                                            <span>{{ item.name }}</span>
+                                        </div>
+                                    </template>
+
+                                    <!-- Description Column -->
+                                    <template #item.description="{ item }">
+                                        <span class="text-body-2 text-medium-emphasis">
+                                            {{
+                                                item.description ||
+                                                t('permissions.page.roles.no_description') ||
+                                                'No description'
+                                            }}
+                                        </span>
+                                    </template>
+
+                                    <!-- Permissions Count Column -->
+                                    <template #item.permissions_count="{ item }">
+                                        <v-chip
+                                            size="small"
+                                            color="primary"
+                                            variant="outlined"
+                                        >
+                                            {{ (item.permissions || []).length }}
+                                            {{
+                                                t('permissions.page.roles.permissions') ||
+                                                'permissions'
+                                            }}
+                                        </v-chip>
+                                    </template>
+
+                                    <!-- Created At Column -->
+                                    <template #item.created_at="{ item }">
+                                        <span class="text-body-2">
+                                            {{ formatDate(item.created_at) }}
+                                        </span>
+                                    </template>
+
+                                    <!-- Actions Column -->
+                                    <template #item.actions="{ item }">
+                                        <div class="d-flex gap-2">
+                                            <v-btn
+                                                icon="mdi-pencil"
+                                                variant="text"
+                                                size="small"
+                                                color="info"
+                                                :disabled="item.is_system"
+                                                @click="openEditDialog(item)"
+                                            />
+                                            <v-btn
+                                                icon="mdi-delete"
+                                                variant="text"
+                                                size="small"
+                                                color="error"
+                                                :disabled="item.is_system"
+                                                @click="confirmDelete(item)"
+                                            />
+                                        </div>
+                                    </template>
+                                </PaginatedDataTable>
+                            </v-window-item>
                         </v-window>
                     </v-card-text>
                 </v-card>
             </v-col>
         </v-row>
 
-        <!-- Create/Edit Permission Scheme Dialog -->
-        <PermissionSchemeDialog
+        <!-- Create/Edit Role Dialog -->
+        <RoleDialog
             v-model="showDialog"
-            :editing-scheme="editingScheme"
+            :editing-role="editingRole"
             :loading="saving"
             :resource-types="resourceTypes"
             :permission-types="permissionTypes"
             :access-levels="accessLevels"
-            @save="handleSaveScheme"
+            @save="handleSaveRole"
         />
 
         <!-- Create/Edit User Dialog -->
@@ -246,15 +269,18 @@
             @save="handleSaveUser"
         />
 
-        <!-- Delete Permission Scheme Confirmation Dialog -->
+        <!-- Delete Role Confirmation Dialog -->
         <DialogManager
             v-model="showDeleteDialog"
             :config="deleteDialogConfig"
             :loading="deleting"
-            @confirm="deleteScheme"
+            @confirm="deleteRole"
         >
             <p>
-                {{ t('permissions.page.schemes.delete.message', { name: schemeToDelete?.name }) }}
+                {{
+                    t('permissions.page.roles.delete.message', { name: roleToDelete?.name }) ||
+                    `Are you sure you want to delete the role "${roleToDelete?.name}"?`
+                }}
             </p>
         </DialogManager>
 
@@ -279,11 +305,11 @@
 
 <script setup lang="ts">
     import { ref, computed, onMounted, watch } from 'vue'
-    import { usePermissionSchemes } from '@/composables/usePermissionSchemes'
+    import { useRoles } from '@/composables/useRoles'
     import type {
-        PermissionScheme,
-        CreatePermissionSchemeRequest,
-        UpdatePermissionSchemeRequest,
+        Role,
+        CreateRoleRequest,
+        UpdateRoleRequest,
         ResourceNamespace,
         PermissionType,
         AccessLevel,
@@ -291,7 +317,7 @@
     import DialogManager from '@/components/common/DialogManager.vue'
     import SnackbarManager from '@/components/common/SnackbarManager.vue'
     import PaginatedDataTable from '@/components/tables/PaginatedDataTable.vue'
-    import PermissionSchemeDialog from '@/components/permissions/PermissionSchemeDialog.vue'
+    import RoleDialog from '@/components/permissions/RoleDialog.vue'
     import UserDialog from '@/components/users/UserDialog.vue'
     import { useSnackbar } from '@/composables/useSnackbar'
     import { useUsers } from '@/composables/useUsers'
@@ -306,12 +332,12 @@
     const {
         loading,
         error,
-        schemes,
-        loadSchemes: loadSchemesFromComposable,
-        createScheme,
-        updateScheme,
-        deleteScheme: deleteSchemeFromComposable,
-    } = usePermissionSchemes()
+        roles,
+        loadRoles: loadRolesFromComposable,
+        createRole,
+        updateRole,
+        deleteRole: deleteRoleFromComposable,
+    } = useRoles()
 
     const {
         loading: usersLoading,
@@ -330,17 +356,17 @@
         if (authStore.isSuperAdmin) {
             return true
         }
-        return authStore.hasPermission('PermissionSchemes', 'Admin')
+        return authStore.hasPermission('Roles', 'Admin')
     })
 
     // Reactive state
-    const activeTab = ref('schemes')
+    const activeTab = ref('users')
     const showDialog = ref(false)
     const showDeleteDialog = ref(false)
     const saving = ref(false)
     const deleting = ref(false)
-    const editingScheme = ref<PermissionScheme | null>(null)
-    const schemeToDelete = ref<PermissionScheme | null>(null)
+    const editingRole = ref<Role | null>(null)
+    const roleToDelete = ref<Role | null>(null)
 
     // User management state
     const showUserDialog = ref(false)
@@ -390,7 +416,7 @@
         'Entities',
         'EntityDefinitions',
         'ApiKeys',
-        'PermissionSchemes',
+        'Roles',
         'System',
     ]
     const permissionTypes: PermissionType[] = [
@@ -407,32 +433,60 @@
 
     // Table headers
     const tableHeaders = computed(() => [
-        { title: t('permissions.page.schemes.table.name'), key: 'name', sortable: true },
+        { title: t('permissions.page.roles.table.name') || 'Name', key: 'name', sortable: true },
         {
-            title: t('permissions.page.schemes.table.description'),
+            title: t('permissions.page.roles.table.description') || 'Description',
             key: 'description',
             sortable: false,
         },
-        { title: t('permissions.page.schemes.table.roles'), key: 'roles_count', sortable: false },
-        { title: t('permissions.page.schemes.table.created'), key: 'created_at', sortable: true },
-        { title: t('permissions.page.schemes.table.actions'), key: 'actions', sortable: false },
+        {
+            title: t('permissions.page.roles.table.permissions') || 'Permissions',
+            key: 'permissions_count',
+            sortable: false,
+        },
+        {
+            title: t('permissions.page.roles.table.created') || 'Created',
+            key: 'created_at',
+            sortable: true,
+        },
+        {
+            title: t('permissions.page.roles.table.actions') || 'Actions',
+            key: 'actions',
+            sortable: false,
+        },
     ])
 
     // User table headers
     const userTableHeaders = computed(() => [
-        { title: t('permissions.page.users.table.username'), key: 'username', sortable: true },
-        { title: t('permissions.page.users.table.email'), key: 'email', sortable: true },
-        { title: t('permissions.page.users.table.role'), key: 'role', sortable: true },
-        { title: t('permissions.page.users.table.status'), key: 'is_active', sortable: true },
-        { title: t('permissions.page.users.table.created'), key: 'created_at', sortable: true },
-        { title: t('permissions.page.users.table.actions'), key: 'actions', sortable: false },
+        {
+            title: t('permissions.page.users.table.username') || 'Username',
+            key: 'username',
+            sortable: true,
+        },
+        { title: t('permissions.page.users.table.email') || 'Email', key: 'email', sortable: true },
+        { title: t('permissions.page.users.table.roles') || 'Roles', key: 'roles', sortable: true },
+        {
+            title: t('permissions.page.users.table.status') || 'Status',
+            key: 'is_active',
+            sortable: true,
+        },
+        {
+            title: t('permissions.page.users.table.created') || 'Created',
+            key: 'created_at',
+            sortable: true,
+        },
+        {
+            title: t('permissions.page.users.table.actions') || 'Actions',
+            key: 'actions',
+            sortable: false,
+        },
     ])
 
     // Dialog config
     const deleteDialogConfig = computed(() => ({
-        title: t('permissions.page.schemes.delete.title'),
-        confirmText: t('permissions.page.schemes.delete.confirm'),
-        cancelText: t('permissions.page.schemes.delete.cancel'),
+        title: t('permissions.page.roles.delete.title') || 'Delete Role',
+        confirmText: t('permissions.page.roles.delete.confirm') || 'Delete',
+        cancelText: t('permissions.page.roles.delete.cancel') || 'Cancel',
         maxWidth: '400px',
     }))
 
@@ -443,16 +497,26 @@
         maxWidth: '400px',
     }))
 
+    // Helper function to get role names for a user
+    const getRoleNamesForUser = (user: UserResponse): string[] => {
+        if (!user.role_uuids || user.role_uuids.length === 0) {
+            return []
+        }
+        return roles.value
+            .filter(role => user.role_uuids?.includes(role.uuid))
+            .map(role => role.name)
+    }
+
     // Methods
-    const loadSchemes = async (page = 1, perPage = 20) => {
+    const loadRoles = async (page = 1, perPage = 20) => {
         try {
-            const response = await loadSchemesFromComposable(page, perPage)
+            const response = await loadRolesFromComposable(page, perPage)
             if (response.meta?.pagination) {
                 totalItems.value = response.meta.pagination.total
                 totalPages.value = response.meta.pagination.total_pages
                 paginationMeta.value = response.meta.pagination
             } else {
-                totalItems.value = schemes.value.length
+                totalItems.value = roles.value.length
                 totalPages.value = 1
                 paginationMeta.value = null
             }
@@ -464,7 +528,7 @@
     const handlePageChange = async (page: number) => {
         currentPage.value = page
         setPage(page)
-        await loadSchemes(currentPage.value, itemsPerPage.value)
+        await loadRoles(currentPage.value, itemsPerPage.value)
     }
 
     const handleItemsPerPageChange = async (newItemsPerPage: number) => {
@@ -472,34 +536,32 @@
         setItemsPerPage(newItemsPerPage)
         currentPage.value = 1
         setPage(1)
-        await loadSchemes(1, newItemsPerPage)
+        await loadRoles(1, newItemsPerPage)
     }
 
     const openCreateDialog = () => {
-        editingScheme.value = null
+        editingRole.value = null
         showDialog.value = true
     }
 
-    const openEditDialog = (scheme: PermissionScheme) => {
-        editingScheme.value = scheme
+    const openEditDialog = (role: Role) => {
+        editingRole.value = role
         showDialog.value = true
     }
 
-    const handleSaveScheme = async (
-        data: CreatePermissionSchemeRequest | UpdatePermissionSchemeRequest
-    ) => {
+    const handleSaveRole = async (data: CreateRoleRequest | UpdateRoleRequest) => {
         saving.value = true
 
         try {
-            if (editingScheme.value) {
-                await updateScheme(editingScheme.value.uuid, data as UpdatePermissionSchemeRequest)
+            if (editingRole.value) {
+                await updateRole(editingRole.value.uuid, data as UpdateRoleRequest)
             } else {
-                await createScheme(data as CreatePermissionSchemeRequest)
+                await createRole(data as CreateRoleRequest)
             }
 
             showDialog.value = false
-            editingScheme.value = null
-            await loadSchemes(currentPage.value, itemsPerPage.value)
+            editingRole.value = null
+            await loadRoles(currentPage.value, itemsPerPage.value)
         } catch {
             // Error already handled in composable
         } finally {
@@ -507,23 +569,23 @@
         }
     }
 
-    const confirmDelete = (scheme: PermissionScheme) => {
-        schemeToDelete.value = scheme
+    const confirmDelete = (role: Role) => {
+        roleToDelete.value = role
         showDeleteDialog.value = true
     }
 
-    const deleteScheme = async () => {
-        if (!schemeToDelete.value) {
+    const deleteRole = async () => {
+        if (!roleToDelete.value) {
             return
         }
 
         deleting.value = true
 
         try {
-            await deleteSchemeFromComposable(schemeToDelete.value.uuid)
+            await deleteRoleFromComposable(roleToDelete.value.uuid)
             showDeleteDialog.value = false
-            schemeToDelete.value = null
-            await loadSchemes(currentPage.value, itemsPerPage.value)
+            roleToDelete.value = null
+            await loadRoles(currentPage.value, itemsPerPage.value)
         } catch {
             // Error already handled in composable
         } finally {
@@ -621,16 +683,19 @@
         }
     }
 
-    // Watch for tab changes to load users when switching to users tab
+    // Watch for tab changes to load data when switching tabs
     watch(activeTab, newTab => {
         if (newTab === 'users' && users.value.length === 0) {
             void loadUsers(usersCurrentPage.value, usersItemsPerPage.value)
+        } else if (newTab === 'roles' && roles.value.length === 0) {
+            void loadRoles(currentPage.value, itemsPerPage.value)
         }
     })
 
     // Lifecycle
     onMounted(() => {
-        void loadSchemes(currentPage.value, itemsPerPage.value)
+        void loadUsers(usersCurrentPage.value, usersItemsPerPage.value)
+        void loadRoles(currentPage.value, itemsPerPage.value)
     })
 </script>
 
