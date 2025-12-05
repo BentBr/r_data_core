@@ -319,6 +319,10 @@ impl PermissionScheme {
                     if let Some(requested_path) = path {
                         return Self::check_path_constraint(p.constraints.as_ref(), requested_path);
                     }
+                    // If no path provided but permission has path constraint, deny access
+                    if p.constraints.is_some() {
+                        return false;
+                    }
                 }
 
                 true
@@ -374,11 +378,11 @@ impl PermissionScheme {
             }
         }
 
-        // Wildcard match: /projects/* matches /projects/sub
+        // Wildcard match: /projects/* matches /projects/sub but NOT /projects itself
         if let Some(base) = allowed_path.strip_suffix("/*") {
             if requested_path.starts_with(base)
-                && (requested_path.len() == base.len()
-                    || requested_path.as_bytes()[base.len()] == b'/')
+                && requested_path.len() > base.len()
+                && requested_path.as_bytes()[base.len()] == b'/'
             {
                 return true;
             }
