@@ -447,9 +447,8 @@ async fn test_create_entity_definition_from_json_examples() {
     for (i, json_str) in examples.iter().enumerate() {
         // Parse JSON to EntityDefinition
         let name = &example_names[i];
-        let mut definition: EntityDefinition = serde_json::from_str(json_str).unwrap_or_else(|_| {
-            panic!("Failed to parse {name} JSON example")
-        });
+        let mut definition: EntityDefinition = serde_json::from_str(json_str)
+            .unwrap_or_else(|_| panic!("Failed to parse {name} JSON example"));
 
         // Set creator ID and other required fields
         definition.created_by = creator_id;

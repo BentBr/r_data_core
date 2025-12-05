@@ -84,5 +84,5 @@ fn test_entity_lookup_result_enum() {
     // Test that the enum variants exist
     let found = EntityLookupResult::NotFound;
     let _ = found; // Suppress unused variable warning
-    // In real tests, we'd create a DynamicEntity for Found variant
+                   // In real tests, we'd create a DynamicEntity for Found variant
 }

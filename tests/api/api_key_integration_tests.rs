@@ -395,14 +395,18 @@ mod tests {
                         web::get().to(move |req: HttpRequest| async move {
                             // Simulate protected endpoint
                             req.extensions().get::<ApiKeyInfo>().map_or_else(
-                                || HttpResponse::Unauthorized().json(serde_json::json!({
-                                    "status": "error",
-                                    "message": "Unauthorized"
-                                })),
-                                |_auth| HttpResponse::Ok().json(serde_json::json!({
-                                    "status": "success",
-                                    "message": "Access granted"
-                                })),
+                                || {
+                                    HttpResponse::Unauthorized().json(serde_json::json!({
+                                        "status": "error",
+                                        "message": "Unauthorized"
+                                    }))
+                                },
+                                |_auth| {
+                                    HttpResponse::Ok().json(serde_json::json!({
+                                        "status": "success",
+                                        "message": "Access granted"
+                                    }))
+                                },
                             )
                         }),
                     )),
@@ -498,14 +502,18 @@ mod tests {
                         web::get().to(move |req: HttpRequest| async move {
                             // Simulate protected endpoint
                             req.extensions().get::<ApiKeyInfo>().map_or_else(
-                                || HttpResponse::Unauthorized().json(serde_json::json!({
-                                    "status": "error",
-                                    "message": "Unauthorized"
-                                })),
-                                |_auth| HttpResponse::Ok().json(serde_json::json!({
-                                    "status": "success",
-                                    "message": "Access granted"
-                                })),
+                                || {
+                                    HttpResponse::Unauthorized().json(serde_json::json!({
+                                        "status": "error",
+                                        "message": "Unauthorized"
+                                    }))
+                                },
+                                |_auth| {
+                                    HttpResponse::Ok().json(serde_json::json!({
+                                        "status": "success",
+                                        "message": "Access granted"
+                                    }))
+                                },
                             )
                         }),
                     )),
@@ -608,14 +616,18 @@ mod tests {
                         web::get().to(move |req: HttpRequest| async move {
                             // Simulate protected endpoint
                             req.extensions().get::<ApiKeyInfo>().map_or_else(
-                                || HttpResponse::Unauthorized().json(serde_json::json!({
-                                    "status": "error",
-                                    "message": "Unauthorized"
-                                })),
-                                |_auth| HttpResponse::Ok().json(serde_json::json!({
-                                    "status": "success",
-                                    "message": "Access granted"
-                                })),
+                                || {
+                                    HttpResponse::Unauthorized().json(serde_json::json!({
+                                        "status": "error",
+                                        "message": "Unauthorized"
+                                    }))
+                                },
+                                |_auth| {
+                                    HttpResponse::Ok().json(serde_json::json!({
+                                        "status": "success",
+                                        "message": "Access granted"
+                                    }))
+                                },
                             )
                         }),
                     )),
@@ -772,14 +784,18 @@ mod tests {
                         web::get().to(move |req: HttpRequest| async move {
                             // Simulate protected endpoint
                             req.extensions().get::<ApiKeyInfo>().map_or_else(
-                                || HttpResponse::Unauthorized().json(serde_json::json!({
-                                    "status": "error",
-                                    "message": "Unauthorized"
-                                })),
-                                |_auth| HttpResponse::Ok().json(serde_json::json!({
-                                    "status": "success",
-                                    "message": "Access granted"
-                                })),
+                                || {
+                                    HttpResponse::Unauthorized().json(serde_json::json!({
+                                        "status": "error",
+                                        "message": "Unauthorized"
+                                    }))
+                                },
+                                |_auth| {
+                                    HttpResponse::Ok().json(serde_json::json!({
+                                        "status": "success",
+                                        "message": "Access granted"
+                                    }))
+                                },
                             )
                         }),
                     )),

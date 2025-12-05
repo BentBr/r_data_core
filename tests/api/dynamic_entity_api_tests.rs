@@ -310,9 +310,7 @@ mod dynamic_entity_api_tests {
         if !status.is_success() {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
-            panic!(
-                "API call failed with status: {status}. Response body: {body_str}"
-            );
+            panic!("API call failed with status: {status}. Response body: {body_str}");
         }
 
         // Parse response body
@@ -373,9 +371,7 @@ mod dynamic_entity_api_tests {
         if !status.is_success() {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
-            panic!(
-                "API call failed with status: {status}. Response body: {body_str}"
-            );
+            panic!("API call failed with status: {status}. Response body: {body_str}");
         }
 
         // Parse response body
@@ -403,9 +399,7 @@ mod dynamic_entity_api_tests {
         if !status.is_success() {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
-            panic!(
-                "API call failed with status: {status}. Response body: {body_str}"
-            );
+            panic!("API call failed with status: {status}. Response body: {body_str}");
         }
 
         // Parse response body
@@ -450,9 +444,7 @@ mod dynamic_entity_api_tests {
         if !status.is_success() {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
-            panic!(
-                "API call failed with status: {status}. Response body: {body_str}"
-            );
+            panic!("API call failed with status: {status}. Response body: {body_str}");
         }
 
         // Parse response body
@@ -485,9 +477,7 @@ mod dynamic_entity_api_tests {
         if !status.is_success() {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
-            panic!(
-                "API call failed with status: {status}. Response body: {body_str}"
-            );
+            panic!("API call failed with status: {status}. Response body: {body_str}");
         }
 
         // Parse response body
@@ -543,9 +533,7 @@ mod dynamic_entity_api_tests {
         if !status.is_success() {
             let body = test::read_body(resp).await;
             let body_str = String::from_utf8_lossy(&body);
-            panic!(
-                "API call failed with status: {status}. Response body: {body_str}"
-            );
+            panic!("API call failed with status: {status}. Response body: {body_str}");
         }
 
         // Parse response body

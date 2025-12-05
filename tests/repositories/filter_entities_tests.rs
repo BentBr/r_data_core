@@ -154,10 +154,7 @@ mod filter_entities_tests {
 
             let mut field_data = HashMap::new();
             field_data.insert("uuid".to_string(), json!(uuid.to_string()));
-            field_data.insert(
-                "entity_key".to_string(),
-                json!(format!("test-entity-{i}")),
-            );
+            field_data.insert("entity_key".to_string(), json!(format!("test-entity-{i}")));
             field_data.insert("name".to_string(), json!(format!("Test Entity {i}")));
             field_data.insert("email".to_string(), json!(format!("test{i}@example.com")));
             field_data.insert("age".to_string(), json!(20 + i));

@@ -249,9 +249,7 @@ async fn test_create_entity_definition_duplicate_entity_type() -> Result<()> {
                 "Error should mention duplicate entity type: {e}"
             );
         }
-        _ => panic!(
-            "Expected validation error for duplicate entity type, got: {result:?}"
-        ),
+        _ => panic!("Expected validation error for duplicate entity type, got: {result:?}"),
     }
 
     Ok(())

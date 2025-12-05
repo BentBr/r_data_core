@@ -354,7 +354,10 @@ async fn test_super_admin_has_all_permissions() {
 
     let body: serde_json::Value = test::read_body_json(resp).await;
     assert_eq!(body["data"]["is_super_admin"], true);
-    assert!(!body["data"]["allowed_routes"].as_array().unwrap().is_empty());
+    assert!(!body["data"]["allowed_routes"]
+        .as_array()
+        .unwrap()
+        .is_empty());
 }
 
 #[serial]

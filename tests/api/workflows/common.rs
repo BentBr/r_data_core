@@ -181,7 +181,7 @@ pub async fn create_provider_workflow(
 }
 
 /// Generate a valid entity type name (starts with letter, contains only letters, numbers, underscores)
-#[must_use] 
+#[must_use]
 pub fn generate_entity_type(prefix: &str) -> String {
     format!(
         "{}_{}",

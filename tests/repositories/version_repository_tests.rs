@@ -52,5 +52,11 @@ async fn test_version_repository_list_and_get() {
         .unwrap()
         .unwrap();
     assert_eq!(v1.version_number, 1);
-    assert_eq!(v1.data.get("v").and_then(serde_json::Value::as_i64).unwrap(), 1);
+    assert_eq!(
+        v1.data
+            .get("v")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap(),
+        1
+    );
 }
