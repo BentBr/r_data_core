@@ -7,31 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  backend:
+  backend-prepare:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: rdata_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:8-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -71,11 +48,31 @@ jobs:
             cargo install sqlx-cli --no-default-features --features postgres --locked
           fi
 
-      - name: Run migrations
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/rdata_test
-        run: |
-          sqlx migrate run
+  backend-clippy:
+    needs: backend-prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust (nightly)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: clippy,rustfmt
+
+      - name: Cache cargo registry + build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: .
+
+      - name: Cache cargo bin directory
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-bin-
 
       - name: Clippy (strict)
         env:
@@ -84,19 +81,148 @@ jobs:
           cargo clippy --workspace --all-targets --all-features -- \
             -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery
 
+  backend-format:
+    needs: backend-prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust (nightly)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: clippy,rustfmt
+
+      - name: Cache cargo registry + build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: .
+
       - name: Format check
         env:
           SQLX_OFFLINE: true
         run: cargo fmt --check --all
 
+  backend-audit:
+    needs: backend-prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust (nightly)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: clippy,rustfmt
+
+      - name: Cache cargo registry + build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: .
+
+      - name: Cache cargo bin directory
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-bin-
+
+      - name: Install cargo-audit
+        run: |
+          if ! command -v cargo-audit &> /dev/null; then
+            cargo install cargo-audit --locked
+          fi
+
       - name: Security audit
         run: cargo audit
+
+  backend-tests:
+    needs: backend-prepare
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rdata_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust (nightly)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: clippy,rustfmt
+
+      - name: Cache cargo registry + build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: .
+
+      - name: Cache cargo bin directory
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-bin-
+
+      - name: Install sqlx-cli
+        run: |
+          if ! command -v sqlx &> /dev/null; then
+            cargo install sqlx-cli --no-default-features --features postgres --locked
+          fi
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/rdata_test
+        run: |
+          sqlx migrate run
 
       - name: Run tests
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/rdata_test
           REDIS_URL: redis://localhost:6379
         run: RUST_LOG=warning cargo test --workspace -- --test-threads=1
+
+  backend-build:
+    needs: backend-prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust (nightly)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: clippy,rustfmt
+
+      - name: Cache cargo registry + build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: .
 
       - name: Build verification
         env:
