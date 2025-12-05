@@ -325,8 +325,10 @@ mod tests {
         assert_eq!(claims.name, user.username);
         assert_eq!(claims.email, user.email);
         assert_eq!(claims.role, "SuperAdmin");
-        assert!(!claims.is_super_admin); // User has SuperAdmin role but not super_admin flag
-                                         // SuperAdmin should have all permissions
+        // User has SuperAdmin role, so is_super_admin should be true
+        // (UserRole::SuperAdmin makes is_super_admin true regardless of super_admin flag)
+        assert!(claims.is_super_admin);
+        // SuperAdmin should have all permissions
         assert!(!claims.permissions.is_empty());
     }
 
