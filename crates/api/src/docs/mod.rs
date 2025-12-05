@@ -3,8 +3,8 @@
 use actix_web::web;
 use actix_web::HttpResponse;
 use serde_json;
-use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::openapi::schema::Type;
+use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::openapi::{ObjectBuilder, OpenApi as UtoipaOpenApi, SchemaFormat};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::{Config, SwaggerUi};
@@ -270,9 +270,7 @@ impl Modify for JsonValueSchemaAddon {
         if let Some(components) = openapi.components.as_mut() {
             // Create a simpler schema for JSON Value
             let schema = utoipa::openapi::Schema::Object(
-                ObjectBuilder::new()
-                    .description(Some("JSON value"))
-                    .build(),
+                ObjectBuilder::new().description(Some("JSON value")).build(),
             );
 
             components

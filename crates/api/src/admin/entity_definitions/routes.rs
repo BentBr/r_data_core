@@ -11,6 +11,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::admin::entity_definitions::conversions::entity_definition_to_schema_model;
+use crate::admin::entity_definitions::models::EntityDefinitionSchema;
 use crate::admin::entity_definitions::models::PaginationQuery;
 use crate::admin::entity_definitions::models::{
     ApplySchemaRequest, EntityDefinitionVersionMeta, EntityDefinitionVersionPayload, PathUuid,
@@ -20,7 +21,6 @@ use crate::response::ApiResponse;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_persistence::EntityDefinitionVersioningRepository;
 use utoipa::ToSchema;
-use crate::admin::entity_definitions::models::EntityDefinitionSchema;
 
 /// List entity definitions with pagination
 #[utoipa::path(

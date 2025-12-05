@@ -8,8 +8,8 @@ use sqlx::{
 };
 use std::collections::HashMap;
 use time::OffsetDateTime;
-use uuid::Uuid;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 use crate::error::{Error, Result};
 use crate::versioning::VersionedData;
