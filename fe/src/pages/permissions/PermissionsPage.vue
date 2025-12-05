@@ -307,7 +307,8 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, computed, onMounted, watch } from 'vue'
+    import { ref, computed, onMounted, watch, nextTick } from 'vue'
+    import { useRoute } from 'vue-router'
     import { useRoles } from '@/composables/useRoles'
     import type {
         Role,
@@ -330,6 +331,7 @@
     import type { UserResponse, CreateUserRequest, UpdateUserRequest } from '@/types/schemas'
 
     const { t } = useTranslations()
+    const route = useRoute()
 
     const { currentSnackbar } = useSnackbar()
     const {
@@ -696,9 +698,23 @@
     })
 
     // Lifecycle
-    onMounted(() => {
+    onMounted(async () => {
         void loadUsers(usersCurrentPage.value, usersItemsPerPage.value)
         void loadRoles(currentPage.value, itemsPerPage.value)
+
+        // Check for query params
+        // Switch to users tab if requested
+        if (route.query.tab === 'users') {
+            activeTab.value = 'users'
+        }
+
+        // Open create user dialog if requested
+        if (route.query.create === 'true' && route.query.tab === 'users') {
+            await nextTick()
+            openCreateUserDialog()
+            // Remove query params from URL
+            window.history.replaceState({}, '', '/permissions')
+        }
     })
 </script>
 

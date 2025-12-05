@@ -89,6 +89,9 @@ pub enum ResourceNamespace {
 
     /// System settings namespace
     System,
+
+    /// Dashboard statistics namespace
+    DashboardStats,
 }
 
 impl ResourceNamespace {
@@ -105,6 +108,7 @@ impl ResourceNamespace {
             Self::ApiKeys => "api_keys",
             Self::Roles => "roles",
             Self::System => "system",
+            Self::DashboardStats => "dashboard_stats",
         }
     }
 
@@ -124,6 +128,7 @@ impl ResourceNamespace {
             "api_keys" => Some(Self::ApiKeys),
             "roles" => Some(Self::Roles),
             "system" => Some(Self::System),
+            "dashboard_stats" => Some(Self::DashboardStats),
             _ => None,
         }
     }

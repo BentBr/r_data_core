@@ -8,9 +8,13 @@ use r_data_core_core::error::Result;
 use r_data_core_core::permissions::role::{
     AccessLevel, Permission, PermissionType, ResourceNamespace, Role,
 };
-use r_data_core_persistence::WorkflowRepository;
-use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait, ApiKeyRepository};
-use r_data_core_services::{AdminUserService, ApiKeyService, EntityDefinitionService, RoleService};
+use r_data_core_persistence::{
+    AdminUserRepository, AdminUserRepositoryTrait, ApiKeyRepository, DashboardStatsRepository,
+    WorkflowRepository,
+};
+use r_data_core_services::{
+    AdminUserService, ApiKeyService, DashboardStatsService, EntityDefinitionService, RoleService,
+};
 use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_test_support::{
     clear_test_db, create_test_admin_user, setup_test_db, test_queue_client_async,
@@ -58,6 +62,9 @@ async fn setup_test_app() -> Result<(
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
     let workflow_service = WorkflowService::new(Arc::new(wf_adapter));
 
+    let dashboard_stats_repository = DashboardStatsRepository::new(pool.clone());
+    let dashboard_stats_service = DashboardStatsService::new(Arc::new(dashboard_stats_repository));
+
     let api_state = ApiState {
         db_pool: pool.clone(),
         api_config: r_data_core_core::config::ApiConfig {
@@ -76,6 +83,7 @@ async fn setup_test_app() -> Result<(
         entity_definition_service,
         dynamic_entity_service: None,
         workflow_service,
+        dashboard_stats_service,
         queue: test_queue_client_async().await,
     };
 

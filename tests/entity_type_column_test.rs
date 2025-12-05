@@ -275,6 +275,11 @@ async fn create_test_app_with_api_key_repo(
     let workflow_repository = Arc::new(WorkflowRepository::new(pool.clone()));
     let workflow_service = WorkflowService::new(workflow_repository);
 
+    let dashboard_stats_repository =
+        r_data_core_persistence::DashboardStatsRepository::new(pool.clone());
+    let dashboard_stats_service =
+        r_data_core_services::DashboardStatsService::new(Arc::new(dashboard_stats_repository));
+
     // Create app state
     let api_state = ApiState {
         db_pool: pool.clone(),
@@ -298,6 +303,7 @@ async fn create_test_app_with_api_key_repo(
         entity_definition_service,
         dynamic_entity_service: Some(dynamic_entity_service),
         workflow_service,
+        dashboard_stats_service,
         queue: r_data_core_test_support::test_queue_client_async().await,
     };
 

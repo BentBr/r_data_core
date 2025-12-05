@@ -144,6 +144,9 @@ mod tests {
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
             workflow_service: make_workflow_service(&pool),
+            dashboard_stats_service: r_data_core_services::DashboardStatsService::new(Arc::new(
+                r_data_core_persistence::DashboardStatsRepository::new(pool.clone()),
+            )),
             queue: test_queue_client_async().await,
         };
 
@@ -254,6 +257,9 @@ mod tests {
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
             workflow_service: make_workflow_service(&pool),
+            dashboard_stats_service: r_data_core_services::DashboardStatsService::new(Arc::new(
+                r_data_core_persistence::DashboardStatsRepository::new(pool.clone()),
+            )),
             queue: test_queue_client_async().await,
         };
 
@@ -381,6 +387,9 @@ mod tests {
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
             workflow_service: make_workflow_service(&pool),
+            dashboard_stats_service: r_data_core_services::DashboardStatsService::new(Arc::new(
+                r_data_core_persistence::DashboardStatsRepository::new(pool.clone()),
+            )),
             queue: test_queue_client_async().await,
         };
 
@@ -488,6 +497,9 @@ mod tests {
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
             workflow_service: make_workflow_service(&pool),
+            dashboard_stats_service: r_data_core_services::DashboardStatsService::new(Arc::new(
+                r_data_core_persistence::DashboardStatsRepository::new(pool.clone()),
+            )),
             queue: test_queue_client_async().await,
         };
 
@@ -602,6 +614,9 @@ mod tests {
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
             workflow_service: make_workflow_service(&pool),
+            dashboard_stats_service: r_data_core_services::DashboardStatsService::new(Arc::new(
+                r_data_core_persistence::DashboardStatsRepository::new(pool.clone()),
+            )),
             queue: test_queue_client_async().await,
         };
 
@@ -770,6 +785,9 @@ mod tests {
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
             workflow_service: make_workflow_service(&pool),
+            dashboard_stats_service: r_data_core_services::DashboardStatsService::new(Arc::new(
+                r_data_core_persistence::DashboardStatsRepository::new(pool.clone()),
+            )),
             queue: test_queue_client_async().await,
         };
 
@@ -938,6 +956,9 @@ mod tests {
             entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
             dynamic_entity_service: None,
             workflow_service: make_workflow_service(&pool),
+            dashboard_stats_service: r_data_core_services::DashboardStatsService::new(Arc::new(
+                r_data_core_persistence::DashboardStatsRepository::new(pool.clone()),
+            )),
             queue: test_queue_client_async().await,
         };
 

@@ -17,13 +17,14 @@ use r_data_core_core::config::load_app_config;
 use r_data_core_persistence::DynamicEntityRepository;
 use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core_persistence::WorkflowRepository;
-use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
+use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository, DashboardStatsRepository};
 use r_data_core_services::adapters::ApiKeyRepositoryAdapter;
 use r_data_core_services::adapters::{
     AdminUserRepositoryAdapter, DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter,
 };
 use r_data_core_services::{
-    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, RoleService,
+    AdminUserService, ApiKeyService, DashboardStatsService, DynamicEntityService,
+    EntityDefinitionService, RoleService,
 };
 use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
@@ -142,6 +143,10 @@ async fn main() -> std::io::Result<()> {
         cache_manager.clone(),
         Some(config.cache.entity_definition_ttl), // Use entity_definition_ttl for role caching
     );
+
+    // Initialize dashboard stats service
+    let dashboard_stats_repository = DashboardStatsRepository::new(pool.clone());
+    let dashboard_stats_service = DashboardStatsService::new(Arc::new(dashboard_stats_repository));
     // Initialize mandatory queue client (fail fast if invalid)
     let queue_client = Arc::new(
         ApalisRedisQueue::from_parts(
@@ -163,6 +168,7 @@ async fn main() -> std::io::Result<()> {
         dynamic_entity_service: Some(Arc::new(dynamic_entity_service)),
         workflow_service,
         role_service,
+        dashboard_stats_service,
         queue: queue_client.clone(),
     };
 

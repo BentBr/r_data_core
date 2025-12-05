@@ -66,6 +66,11 @@ async fn setup_app_with_entities() -> anyhow::Result<(
         dynamic_entity_service.clone(),
     );
 
+    let dashboard_stats_repository =
+        r_data_core_persistence::DashboardStatsRepository::new(pool.clone());
+    let dashboard_stats_service =
+        r_data_core_services::DashboardStatsService::new(Arc::new(dashboard_stats_repository));
+
     let jwt_secret = "test_secret".to_string();
     let api_state = ApiState {
         db_pool: pool.clone(),
@@ -89,6 +94,7 @@ async fn setup_app_with_entities() -> anyhow::Result<(
         entity_definition_service,
         dynamic_entity_service: Some(dynamic_entity_service),
         workflow_service,
+        dashboard_stats_service,
         queue: test_queue_client_async().await,
     };
 

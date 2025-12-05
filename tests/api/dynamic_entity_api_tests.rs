@@ -246,6 +246,11 @@ mod dynamic_entity_api_tests {
             Arc::new(entity_definition_service.clone()),
         ));
 
+        let dashboard_stats_repository =
+            r_data_core_persistence::DashboardStatsRepository::new(db_pool.clone());
+        let dashboard_stats_service =
+            r_data_core_services::DashboardStatsService::new(Arc::new(dashboard_stats_repository));
+
         // Create app state
         let api_state = ApiState {
             db_pool: db_pool.clone(),
@@ -269,6 +274,7 @@ mod dynamic_entity_api_tests {
             entity_definition_service,
             dynamic_entity_service: Some(dynamic_entity_service),
             workflow_service: r_data_core_test_support::make_workflow_service(&db_pool),
+            dashboard_stats_service,
             queue: r_data_core_test_support::test_queue_client_async().await,
         };
 

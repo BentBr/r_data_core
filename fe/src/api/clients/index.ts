@@ -10,6 +10,7 @@ import { UsersClient } from './users'
 import { EntitiesClient } from './entities'
 import { SystemClient } from './system'
 import { RolesClient } from './roles'
+import { MetaClient } from './meta'
 
 /**
  * Main typed HTTP client that combines all domain-specific clients
@@ -25,6 +26,7 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     private entitiesClient = new EntitiesClient()
     private systemClient = new SystemClient()
     private rolesClient = new RolesClient()
+    private metaClient = new MetaClient()
 
     // Entity Definitions
     async getEntityDefinitions(
@@ -239,6 +241,11 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     async assignRolesToApiKey(...args: Parameters<RolesClient['assignRolesToApiKey']>) {
         return this.rolesClient.assignRolesToApiKey(...args)
     }
+
+    // Meta
+    async getDashboardStats(...args: Parameters<MetaClient['getDashboardStats']>) {
+        return this.metaClient.getDashboardStats(...args)
+    }
 }
 
 // Export individual clients for direct use if needed
@@ -250,3 +257,4 @@ export { AuthClient } from './auth'
 export { UsersClient } from './users'
 export { EntitiesClient } from './entities'
 export { RolesClient } from './roles'
+export { MetaClient } from './meta'

@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH latest_runs AS (\n            SELECT DISTINCT ON (workflow_uuid)\n                workflow_uuid,\n                status::text as status\n            FROM workflow_runs\n            ORDER BY workflow_uuid, queued_at DESC\n        )\n        SELECT \n            w.uuid,\n            w.name,\n            lr.status as latest_status\n        FROM workflows w\n        LEFT JOIN latest_runs lr ON w.uuid = lr.workflow_uuid\n        ORDER BY w.name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "latest_status",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "2067f092c298a2fdfdc2adbf307134081570acba0f7aa0efa53c8d1e806c5a56"
+}

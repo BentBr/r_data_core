@@ -4,6 +4,7 @@ pub mod api_keys;
 pub mod auth;
 pub mod dsl;
 pub mod entity_definitions;
+pub mod meta;
 pub mod permissions;
 pub mod system;
 pub mod users;
@@ -25,6 +26,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
             .service(web::scope("/api-keys").configure(api_keys::register_routes))
             .service(web::scope("/roles").configure(permissions::register_routes))
             .service(web::scope("/users").configure(users::register_routes))
-            .service(web::scope("/system").configure(system::register_routes)),
+            .service(web::scope("/system").configure(system::register_routes))
+            .service(web::scope("/meta").configure(meta::register_routes)),
     );
 }

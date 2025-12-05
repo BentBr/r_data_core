@@ -94,7 +94,8 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, computed, onMounted, onUnmounted } from 'vue'
+    import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+    import { useRoute } from 'vue-router'
     import { useAuthStore } from '@/stores/auth'
     import { typedHttpClient, ValidationError } from '@/api/typed-client'
     import { useTranslations } from '@/composables/useTranslations'
@@ -114,6 +115,7 @@
     import SnackbarManager from '@/components/common/SnackbarManager.vue'
 
     const authStore = useAuthStore()
+    const route = useRoute()
     const { t } = useTranslations()
     const { currentSnackbar, showSuccess, showError } = useSnackbar()
 
@@ -422,6 +424,14 @@
         isComponentMounted.value = true
         await loadEntityDefinitions()
         // Don't call loadEntities() here - EntityTree will load via refreshKey watcher with immediate:true
+
+        // Check for query params to open dialogs
+        if (route.query.create === 'true') {
+            await nextTick()
+            showCreateDialog.value = true
+            // Remove query param from URL
+            window.history.replaceState({}, '', '/entities')
+        }
     })
 
     onUnmounted(() => {

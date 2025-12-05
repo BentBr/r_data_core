@@ -32,6 +32,27 @@
     "system": "System",
     "logout": "Logout"
   },
+  "dashboard": {
+    "title": "R Data Core Admin Dashboard",
+    "tiles": {
+      "entity_definitions": "Entity Definitions",
+      "entities": "Entities",
+      "workflows": "Workflows",
+      "online_users": "Online Users",
+      "top_entity_type": "Top: {type} ({count})",
+      "latest_workflow_states": "Latest: {states}"
+    },
+    "quick_actions": {
+      "title": "Quick Actions",
+      "new_entity_definition": "New Entity Definition",
+      "create_entity": "Create Entity",
+      "generate_api_key": "Generate API Key",
+      "create_workflow": "Create Workflow",
+      "users": "Users"
+    },
+    "loading": "Loading dashboard statistics...",
+    "error": "Failed to load dashboard statistics"
+  },
   "workflows": {
     "table": {
       "name": "Name",
