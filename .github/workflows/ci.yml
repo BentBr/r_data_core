@@ -343,3 +343,18 @@ jobs:
       - name: Security audit
         working-directory: fe
         run: npm audit --audit-level=moderate
+
+  ci-gate:
+    needs:
+      - backend-clippy
+      - backend-format
+      - backend-audit
+      - backend-tests
+      - backend-build
+      - frontend-lint
+      - frontend-tests
+      - frontend-audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: All checks passed
+        run: echo "All CI checks have passed successfully"
