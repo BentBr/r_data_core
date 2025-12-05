@@ -288,11 +288,29 @@ impl PermissionScheme {
     ///
     /// # Examples
     /// ```
+    /// use r_data_core_core::permissions::permission_scheme::{PermissionScheme, ResourceNamespace, PermissionType, Permission, AccessLevel};
+    ///
+    /// let mut scheme = PermissionScheme::new("Test".to_string());
+    /// scheme.add_permission("MyRole", Permission {
+    ///     resource_type: ResourceNamespace::Workflows,
+    ///     permission_type: PermissionType::Read,
+    ///     access_level: AccessLevel::All,
+    ///     resource_uuids: vec![],
+    ///     constraints: None,
+    /// }).unwrap();
+    ///
     /// // Check if role can read workflows
-    /// scheme.has_permission("MyRole", &ResourceNamespace::Workflows, &PermissionType::Read, None);
+    /// assert!(scheme.has_permission("MyRole", &ResourceNamespace::Workflows, &PermissionType::Read, None));
     ///
     /// // Check if role can read entities under /projects path
-    /// scheme.has_permission("MyRole", &ResourceNamespace::Entities, &PermissionType::Read, Some("/projects"));
+    /// scheme.add_permission("MyRole", Permission {
+    ///     resource_type: ResourceNamespace::Entities,
+    ///     permission_type: PermissionType::Read,
+    ///     access_level: AccessLevel::All,
+    ///     resource_uuids: vec![],
+    ///     constraints: Some(serde_json::json!({"path": "/projects"})),
+    /// }).unwrap();
+    /// assert!(scheme.has_permission("MyRole", &ResourceNamespace::Entities, &PermissionType::Read, Some("/projects")));
     /// ```
     #[must_use]
     pub fn has_permission(
