@@ -8,6 +8,15 @@ use serial_test::serial;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+/// Truncate a timestamp to microsecond precision (`PostgreSQL` TIMESTAMPTZ precision).
+/// This ensures consistent comparisons when timestamps have been through the database.
+fn truncate_to_microseconds(dt: OffsetDateTime) -> OffsetDateTime {
+    // Get the microsecond component and truncate nanoseconds
+    let microsecond = dt.microsecond();
+    dt.replace_nanosecond(microsecond * 1_000)
+        .expect("microsecond * 1000 should always be valid nanoseconds")
+}
+
 #[tokio::test]
 #[serial]
 async fn test_create_refresh_token() -> Result<()> {
@@ -39,7 +48,12 @@ async fn test_create_refresh_token() -> Result<()> {
     // Verify
     assert_eq!(created_token.user_id, user_uuid);
     assert_eq!(created_token.token_hash, token_hash);
-    assert_eq!(created_token.expires_at, expires_at);
+    // Truncate both timestamps to microsecond precision for comparison
+    // (PostgreSQL TIMESTAMPTZ has microsecond precision)
+    assert_eq!(
+        truncate_to_microseconds(created_token.expires_at),
+        truncate_to_microseconds(expires_at)
+    );
     assert_eq!(created_token.device_info, device_info);
     assert!(!created_token.is_revoked);
     assert!(created_token.last_used_at.is_none());
