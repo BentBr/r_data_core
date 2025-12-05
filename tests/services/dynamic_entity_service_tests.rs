@@ -1,35 +1,19 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
 use mockall::predicate;
-use serde_json::{json, Value};
+use serde_json::json;
 use uuid::Uuid;
 
-use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
-use r_data_core::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
-use r_data_core::entity::entity_definition::definition::EntityDefinition;
-use r_data_core::entity::field::ui::UiSettings;
-use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
-use r_data_core::error::{Error, Result};
-
-// Create a struct to represent DynamicFields since we can't use the trait directly
-#[derive(Default)]
-struct TestDynamicFields(HashMap<String, Value>);
-
-impl TestDynamicFields {
-    fn new() -> Self {
-        Self(HashMap::new())
-    }
-
-    fn insert(&mut self, key: String, value: Value) {
-        self.0.insert(key, value);
-    }
-
-    fn contains_key(&self, key: &str) -> bool {
-        self.0.contains_key(key)
-    }
-}
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::error::Result;
+use r_data_core_core::field::ui::UiSettings;
+use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::{DynamicEntityRepositoryTrait, FilterEntitiesParams};
 
 // Create a mock for DynamicEntityRepositoryTrait
 mockall::mock! {
@@ -45,12 +29,7 @@ mockall::mock! {
         async fn filter_entities(
             &self,
             entity_type: &str,
-            limit: i64,
-            offset: i64,
-            filters: Option<HashMap<String, Value>>,
-            search: Option<(String, Vec<String>)>,
-            sort: Option<(String, String)>,
-            fields: Option<Vec<String>>
+            params: &FilterEntitiesParams,
         ) -> Result<Vec<DynamicEntity>>;
         async fn count_entities(&self, entity_type: &str) -> Result<i64>;
     }
@@ -64,27 +43,29 @@ struct MockEntityDefinitionService {
 }
 
 impl MockEntityDefinitionService {
-    fn new(entity_type_exists: bool, entity_type_published: bool) -> Self {
+    const fn new(entity_type_exists: bool, entity_type_published: bool) -> Self {
         Self {
             entity_type_exists,
             entity_type_published,
         }
     }
 
+    #[allow(clippy::unused_async)]
     async fn get_entity_definition_by_entity_type(
         &self,
         entity_type: &str,
     ) -> Result<EntityDefinition> {
         if !self.entity_type_exists {
-            return Err(Error::NotFound(format!(
-                "Class definition for entity type '{}' not found",
-                entity_type
+            return Err(r_data_core_core::error::Error::NotFound(format!(
+                "Class definition for entity type '{entity_type}' not found"
             )));
         }
 
-        let mut definition = EntityDefinition::default();
-        definition.entity_type = entity_type.to_string();
-        definition.published = self.entity_type_published;
+        let mut definition = EntityDefinition {
+            entity_type: entity_type.to_string(),
+            published: self.entity_type_published,
+            ..Default::default()
+        };
 
         // Add fields to the definition
         let required_field = FieldDefinition {
@@ -168,14 +149,19 @@ impl MockEntityDefinitionService {
         Ok(definition)
     }
 
+    #[allow(clippy::unused_async)]
     async fn _get_entity_definition(&self, _uuid: &Uuid) -> Result<EntityDefinition> {
         if !self.entity_type_exists {
-            return Err(Error::NotFound("Class definition not found".to_string()));
+            return Err(r_data_core_core::error::Error::NotFound(
+                "Class definition not found".to_string(),
+            ));
         }
 
-        let mut definition = EntityDefinition::default();
-        definition.entity_type = "test_entity".to_string();
-        definition.published = self.entity_type_published;
+        let definition = EntityDefinition {
+            entity_type: "test_entity".to_string(),
+            published: self.entity_type_published,
+            ..Default::default()
+        };
 
         Ok(definition)
     }
@@ -236,9 +222,8 @@ impl TestService {
             .await?;
 
         if !entity_def.published {
-            return Err(Error::NotFound(format!(
-                "Entity type '{}' not found or not published",
-                entity_type
+            return Err(r_data_core_core::error::Error::NotFound(format!(
+                "Entity type '{entity_type}' not found or not published"
             )));
         }
 
@@ -255,7 +240,7 @@ impl TestService {
             .await?;
 
         if !entity_def.published {
-            return Err(Error::NotFound(format!(
+            return Err(r_data_core_core::error::Error::NotFound(format!(
                 "Entity type '{}' not found or not published",
                 entity.entity_type
             )));
@@ -264,7 +249,7 @@ impl TestService {
         // Very basic validation - check for required fields
         for field in &entity_def.fields {
             if field.required && !entity.field_data.contains_key(&field.name) {
-                return Err(Error::Validation(format!(
+                return Err(r_data_core_core::error::Error::Validation(format!(
                     "Required field '{}' is missing",
                     field.name
                 )));
@@ -275,6 +260,10 @@ impl TestService {
     }
 }
 
+/// Test successful listing of entities
+///
+/// # Errors
+/// Returns an error if the test setup fails
 #[tokio::test]
 async fn test_list_entities_success() -> Result<()> {
     // Arrange
@@ -317,7 +306,7 @@ async fn test_list_entities_nonexistent_type() {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::NotFound(_)) => (),
+        Err(r_data_core_core::error::Error::NotFound(_)) => (),
         _ => panic!("Expected NotFound error"),
     }
 }
@@ -333,11 +322,15 @@ async fn test_list_entities_unpublished_type() {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::NotFound(_)) => (),
+        Err(r_data_core_core::error::Error::NotFound(_)) => (),
         _ => panic!("Expected NotFound error"),
     }
 }
 
+/// Test successful creation of entity
+///
+/// # Errors
+/// Returns an error if the test setup fails
 #[tokio::test]
 async fn test_create_entity_success() -> Result<()> {
     // Arrange
@@ -374,7 +367,7 @@ async fn test_create_entity_missing_required_field() {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::Validation(_)) => (),
+        Err(r_data_core_core::error::Error::Validation(_)) => (),
         _ => panic!("Expected Validation error"),
     }
 }

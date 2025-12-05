@@ -1,7 +1,11 @@
-use crate::common::utils;
-use r_data_core::{
-    entity::admin_user::{AdminUserRepository, AdminUserRepositoryTrait},
-    error::Result,
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
+use r_data_core_core::error::Result;
+use r_data_core_persistence::{
+    AdminUserRepository, AdminUserRepositoryTrait, CreateAdminUserParams,
+};
+use r_data_core_test_support::{
+    clear_test_db, create_test_admin_user, random_string, setup_test_db,
 };
 use serial_test::serial;
 use std::sync::Arc;
@@ -10,33 +14,32 @@ use std::sync::Arc;
 #[serial]
 async fn test_create_and_find_admin_user() -> Result<()> {
     // Setup
-    let pool = utils::setup_test_db().await;
-    utils::clear_test_db(&pool).await?;
+    let pool = setup_test_db().await;
+    clear_test_db(&pool).await?;
 
     let repo = AdminUserRepository::new(Arc::new(pool.clone()));
 
-    let username = utils::random_string("test_user");
-    let email = format!("{}@example.com", username);
+    let username = random_string("test_user");
+    let email = format!("{username}@example.com");
     let first_name = "Test";
     let last_name = "User";
     let password = "password123";
 
     // Create a user to serve as the creator
-    let creator_uuid = utils::create_test_admin_user(&pool).await?;
+    let creator_uuid = create_test_admin_user(&pool).await?;
 
     // Create the test user
-    let user_uuid = repo
-        .create_admin_user(
-            &username,
-            &email,
-            password,
-            first_name,
-            last_name,
-            None,
-            true, // is_active
-            creator_uuid,
-        )
-        .await?;
+    let params = CreateAdminUserParams {
+        username: &username,
+        email: &email,
+        password,
+        first_name,
+        last_name,
+        role: None,
+        is_active: true,
+        creator_uuid,
+    };
+    let user_uuid = repo.create_admin_user(&params).await?;
 
     // Find the user by username
     let found_user = repo.find_by_username_or_email(&username).await?;
@@ -55,8 +58,7 @@ async fn test_create_and_find_admin_user() -> Result<()> {
     let found_by_uuid = repo.find_by_uuid(&user_uuid).await?;
     assert!(
         found_by_uuid.is_some(),
-        "User with UUID {} should exist",
-        user_uuid
+        "User with UUID {user_uuid} should exist"
     );
 
     // Update last login

@@ -1,3 +1,5 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 // Tests for exposing data via our API endpoint (CSV/JSON)
 // Use Case 4: Expose data via our API endpoint (CSV/JSON), ignore cron
 // Use Case 4.a: Expose CSV via API with all auth methods (header)
@@ -53,11 +55,11 @@ async fn test_expose_data_via_api_endpoint_csv_ignores_cron() -> anyhow::Result<
     });
 
     // Even if we try to set a cron, provider workflows should ignore it
-    let repo = r_data_core::workflow::data::repository::WorkflowRepository::new(pool.clone());
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("provider-csv-{}", Uuid::now_v7()),
+    let repo = r_data_core_persistence::WorkflowRepository::new(pool.clone());
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
+        name: format!("provider-csv-{}", Uuid::now_v7().simple()),
         description: Some("Provider workflow CSV".to_string()),
-        kind: r_data_core::workflow::data::WorkflowKind::Provider,
+        kind: r_data_core_workflow::data::WorkflowKind::Provider.to_string(),
         enabled: true,
         schedule_cron: Some("*/5 * * * *".to_string()), // This should be ignored
         config,
@@ -77,8 +79,8 @@ async fn test_expose_data_via_api_endpoint_csv_ignores_cron() -> anyhow::Result<
 
     // Test GET endpoint (should work regardless of cron)
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
     let resp = test::call_service(&app, req).await;
@@ -132,11 +134,11 @@ async fn test_expose_data_via_api_endpoint_json_ignores_cron() -> anyhow::Result
         ]
     });
 
-    let repo = r_data_core::workflow::data::repository::WorkflowRepository::new(pool.clone());
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("provider-json-{}", Uuid::now_v7()),
+    let repo = r_data_core_persistence::WorkflowRepository::new(pool.clone());
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
+        name: format!("provider-json-{}", Uuid::now_v7().simple()),
         description: Some("Provider workflow JSON".to_string()),
-        kind: r_data_core::workflow::data::WorkflowKind::Provider,
+        kind: r_data_core_workflow::data::WorkflowKind::Provider.to_string(),
         enabled: true,
         schedule_cron: Some("*/10 * * * *".to_string()), // This should be ignored
         config,
@@ -154,8 +156,8 @@ async fn test_expose_data_via_api_endpoint_json_ignores_cron() -> anyhow::Result
     assert!(workflow_exists, "Provider workflow should be created");
 
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
     let resp = test::call_service(&app, req).await;

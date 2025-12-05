@@ -149,7 +149,7 @@
 <script setup lang="ts">
     import { ref, computed } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
-    import { env } from '@/env-check'
+    import { buildApiUrl } from '@/env-check'
     import type { FromDef, AuthConfig } from './dsl-utils'
     import { defaultCsvOptions } from './dsl-utils'
     import CsvOptionsEditor from './CsvOptionsEditor.vue'
@@ -229,9 +229,8 @@
     })
 
     function getFullEndpointUri(): string {
-        const baseUrl = env.apiBaseUrl ?? window.location.origin
         const uuid = props.workflowUuid ?? '{workflow-uuid}'
-        return `${baseUrl}/api/v1/workflows/${uuid}`
+        return buildApiUrl(`/api/v1/workflows/${uuid}`)
     }
 
     const fromTypes = [

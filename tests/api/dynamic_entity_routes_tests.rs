@@ -1,24 +1,30 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use actix_web::{test, web, App};
-use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
-use r_data_core::api::{configure_app, ApiState};
-use r_data_core::cache::CacheManager;
-use r_data_core::config::CacheConfig;
-use r_data_core::entity::admin_user::repository::{AdminUserRepository, ApiKeyRepository};
-use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
-use r_data_core::error::Result;
-use r_data_core::services::{
+use r_data_core_api::{configure_app, ApiState};
+use r_data_core_core::cache::CacheManager;
+use r_data_core_core::config::CacheConfig;
+use r_data_core_core::error::Result;
+use r_data_core_persistence::DynamicEntityRepository;
+use r_data_core_persistence::EntityDefinitionRepository;
+use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
+use r_data_core_services::{
     AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
 };
 use std::sync::Arc;
 
 // Import common test utilities
-#[path = "../common/mod.rs"]
-mod common;
+use r_data_core_test_support::{
+    clear_test_db, create_test_api_key, create_test_entity, create_test_entity_definition,
+    make_workflow_service, setup_test_db, test_queue_client_async,
+};
 
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod dynamic_entity_api_tests {
     use super::*;
 
+    #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn setup_test_app() -> Result<
         impl actix_web::dev::Service<
             actix_http::Request,
@@ -27,8 +33,8 @@ mod dynamic_entity_api_tests {
         >,
     > {
         // Setup database
-        let pool = common::utils::setup_test_db().await;
-        common::utils::clear_test_db(&pool).await?;
+        let pool = setup_test_db().await;
+        clear_test_db(&pool).await?;
 
         // Create required services
         let cache_config = CacheConfig {
@@ -41,28 +47,27 @@ mod dynamic_entity_api_tests {
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
         // Create user entity definition
-        let _ = common::utils::create_test_entity_definition(&pool, "user").await?;
+        let _ = create_test_entity_definition(&pool, "user").await?;
 
         // Create test users with paths to exercise folder browsing
         for i in 1..=3 {
-            let uuid = common::utils::create_test_entity(
+            let uuid = create_test_entity(
                 &pool,
                 "user",
-                &format!("Root User {}", i),
-                &format!("root{}@example.com", i),
+                &format!("Root User {i}"),
+                &format!("root{i}@example.com"),
             )
             .await?;
             // Update path in entities_registry to root
             sqlx::query("UPDATE entities_registry SET path = '/', entity_key = $2 WHERE uuid = $1")
                 .bind(uuid)
-                .bind(format!("root-{}", i))
+                .bind(format!("root-{i}"))
                 .execute(&pool)
                 .await?;
         }
 
         // Add users under /team and /team/dev
-        let u1 =
-            common::utils::create_test_entity(&pool, "user", "Alice", "alice@example.com").await?;
+        let u1 = create_test_entity(&pool, "user", "Alice", "alice@example.com").await?;
         sqlx::query(
             "UPDATE entities_registry SET path = '/team', entity_key = 'alice' WHERE uuid = $1",
         )
@@ -70,7 +75,7 @@ mod dynamic_entity_api_tests {
         .execute(&pool)
         .await?;
 
-        let u2 = common::utils::create_test_entity(&pool, "user", "Bob", "bob@example.com").await?;
+        let u2 = create_test_entity(&pool, "user", "Bob", "bob@example.com").await?;
         sqlx::query(
             "UPDATE entities_registry SET path = '/team/dev', entity_key = 'bob' WHERE uuid = $1",
         )
@@ -80,7 +85,7 @@ mod dynamic_entity_api_tests {
 
         // Create an API key
         let api_key = "test_api_key_12345";
-        common::utils::create_test_api_key(&pool, api_key.to_string()).await?;
+        create_test_api_key(&pool, api_key.to_string()).await?;
 
         // Create services
         let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.clone())));
@@ -100,22 +105,37 @@ mod dynamic_entity_api_tests {
         ));
 
         // Create app state
-        let app_state = web::Data::new(ApiState {
+        let api_state = ApiState {
             db_pool: pool.clone(),
-            jwt_secret: "test_secret".to_string(),
+            api_config: r_data_core_core::config::ApiConfig {
+                host: "0.0.0.0".to_string(),
+                port: 8888,
+                use_tls: false,
+                jwt_secret: "test_secret".to_string(),
+                jwt_expiration: 3600,
+                enable_docs: true,
+                cors_origins: vec![],
+            },
+            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+                pool.clone(),
+                cache_manager.clone(),
+                Some(0),
+            ),
             cache_manager,
             api_key_service,
             admin_user_service,
             entity_definition_service,
             dynamic_entity_service: Some(dynamic_entity_service),
-            workflow_service: crate::common::utils::make_workflow_service(&pool),
-            queue: crate::common::utils::test_queue_client_async().await,
-        });
+            workflow_service: make_workflow_service(&pool),
+            queue: test_queue_client_async().await,
+        };
+
+        let app_data = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));
 
         // Build test app
         let app = test::init_service(
             App::new()
-                .app_data(app_state.clone())
+                .app_data(app_data.clone())
                 .configure(configure_app),
         )
         .await;
@@ -124,6 +144,7 @@ mod dynamic_entity_api_tests {
     }
 
     #[actix_web::test]
+    #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_query_parameter_deserialization_fix() {
         let app = setup_test_app().await.expect("Failed to setup test app");
 
@@ -172,7 +193,7 @@ mod dynamic_entity_api_tests {
         ];
 
         for (url, description) in test_cases {
-            println!("Testing: {}", description);
+            println!("Testing: {description}");
 
             let req = test::TestRequest::get()
                 .uri(url)
@@ -193,23 +214,21 @@ mod dynamic_entity_api_tests {
                 assert!(
                     !body_str.contains("invalid type: string")
                         && !body_str.contains("expected i64"),
-                    "Query deserialization error occurred for {}: {} - Body: {}",
-                    description,
-                    url,
-                    body_str
+                    "Query deserialization error occurred for {description}: {url} - Body: {body_str}"
                 );
 
                 // If it's a 400, it should be for a different reason (like invalid entity type)
                 if status.as_u16() == 400 {
-                    println!("Got 400 for {}: {}", description, body_str);
+                    println!("Got 400 for {description}: {body_str}");
                 }
             }
 
-            println!("✓ {} - Status: {}", description, status);
+            println!("✓ {description} - Status: {status}");
         }
     }
 
     #[actix_web::test]
+    #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_pagination_query_parameters() {
         let app = setup_test_app().await.expect("Failed to setup test app");
 
@@ -229,18 +248,15 @@ mod dynamic_entity_api_tests {
 
             assert!(
                 !body_str.contains("invalid type: string") && !body_str.contains("expected i64"),
-                "Query deserialization error still occurring: {}",
-                body_str
+                "Query deserialization error still occurring: {body_str}"
             );
         }
 
-        println!(
-            "✓ Pagination query parameters test passed - Status: {}",
-            status
-        );
+        println!("✓ Pagination query parameters test passed - Status: {status}");
     }
 
     #[actix_web::test]
+    #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_various_string_to_integer_conversions() {
         let app = setup_test_app().await.expect("Failed to setup test app");
 
@@ -270,17 +286,16 @@ mod dynamic_entity_api_tests {
                 assert!(
                     !body_str.contains("invalid type: string")
                         && !body_str.contains("expected i64"),
-                    "String to integer conversion failed for {}: {}",
-                    url,
-                    body_str
+                    "String to integer conversion failed for {url}: {body_str}"
                 );
             }
 
-            println!("✓ String to integer conversion test passed for {}", url);
+            println!("✓ String to integer conversion test passed for {url}");
         }
     }
 
     #[actix_web::test]
+    #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_browse_by_path_endpoint() {
         let app = setup_test_app().await.expect("Failed to setup test app");
 
@@ -310,6 +325,7 @@ mod dynamic_entity_api_tests {
     }
 
     #[actix_web::test]
+    #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_unique_key_per_path_conflict() {
         let app = setup_test_app().await.expect("Failed to setup test app");
 
@@ -343,6 +359,7 @@ mod dynamic_entity_api_tests {
     }
 
     #[actix_web::test]
+    #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_include_parameter_with_pagination() {
         let app = setup_test_app().await.expect("Failed to setup test app");
 
@@ -383,14 +400,11 @@ mod dynamic_entity_api_tests {
                 assert!(
                     !body_str.contains("invalid type: string")
                         && !body_str.contains("expected i64"),
-                    "Include parameter test failed for {}: {} - Body: {}",
-                    description,
-                    url,
-                    body_str
+                    "Include parameter test failed for {description}: {url} - Body: {body_str}"
                 );
             }
 
-            println!("✓ Include parameter test passed for {}", description);
+            println!("✓ Include parameter test passed for {description}");
         }
     }
 }

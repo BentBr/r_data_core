@@ -89,43 +89,55 @@
     // Theme is now handled by UserProfileMenu component
 
     // Navigation items with translations
-    const navigationItems = computed(() => [
-        {
-            title: t('navigation.dashboard'),
-            icon: 'mdi-view-dashboard',
-            path: '/dashboard',
-        },
-        {
-            title: t('navigation.entity_definitions'),
-            icon: 'mdi-file-tree',
-            path: '/entity-definitions',
-        },
-        {
-            title: t('navigation.entities'),
-            icon: 'mdi-database',
-            path: '/entities',
-        },
-        {
-            title: t('navigation.api_keys'),
-            icon: 'mdi-key',
-            path: '/api-keys',
-        },
-        {
-            title: t('navigation.workflows'),
-            icon: 'mdi-timeline-clock-outline',
-            path: '/workflows',
-        },
-        {
-            title: t('navigation.permissions'),
-            icon: 'mdi-shield-account',
-            path: '/permissions',
-        },
-        {
-            title: t('navigation.system'),
-            icon: 'mdi-cog',
-            path: '/system',
-        },
-    ])
+    const navigationItems = computed(() => {
+        const items = [
+            {
+                title: t('navigation.dashboard'),
+                icon: 'mdi-view-dashboard',
+                path: '/dashboard',
+            },
+            {
+                title: t('navigation.entity_definitions'),
+                icon: 'mdi-file-tree',
+                path: '/entity-definitions',
+            },
+            {
+                title: t('navigation.entities'),
+                icon: 'mdi-database',
+                path: '/entities',
+            },
+            {
+                title: t('navigation.api_keys'),
+                icon: 'mdi-key',
+                path: '/api-keys',
+            },
+            {
+                title: t('navigation.workflows'),
+                icon: 'mdi-timeline-clock-outline',
+                path: '/workflows',
+            },
+            {
+                title: t('navigation.permissions'),
+                icon: 'mdi-shield-account',
+                path: '/permissions',
+            },
+            {
+                title: t('navigation.system'),
+                icon: 'mdi-cog',
+                path: '/system',
+            },
+        ]
+
+        // Filter items based on user permissions
+        return items.filter(item => {
+            // Dashboard is always accessible if authenticated
+            if (item.path === '/dashboard') {
+                return true
+            }
+            // Check if user can access the route
+            return authStore.canAccessRoute(item.path)
+        })
+    })
 
     // Page title
     const currentPageTitle = computed(() => {

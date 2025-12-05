@@ -1,3 +1,5 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use async_trait::async_trait;
 use mockall::predicate::eq;
 use std::collections::HashMap;
@@ -5,11 +7,11 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use r_data_core::{
-    entity::entity_definition::definition::EntityDefinition,
-    entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait,
-    entity::entity_definition::schema::Schema, entity::field::definition::FieldDefinition,
-    entity::field::types::FieldType, error::Result,
+use r_data_core_core::error::Result;
+use r_data_core_core::{
+    entity_definition::definition::EntityDefinition,
+    entity_definition::repository_trait::EntityDefinitionRepositoryTrait,
+    entity_definition::schema::Schema, field::definition::FieldDefinition, field::types::FieldType,
 };
 
 // Create a trait-based mock for testing
@@ -17,7 +19,7 @@ mockall::mock! {
     pub EntityDefRepository { }
 
     #[async_trait]
-    impl EntityDefinitionRepositoryTrait for EntityDefRepository {
+    impl r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait for EntityDefRepository {
         async fn list(&self, limit: i64, offset: i64) -> Result<Vec<EntityDefinition>>;
         async fn count(&self) -> Result<i64>;
         async fn get_by_uuid(&self, uuid: &Uuid) -> Result<Option<EntityDefinition>>;
@@ -54,8 +56,8 @@ fn create_test_entity_definition() -> EntityDefinition {
                 indexed: true,
                 filterable: true,
                 default_value: None,
-                validation: Default::default(),
-                ui_settings: Default::default(),
+                validation: r_data_core_core::field::FieldValidation::default(),
+                ui_settings: r_data_core_core::field::ui::UiSettings::default(),
                 constraints: HashMap::new(),
             },
             FieldDefinition {
@@ -67,8 +69,8 @@ fn create_test_entity_definition() -> EntityDefinition {
                 indexed: false,
                 filterable: true,
                 default_value: None,
-                validation: Default::default(),
-                ui_settings: Default::default(),
+                validation: r_data_core_core::field::FieldValidation::default(),
+                ui_settings: r_data_core_core::field::ui::UiSettings::default(),
                 constraints: HashMap::new(),
             },
         ],

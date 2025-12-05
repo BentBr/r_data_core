@@ -372,7 +372,7 @@ BEGIN
             column_list := ', e.' || replace(entity_field_list, ', ', ', e.');
         END IF;
 
-        registry_join := 'SELECT r.uuid, r.path, r.entity_key, r.created_at, r.updated_at, ' ||
+        registry_join := 'SELECT r.uuid, r.path, r.entity_key, r.parent_uuid, r.created_at, r.updated_at, ' ||
                           'r.created_by, r.updated_by, r.published, r.version' ||
                           column_list ||
                           ' FROM entities_registry r ' ||

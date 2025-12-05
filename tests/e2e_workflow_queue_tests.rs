@@ -1,48 +1,48 @@
-use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
-use r_data_core::entity::dynamic_entity::DynamicEntityRepositoryTrait;
-use r_data_core::entity::DynamicEntity;
-use r_data_core::services::{
-    adapters::EntityDefinitionRepositoryAdapter, DynamicEntityRepositoryAdapter,
-    EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService,
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::DynamicEntityRepositoryTrait;
+use r_data_core_persistence::EntityDefinitionRepository;
+use r_data_core_persistence::WorkflowRepository;
+use r_data_core_services::adapters::{
+    DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter,
 };
-use r_data_core::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
-use r_data_core::workflow::data::job_queue::JobQueue;
-use r_data_core::workflow::data::jobs::FetchAndStageJob;
-use r_data_core::workflow::data::repository::WorkflowRepository;
-use r_data_core::workflow::data::WorkflowKind;
+use r_data_core_services::EntityDefinitionService;
+use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
+use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
+use r_data_core_workflow::data::job_queue::JobQueue;
+use r_data_core_workflow::data::jobs::FetchAndStageJob;
+use r_data_core_workflow::data::WorkflowKind;
 use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
 
-// Import common test utilities
-#[path = "common/mod.rs"]
-mod common;
+use r_data_core_test_support::{
+    create_test_admin_user, create_test_entity_definition, setup_test_db, unique_entity_type,
+};
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)] // E2E test with comprehensive workflow testing
 async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> {
     // Skip test if REDIS_URL not present
-    let redis_url = match std::env::var("REDIS_URL") {
-        Ok(url) => url,
-        Err(_) => {
-            eprintln!("Skipping e2e test: REDIS_URL not set");
-            return Ok(());
-        }
+    let Ok(redis_url) = std::env::var("REDIS_URL") else {
+        eprintln!("Skipping e2e test: REDIS_URL not set");
+        return Ok(());
     };
 
     // Use unique keys per test to avoid cross-test interference
-    let fetch_key = format!("test:e2e:queue:fetch:{}", Uuid::now_v7());
-    let process_key = format!("test:e2e:queue:process:{}", Uuid::now_v7());
+    let fetch_key = format!("test:e2e:queue:fetch:{}", Uuid::now_v7().simple());
+    let process_key = format!("test:e2e:queue:process:{}", Uuid::now_v7().simple());
     let queue = ApalisRedisQueue::from_parts(&redis_url, &fetch_key, &process_key)
         .await
         .expect("Failed to create Redis queue for e2e test");
 
     // DB setup
-    let pool: PgPool = common::utils::setup_test_db().await;
+    let pool: PgPool = setup_test_db().await;
 
     // Create a dynamic entity definition used by the workflow's "to" step
-    let entity_type = common::utils::unique_entity_type("e2e_entity");
-    let _entity_def_uuid =
-        common::utils::create_test_entity_definition(&pool, &entity_type).await?;
+    let entity_type = unique_entity_type("e2e_entity");
+    let _entity_def_uuid = create_test_entity_definition(&pool, &entity_type).await?;
 
     // Create a workflow that maps CSV to the dynamic entity
     let wf_repo = WorkflowRepository::new(pool.clone());
@@ -50,12 +50,23 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
     let wf_service = WorkflowService::new(Arc::new(wf_adapter));
 
     // Resolve a creator (admin user) or use a generated UUID for created_by
-    let creator_uuid = common::utils::create_test_admin_user(&pool).await?;
+    let creator_uuid = create_test_admin_user(&pool).await?;
 
     let cfg = serde_json::json!({
         "steps": [
             {
-                "from": { "type": "csv", "uri": "inline://provided-by-staging", "mapping": {} },
+                "from": {
+                    "type": "format",
+                    "source": {
+                        "source_type": "uri",
+                        "config": { "uri": "http://example.com/staging-data.csv" }
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": {}
+                    },
+                    "mapping": {}
+                },
                 "transform": { "type": "none" },
                 "to": {
                     "type": "entity",
@@ -71,10 +82,10 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
         ]
     });
 
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("e2e-wf-{}", Uuid::now_v7()),
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
+        name: format!("e2e-wf-{}", Uuid::now_v7().simple()),
         description: Some("e2e workflow".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: cfg,
@@ -114,16 +125,13 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
 
     // Build services for processing (same as worker)
     let wf_adapter = WorkflowRepositoryAdapter::new(WorkflowRepository::new(pool.clone()));
-    let de_repo =
-        r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool.clone());
+    let de_repo = r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
     let de_adapter = DynamicEntityRepositoryAdapter::new(de_repo);
     let ed_repo = EntityDefinitionRepository::new(pool.clone());
     let ed_adapter = EntityDefinitionRepositoryAdapter::new(ed_repo);
     let ed_service = EntityDefinitionService::new_without_cache(Arc::new(ed_adapter));
-    let de_service = r_data_core::services::DynamicEntityService::new(
-        Arc::new(de_adapter),
-        Arc::new(ed_service),
-    );
+    let de_service =
+        r_data_core_services::DynamicEntityService::new(Arc::new(de_adapter), Arc::new(ed_service));
     let service = WorkflowService::new_with_entities(Arc::new(wf_adapter), Arc::new(de_service));
 
     // Process
@@ -134,8 +142,7 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
                     run_uuid,
                     "info",
                     &format!(
-                        "E2E Run processed (processed_items={}, failed_items={})",
-                        processed, failed
+                        "E2E Run processed (processed_items={processed}, failed_items={failed})"
                     ),
                     None,
                 )
@@ -146,16 +153,15 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
         }
         Err(e) => {
             let _ = repo
-                .insert_run_log(run_uuid, "error", &format!("E2E Run failed: {}", e), None)
+                .insert_run_log(run_uuid, "error", &format!("E2E Run failed: {e}"), None)
                 .await;
-            let _ = repo.mark_run_failure(run_uuid, &format!("{}", e)).await;
-            anyhow::bail!("processing failed: {}", e);
+            let _ = repo.mark_run_failure(run_uuid, &format!("{e}")).await;
+            anyhow::bail!("processing failed: {e}");
         }
     }
 
     // Validate output: the dynamic entity was created
-    let de_repo_check =
-        r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool.clone());
+    let de_repo_check = r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
     let entities: Vec<DynamicEntity> = de_repo_check
         .get_all_by_type(&entity_type, 10, 0, None)
         .await?;

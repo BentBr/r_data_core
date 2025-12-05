@@ -1,0 +1,4 @@
+[advisories]
+# We don't use RSA MySQL in this repository and can simply ignore it (no patch available at 12/2025)
+ignore = ["RUSTSEC-2023-0071"]
+

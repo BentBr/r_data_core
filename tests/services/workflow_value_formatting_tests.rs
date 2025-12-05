@@ -1,12 +1,13 @@
-use r_data_core::entity::entity_definition::definition::EntityDefinition;
-use r_data_core::entity::field::definition::FieldDefinition;
-use r_data_core::entity::field::types::FieldType;
-use r_data_core::services::workflow::value_formatting::{
-    build_normalized_field_data, cast_field_value, coerce_published_field, is_protected_field,
-    is_reserved_field, normalize_field_data_by_type, normalize_path, process_reserved_field,
-    PROTECTED_FIELDS, RESERVED_FIELDS,
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
+use r_data_core_core::entity_definition::definition::{EntityDefinition, EntityDefinitionParams};
+use r_data_core_core::field::definition::FieldDefinition;
+use r_data_core_core::field::types::FieldType;
+use r_data_core_services::workflow::value_formatting::{
+    build_normalized_field_data, cast_field_value, normalize_field_data_by_type,
+    process_reserved_field, PROTECTED_FIELDS, RESERVED_FIELDS,
 };
-use serde_json::{json, Value};
+use serde_json::json;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -18,7 +19,7 @@ fn test_normalize_field_data_by_type() {
     field_data.insert("price".to_string(), json!("19.99"));
     field_data.insert("name".to_string(), json!("Test"));
 
-    let mut fields = vec![
+    let fields = vec![
         FieldDefinition::new(
             "is_active".to_string(),
             "Is Active".to_string(),
@@ -38,7 +39,7 @@ fn test_normalize_field_data_by_type() {
         allow_children: false,
         icon: None,
         fields,
-        schema: Default::default(),
+        schema: r_data_core_core::entity_definition::schema::Schema::default(),
         created_at: time::OffsetDateTime::now_utc(),
         updated_at: time::OffsetDateTime::now_utc(),
         created_by: Uuid::now_v7(),
@@ -68,14 +69,14 @@ fn test_build_normalized_field_data_complex() {
         json!("123e4567-e89b-12d3-a456-426614174000"),
     );
 
-    let def = EntityDefinition::new(
-        "customer".to_string(),
-        "Customer".to_string(),
-        None,
-        None,
-        false,
-        None,
-        vec![
+    let def = EntityDefinition::from_params(EntityDefinitionParams {
+        entity_type: "customer".to_string(),
+        display_name: "Customer".to_string(),
+        description: None,
+        group_name: None,
+        allow_children: false,
+        icon: None,
+        fields: vec![
             FieldDefinition::new(
                 "newsletter".to_string(),
                 "Newsletter".to_string(),
@@ -83,8 +84,8 @@ fn test_build_normalized_field_data_complex() {
             ),
             FieldDefinition::new("crm".to_string(), "CRM".to_string(), FieldType::Boolean),
         ],
-        Uuid::now_v7(),
-    );
+        created_by: Uuid::now_v7(),
+    });
 
     let normalized = build_normalized_field_data(field_data, &def);
 

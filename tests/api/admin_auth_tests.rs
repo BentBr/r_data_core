@@ -1,22 +1,25 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 // Basic test setup for Admin Auth routes
 // More comprehensive tests to be implemented
 
 #[cfg(test)]
 mod tests {
-    use r_data_core::{
-        entity::admin_user::{AdminUserRepository, AdminUserRepositoryTrait},
-        error::Result,
+    use r_data_core_persistence::{
+        AdminUserRepository, AdminUserRepositoryTrait, CreateAdminUserParams,
     };
     use std::sync::Arc;
     use uuid::Uuid;
 
     #[tokio::test]
-    async fn test_admin_user_last_login_update() -> Result<()> {
+    async fn test_admin_user_last_login_update() -> r_data_core_core::error::Result<()> {
         // Setup test database
-        let pool = crate::common::utils::setup_test_db().await;
+        use r_data_core_test_support::{clear_test_db, setup_test_db};
+
+        let pool = setup_test_db().await;
 
         // Clear any existing data
-        crate::common::utils::clear_test_db(&pool)
+        clear_test_db(&pool)
             .await
             .expect("Failed to clear test database");
 
@@ -25,23 +28,22 @@ mod tests {
 
         // Generate a username and email that won't conflict
         let unique_id = Uuid::now_v7().to_string()[0..8].to_string();
-        let username = format!("test_user_{}", unique_id);
-        let email = format!("test{}@example.com", unique_id);
+        let username = format!("test_user_{unique_id}");
+        let email = format!("test{unique_id}@example.com");
         let test_password = "Test123!";
 
         // Create the admin user directly in the database
-        let user_uuid = repo
-            .create_admin_user(
-                &username,
-                &email,
-                test_password,
-                "Test",
-                "User",
-                None,
-                true,
-                Uuid::now_v7(),
-            )
-            .await?;
+        let params = CreateAdminUserParams {
+            username: &username,
+            email: &email,
+            password: test_password,
+            first_name: "Test",
+            last_name: "User",
+            role: None,
+            is_active: true,
+            creator_uuid: Uuid::now_v7(),
+        };
+        let user_uuid = repo.create_admin_user(&params).await?;
 
         // Verify the user has no last_login timestamp initially
         let initial_user = repo.find_by_uuid(&user_uuid).await?.unwrap();

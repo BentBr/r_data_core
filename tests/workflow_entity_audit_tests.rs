@@ -1,34 +1,35 @@
-use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
-use r_data_core::api::admin::workflows::models::CreateWorkflowRequest;
-use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
-use r_data_core::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
-use r_data_core::services::adapters::EntityDefinitionRepositoryAdapter;
-use r_data_core::services::{
-    DynamicEntityRepositoryAdapter, DynamicEntityService, EntityDefinitionService,
-    WorkflowRepositoryAdapter, WorkflowService,
-};
-use r_data_core::workflow::data::repository::WorkflowRepository;
-use r_data_core::workflow::data::WorkflowKind;
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
+use r_data_core_api::admin::workflows::models::CreateWorkflowRequest;
+use r_data_core_persistence::EntityDefinitionRepository;
+use r_data_core_persistence::WorkflowRepository;
+use r_data_core_persistence::{DynamicEntityRepository, DynamicEntityRepositoryTrait};
+use r_data_core_services::adapters::DynamicEntityRepositoryAdapter;
+use r_data_core_services::adapters::EntityDefinitionRepositoryAdapter;
+use r_data_core_services::{DynamicEntityService, EntityDefinitionService};
+use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
+use r_data_core_workflow::data::WorkflowKind;
 use serde_json::json;
 use sqlx::Row;
 use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
-#[path = "common/mod.rs"]
-mod common;
+use r_data_core_test_support::{
+    create_test_admin_user, create_test_entity_definition, setup_test_db, unique_entity_type,
+};
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)] // Test function with comprehensive workflow testing
 async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result<()> {
-    let pool = common::utils::setup_test_db().await;
+    let pool = setup_test_db().await;
 
     // Create admin user
-    let creator_uuid = common::utils::create_test_admin_user(&pool).await?;
+    let creator_uuid = create_test_admin_user(&pool).await?;
 
     // Create entity definition
-    let entity_type = common::utils::unique_entity_type("test_entity");
-    let _entity_def_uuid =
-        common::utils::create_test_entity_definition(&pool, &entity_type).await?;
+    let entity_type = unique_entity_type("test_entity");
+    let _entity_def_uuid = create_test_entity_definition(&pool, &entity_type).await?;
 
     // Create workflow
     let wf_repo = WorkflowRepository::new(pool.clone());
@@ -68,9 +69,9 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
     });
 
     let req = CreateWorkflowRequest {
-        name: format!("wf-entity-test-{}", Uuid::now_v7()),
+        name: format!("wf-entity-test-{}", Uuid::now_v7().simple()),
         description: Some("test".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: cfg,
@@ -110,25 +111,24 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
     let logs = wf_service_with_entities
         .list_run_logs_paginated(run_uuid, 10, 0)
         .await?;
-    eprintln!("Run logs after processing: {:?}", logs);
+    eprintln!("Run logs after processing: {logs:?}");
 
     if let Err(e) = result {
-        eprintln!("Workflow processing failed: {:?}", e);
+        eprintln!("Workflow processing failed: {e:?}");
         return Err(e);
     }
 
     // Check processed/failed counts
     let (processed, failed) = result.unwrap();
-    eprintln!("Processed: {}, Failed: {}", processed, failed);
+    eprintln!("Processed: {processed}, Failed: {failed}");
 
     if processed == 0 && failed == 0 {
         // Check if items were actually staged
         let wf_repo_check = WorkflowRepository::new(pool.clone());
         let staged_count = wf_repo_check.count_raw_items_for_run(run_uuid).await?;
-        eprintln!("Staged items count: {}", staged_count);
+        eprintln!("Staged items count: {staged_count}");
         return Err(anyhow::anyhow!(
-            "No items were processed. Staged: {}",
-            staged_count
+            "No items were processed. Staged: {staged_count}"
         ));
     }
 
@@ -182,16 +182,16 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)] // Test function with comprehensive workflow testing
 async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result<()> {
-    let pool = common::utils::setup_test_db().await;
+    let pool = setup_test_db().await;
 
     // Create admin user
-    let creator_uuid = common::utils::create_test_admin_user(&pool).await?;
+    let creator_uuid = create_test_admin_user(&pool).await?;
 
     // Create entity definition
-    let entity_type = common::utils::unique_entity_type("test_entity");
-    let _entity_def_uuid =
-        common::utils::create_test_entity_definition(&pool, &entity_type).await?;
+    let entity_type = unique_entity_type("test_entity");
+    let _entity_def_uuid = create_test_entity_definition(&pool, &entity_type).await?;
 
     // Create an entity first
     let de_repo = DynamicEntityRepository::new(pool.clone());
@@ -214,7 +214,7 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     let entity_def = ed_service
         .get_entity_definition_by_entity_type(&entity_type)
         .await?;
-    let entity = r_data_core::entity::dynamic_entity::entity::DynamicEntity {
+    let entity = r_data_core_core::DynamicEntity {
         entity_type: entity_type.clone(),
         field_data,
         definition: Arc::new(entity_def),
@@ -261,9 +261,9 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     });
 
     let req = CreateWorkflowRequest {
-        name: format!("wf-update-test-{}", Uuid::now_v7()),
+        name: format!("wf-update-test-{}", Uuid::now_v7().simple()),
         description: Some("test".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: cfg,
@@ -305,25 +305,24 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     let logs = wf_service_with_entities
         .list_run_logs_paginated(run_uuid, 10, 0)
         .await?;
-    eprintln!("Run logs after processing: {:?}", logs);
+    eprintln!("Run logs after processing: {logs:?}");
 
     if let Err(e) = result {
-        eprintln!("Workflow processing failed: {:?}", e);
+        eprintln!("Workflow processing failed: {e:?}");
         return Err(e);
     }
 
     // Check processed/failed counts
     let (processed, failed) = result.unwrap();
-    eprintln!("Processed: {}, Failed: {}", processed, failed);
+    eprintln!("Processed: {processed}, Failed: {failed}");
 
     if processed == 0 && failed == 0 {
         // Check if items were actually staged
         let wf_repo_check = WorkflowRepository::new(pool.clone());
         let staged_count = wf_repo_check.count_raw_items_for_run(run_uuid).await?;
-        eprintln!("Staged items count: {}", staged_count);
+        eprintln!("Staged items count: {staged_count}");
         return Err(anyhow::anyhow!(
-            "No items were processed. Staged: {}",
-            staged_count
+            "No items were processed. Staged: {staged_count}"
         ));
     }
 
@@ -332,10 +331,9 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
 
     // Verify entity was updated with run_uuid as updated_by
     let de_repo_check = DynamicEntityRepository::new(pool.clone());
-    let entity_opt: Option<r_data_core::entity::dynamic_entity::entity::DynamicEntity> =
-        de_repo_check
-            .get_by_type(&entity_type, &entity_uuid, None)
-            .await?;
+    let entity_opt: Option<r_data_core_core::DynamicEntity> = de_repo_check
+        .get_by_type(&entity_type, &entity_uuid, None)
+        .await?;
 
     assert!(entity_opt.is_some());
     let entity = entity_opt.unwrap();

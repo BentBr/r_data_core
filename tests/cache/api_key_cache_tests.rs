@@ -1,10 +1,13 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use super::create_test_cache_manager;
 use async_trait::async_trait;
 use mockall::mock;
 use mockall::predicate::*;
-use r_data_core::entity::admin_user::{ApiKey, ApiKeyRepositoryTrait};
-use r_data_core::error::Result;
-use r_data_core::services::ApiKeyService;
+use r_data_core_core::admin_user::ApiKey;
+use r_data_core_core::error::Result;
+use r_data_core_persistence::ApiKeyRepositoryTrait;
+use r_data_core_services::ApiKeyService;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -31,6 +34,10 @@ mock! {
         async fn update_last_used(&self, uuid: Uuid) -> Result<()>;
         async fn reassign(&self, uuid: Uuid, new_user_uuid: Uuid) -> Result<()>;
         async fn count_by_user(&self, user_uuid: Uuid) -> Result<i64>;
+        async fn get_api_key_permission_schemes(&self, api_key_uuid: Uuid) -> Result<Vec<Uuid>>;
+        async fn assign_permission_scheme(&self, api_key_uuid: Uuid, scheme_uuid: Uuid) -> Result<()>;
+        async fn unassign_permission_scheme(&self, api_key_uuid: Uuid, scheme_uuid: Uuid) -> Result<()>;
+        async fn update_api_key_schemes(&self, api_key_uuid: Uuid, scheme_uuids: &[Uuid]) -> Result<()>;
     }
 }
 
@@ -39,7 +46,7 @@ fn create_test_api_key() -> (ApiKey, Uuid) {
     let key_uuid = Uuid::now_v7();
     // Use the actual hash of "test_api_key_12345" to match what validate_api_key will compute
     let api_key_str = "test_api_key_12345";
-    let key_hash = r_data_core::entity::admin_user::ApiKey::hash_api_key(api_key_str)
+    let key_hash = r_data_core_core::admin_user::ApiKey::hash_api_key(api_key_str)
         .unwrap_or_else(|_| "test_hash".to_string());
     let api_key = ApiKey {
         uuid: key_uuid,

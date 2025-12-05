@@ -1,38 +1,55 @@
-use r_data_core::api::admin::workflows::models::CreateWorkflowRequest;
-use r_data_core::workflow::data::repository::WorkflowRepository;
-use r_data_core::workflow::data::WorkflowKind;
-use uuid::Uuid;
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 
-// Import the common module from tests
-#[path = "common/mod.rs"]
-mod common;
+use r_data_core_api::admin::workflows::models::CreateWorkflowRequest;
+use r_data_core_persistence::WorkflowRepository;
+use r_data_core_test_support::{create_test_admin_user, setup_test_db};
+use r_data_core_workflow::data::WorkflowKind;
+use uuid::Uuid;
 
 #[tokio::test]
 async fn get_workflow_uuid_for_run_round_trip() -> anyhow::Result<()> {
     // Setup test database
-    let pool = common::utils::setup_test_db().await;
+    let pool = setup_test_db().await;
 
     let repo = WorkflowRepository::new(pool.clone());
 
-    // Resolve a creator (admin user) from DB
-    let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+    // Create a test admin user
+    let creator_uuid = create_test_admin_user(&pool)
         .await
-        .expect("fetch admin user uuid");
+        .expect("create test admin user");
 
     // Create a workflow
     let req = CreateWorkflowRequest {
-        name: format!("worker-test-{}", Uuid::now_v7()),
+        name: format!("worker-test-{}", Uuid::now_v7().simple()),
         description: Some("worker test".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: Some("*/5 * * * *".to_string()),
         config: serde_json::json!({
             "steps": [
                 {
-                    "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} },
+                    "from": {
+                        "type": "format",
+                        "source": {
+                            "source_type": "uri",
+                            "config": { "uri": "http://example.com/data.csv" }
+                        },
+                        "format": {
+                            "format_type": "csv",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    },
                     "transform": { "type": "none" },
-                    "to": { "type": "json", "output": "api", "mapping": {} }
+                    "to": {
+                        "type": "format",
+                        "output": { "mode": "api" },
+                        "format": {
+                            "format_type": "json",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    }
                 }
             ]
         }),

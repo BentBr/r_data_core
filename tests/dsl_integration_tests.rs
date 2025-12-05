@@ -1,6 +1,8 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 #[cfg(test)]
 mod tests {
-    use r_data_core::workflow::dsl::DslProgram;
+    use r_data_core_workflow::dsl::{DslProgram, FromDef, ToDef};
     use serde_json::json;
     use serde_json::Value;
     use serial_test::serial;
@@ -64,7 +66,7 @@ mod tests {
 
         let (to_def, produced) = &outputs[0];
         match to_def {
-            r_data_core::workflow::dsl::ToDef::Entity { .. } => {
+            ToDef::Entity { .. } => {
                 // Verify that "active" was mapped to "published"
                 assert_eq!(produced["published"], json!(true));
                 // Verify that "email" was mapped to both "email" and "entity_key"
@@ -77,7 +79,7 @@ mod tests {
                 assert_eq!(produced["lastName"], json!("Doe"));
                 assert_eq!(produced["username"], json!("jdoe"));
             }
-            _ => panic!("Expected Entity ToDef"),
+            ToDef::Format { .. } => panic!("Expected Entity ToDef"),
         }
     }
 
@@ -139,7 +141,7 @@ mod tests {
         // Entity mappings should parse and validate correctly
         assert_eq!(prog.steps.len(), 1);
         match &prog.steps[0].from {
-            r_data_core::workflow::dsl::FromDef::Entity {
+            FromDef::Entity {
                 entity_definition,
                 filter,
                 ..
@@ -148,7 +150,7 @@ mod tests {
                 assert_eq!(filter.field, "status");
                 assert_eq!(filter.value, "active");
             }
-            _ => panic!("Expected Entity FromDef"),
+            FromDef::Format { .. } => panic!("Expected Entity FromDef"),
         }
     }
 
@@ -171,14 +173,14 @@ mod tests {
 
         let (to_def, produced) = &outputs[0];
         match to_def {
-            r_data_core::workflow::dsl::ToDef::Entity { .. } => {
+            ToDef::Entity { .. } => {
                 assert_eq!(produced["name"], json!("Test Product"));
                 assert_eq!(produced["price"], json!(100.0));
                 assert_eq!(produced["category"], json!("Electronics"));
                 // Verify arithmetic transform was applied
                 assert_eq!(produced["price_with_tax"], json!(119.0));
             }
-            _ => panic!("Expected Entity ToDef"),
+            ToDef::Format { .. } => panic!("Expected Entity ToDef"),
         }
     }
 

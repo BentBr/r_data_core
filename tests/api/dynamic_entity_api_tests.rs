@@ -1,37 +1,37 @@
-use actix_web::{test, App, web};
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
+use actix_web::{test, web, App};
+use r_data_core_api::{configure_app, ApiState};
+use r_data_core_core::cache::CacheManager;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::error::Result;
+use r_data_core_core::field::ui::UiSettings;
+use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::DynamicEntityRepository;
+use r_data_core_services::{
+    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
+};
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
-use r_data_core::api::{ApiState, configure_app};
-use r_data_core::cache::CacheManager;
-use r_data_core::entity::class::definition::EntityDefinition;
-use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
-use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
-use r_data_core::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
-use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
-use r_data_core::entity::field::ui::UiSettings;
-use r_data_core::services::{
-    AdminUserService, ApiKeyService, EntityDefinitionService, DynamicEntityService,
-};
-use r_data_core::error::Result;
-use std::collections::HashMap;
-
-// Import the common module from tests
-#[path = "../common/mod.rs"]
-mod common;
 
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod dynamic_entity_api_tests {
     use super::*;
 
     // Helper to create a test entity definition for user entity
     async fn create_user_entity_definition(db_pool: &sqlx::PgPool) -> Result<Uuid> {
         // Create a simple entity definition for testing
-        let mut entity_def = EntityDefinition::default();
-        entity_def.entity_type = "user".to_string();
-        entity_def.display_name = "Test User".to_string();
-        entity_def.description = Some("Test description for User".to_string());
-        entity_def.published = true;
+        let mut entity_def = EntityDefinition {
+            entity_type: "user".to_string(),
+            display_name: "Test User".to_string(),
+            description: Some("Test description for User".to_string()),
+            published: true,
+            ..Default::default()
+        };
 
         // Add fields to the entity definition
         let mut fields = Vec::new();
@@ -120,7 +120,7 @@ mod dynamic_entity_api_tests {
             .bind(entity_def.published)
             .fetch_one(db_pool)
             .await
-            .map_err(|e| r_data_core::error::Error::Database(e))?;
+            .map_err(r_data_core_core::error::Error::from)?;
 
         // Execute SQL to trigger the view creation
         let trigger_sql = format!(
@@ -131,7 +131,7 @@ mod dynamic_entity_api_tests {
         sqlx::query(&trigger_sql)
             .execute(db_pool)
             .await
-            .map_err(|e| r_data_core::error::Error::Database(e))?;
+            .map_err(r_data_core_core::error::Error::from)?;
 
         // Wait a moment for the trigger to create the view
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -150,8 +150,9 @@ mod dynamic_entity_api_tests {
 
             let mut field_data = HashMap::new();
             field_data.insert("uuid".to_string(), json!(uuid.to_string()));
-            field_data.insert("name".to_string(), json!(format!("User {}", i)));
-            field_data.insert("email".to_string(), json!(format!("user{}@example.com", i)));
+            field_data.insert("entity_key".to_string(), json!(format!("user-{i}")));
+            field_data.insert("name".to_string(), json!(format!("User {i}")));
+            field_data.insert("email".to_string(), json!(format!("user{i}@example.com")));
             field_data.insert("age".to_string(), json!(20 + i));
             field_data.insert("active".to_string(), json!(i % 2 == 0));
             field_data.insert("created_by".to_string(), json!(created_by.to_string()));
@@ -171,6 +172,9 @@ mod dynamic_entity_api_tests {
 
     // Helper to create an API key for testing
     async fn create_test_api_key(db_pool: &sqlx::PgPool) -> Result<String> {
+        use r_data_core_persistence::{ApiKeyRepository, ApiKeyRepositoryTrait};
+        use std::sync::Arc;
+
         // Create admin user for API key
         let admin_uuid = Uuid::now_v7();
         let created_by = Uuid::now_v7();
@@ -186,53 +190,54 @@ mod dynamic_entity_api_tests {
         .bind(created_by)
         .execute(db_pool)
         .await
-        .map_err(|e| r_data_core::error::Error::Database(e))?;
+          .map_err(r_data_core_core::error::Error::from)?;
 
-        // Create API key
-        let api_key = "p953belra+DVlKSdUyOmOEYCOa8U4aR4lu37XD1+AwQ=".to_string();
-        let api_key_hash = "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8".to_string();
+        // Use the repository to create a proper API key
+        let repo = ApiKeyRepository::new(Arc::new(db_pool.clone()));
+        let (_key_uuid, key_value) = repo
+            .create_new_api_key(
+                "test_key",
+                "Test API key for dynamic entity tests",
+                admin_uuid,
+                30,
+            )
+            .await?;
 
-        sqlx::query(
-            "INSERT INTO api_keys (uuid, user_uuid, name, key_hash, is_active, created_at, created_by, published)
-             VALUES ($1, $2, $3, $4, true, NOW(), $5, true)"
-        )
-        .bind(Uuid::now_v7())
-        .bind(admin_uuid)
-        .bind("test_key")
-        .bind(api_key_hash)
-        .bind(created_by)
-        .execute(db_pool)
-        .await
-        .map_err(|e| r_data_core::error::Error::Database(e))?;
-
-        Ok(api_key)
+        Ok(key_value)
     }
 
     // Helper to create app test services
-    async fn create_test_app(db_pool: sqlx::PgPool) -> impl actix_web::dev::Service<
+    #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
+    async fn create_test_app(
+        db_pool: sqlx::PgPool,
+    ) -> impl actix_web::dev::Service<
         actix_http::Request,
         Response = actix_web::dev::ServiceResponse,
         Error = actix_web::Error,
     > {
         // Create required services
-        let cache_manager = Arc::new(CacheManager::new_mock());
+        let cache_config = r_data_core_core::config::CacheConfig {
+            entity_definition_ttl: 0,
+            api_key_ttl: 600,
+            enabled: true,
+            ttl: 3600,
+            max_size: 10000,
+        };
+        let cache_manager = Arc::new(CacheManager::new(cache_config));
 
-        let api_key_service = ApiKeyService::new(
-            Arc::new(r_data_core::entity::api_key::repository::ApiKeyRepository::new(
-                db_pool.clone(),
-            )),
-        );
+        let api_key_service = ApiKeyService::new(Arc::new(
+            r_data_core_persistence::ApiKeyRepository::new(Arc::new(db_pool.clone())),
+        ));
 
-        let admin_user_service = AdminUserService::new(
-            Arc::new(r_data_core::entity::admin_user::AdminUserRepository::new(
-                Arc::new(db_pool.clone()),
-            )),
-        );
+        let admin_user_service = AdminUserService::new(Arc::new(
+            r_data_core_persistence::AdminUserRepository::new(Arc::new(db_pool.clone())),
+        ));
 
         let entity_definition_service = EntityDefinitionService::new(
-            Arc::new(r_data_core::entity::class::repository::EntityDefinitionRepository::new(
+            Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
                 db_pool.clone(),
             )),
+            cache_manager.clone(),
         );
 
         let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(db_pool.clone()));
@@ -242,32 +247,45 @@ mod dynamic_entity_api_tests {
         ));
 
         // Create app state
-        let app_state = web::Data::new(ApiState {
+        let api_state = ApiState {
             db_pool: db_pool.clone(),
-            jwt_secret: "test_secret".to_string(),
+            api_config: r_data_core_core::config::ApiConfig {
+                host: "0.0.0.0".to_string(),
+                port: 8888,
+                use_tls: false,
+                jwt_secret: "test_secret".to_string(),
+                jwt_expiration: 3600,
+                enable_docs: true,
+                cors_origins: vec![],
+            },
+            permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+                db_pool.clone(),
+                cache_manager.clone(),
+                Some(0),
+            ),
             cache_manager,
             api_key_service,
             admin_user_service,
             entity_definition_service,
             dynamic_entity_service: Some(dynamic_entity_service),
-            workflow_service: crate::common::utils::make_workflow_service(&db_pool),
-            queue: crate::common::utils::test_queue_client_async().await,
-        });
+            workflow_service: r_data_core_test_support::make_workflow_service(&db_pool),
+            queue: r_data_core_test_support::test_queue_client_async().await,
+        };
 
         // Build test app
-        test::init_service(
-            App::new()
-                .app_data(app_state)
-                .configure(configure_app),
-        )
-        .await
+        let app_data = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));
+        test::init_service(App::new().app_data(app_data).configure(configure_app)).await
     }
 
     #[actix_web::test]
     async fn test_get_users_api() -> Result<()> {
         // Setup database
-        let db_pool = common::setup_test_db().await;
-        common::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        use r_data_core_test_support::{clear_test_db, setup_test_db};
+
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
+            .await
+            .expect("Failed to clear test database");
 
         // Create entity definition for user entity
         let _entity_uuid = create_user_entity_definition(&db_pool).await?;
@@ -288,26 +306,59 @@ mod dynamic_entity_api_tests {
             .to_request();
 
         let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success(), "API call should succeed");
+        let status = resp.status();
+        if !status.is_success() {
+            let body = test::read_body(resp).await;
+            let body_str = String::from_utf8_lossy(&body);
+            panic!("API call failed with status: {status}. Response body: {body_str}");
+        }
 
         // Parse response body
         let body: Value = test::read_body_json(resp).await;
 
-        println!("Response body: {}", serde_json::to_string_pretty(&body).unwrap());
+        println!(
+            "Response body: {}",
+            serde_json::to_string_pretty(&body).unwrap()
+        );
 
         // Check response structure
-        assert_eq!(body["status"], "Success", "Response status should be Success");
+        assert_eq!(
+            body["status"], "Success",
+            "Response status should be Success"
+        );
         assert!(body["data"].is_array(), "Response data should be an array");
-        assert_eq!(body["data"].as_array().unwrap().len(), 5, "Should return 5 users");
+        assert_eq!(
+            body["data"].as_array().unwrap().len(),
+            5,
+            "Should return 5 users"
+        );
 
         // Check pagination
-        assert!(body["meta"]["pagination"].is_object(), "Response should include pagination metadata");
+        assert!(
+            body["meta"]["pagination"].is_object(),
+            "Response should include pagination metadata"
+        );
         assert_eq!(body["meta"]["pagination"]["page"], 1, "Should be page 1");
-        assert_eq!(body["meta"]["pagination"]["per_page"], 5, "Should have 5 items per page");
-        assert_eq!(body["meta"]["pagination"]["total"], 20, "Should have 20 total users");
-        assert_eq!(body["meta"]["pagination"]["total_pages"], 4, "Should have 4 total pages");
-        assert_eq!(body["meta"]["pagination"]["has_next"], true, "Should have next page");
-        assert_eq!(body["meta"]["pagination"]["has_previous"], false, "Should not have previous page");
+        assert_eq!(
+            body["meta"]["pagination"]["per_page"], 5,
+            "Should have 5 items per page"
+        );
+        assert_eq!(
+            body["meta"]["pagination"]["total"], 20,
+            "Should have 20 total users"
+        );
+        assert_eq!(
+            body["meta"]["pagination"]["total_pages"], 4,
+            "Should have 4 total pages"
+        );
+        assert_eq!(
+            body["meta"]["pagination"]["has_next"], true,
+            "Should have next page"
+        );
+        assert_eq!(
+            body["meta"]["pagination"]["has_previous"], false,
+            "Should not have previous page"
+        );
 
         // Test Page 2
         let req = test::TestRequest::get()
@@ -316,24 +367,40 @@ mod dynamic_entity_api_tests {
             .to_request();
 
         let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success(), "API call should succeed");
+        let status = resp.status();
+        if !status.is_success() {
+            let body = test::read_body(resp).await;
+            let body_str = String::from_utf8_lossy(&body);
+            panic!("API call failed with status: {status}. Response body: {body_str}");
+        }
 
         // Parse response body
         let body: Value = test::read_body_json(resp).await;
 
         // Check pagination for page 2
         assert_eq!(body["meta"]["pagination"]["page"], 2, "Should be page 2");
-        assert_eq!(body["meta"]["pagination"]["has_next"], true, "Should have next page");
-        assert_eq!(body["meta"]["pagination"]["has_previous"], true, "Should have previous page");
+        assert_eq!(
+            body["meta"]["pagination"]["has_next"], true,
+            "Should have next page"
+        );
+        assert_eq!(
+            body["meta"]["pagination"]["has_previous"], true,
+            "Should have previous page"
+        );
 
         // Test filtering - active=true
         let req = test::TestRequest::get()
-            .uri("/api/v1/user?filter={\"active\":true}")
+            .uri("/api/v1/user?filter=%7B%22active%22%3Atrue%7D")
             .insert_header(("X-API-Key", api_key.clone()))
             .to_request();
 
         let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success(), "API call should succeed");
+        let status = resp.status();
+        if !status.is_success() {
+            let body = test::read_body(resp).await;
+            let body_str = String::from_utf8_lossy(&body);
+            panic!("API call failed with status: {status}. Response body: {body_str}");
+        }
 
         // Parse response body
         let body: Value = test::read_body_json(resp).await;
@@ -341,7 +408,10 @@ mod dynamic_entity_api_tests {
         // Check filtered results
         let users = body["data"].as_array().unwrap();
         for user in users {
-            assert_eq!(user["active"], true, "Filtered users should all be active");
+            assert_eq!(
+                user["field_data"]["active"], true,
+                "Filtered users should all be active"
+            );
         }
 
         // Test search functionality
@@ -358,7 +428,10 @@ mod dynamic_entity_api_tests {
 
         // Check searched results
         let users = body["data"].as_array().unwrap();
-        assert!(users.len() >= 1, "Should find at least one user matching search");
+        assert!(
+            !users.is_empty(),
+            "Should find at least one user matching search"
+        );
 
         // Check field selection
         let req = test::TestRequest::get()
@@ -367,16 +440,31 @@ mod dynamic_entity_api_tests {
             .to_request();
 
         let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success(), "API call should succeed");
+        let status = resp.status();
+        if !status.is_success() {
+            let body = test::read_body(resp).await;
+            let body_str = String::from_utf8_lossy(&body);
+            panic!("API call failed with status: {status}. Response body: {body_str}");
+        }
 
         // Parse response body
         let body: Value = test::read_body_json(resp).await;
 
         // Check that only requested fields are returned
         let first_user = &body["data"][0];
-        assert!(first_user.get("name").is_some(), "Name field should be present");
-        assert!(first_user.get("email").is_some(), "Email field should be present");
-        assert!(first_user.get("age").is_none(), "Age field should not be present");
+        // Fields are nested in field_data
+        assert!(
+            first_user["field_data"].get("name").is_some(),
+            "Name field should be present"
+        );
+        assert!(
+            first_user["field_data"].get("email").is_some(),
+            "Email field should be present"
+        );
+        assert!(
+            first_user["field_data"].get("age").is_none(),
+            "Age field should not be present"
+        );
 
         // Test sorting functionality
         let req = test::TestRequest::get()
@@ -385,7 +473,12 @@ mod dynamic_entity_api_tests {
             .to_request();
 
         let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success(), "API call should succeed");
+        let status = resp.status();
+        if !status.is_success() {
+            let body = test::read_body(resp).await;
+            let body_str = String::from_utf8_lossy(&body);
+            panic!("API call failed with status: {status}. Response body: {body_str}");
+        }
 
         // Parse response body
         let body: Value = test::read_body_json(resp).await;
@@ -394,8 +487,12 @@ mod dynamic_entity_api_tests {
         let users = body["data"].as_array().unwrap();
         let mut last_age = i64::MAX;
         for user in users {
-            let age = user["age"].as_i64().unwrap();
-            assert!(age <= last_age, "Users should be sorted by age in descending order");
+            // Fields are nested in field_data
+            let age = user["field_data"]["age"].as_i64().unwrap();
+            assert!(
+                age <= last_age,
+                "Users should be sorted by age in descending order"
+            );
             last_age = age;
         }
 
@@ -405,8 +502,12 @@ mod dynamic_entity_api_tests {
     #[actix_web::test]
     async fn test_get_single_user_api() -> Result<()> {
         // Setup database
-        let db_pool = common::setup_test_db().await;
-        common::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        use r_data_core_test_support::{clear_test_db, setup_test_db};
+
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
+            .await
+            .expect("Failed to clear test database");
 
         // Create entity definition for user entity
         let _entity_uuid = create_user_entity_definition(&db_pool).await?;
@@ -423,32 +524,58 @@ mod dynamic_entity_api_tests {
 
         // Test GET /api/v1/user/{id} endpoint
         let req = test::TestRequest::get()
-            .uri(&format!("/api/v1/user/{}", user_id))
+            .uri(&format!("/api/v1/user/{user_id}"))
             .insert_header(("X-API-Key", api_key.clone()))
             .to_request();
 
         let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success(), "API call should succeed");
+        let status = resp.status();
+        if !status.is_success() {
+            let body = test::read_body(resp).await;
+            let body_str = String::from_utf8_lossy(&body);
+            panic!("API call failed with status: {status}. Response body: {body_str}");
+        }
 
         // Parse response body
         let body: Value = test::read_body_json(resp).await;
 
         // Check response structure
-        assert_eq!(body["status"], "Success", "Response status should be Success");
-        assert!(body["data"].is_object(), "Response data should be an object");
-        assert_eq!(body["data"]["uuid"], user_id.to_string(), "UUID should match");
-        assert_eq!(body["data"]["name"], "User 1", "Name should match");
-        assert_eq!(body["data"]["email"], "user1@example.com", "Email should match");
+        assert_eq!(
+            body["status"], "Success",
+            "Response status should be Success"
+        );
+        assert!(
+            body["data"].is_object(),
+            "Response data should be an object"
+        );
+        // UUID is in field_data, not at top level
+        assert_eq!(
+            body["data"]["field_data"]["uuid"],
+            user_id.to_string(),
+            "UUID should match"
+        );
+        assert_eq!(
+            body["data"]["field_data"]["name"], "User 1",
+            "Name should match"
+        );
+        assert_eq!(
+            body["data"]["field_data"]["email"], "user1@example.com",
+            "Email should match"
+        );
 
         // Test with a non-existent UUID
         let fake_id = Uuid::now_v7();
         let req = test::TestRequest::get()
-            .uri(&format!("/api/v1/user/{}", fake_id))
+            .uri(&format!("/api/v1/user/{fake_id}"))
             .insert_header(("X-API-Key", api_key.clone()))
             .to_request();
 
         let resp = test::call_service(&app, req).await;
-        assert_eq!(resp.status(), 404, "Should return 404 for non-existent entity");
+        assert_eq!(
+            resp.status(),
+            404,
+            "Should return 404 for non-existent entity"
+        );
 
         Ok(())
     }
@@ -456,8 +583,12 @@ mod dynamic_entity_api_tests {
     #[actix_web::test]
     async fn test_fixed_entity_type_column_issue() -> Result<()> {
         // Setup database
-        let db_pool = common::setup_test_db().await;
-        common::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        use r_data_core_test_support::{clear_test_db, setup_test_db};
+
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
+            .await
+            .expect("Failed to clear test database");
 
         // Create entity definition for user entity
         let _entity_uuid = create_user_entity_definition(&db_pool).await?;
@@ -490,12 +621,16 @@ mod dynamic_entity_api_tests {
         let body: Value = test::read_body_json(resp).await;
 
         // Check response structure
-        assert_eq!(body["status"], "Success", "Response status should be Success");
+        assert_eq!(
+            body["status"], "Success",
+            "Response status should be Success"
+        );
         assert!(body["data"].is_array(), "Response data should be an array");
 
         // Test with filter parameter (previously would also fail)
+        // URL encode the JSON filter: {"name":"User 1"} -> %7B%22name%22%3A%22User%201%22%7D
         let req = test::TestRequest::get()
-            .uri("/api/v1/user?filter={\"name\":\"User 1\"}")
+            .uri("/api/v1/user?filter=%7B%22name%22%3A%22User%201%22%7D")
             .insert_header(("X-API-Key", api_key))
             .to_request();
 
@@ -512,10 +647,16 @@ mod dynamic_entity_api_tests {
         let body: Value = test::read_body_json(resp).await;
 
         // Check filtered results
-        assert_eq!(body["status"], "Success", "Response status should be Success");
+        assert_eq!(
+            body["status"], "Success",
+            "Response status should be Success"
+        );
         let users = body["data"].as_array().unwrap();
         assert_eq!(users.len(), 1, "Should return exactly 1 filtered user");
-        assert_eq!(users[0]["name"], "User 1", "Should return User 1");
+        assert_eq!(
+            users[0]["field_data"]["name"], "User 1",
+            "Should return User 1"
+        );
 
         Ok(())
     }

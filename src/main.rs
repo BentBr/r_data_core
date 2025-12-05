@@ -1,3 +1,5 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
@@ -5,40 +7,27 @@ use log::{debug, error, info};
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 
-mod api;
-mod cache;
-mod config;
-mod db;
-mod entity;
-mod error;
-mod notification;
-mod services;
-mod system_settings;
-mod utils;
-mod versioning;
-mod workflow;
-
 // Todo: These modules will be implemented later
 // mod notification;
 
-use crate::api::admin::entity_definitions::repository::EntityDefinitionRepository;
-use crate::api::{ApiResponse, ApiState};
-use crate::cache::CacheManager;
-use crate::config::AppConfig;
-use crate::entity::admin_user::{AdminUserRepository, ApiKeyRepository};
-use crate::entity::dynamic_entity::repository::DynamicEntityRepository;
-use crate::services::adapters::{
+use r_data_core_api::ApiResponse;
+use r_data_core_api::{ApiState, ApiStateWrapper};
+use r_data_core_core::cache::CacheManager;
+use r_data_core_core::config::load_app_config;
+use r_data_core_persistence::DynamicEntityRepository;
+use r_data_core_persistence::EntityDefinitionRepository;
+use r_data_core_persistence::WorkflowRepository;
+use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
+use r_data_core_services::adapters::ApiKeyRepositoryAdapter;
+use r_data_core_services::adapters::{
     AdminUserRepositoryAdapter, DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter,
 };
-use crate::services::AdminUserService;
-use crate::services::ApiKeyRepositoryAdapter;
-use crate::services::ApiKeyService;
-use crate::services::DynamicEntityService;
-use crate::services::EntityDefinitionService;
-use crate::services::WorkflowRepositoryAdapter;
-use crate::services::WorkflowService;
-use crate::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
-use crate::workflow::data::repository::WorkflowRepository;
+use r_data_core_services::{
+    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
+    PermissionSchemeService,
+};
+use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
+use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
 // 404 handler function
 async fn default_404_handler() -> impl actix_web::Responder {
@@ -48,15 +37,15 @@ async fn default_404_handler() -> impl actix_web::Responder {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Load environment variables and configure the application
-    let config = match AppConfig::from_env() {
+    let config = match load_app_config() {
         Ok(cfg) => {
-            debug!("Loaded conf: {:?}", cfg);
+            debug!("Loaded conf: {cfg:?}");
             info!("Configuration loaded successfully");
             cfg
         }
         Err(e) => {
-            error!("Failed to load configuration: {}", e);
-            panic!("Failed to load configuration: {}", e);
+            error!("Failed to load configuration: {e}");
+            panic!("Failed to load configuration: {e}");
         }
     };
 
@@ -98,10 +87,7 @@ async fn main() -> std::io::Result<()> {
                     Arc::new(manager)
                 }
                 Err(e) => {
-                    error!(
-                        "Failed to initialize Redis cache: {}, falling back to in-memory only",
-                        e
-                    );
+                    error!("Failed to initialize Redis cache: {e}, falling back to in-memory only");
                     Arc::new(CacheManager::new(config.cache.clone()))
                 }
             }
@@ -150,6 +136,13 @@ async fn main() -> std::io::Result<()> {
     let workflow_repo = WorkflowRepository::new(pool.clone());
     let workflow_adapter = WorkflowRepositoryAdapter::new(workflow_repo);
     let workflow_service = WorkflowService::new(Arc::new(workflow_adapter));
+
+    // Initialize permission scheme service
+    let permission_scheme_service = PermissionSchemeService::new(
+        pool.clone(),
+        cache_manager.clone(),
+        Some(config.cache.entity_definition_ttl), // Use entity_definition_ttl for scheme caching
+    );
     // Initialize mandatory queue client (fail fast if invalid)
     let queue_client = Arc::new(
         ApalisRedisQueue::from_parts(
@@ -161,20 +154,23 @@ async fn main() -> std::io::Result<()> {
         .expect("Failed to initialize Redis queue client"),
     );
 
-    let app_state = web::Data::new(ApiState {
+    let api_state = ApiState {
         db_pool: pool,
-        jwt_secret: config.api.jwt_secret.clone(),
+        api_config: config.api.clone(),
         cache_manager: cache_manager.clone(),
         api_key_service,
         admin_user_service,
         entity_definition_service,
         dynamic_entity_service: Some(Arc::new(dynamic_entity_service)),
         workflow_service,
+        permission_scheme_service,
         queue: queue_client.clone(),
-    });
+    };
+
+    let app_state = web::Data::new(ApiStateWrapper::new(api_state));
 
     let bind_address = format!("{}:{}", config.api.host, config.api.port);
-    info!("Starting HTTP server at http://{}", bind_address);
+    info!("Starting HTTP server at http://{bind_address}");
 
     // Start HTTP server
     HttpServer::new(move || {
@@ -186,7 +182,7 @@ async fn main() -> std::io::Result<()> {
             .expose_headers(vec!["content-disposition"])
             .max_age(3600);
 
-        let api_config = api::ApiConfiguration {
+        let api_config = r_data_core_api::ApiConfiguration {
             enable_auth: false,  // Todo
             enable_admin: true,  // Todo
             enable_public: true, // Todo
@@ -195,10 +191,10 @@ async fn main() -> std::io::Result<()> {
 
         App::new()
             .app_data(app_state.clone())
-            .wrap(api::middleware::create_error_handlers())
+            .wrap(r_data_core_api::middleware::create_error_handlers())
             .wrap(Logger::new("%a %{User-Agent}i %r %s %D"))
             .wrap(cors)
-            .configure(move |cfg| api::configure_app_with_options(cfg, api_config))
+            .configure(move |cfg| r_data_core_api::configure_app_with_options(cfg, &api_config))
             .default_service(web::route().to(default_404_handler))
     })
     .bind(bind_address)?

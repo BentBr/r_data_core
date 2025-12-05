@@ -1,0 +1,30 @@
+[package]
+name = "r_data_core_services"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[dependencies]
+# Core dependencies
+r_data_core_core = { path = "../core" }
+r_data_core_persistence = { path = "../persistence" }
+r_data_core_workflow = { path = "../workflow" }
+
+# External dependencies
+async-trait = "0.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sqlx = { version = "0.8.4", features = ["postgres", "uuid", "time"] }
+uuid = { version = "1.6", features = ["v7", "serde"] }
+log = "0.4"
+env_logger = "0.11"
+anyhow = "1.0"
+cron = "0.12"
+time = { version = "0.3", features = ["serde", "formatting", "parsing", "macros"] }
+regex = "1.10"
+futures = "0.3"
+tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
+
+[dev-dependencies]
+mockall = "0.12"
+

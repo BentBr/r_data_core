@@ -9,6 +9,7 @@ export * from './workflow'
 export * from './api-key'
 export * from './user'
 export * from './dsl'
+export * from './permission'
 
 // Re-export types that are commonly used
 import type { z } from 'zod'
@@ -47,6 +48,16 @@ import type {
     ReassignApiKeyResponse,
 } from './api-key'
 import type { User } from './user'
+import type {
+    PermissionScheme,
+    Permission,
+    CreatePermissionSchemeRequest,
+    UpdatePermissionSchemeRequest,
+    AssignSchemesRequest,
+    ResourceNamespace,
+    PermissionType,
+    AccessLevel,
+} from './permission'
 
 // Common type exports
 export type Pagination = z.infer<typeof PaginationSchema>
@@ -83,4 +94,12 @@ export type {
     ReassignApiKeyRequest,
     ReassignApiKeyResponse,
     User,
+    PermissionScheme,
+    Permission,
+    CreatePermissionSchemeRequest,
+    UpdatePermissionSchemeRequest,
+    AssignSchemesRequest,
+    ResourceNamespace,
+    PermissionType,
+    AccessLevel,
 }

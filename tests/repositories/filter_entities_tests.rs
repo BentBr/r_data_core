@@ -1,33 +1,37 @@
-use serde_json::{json, Value};
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
+use serde_json::json;
 use sqlx::PgPool;
 use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use r_data_core::entity::class::definition::EntityDefinition;
-use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
-use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
-use r_data_core::entity::dynamic_entity::repository_trait::DynamicEntityRepositoryTrait;
-use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
-use r_data_core::entity::field::ui::UiSettings;
-use r_data_core::error::Result;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::error::Result;
+use r_data_core_core::field::ui::UiSettings;
+use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::{
+    DynamicEntityRepository, DynamicEntityRepositoryTrait, FilterEntitiesParams,
+};
 
-// Import common module for test setup
-#[path = "../common/mod.rs"]
-mod common;
+use r_data_core_test_support::{clear_test_db, setup_test_db};
 
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod filter_entities_tests {
     use super::*;
 
     // Helper to create a test entity definition
     async fn create_test_entity_definition(db_pool: &PgPool, entity_type: &str) -> Result<Uuid> {
         // Create a simple entity definition for testing
-        let mut entity_def = EntityDefinition::default();
-        entity_def.entity_type = entity_type.to_string();
-        entity_def.display_name = format!("Test {}", entity_type);
-        entity_def.description = Some(format!("Test description for {}", entity_type));
-        entity_def.published = true;
+        let mut entity_def = EntityDefinition {
+            entity_type: entity_type.to_string(),
+            display_name: format!("Test {entity_type}"),
+            description: Some(format!("Test description for {entity_type}")),
+            published: true,
+            ..Default::default()
+        };
 
         // Add fields to the entity definition
         let mut fields = Vec::new();
@@ -116,7 +120,7 @@ mod filter_entities_tests {
             .bind(entity_def.published)
             .fetch_one(db_pool)
             .await
-            .map_err(|e| r_data_core::error::Error::Database(e))?;
+            .map_err(r_data_core_core::error::Error::from)?;
 
         // Execute SQL to trigger the view creation directly
         let trigger_sql = format!(
@@ -127,7 +131,7 @@ mod filter_entities_tests {
         sqlx::query(&trigger_sql)
             .execute(db_pool)
             .await
-            .map_err(|e| r_data_core::error::Error::Database(e))?;
+            .map_err(r_data_core_core::error::Error::from)?;
 
         // Wait a moment for the trigger to create the view
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -136,7 +140,11 @@ mod filter_entities_tests {
     }
 
     // Helper to create test entities
-    async fn create_test_entities(db_pool: &PgPool, entity_type: &str, count: i32) -> Result<Vec<Uuid>> {
+    async fn create_test_entities(
+        db_pool: &PgPool,
+        entity_type: &str,
+        count: i32,
+    ) -> Result<Vec<Uuid>> {
         let mut uuids = Vec::new();
         let repository = DynamicEntityRepository::new(db_pool.clone());
 
@@ -146,8 +154,9 @@ mod filter_entities_tests {
 
             let mut field_data = HashMap::new();
             field_data.insert("uuid".to_string(), json!(uuid.to_string()));
-            field_data.insert("name".to_string(), json!(format!("Test Entity {}", i)));
-            field_data.insert("email".to_string(), json!(format!("test{}@example.com", i)));
+            field_data.insert("entity_key".to_string(), json!(format!("test-entity-{i}")));
+            field_data.insert("name".to_string(), json!(format!("Test Entity {i}")));
+            field_data.insert("email".to_string(), json!(format!("test{i}@example.com")));
             field_data.insert("age".to_string(), json!(20 + i));
             field_data.insert("active".to_string(), json!(i % 2 == 0));
             field_data.insert("created_by".to_string(), json!(created_by.to_string()));
@@ -167,14 +176,16 @@ mod filter_entities_tests {
 
     // Ensure we use a unique entity type for each test to avoid conflicts
     fn unique_entity_type(base: &str) -> String {
-        format!("{}_{}", base, Uuid::now_v7().simple())
+        format!("{base}_{}", Uuid::now_v7().simple())
     }
 
     #[tokio::test]
     async fn test_filter_entities_by_active() -> Result<()> {
         // Setup database
-        let db_pool = common::setup_test_db().await;
-        common::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
+            .await
+            .expect("Failed to clear test database");
 
         // Create a test entity definition with a unique entity type
         let entity_type = unique_entity_type("testentity");
@@ -190,26 +201,21 @@ mod filter_entities_tests {
         let mut filters = HashMap::new();
         filters.insert("active".to_string(), json!(true));
 
-        let active_entities = repository.filter_entities(
-            &entity_type,
-            100,
-            0,
-            Some(filters),
-            None,
-            None,
-            None
-        ).await?;
+        let params = FilterEntitiesParams::new(100, 0).with_filters(Some(filters));
+        let active_entities = repository.filter_entities(&entity_type, &params).await?;
 
         // We should have about 10 active entities (even numbers)
-        assert!(active_entities.len() >= 9 && active_entities.len() <= 11,
-            "Should retrieve about 10 active entities (got {})", active_entities.len());
+        assert!(
+            active_entities.len() >= 9 && active_entities.len() <= 11,
+            "Should retrieve about 10 active entities (got {})",
+            active_entities.len()
+        );
 
         // Verify all retrieved entities are active
         for entity in &active_entities {
             let active_value = entity.field_data.get("active").unwrap();
-            assert_eq!(
+            assert!(
                 active_value.as_bool().unwrap(),
-                true,
                 "All filtered entities should be active"
             );
         }
@@ -220,8 +226,10 @@ mod filter_entities_tests {
     #[tokio::test]
     async fn test_filter_entities_by_age() -> Result<()> {
         // Setup database
-        let db_pool = common::setup_test_db().await;
-        common::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
+            .await
+            .expect("Failed to clear test database");
 
         // Create a test entity definition with a unique entity type
         let entity_type = unique_entity_type("testentity");
@@ -237,15 +245,8 @@ mod filter_entities_tests {
         let mut filters = HashMap::new();
         filters.insert("age".to_string(), json!(30));
 
-        let filtered_entities = repository.filter_entities(
-            &entity_type,
-            100,
-            0,
-            Some(filters),
-            None,
-            None,
-            None
-        ).await?;
+        let params = FilterEntitiesParams::new(100, 0).with_filters(Some(filters));
+        let filtered_entities = repository.filter_entities(&entity_type, &params).await?;
 
         // Verify all retrieved entities have age = 30
         for entity in &filtered_entities {
@@ -263,8 +264,10 @@ mod filter_entities_tests {
     #[tokio::test]
     async fn test_filter_entities_with_search() -> Result<()> {
         // Setup database
-        let db_pool = common::setup_test_db().await;
-        common::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
+            .await
+            .expect("Failed to clear test database");
 
         // Create a test entity definition with a unique entity type
         let entity_type = unique_entity_type("testentity");
@@ -277,22 +280,24 @@ mod filter_entities_tests {
         let _uuids = create_test_entities(&db_pool, &entity_type, 20).await?;
 
         // Search for entities with "Test Entity 1" in name
-        let search_result = repository.filter_entities(
-            &entity_type,
-            100,
-            0,
-            None,
-            Some(("Test Entity 1".to_string(), vec!["name".to_string()])),
-            None,
-            None
-        ).await?;
+        let params = FilterEntitiesParams::new(100, 0).with_search(Some((
+            "Test Entity 1".to_string(),
+            vec!["name".to_string()],
+        )));
+        let search_result = repository.filter_entities(&entity_type, &params).await?;
 
         // Should find entities with "Test Entity 1" in the name (1, 10-19)
-        assert!(search_result.len() >= 1, "Should find at least one entity with search term");
+        assert!(
+            !search_result.is_empty(),
+            "Should find at least one entity with search term"
+        );
 
         for entity in &search_result {
             let name = entity.field_data.get("name").unwrap().as_str().unwrap();
-            assert!(name.contains("Test Entity 1"), "Search results should match search term");
+            assert!(
+                name.contains("Test Entity 1"),
+                "Search results should match search term"
+            );
         }
 
         Ok(())
@@ -301,8 +306,10 @@ mod filter_entities_tests {
     #[tokio::test]
     async fn test_filter_entities_with_sort() -> Result<()> {
         // Setup database
-        let db_pool = common::setup_test_db().await;
-        common::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
+            .await
+            .expect("Failed to clear test database");
 
         // Create a test entity definition with a unique entity type
         let entity_type = unique_entity_type("testentity");
@@ -315,15 +322,9 @@ mod filter_entities_tests {
         let _uuids = create_test_entities(&db_pool, &entity_type, 20).await?;
 
         // Get entities sorted by age ascending
-        let sorted_entities = repository.filter_entities(
-            &entity_type,
-            100,
-            0,
-            None,
-            None,
-            Some(("age".to_string(), "ASC".to_string())),
-            None
-        ).await?;
+        let params = FilterEntitiesParams::new(100, 0)
+            .with_sort(Some(("age".to_string(), "ASC".to_string())));
+        let sorted_entities = repository.filter_entities(&entity_type, &params).await?;
 
         // Verify entities are sorted by age
         let mut prev_age = 0;
@@ -342,8 +343,10 @@ mod filter_entities_tests {
     #[tokio::test]
     async fn test_filter_entities_with_field_selection() -> Result<()> {
         // Setup database
-        let db_pool = common::setup_test_db().await;
-        common::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
+            .await
+            .expect("Failed to clear test database");
 
         // Create a test entity definition with a unique entity type
         let entity_type = unique_entity_type("testentity");
@@ -356,21 +359,23 @@ mod filter_entities_tests {
         let _uuids = create_test_entities(&db_pool, &entity_type, 20).await?;
 
         // Get entities with only name field
-        let entities = repository.filter_entities(
-            &entity_type,
-            100,
-            0,
-            None,
-            None,
-            None,
-            Some(vec!["name".to_string()])
-        ).await?;
+        let params = FilterEntitiesParams::new(100, 0).with_fields(Some(vec!["name".to_string()]));
+        let entities = repository.filter_entities(&entity_type, &params).await?;
 
         // Verify entities have name field but not age or active fields
         for entity in &entities {
-            assert!(entity.field_data.contains_key("name"), "Name field should be present");
-            assert!(!entity.field_data.contains_key("age"), "Age field should not be present");
-            assert!(!entity.field_data.contains_key("active"), "Active field should not be present");
+            assert!(
+                entity.field_data.contains_key("name"),
+                "Name field should be present"
+            );
+            assert!(
+                !entity.field_data.contains_key("age"),
+                "Age field should not be present"
+            );
+            assert!(
+                !entity.field_data.contains_key("active"),
+                "Active field should not be present"
+            );
         }
 
         Ok(())
@@ -379,8 +384,10 @@ mod filter_entities_tests {
     #[tokio::test]
     async fn test_filter_entities_with_pagination() -> Result<()> {
         // Setup database
-        let db_pool = common::setup_test_db().await;
-        common::clear_test_db(&db_pool).await.expect("Failed to clear test database");
+        let db_pool = setup_test_db().await;
+        clear_test_db(&db_pool)
+            .await
+            .expect("Failed to clear test database");
 
         // Create a test entity definition with a unique entity type
         let entity_type = unique_entity_type("testentity");
@@ -393,26 +400,12 @@ mod filter_entities_tests {
         let _uuids = create_test_entities(&db_pool, &entity_type, 30).await?;
 
         // Get first page (10 entities)
-        let page1 = repository.filter_entities(
-            &entity_type,
-            10,
-            0,
-            None,
-            None,
-            None,
-            None
-        ).await?;
+        let params1 = FilterEntitiesParams::new(10, 0);
+        let page1 = repository.filter_entities(&entity_type, &params1).await?;
 
         // Get second page (10 entities)
-        let page2 = repository.filter_entities(
-            &entity_type,
-            10,
-            10,
-            None,
-            None,
-            None,
-            None
-        ).await?;
+        let params2 = FilterEntitiesParams::new(10, 10);
+        let page2 = repository.filter_entities(&entity_type, &params2).await?;
 
         // Test pagination works as expected
         assert_eq!(page1.len(), 10, "First page should have 10 entities");
@@ -421,12 +414,26 @@ mod filter_entities_tests {
         // Make sure the pages contain different entities
         let page1_names: Vec<String> = page1
             .iter()
-            .map(|e| e.field_data.get("name").unwrap().as_str().unwrap().to_string())
+            .map(|e| {
+                e.field_data
+                    .get("name")
+                    .unwrap()
+                    .as_str()
+                    .unwrap()
+                    .to_string()
+            })
             .collect();
 
         let page2_names: Vec<String> = page2
             .iter()
-            .map(|e| e.field_data.get("name").unwrap().as_str().unwrap().to_string())
+            .map(|e| {
+                e.field_data
+                    .get("name")
+                    .unwrap()
+                    .as_str()
+                    .unwrap()
+                    .to_string()
+            })
             .collect();
 
         // Check if any names appear in both pages

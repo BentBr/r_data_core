@@ -9,6 +9,7 @@ import { AuthClient } from './auth'
 import { UsersClient } from './users'
 import { EntitiesClient } from './entities'
 import { SystemClient } from './system'
+import { PermissionsClient } from './permissions'
 
 /**
  * Main typed HTTP client that combines all domain-specific clients
@@ -23,6 +24,7 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     private usersClient = new UsersClient()
     private entitiesClient = new EntitiesClient()
     private systemClient = new SystemClient()
+    private permissionsClient = new PermissionsClient()
 
     // Entity Definitions
     async getEntityDefinitions(
@@ -150,10 +152,31 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     async revokeAllTokens(...args: Parameters<AuthClient['revokeAllTokens']>) {
         return this.authClient.revokeAllTokens(...args)
     }
+    async getUserPermissions(...args: Parameters<AuthClient['getUserPermissions']>) {
+        return this.authClient.getUserPermissions(...args)
+    }
 
     // Users
     async getUsers(...args: Parameters<UsersClient['getUsers']>) {
         return this.usersClient.getUsers(...args)
+    }
+    async getUser(...args: Parameters<UsersClient['getUser']>) {
+        return this.usersClient.getUser(...args)
+    }
+    async createUser(...args: Parameters<UsersClient['createUser']>) {
+        return this.usersClient.createUser(...args)
+    }
+    async updateUser(...args: Parameters<UsersClient['updateUser']>) {
+        return this.usersClient.updateUser(...args)
+    }
+    async deleteUser(...args: Parameters<UsersClient['deleteUser']>) {
+        return this.usersClient.deleteUser(...args)
+    }
+    async getUserSchemes(...args: Parameters<UsersClient['getUserSchemes']>) {
+        return this.usersClient.getUserSchemes(...args)
+    }
+    async assignSchemesToUser(...args: Parameters<UsersClient['assignSchemesToUser']>) {
+        return this.usersClient.assignSchemesToUser(...args)
     }
 
     // Entities
@@ -196,6 +219,29 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     ) {
         return this.systemClient.updateEntityVersioningSettings(...args)
     }
+
+    // Permissions
+    async getPermissionSchemes(...args: Parameters<PermissionsClient['getPermissionSchemes']>) {
+        return this.permissionsClient.getPermissionSchemes(...args)
+    }
+    async getPermissionScheme(...args: Parameters<PermissionsClient['getPermissionScheme']>) {
+        return this.permissionsClient.getPermissionScheme(...args)
+    }
+    async createPermissionScheme(...args: Parameters<PermissionsClient['createPermissionScheme']>) {
+        return this.permissionsClient.createPermissionScheme(...args)
+    }
+    async updatePermissionScheme(...args: Parameters<PermissionsClient['updatePermissionScheme']>) {
+        return this.permissionsClient.updatePermissionScheme(...args)
+    }
+    async deletePermissionScheme(...args: Parameters<PermissionsClient['deletePermissionScheme']>) {
+        return this.permissionsClient.deletePermissionScheme(...args)
+    }
+    async assignSchemesToUser(...args: Parameters<PermissionsClient['assignSchemesToUser']>) {
+        return this.permissionsClient.assignSchemesToUser(...args)
+    }
+    async assignSchemesToApiKey(...args: Parameters<PermissionsClient['assignSchemesToApiKey']>) {
+        return this.permissionsClient.assignSchemesToApiKey(...args)
+    }
 }
 
 // Export individual clients for direct use if needed
@@ -206,3 +252,4 @@ export { WorkflowsClient } from './workflows'
 export { AuthClient } from './auth'
 export { UsersClient } from './users'
 export { EntitiesClient } from './entities'
+export { PermissionsClient } from './permissions'

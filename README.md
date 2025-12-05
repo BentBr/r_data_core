@@ -1,5 +1,22 @@
 # R Data Core
 
+## Workspace Layout
+
+This repository is organized as a Cargo workspace:
+
+- `crates/core` — domain models, versioning, permissions, prelude
+- `crates/persistence` — SQLx repositories and DB utilities
+- `crates/api` — Actix Web API (admin/public), middleware
+- `crates/worker` — background workers
+- `crates/test-support` — shared test helpers
+
+Clippy is enforced strictly across the workspace:
+
+```bash
+cargo clippy --workspace --all-targets --all-features -- \
+  -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery
+```
+
 A robust backend for flexible data management with dynamic entity system, workflow management, API authentication, Redis caching, PostgreSQL database support, and migration system.
 
 ## Features
@@ -109,7 +126,7 @@ cargo sqlx migrate run
 cargo run
 ```
 
-Run our applicaiton
+Run our application
 
 ```bash
 # Run the application with logging and backtrace enabled (info is defined in .env, debug for extensive output)
@@ -123,13 +140,11 @@ docker compose down -v && docker compose up -d redis postgres && sleep 7 && carg
 ```
 
 update sqlx:
-
 ```bash
-cargo sqlx prepare
+cargo sqlx prepare --workspace -- --all-targets
 ```
 
 testing:
-
 ```bash
 # Only r_data_core unit tests
 # Unit tests can run concurrently
@@ -369,19 +384,6 @@ Swagger:
 /admin/api/docs/
 
 ## Todos
-
-- add routes
-  - workflows
-    - export
-      - json, xml, csv
-      - graphql
-    - import
-      - json, xml, csv
-      - web
-      - webhooks
-    - manipulate data
-  - versions
-  - permissions
 - update readme
 - add options for custom tables (like bricks)
 - ~~have a tree view for entities~~
@@ -390,12 +392,10 @@ Swagger:
 - connect dashboard data to backend
 - check entities and respective columns - we need proper creation and not everything serialized.
 - check env vars
-- clippy
 - custom field type (json with predefined content - like a preferences structure...)
 - key-value-store
 - relations 1:n + n:n
 - admin swagger field definitions / constraints
-- tests
 - crons + refresh token deletion
 - load/performance test binary
 - typescript bindings
@@ -408,6 +408,17 @@ Swagger:
 - uuid refactoring -> all in db
 - toDef ->update action -> by key -> dropdown of existing one
 - push all path / params / post body usages to dependency injection
+- permission scheme testing and creation
+  - entities: publish
+  - workflows: activate
+  - entity_definitions: publish
+  - versions -> are included in read permissions
+  - FE must react to those permissions
+- notification / message system
+  - messages
+  - update on successfully run workflows
+  - user requests permission(s)
+  - default admin user not changed
 
 Check DSL:
 
@@ -423,7 +434,6 @@ fixes:
 - setting all fields for dynamic entities
 - testing validations (+ tests)
 - auth tests for all api routes
-- further refactoring (FE / BE independently)
 - tests (unit and integration) for dynamic entities (more)
 - getting all entity types with fields and validations
 - filter entities (by field and value) (validate against entity-definition)

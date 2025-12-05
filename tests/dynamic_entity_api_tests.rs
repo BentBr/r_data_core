@@ -1,14 +1,16 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use log::warn;
-use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
-use r_data_core::api::public::entities::models::{BrowseKind, BrowseNode};
-use r_data_core::api::public::entities::repository::EntityRepository;
-use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
-use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
-use r_data_core::entity::entity_definition::definition::EntityDefinition;
-use r_data_core::entity::field::ui::UiSettings;
-use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
-use r_data_core::error::{Error, Result};
-use r_data_core::services::{DynamicEntityService, EntityDefinitionService};
+use r_data_core_core::entity_definition::definition::{EntityDefinition, EntityDefinitionParams};
+use r_data_core_core::error::Result;
+use r_data_core_core::field::ui::UiSettings;
+use r_data_core_core::field::{FieldDefinition, FieldType, FieldValidation};
+use r_data_core_core::public_api::BrowseKind;
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::DynamicEntityPublicRepository;
+use r_data_core_persistence::DynamicEntityRepository;
+use r_data_core_persistence::EntityDefinitionRepository;
+use r_data_core_services::{DynamicEntityService, EntityDefinitionService};
 use serde_json::json;
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -17,12 +19,11 @@ use std::sync::Once;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-// Import the common module from tests
-#[path = "common/mod.rs"]
-mod common;
+use r_data_core_test_support::setup_test_db;
 
 // Force tests to run sequentially to avoid database contention
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod dynamic_entity_tests {
     use super::*;
 
@@ -39,7 +40,7 @@ mod dynamic_entity_tests {
 
     // Helper function to generate a unique entity type name
     fn unique_entity_type(base: &str) -> String {
-        common::utils::unique_entity_type(base)
+        r_data_core_test_support::unique_entity_type(base)
     }
 
     // Helper to create a test entity definition
@@ -48,16 +49,16 @@ mod dynamic_entity_tests {
         entity_type: &str,
     ) -> Result<(Uuid, EntityDefinition)> {
         // Create a simple entity definition for testing
-        let mut entity_def = EntityDefinition::new(
-            entity_type.to_string(),
-            format!("Test {}", entity_type),
-            Some(format!("Test {} description", entity_type)),
-            None,
-            false,
-            None,
-            Vec::new(),
-            Uuid::now_v7(),
-        );
+        let mut entity_def = EntityDefinition::from_params(EntityDefinitionParams {
+            entity_type: entity_type.to_string(),
+            display_name: format!("Test {entity_type}"),
+            description: Some(format!("Test {entity_type} description")),
+            group_name: None,
+            allow_children: false,
+            icon: None,
+            fields: Vec::new(),
+            created_by: Uuid::now_v7(),
+        });
 
         entity_def.published = true; // Ensure the class is published
 
@@ -210,7 +211,7 @@ mod dynamic_entity_tests {
         entity.field_data.insert("path".to_string(), json!("/"));
         entity.field_data.insert(
             "entity_key".to_string(),
-            json!(format!("{}-{}", entity_type, entity_uuid.simple())),
+            json!(format!("{entity_type}-{}", entity_uuid.simple())),
         );
 
         entity
@@ -218,7 +219,7 @@ mod dynamic_entity_tests {
 
     // Helper to get UUID from entity's field_data
     fn get_entity_uuid(entity: &DynamicEntity) -> Option<Uuid> {
-        r_data_core::entity::dynamic_entity::utils::extract_uuid_from_entity_field_data(
+        r_data_core_persistence::dynamic_entity_utils::extract_uuid_from_entity_field_data(
             &entity.field_data,
             "uuid",
         )
@@ -231,13 +232,17 @@ mod dynamic_entity_tests {
     ) -> Result<(String, EntityDefinition, Uuid)> {
         // Read the JSON file
         let json_content = std::fs::read_to_string(json_path).map_err(|e| {
-            Error::Unknown(format!("Failed to read JSON file {}: {}", json_path, e))
+            r_data_core_core::error::Error::Unknown(format!(
+                "Failed to read JSON file {json_path}: {e}"
+            ))
         })?;
 
         // Parse the JSON into a EntityDefinition
         let mut entity_def: EntityDefinition =
             serde_json::from_str(&json_content).map_err(|e| {
-                Error::Unknown(format!("Failed to parse JSON file {}: {}", json_path, e))
+                r_data_core_core::error::Error::Unknown(format!(
+                    "Failed to parse JSON file {json_path}: {e}"
+                ))
             })?;
 
         // Make the entity type unique to avoid test conflicts
@@ -270,7 +275,7 @@ mod dynamic_entity_tests {
         .bind(uuid)
         .fetch_one(pool)
         .await
-        .map_err(Error::Database)?;
+        .map_err(r_data_core_core::error::Error::Database)?;
 
         if !published {
             // If not published, update it directly
@@ -278,7 +283,7 @@ mod dynamic_entity_tests {
                 .bind(uuid)
                 .execute(pool)
                 .await
-                .map_err(Error::Database)?;
+                .map_err(r_data_core_core::error::Error::Database)?;
 
             // Wait a moment for the update to take effect
             tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -302,7 +307,7 @@ mod dynamic_entity_tests {
         .bind(entity_type)
         .execute(pool)
         .await
-        .map_err(Error::Database)?;
+        .map_err(r_data_core_core::error::Error::Database)?;
 
         if result.rows_affected() == 0 {
             warn!("No rows were updated when marking entity as published");
@@ -319,7 +324,7 @@ mod dynamic_entity_tests {
         test_setup();
 
         // Setup test database
-        let pool = common::utils::setup_test_db().await;
+        let pool = setup_test_db().await;
 
         // Create a unique entity type for this test
         let entity_type = unique_entity_type("user");
@@ -376,7 +381,7 @@ mod dynamic_entity_tests {
         test_setup();
 
         // Setup test database
-        let pool = common::utils::setup_test_db().await;
+        let pool = setup_test_db().await;
 
         // Create a entity definition from the JSON example with a unique entity type
         let (entity_type, entity_def, _) = create_test_entity_definition_from_json(
@@ -385,7 +390,7 @@ mod dynamic_entity_tests {
         )
         .await?;
 
-        println!("Created entity type: {}", entity_type);
+        println!("Created entity type: {entity_type}");
 
         // Create dynamic entity service
         let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
@@ -395,7 +400,6 @@ mod dynamic_entity_tests {
             DynamicEntityService::new(dynamic_entity_repository.clone(), Arc::new(class_service));
 
         // Create 5 test entities with different attributes
-        let mut created_uuids = Vec::new();
         for i in 1..=5 {
             let mut entity = DynamicEntity {
                 entity_type: entity_type.clone(),
@@ -412,16 +416,16 @@ mod dynamic_entity_tests {
                 .insert("uuid".to_string(), json!(uuid.to_string()));
             entity
                 .field_data
-                .insert("email".to_string(), json!(format!("user{}@example.com", i)));
+                .insert("email".to_string(), json!(format!("user{i}@example.com")));
             entity
                 .field_data
-                .insert("username".to_string(), json!(format!("user{}", i)));
+                .insert("username".to_string(), json!(format!("user{i}")));
             entity
                 .field_data
-                .insert("first_name".to_string(), json!(format!("User{}", i)));
+                .insert("first_name".to_string(), json!(format!("User{i}")));
             entity
                 .field_data
-                .insert("last_name".to_string(), json!(format!("Test{}", i)));
+                .insert("last_name".to_string(), json!(format!("Test{i}")));
             entity.field_data.insert(
                 "role".to_string(),
                 json!(if i % 2 == 0 { "admin" } else { "customer" }),
@@ -451,13 +455,12 @@ mod dynamic_entity_tests {
             entity.field_data.insert("path".to_string(), json!("/"));
             entity.field_data.insert(
                 "entity_key".to_string(),
-                json!(format!("{}-{}", entity_type, uuid.simple())),
+                json!(format!("{entity_type}-{}", uuid.simple())),
             );
 
             // Insert using the service
             dynamic_entity_service.create_entity(&entity).await?;
             let entity_uuid = get_entity_uuid(&entity).unwrap();
-            created_uuids.push(entity_uuid);
 
             // Ensure it's published
             ensure_entity_published(&pool, &entity_uuid, &entity_type).await?;
@@ -514,7 +517,7 @@ mod dynamic_entity_tests {
         test_setup();
 
         // Setup test database
-        let pool = common::utils::setup_test_db().await;
+        let pool = setup_test_db().await;
 
         // Create a entity definition from the JSON example with a unique entity type
         let (entity_type, entity_def, _) = create_test_entity_definition_from_json(
@@ -545,16 +548,16 @@ mod dynamic_entity_tests {
                 .insert("uuid".to_string(), json!(uuid.to_string()));
             entity
                 .field_data
-                .insert("email".to_string(), json!(format!("user{}@example.com", i)));
+                .insert("email".to_string(), json!(format!("user{i}@example.com")));
             entity
                 .field_data
-                .insert("username".to_string(), json!(format!("user{}", i)));
+                .insert("username".to_string(), json!(format!("user{i}")));
             entity
                 .field_data
-                .insert("first_name".to_string(), json!(format!("User{}", i)));
+                .insert("first_name".to_string(), json!(format!("User{i}")));
             entity
                 .field_data
-                .insert("last_name".to_string(), json!(format!("Test{}", i)));
+                .insert("last_name".to_string(), json!(format!("Test{i}")));
             entity
                 .field_data
                 .insert("role".to_string(), json!("customer"));
@@ -570,7 +573,7 @@ mod dynamic_entity_tests {
             entity.field_data.insert("path".to_string(), json!("/"));
             entity.field_data.insert(
                 "entity_key".to_string(),
-                json!(format!("{}-{}", entity_type, uuid.simple())),
+                json!(format!("{entity_type}-{}", uuid.simple())),
             );
 
             // Create the entity
@@ -653,7 +656,7 @@ mod dynamic_entity_tests {
         test_setup();
 
         // Setup test database
-        let pool = common::utils::setup_test_db().await;
+        let pool = setup_test_db().await;
 
         // Create a entity definition from the JSON example with a unique entity type
         let (entity_type, entity_def, _) = create_test_entity_definition_from_json(
@@ -662,7 +665,7 @@ mod dynamic_entity_tests {
         )
         .await?;
 
-        println!("Testing pagination with entity type: {}", entity_type);
+        println!("Testing pagination with entity type: {entity_type}");
 
         // Create repositories and services for this test
         let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
@@ -686,16 +689,16 @@ mod dynamic_entity_tests {
                 .insert("uuid".to_string(), json!(uuid.to_string()));
             entity
                 .field_data
-                .insert("email".to_string(), json!(format!("user{}@example.com", i)));
+                .insert("email".to_string(), json!(format!("user{i}@example.com")));
             entity
                 .field_data
-                .insert("username".to_string(), json!(format!("user{}", i)));
+                .insert("username".to_string(), json!(format!("user{i}")));
             entity
                 .field_data
-                .insert("first_name".to_string(), json!(format!("User{}", i)));
+                .insert("first_name".to_string(), json!(format!("User{i}")));
             entity
                 .field_data
-                .insert("last_name".to_string(), json!(format!("Test{}", i)));
+                .insert("last_name".to_string(), json!(format!("Test{i}")));
             entity
                 .field_data
                 .insert("role".to_string(), json!("customer"));
@@ -711,7 +714,7 @@ mod dynamic_entity_tests {
             entity.field_data.insert("path".to_string(), json!("/"));
             entity.field_data.insert(
                 "entity_key".to_string(),
-                json!(format!("{}-{}", entity_type, uuid.simple())),
+                json!(format!("{entity_type}-{}", uuid.simple())),
             );
 
             // Create the entity
@@ -755,7 +758,7 @@ mod dynamic_entity_tests {
         test_setup();
 
         // Setup test database
-        let pool = common::utils::setup_test_db().await;
+        let pool = setup_test_db().await;
 
         // Create a entity definition from the JSON example with a unique entity type
         let (entity_type, entity_def, _) = create_test_entity_definition_from_json(
@@ -764,7 +767,7 @@ mod dynamic_entity_tests {
         )
         .await?;
 
-        println!("Created entity type: {}", entity_type);
+        println!("Created entity type: {entity_type}");
 
         // Create dynamic entity service
         let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
@@ -774,7 +777,6 @@ mod dynamic_entity_tests {
             DynamicEntityService::new(dynamic_entity_repository, Arc::new(class_service));
 
         // Create a few test entities
-        let mut created_uuids = Vec::new();
         for i in 1..=3 {
             let mut entity = DynamicEntity {
                 entity_type: entity_type.clone(),
@@ -789,16 +791,16 @@ mod dynamic_entity_tests {
                 .insert("uuid".to_string(), json!(uuid.to_string()));
             entity
                 .field_data
-                .insert("email".to_string(), json!(format!("user{}@example.com", i)));
+                .insert("email".to_string(), json!(format!("user{i}@example.com")));
             entity
                 .field_data
-                .insert("username".to_string(), json!(format!("user{}", i)));
+                .insert("username".to_string(), json!(format!("user{i}")));
             entity
                 .field_data
-                .insert("first_name".to_string(), json!(format!("User{}", i)));
+                .insert("first_name".to_string(), json!(format!("User{i}")));
             entity
                 .field_data
-                .insert("last_name".to_string(), json!(format!("Test{}", i)));
+                .insert("last_name".to_string(), json!(format!("Test{i}")));
             entity
                 .field_data
                 .insert("role".to_string(), json!("customer"));
@@ -826,13 +828,12 @@ mod dynamic_entity_tests {
             entity.field_data.insert("path".to_string(), json!("/"));
             entity.field_data.insert(
                 "entity_key".to_string(),
-                json!(format!("{}-{}", entity_type, uuid.simple())),
+                json!(format!("{entity_type}-{}", uuid.simple())),
             );
 
             // Insert using the service
             dynamic_entity_service.create_entity(&entity).await?;
             let entity_uuid = get_entity_uuid(&entity).unwrap();
-            created_uuids.push(entity_uuid);
 
             // Ensure it's published
             ensure_entity_published(&pool, &entity_uuid, &entity_type).await?;
@@ -858,37 +859,36 @@ mod dynamic_entity_tests {
             assert_eq!(entity.entity_type, entity_type, "Entity type should match");
         }
 
-        // Clean up all test resources at the end of tests
-        common::utils::cleanup_test_resources().await?;
-
         Ok(())
     }
 
     #[actix_web::test]
     async fn test_simple_entity_creation_optimized() -> Result<()> {
         // Set up the test database
-        let pool = common::utils::setup_test_db().await;
+        let pool = setup_test_db().await;
 
         // Create a simple entity definition
         let entity_type = format!("test_entity_{}", Uuid::now_v7().simple());
 
-        // Create a simple entity definition
-        let mut entity_def = EntityDefinition::default();
-        entity_def.entity_type = entity_type.clone();
-        entity_def.display_name = format!("Test {}", entity_type);
-        entity_def.description = Some("Test entity".to_string());
-        entity_def.created_by = Uuid::now_v7();
-        entity_def.published = true;
-
         // Create a simple field definition
         let mut fields = Vec::new();
-        let field = r_data_core::entity::field::FieldDefinition::new(
+        let field = r_data_core_core::field::FieldDefinition::new(
             "name".to_string(),
             "Name".to_string(),
-            r_data_core::entity::field::types::FieldType::String,
+            r_data_core_core::field::types::FieldType::String,
         );
         fields.push(field);
-        entity_def.fields = fields;
+
+        // Create a simple entity definition
+        let entity_def = EntityDefinition {
+            entity_type: entity_type.clone(),
+            display_name: format!("Test {entity_type}"),
+            description: Some("Test entity".to_string()),
+            created_by: Uuid::now_v7(),
+            published: true,
+            fields,
+            ..Default::default()
+        };
 
         // Create entity definition in the database
         let class_repo = EntityDefinitionRepository::new(pool.clone());
@@ -934,7 +934,7 @@ mod dynamic_entity_tests {
         entity.field_data.insert("path".to_string(), json!("/"));
         entity.field_data.insert(
             "entity_key".to_string(),
-            json!(format!("{}-{}", entity_type, uuid.simple())),
+            json!(format!("{entity_type}-{}", uuid.simple())),
         );
 
         // Create a repository and service for dynamic entities
@@ -945,8 +945,8 @@ mod dynamic_entity_tests {
         dynamic_service.create_entity(&entity).await?;
 
         // Retrieve the entity
-        let entity_uuid = Uuid::parse_str(&entity.field_data["uuid"].as_str().unwrap())
-            .map_err(|e| r_data_core::error::Error::Conversion(e.to_string()))?;
+        let entity_uuid = Uuid::parse_str(entity.field_data["uuid"].as_str().unwrap())
+            .map_err(|e| r_data_core_core::error::Error::Conversion(e.to_string()))?;
         let retrieved = dynamic_service
             .get_entity_by_uuid(&entity_type, &entity_uuid, None)
             .await?;
@@ -968,24 +968,26 @@ mod dynamic_entity_tests {
         test_setup();
 
         // Setup test database
-        let pool = common::utils::setup_test_db().await;
+        let pool = setup_test_db().await;
 
         // Create a simple entity definition
         let entity_type = unique_entity_type("test_file");
 
-        let mut entity_def = EntityDefinition::default();
-        entity_def.entity_type = entity_type.clone();
-        entity_def.display_name = format!("Test {}", entity_type);
-        entity_def.description = Some("Test entity".to_string());
-        entity_def.created_by = Uuid::now_v7();
-        entity_def.published = true;
-
-        let field = r_data_core::entity::field::FieldDefinition::new(
+        let field = r_data_core_core::field::FieldDefinition::new(
             "name".to_string(),
             "Name".to_string(),
-            r_data_core::entity::field::types::FieldType::String,
+            r_data_core_core::field::types::FieldType::String,
         );
-        entity_def.fields = vec![field];
+
+        let entity_def = EntityDefinition {
+            entity_type: entity_type.clone(),
+            display_name: format!("Test {entity_type}"),
+            description: Some("Test entity".to_string()),
+            created_by: Uuid::now_v7(),
+            published: true,
+            fields: vec![field],
+            ..Default::default()
+        };
 
         // Create entity definition in the database
         let class_repo = EntityDefinitionRepository::new(pool.clone());
@@ -1089,8 +1091,8 @@ mod dynamic_entity_tests {
         );
 
         // Test 2: Query entities at "/" - should return parent entity with has_children=true
-        let pub_repo = EntityRepository::new(pool.clone());
-        let (items, total) = pub_repo.browse_by_path("/", 100, 0).await?;
+        let pub_repo = DynamicEntityPublicRepository::new(pool.clone());
+        let (items, _total) = pub_repo.browse_by_path("/", 100, 0).await?;
 
         let parent_item = items.iter().find(|item| item.name == "test");
         assert!(parent_item.is_some(), "Should find parent entity at /");
@@ -1124,24 +1126,26 @@ mod dynamic_entity_tests {
         test_setup();
 
         // Setup test database
-        let pool = common::utils::setup_test_db().await;
+        let pool = setup_test_db().await;
 
         // Create a simple entity definition
         let entity_type = unique_entity_type("test_file");
 
-        let mut entity_def = EntityDefinition::default();
-        entity_def.entity_type = entity_type.clone();
-        entity_def.display_name = format!("Test {}", entity_type);
-        entity_def.description = Some("Test entity".to_string());
-        entity_def.created_by = Uuid::now_v7();
-        entity_def.published = true;
-
-        let field = r_data_core::entity::field::FieldDefinition::new(
+        let field = r_data_core_core::field::FieldDefinition::new(
             "name".to_string(),
             "Name".to_string(),
-            r_data_core::entity::field::types::FieldType::String,
+            r_data_core_core::field::types::FieldType::String,
         );
-        entity_def.fields = vec![field];
+
+        let entity_def = EntityDefinition {
+            entity_type: entity_type.clone(),
+            display_name: format!("Test {entity_type}"),
+            description: Some("Test entity".to_string()),
+            created_by: Uuid::now_v7(),
+            published: true,
+            fields: vec![field],
+            ..Default::default()
+        };
 
         // Create entity definition in the database
         let class_repo = EntityDefinitionRepository::new(pool.clone());
@@ -1232,7 +1236,7 @@ mod dynamic_entity_tests {
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
         // Test 1: Get-by-path "/" must return "some-folder" as type folder with has_children=true
-        let pub_repo = EntityRepository::new(pool.clone());
+        let pub_repo = DynamicEntityPublicRepository::new(pool.clone());
         let (root_items, _) = pub_repo.browse_by_path("/", 100, 0).await?;
 
         let folder_node = root_items.iter().find(|item| item.name == "some-folder");

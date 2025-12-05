@@ -1,0 +1,103 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
+use crate::error::Result;
+use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
+use time::OffsetDateTime;
+use utoipa::ToSchema;
+use uuid::Uuid;
+
+/// Refresh token for secure authentication
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
+pub struct RefreshToken {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub token_hash: String,
+    pub expires_at: OffsetDateTime,
+    pub created_at: OffsetDateTime,
+    pub last_used_at: Option<OffsetDateTime>,
+    pub is_revoked: bool,
+    pub device_info: Option<serde_json::Value>,
+}
+
+/// Request to create a new refresh token
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct CreateRefreshTokenRequest {
+    pub user_id: Uuid,
+    pub expires_at: OffsetDateTime,
+    pub device_info: Option<serde_json::Value>,
+}
+
+/// Response after creating a refresh token
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct RefreshTokenResponse {
+    pub token: String, // The actual token (not stored in DB)
+    pub expires_at: OffsetDateTime,
+}
+
+impl RefreshToken {
+    /// Create a new refresh token instance
+    #[must_use]
+    pub fn new(
+        user_id: Uuid,
+        token_hash: String,
+        expires_at: OffsetDateTime,
+        device_info: Option<serde_json::Value>,
+    ) -> Self {
+        Self {
+            id: Uuid::new_v7(uuid::Timestamp::now(uuid::NoContext)),
+            user_id,
+            token_hash,
+            expires_at,
+            created_at: OffsetDateTime::now_utc(),
+            last_used_at: None,
+            is_revoked: false,
+            device_info,
+        }
+    }
+
+    /// Check if the refresh token is expired
+    #[must_use]
+    pub fn is_expired(&self) -> bool {
+        self.expires_at <= OffsetDateTime::now_utc()
+    }
+
+    /// Check if the refresh token is valid (not expired and not revoked)
+    #[must_use]
+    pub fn is_valid(&self) -> bool {
+        !self.is_expired() && !self.is_revoked
+    }
+
+    /// Mark the token as used
+    pub fn mark_as_used(&mut self) {
+        self.last_used_at = Some(OffsetDateTime::now_utc());
+    }
+
+    /// Revoke the token
+    pub const fn revoke(&mut self) {
+        self.is_revoked = true;
+    }
+
+    /// Generate a secure random token
+    #[must_use]
+    pub fn generate_token() -> String {
+        use base64::engine::general_purpose::STANDARD_NO_PAD;
+        use base64::Engine;
+        use rand::Rng;
+        let mut rng = rand::rng();
+        let token_bytes: [u8; 32] = rng.random();
+        STANDARD_NO_PAD.encode(token_bytes)
+    }
+
+    /// Hash a token for storage
+    ///
+    /// # Errors
+    /// Returns an error if hashing fails
+    pub fn hash_token(token: &str) -> Result<String> {
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(token.as_bytes());
+        let result = hasher.finalize();
+        Ok(hex::encode(result))
+    }
+}

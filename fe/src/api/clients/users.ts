@@ -1,14 +1,78 @@
 import { z } from 'zod'
-import { ApiResponseSchema, UserSchema } from '@/types/schemas'
-import type { User } from '@/types/schemas'
+import { ApiResponseSchema, PaginatedApiResponseSchema, UserResponseSchema } from '@/types/schemas'
+import type { UserResponse, CreateUserRequest, UpdateUserRequest } from '@/types/schemas'
 import { BaseTypedHttpClient } from './base'
 
 export class UsersClient extends BaseTypedHttpClient {
-    async getUsers(limit?: number, offset = 0): Promise<User[]> {
-        const pageSize = limit ?? this.getDefaultPageSize()
+    async getUsers(
+        page = 1,
+        itemsPerPage = 20
+    ): Promise<{
+        data: UserResponse[]
+        meta?: {
+            pagination?: {
+                total: number
+                page: number
+                per_page: number
+                total_pages: number
+                has_previous: boolean
+                has_next: boolean
+            }
+            request_id?: string
+            timestamp?: string
+            custom?: unknown
+        }
+    }> {
+        const response = await this.paginatedRequest(
+            `/admin/api/v1/users?page=${page}&per_page=${itemsPerPage}`,
+            PaginatedApiResponseSchema(z.array(UserResponseSchema))
+        )
+        return response
+    }
+
+    async getUser(uuid: string): Promise<UserResponse> {
+        return this.request(`/admin/api/v1/users/${uuid}`, ApiResponseSchema(UserResponseSchema))
+    }
+
+    async createUser(data: CreateUserRequest): Promise<UserResponse> {
+        return this.request('/admin/api/v1/users', ApiResponseSchema(UserResponseSchema), {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async updateUser(uuid: string, data: UpdateUserRequest): Promise<UserResponse> {
+        return this.request(`/admin/api/v1/users/${uuid}`, ApiResponseSchema(UserResponseSchema), {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async deleteUser(uuid: string): Promise<{ message: string }> {
         return this.request(
-            `/admin/api/v1/users?limit=${pageSize}&offset=${offset}`,
-            ApiResponseSchema(z.array(UserSchema))
+            `/admin/api/v1/users/${uuid}`,
+            ApiResponseSchema(z.object({ message: z.string() })),
+            {
+                method: 'DELETE',
+            }
+        )
+    }
+
+    async getUserSchemes(uuid: string): Promise<string[]> {
+        return this.request(
+            `/admin/api/v1/users/${uuid}/schemes`,
+            ApiResponseSchema(z.array(z.string()))
+        )
+    }
+
+    async assignSchemesToUser(uuid: string, schemeUuids: string[]): Promise<{ message: string }> {
+        return this.request(
+            `/admin/api/v1/users/${uuid}/schemes`,
+            ApiResponseSchema(z.object({ message: z.string() })),
+            {
+                method: 'PUT',
+                body: JSON.stringify(schemeUuids),
+            }
         )
     }
 }

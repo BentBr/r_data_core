@@ -1,3 +1,4 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 // Workflow E2E tests organized by use case
 
 pub mod common;

@@ -1,29 +1,31 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use actix_web::{test, web, App};
-use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
-use r_data_core::api::{configure_app, ApiState};
-use r_data_core::cache::CacheManager;
-use r_data_core::config::CacheConfig;
-use r_data_core::entity::admin_user::repository::{AdminUserRepository, ApiKeyRepository};
-use r_data_core::entity::dynamic_entity::entity::DynamicEntity;
-use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
-use r_data_core::entity::entity_definition::definition::EntityDefinition;
-use r_data_core::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
-use r_data_core::entity::field::ui::UiSettings;
-use r_data_core::entity::field::{FieldDefinition, FieldType, FieldValidation};
-use r_data_core::error::{Error, Result};
-use r_data_core::services::{
-    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, WorkflowService,
+use r_data_core_api::{configure_app, ApiState};
+use r_data_core_core::cache::CacheManager;
+use r_data_core_core::config::CacheConfig;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::error::Result;
+use r_data_core_core::field::options::FieldValidation;
+use r_data_core_core::field::ui::UiSettings;
+use r_data_core_core::field::{FieldDefinition, FieldType};
+use r_data_core_core::DynamicEntity;
+use r_data_core_persistence::admin_user_repository_trait::ApiKeyRepositoryTrait;
+use r_data_core_persistence::DynamicEntityRepository;
+use r_data_core_persistence::EntityDefinitionRepository;
+use r_data_core_persistence::WorkflowRepository;
+use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
+use r_data_core_services::WorkflowService;
+use r_data_core_services::{
+    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
 };
-use r_data_core::workflow::data::repository::WorkflowRepository;
+use r_data_core_test_support::create_test_admin_user;
 use serde_json::json;
 use sqlx::PgPool;
 use std::collections::HashMap;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-#[path = "common/mod.rs"]
-mod common;
 
 /// Clear test database
 async fn clear_test_db(pool: &PgPool) -> Result<()> {
@@ -35,11 +37,11 @@ async fn clear_test_db(pool: &PgPool) -> Result<()> {
         "entities_registry",
     ];
 
-    for table in tables.iter() {
-        sqlx::query(&format!("DELETE FROM {}", table))
+    for table in &tables {
+        sqlx::query(&format!("DELETE FROM {table}"))
             .execute(pool)
             .await
-            .map_err(|e| Error::Database(e))?;
+            .map_err(r_data_core_core::error::Error::Database)?;
     }
 
     Ok(())
@@ -48,11 +50,13 @@ async fn clear_test_db(pool: &PgPool) -> Result<()> {
 /// Create a test entity definition
 async fn create_test_entity_definition(pool: &PgPool, entity_type: &str) -> Result<Uuid> {
     // Create a simple entity definition for testing
-    let mut entity_def = EntityDefinition::default();
-    entity_def.entity_type = entity_type.to_string();
-    entity_def.display_name = format!("{} Class", entity_type);
-    entity_def.description = Some(format!("Test description for {}", entity_type));
-    entity_def.published = true;
+    let mut entity_def = EntityDefinition {
+        entity_type: entity_type.to_string(),
+        display_name: format!("{entity_type} Class"),
+        description: Some(format!("Test description for {entity_type}")),
+        published: true,
+        ..Default::default()
+    };
 
     // Add fields to the entity definition
     let mut fields = Vec::new();
@@ -97,14 +101,18 @@ async fn create_test_entity_definition(pool: &PgPool, entity_type: &str) -> Resu
 
     // Use the repository trait to create the entity definition
     let repository = EntityDefinitionRepository::new(pool.clone());
-    let uuid = repository.create(&entity_def).await?;
+    let uuid = r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait::create(
+        &repository,
+        &entity_def,
+    )
+    .await?;
 
     // Trigger the view creation
-    let trigger_sql = format!("SELECT create_entity_table_and_view('{}')", entity_type);
+    let trigger_sql = format!("SELECT create_entity_table_and_view('{entity_type}')");
     sqlx::query(&trigger_sql)
         .execute(pool)
         .await
-        .map_err(|e| Error::Database(e))?;
+        .map_err(r_data_core_core::error::Error::Database)?;
 
     // Wait a moment for the trigger
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -158,6 +166,7 @@ async fn create_test_entity(
 }
 
 /// Create a test API key
+#[allow(dead_code)]
 async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
     // Create an admin user first
     let admin_uuid = Uuid::now_v7();
@@ -174,7 +183,7 @@ async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
     .bind(created_by)
     .execute(pool)
     .await
-    .map_err(Error::Database)?;
+    .map_err(r_data_core_core::error::Error::Database)?;
 
     // Create API key
     let key_uuid = Uuid::now_v7();
@@ -193,30 +202,43 @@ async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
     .bind(created_by)
     .execute(pool)
     .await
-    .map_err(Error::Database)?;
+    .map_err(r_data_core_core::error::Error::Database)?;
 
     Ok(())
 }
 
 // Helper function to hash API key or use a fallback mechanism when testing
+#[allow(dead_code)]
 fn use_api_key_hash_or_fallback(api_key: &str) -> String {
-    use r_data_core::entity::admin_user::model::ApiKey;
+    use r_data_core_core::admin_user::ApiKey;
 
-    match ApiKey::hash_api_key(api_key) {
-        Ok(hash) => hash,
-        Err(_) => {
-            // For testing purposes, use a simple hash approach if the proper method fails
-            use sha2::{Digest, Sha256};
-            let mut hasher = Sha256::new();
-            hasher.update(api_key.as_bytes());
-            format!("{:x}", hasher.finalize())
-        }
-    }
+    ApiKey::hash_api_key(api_key).unwrap_or_else(|_| {
+        // For testing purposes, use a simple hash approach if the proper method fails
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(api_key.as_bytes());
+        let hash = hasher.finalize();
+        format!("{hash:x}")
+    })
 }
 
 /// Create a test app with all required services
+#[allow(dead_code, clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn create_test_app(
     pool: &PgPool,
+) -> impl actix_web::dev::Service<
+    actix_http::Request,
+    Response = actix_web::dev::ServiceResponse,
+    Error = actix_web::Error,
+> {
+    let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+    create_test_app_with_api_key_repo(pool, api_key_repo).await
+}
+
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
+async fn create_test_app_with_api_key_repo(
+    pool: &PgPool,
+    api_key_repo: ApiKeyRepository,
 ) -> impl actix_web::dev::Service<
     actix_http::Request,
     Response = actix_web::dev::ServiceResponse,
@@ -233,8 +255,9 @@ async fn create_test_app(
     let cache_manager = Arc::new(CacheManager::new(cache_config));
 
     // Create repositories and services
-    let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.clone())));
-    let api_key_service = ApiKeyService::new(api_key_repository);
+    // Use from_repository to match the pattern in authentication_tests.rs
+    // Note: We don't use cache for API keys in tests to avoid cache-related issues
+    let api_key_service = ApiKeyService::from_repository(api_key_repo);
 
     let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.clone())));
     let admin_user_service = AdminUserService::new(admin_user_repository);
@@ -253,26 +276,42 @@ async fn create_test_app(
     let workflow_service = WorkflowService::new(workflow_repository);
 
     // Create app state
-    let app_state = web::Data::new(ApiState {
+    let api_state = ApiState {
         db_pool: pool.clone(),
-        jwt_secret: "test_secret".to_string(),
+        api_config: r_data_core_core::config::ApiConfig {
+            host: "0.0.0.0".to_string(),
+            port: 8888,
+            use_tls: false,
+            jwt_secret: "test_secret".to_string(),
+            jwt_expiration: 3600,
+            enable_docs: true,
+            cors_origins: vec![],
+        },
+        permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            pool.clone(),
+            cache_manager.clone(),
+            Some(0),
+        ),
         cache_manager,
         api_key_service,
         admin_user_service,
         entity_definition_service,
         dynamic_entity_service: Some(dynamic_entity_service),
         workflow_service,
-        queue: crate::common::utils::test_queue_client_async().await,
-    });
+        queue: r_data_core_test_support::test_queue_client_async().await,
+    };
+
+    let app_data = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));
 
     // Build test app
-    test::init_service(App::new().app_data(app_state).configure(configure_app)).await
+    test::init_service(App::new().app_data(app_data).configure(configure_app)).await
 }
 
 #[actix_web::test]
 async fn test_fixed_entity_type_column_issue() -> Result<()> {
     // Setup test database
-    let pool = common::utils::setup_test_db().await;
+    use r_data_core_test_support::setup_test_db;
+    let pool = setup_test_db().await;
 
     clear_test_db(&pool).await?;
 
@@ -284,18 +323,39 @@ async fn test_fixed_entity_type_column_issue() -> Result<()> {
         create_test_entity(
             &pool,
             "user",
-            &format!("User {}", i),
-            &format!("user{}@example.com", i),
+            &format!("User {i}"),
+            &format!("user{i}@example.com"),
         )
         .await?;
     }
 
-    // Create an API key
-    let api_key = "test_api_key_12345";
-    create_test_api_key(&pool, api_key.to_string()).await?;
+    // Create an admin user first
+    let user_uuid = create_test_admin_user(&pool).await?;
 
-    // Build test app with DynamicEntityService, etc.
-    let app = create_test_app(&pool).await;
+    // Create an API key repository and key BEFORE creating the app (like in authentication_tests.rs)
+    let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+    let (_key_uuid, api_key) = ApiKeyRepositoryTrait::create_new_api_key(
+        &api_key_repo,
+        "Test API Key",
+        "Test Description",
+        user_uuid,
+        30,
+    )
+    .await?;
+
+    // Build test app with DynamicEntityService, etc., using the same API key repository
+    // This matches the pattern in authentication_tests.rs exactly
+    let app = create_test_app_with_api_key_repo(&pool, api_key_repo).await;
+
+    // Directly test that the API key service in the app can validate the key
+    // This helps debug if there's an issue with the service setup
+    let test_service =
+        ApiKeyService::from_repository(ApiKeyRepository::new(Arc::new(pool.clone())));
+    let service_validation = test_service.validate_api_key(&api_key).await?;
+    assert!(
+        service_validation.is_some(),
+        "API key service should be able to validate the key directly"
+    );
 
     // Test the endpoint that previously failed due to the entity_type column
     let req = test::TestRequest::get()
@@ -305,12 +365,13 @@ async fn test_fixed_entity_type_column_issue() -> Result<()> {
 
     let resp = test::call_service(&app, req).await;
 
-    // Verify that the request now succeeds (before it would fail with DB error)
-    assert!(
-        resp.status().is_success(),
-        "API request failed with status: {}",
-        resp.status()
-    );
+    // If the request fails, print the response body for debugging
+    let status = resp.status();
+    if !status.is_success() {
+        let body = test::read_body(resp).await;
+        let body_str = String::from_utf8_lossy(&body);
+        panic!("API request failed with status: {status}. Response body: {body_str}");
+    }
 
     // Parse and verify response
     let body: serde_json::Value = test::read_body_json(resp).await;

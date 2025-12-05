@@ -68,6 +68,7 @@
                     <v-card-text>
                         <v-row>
                             <v-col
+                                v-if="canAccessEntityDefinitions"
                                 cols="12"
                                 sm="6"
                                 md="3"
@@ -83,6 +84,7 @@
                                 </v-btn>
                             </v-col>
                             <v-col
+                                v-if="canAccessEntities"
                                 cols="12"
                                 sm="6"
                                 md="3"
@@ -98,6 +100,7 @@
                                 </v-btn>
                             </v-col>
                             <v-col
+                                v-if="canAccessApiKeys"
                                 cols="12"
                                 sm="6"
                                 md="3"
@@ -113,6 +116,7 @@
                                 </v-btn>
                             </v-col>
                             <v-col
+                                v-if="canAccessSystem"
                                 cols="12"
                                 sm="6"
                                 md="3"
@@ -136,7 +140,18 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, onMounted } from 'vue'
+    import { ref, computed, onMounted } from 'vue'
+    import { useAuthStore } from '@/stores/auth'
+
+    const authStore = useAuthStore()
+
+    // Permission checks for quick action buttons
+    const canAccessEntityDefinitions = computed(() =>
+        authStore.canAccessRoute('/entity-definitions')
+    )
+    const canAccessEntities = computed(() => authStore.canAccessRoute('/entities'))
+    const canAccessApiKeys = computed(() => authStore.canAccessRoute('/api-keys'))
+    const canAccessSystem = computed(() => authStore.canAccessRoute('/system'))
 
     // Mock data for now
     const metrics = ref({

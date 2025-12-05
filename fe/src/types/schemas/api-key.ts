@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { UuidSchema, TimestampSchema, NullableTimestampSchema } from './base'
+import { UuidSchema, TimestampSchema, NullableTimestampSchema, NullableUuidSchema } from './base'
 
 // API Key schema
 export const ApiKeySchema = z.object({
@@ -10,7 +10,7 @@ export const ApiKeySchema = z.object({
     created_at: TimestampSchema,
     expires_at: NullableTimestampSchema,
     last_used_at: NullableTimestampSchema,
-    created_by: UuidSchema,
+    created_by: NullableUuidSchema,
     user_uuid: UuidSchema,
     published: z.boolean(),
 })

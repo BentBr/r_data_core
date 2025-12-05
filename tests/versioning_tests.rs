@@ -1,16 +1,18 @@
-use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
-use r_data_core::api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
-use r_data_core::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
-use r_data_core::entity::version_repository::VersionRepository;
-use r_data_core::services::{EntityDefinitionService, VersionService};
-use r_data_core::workflow::data::repository::WorkflowRepository;
-use r_data_core::workflow::data::WorkflowKind;
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
+use r_data_core_api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
+use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
+use r_data_core_persistence::EntityDefinitionRepository;
+use r_data_core_persistence::VersionRepository;
+use r_data_core_persistence::WorkflowRepository;
+use r_data_core_services::{EntityDefinitionService, VersionService};
+use r_data_core_workflow::data::WorkflowKind;
 use sqlx::Row;
 use uuid::Uuid;
 
-mod common;
-use common::utils::{
-    create_test_entity, create_test_entity_definition, setup_test_db, unique_entity_type,
+use r_data_core_test_support::{
+    create_test_admin_user, create_test_entity, create_test_entity_definition, setup_test_db,
+    unique_entity_type,
 };
 
 #[tokio::test]
@@ -43,8 +45,7 @@ async fn test_dynamic_entity_update_creates_snapshot() {
         "updated_by": Uuid::now_v7().to_string()
     });
     // Use the view to validate after update
-    let repo =
-        r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool.clone());
+    let repo = r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
     // We need definition for validation; load from service
     let def_repo = EntityDefinitionRepository::new(pool.clone());
     let def_svc = EntityDefinitionService::new_without_cache(std::sync::Arc::new(def_repo));
@@ -52,7 +53,7 @@ async fn test_dynamic_entity_update_creates_snapshot() {
         .get_entity_definition_by_entity_type(&entity_type)
         .await
         .unwrap();
-    let entity = r_data_core::entity::dynamic_entity::entity::DynamicEntity {
+    let entity = r_data_core_core::DynamicEntity {
         entity_type: entity_type.clone(),
         field_data: payload
             .as_object_mut()
@@ -91,11 +92,11 @@ async fn test_workflow_update_creates_snapshot_and_increments_version() {
     let repo = WorkflowRepository::new(pool.clone());
 
     // Create workflow with a valid admin user as creator
-    let created_by = common::utils::create_test_admin_user(&pool).await.unwrap();
+    let created_by = create_test_admin_user(&pool).await.unwrap();
     let req = CreateWorkflowRequest {
         name: "wf1".to_string(),
         description: Some("desc".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: serde_json::json!({"steps": []}),
@@ -114,13 +115,13 @@ async fn test_workflow_update_creates_snapshot_and_increments_version() {
     let upd = UpdateWorkflowRequest {
         name: "wf1-upd".to_string(),
         description: Some("desc2".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: serde_json::json!({"steps": []}),
         versioning_disabled: false,
     };
-    let updated_by = common::utils::create_test_admin_user(&pool).await.unwrap();
+    let updated_by = create_test_admin_user(&pool).await.unwrap();
     repo.update(wf_uuid, &upd, updated_by).await.unwrap();
 
     // Snapshot should be for pre-update version (workflows use workflow_versions table)
@@ -153,12 +154,14 @@ async fn test_entity_definition_update_creates_snapshot_and_increments_version()
     let def_repo = EntityDefinitionRepository::new(pool.clone());
     let def_service = EntityDefinitionService::new_without_cache(std::sync::Arc::new(def_repo));
 
-    let mut def = r_data_core::entity::entity_definition::definition::EntityDefinition::default();
-    def.entity_type = entity_type.clone();
-    def.display_name = "Ver Def".to_string();
-    def.description = Some("d".to_string());
-    def.published = true;
-    def.created_by = Uuid::now_v7();
+    let def = r_data_core_core::entity_definition::definition::EntityDefinition {
+        entity_type: entity_type.clone(),
+        display_name: "Ver Def".to_string(),
+        description: Some("d".to_string()),
+        published: true,
+        created_by: Uuid::now_v7(),
+        ..Default::default()
+    };
     let def_uuid = def_service.create_entity_definition(&def).await.unwrap();
 
     // Before version
@@ -170,10 +173,7 @@ async fn test_entity_definition_update_creates_snapshot_and_increments_version()
             .unwrap();
 
     // Update via repository (service .update calls repository.update)
-    let repo =
-        r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
-            pool.clone(),
-        );
+    let repo = r_data_core_persistence::EntityDefinitionRepository::new(pool.clone());
     let mut updated = def_service
         .get_entity_definition_by_entity_type(&entity_type)
         .await
@@ -269,6 +269,7 @@ async fn test_maintenance_prunes_by_age_and_count() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)] // Test function with comprehensive versioning scenarios
 async fn test_version_creation_and_endpoint_output() {
     let pool = setup_test_db().await;
     let entity_type = unique_entity_type("ver_endpoint");
@@ -280,7 +281,7 @@ async fn test_version_creation_and_endpoint_output() {
         .unwrap();
 
     // Create entity with a creator
-    let creator = common::utils::create_test_admin_user(&pool).await.unwrap();
+    let creator = create_test_admin_user(&pool).await.unwrap();
     let entity_uuid = create_test_entity(&pool, &entity_type, "Bob", "bob@example.com")
         .await
         .unwrap();
@@ -303,7 +304,7 @@ async fn test_version_creation_and_endpoint_output() {
     assert_eq!(initial_version, 1);
 
     // Update entity to create a snapshot
-    let updated_by = common::utils::create_test_admin_user(&pool).await.unwrap();
+    let updated_by = create_test_admin_user(&pool).await.unwrap();
     let mut payload = serde_json::json!({
         "uuid": entity_uuid.to_string(),
         "name": "Bob Updated",
@@ -311,15 +312,14 @@ async fn test_version_creation_and_endpoint_output() {
         "updated_by": updated_by.to_string()
     });
 
-    let repo =
-        r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool.clone());
+    let repo = r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
     let def_repo = EntityDefinitionRepository::new(pool.clone());
     let def_svc = EntityDefinitionService::new_without_cache(std::sync::Arc::new(def_repo));
     let def = def_svc
         .get_entity_definition_by_entity_type(&entity_type)
         .await
         .unwrap();
-    let entity = r_data_core::entity::dynamic_entity::entity::DynamicEntity {
+    let entity = r_data_core_core::DynamicEntity {
         entity_type: entity_type.clone(),
         field_data: payload
             .as_object_mut()
@@ -420,6 +420,7 @@ async fn test_version_creation_and_endpoint_output() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)] // Test function with comprehensive versioning scenarios
 async fn test_version_creator_names_in_json_response() {
     let pool = setup_test_db().await;
     let entity_type = unique_entity_type("ver_names");
@@ -431,7 +432,7 @@ async fn test_version_creator_names_in_json_response() {
         .unwrap();
 
     // Create entity with creator1 (with unique name)
-    let creator1 = common::utils::create_test_admin_user(&pool).await.unwrap();
+    let creator1 = create_test_admin_user(&pool).await.unwrap();
     // Set first_name and last_name for creator1
     sqlx::query("UPDATE admin_users SET first_name = 'Creator', last_name = 'One' WHERE uuid = $1")
         .bind(creator1)
@@ -452,7 +453,7 @@ async fn test_version_creator_names_in_json_response() {
         .unwrap();
 
     // Update entity with updater1 (this creates snapshot of version 1)
-    let updater1 = common::utils::create_test_admin_user(&pool).await.unwrap();
+    let updater1 = create_test_admin_user(&pool).await.unwrap();
     // Set first_name and last_name for updater1
     sqlx::query("UPDATE admin_users SET first_name = 'Updater', last_name = 'One' WHERE uuid = $1")
         .bind(updater1)
@@ -466,15 +467,14 @@ async fn test_version_creator_names_in_json_response() {
         "updated_by": updater1.to_string()
     });
 
-    let repo =
-        r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool.clone());
+    let repo = r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
     let def_repo = EntityDefinitionRepository::new(pool.clone());
     let def_svc = EntityDefinitionService::new_without_cache(std::sync::Arc::new(def_repo));
     let def = def_svc
         .get_entity_definition_by_entity_type(&entity_type)
         .await
         .unwrap();
-    let entity1 = r_data_core::entity::dynamic_entity::entity::DynamicEntity {
+    let entity1 = r_data_core_core::DynamicEntity {
         entity_type: entity_type.clone(),
         field_data: payload1
             .as_object_mut()
@@ -487,7 +487,7 @@ async fn test_version_creator_names_in_json_response() {
     repo.update(&entity1).await.unwrap();
 
     // Update entity again with updater2 (this creates snapshot of version 2)
-    let updater2 = common::utils::create_test_admin_user(&pool).await.unwrap();
+    let updater2 = create_test_admin_user(&pool).await.unwrap();
     // Set first_name and last_name for updater2
     sqlx::query("UPDATE admin_users SET first_name = 'Updater', last_name = 'Two' WHERE uuid = $1")
         .bind(updater2)
@@ -501,7 +501,7 @@ async fn test_version_creator_names_in_json_response() {
         "updated_by": updater2.to_string()
     });
 
-    let entity2 = r_data_core::entity::dynamic_entity::entity::DynamicEntity {
+    let entity2 = r_data_core_core::DynamicEntity {
         entity_type: entity_type.clone(),
         field_data: payload2
             .as_object_mut()

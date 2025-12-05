@@ -1,41 +1,60 @@
-use r_data_core::api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
-use r_data_core::services::WorkflowRepositoryAdapter;
-use r_data_core::workflow::data::repository::WorkflowRepository;
-use r_data_core::workflow::data::WorkflowKind;
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
+use r_data_core_api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
+use r_data_core_persistence::WorkflowRepository;
+use r_data_core_services::WorkflowRepositoryAdapter;
+use r_data_core_workflow::data::WorkflowKind;
 use sqlx::Row;
 use std::sync::Arc;
 use uuid::Uuid;
 
-// Import the common test utilities
-#[path = "common/mod.rs"]
-mod common;
+use r_data_core_test_support::{create_test_admin_user, setup_test_db};
 
 #[tokio::test]
 async fn create_sets_created_by_and_fk_enforced() -> anyhow::Result<()> {
-    let pool = common::utils::setup_test_db().await;
+    let pool = setup_test_db().await;
 
     // Ensure we have at least one admin user to act as creator
-    let creator_uuid = common::utils::create_test_admin_user(&pool).await?;
+    let creator_uuid = create_test_admin_user(&pool).await?;
 
     let repo = WorkflowRepository::new(pool.clone());
     let adapter = WorkflowRepositoryAdapter::new(repo);
-    let _svc = r_data_core::services::workflow_service::WorkflowService::new(Arc::new(adapter));
+    let _svc = r_data_core_services::WorkflowService::new(Arc::new(adapter));
 
     // Minimal valid DSL config
     let cfg = serde_json::json!({
         "steps": [
             {
-                "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} },
+                "from": {
+                    "type": "format",
+                    "source": {
+                        "source_type": "uri",
+                        "config": { "uri": "http://example.com/data.csv" }
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": {}
+                    },
+                    "mapping": {}
+                },
                 "transform": { "type": "none" },
-                "to": { "type": "json", "output": "api", "mapping": {} }
+                "to": {
+                    "type": "format",
+                    "output": { "mode": "api" },
+                    "format": {
+                        "format_type": "json",
+                        "options": {}
+                    },
+                    "mapping": {}
+                }
             }
         ]
     });
 
     let req = CreateWorkflowRequest {
-        name: format!("wf-create-{}", Uuid::now_v7()),
+        name: format!("wf-create-{}", Uuid::now_v7().simple()),
         description: Some("audit test".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: cfg,
@@ -69,10 +88,10 @@ async fn create_sets_created_by_and_fk_enforced() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn update_sets_updated_by_and_fk_enforced() -> anyhow::Result<()> {
-    let pool = common::utils::setup_test_db().await;
+    let pool = setup_test_db().await;
 
-    let creator_uuid = common::utils::create_test_admin_user(&pool).await?;
-    let updater_uuid = common::utils::create_test_admin_user(&pool).await?;
+    let creator_uuid = create_test_admin_user(&pool).await?;
+    let updater_uuid = create_test_admin_user(&pool).await?;
 
     let repo = WorkflowRepository::new(pool.clone());
 
@@ -80,18 +99,37 @@ async fn update_sets_updated_by_and_fk_enforced() -> anyhow::Result<()> {
     let cfg = serde_json::json!({
         "steps": [
             {
-                "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} },
+                "from": {
+                    "type": "format",
+                    "source": {
+                        "source_type": "uri",
+                        "config": { "uri": "http://example.com/data.csv" }
+                    },
+                    "format": {
+                        "format_type": "csv",
+                        "options": {}
+                    },
+                    "mapping": {}
+                },
                 "transform": { "type": "none" },
-                "to": { "type": "json", "output": "api", "mapping": {} }
+                "to": {
+                    "type": "format",
+                    "output": { "mode": "api" },
+                    "format": {
+                        "format_type": "json",
+                        "options": {}
+                    },
+                    "mapping": {}
+                }
             }
         ]
     });
 
     // Create base workflow
     let create_req = CreateWorkflowRequest {
-        name: format!("wf-update-{}", Uuid::now_v7()),
+        name: format!("wf-update-{}", Uuid::now_v7().simple()),
         description: Some("audit test".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: cfg.clone(),
@@ -101,9 +139,9 @@ async fn update_sets_updated_by_and_fk_enforced() -> anyhow::Result<()> {
 
     // Update and set updated_by
     let update_req = UpdateWorkflowRequest {
-        name: format!("wf-update-{}-edited", Uuid::now_v7()),
+        name: format!("wf-update-{}-edited", Uuid::now_v7().simple()),
         description: Some("edited".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: false,
         schedule_cron: Some("*/5 * * * *".to_string()),
         config: cfg,

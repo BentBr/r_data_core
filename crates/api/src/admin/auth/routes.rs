@@ -1,0 +1,659 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
+use actix_web::{get, post, web, Responder};
+use std::sync::Arc;
+use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
+
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
+use crate::auth::auth_enum::{OptionalAuth, RequiredAuth};
+use crate::jwt::{
+    generate_access_token, ACCESS_TOKEN_EXPIRY_SECONDS, REFRESH_TOKEN_EXPIRY_SECONDS,
+};
+use crate::response::ApiResponse;
+use r_data_core_core::admin_user::{AdminUser, UserRole};
+use r_data_core_core::permissions::permission_scheme::PermissionScheme;
+use r_data_core_core::refresh_token::RefreshToken;
+use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
+use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
+
+use crate::admin::auth::models::{
+    AdminLoginRequest, AdminLoginResponse, AdminRegisterRequest, LogoutRequest,
+    RefreshTokenRequest, RefreshTokenResponse,
+};
+use validator::Validate;
+
+/// Load permission schemes for a user
+async fn load_user_permission_schemes(
+    user: &AdminUser,
+    data: &ApiStateWrapper,
+    repo: &AdminUserRepository,
+) -> Vec<PermissionScheme> {
+    if user.super_admin || matches!(user.role, UserRole::SuperAdmin) {
+        // SuperAdmin or super_admin doesn't need schemes - handled in JWT generation
+        vec![]
+    } else {
+        // Load all user's permission schemes
+        match data
+            .permission_scheme_service()
+            .get_schemes_for_user(user.uuid, repo)
+            .await
+        {
+            Ok(s) => {
+                log::debug!(
+                    "Loaded {} permission schemes for user {}",
+                    s.len(),
+                    user.username
+                );
+                s
+            }
+            Err(e) => {
+                log::warn!("Failed to load permission schemes for user: {e}");
+                vec![]
+            }
+        }
+    }
+}
+
+/// Generate tokens and build login response
+fn build_login_response(
+    user: &AdminUser,
+    access_token: String,
+    refresh_token: String,
+    access_expires_at: OffsetDateTime,
+    refresh_expires_at: OffsetDateTime,
+) -> actix_web::HttpResponse {
+    ApiResponse::ok(AdminLoginResponse {
+        access_token,
+        refresh_token,
+        user_uuid: user.uuid.to_string(),
+        username: user.username.clone(),
+        role: format!("{:?}", user.role),
+        access_expires_at,
+        refresh_expires_at,
+    })
+}
+
+/// Build refresh token response
+fn build_refresh_response(
+    access_token: String,
+    refresh_token: String,
+    access_expires_at: OffsetDateTime,
+    refresh_expires_at: OffsetDateTime,
+) -> actix_web::HttpResponse {
+    ApiResponse::ok(RefreshTokenResponse {
+        access_token,
+        refresh_token,
+        access_expires_at,
+        refresh_expires_at,
+    })
+}
+
+/// Generate access and refresh tokens for a user
+fn generate_tokens_for_user(
+    user: &AdminUser,
+    data: &ApiStateWrapper,
+    schemes: &[PermissionScheme],
+) -> Result<(String, String, String, OffsetDateTime, OffsetDateTime), actix_web::HttpResponse> {
+    // Use short-lived expiration for access tokens
+    let mut access_token_config = data.api_config().clone();
+    access_token_config.jwt_expiration = ACCESS_TOKEN_EXPIRY_SECONDS;
+    let access_token = generate_access_token(user, &access_token_config, schemes).map_err(|e| {
+        log::error!("Failed to generate access token: {e:?}");
+        ApiResponse::<()>::internal_error("Token generation failed")
+    })?;
+
+    // Generate refresh token
+    let refresh_token = RefreshToken::generate_token();
+    let refresh_token_hash = RefreshToken::hash_token(&refresh_token).map_err(|e| {
+        log::error!("Failed to hash refresh token: {e:?}");
+        ApiResponse::<()>::internal_error("Token generation failed")
+    })?;
+
+    // Calculate expiration times
+    #[allow(clippy::cast_possible_wrap)]
+    let access_expires_at = OffsetDateTime::now_utc()
+        .checked_add(Duration::seconds(ACCESS_TOKEN_EXPIRY_SECONDS as i64))
+        .unwrap_or_else(OffsetDateTime::now_utc);
+
+    #[allow(clippy::cast_possible_wrap)]
+    let refresh_expires_at = OffsetDateTime::now_utc()
+        .checked_add(Duration::seconds(REFRESH_TOKEN_EXPIRY_SECONDS as i64))
+        .unwrap_or_else(OffsetDateTime::now_utc);
+
+    Ok((
+        access_token,
+        refresh_token,
+        refresh_token_hash,
+        access_expires_at,
+        refresh_expires_at,
+    ))
+}
+
+/// Login endpoint for admin users
+#[utoipa::path(
+    post,
+    path = "/admin/api/v1/auth/login",
+    tag = "admin-auth",
+    request_body = AdminLoginRequest,
+    responses(
+        (status = 200, description = "Login successful. Copy the token and click the Authorize button at the top to use it.", body = AdminLoginResponse),
+        (status = 400, description = "Invalid request format or missing JSON body"),
+        (status = 401, description = "Invalid credentials"),
+        (status = 403, description = "Account locked or inactive"),
+        (status = 422, description = "Missing or invalid required fields"),
+        (status = 500, description = "Internal server error")
+    ),
+    security() // Empty security means no authentication required
+)]
+#[post("/auth/login")]
+pub async fn admin_login(
+    data: web::Data<ApiStateWrapper>,
+    login_req: Option<web::Json<AdminLoginRequest>>,
+) -> impl Responder {
+    // Check if JSON body is provided and validate
+    let login_req = match login_req {
+        Some(req) => {
+            let inner = req.into_inner();
+            // Validate the request data using the Validate trait
+            if let Err(errors) = inner.validate() {
+                // Format validation errors into a readable message
+                let error_message = format!("Validation error: {errors}");
+                return ApiResponse::unprocessable_entity(&error_message);
+            }
+            inner
+        }
+        None => {
+            return ApiResponse::bad_request("Missing or invalid JSON body");
+        }
+    };
+
+    // Create repository
+    let repo = AdminUserRepository::new(Arc::new(data.db_pool().clone()));
+
+    // Debug: Log the login attempt
+    let username = &login_req.username;
+    log::debug!("Login attempt for username: {username}");
+
+    // Find the user
+    let user_result = repo.find_by_username_or_email(&login_req.username).await;
+
+    // Handle database error
+    let user = match user_result {
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            // Don't reveal if user exists or not
+            return ApiResponse::unauthorized("Invalid credentials");
+        }
+        Err(e) => {
+            log::error!("Database error: {e:?}");
+            return ApiResponse::internal_error("Authentication failed");
+        }
+    };
+
+    // Verify password
+    if !user.verify_password(&login_req.password) {
+        // Log failed attempt but don't reveal specific error
+        log::debug!(
+            "Password verification failed for user: {}",
+            login_req.username
+        );
+        return ApiResponse::unauthorized("Invalid credentials");
+    }
+
+    // Check if user is active
+    if !user.is_active {
+        let username = &user.username;
+        log::debug!("User account is inactive: {username}");
+        return ApiResponse::inactive("Account not active");
+    }
+
+    // Update last login time
+    if let Err(e) = repo.update_last_login(&user.uuid).await {
+        // Log the error but continue with authentication
+        log::error!("Failed to update last login: {e:?}");
+    }
+
+    // Load all permission schemes for user
+    let schemes = load_user_permission_schemes(&user, &data, &repo).await;
+
+    // Generate short-lived access token (30 minutes)
+    // Use short-lived expiration for access tokens, but get secret from config
+    let mut access_token_config = data.api_config().clone();
+    access_token_config.jwt_expiration = ACCESS_TOKEN_EXPIRY_SECONDS;
+    let access_token = match generate_access_token(&user, &access_token_config, &schemes) {
+        Ok(token) => token,
+        Err(e) => {
+            log::error!("Failed to generate access token: {e:?}");
+            return ApiResponse::internal_error("Authentication failed");
+        }
+    };
+
+    // Generate refresh token
+    let refresh_token = RefreshToken::generate_token();
+    let refresh_token_hash = match RefreshToken::hash_token(&refresh_token) {
+        Ok(hash) => hash,
+        Err(e) => {
+            log::error!("Failed to hash refresh token: {e:?}");
+            return ApiResponse::internal_error("Authentication failed");
+        }
+    };
+
+    // Calculate expiration times
+    #[allow(clippy::cast_possible_wrap)]
+    let access_expires_at = OffsetDateTime::now_utc()
+        .checked_add(Duration::seconds(ACCESS_TOKEN_EXPIRY_SECONDS as i64)) // 30 minutes
+        .unwrap_or_else(OffsetDateTime::now_utc);
+
+    #[allow(clippy::cast_possible_wrap)]
+    let refresh_expires_at = OffsetDateTime::now_utc()
+        .checked_add(Duration::seconds(REFRESH_TOKEN_EXPIRY_SECONDS as i64))
+        .unwrap_or_else(OffsetDateTime::now_utc);
+
+    // Store refresh token in database
+    let refresh_repo = RefreshTokenRepository::new(data.db_pool().clone());
+    let device_info = Some(serde_json::json!({
+        "user_agent": "login",
+        "login_time": OffsetDateTime::now_utc()
+    }));
+
+    if let Err(e) = refresh_repo
+        .create(
+            user.uuid,
+            refresh_token_hash,
+            refresh_expires_at,
+            device_info,
+            // IP address would be extracted from request in real implementation
+        )
+        .await
+    {
+        log::error!("Failed to store refresh token: {e:?}");
+        return ApiResponse::internal_error("Authentication failed");
+    }
+
+    // Build response
+    build_login_response(
+        &user,
+        access_token,
+        refresh_token,
+        access_expires_at,
+        refresh_expires_at,
+    )
+}
+
+/// Register a new admin user endpoint
+#[utoipa::path(
+    post,
+    path = "/admin/api/v1/auth/register",
+    tag = "admin-auth",
+    request_body = AdminRegisterRequest,
+    responses(
+        (status = 201, description = "Registration successful"),
+        (status = 400, description = "Invalid request format or missing JSON body"),
+        (status = 403, description = "Insufficient permissions"),
+        (status = 422, description = "Missing or invalid required fields"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt" = [])
+    )
+)]
+#[post("/auth/register")]
+pub async fn admin_register(
+    data: web::Data<ApiStateWrapper>,
+    register_req: Option<web::Json<AdminRegisterRequest>>,
+    auth: OptionalAuth,
+) -> impl Responder {
+    // Check if JSON body is provided
+    let Some(register_req) = register_req else {
+        return ApiResponse::bad_request("Missing or invalid JSON body");
+    };
+
+    // Validate the request data using the Validate trait
+    let register_req = register_req.into_inner();
+    if let Err(errors) = register_req.validate() {
+        // Format validation errors into a readable message
+        let error_message = format!("Validation error: {errors}");
+        return ApiResponse::unprocessable_entity(&error_message);
+    }
+
+    // Get authentication info from the OptionalAuth extractor
+    let (is_authenticated, creator_uuid) = auth.0.as_ref().map_or_else(
+        || (false, Uuid::nil()),
+        |claims| {
+            // Extract the UUID
+            let creator = match Uuid::parse_str(&claims.sub) {
+                Ok(uuid) => uuid,
+                Err(e) => {
+                    log::error!(
+                        "Failed to parse UUID from claims.sub: {}, error: {}",
+                        claims.sub,
+                        e
+                    );
+                    Uuid::nil()
+                }
+            };
+            (true, creator)
+        },
+    );
+
+    // Create repository
+    let repo = AdminUserRepository::new(Arc::new(data.db_pool().clone()));
+
+    // Check if a username or email already exists
+    match repo.find_by_username_or_email(&register_req.username).await {
+        Ok(Some(_)) => {
+            // Don't reveal that a username exists, just return a success response
+            // This prevents user enumeration attacks
+            return ApiResponse::created_message("User registration processed");
+        }
+        Ok(None) => false,
+        Err(e) => {
+            log::error!("Error checking for existing user: {e:?}");
+            return ApiResponse::internal_error("Registration failed");
+        }
+    };
+
+    // Also check by email
+    match repo.find_by_username_or_email(&register_req.email).await {
+        Ok(Some(_)) => {
+            // Don't reveal that email exists, just return a success response
+            // This prevents user enumeration attacks
+            return ApiResponse::created_message("User registration processed");
+        }
+        Ok(None) => false,
+        Err(e) => {
+            log::error!("Error checking for existing email: {e:?}");
+            return ApiResponse::internal_error("Registration failed");
+        }
+    };
+
+    // Create the user
+    let params = r_data_core_persistence::CreateAdminUserParams {
+        username: &register_req.username,
+        email: &register_req.email,
+        password: &register_req.password,
+        first_name: &register_req.first_name,
+        last_name: &register_req.last_name,
+        role: register_req.role.as_deref(),
+        is_active: is_authenticated,
+        creator_uuid,
+    };
+    let result = repo.create_admin_user(&params).await;
+
+    match result {
+        Ok(uuid) => {
+            if is_authenticated {
+                ApiResponse::ok(serde_json::json!({
+                    "message": format!("User registration processed successfully. User is active and published."),
+                    "uuid": uuid.to_string(),
+                    "is_authenticated": is_authenticated,
+                    "creator_uuid": creator_uuid.to_string()
+                }))
+            } else {
+                ApiResponse::ok(serde_json::json!({
+                    "message": format!("User registration processed successfully. User must be activated by an admin."),
+                    "uuid": uuid.to_string(),
+                    "is_authenticated": is_authenticated,
+                    "creator_uuid": creator_uuid.to_string()
+                }))
+            }
+        }
+        Err(e) => {
+            // Log the detailed error for debugging
+            log::error!("User registration failed: {e:?}");
+            ApiResponse::internal_error("Registration failed")
+        }
+    }
+}
+
+/// Logout endpoint for admin users
+#[utoipa::path(
+    post,
+    path = "/admin/api/v1/auth/logout",
+    tag = "admin-auth",
+    request_body = LogoutRequest,
+    responses(
+        (status = 200, description = "Logout successful"),
+        (status = 400, description = "Invalid request format"),
+        (status = 401, description = "Invalid refresh token"),
+        (status = 500, description = "Internal server error")
+    )
+)]
+#[post("/auth/logout")]
+pub async fn admin_logout(
+    data: web::Data<ApiStateWrapper>,
+    request: web::Json<LogoutRequest>,
+) -> impl Responder {
+    let refresh_repo = RefreshTokenRepository::new(data.db_pool().clone());
+
+    // Hash the provided refresh token
+    let token_hash = match RefreshToken::hash_token(&request.refresh_token) {
+        Ok(hash) => hash,
+        Err(e) => {
+            log::error!("Failed to hash refresh token for logout: {e:?}");
+            return ApiResponse::bad_request("Invalid token format");
+        }
+    };
+
+    // Revoke the refresh token
+    match refresh_repo.revoke_by_token_hash(&token_hash).await {
+        Ok(()) => {
+            log::info!("User logged out successfully, refresh token revoked");
+            ApiResponse::message("Logout successful")
+        }
+        Err(e) => {
+            log::error!("Failed to revoke refresh token during logout: {e:?}");
+            ApiResponse::internal_error("Logout failed")
+        }
+    }
+}
+
+/// Refresh access token endpoint
+#[utoipa::path(
+    post,
+    path = "/admin/api/v1/auth/refresh",
+    tag = "admin-auth",
+    request_body = RefreshTokenRequest,
+    responses(
+        (status = 200, description = "Token refreshed successfully", body = RefreshTokenResponse),
+        (status = 400, description = "Invalid request format"),
+        (status = 401, description = "Invalid or expired refresh token"),
+        (status = 500, description = "Internal server error")
+    )
+)]
+#[post("/auth/refresh")]
+pub async fn admin_refresh_token(
+    data: web::Data<ApiStateWrapper>,
+    request: web::Json<RefreshTokenRequest>,
+) -> impl Responder {
+    let refresh_repo = RefreshTokenRepository::new(data.db_pool().clone());
+    let admin_repo = AdminUserRepository::new(Arc::new(data.db_pool().clone()));
+
+    // Hash the provided refresh token
+    let token_hash = match RefreshToken::hash_token(&request.refresh_token) {
+        Ok(hash) => hash,
+        Err(e) => {
+            log::error!("Failed to hash refresh token: {e:?}");
+            return ApiResponse::unauthorized("Invalid refresh token");
+        }
+    };
+
+    // Find the refresh token in database
+    let refresh_token = match refresh_repo.find_by_token_hash(&token_hash).await {
+        Ok(Some(token)) => token,
+        Ok(None) => {
+            log::warn!("Refresh token not found");
+            return ApiResponse::unauthorized("Invalid refresh token");
+        }
+        Err(e) => {
+            log::error!("Database error finding refresh token: {e:?}");
+            return ApiResponse::internal_error("Authentication failed");
+        }
+    };
+
+    // Check if token is valid
+    if !refresh_token.is_valid() {
+        log::warn!("Refresh token is expired or revoked");
+        return ApiResponse::unauthorized("Refresh token expired or revoked");
+    }
+
+    // Get the user
+    let user = match admin_repo.find_by_uuid(&refresh_token.user_id).await {
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            log::error!("User not found for refresh token");
+            return ApiResponse::unauthorized("Invalid refresh token");
+        }
+        Err(e) => {
+            log::error!("Database error finding user: {e:?}");
+            return ApiResponse::internal_error("Authentication failed");
+        }
+    };
+
+    // Check if user is still active
+    if !user.is_active {
+        log::warn!(
+            "Attempt to refresh token for inactive user: {}",
+            user.username
+        );
+        return ApiResponse::unauthorized("Account not active");
+    }
+
+    // Load permission schemes and generate tokens
+    let schemes = load_user_permission_schemes(&user, &data, &admin_repo).await;
+    let (
+        new_access_token,
+        new_refresh_token_string,
+        new_refresh_token_hash,
+        access_expires_at,
+        refresh_expires_at,
+    ) = match generate_tokens_for_user(&user, &data, &schemes) {
+        Ok(tokens) => tokens,
+        Err(response) => return response,
+    };
+
+    // Update the old refresh token as used
+    if let Err(e) = refresh_repo.update_last_used(refresh_token.id).await {
+        log::error!("Failed to update refresh token last used: {e:?}");
+    }
+
+    // Create new refresh token in database
+    let device_info = refresh_token.device_info.clone();
+    if let Err(e) = refresh_repo
+        .create(
+            user.uuid,
+            new_refresh_token_hash,
+            refresh_expires_at,
+            device_info,
+        )
+        .await
+    {
+        log::error!("Failed to store new refresh token: {e:?}");
+        return ApiResponse::internal_error("Token refresh failed");
+    }
+
+    // Revoke the old refresh token
+    if let Err(e) = refresh_repo.revoke_by_id(refresh_token.id).await {
+        log::error!("Failed to revoke old refresh token: {e:?}");
+        // Continue anyway since new token was created
+    }
+
+    // Build response
+    build_refresh_response(
+        new_access_token,
+        new_refresh_token_string,
+        access_expires_at,
+        refresh_expires_at,
+    )
+}
+
+/// Revoke all refresh tokens for current user endpoint
+#[utoipa::path(
+    post,
+    path = "/admin/api/v1/auth/revoke-all",
+    tag = "admin-auth",
+    responses(
+        (status = 200, description = "All tokens revoked successfully"),
+        (status = 401, description = "Authentication required"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt" = [])
+    )
+)]
+#[post("/auth/revoke-all")]
+pub async fn admin_revoke_all_tokens(
+    data: web::Data<ApiStateWrapper>,
+    auth: RequiredAuth,
+) -> impl Responder {
+    // Extract user claims from JWT (already extracted via RequiredAuth extractor)
+    let claims = auth.0;
+
+    let Ok(user_uuid) = Uuid::parse_str(&claims.sub) else {
+        return ApiResponse::unauthorized("Invalid user ID in token");
+    };
+
+    let refresh_repo = RefreshTokenRepository::new(data.db_pool().clone());
+
+    // Revoke all refresh tokens for the user
+    match refresh_repo.revoke_all_for_user(user_uuid).await {
+        Ok(count) => {
+            let name = &claims.name;
+            log::info!("Revoked {count} refresh tokens for user {name}");
+            ApiResponse::ok(format!("Revoked {count} active sessions"))
+        }
+        Err(e) => {
+            log::error!(
+                "Failed to revoke all tokens for user {}: {:?}",
+                claims.name,
+                e
+            );
+            ApiResponse::internal_error("Failed to revoke tokens")
+        }
+    }
+}
+
+/// Get user's allowed routes and permissions
+#[utoipa::path(
+    get,
+    path = "/admin/api/v1/auth/permissions",
+    tag = "admin-auth",
+    responses(
+        (status = 200, description = "User permissions and allowed routes", body = serde_json::Value),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt" = [])
+    )
+)]
+#[get("/auth/permissions")]
+pub async fn get_user_permissions(auth: RequiredAuth) -> impl Responder {
+    use r_data_core_services::AuthService;
+
+    let claims = &auth.0;
+
+    // Use auth service to get user permissions
+    let auth_service = AuthService::new();
+    let response = auth_service.get_user_permissions(
+        claims.is_super_admin,
+        &claims.role,
+        &claims.permissions,
+        |namespace, perm_type| {
+            crate::auth::permission_check::has_permission(claims, namespace, perm_type, None)
+        },
+    );
+
+    ApiResponse::ok(response)
+}
+
+/// Register auth routes
+pub fn register_routes(cfg: &mut actix_web::web::ServiceConfig) {
+    cfg.service(admin_login)
+        .service(admin_register)
+        .service(admin_logout)
+        .service(admin_refresh_token)
+        .service(admin_revoke_all_tokens)
+        .service(get_user_permissions);
+}

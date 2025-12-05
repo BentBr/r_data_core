@@ -1,3 +1,5 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use async_trait::async_trait;
 use mockall::predicate::eq;
 use std::collections::HashMap;
@@ -5,15 +7,13 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use r_data_core::{
-    entity::entity_definition::definition::EntityDefinition,
-    entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait,
-    entity::entity_definition::schema::Schema,
-    entity::field::definition::FieldDefinition,
-    entity::field::types::FieldType,
-    error::{Error, Result},
-    services::EntityDefinitionService,
+use r_data_core_core::error::Result;
+use r_data_core_core::{
+    entity_definition::definition::EntityDefinition,
+    entity_definition::repository_trait::EntityDefinitionRepositoryTrait,
+    entity_definition::schema::Schema, field::definition::FieldDefinition, field::types::FieldType,
 };
+use r_data_core_services::EntityDefinitionService;
 
 // Create a mock for EntityDefinitionRepositoryTrait
 mockall::mock! {
@@ -57,8 +57,8 @@ fn create_test_entity_definition() -> EntityDefinition {
                 indexed: true,
                 filterable: true,
                 default_value: None,
-                validation: Default::default(),
-                ui_settings: Default::default(),
+                validation: r_data_core_core::field::FieldValidation::default(),
+                ui_settings: r_data_core_core::field::ui::UiSettings::default(),
                 constraints: HashMap::new(),
             },
             FieldDefinition {
@@ -70,8 +70,8 @@ fn create_test_entity_definition() -> EntityDefinition {
                 indexed: false,
                 filterable: true,
                 default_value: None,
-                validation: Default::default(),
-                ui_settings: Default::default(),
+                validation: r_data_core_core::field::FieldValidation::default(),
+                ui_settings: r_data_core_core::field::ui::UiSettings::default(),
                 constraints: HashMap::new(),
             },
         ],
@@ -104,8 +104,8 @@ fn create_entity_definition_with_duplicate_fields() -> EntityDefinition {
         indexed: true,
         filterable: true,
         default_value: None,
-        validation: Default::default(),
-        ui_settings: Default::default(),
+        validation: r_data_core_core::field::FieldValidation::default(),
+        ui_settings: r_data_core_core::field::ui::UiSettings::default(),
         constraints: HashMap::new(),
     });
     def
@@ -145,7 +145,7 @@ async fn test_get_entity_definition_by_uuid_found() -> Result<()> {
 
     mock_repo
         .expect_get_by_uuid()
-        .with(eq(test_uuid.clone()))
+        .with(eq(test_uuid))
         .return_once(move |_| Ok(Some(expected_definition)));
 
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
@@ -167,7 +167,7 @@ async fn test_get_entity_definition_by_uuid_not_found() -> Result<()> {
 
     mock_repo
         .expect_get_by_uuid()
-        .with(eq(test_uuid.clone()))
+        .with(eq(test_uuid))
         .return_once(|_| Ok(None));
 
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
@@ -178,7 +178,7 @@ async fn test_get_entity_definition_by_uuid_not_found() -> Result<()> {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::NotFound(_)) => {}
+        Err(r_data_core_core::error::Error::NotFound(_)) => {}
         _ => panic!("Expected not found error"),
     }
 
@@ -243,17 +243,13 @@ async fn test_create_entity_definition_duplicate_entity_type() -> Result<()> {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::ClassAlreadyExists(e)) => {
+        Err(r_data_core_core::error::Error::ClassAlreadyExists(e)) => {
             assert!(
                 e.contains("already exists"),
-                "Error should mention duplicate entity type: {}",
-                e
+                "Error should mention duplicate entity type: {e}"
             );
         }
-        _ => panic!(
-            "Expected validation error for duplicate entity type, got: {:?}",
-            result
-        ),
+        _ => panic!("Expected validation error for duplicate entity type, got: {result:?}"),
     }
 
     Ok(())
@@ -273,11 +269,10 @@ async fn test_create_entity_definition_invalid_entity_type() -> Result<()> {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::Validation(e)) => {
+        Err(r_data_core_core::error::Error::Validation(e)) => {
             assert!(
                 e.contains("must start with a letter") && e.contains("Entity type"),
-                "Error should mention invalid entity type format: {}",
-                e
+                "Error should mention invalid entity type format: {e}"
             );
         }
         _ => panic!("Expected validation error for invalid entity type"),
@@ -302,7 +297,7 @@ async fn test_create_entity_definition_duplicate_field_names() -> Result<()> {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::Validation(e)) => {
+        Err(r_data_core_core::error::Error::Validation(e)) => {
             assert!(
                 e.contains("Duplicate"),
                 "Error should mention duplicate field names"
@@ -325,7 +320,7 @@ async fn test_update_entity_definition_success() -> Result<()> {
     // Return the existing definition for validation
     mock_repo
         .expect_get_by_uuid()
-        .with(eq(test_uuid.clone()))
+        .with(eq(test_uuid))
         .return_once(move |_| Ok(Some(definition_clone)));
 
     // No other definition with the same entity type
@@ -365,7 +360,7 @@ async fn test_update_entity_definition_not_found() -> Result<()> {
     // No existing definition found
     mock_repo
         .expect_get_by_uuid()
-        .with(eq(test_uuid.clone()))
+        .with(eq(test_uuid))
         .return_once(|_| Ok(None));
 
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
@@ -378,7 +373,7 @@ async fn test_update_entity_definition_not_found() -> Result<()> {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::NotFound(_)) => {}
+        Err(r_data_core_core::error::Error::NotFound(_)) => {}
         _ => panic!("Expected not found error"),
     }
 
@@ -395,7 +390,7 @@ async fn test_delete_entity_definition_success() -> Result<()> {
     // Set up expectations for a entity definition existing
     mock_repo
         .expect_get_by_uuid()
-        .with(eq(test_uuid.clone()))
+        .with(eq(test_uuid))
         .return_once(move |_| Ok(Some(test_definition)));
 
     // Expect a call to check if the view exists
@@ -430,7 +425,7 @@ async fn test_delete_entity_definition_with_records() -> Result<()> {
     // Set up expectations for a entity definition existing
     mock_repo
         .expect_get_by_uuid()
-        .with(eq(test_uuid.clone()))
+        .with(eq(test_uuid))
         .return_once(move |_| Ok(Some(test_definition)));
 
     // Expect a call to check if the view exists
@@ -449,7 +444,7 @@ async fn test_delete_entity_definition_with_records() -> Result<()> {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::Validation(e)) => {
+        Err(r_data_core_core::error::Error::Validation(e)) => {
             assert!(
                 e.contains("entities"),
                 "Error should mention existing records"
@@ -470,7 +465,7 @@ async fn test_delete_entity_definition_not_found() -> Result<()> {
     // No existing definition found
     mock_repo
         .expect_get_by_uuid()
-        .with(eq(test_uuid.clone()))
+        .with(eq(test_uuid))
         .return_once(|_| Ok(None));
 
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
@@ -481,7 +476,7 @@ async fn test_delete_entity_definition_not_found() -> Result<()> {
     // Assert
     assert!(result.is_err());
     match result {
-        Err(Error::NotFound(_)) => {}
+        Err(r_data_core_core::error::Error::NotFound(_)) => {}
         _ => panic!("Expected not found error"),
     }
 

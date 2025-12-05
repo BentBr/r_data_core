@@ -1,10 +1,10 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use async_trait::async_trait;
 use mockall::{mock, predicate::*};
-use r_data_core::{
-    entity::admin_user::{ApiKey, ApiKeyRepositoryTrait},
-    error::{Error, Result},
-};
-use std::sync::Arc;
+use r_data_core_core::admin_user::ApiKey;
+use r_data_core_core::error::Result;
+use r_data_core_persistence::ApiKeyRepositoryTrait;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -31,6 +31,10 @@ mock! {
         async fn update_last_used(&self, uuid: Uuid) -> Result<()>;
         async fn reassign(&self, uuid: Uuid, new_user_uuid: Uuid) -> Result<()>;
         async fn count_by_user(&self, user_uuid: Uuid) -> Result<i64>;
+        async fn get_api_key_permission_schemes(&self, api_key_uuid: Uuid) -> Result<Vec<Uuid>>;
+        async fn assign_permission_scheme(&self, api_key_uuid: Uuid, scheme_uuid: Uuid) -> Result<()>;
+        async fn unassign_permission_scheme(&self, api_key_uuid: Uuid, scheme_uuid: Uuid) -> Result<()>;
+        async fn update_api_key_schemes(&self, api_key_uuid: Uuid, scheme_uuids: &[Uuid]) -> Result<()>;
     }
 }
 
@@ -144,7 +148,7 @@ mod tests {
             .expect_create_new_api_key()
             .with(eq(""), eq("Test description"), eq(user_uuid), eq(30))
             .returning(|_, _, _, _| {
-                Err(Error::Validation(
+                Err(r_data_core_core::error::Error::Validation(
                     "API key name cannot be empty".to_string(),
                 ))
             });
@@ -154,7 +158,7 @@ mod tests {
             .await;
 
         assert!(result.is_err());
-        if let Err(Error::Validation(msg)) = result {
+        if let Err(r_data_core_core::error::Error::Validation(msg)) = result {
             assert!(msg.contains("empty"));
         } else {
             panic!("Expected validation error");
@@ -170,7 +174,7 @@ mod tests {
                 eq(-1),
             )
             .returning(|_, _, _, _| {
-                Err(Error::Validation(
+                Err(r_data_core_core::error::Error::Validation(
                     "Expiration days cannot be negative".to_string(),
                 ))
             });
@@ -180,7 +184,7 @@ mod tests {
             .await;
 
         assert!(result.is_err());
-        if let Err(Error::Validation(msg)) = result {
+        if let Err(r_data_core_core::error::Error::Validation(msg)) = result {
             assert!(msg.contains("negative"));
         } else {
             panic!("Expected validation error");
@@ -333,7 +337,7 @@ mod tests {
             .with(eq(special_key))
             .returning(|_| Ok(None));
 
-        let result = mock_repo.find_api_key_for_auth(&special_key).await?;
+        let result = mock_repo.find_api_key_for_auth(special_key).await?;
         assert!(result.is_none());
 
         Ok(())

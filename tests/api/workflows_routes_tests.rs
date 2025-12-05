@@ -1,22 +1,24 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use actix_web::{test, web, App};
-use r_data_core::api::{configure_app, ApiState};
-use r_data_core::cache::CacheManager;
-use r_data_core::config::CacheConfig;
-use r_data_core::entity::admin_user::model::AdminUser;
-use r_data_core::entity::admin_user::repository::{AdminUserRepository, ApiKeyRepository};
-use r_data_core::services::{
+use r_data_core_api::{configure_app, ApiState, ApiStateWrapper};
+use r_data_core_core::admin_user::AdminUser;
+use r_data_core_core::cache::CacheManager;
+use r_data_core_core::config::CacheConfig;
+use r_data_core_persistence::WorkflowRepository;
+use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
+use r_data_core_services::{
     AdminUserService, ApiKeyService, EntityDefinitionService, WorkflowRepositoryAdapter,
 };
-use r_data_core::workflow::data::repository::WorkflowRepository;
-use r_data_core::workflow::data::WorkflowKind;
-use sqlx::postgres::PgPoolOptions;
+use r_data_core_workflow::data::WorkflowKind;
+use sqlx::Row;
 use std::sync::Arc;
 use uuid::Uuid;
 
 // Import common test utilities
-#[path = "../common/mod.rs"]
-mod common;
+use r_data_core_test_support::{create_test_admin_user, setup_test_db, test_queue_client_async};
 
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn setup_app_and_token() -> anyhow::Result<(
     impl actix_web::dev::Service<
         actix_http::Request,
@@ -27,17 +29,15 @@ async fn setup_app_and_token() -> anyhow::Result<(
     String,
 )> {
     // DB
-    let pool = common::utils::setup_test_db().await;
+    let pool = setup_test_db().await;
 
     // Minimal services for configure_app
     let cache_config = CacheConfig {
-            entity_definition_ttl: 0,
-            api_key_ttl: 600,
+        entity_definition_ttl: 0,
+        api_key_ttl: 600,
         enabled: true,
         ttl: 300,
         max_size: 10000,
-            entity_definition_ttl: 0,
-            api_key_ttl: 600,
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
 
@@ -47,46 +47,76 @@ async fn setup_app_and_token() -> anyhow::Result<(
     let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.clone())));
     let admin_user_service = AdminUserService::new(admin_user_repository);
 
-    let entity_definition_service =
-        EntityDefinitionService::new_without_cache(Arc::new(r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(pool.clone())));
+    let entity_definition_service = EntityDefinitionService::new_without_cache(Arc::new(
+        r_data_core_persistence::EntityDefinitionRepository::new(pool.clone()),
+    ));
 
     let wf_repo = WorkflowRepository::new(pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
-    let workflow_service = r_data_core::services::workflow_service::WorkflowService::new(Arc::new(wf_adapter));
+    let workflow_service = r_data_core_services::WorkflowService::new(Arc::new(wf_adapter));
 
     let jwt_secret = "test_secret".to_string();
-    let app_state = web::Data::new(ApiState {
+    let api_state = ApiState {
         db_pool: pool.clone(),
-        jwt_secret: jwt_secret.clone(),
+        api_config: r_data_core_core::config::ApiConfig {
+            host: "0.0.0.0".to_string(),
+            port: 8888,
+            use_tls: false,
+            jwt_secret: jwt_secret.clone(),
+            jwt_expiration: 3600,
+            enable_docs: true,
+            cors_origins: vec![],
+        },
+        permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            pool.clone(),
+            cache_manager.clone(),
+            Some(0),
+        ),
         cache_manager,
         api_key_service,
         admin_user_service,
         entity_definition_service,
         dynamic_entity_service: None,
         workflow_service,
-        queue: crate::common::utils::test_queue_client_async().await,
-    });
+        queue: test_queue_client_async().await,
+    };
 
-    let app = test::init_service(App::new().app_data(app_state.clone()).configure(configure_app)).await;
+    let app_data = web::Data::new(ApiStateWrapper::new(api_state));
+    let app = test::init_service(
+        App::new()
+            .app_data(app_data.clone())
+            .configure(configure_app),
+    )
+    .await;
 
     // Ensure a test admin user exists and produce a JWT
-    let user_uuid = common::utils::create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
     let user: AdminUser = sqlx::query_as("SELECT * FROM admin_users WHERE uuid = $1")
         .bind(user_uuid)
         .fetch_one(&pool)
         .await?;
-    let token = r_data_core::api::jwt::generate_access_token(&user, &jwt_secret)?;
+    let api_config = r_data_core_core::config::ApiConfig {
+        host: "0.0.0.0".to_string(),
+        port: 8888,
+        use_tls: false,
+        jwt_secret: jwt_secret.clone(),
+        jwt_expiration: 3600,
+        enable_docs: true,
+        cors_origins: vec![],
+    };
+    let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, &[])?;
 
     Ok((app, pool, token))
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn create_workflow_uses_required_auth_and_sets_created_by() -> anyhow::Result<()> {
     let (app, pool, token) = setup_app_and_token().await?;
 
     // Minimal valid request
     let payload = serde_json::json!({
-        "name": format!("wf-route-create-{}", Uuid::now_v7()),
+        "name": format!("wf-route-create-{}", Uuid::now_v7().simple()),
         "description": "route test",
         "kind": WorkflowKind::Consumer.to_string(),
         "enabled": true,
@@ -94,9 +124,28 @@ async fn create_workflow_uses_required_auth_and_sets_created_by() -> anyhow::Res
         "config": {
             "steps": [
                 {
-                    "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} },
+                    "from": {
+                        "type": "format",
+                        "source": {
+                            "source_type": "uri",
+                            "config": { "uri": "http://example.com/data.csv" }
+                        },
+                        "format": {
+                            "format_type": "csv",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    },
                     "transform": { "type": "none" },
-                    "to": { "type": "json", "output": "api", "mapping": {} }
+                    "to": {
+                        "type": "format",
+                        "output": { "mode": "api" },
+                        "format": {
+                            "format_type": "json",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    }
                 }
             ]
         }
@@ -104,7 +153,7 @@ async fn create_workflow_uses_required_auth_and_sets_created_by() -> anyhow::Res
 
     let req = test::TestRequest::post()
         .uri("/admin/api/v1/workflows")
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .set_json(payload.clone())
         .to_request();
 
@@ -113,14 +162,19 @@ async fn create_workflow_uses_required_auth_and_sets_created_by() -> anyhow::Res
 
     let body = test::read_body(resp).await;
     let v: serde_json::Value = serde_json::from_slice(&body)?;
-    let wf_uuid = Uuid::parse_str(v.get("data").and_then(|d| d.get("uuid")).and_then(|s| s.as_str()).unwrap())?;
+    let wf_uuid = Uuid::parse_str(
+        v.get("data")
+            .and_then(|d| d.get("uuid"))
+            .and_then(|s| s.as_str())
+            .unwrap(),
+    )?;
 
     // Verify created_by equals JWT user
     let row = sqlx::query("SELECT created_by FROM workflows WHERE uuid = $1")
         .bind(wf_uuid)
         .fetch_one(&pool)
         .await?;
-    let created_by: Uuid = row.try_get("created_by")?;
+    let created_by: Uuid = row.try_get::<Uuid, _>("created_by")?;
     // Extract sub from token by verifying again
     // (we can also join with admin_users for existence)
     let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM admin_users WHERE uuid = $1")
@@ -133,6 +187,7 @@ async fn create_workflow_uses_required_auth_and_sets_created_by() -> anyhow::Res
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn update_workflow_sets_updated_by() -> anyhow::Result<()> {
     let (app, pool, token) = setup_app_and_token().await?;
 
@@ -141,64 +196,114 @@ async fn update_workflow_sets_updated_by() -> anyhow::Result<()> {
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
         .fetch_one(&pool)
         .await?;
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("wf-route-update-{}", Uuid::now_v7()),
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
+        name: format!("wf-route-update-{}", Uuid::now_v7().simple()),
         description: Some("route test".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: serde_json::json!({
             "steps": [
                 {
-                    "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} },
+                    "from": {
+                        "type": "format",
+                        "source": {
+                            "source_type": "uri",
+                            "config": { "uri": "http://example.com/data.csv" }
+                        },
+                        "format": {
+                            "format_type": "csv",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    },
                     "transform": { "type": "none" },
-                    "to": { "type": "json", "output": "api", "mapping": {} }
+                    "to": {
+                        "type": "format",
+                        "output": { "mode": "api" },
+                        "format": {
+                            "format_type": "json",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    }
                 }
             ]
         }),
+        versioning_disabled: false,
     };
     let wf_uuid = repo.create(&create_req, creator_uuid).await?;
 
     // Now update via route with auth; expect updated_by set
     let update_payload = serde_json::json!({
-        "name": format!("wf-route-update-{}-patched", Uuid::now_v7()),
+        "name": format!("wf-route-update-{}-patched", Uuid::now_v7().simple()),
         "description": "updated",
         "kind": WorkflowKind::Consumer.to_string(),
         "enabled": false,
-        "schedule_cron": "*/10 * * * *",
+        "schedule_cron": "0 */10 * * * *",
+        "versioning_disabled": false,
         "config": {
             "steps": [
-                { "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} }, "transform": { "type": "none" }, "to": { "type": "json", "output": "api", "mapping": {} } }
+                {
+                    "from": {
+                        "type": "format",
+                        "source": {
+                            "source_type": "uri",
+                            "config": { "uri": "http://example.com/data.csv" }
+                        },
+                        "format": {
+                            "format_type": "csv",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    },
+                    "transform": { "type": "none" },
+                    "to": {
+                        "type": "format",
+                        "output": { "mode": "api" },
+                        "format": {
+                            "format_type": "json",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    }
+                }
             ]
         }
     });
 
     let req = test::TestRequest::put()
-        .uri(&format!("/admin/api/v1/workflows/{}", wf_uuid))
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .uri(&format!("/admin/api/v1/workflows/{wf_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .set_json(update_payload)
         .to_request();
     let resp = test::call_service(&app, req).await;
-    assert!(resp.status().is_success(), "status: {}", resp.status());
+    let status = resp.status();
+    if !status.is_success() {
+        let body = test::read_body(resp).await;
+        let body_str = String::from_utf8_lossy(&body);
+        panic!("status: {status}. Response body: {body_str}");
+    }
 
     // verify updated_by set
     let row = sqlx::query("SELECT updated_by FROM workflows WHERE uuid = $1")
         .bind(wf_uuid)
         .fetch_one(&pool)
         .await?;
-    let updated_by: Option<Uuid> = row.try_get("updated_by")?;
+    let updated_by: Option<Uuid> = row.try_get::<Option<Uuid>, _>("updated_by")?;
     assert!(updated_by.is_some(), "updated_by must be set on update");
 
     Ok(())
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn create_workflow_accepts_valid_complex_dsl_config() -> anyhow::Result<()> {
     let (app, _pool, token) = setup_app_and_token().await?;
 
     // Valid complex DSL config with mappings
     let payload = serde_json::json!({
-        "name": format!("wf-valid-complex-{}", Uuid::now_v7()),
+        "name": format!("wf-valid-complex-{}", Uuid::now_v7().simple()),
         "description": "test complex DSL",
         "kind": WorkflowKind::Consumer.to_string(),
         "enabled": true,
@@ -207,9 +312,15 @@ async fn create_workflow_accepts_valid_complex_dsl_config() -> anyhow::Result<()
             "steps": [
                 {
                     "from": {
-                        "type": "csv",
-                        "uri": "http://example.com/data.csv",
-                        "options": { "header": true, "delimiter": "," },
+                        "type": "format",
+                        "source": {
+                            "source_type": "uri",
+                            "config": { "uri": "http://example.com/data.csv" }
+                        },
+                        "format": {
+                            "format_type": "csv",
+                            "options": { "header": true, "delimiter": "," }
+                        },
                         "mapping": {
                             "source_col1": "normalized_field1",
                             "source_col2": "normalized_field2"
@@ -223,8 +334,12 @@ async fn create_workflow_accepts_valid_complex_dsl_config() -> anyhow::Result<()
                         "right": { "kind": "const", "value": 5.0 }
                     },
                     "to": {
-                        "type": "json",
-                        "output": "api",
+                        "type": "format",
+                        "output": { "mode": "api" },
+                        "format": {
+                            "format_type": "json",
+                            "options": {}
+                        },
                         "mapping": {
                             "normalized_field1": "output_field1",
                             "normalized_field2": "output_field2",
@@ -238,23 +353,27 @@ async fn create_workflow_accepts_valid_complex_dsl_config() -> anyhow::Result<()
 
     let req = test::TestRequest::post()
         .uri("/admin/api/v1/workflows")
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .set_json(payload)
         .to_request();
 
     let resp = test::call_service(&app, req).await;
-    assert!(resp.status().is_success(), "Should accept valid complex DSL config");
-    
+    assert!(
+        resp.status().is_success(),
+        "Should accept valid complex DSL config"
+    );
+
     Ok(())
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn create_workflow_rejects_invalid_dsl_config_missing_from() -> anyhow::Result<()> {
     let (app, _pool, token) = setup_app_and_token().await?;
 
     // Invalid DSL config - missing 'from'
     let payload = serde_json::json!({
-        "name": format!("wf-invalid-{}", Uuid::now_v7()),
+        "name": format!("wf-invalid-{}", Uuid::now_v7().simple()),
         "description": "test invalid DSL",
         "kind": WorkflowKind::Consumer.to_string(),
         "enabled": true,
@@ -263,7 +382,15 @@ async fn create_workflow_rejects_invalid_dsl_config_missing_from() -> anyhow::Re
             "steps": [
                 {
                     "transform": { "type": "none" },
-                    "to": { "type": "json", "output": "api", "mapping": {} }
+                    "to": {
+                        "type": "format",
+                        "output": { "mode": "api" },
+                        "format": {
+                            "format_type": "json",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    }
                 }
             ]
         }
@@ -271,23 +398,27 @@ async fn create_workflow_rejects_invalid_dsl_config_missing_from() -> anyhow::Re
 
     let req = test::TestRequest::post()
         .uri("/admin/api/v1/workflows")
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .set_json(payload)
         .to_request();
 
     let resp = test::call_service(&app, req).await;
-    assert!(!resp.status().is_success(), "Should reject invalid DSL config with missing 'from'");
-    
+    assert!(
+        !resp.status().is_success(),
+        "Should reject invalid DSL config with missing 'from'"
+    );
+
     Ok(())
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn create_workflow_rejects_invalid_dsl_config_empty_steps() -> anyhow::Result<()> {
     let (app, _pool, token) = setup_app_and_token().await?;
 
     // Invalid DSL config - empty steps array
     let payload = serde_json::json!({
-        "name": format!("wf-invalid-empty-{}", Uuid::now_v7()),
+        "name": format!("wf-invalid-empty-{}", Uuid::now_v7().simple()),
         "description": "test invalid DSL",
         "kind": WorkflowKind::Consumer.to_string(),
         "enabled": true,
@@ -299,17 +430,21 @@ async fn create_workflow_rejects_invalid_dsl_config_empty_steps() -> anyhow::Res
 
     let req = test::TestRequest::post()
         .uri("/admin/api/v1/workflows")
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .set_json(payload)
         .to_request();
 
     let resp = test::call_service(&app, req).await;
-    assert!(!resp.status().is_success(), "Should reject invalid DSL config with empty steps");
-    
+    assert!(
+        !resp.status().is_success(),
+        "Should reject invalid DSL config with empty steps"
+    );
+
     Ok(())
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn update_workflow_validates_dsl_config() -> anyhow::Result<()> {
     let (app, pool, token) = setup_app_and_token().await?;
 
@@ -318,27 +453,47 @@ async fn update_workflow_validates_dsl_config() -> anyhow::Result<()> {
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
         .fetch_one(&pool)
         .await?;
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("wf-update-validate-{}", Uuid::now_v7()),
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
+        name: format!("wf-update-validate-{}", Uuid::now_v7().simple()),
         description: Some("test".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: serde_json::json!({
             "steps": [
                 {
-                    "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} },
+                    "from": {
+                        "type": "format",
+                        "source": {
+                            "source_type": "uri",
+                            "config": { "uri": "http://example.com/data.csv" }
+                        },
+                        "format": {
+                            "format_type": "csv",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    },
                     "transform": { "type": "none" },
-                    "to": { "type": "json", "output": "api", "mapping": {} }
+                    "to": {
+                        "type": "format",
+                        "output": { "mode": "api" },
+                        "format": {
+                            "format_type": "json",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    }
                 }
             ]
         }),
+        versioning_disabled: false,
     };
     let wf_uuid = repo.create(&create_req, creator_uuid).await?;
 
     // Try to update with invalid DSL config
     let update_payload = serde_json::json!({
-        "name": format!("wf-update-validate-{}", Uuid::now_v7()),
+        "name": format!("wf-update-validate-{}", Uuid::now_v7().simple()),
         "description": "updated",
         "kind": WorkflowKind::Consumer.to_string(),
         "enabled": true,
@@ -346,7 +501,18 @@ async fn update_workflow_validates_dsl_config() -> anyhow::Result<()> {
         "config": {
             "steps": [
                 {
-                    "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} },
+                    "from": {
+                        "type": "format",
+                        "source": {
+                            "source_type": "uri",
+                            "config": { "uri": "http://example.com/data.csv" }
+                        },
+                        "format": {
+                            "format_type": "csv",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    },
                     "transform": { "type": "none" }
                     // Missing 'to'
                 }
@@ -355,17 +521,21 @@ async fn update_workflow_validates_dsl_config() -> anyhow::Result<()> {
     });
 
     let req = test::TestRequest::put()
-        .uri(&format!("/admin/api/v1/workflows/{}", wf_uuid))
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .uri(&format!("/admin/api/v1/workflows/{wf_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .set_json(update_payload)
         .to_request();
     let resp = test::call_service(&app, req).await;
-    assert!(!resp.status().is_success(), "Should reject update with invalid DSL config");
+    assert!(
+        !resp.status().is_success(),
+        "Should reject update with invalid DSL config"
+    );
 
     Ok(())
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn run_workflow_now_enqueues_job_to_redis_if_available() -> anyhow::Result<()> {
     let (app, pool, token) = setup_app_and_token().await?;
 
@@ -374,46 +544,66 @@ async fn run_workflow_now_enqueues_job_to_redis_if_available() -> anyhow::Result
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
         .fetch_one(&pool)
         .await?;
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("wf-run-now-test-{}", Uuid::now_v7()),
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
+        name: format!("wf-run-now-test-{}", Uuid::now_v7().simple()),
         description: Some("test".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: serde_json::json!({
             "steps": [
                 {
-                    "from": { "type": "csv", "uri": "http://example.com/data.csv", "mapping": {} },
+                    "from": {
+                        "type": "format",
+                        "source": {
+                            "source_type": "uri",
+                            "config": { "uri": "http://example.com/data.csv" }
+                        },
+                        "format": {
+                            "format_type": "csv",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    },
                     "transform": { "type": "none" },
-                    "to": { "type": "json", "output": "api", "mapping": {} }
+                    "to": {
+                        "type": "format",
+                        "output": { "mode": "api" },
+                        "format": {
+                            "format_type": "json",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    }
                 }
             ]
         }),
+        versioning_disabled: false,
     };
     let wf_uuid = repo.create(&create_req, creator_uuid).await?;
 
     // Check if Redis is available
     let redis_url = std::env::var("REDIS_URL").ok();
     let fetch_key = std::env::var("QUEUE_FETCH_KEY")
-        .unwrap_or_else(|_| format!("test_queue:fetch:{}", Uuid::now_v7()));
+        .unwrap_or_else(|_| format!("test_queue:fetch:{}", Uuid::now_v7().simple()));
 
     // Call run_workflow_now endpoint
     let req = test::TestRequest::post()
-        .uri(&format!("/admin/api/v1/workflows/{}/run", wf_uuid))
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .uri(&format!("/admin/api/v1/workflows/{wf_uuid}/run"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
     let resp = test::call_service(&app, req).await;
-    
-    assert!(resp.status().is_success(), "run_workflow_now should succeed");
+
+    assert!(
+        resp.status().is_success(),
+        "run_workflow_now should succeed"
+    );
 
     // If Redis is available, verify job was enqueued
     if let Some(url) = redis_url {
         let client = redis::Client::open(url).ok();
         if let Some(client) = client {
-            let mut conn = client
-                .get_multiplexed_async_connection()
-                .await
-                .ok();
+            let conn = client.get_multiplexed_async_connection().await.ok();
             if let Some(mut conn) = conn {
                 let len: i64 = redis::cmd("LLEN")
                     .arg(&fetch_key)
@@ -427,15 +617,12 @@ async fn run_workflow_now_enqueues_job_to_redis_if_available() -> anyhow::Result
     }
 
     // Verify run was created in database
-    let run_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM workflow_runs WHERE workflow_uuid = $1"
-    )
-        .bind(wf_uuid)
-        .fetch_one(&pool)
-        .await?;
+    let run_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM workflow_runs WHERE workflow_uuid = $1")
+            .bind(wf_uuid)
+            .fetch_one(&pool)
+            .await?;
     assert!(run_count > 0, "At least one run should be created");
 
     Ok(())
 }
-
-

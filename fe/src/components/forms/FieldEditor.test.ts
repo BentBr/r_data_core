@@ -382,17 +382,20 @@ describe('FieldEditor', () => {
             constraints: {},
             ui_settings: {},
         }
-        wrapper.vm.formValid = true
 
+        await wrapper.vm.$nextTick()
+        
+        // Validate the form
+        await wrapper.vm.formRef?.validate()
         await wrapper.vm.$nextTick()
 
         wrapper.vm.saveField()
         await wrapper.vm.$nextTick()
 
         const saveEvents = wrapper.emitted('save')
-        if (saveEvents && saveEvents.length > 0) {
-            const savedField = saveEvents[0][0] as FieldDefinition
-            expect(savedField.default_value).toBe(25) // Should be number, not string
-        }
+        expect(saveEvents).toBeDefined()
+        expect(saveEvents).toHaveLength(1)
+        const savedField = saveEvents![0][0] as FieldDefinition
+        expect(savedField.default_value).toBe(25) // Should be number, not string
     })
 })

@@ -1,4 +1,6 @@
-use r_data_core::workflow::data::adapters::auth::{
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
+use r_data_core_workflow::data::adapters::auth::{
     create_auth_provider, ApiKeyAuthProvider, AuthConfig, AuthProvider, BasicAuthProvider,
     KeyLocation, NoAuthProvider, PreSharedKeyAuthProvider,
 };

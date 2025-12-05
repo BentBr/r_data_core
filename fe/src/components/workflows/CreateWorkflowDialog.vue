@@ -207,14 +207,15 @@
         required: (v: unknown) => (!!v && String(v).trim().length > 0) || t('validation.required'),
     }
 
-    function parseJson(input: string): unknown | undefined {
+    function parseJson(input: string): { parsed: unknown; error: string | null } {
         if (!input?.trim()) {
-            return undefined
+            return { parsed: undefined, error: null }
         }
         try {
-            return JSON.parse(input)
+            return { parsed: JSON.parse(input), error: null }
         } catch (e) {
-            return null
+            const errorMessage = e instanceof Error ? e.message : String(e)
+            return { parsed: null, error: errorMessage }
         }
     }
 
@@ -228,8 +229,12 @@
         if (steps.value && steps.value.length > 0) {
             configJson.value = JSON.stringify({ steps: steps.value }, null, 2)
         }
-        const parsedConfig = parseJson(configJson.value)
-        if (parsedConfig === null) {
+        const { parsed: parsedConfig, error: parseError } = parseJson(configJson.value)
+        if (parseError) {
+            configError.value = `${t('workflows.create.json_invalid')}: ${parseError}`
+            return
+        }
+        if (parsedConfig === null || parsedConfig === undefined) {
             configError.value = t('workflows.create.json_invalid')
             return
         }
@@ -306,11 +311,12 @@
         },
         { deep: true }
     )
-</script>
 
-<script lang="ts">
-    export default {
-        // Expose for tests
-        expose: ['submit', 'steps', 'configJson', 'configError'],
-    }
+    // Expose for tests
+    defineExpose({
+        submit,
+        steps,
+        configJson,
+        configError,
+    })
 </script>

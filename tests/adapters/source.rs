@@ -1,6 +1,8 @@
-use r_data_core::workflow::data::adapters::auth::{create_auth_provider, AuthConfig};
-use r_data_core::workflow::data::adapters::source::uri::UriSource;
-use r_data_core::workflow::data::adapters::source::{DataSource, SourceContext};
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
+use r_data_core_workflow::data::adapters::auth::{create_auth_provider, AuthConfig};
+use r_data_core_workflow::data::adapters::source::uri::UriSource;
+use r_data_core_workflow::data::adapters::source::{DataSource, SourceContext};
 use serde_json::json;
 
 #[tokio::test]

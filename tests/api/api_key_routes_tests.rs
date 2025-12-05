@@ -1,12 +1,12 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 // Basic test setup for API key routes
 // More comprehensive tests to be implemented
 
 #[cfg(test)]
 mod tests {
-    use r_data_core::{
-        entity::admin_user::{ApiKeyRepository, ApiKeyRepositoryTrait},
-        error::Result,
-    };
+    use r_data_core_core::error::Result;
+    use r_data_core_persistence::{ApiKeyRepository, ApiKeyRepositoryTrait};
     use serial_test::serial;
     use std::sync::Arc;
 
@@ -14,14 +14,16 @@ mod tests {
     #[serial]
     async fn test_api_key_last_used_update() -> Result<()> {
         // Setup test database with proper cleaning
-        let pool = crate::common::utils::setup_test_db().await;
-        crate::common::utils::clear_test_db(&pool).await?;
+        use r_data_core_test_support::{clear_test_db, create_test_admin_user, setup_test_db};
+
+        let pool = setup_test_db().await;
+        clear_test_db(&pool).await?;
 
         // Create a repository to work with API keys directly
         let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
 
         // Create a test admin user
-        let user_uuid = crate::common::utils::create_test_admin_user(&pool).await?;
+        let user_uuid = create_test_admin_user(&pool).await?;
 
         // Create a test API key
         let (key_uuid, key_value) = repo

@@ -1,29 +1,28 @@
-use r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository;
-use r_data_core::api::admin::workflows::models::CreateWorkflowRequest;
-use r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository;
-use r_data_core::entity::entity_definition::definition::EntityDefinition;
-use r_data_core::services::adapters::EntityDefinitionRepositoryAdapter;
-use r_data_core::services::{
-    DynamicEntityRepositoryAdapter, DynamicEntityService, EntityDefinitionService,
-    WorkflowRepositoryAdapter, WorkflowService,
-};
-use r_data_core::workflow::data::repository::WorkflowRepository;
-use r_data_core::workflow::data::WorkflowKind;
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
+use r_data_core_api::admin::workflows::models::CreateWorkflowRequest;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::field::{FieldDefinition, FieldType};
+use r_data_core_persistence::DynamicEntityRepository;
+use r_data_core_persistence::EntityDefinitionRepository;
+use r_data_core_persistence::WorkflowRepository;
+use r_data_core_services::adapters::DynamicEntityRepositoryAdapter;
+use r_data_core_services::adapters::EntityDefinitionRepositoryAdapter;
+use r_data_core_services::{DynamicEntityService, EntityDefinitionService};
+use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
+use r_data_core_test_support::{create_test_admin_user, setup_test_db};
+use r_data_core_workflow::data::adapters::format::FormatHandler;
+use r_data_core_workflow::data::WorkflowKind;
 use serde_json::json;
-use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 use uuid::Uuid;
 
 /// Test that consecutive imports of the same file produce identical outcomes
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_consecutive_imports_produce_identical_outcomes() {
-    // Setup DB connection
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not set for tests");
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
-        .await
-        .expect("connect db");
+    // Setup test database
+    let pool = setup_test_db().await;
 
     // Create entity definition (must start with a letter)
     let entity_type = format!("TestCustomer{}", Uuid::now_v7().simple());
@@ -31,14 +30,15 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
     let ed_adapter = EntityDefinitionRepositoryAdapter::new(ed_repo);
     let ed_service = EntityDefinitionService::new_without_cache(Arc::new(ed_adapter));
 
-    let mut entity_def = EntityDefinition::default();
-    entity_def.entity_type = entity_type.clone();
-    entity_def.display_name = format!("{} Class", entity_type);
-    entity_def.description = Some(format!("Test description for {}", entity_type));
-    entity_def.published = true;
+    let mut entity_def = EntityDefinition {
+        entity_type: entity_type.clone(),
+        display_name: format!("{entity_type} Class"),
+        description: Some(format!("Test description for {entity_type}")),
+        published: true,
+        ..Default::default()
+    };
 
     // Add required fields
-    use r_data_core::entity::field::{FieldDefinition, FieldType};
     let mut fields = Vec::new();
 
     let email_field = FieldDefinition {
@@ -50,8 +50,8 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
         filterable: true,
         indexed: true,
         default_value: None,
-        validation: r_data_core::entity::field::FieldValidation::default(),
-        ui_settings: r_data_core::entity::field::ui::UiSettings::default(),
+        validation: r_data_core_core::field::FieldValidation::default(),
+        ui_settings: r_data_core_core::field::ui::UiSettings::default(),
         constraints: std::collections::HashMap::new(),
     };
     fields.push(email_field);
@@ -65,8 +65,8 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
         filterable: true,
         indexed: true,
         default_value: None,
-        validation: r_data_core::entity::field::FieldValidation::default(),
-        ui_settings: r_data_core::entity::field::ui::UiSettings::default(),
+        validation: r_data_core_core::field::FieldValidation::default(),
+        ui_settings: r_data_core_core::field::ui::UiSettings::default(),
         constraints: std::collections::HashMap::new(),
     };
     fields.push(name_field);
@@ -82,12 +82,12 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
     let wf_service = WorkflowService::new(Arc::new(wf_adapter));
 
-    let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+    // Create a test admin user
+    let creator_uuid = create_test_admin_user(&pool)
         .await
-        .expect("fetch admin user");
+        .expect("create test admin user");
 
-    let workflow_name = format!("test-wf-{}", Uuid::now_v7());
+    let workflow_name = format!("test-wf-{}", Uuid::now_v7().simple());
     let workflow_config = json!({
         "steps": [
             {
@@ -132,7 +132,7 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
     let req = CreateWorkflowRequest {
         name: workflow_name.clone(),
         description: Some("test consecutive imports".into()),
-        kind: WorkflowKind::Consumer,
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config: workflow_config,
@@ -161,8 +161,7 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
         "has_header": true,
         "delimiter": ","
     });
-    use r_data_core::workflow::data::adapters::format::FormatHandler;
-    let payloads = r_data_core::workflow::data::adapters::format::csv::CsvFormatHandler::new()
+    let payloads = r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new()
         .parse(csv_data.as_bytes(), &format_cfg)
         .expect("parse CSV");
 
@@ -231,18 +230,15 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
     for (idx, result) in results.iter().enumerate() {
         assert_eq!(
             result.0, first_result.0,
-            "Run {}: Staged items count differs from first run",
-            idx
+            "Run {idx}: Staged items count differs from first run"
         );
         assert_eq!(
             result.1, first_result.1,
-            "Run {}: Processed items count differs from first run",
-            idx
+            "Run {idx}: Processed items count differs from first run"
         );
         assert_eq!(
             result.2, first_result.2,
-            "Run {}: Failed items count differs from first run",
-            idx
+            "Run {idx}: Failed items count differs from first run"
         );
         assert_eq!(
             result.3, first_result.3,

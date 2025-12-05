@@ -1,13 +1,14 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use async_trait::async_trait;
 use mockall::{
     mock,
     predicate::{self, eq},
 };
-use r_data_core::{
-    entity::admin_user::{ApiKey, ApiKeyRepositoryTrait},
-    error::{Error, Result},
-    services::ApiKeyService,
-};
+use r_data_core_core::admin_user::ApiKey;
+use r_data_core_core::error::Result;
+use r_data_core_persistence::ApiKeyRepositoryTrait;
+use r_data_core_services::ApiKeyService;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -22,6 +23,7 @@ mock! {
         async fn get_by_uuid(&self, uuid: Uuid) -> Result<Option<ApiKey>>;
         async fn create(&self, key: &ApiKey) -> Result<Uuid>;
         async fn list_by_user(&self, user_uuid: Uuid, limit: i64, offset: i64) -> Result<Vec<ApiKey>>;
+        async fn count_by_user(&self, user_uuid: Uuid) -> Result<i64>;
         async fn revoke(&self, uuid: Uuid) -> Result<()>;
         async fn get_by_name(&self, user_uuid: Uuid, name: &str) -> Result<Option<ApiKey>>;
         async fn get_by_hash(&self, api_key: &str) -> Result<Option<ApiKey>>;
@@ -34,7 +36,10 @@ mock! {
         ) -> Result<(Uuid, String)>;
         async fn update_last_used(&self, uuid: Uuid) -> Result<()>;
         async fn reassign(&self, uuid: Uuid, new_user_uuid: Uuid) -> Result<()>;
-        async fn count_by_user(&self, user_uuid: Uuid) -> Result<i64>;
+        async fn get_api_key_permission_schemes(&self, api_key_uuid: Uuid) -> Result<Vec<Uuid>>;
+        async fn assign_permission_scheme(&self, api_key_uuid: Uuid, scheme_uuid: Uuid) -> Result<()>;
+        async fn unassign_permission_scheme(&self, api_key_uuid: Uuid, scheme_uuid: Uuid) -> Result<()>;
+        async fn update_api_key_schemes(&self, api_key_uuid: Uuid, scheme_uuids: &[Uuid]) -> Result<()>;
     }
 }
 
@@ -49,7 +54,9 @@ async fn test_create_api_key_with_invalid_user_uuid() -> Result<()> {
         .returning(|_, _, _, _| {
             // Create a custom error message for the foreign key violation
             let error_message = "foreign key constraint violation".to_string();
-            Err(Error::Database(sqlx::Error::Protocol(error_message)))
+            Err(r_data_core_core::error::Error::Database(
+                sqlx::Error::Protocol(error_message),
+            ))
         });
 
     let service = ApiKeyService::new(Arc::new(mock_repo));
@@ -62,15 +69,14 @@ async fn test_create_api_key_with_invalid_user_uuid() -> Result<()> {
     // Verify failure
     assert!(result.is_err());
     match result {
-        Err(Error::Database(e)) => {
+        Err(r_data_core_core::error::Error::Database(e)) => {
             let err_string = e.to_string();
             assert!(
                 err_string.contains("foreign key constraint"),
-                "Expected foreign key constraint error, got: {}",
-                err_string
+                "Expected foreign key constraint error, got: {err_string}"
             );
         }
-        _ => panic!("Expected database error, got: {:?}", result),
+        _ => panic!("Expected database error, got: {result:?}"),
     }
 
     Ok(())
@@ -122,9 +128,11 @@ async fn test_create_api_key_with_long_name() -> Result<()> {
         )
         .returning(|_, _, _, _| {
             // Use a Protocol error instead of trying to construct a PgDatabaseError
-            Err(Error::Database(sqlx::Error::Protocol(
-                "ERROR: value too long for type character varying(255)".to_string(),
-            )))
+            Err(r_data_core_core::error::Error::Database(
+                sqlx::Error::Protocol(
+                    "ERROR: value too long for type character varying(255)".to_string(),
+                ),
+            ))
         });
 
     let service = ApiKeyService::new(Arc::new(mock_repo));
@@ -137,15 +145,14 @@ async fn test_create_api_key_with_long_name() -> Result<()> {
     // Verify failure
     assert!(result.is_err());
     match result {
-        Err(Error::Database(e)) => {
+        Err(r_data_core_core::error::Error::Database(e)) => {
             let err_string = e.to_string();
             assert!(
                 err_string.contains("too long"),
-                "Expected 'too long' error, got: {}",
-                err_string
+                "Expected 'too long' error, got: {err_string}"
             );
         }
-        _ => panic!("Expected database error, got: {:?}", result),
+        _ => panic!("Expected database error, got: {result:?}"),
     }
 
     Ok(())
@@ -209,10 +216,10 @@ async fn test_revoke_nonexistent_key() -> Result<()> {
     // Verify we get a NotFound error
     assert!(result.is_err());
     match result {
-        Err(Error::NotFound(msg)) => {
+        Err(r_data_core_core::error::Error::NotFound(msg)) => {
             assert_eq!(msg, "API key not found");
         }
-        _ => panic!("Expected NotFound error, got: {:?}", result),
+        _ => panic!("Expected NotFound error, got: {result:?}"),
     }
 
     Ok(())
@@ -254,10 +261,10 @@ async fn test_revoke_key_unauthorized() -> Result<()> {
     // Verify we get a Forbidden error
     assert!(result.is_err());
     match result {
-        Err(Error::Forbidden(msg)) => {
+        Err(r_data_core_core::error::Error::Forbidden(msg)) => {
             assert_eq!(msg, "You don't have permission to revoke this API key");
         }
-        _ => panic!("Expected Forbidden error, got: {:?}", result),
+        _ => panic!("Expected Forbidden error, got: {result:?}"),
     }
 
     Ok(())
@@ -278,10 +285,10 @@ async fn test_negative_expiration_days() -> Result<()> {
     // Verify we get a validation error
     assert!(result.is_err());
     match result {
-        Err(Error::Validation(msg)) => {
+        Err(r_data_core_core::error::Error::Validation(msg)) => {
             assert_eq!(msg, "Expiration days cannot be negative");
         }
-        _ => panic!("Expected Validation error, got: {:?}", result),
+        _ => panic!("Expected Validation error, got: {result:?}"),
     }
 
     Ok(())
@@ -354,13 +361,13 @@ async fn test_reassign_nonexistent_key() -> Result<()> {
     // Verify we get a NotFound error
     assert!(result.is_err());
     match result {
-        Err(Error::NotFound(msg)) => {
+        Err(r_data_core_core::error::Error::NotFound(msg)) => {
             assert!(
                 msg.contains("not found"),
                 "Expected 'not found' in error message"
             );
         }
-        _ => panic!("Expected NotFound error, got: {:?}", result),
+        _ => panic!("Expected NotFound error, got: {result:?}"),
     }
 
     Ok(())

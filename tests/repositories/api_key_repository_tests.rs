@@ -1,7 +1,10 @@
-use crate::common::utils;
-use r_data_core::{
-    entity::admin_user::{ApiKeyRepository, ApiKeyRepositoryTrait},
-    error::{Error, Result},
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
+use r_data_core_core::error::Result;
+use r_data_core_persistence::ApiKeyRepository;
+use r_data_core_persistence::ApiKeyRepositoryTrait;
+use r_data_core_test_support::{
+    clear_test_db, create_test_admin_user, random_string, setup_test_db,
 };
 use serial_test::serial;
 use std::sync::Arc;
@@ -12,13 +15,13 @@ use uuid::Uuid;
 #[serial]
 async fn test_create_and_find_api_key() -> Result<()> {
     // Setup and making sure to only work in transactions
-    let pool = utils::setup_test_db().await;
-    utils::clear_test_db(&pool).await?;
+    let pool = setup_test_db().await;
+    clear_test_db(&pool).await?;
 
     let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-    let name = utils::random_string("test_key");
+    let name = random_string("test_key");
 
-    let user_uuid = utils::create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
 
     // Create a new key
     let (key_uuid, key_value) = repo
@@ -57,11 +60,11 @@ async fn test_create_and_find_api_key() -> Result<()> {
 #[serial]
 async fn test_create_api_key_with_non_existent_user() -> Result<()> {
     // Setup
-    let pool = utils::setup_test_db().await;
-    utils::clear_test_db(&pool).await?;
+    let pool = setup_test_db().await;
+    clear_test_db(&pool).await?;
 
     let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-    let name = utils::random_string("test_key");
+    let name = random_string("test_key");
 
     // Generate a random UUID that doesn't exist in the database
     // Use a different timestamp for v7 to ensure it doesn't exist
@@ -89,15 +92,14 @@ async fn test_create_api_key_with_non_existent_user() -> Result<()> {
     // Verify the operation fails with a foreign key constraint error
     assert!(result.is_err());
     match result {
-        Err(Error::Database(db_error)) => {
+        Err(r_data_core_core::error::Error::Database(db_error)) => {
             // Verify it's a foreign key constraint violation
             assert!(
                 db_error.to_string().contains("foreign key constraint"),
-                "Expected foreign key constraint error, got: {}",
-                db_error
+                "Expected foreign key constraint error, got: {db_error}"
             );
         }
-        Err(other) => panic!("Expected database error, got: {:?}", other),
+        Err(other) => panic!("Expected database error, got: {other:?}"),
         Ok(_) => panic!("Expected error but operation succeeded"),
     }
 
@@ -108,13 +110,13 @@ async fn test_create_api_key_with_non_existent_user() -> Result<()> {
 #[serial]
 async fn test_api_key_last_used_update() -> Result<()> {
     // Setup
-    let pool = utils::setup_test_db().await;
-    utils::clear_test_db(&pool).await?;
+    let pool = setup_test_db().await;
+    clear_test_db(&pool).await?;
 
     let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-    let name = utils::random_string("test_key");
+    let name = random_string("test_key");
 
-    let user_uuid = utils::create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
 
     // Create a new key
     let (key_uuid, key_value) = repo
@@ -180,9 +182,7 @@ async fn test_api_key_last_used_update() -> Result<()> {
 
     assert!(
         latest_used_at > first_used_at,
-        "last_used_at should be updated: first={:?}, latest={:?}",
-        first_used_at,
-        latest_used_at
+        "last_used_at should be updated: first={first_used_at:?}, latest={latest_used_at:?}"
     );
 
     Ok(())
@@ -192,13 +192,13 @@ async fn test_api_key_last_used_update() -> Result<()> {
 #[serial]
 async fn test_expired_api_key() -> Result<()> {
     // Setup
-    let pool = utils::setup_test_db().await;
-    utils::clear_test_db(&pool).await?;
+    let pool = setup_test_db().await;
+    clear_test_db(&pool).await?;
 
     let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-    let name = utils::random_string("expired_key");
+    let name = random_string("expired_key");
 
-    let user_uuid = utils::create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
 
     // Create a key that expired yesterday
     let one_day_ago = OffsetDateTime::now_utc() - Duration::days(1);
@@ -206,11 +206,11 @@ async fn test_expired_api_key() -> Result<()> {
     // Insert directly with SQL to bypass the normal creation logic
     let key_uuid = Uuid::now_v7();
     let key_value = "test_expired_key_value";
-    let key_hash = r_data_core::entity::admin_user::ApiKey::hash_api_key(key_value)?;
+    let key_hash = r_data_core_core::admin_user::ApiKey::hash_api_key(key_value)?;
 
     sqlx::query!(
         r#"
-        INSERT INTO api_keys 
+        INSERT INTO api_keys
         (uuid, user_uuid, key_hash, name, description, is_active, created_at, expires_at, created_by, published)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         "#,
@@ -238,8 +238,7 @@ async fn test_expired_api_key() -> Result<()> {
     let expired_key = repo.get_by_uuid(key_uuid).await?;
     assert!(
         expired_key.is_some(),
-        "Key should be retrievable for uuid {}",
-        key_uuid
+        "Key should be retrievable for uuid {key_uuid}"
     );
     let key = expired_key.unwrap();
     assert!(key.expires_at.is_some());

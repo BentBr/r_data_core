@@ -22,9 +22,57 @@ export function checkEnvironmentVariables() {
     return envVars
 }
 
+/**
+ * Get the API base URL with proper fallback
+ * In development, uses empty string for relative URLs (proxied by Vite)
+ * In production, uses env var or falls back to window.location.origin
+ */
+function getApiBaseUrl(): string {
+    const envUrl = import.meta.env.VITE_API_BASE_URL
+
+    // If env var is explicitly set, use it
+    if (envUrl && envUrl.trim() !== '') {
+        return envUrl.trim()
+    }
+
+    // In development, use empty string for relative URLs (Vite proxy handles it)
+    if (import.meta.env.DEV) {
+        return ''
+    }
+
+    // In production, fall back to current origin if env var not set
+    if (typeof window !== 'undefined') {
+        return window.location.origin
+    }
+
+    // Server-side rendering fallback
+    return ''
+}
+
+/**
+ * Build a full API URL from an endpoint path
+ * @param endpoint - The API endpoint path (e.g., '/api/v1/users' or '/admin/api/v1/system/settings')
+ * @returns The full URL
+ */
+export function buildApiUrl(endpoint: string): string {
+    const baseUrl = getApiBaseUrl()
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+
+    // If baseUrl is empty (dev mode with proxy), return relative URL
+    if (baseUrl === '') {
+        return cleanEndpoint
+    }
+
+    // Ensure baseUrl doesn't end with a slash
+    const cleanBaseUrl = baseUrl.replace(/\/$/, '')
+    return `${cleanBaseUrl}${cleanEndpoint}`
+}
+
 // Type-safe environment variable getters
 export const env = {
-    apiBaseUrl: import.meta.env.VITE_API_BASE_URL,
+    get apiBaseUrl() {
+        return getApiBaseUrl()
+    },
     adminBaseUrl: import.meta.env.VITE_ADMIN_BASE_URL,
     devMode: import.meta.env.VITE_DEV_MODE === 'true',
     enableApiLogging: import.meta.env.VITE_ENABLE_API_LOGGING === 'true',

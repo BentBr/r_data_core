@@ -50,4 +50,23 @@ export class AuthClient extends BaseTypedHttpClient {
             }
         )
     }
+
+    async getUserPermissions(): Promise<{
+        is_super_admin: boolean
+        role: string
+        permissions: string[]
+        allowed_routes: string[]
+    }> {
+        return this.request(
+            '/admin/api/v1/auth/permissions',
+            ApiResponseSchema(
+                z.object({
+                    is_super_admin: z.boolean(),
+                    role: z.string(),
+                    permissions: z.array(z.string()),
+                    allowed_routes: z.array(z.string()),
+                })
+            )
+        )
+    }
 }

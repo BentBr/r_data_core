@@ -1,13 +1,15 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use super::create_test_cache_manager;
 use async_trait::async_trait;
 use mockall::mock;
 use mockall::predicate::*;
-use r_data_core::entity::entity_definition::definition::EntityDefinition;
-use r_data_core::entity::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
-use r_data_core::entity::field::types::FieldType;
-use r_data_core::entity::field::FieldDefinition;
-use r_data_core::error::Result;
-use r_data_core::services::EntityDefinitionService;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
+use r_data_core_core::error::Result;
+use r_data_core_core::field::types::FieldType;
+use r_data_core_core::field::FieldDefinition;
+use r_data_core_services::EntityDefinitionService;
 use std::collections::HashMap;
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -47,9 +49,9 @@ fn create_test_entity_definition() -> EntityDefinition {
         indexed: true,
         filterable: true,
         default_value: None,
-        ui_settings: Default::default(),
-        constraints: Default::default(),
-        validation: Default::default(),
+        ui_settings: r_data_core_core::field::ui::UiSettings::default(),
+        constraints: std::collections::HashMap::default(),
+        validation: r_data_core_core::field::FieldValidation::default(),
     }];
 
     let mut properties = HashMap::new();
@@ -69,7 +71,7 @@ fn create_test_entity_definition() -> EntityDefinition {
         allow_children: false,
         icon: None,
         fields: field_definitions,
-        schema: r_data_core::entity::entity_definition::schema::Schema::new(properties),
+        schema: r_data_core_core::entity_definition::schema::Schema::new(properties),
         created_at: now,
         updated_at: now,
         created_by: creator_id,

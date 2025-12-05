@@ -1,23 +1,25 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use actix_web::{test, web, App};
-use r_data_core::api::{configure_app, ApiState};
-use r_data_core::cache::CacheManager;
-use r_data_core::config::CacheConfig;
-use r_data_core::entity::admin_user::model::AdminUser;
-use r_data_core::entity::admin_user::repository::{AdminUserRepository, ApiKeyRepository};
-use r_data_core::entity::admin_user::repository_trait::ApiKeyRepositoryTrait;
-use r_data_core::services::{
+use r_data_core_api::{configure_app, ApiState, ApiStateWrapper};
+use r_data_core_core::admin_user::AdminUser;
+use r_data_core_core::cache::CacheManager;
+use r_data_core_core::config::CacheConfig;
+use r_data_core_persistence::{
+    AdminUserRepository, ApiKeyRepository, ApiKeyRepositoryTrait, WorkflowRepository,
+};
+use r_data_core_services::{
     AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
     WorkflowRepositoryAdapter,
 };
-use r_data_core::workflow::data::repository::WorkflowRepository;
-use r_data_core::workflow::data::WorkflowKind;
+use r_data_core_workflow::data::WorkflowKind;
 use std::sync::Arc;
 use uuid::Uuid;
 
 // Import common test utilities
-#[path = "../common/mod.rs"]
-mod common;
+use r_data_core_test_support::{create_test_admin_user, setup_test_db, test_queue_client_async};
 
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn setup_app_with_entities() -> anyhow::Result<(
     impl actix_web::dev::Service<
         actix_http::Request,
@@ -28,7 +30,7 @@ async fn setup_app_with_entities() -> anyhow::Result<(
     String, // JWT token
     String, // API key value
 )> {
-    let pool = common::utils::setup_test_db().await;
+    let pool = setup_test_db().await;
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -46,15 +48,12 @@ async fn setup_app_with_entities() -> anyhow::Result<(
     let admin_user_service = AdminUserService::new(admin_user_repository);
 
     let entity_definition_service = EntityDefinitionService::new_without_cache(Arc::new(
-        r_data_core::api::admin::entity_definitions::repository::EntityDefinitionRepository::new(
-            pool.clone(),
-        ),
+        r_data_core_persistence::EntityDefinitionRepository::new(pool.clone()),
     ));
 
     // Create dynamic entity service
-    let de_repo =
-        r_data_core::entity::dynamic_entity::repository::DynamicEntityRepository::new(pool.clone());
-    let de_adapter = r_data_core::services::DynamicEntityRepositoryAdapter::new(de_repo);
+    let de_repo = r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
+    let de_adapter = r_data_core_services::adapters::DynamicEntityRepositoryAdapter::new(de_repo);
     let dynamic_entity_service = Arc::new(DynamicEntityService::new(
         Arc::new(de_adapter),
         Arc::new(entity_definition_service.clone()),
@@ -62,39 +61,62 @@ async fn setup_app_with_entities() -> anyhow::Result<(
 
     let wf_repo = WorkflowRepository::new(pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
-    let workflow_service =
-        r_data_core::services::workflow_service::WorkflowService::new_with_entities(
-            Arc::new(wf_adapter),
-            dynamic_entity_service.clone(),
-        );
+    let workflow_service = r_data_core_services::WorkflowService::new_with_entities(
+        Arc::new(wf_adapter),
+        dynamic_entity_service.clone(),
+    );
 
     let jwt_secret = "test_secret".to_string();
-    let app_state = web::Data::new(ApiState {
+    let api_state = ApiState {
         db_pool: pool.clone(),
-        jwt_secret: jwt_secret.clone(),
+        api_config: r_data_core_core::config::ApiConfig {
+            host: "0.0.0.0".to_string(),
+            port: 8888,
+            use_tls: false,
+            jwt_secret: jwt_secret.clone(),
+            jwt_expiration: 3600,
+            enable_docs: true,
+            cors_origins: vec![],
+        },
+        permission_scheme_service: r_data_core_services::PermissionSchemeService::new(
+            pool.clone(),
+            cache_manager.clone(),
+            Some(0),
+        ),
         cache_manager,
         api_key_service,
         admin_user_service,
         entity_definition_service,
         dynamic_entity_service: Some(dynamic_entity_service),
         workflow_service,
-        queue: crate::common::utils::test_queue_client_async().await,
-    });
+        queue: test_queue_client_async().await,
+    };
+
+    let app_data = web::Data::new(ApiStateWrapper::new(api_state));
 
     let app = test::init_service(
         App::new()
-            .app_data(app_state.clone())
+            .app_data(app_data.clone())
             .configure(configure_app),
     )
     .await;
 
     // Create test admin user and JWT
-    let user_uuid = common::utils::create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
     let user: AdminUser = sqlx::query_as("SELECT * FROM admin_users WHERE uuid = $1")
         .bind(user_uuid)
         .fetch_one(&pool)
         .await?;
-    let token = r_data_core::api::jwt::generate_access_token(&user, &jwt_secret)?;
+    let api_config = r_data_core_core::config::ApiConfig {
+        host: "0.0.0.0".to_string(),
+        port: 8888,
+        use_tls: false,
+        jwt_secret: jwt_secret.clone(),
+        jwt_expiration: 3600,
+        enable_docs: true,
+        cors_origins: vec![],
+    };
+    let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, &[])?;
 
     // Create API key for testing - we need to use the repository directly to get the key value
     let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
@@ -111,16 +133,16 @@ async fn create_provider_workflow(
     config: serde_json::Value,
 ) -> anyhow::Result<Uuid> {
     let repo = WorkflowRepository::new(pool.clone());
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("provider-wf-{}", Uuid::now_v7()),
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
+        name: format!("provider-wf-{}", Uuid::now_v7().simple()),
         description: Some("Provider workflow test".to_string()),
-        kind: WorkflowKind::Provider,
+        kind: WorkflowKind::Provider.to_string(),
         enabled: true,
         schedule_cron: None,
         config,
         versioning_disabled: false,
     };
-    Ok(repo.create(&create_req, creator_uuid).await?)
+    repo.create(&create_req, creator_uuid).await
 }
 
 async fn create_consumer_workflow_with_api_source(
@@ -129,19 +151,20 @@ async fn create_consumer_workflow_with_api_source(
     config: serde_json::Value,
 ) -> anyhow::Result<Uuid> {
     let repo = WorkflowRepository::new(pool.clone());
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("consumer-api-wf-{}", Uuid::now_v7()),
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
+        name: format!("consumer-api-wf-{}", Uuid::now_v7().simple()),
         description: Some("Consumer workflow with API source".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config,
         versioning_disabled: false,
     };
-    Ok(repo.create(&create_req, creator_uuid).await?)
+    repo.create(&create_req, creator_uuid).await
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_provider_endpoint_with_jwt_auth() -> anyhow::Result<()> {
     let (app, pool, token, _) = setup_app_with_entities().await?;
 
@@ -186,8 +209,8 @@ async fn test_provider_endpoint_with_jwt_auth() -> anyhow::Result<()> {
 
     // Test GET endpoint with JWT
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
     let resp = test::call_service(&app, req).await;
@@ -203,6 +226,7 @@ async fn test_provider_endpoint_with_jwt_auth() -> anyhow::Result<()> {
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_provider_endpoint_with_api_key_auth() -> anyhow::Result<()> {
     let (app, pool, _token, api_key_value) = setup_app_with_entities().await?;
 
@@ -245,7 +269,7 @@ async fn test_provider_endpoint_with_api_key_auth() -> anyhow::Result<()> {
 
     // Test GET endpoint with API key
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("X-API-Key", api_key_value))
         .to_request();
 
@@ -261,6 +285,7 @@ async fn test_provider_endpoint_with_api_key_auth() -> anyhow::Result<()> {
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_provider_endpoint_with_pre_shared_key() -> anyhow::Result<()> {
     let (app, pool, _token, _) = setup_app_with_entities().await?;
 
@@ -309,7 +334,7 @@ async fn test_provider_endpoint_with_pre_shared_key() -> anyhow::Result<()> {
 
     // Test with correct pre-shared key
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("X-Pre-Shared-Key", "test-secret-key-123"))
         .to_request();
 
@@ -323,7 +348,7 @@ async fn test_provider_endpoint_with_pre_shared_key() -> anyhow::Result<()> {
 
     // Test with incorrect pre-shared key
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("X-Pre-Shared-Key", "wrong-key"))
         .to_request();
 
@@ -339,6 +364,7 @@ async fn test_provider_endpoint_with_pre_shared_key() -> anyhow::Result<()> {
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_provider_endpoint_without_auth() -> anyhow::Result<()> {
     let (app, pool, _token, _) = setup_app_with_entities().await?;
 
@@ -380,7 +406,7 @@ async fn test_provider_endpoint_without_auth() -> anyhow::Result<()> {
 
     // Test without auth
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .to_request();
 
     let resp = test::call_service(&app, req).await;
@@ -395,6 +421,7 @@ async fn test_provider_endpoint_without_auth() -> anyhow::Result<()> {
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_provider_endpoint_stats() -> anyhow::Result<()> {
     let (app, pool, token, _) = setup_app_with_entities().await?;
 
@@ -442,8 +469,8 @@ async fn test_provider_endpoint_stats() -> anyhow::Result<()> {
 
     // Test stats endpoint
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{}/stats", wf_uuid))
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}/stats"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
     let resp = test::call_service(&app, req).await;
@@ -460,6 +487,7 @@ async fn test_provider_endpoint_stats() -> anyhow::Result<()> {
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
     let (app, pool, _token, _) = setup_app_with_entities().await?;
 
@@ -503,7 +531,7 @@ async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
     // Test POST endpoint with CSV data (matching the format_type in config)
     let csv_data: Vec<u8> = b"name,email\nJohn,john@example.com".to_vec();
     let req = test::TestRequest::post()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("Content-Type", "text/csv"))
         .set_payload(csv_data)
         .to_request();
@@ -533,6 +561,7 @@ async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
     let (app, pool, _token, _) = setup_app_with_entities().await?;
 
@@ -573,10 +602,10 @@ async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
 
     // Create workflow as disabled
     let repo = WorkflowRepository::new(pool.clone());
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("consumer-api-disabled-{}", Uuid::now_v7()),
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
+        name: format!("consumer-api-disabled-{}", Uuid::now_v7().simple()),
         description: Some("Consumer workflow with API source (disabled)".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: false, // Disabled
         schedule_cron: None,
         config,
@@ -587,7 +616,7 @@ async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
     // Test POST endpoint with CSV data
     let csv_data: Vec<u8> = b"name,email\nJohn,john@example.com".to_vec();
     let req = test::TestRequest::post()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("Content-Type", "text/csv"))
         .set_payload(csv_data)
         .to_request();
@@ -613,6 +642,7 @@ async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_provider_endpoint_returns_404_for_consumer_workflow() -> anyhow::Result<()> {
     let (app, pool, token, _) = setup_app_with_entities().await?;
 
@@ -650,10 +680,10 @@ async fn test_provider_endpoint_returns_404_for_consumer_workflow() -> anyhow::R
     });
 
     let repo = WorkflowRepository::new(pool.clone());
-    let create_req = r_data_core::api::admin::workflows::models::CreateWorkflowRequest {
-        name: format!("consumer-wf-{}", Uuid::now_v7()),
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
+        name: format!("consumer-wf-{}", Uuid::now_v7().simple()),
         description: Some("Consumer workflow".to_string()),
-        kind: WorkflowKind::Consumer,
+        kind: WorkflowKind::Consumer.to_string(),
         enabled: true,
         schedule_cron: None,
         config,
@@ -663,8 +693,8 @@ async fn test_provider_endpoint_returns_404_for_consumer_workflow() -> anyhow::R
 
     // Try to access as provider endpoint
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
-        .insert_header(("Authorization", format!("Bearer {}", token)))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
     let resp = test::call_service(&app, req).await;
@@ -679,6 +709,7 @@ async fn test_provider_endpoint_returns_404_for_consumer_workflow() -> anyhow::R
 }
 
 #[actix_web::test]
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_consumer_endpoint_post_returns_405_for_provider_workflow() -> anyhow::Result<()> {
     let (app, pool, _token, _) = setup_app_with_entities().await?;
 
@@ -722,7 +753,7 @@ async fn test_consumer_endpoint_post_returns_405_for_provider_workflow() -> anyh
     // Try to POST to provider workflow
     let payload: Vec<u8> = b"{}".to_vec();
     let req = test::TestRequest::post()
-        .uri(&format!("/api/v1/workflows/{}", wf_uuid))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("Content-Type", "application/json"))
         .set_payload(payload)
         .to_request();

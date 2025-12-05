@@ -1,11 +1,9 @@
-use r_data_core::entity::entity_definition::definition::EntityDefinition;
-use r_data_core::entity::field::definition::FieldDefinition;
-use r_data_core::entity::field::types::FieldType;
-use r_data_core::services::workflow::entity_persistence::{
-    ensure_audit_fields, ensure_entity_key, find_existing_entity, prepare_field_data,
-    EntityLookupResult, PersistenceContext,
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
+use r_data_core_services::workflow::entity_persistence::{
+    ensure_audit_fields, EntityLookupResult, PersistenceContext,
 };
-use r_data_core::services::workflow::value_formatting::normalize_path;
+use r_data_core_services::workflow::value_formatting::normalize_path;
 use serde_json::json;
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -84,9 +82,7 @@ fn test_persistence_context() {
 #[test]
 fn test_entity_lookup_result_enum() {
     // Test that the enum variants exist
-    let _found = EntityLookupResult::NotFound;
-    // In real tests, we'd create a DynamicEntity for Found variant
+    let found = EntityLookupResult::NotFound;
+    let _ = found; // Suppress unused variable warning
+                   // In real tests, we'd create a DynamicEntity for Found variant
 }
-
-// Integration tests would go here and test the full persistence flow
-// They would require database setup and proper test fixtures

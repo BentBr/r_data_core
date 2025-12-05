@@ -244,22 +244,18 @@
         await loadWorkflows(currentPage.value, itemsPerPage.value)
         showCreate.value = false
     }
-</script>
 
-<script lang="ts">
-    export default {
-        // Expose selected internals for stable tests
-        expose: [
-            'openRunNow',
-            'confirmRunNow',
-            'uploadEnabled',
-            'uploadFile',
-            'activeTab',
-            'selectedWorkflowUuid',
-            'loadRuns',
-            'showRunDialog',
-        ],
-    }
+    // Expose selected internals for stable tests
+    defineExpose({
+        openRunNow,
+        confirmRunNow,
+        uploadEnabled,
+        uploadFile,
+        activeTab,
+        selectedWorkflowUuid,
+        loadRuns,
+        showRunDialog,
+    })
 </script>
 
 <template>

@@ -1,39 +1,33 @@
-use r_data_core::workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
-use r_data_core::workflow::data::job_queue::JobQueue;
-use r_data_core::workflow::data::jobs::{FetchAndStageJob, ProcessRawItemJob};
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+
+use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
+use r_data_core_workflow::data::job_queue::JobQueue;
+use r_data_core_workflow::data::jobs::{FetchAndStageJob, ProcessRawItemJob};
 use uuid::Uuid;
 
-fn get_test_queue() -> Option<ApalisRedisQueue> {
+async fn get_test_queue() -> Option<(ApalisRedisQueue, String, String)> {
     let url = std::env::var("REDIS_URL").ok()?;
-    let fetch_key = std::env::var("QUEUE_FETCH_KEY")
-        .unwrap_or_else(|_| format!("test_queue:fetch:{}", Uuid::now_v7()));
-    let process_key = std::env::var("QUEUE_PROCESS_KEY")
-        .unwrap_or_else(|_| format!("test_queue:process:{}", Uuid::now_v7()));
+    // Always use a unique queue key per test to ensure isolation
+    // Append test ID even if env vars are set to prevent test interference
+    let test_id = Uuid::now_v7();
+    let base_fetch =
+        std::env::var("QUEUE_FETCH_KEY").unwrap_or_else(|_| "test_queue:fetch".to_string());
+    let base_process =
+        std::env::var("QUEUE_PROCESS_KEY").unwrap_or_else(|_| "test_queue:process".to_string());
+    let fetch_key = format!("{base_fetch}:{test_id}");
+    let process_key = format!("{base_process}:{test_id}");
 
-    // Use tokio runtime to call async function
-    tokio::runtime::Handle::try_current()
-        .ok()
-        .and_then(|handle| {
-            handle
-                .block_on(ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key))
-                .ok()
-        })
-        .or_else(|| {
-            tokio::runtime::Runtime::new().ok().and_then(|rt| {
-                rt.block_on(ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key))
-                    .ok()
-            })
-        })
+    let queue = ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key)
+        .await
+        .ok()?;
+    Some((queue, fetch_key, process_key))
 }
 
 #[tokio::test]
 async fn enqueue_and_pop_fetch_job_round_trip_if_redis_available() {
-    let queue = match get_test_queue() {
-        Some(q) => q,
-        None => {
-            println!("Skipping test: REDIS_URL not set");
-            return;
-        }
+    let Some((queue, _fetch_key, _process_key)) = get_test_queue().await else {
+        println!("Skipping test: REDIS_URL not set");
+        return;
     };
     let wf = Uuid::now_v7();
     let run = Uuid::now_v7();
@@ -59,12 +53,9 @@ async fn enqueue_and_pop_fetch_job_round_trip_if_redis_available() {
 
 #[tokio::test]
 async fn enqueue_process_job_if_redis_available() {
-    let queue = match get_test_queue() {
-        Some(q) => q,
-        None => {
-            println!("Skipping test: REDIS_URL not set");
-            return;
-        }
+    let Some((queue, _fetch_key, process_key)) = get_test_queue().await else {
+        println!("Skipping test: REDIS_URL not set");
+        return;
     };
     let item = Uuid::now_v7();
 
@@ -74,11 +65,9 @@ async fn enqueue_process_job_if_redis_available() {
         .await
         .expect("enqueue process should succeed");
 
-    // Verify it was enqueued by checking Redis directly
+    // Verify it was enqueued by checking Redis directly using the same process_key
     // (We can't pop process jobs with the current API, but we can verify they're in Redis)
     let url = std::env::var("REDIS_URL").expect("REDIS_URL should be set");
-    let process_key = std::env::var("QUEUE_PROCESS_KEY")
-        .unwrap_or_else(|_| "queue:workflows:process".to_string());
 
     let client = redis::Client::open(url).expect("Failed to create Redis client");
     let mut conn = client
@@ -105,12 +94,9 @@ async fn enqueue_process_job_if_redis_available() {
 
 #[tokio::test]
 async fn enqueue_multiple_jobs_fifo_ordering_if_redis_available() {
-    let queue = match get_test_queue() {
-        Some(q) => q,
-        None => {
-            println!("Skipping test: REDIS_URL not set");
-            return;
-        }
+    let Some((queue, _fetch_key, _process_key)) = get_test_queue().await else {
+        println!("Skipping test: REDIS_URL not set");
+        return;
     };
     let wf = Uuid::now_v7();
 
@@ -148,12 +134,9 @@ async fn queue_initialization_fails_with_invalid_redis_url() {
 
 #[tokio::test]
 async fn enqueue_fetch_without_trigger_id_if_redis_available() {
-    let queue = match get_test_queue() {
-        Some(q) => q,
-        None => {
-            println!("Skipping test: REDIS_URL not set");
-            return;
-        }
+    let Some((queue, _fetch_key, _process_key)) = get_test_queue().await else {
+        println!("Skipping test: REDIS_URL not set");
+        return;
     };
     let wf = Uuid::now_v7();
 
