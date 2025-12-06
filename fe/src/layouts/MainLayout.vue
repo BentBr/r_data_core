@@ -9,11 +9,18 @@
         >
             <!-- App Title -->
             <v-list-item
-                prepend-icon="mdi-database"
                 title="R Data Core"
                 subtitle="Admin Interface"
                 nav
-            />
+            >
+                <template #prepend>
+                    <SmartIcon
+                        icon="database"
+                        :size="24"
+                        class="mr-3"
+                    />
+                </template>
+            </v-list-item>
 
             <v-divider />
 
@@ -22,12 +29,19 @@
                 <v-list-item
                     v-for="item in navigationItems"
                     :key="item.path"
-                    :prepend-icon="item.icon"
                     :title="item.title"
                     :value="item.path"
                     :to="item.path"
                     router
-                />
+                >
+                    <template #prepend>
+                        <SmartIcon
+                            :icon="item.icon"
+                            :size="24"
+                            class="mr-3"
+                        />
+                    </template>
+                </v-list-item>
             </v-list>
         </v-navigation-drawer>
 
@@ -77,6 +91,7 @@
     import { useTranslations } from '@/composables/useTranslations'
     import LanguageSwitch from '@/components/common/LanguageSwitch.vue'
     import UserProfileMenu from '@/components/common/UserProfileMenu.vue'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
 
     const route = useRoute()
     const authStore = useAuthStore()
@@ -93,37 +108,37 @@
         const items = [
             {
                 title: t('navigation.dashboard'),
-                icon: 'mdi-view-dashboard',
+                icon: 'layout-dashboard',
                 path: '/dashboard',
             },
             {
                 title: t('navigation.entity_definitions'),
-                icon: 'mdi-file-tree',
+                icon: 'folder-tree',
                 path: '/entity-definitions',
             },
             {
                 title: t('navigation.entities'),
-                icon: 'mdi-database',
+                icon: 'database',
                 path: '/entities',
             },
             {
                 title: t('navigation.api_keys'),
-                icon: 'mdi-key',
+                icon: 'key',
                 path: '/api-keys',
             },
             {
                 title: t('navigation.workflows'),
-                icon: 'mdi-timeline-clock-outline',
+                icon: 'workflow',
                 path: '/workflows',
             },
             {
                 title: t('navigation.permissions'),
-                icon: 'mdi-shield-account',
+                icon: 'shield',
                 path: '/permissions',
             },
             {
                 title: t('navigation.system'),
-                icon: 'mdi-cog',
+                icon: 'settings',
                 path: '/system',
             },
         ]

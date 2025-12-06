@@ -102,7 +102,7 @@ describe('Entity Schemas', () => {
                 description: 'Test customer',
                 group_name: '',
                 allow_children: false,
-                icon: 'mdi-account',
+                icon: 'user',
                 fields: [
                     {
                         name: 'username',
@@ -144,7 +144,7 @@ describe('Entity Schemas', () => {
                         description: 'Toller Kunde\nmeta info',
                         group_name: '',
                         allow_children: false,
-                        icon: 'mdi-account',
+                        icon: 'user',
                         fields: [
                             {
                                 name: 'username',

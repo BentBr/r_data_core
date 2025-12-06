@@ -10,19 +10,29 @@
                     data-test="apply"
                     color="success"
                     variant="outlined"
-                    prepend-icon="mdi-content-save"
                     :loading="savingChanges"
                     class="mr-2"
                     @click="$emit('save-changes')"
                 >
+                    <template #prepend>
+                        <SmartIcon
+                            icon="save"
+                            :size="20"
+                        />
+                    </template>
                     {{ t('entity_definitions.details.apply_changes') }}
                 </v-btn>
                 <v-btn
                     data-test="add"
                     color="primary"
-                    prepend-icon="mdi-plus"
                     @click="$emit('add-field')"
                 >
+                    <template #prepend>
+                        <SmartIcon
+                            icon="plus"
+                            :size="20"
+                        />
+                    </template>
                     {{ t('entity_definitions.fields.add_field') }}
                 </v-btn>
             </div>
@@ -37,10 +47,10 @@
             class="elevation-1"
         >
             <template #prepend="{ item }">
-                <v-icon
+                <SmartIcon
                     :icon="getFieldIcon(item.field_type)"
                     :color="getFieldColor(item.field_type)"
-                    size="small"
+                    :size="20"
                 />
             </template>
             <template #title="{ item }">
@@ -61,40 +71,45 @@
                         >
                             {{ item.field_type }}
                         </v-chip>
-                        <v-icon
+                        <SmartIcon
                             v-if="item.required"
-                            icon="mdi-check-circle"
-                            color="success"
-                            size="small"
-                            class="mr-1"
+                            icon="check-circle"
+                            :size="20"
+                            class="mr-1 text-success"
                         />
-                        <v-icon
+                        <SmartIcon
                             v-if="item.indexed"
-                            icon="mdi-database"
-                            color="info"
-                            size="small"
-                            class="mr-1"
+                            icon="database"
+                            :size="20"
+                            class="mr-1 text-info"
                         />
-                        <v-icon
+                        <SmartIcon
                             v-if="item.filterable"
-                            icon="mdi-filter"
-                            color="warning"
-                            size="small"
-                            class="mr-1"
+                            icon="filter"
+                            :size="20"
+                            class="mr-1 text-warning"
                         />
                         <v-btn
-                            icon="mdi-pencil"
                             size="x-small"
                             variant="text"
                             @click.stop="$emit('edit-field', item)"
-                        />
+                        >
+                            <SmartIcon
+                                icon="pencil"
+                                :size="16"
+                            />
+                        </v-btn>
                         <v-btn
-                            icon="mdi-delete"
                             size="x-small"
                             variant="text"
                             color="error"
                             @click.stop="$emit('remove-field', item)"
-                        />
+                        >
+                            <SmartIcon
+                                icon="trash-2"
+                                :size="16"
+                            />
+                        </v-btn>
                     </div>
                 </div>
             </template>
@@ -105,6 +120,7 @@
 <script setup lang="ts">
     import { computed } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
     import type { EntityDefinition, FieldDefinition } from '@/types/schemas'
 
     interface Props {
@@ -136,25 +152,25 @@
 
     const getFieldIcon = (fieldType: string) => {
         const iconMap: Record<string, string> = {
-            String: 'mdi-text',
-            Text: 'mdi-text-box',
-            Wysiwyg: 'mdi-text-box-outline',
-            Integer: 'mdi-numeric',
-            Float: 'mdi-numeric-1-box',
-            Boolean: 'mdi-checkbox-marked',
-            Date: 'mdi-calendar',
-            DateTime: 'mdi-calendar-clock',
-            Object: 'mdi-cube',
-            Array: 'mdi-format-list-bulleted',
-            Uuid: 'mdi-identifier',
-            ManyToOne: 'mdi-link',
-            ManyToMany: 'mdi-link-variant',
-            Select: 'mdi-format-list-checks',
-            MultiSelect: 'mdi-format-list-numbered',
-            Image: 'mdi-image',
-            File: 'mdi-file',
+            String: 'type',
+            Text: 'file-text',
+            Wysiwyg: 'file-edit',
+            Integer: 'hash',
+            Float: 'hash',
+            Boolean: 'check-square',
+            Date: 'calendar',
+            DateTime: 'calendar-clock',
+            Object: 'box',
+            Array: 'list',
+            Uuid: 'hash',
+            ManyToOne: 'link',
+            ManyToMany: 'link-2',
+            Select: 'list-checks',
+            MultiSelect: 'list-checks',
+            Image: 'image',
+            File: 'file',
         }
-        return iconMap[fieldType] || 'mdi-text'
+        return iconMap[fieldType] || 'type'
     }
 
     const getFieldColor = (fieldType: string) => {

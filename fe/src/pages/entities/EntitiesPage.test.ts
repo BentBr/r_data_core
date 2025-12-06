@@ -51,9 +51,7 @@ vi.mock('@/stores/auth', () => ({
 
 const router = createRouter({
     history: createWebHistory(),
-    routes: [
-        { path: '/entities', component: EntitiesPage },
-    ],
+    routes: [{ path: '/entities', component: EntitiesPage }],
 })
 
 describe('EntitiesPage - Path Detection Logic', () => {

@@ -130,9 +130,7 @@ vi.mock('@/stores/auth', () => ({
 
 const router = createRouter({
     history: createWebHistory(),
-    routes: [
-        { path: '/permissions', component: PermissionsPage },
-    ],
+    routes: [{ path: '/permissions', component: PermissionsPage }],
 })
 
 const mockUsersLoading = ref(false)

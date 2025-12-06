@@ -260,6 +260,8 @@
       "raw_data": "Rohe Daten",
       "formatted_data": "Formatierte Daten",
       "history": "Historie",
+      "select_versions": "Wählen Sie zwei Versionen zum Vergleichen:",
+      "differences": "Unterschiede",
       "version_a": "Version A",
       "version_b": "Version B",
       "compare": "Vergleichen",
@@ -401,6 +403,7 @@
   "common": {
     "cancel": "Abbrechen",
     "close": "Schließen",
+    "save": "Speichern",
     "refresh": "Aktualisieren",
     "edit": "Bearbeiten",
     "delete": "Löschen",

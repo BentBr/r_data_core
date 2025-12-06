@@ -35,34 +35,34 @@
         </template>
 
         <template #item.published="{ item }">
-            <v-icon
-                :icon="item.published ? 'mdi-check-circle' : 'mdi-close-circle'"
+            <SmartIcon
+                :icon="item.published ? 'check-circle' : 'x-circle'"
                 :color="item.published ? 'success' : 'grey'"
-                size="small"
+                :size="20"
             />
         </template>
 
         <template #item.required="{ item }">
-            <v-icon
-                :icon="item.required ? 'mdi-check-circle' : 'mdi-close-circle'"
+            <SmartIcon
+                :icon="item.required ? 'check-circle' : 'x-circle'"
                 :color="item.required ? 'success' : 'grey'"
-                size="small"
+                :size="20"
             />
         </template>
 
         <template #item.indexed="{ item }">
-            <v-icon
-                :icon="item.indexed ? 'mdi-check-circle' : 'mdi-close-circle'"
+            <SmartIcon
+                :icon="item.indexed ? 'check-circle' : 'x-circle'"
                 :color="item.indexed ? 'success' : 'grey'"
-                size="small"
+                :size="20"
             />
         </template>
 
         <template #item.filterable="{ item }">
-            <v-icon
-                :icon="item.filterable ? 'mdi-check-circle' : 'mdi-close-circle'"
+            <SmartIcon
+                :icon="item.filterable ? 'check-circle' : 'x-circle'"
                 :color="item.filterable ? 'success' : 'grey'"
-                size="small"
+                :size="20"
             />
         </template>
 
@@ -94,6 +94,8 @@
 </template>
 
 <script setup lang="ts">
+    import SmartIcon from '@/components/common/SmartIcon.vue'
+
     interface Props {
         headers: Array<{ title: string; key: string; sortable?: boolean; align?: string }>
         items: Array<Record<string, unknown>>

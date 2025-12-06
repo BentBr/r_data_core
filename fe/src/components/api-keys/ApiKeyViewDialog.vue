@@ -11,14 +11,20 @@
                     <v-list>
                         <v-list-item>
                             <template #prepend>
-                                <v-icon icon="mdi-key" />
+                                <SmartIcon
+                                    icon="key"
+                                    :size="20"
+                                />
                             </template>
                             <v-list-item-title>{{ t('api_keys.view.name') }}</v-list-item-title>
                             <v-list-item-subtitle>{{ apiKey.name }}</v-list-item-subtitle>
                         </v-list-item>
                         <v-list-item v-if="apiKey.description">
                             <template #prepend>
-                                <v-icon icon="mdi-text" />
+                                <SmartIcon
+                                    icon="type"
+                                    :size="20"
+                                />
                             </template>
                             <v-list-item-title>{{
                                 t('api_keys.view.description')
@@ -27,7 +33,10 @@
                         </v-list-item>
                         <v-list-item>
                             <template #prepend>
-                                <v-icon icon="mdi-calendar" />
+                                <SmartIcon
+                                    icon="calendar"
+                                    :size="20"
+                                />
                             </template>
                             <v-list-item-title>{{ t('api_keys.view.created') }}</v-list-item-title>
                             <v-list-item-subtitle>{{
@@ -36,7 +45,10 @@
                         </v-list-item>
                         <v-list-item v-if="apiKey.expires_at">
                             <template #prepend>
-                                <v-icon icon="mdi-calendar-clock" />
+                                <SmartIcon
+                                    icon="calendar-clock"
+                                    :size="20"
+                                />
                             </template>
                             <v-list-item-title>{{ t('api_keys.view.expires') }}</v-list-item-title>
                             <v-list-item-subtitle>{{
@@ -45,7 +57,10 @@
                         </v-list-item>
                         <v-list-item v-if="apiKey.last_used_at">
                             <template #prepend>
-                                <v-icon icon="mdi-clock" />
+                                <SmartIcon
+                                    icon="clock"
+                                    :size="20"
+                                />
                             </template>
                             <v-list-item-title>{{
                                 t('api_keys.view.last_used')
@@ -72,6 +87,7 @@
 
 <script setup lang="ts">
     import { useTranslations } from '@/composables/useTranslations'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
     import type { ApiKey } from '@/types/schemas'
 
     const { t } = useTranslations()

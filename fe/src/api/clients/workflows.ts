@@ -42,7 +42,10 @@ export class WorkflowsClient extends BaseTypedHttpClient {
             z.object({
                 uuid: UuidSchema,
                 name: z.string(),
-                kind: z.enum(['consumer', 'provider']),
+                kind: z
+                    .string()
+                    .transform(val => val.toLowerCase())
+                    .pipe(z.enum(['consumer', 'provider'])),
                 enabled: z.boolean(),
                 schedule_cron: z.string().nullable().optional(),
                 has_api_endpoint: z.boolean().optional().default(false),

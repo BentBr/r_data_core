@@ -42,9 +42,7 @@ vi.mock('@/composables/useSnackbar', () => ({
 
 const router = createRouter({
     history: createWebHistory(),
-    routes: [
-        { path: '/workflows', component: WorkflowsPage },
-    ],
+    routes: [{ path: '/workflows', component: WorkflowsPage }],
 })
 
 describe('WorkflowsPage', () => {

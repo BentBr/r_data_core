@@ -18,7 +18,7 @@ describe('EntityDefinitionMetaInfo', () => {
         description: 'A test entity definition',
         group_name: 'test_group',
         allow_children: true,
-        icon: 'mdi-test',
+        icon: 'test-tube',
         fields: [],
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',

@@ -6,8 +6,9 @@
     >
         <v-card>
             <v-card-title class="d-flex align-center pa-4">
-                <v-icon
-                    icon="mdi-plus"
+                <SmartIcon
+                    icon="plus"
+                    :size="24"
                     class="mr-3"
                 />
                 {{ t('entities.create.title') }}
@@ -135,6 +136,7 @@
 <script setup lang="ts">
     import { ref, computed, watch } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
     import type {
         EntityDefinition,
         CreateEntityRequest,
@@ -240,7 +242,7 @@
             Wysiwyg: 'v-textarea',
             Integer: 'v-text-field',
             Float: 'v-text-field',
-            Boolean: 'v-checkbox',
+            Boolean: 'v-switch',
             Date: 'v-text-field',
             DateTime: 'v-text-field',
             Time: 'v-text-field',

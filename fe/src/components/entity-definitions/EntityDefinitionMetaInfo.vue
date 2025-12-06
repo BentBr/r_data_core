@@ -4,7 +4,12 @@
             <v-list>
                 <v-list-item>
                     <template #prepend>
-                        <v-icon icon="mdi-tag" />
+                        <div class="mr-3">
+                            <SmartIcon
+                                icon="tag"
+                                :size="20"
+                            />
+                        </div>
                     </template>
                     <v-list-item-title>{{
                         t('entity_definitions.meta_info.entity_type')
@@ -13,7 +18,12 @@
                 </v-list-item>
                 <v-list-item>
                     <template #prepend>
-                        <v-icon icon="mdi-text" />
+                        <div class="mr-3">
+                            <SmartIcon
+                                icon="type"
+                                :size="20"
+                            />
+                        </div>
                     </template>
                     <v-list-item-title>{{
                         t('entity_definitions.meta_info.display_name')
@@ -22,7 +32,12 @@
                 </v-list-item>
                 <v-list-item v-if="definition.description">
                     <template #prepend>
-                        <v-icon icon="mdi-information" />
+                        <div class="mr-3">
+                            <SmartIcon
+                                icon="info"
+                                :size="20"
+                            />
+                        </div>
                     </template>
                     <v-list-item-title>{{
                         t('entity_definitions.meta_info.description')
@@ -31,7 +46,12 @@
                 </v-list-item>
                 <v-list-item v-if="definition.group_name">
                     <template #prepend>
-                        <v-icon icon="mdi-folder" />
+                        <div class="mr-3">
+                            <SmartIcon
+                                icon="folder"
+                                :size="20"
+                            />
+                        </div>
                     </template>
                     <v-list-item-title>{{
                         t('entity_definitions.meta_info.group')
@@ -44,7 +64,12 @@
             <v-list>
                 <v-list-item>
                     <template #prepend>
-                        <v-icon icon="mdi-calendar" />
+                        <div class="mr-3">
+                            <SmartIcon
+                                icon="calendar"
+                                :size="20"
+                            />
+                        </div>
                     </template>
                     <v-list-item-title>{{
                         t('entity_definitions.meta_info.created')
@@ -55,7 +80,12 @@
                 </v-list-item>
                 <v-list-item>
                     <template #prepend>
-                        <v-icon icon="mdi-calendar-edit" />
+                        <div class="mr-3">
+                            <SmartIcon
+                                icon="calendar-days"
+                                :size="20"
+                            />
+                        </div>
                     </template>
                     <v-list-item-title>{{
                         t('entity_definitions.meta_info.updated')
@@ -66,7 +96,12 @@
                 </v-list-item>
                 <v-list-item>
                     <template #prepend>
-                        <v-icon icon="mdi-counter" />
+                        <div class="mr-3">
+                            <SmartIcon
+                                icon="hash"
+                                :size="20"
+                            />
+                        </div>
                     </template>
                     <v-list-item-title>{{
                         t('entity_definitions.meta_info.version')
@@ -75,7 +110,12 @@
                 </v-list-item>
                 <v-list-item>
                     <template #prepend>
-                        <v-icon icon="mdi-checkbox-marked-circle" />
+                        <div class="mr-3">
+                            <SmartIcon
+                                icon="check-circle-2"
+                                :size="20"
+                            />
+                        </div>
                     </template>
                     <v-list-item-title>{{
                         t('entity_definitions.meta_info.status')
@@ -101,6 +141,7 @@
 <script setup lang="ts">
     import type { EntityDefinition } from '@/types/schemas'
     import { useTranslations } from '@/composables/useTranslations'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
 
     interface Props {
         definition: EntityDefinition

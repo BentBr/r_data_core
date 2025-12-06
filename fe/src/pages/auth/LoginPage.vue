@@ -42,7 +42,6 @@
                                 <v-text-field
                                     v-model="credentials.username"
                                     :label="t('auth.login.username')"
-                                    prepend-inner-icon="mdi-account"
                                     variant="outlined"
                                     :rules="usernameRules"
                                     :error-messages="fieldErrors.username"
@@ -50,24 +49,45 @@
                                     class="mb-4"
                                     autofocus
                                     @input="clearFieldError('username')"
-                                />
+                                >
+                                    <template #prepend-inner>
+                                        <SmartIcon
+                                            icon="user"
+                                            :size="20"
+                                            class="mr-2"
+                                        />
+                                    </template>
+                                </v-text-field>
 
                                 <!-- Password Field -->
                                 <v-text-field
                                     v-model="credentials.password"
                                     :type="showPassword ? 'text' : 'password'"
                                     :label="t('auth.login.password')"
-                                    prepend-inner-icon="mdi-lock"
-                                    :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
                                     variant="outlined"
                                     :rules="passwordRules"
                                     :error-messages="fieldErrors.password"
                                     :disabled="authStore.isLoading"
                                     class="mb-4"
-                                    @click:append-inner="showPassword = !showPassword"
                                     @input="clearFieldError('password')"
                                     @keyup.enter="handleLogin"
-                                />
+                                >
+                                    <template #prepend-inner>
+                                        <SmartIcon
+                                            icon="lock"
+                                            :size="20"
+                                            class="mr-2"
+                                        />
+                                    </template>
+                                    <template #append-inner>
+                                        <SmartIcon
+                                            :icon="showPassword ? 'eye' : 'eye-off'"
+                                            :size="20"
+                                            class="cursor-pointer"
+                                            @click="showPassword = !showPassword"
+                                        />
+                                    </template>
+                                </v-text-field>
 
                                 <!-- Error Alert -->
                                 <v-alert
@@ -90,7 +110,12 @@
                                     :disabled="!formValid"
                                     class="mb-4"
                                 >
-                                    <v-icon start>mdi-login</v-icon>
+                                    <template #prepend>
+                                        <SmartIcon
+                                            icon="log-in"
+                                            :size="20"
+                                        />
+                                    </template>
                                     {{
                                         authStore.isLoading
                                             ? t('auth.login.loading')
@@ -142,6 +167,7 @@
     import { useAuthStore } from '@/stores/auth'
     import { useTranslations } from '@/composables/useTranslations'
     import LanguageSwitch from '@/components/common/LanguageSwitch.vue'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
 
     // Router, store, and translations
     const router = useRouter()
@@ -263,19 +289,23 @@
         min-height: 100vh;
     }
 
+    /* Use theme primary color for background gradient */
     .v-container {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(
+            135deg,
+            rgb(var(--v-theme-primary)) 0%,
+            rgb(var(--v-theme-primary)) 100%
+        );
     }
 
+    /* Card uses theme surface color with transparency */
     .v-card {
-        background: rgba(255, 255, 255, 0.95);
+        background: rgba(var(--v-theme-surface), 0.95);
         backdrop-filter: blur(10px);
     }
 
+    /* Title uses primary color */
     .v-card-title .text-h4 {
-        background: linear-gradient(45deg, #1976d2, #42a5f5);
-        background-clip: text;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: rgb(var(--v-theme-primary));
     }
 </style>
