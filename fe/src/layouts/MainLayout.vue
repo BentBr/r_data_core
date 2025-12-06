@@ -3,9 +3,11 @@
         <!-- Navigation Drawer -->
         <v-navigation-drawer
             v-model="drawer"
-            :rail="rail"
-            permanent
-            @click="rail = false"
+            app
+            :permanent="!isMobile"
+            :temporary="isMobile"
+            :scrim="isMobile"
+            width="280"
         >
             <!-- App Title -->
             <v-list-item
@@ -46,10 +48,10 @@
         </v-navigation-drawer>
 
         <!-- App Bar -->
-        <v-app-bar>
+        <v-app-bar app>
             <v-app-bar-nav-icon
                 variant="text"
-                @click.stop="rail = !rail"
+                @click.stop="toggleNav"
             />
 
             <v-toolbar-title>{{ currentPageTitle }}</v-toolbar-title>
@@ -85,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, computed, onMounted } from 'vue'
+    import { ref, computed, onMounted, onUnmounted } from 'vue'
     import { useRoute } from 'vue-router'
     import { useAuthStore } from '@/stores/auth'
     import { useTranslations } from '@/composables/useTranslations'
@@ -98,8 +100,8 @@
     const { t } = useTranslations()
 
     // State
+    const isMobile = ref(false)
     const drawer = ref(true)
-    const rail = ref(false)
 
     // Theme is now handled by UserProfileMenu component
 
@@ -160,9 +162,28 @@
         return currentItem?.title ?? 'R Data Core'
     })
 
+    const updateIsMobile = () => {
+        isMobile.value = window.innerWidth < 1200
+        // Default drawer open on desktop, closed on mobile
+        if (isMobile.value) {
+            drawer.value = false
+        } else {
+            drawer.value = true
+        }
+    }
+
+    const toggleNav = () => {
+        drawer.value = !drawer.value
+    }
+
     // Initialize
     onMounted(() => {
-        // You could add any initialization logic here
+        updateIsMobile()
+        window.addEventListener('resize', updateIsMobile)
+    })
+
+    onUnmounted(() => {
+        window.removeEventListener('resize', updateIsMobile)
     })
 </script>
 
