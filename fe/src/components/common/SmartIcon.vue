@@ -16,12 +16,14 @@
         size?: number | string
         color?: string
         strokeWidth?: number | string
+        tag?: string
     }
 
     const props = withDefaults(defineProps<Props>(), {
         icon: 'file-text',
         size: 24,
         strokeWidth: 2,
+        tag: 'span',
     })
 
     const iconName = computed(() => {

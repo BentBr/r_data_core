@@ -40,6 +40,16 @@ describe('VersionHistory', () => {
         expect(compareEvents?.[0]).toEqual([1, 2])
     })
 
+    it('shows checkboxes for versions', () => {
+        const wrapper = mount(VersionHistory, {
+            props: { versions },
+            global: { plugins: [vuetify] },
+        })
+
+        const checkboxes = wrapper.findAllComponents({ name: 'VCheckbox' })
+        expect(checkboxes.length).toBeGreaterThan(0)
+    })
+
     it('renders diff table after updateDiffRows is called', async () => {
         const wrapper = mount(VersionHistory, {
             props: { versions },
