@@ -6,6 +6,8 @@
         item-title="title"
         item-value="id"
         item-children="children"
+        :expand-icon="null"
+        :collapse-icon="null"
         activatable
         hoverable
         :open-on-click="false"
@@ -29,7 +31,10 @@
                     v-else
                     class="tree-toggle-spacer"
                 />
-                <div class="tree-icon-wrapper mr-2">
+                <div
+                    class="tree-icon-wrapper mr-2"
+                    :class="{ 'tree-icon-disabled': isUnpublished(item) }"
+                >
                     <SmartIcon
                         :icon="item.icon ?? 'file-text'"
                         :size="20"
@@ -40,7 +45,11 @@
         </template>
         <template #title="{ item }">
             <div
-                class="d-flex align-center justify-space-between w-100 cursor-pointer"
+                class="d-flex align-center justify-space-between w-100 cursor-pointer tree-row"
+                :class="{
+                    'tree-disabled': isUnpublished(item) || item.disabled,
+                    'tree-strikethrough': isUnpublished(item),
+                }"
                 @click="handleItemClick(item)"
             >
                 <span>{{ item.title }}</span>
@@ -81,6 +90,14 @@
 
     const expandedItems = ref<string[]>(props.expandedItems)
     const syncingFromProps = ref(false)
+
+    const isUnpublished = (item: TreeNode) => {
+        if (!item.entity_type || item.entity_type === 'group') {
+            return false
+        }
+        const val = item.published as unknown
+        return val === false || val === null || val === 0 || val === 'false'
+    }
 
     // Keep local opened state in sync with parent-provided expandedItems
     watch(
@@ -163,6 +180,20 @@
         visibility: visible !important;
     }
 
+    .tree-row.tree-disabled {
+        opacity: 0.55;
+        color: rgba(var(--v-theme-on-surface), 0.6);
+    }
+
+    .tree-row.tree-strikethrough {
+        text-decoration: line-through;
+    }
+
+    .tree-icon-disabled {
+        opacity: 0.55;
+        color: rgba(var(--v-theme-on-surface), 0.6);
+    }
+
     :deep(.v-treeview-item--active) .tree-icon,
     :deep(.v-treeview-item--active) .tree-icon-wrapper {
         opacity: 1 !important;
@@ -176,10 +207,5 @@
         align-items: center !important;
         gap: 8px !important;
         min-width: auto !important;
-    }
-
-    /* Completely hide Vuetify's default toggle icon - we provide our own in the prepend slot */
-    :deep(.v-treeview-item__toggle) {
-        display: none !important;
     }
 </style>

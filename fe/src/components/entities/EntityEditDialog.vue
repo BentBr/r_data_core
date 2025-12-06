@@ -38,6 +38,17 @@
                         class="mt-4"
                     />
 
+                    <!-- Published Switch -->
+                    <v-switch
+                        v-model="formData.data.published"
+                        :label="t('entities.create.published_label')"
+                        :hint="t('entities.create.published_hint')"
+                        color="success"
+                        inset
+                        persistent-hint
+                        class="mt-4"
+                    />
+
                     <!-- Dynamic Fields based on Entity Definition -->
                     <div
                         v-if="entityDefinition"
@@ -128,7 +139,9 @@
     const form = ref()
     const isValid = ref(false)
     const formData = ref<UpdateEntityRequest>({
-        data: {},
+        data: {
+            published: false,
+        },
         parent_uuid: null,
     })
 
@@ -158,8 +171,12 @@
     // Methods
     const initializeFormData = () => {
         if (props.entity) {
+            const data = { ...(props.entity.field_data || {}) }
+            if (data.published === undefined) {
+                data.published = false
+            }
             formData.value = {
-                data: { ...(props.entity.field_data || {}) },
+                data,
                 parent_uuid: props.entity.field_data?.parent_uuid ?? null,
             }
         }
@@ -235,7 +252,9 @@
     const closeDialog = () => {
         dialogVisible.value = false
         formData.value = {
-            data: {},
+            data: {
+                published: false,
+            },
             parent_uuid: undefined,
         }
     }
