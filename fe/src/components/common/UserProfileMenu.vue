@@ -13,7 +13,10 @@
                         color="primary"
                         class="mr-2"
                     >
-                        <v-icon>mdi-account</v-icon>
+                        <SmartIcon
+                            icon="user"
+                            :size="20"
+                        />
                     </v-avatar>
                     <div class="d-none d-sm-flex flex-column align-start">
                         <span class="text-body-2 font-weight-medium">{{
@@ -23,12 +26,11 @@
                             authStore.isSuperAdmin ? 'Super Admin' : 'User'
                         }}</span>
                     </div>
-                    <v-icon
-                        size="small"
+                    <SmartIcon
+                        icon="chevron-down"
+                        :size="16"
                         class="ml-2"
-                    >
-                        mdi-chevron-down
-                    </v-icon>
+                    />
                 </div>
             </v-btn>
         </template>
@@ -41,7 +43,10 @@
                         size="40"
                         color="primary"
                     >
-                        <v-icon>mdi-account</v-icon>
+                        <SmartIcon
+                            icon="user"
+                            :size="24"
+                        />
                     </v-avatar>
                 </template>
                 <v-list-item-title class="font-weight-medium">
@@ -60,7 +65,10 @@
                 @click="goToProfile"
             >
                 <template v-slot:prepend>
-                    <v-icon>mdi-account-edit</v-icon>
+                    <SmartIcon
+                        icon="user-cog"
+                        :size="20"
+                    />
                 </template>
                 <v-list-item-title>{{ t('general.user.profile') }}</v-list-item-title>
                 <v-list-item-subtitle>{{
@@ -71,7 +79,10 @@
             <!-- Theme Selection -->
             <v-list-item>
                 <template v-slot:prepend>
-                    <v-icon>{{ isDark ? 'mdi-brightness-4' : 'mdi-brightness-7' }}</v-icon>
+                    <SmartIcon
+                        :icon="isDark ? 'moon' : 'sun'"
+                        :size="20"
+                    />
                 </template>
                 <v-list-item-title>{{ t('general.theme.mode') }}</v-list-item-title>
                 <template v-slot:append>
@@ -94,7 +105,11 @@
                 @click="handleLogout"
             >
                 <template v-slot:prepend>
-                    <v-icon color="error">mdi-logout</v-icon>
+                    <SmartIcon
+                        icon="log-out"
+                        color="error"
+                        :size="20"
+                    />
                 </template>
                 <v-list-item-title>{{ t('navigation.logout') }}</v-list-item-title>
                 <v-list-item-subtitle>{{ t('general.user.logout_subtitle') }}</v-list-item-subtitle>
@@ -108,6 +123,7 @@
     import { useAuthStore } from '@/stores/auth'
     import { useTranslations } from '@/composables/useTranslations'
     import { useTheme } from '@/composables/useTheme'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
 
     const router = useRouter()
     const authStore = useAuthStore()

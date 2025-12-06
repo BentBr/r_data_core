@@ -46,13 +46,15 @@
                         </v-col>
                     </v-row>
                     <v-row>
-                        <v-col cols="6">
+                        <v-col cols="12">
                             <v-text-field
                                 v-model="form.group_name"
                                 :label="t('entity_definitions.create.group_name_label')"
                             />
                         </v-col>
-                        <v-col cols="6">
+                    </v-row>
+                    <v-row>
+                        <v-col cols="12">
                             <IconPicker
                                 v-model="form.icon"
                                 :label="t('entity_definitions.create.icon_label')"
@@ -64,12 +66,14 @@
                             <v-switch
                                 v-model="form.allow_children"
                                 :label="t('entity_definitions.create.allow_children_label')"
+                                color="primary"
                             />
                         </v-col>
                         <v-col cols="6">
                             <v-switch
                                 v-model="form.published"
                                 :label="t('entity_definitions.create.published_label')"
+                                color="success"
                             />
                         </v-col>
                     </v-row>
@@ -85,7 +89,7 @@
                     {{ t('common.cancel') }}
                 </v-btn>
                 <v-btn
-                    color="primary"
+                    :color="formValid ? 'success' : 'primary'"
                     :loading="loading"
                     :disabled="!formValid"
                     @click="createEntityDefinition"

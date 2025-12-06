@@ -5,8 +5,9 @@
                 <v-card>
                     <v-card-title class="d-flex align-center justify-space-between pa-4">
                         <div class="d-flex align-center">
-                            <v-icon
-                                icon="mdi-database"
+                            <SmartIcon
+                                icon="database"
+                                :size="28"
                                 class="mr-3"
                             />
                             <span class="text-h4">{{ t('navigation.entities') }}</span>
@@ -15,17 +16,27 @@
                             <v-btn
                                 color="secondary"
                                 variant="outlined"
-                                prepend-icon="mdi-refresh"
                                 :loading="loading"
                                 @click="loadEntities"
                             >
+                                <template #prepend>
+                                    <SmartIcon
+                                        icon="refresh-cw"
+                                        :size="20"
+                                    />
+                                </template>
                                 {{ t('common.refresh') }}
                             </v-btn>
                             <v-btn
                                 color="primary"
-                                prepend-icon="mdi-plus"
                                 @click="showCreateDialog = true"
                             >
+                                <template #prepend>
+                                    <SmartIcon
+                                        icon="plus"
+                                        :size="20"
+                                    />
+                                </template>
                                 {{ t('entities.create.button') }}
                             </v-btn>
                         </div>
@@ -113,6 +124,7 @@
     import EntityEditDialog from '@/components/entities/EntityEditDialog.vue'
     import DialogManager from '@/components/common/DialogManager.vue'
     import SnackbarManager from '@/components/common/SnackbarManager.vue'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
 
     const authStore = useAuthStore()
     const route = useRoute()

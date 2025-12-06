@@ -12,12 +12,16 @@
                 @update:model-value="$emit('update:roleName', $event)"
             />
             <v-btn
-                icon="mdi-delete"
                 variant="text"
                 color="error"
                 size="small"
                 @click="$emit('remove')"
-            />
+            >
+                <SmartIcon
+                    icon="trash-2"
+                    :size="16"
+                />
+            </v-btn>
         </div>
 
         <div
@@ -39,15 +43,21 @@
             color="primary"
             variant="outlined"
             size="small"
-            prepend-icon="mdi-plus"
             @click="$emit('add-permission')"
         >
+            <template #prepend>
+                <SmartIcon
+                    icon="plus"
+                    :size="20"
+                />
+            </template>
             Add Permission
         </v-btn>
     </v-card>
 </template>
 
 <script setup lang="ts">
+    import SmartIcon from '@/components/common/SmartIcon.vue'
     import PermissionEditor from './PermissionEditor.vue'
     import type {
         Permission,

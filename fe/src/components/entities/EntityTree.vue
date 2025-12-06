@@ -37,9 +37,9 @@
             v-else-if="!treeItems.length"
             class="d-flex justify-center align-center pa-8"
         >
-            <v-icon
-                icon="mdi-database-off"
-                size="large"
+            <SmartIcon
+                icon="database"
+                :size="48"
                 color="grey"
                 class="mr-3"
             />
@@ -68,6 +68,7 @@
     import { typedHttpClient } from '@/api/typed-client'
     import type { TreeNode, EntityDefinition } from '@/types/schemas'
     import TreeView from '@/components/common/TreeView.vue'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
 
     interface Props {
         rootPath?: string
@@ -111,6 +112,7 @@
             entity_uuid?: string
             entity_type?: string
             has_children?: boolean
+            published?: boolean | null
         }>
     ): TreeNode[] {
         const children: TreeNode[] = []
@@ -122,16 +124,25 @@
                 folders.push({
                     id: toFolderId(node.path),
                     title: node.name,
-                    icon: 'mdi-folder',
+                    icon: 'folder',
                     // Only add children array if has_children is true (so arrow shows)
                     children: node.has_children ? [] : undefined,
                     path: node.path,
                 })
             } else {
-                // Get icon from entity definition if available
-                let icon = 'mdi-database' // default
+                // Get icon and published status from entity definition if available
+                let icon = 'database' // default
+                
+                let published: boolean | undefined = node.published ?? undefined
                 if (node.entity_type && iconMap.value.has(node.entity_type)) {
                     icon = iconMap.value.get(node.entity_type) ?? icon
+                }
+                const defPublished = node.entity_type
+                    ? entityDefinitionPublishedMap.value.get(node.entity_type)
+                    : undefined
+                
+                if (published === undefined || published === null) {
+                    published = defPublished
                 }
 
                 files.push({
@@ -141,6 +152,7 @@
                     entity_type: node.entity_type,
                     uuid: node.entity_uuid,
                     path: node.path,
+                    published: node.published || false,
                     // Only add children array if has_children is true (so arrow shows)
                     children: node.has_children ? [] : undefined,
                 })
@@ -158,6 +170,8 @@
         }
         const { data } = await typedHttpClient.browseByPath(path, 100, 0)
         const nodes = buildNodesForPath(path, data)
+        // Update nodes from definitions after building nodes
+        updateNodesFromDefinitions(nodes)
         if (attachTo) {
             attachTo.children = nodes
         } else {
@@ -318,6 +332,8 @@
         try {
             const { data } = await typedHttpClient.browseByPath(targetPath, 100, 0)
             const nodes = buildNodesForPath(targetPath, data)
+            // Update nodes from definitions after building nodes
+            updateNodesFromDefinitions(nodes)
             // Update the item's children
             item.children = nodes
         } catch (error) {
@@ -336,16 +352,33 @@
         return map
     })
 
-    function updateIconsInTree(items: TreeNode[]) {
+    const entityDefinitionPublishedMap = computed(() => {
+        const map = new Map<string, boolean | undefined>()
+        for (const def of props.entityDefinitions) {
+            map.set(def.entity_type, def.published)
+        }
+        return map
+    })
+
+    function updateNodesFromDefinitions(items: TreeNode[]) {
         for (const item of items) {
             if (item.entity_type) {
                 const icon = iconMap.value.get(item.entity_type)
                 if (icon) {
                     item.icon = icon
                 }
+
+                // Update published status if it's undefined (meaning not provided by API)
+                // This handles the case where definitions load after the tree nodes
+                if (item.published === undefined) {
+                    const defPublished = entityDefinitionPublishedMap.value.get(item.entity_type)
+                    if (defPublished !== undefined) {
+                        item.published = defPublished
+                    }
+                }
             }
             if (item.children && Array.isArray(item.children)) {
-                updateIconsInTree(item.children as TreeNode[])
+                updateNodesFromDefinitions(item.children as TreeNode[])
             }
         }
     }
@@ -376,12 +409,12 @@
         { immediate: true }
     )
 
-    // Watch for entityDefinitions changes and update icons in-place (no extra API calls)
+    // Watch for entityDefinitions changes and update icons/status in-place (no extra API calls)
     watch(
         () => props.entityDefinitions,
         () => {
             if (treeItems.value.length > 0) {
-                updateIconsInTree(treeItems.value)
+                updateNodesFromDefinitions(treeItems.value)
             }
         },
         { deep: true }
@@ -401,7 +434,7 @@
     }
     .tree-canvas {
         min-height: 500px;
-        border: 1px solid rgba(0, 0, 0, 0.12);
+        border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
         border-radius: 6px;
         padding: 8px;
     }

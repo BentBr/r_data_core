@@ -52,12 +52,16 @@
                     </td>
                     <td class="text-right">
                         <v-btn
-                            icon="mdi-delete"
                             size="x-small"
                             variant="text"
                             color="error"
                             @click="deletePair(idx)"
-                        />
+                        >
+                            <SmartIcon
+                                icon="trash-2"
+                                :size="16"
+                            />
+                        </v-btn>
                     </td>
                 </tr>
             </tbody>
@@ -66,6 +70,7 @@
 </template>
 
 <script setup lang="ts">
+    import SmartIcon from '@/components/common/SmartIcon.vue'
     import { ref, watch, nextTick } from 'vue'
     import type { Mapping } from './dsl-utils'
     import { getMappingPairs, pairsToMapping } from './dsl-utils'

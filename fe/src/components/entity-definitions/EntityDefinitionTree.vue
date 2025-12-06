@@ -1,8 +1,9 @@
 <template>
     <v-card variant="outlined">
         <v-card-title class="text-h6 pa-3">
-            <v-icon
-                icon="mdi-folder-tree"
+            <SmartIcon
+                icon="folder-tree"
+                :size="24"
                 class="mr-2"
             />
             {{ t('entity_definitions.table.display_name') }}
@@ -42,6 +43,7 @@
     import { computed } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import TreeView from '@/components/common/TreeView.vue'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
     import type { EntityDefinition, TreeNode } from '@/types/schemas'
 
     interface Props {
@@ -85,7 +87,7 @@
                 id: `group-${groupName}`,
                 title: groupName,
                 entity_type: 'group',
-                icon: 'mdi-folder',
+                icon: 'folder',
                 published: false,
                 children: definitions.map(def => ({
                     id: def.uuid,
@@ -93,7 +95,7 @@
                     uuid: def.uuid,
                     display_name: def.display_name,
                     entity_type: def.entity_type,
-                    icon: def.icon ?? 'mdi-file-document',
+                    icon: def.icon ?? 'file-text',
                     published: def.published,
                 })),
             })
@@ -106,7 +108,7 @@
             uuid: def.uuid,
             display_name: def.display_name,
             entity_type: def.entity_type,
-            icon: def.icon ?? 'mdi-file-document',
+            icon: def.icon ?? 'file-text',
             published: def.published,
         }))
 

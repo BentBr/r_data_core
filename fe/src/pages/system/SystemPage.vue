@@ -4,8 +4,9 @@
             <v-col cols="12">
                 <v-card>
                     <v-card-title class="text-h4 pa-4">
-                        <v-icon
-                            icon="mdi-cog"
+                        <SmartIcon
+                            icon="settings"
+                            :size="28"
                             class="mr-3"
                         />
                         {{ t('system.admin.title') }}
@@ -65,6 +66,7 @@
     import { useSnackbar } from '@/composables/useSnackbar'
     import { useTranslations } from '@/composables/useTranslations'
     import { typedHttpClient } from '@/api/typed-client'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
 
     const { showSuccess, showError } = useSnackbar()
     const { t } = useTranslations()

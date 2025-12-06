@@ -6,7 +6,10 @@ export const WorkflowSchema = z.object({
     uuid: UuidSchema,
     name: z.string(),
     description: z.string().nullable().optional(),
-    kind: z.enum(['consumer', 'provider']),
+    kind: z
+        .string()
+        .transform(val => val.toLowerCase())
+        .pipe(z.enum(['consumer', 'provider'])),
     enabled: z.boolean(),
     schedule_cron: z.string().nullable().optional(),
     config: z.record(z.string(), z.unknown()),

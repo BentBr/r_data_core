@@ -44,18 +44,23 @@
             md="3"
         >
             <v-btn
-                icon="mdi-delete"
                 variant="text"
                 color="error"
                 size="small"
                 :disabled="disabled"
                 @click="$emit('remove')"
-            />
+            >
+                <SmartIcon
+                    icon="trash-2"
+                    :size="16"
+                />
+            </v-btn>
         </v-col>
     </v-row>
 </template>
 
 <script setup lang="ts">
+    import SmartIcon from '@/components/common/SmartIcon.vue'
     import type {
         Permission,
         ResourceNamespace,

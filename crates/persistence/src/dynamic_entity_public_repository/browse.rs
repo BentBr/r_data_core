@@ -12,6 +12,7 @@ struct RowRec {
     entity_type: String,
     path: String,
     entity_key: String,
+    published: bool,
 }
 
 /// Browse dynamic entities by virtual path
@@ -75,14 +76,14 @@ fn normalize_path(raw_path: &str) -> String {
 async fn query_paths(db_pool: &PgPool, prefix: &str) -> Result<Vec<RowRec>> {
     if prefix == "/" {
         sqlx::query_as::<_, RowRec>(
-            "SELECT uuid, entity_type, path, entity_key FROM entities_registry WHERE path = '/' OR path LIKE '/%'",
+            "SELECT uuid, entity_type, path, entity_key, published FROM entities_registry WHERE path = '/' OR path LIKE '/%'",
         )
         .fetch_all(db_pool)
         .await
         .map_err(Into::into)
     } else {
         sqlx::query_as::<_, RowRec>(
-            "SELECT uuid, entity_type, path, entity_key FROM entities_registry WHERE path = $1 OR path LIKE $1 || '/%'",
+            "SELECT uuid, entity_type, path, entity_key, published FROM entities_registry WHERE path = $1 OR path LIKE $1 || '/%'",
         )
         .bind(prefix)
         .fetch_all(db_pool)
@@ -91,11 +92,11 @@ async fn query_paths(db_pool: &PgPool, prefix: &str) -> Result<Vec<RowRec>> {
     }
 }
 
-fn build_exact_path_map(rows: &[RowRec]) -> HashMap<String, (Uuid, String)> {
-    let mut exact: HashMap<String, (Uuid, String)> = HashMap::new();
+fn build_exact_path_map(rows: &[RowRec]) -> HashMap<String, (Uuid, String, bool)> {
+    let mut exact: HashMap<String, (Uuid, String, bool)> = HashMap::new();
     for r in rows {
         let key = format!("{}::{}", r.path, r.entity_key);
-        exact.insert(key, (r.uuid, r.entity_type.clone()));
+        exact.insert(key, (r.uuid, r.entity_type.clone(), r.published));
     }
     exact
 }
@@ -104,7 +105,7 @@ fn build_files_and_folders(
     rows: &[RowRec],
     prefix: &str,
     base_len: usize,
-    exact: &HashMap<String, (Uuid, String)>,
+    exact: &HashMap<String, (Uuid, String, bool)>,
 ) -> (
     HashMap<String, BrowseNode>,
     Vec<BrowseNode>,
@@ -120,10 +121,10 @@ fn build_files_and_folders(
         if p == prefix {
             let entity_key = r.entity_key.clone();
             let exact_key = format!("{p}::{entity_key}");
-            let (entity_uuid, entity_type) = exact
+            let (entity_uuid, entity_type, published) = exact
                 .get(&exact_key)
                 .cloned()
-                .map_or((None, None), |(u, t)| (Some(u), Some(t)));
+                .map_or((None, None, None), |(u, t, p)| (Some(u), Some(t), Some(p)));
 
             // Child folder path for this file (so FE can lazy-load its children by path)
             let child_path = if p == "/" {
@@ -139,6 +140,7 @@ fn build_files_and_folders(
                 entity_uuid,
                 entity_type,
                 has_children: Some(false),
+                published: published.unwrap_or(false),
             });
 
             file_names.insert(entity_key);
@@ -183,6 +185,7 @@ fn build_files_and_folders(
                 entity_uuid: None,
                 entity_type: None,
                 has_children: Some(true),
+                published: true, // Folders are considered published
             });
     }
 

@@ -5,9 +5,9 @@
             class="d-flex justify-center align-center pa-8"
         >
             <div class="text-center">
-                <v-icon
-                    icon="mdi-database-off"
-                    size="large"
+                <SmartIcon
+                    icon="database"
+                    :size="48"
                     color="grey"
                     class="mb-3"
                 />
@@ -28,17 +28,27 @@
                     <v-btn
                         color="primary"
                         variant="outlined"
-                        prepend-icon="mdi-pencil"
                         @click="$emit('edit')"
                     >
+                        <template #prepend>
+                            <SmartIcon
+                                icon="pencil"
+                                :size="20"
+                            />
+                        </template>
                         {{ t('common.edit') }}
                     </v-btn>
                     <v-btn
                         color="error"
                         variant="outlined"
-                        prepend-icon="mdi-delete"
                         @click="$emit('delete')"
                     >
+                        <template #prepend>
+                            <SmartIcon
+                                icon="trash-2"
+                                :size="20"
+                            />
+                        </template>
                         {{ t('common.delete') }}
                     </v-btn>
                 </div>
@@ -57,10 +67,12 @@
                             <v-list density="compact">
                                 <v-list-item>
                                     <template #prepend>
-                                        <v-icon
-                                            icon="mdi-identifier"
-                                            size="small"
-                                        />
+                                        <div class="mr-3">
+                                            <SmartIcon
+                                                icon="hash"
+                                                :size="20"
+                                            />
+                                        </div>
                                     </template>
                                     <v-list-item-title>{{
                                         t('entities.details.uuid')
@@ -71,10 +83,12 @@
                                 </v-list-item>
                                 <v-list-item>
                                     <template #prepend>
-                                        <v-icon
-                                            icon="mdi-database"
-                                            size="small"
-                                        />
+                                        <div class="mr-3">
+                                            <SmartIcon
+                                                icon="database"
+                                                :size="20"
+                                            />
+                                        </div>
                                     </template>
                                     <v-list-item-title>{{
                                         t('entities.details.entity_type')
@@ -85,10 +99,12 @@
                                 </v-list-item>
                                 <v-list-item>
                                     <template #prepend>
-                                        <v-icon
-                                            icon="mdi-calendar-plus"
-                                            size="small"
-                                        />
+                                        <div class="mr-3">
+                                            <SmartIcon
+                                                icon="calendar-plus"
+                                                :size="20"
+                                            />
+                                        </div>
                                     </template>
                                     <v-list-item-title>{{
                                         t('entities.details.created_at')
@@ -99,10 +115,12 @@
                                 </v-list-item>
                                 <v-list-item>
                                     <template #prepend>
-                                        <v-icon
-                                            icon="mdi-calendar-edit"
-                                            size="small"
-                                        />
+                                        <div class="mr-3">
+                                            <SmartIcon
+                                                icon="calendar"
+                                                :size="20"
+                                            />
+                                        </div>
                                     </template>
                                     <v-list-item-title>{{
                                         t('entities.details.updated_at')
@@ -113,10 +131,12 @@
                                 </v-list-item>
                                 <v-list-item v-if="entity.field_data?.path">
                                     <template #prepend>
-                                        <v-icon
-                                            icon="mdi-route"
-                                            size="small"
-                                        />
+                                        <div class="mr-3">
+                                            <SmartIcon
+                                                icon="route"
+                                                :size="20"
+                                            />
+                                        </div>
                                     </template>
                                     <v-list-item-title>{{
                                         t('entities.details.path')
@@ -139,10 +159,12 @@
                             <v-list density="compact">
                                 <v-list-item>
                                     <template #prepend>
-                                        <v-icon
-                                            icon="mdi-arrow-up"
-                                            size="small"
-                                        />
+                                        <div class="mr-3">
+                                            <SmartIcon
+                                                icon="arrow-up"
+                                                :size="20"
+                                            />
+                                        </div>
                                     </template>
                                     <v-list-item-title>{{
                                         t('entities.details.parent')
@@ -156,10 +178,12 @@
                                 </v-list-item>
                                 <v-list-item>
                                     <template #prepend>
-                                        <v-icon
-                                            icon="mdi-arrow-down"
-                                            size="small"
-                                        />
+                                        <div class="mr-3">
+                                            <SmartIcon
+                                                icon="arrow-down"
+                                                :size="20"
+                                            />
+                                        </div>
                                     </template>
                                     <v-list-item-title>{{
                                         t('entities.details.children')
@@ -199,10 +223,12 @@
                                         :key="field.name"
                                     >
                                         <template #prepend>
-                                            <v-icon
-                                                :icon="getFieldIcon(field.field_type)"
-                                                size="small"
-                                            />
+                                            <div class="mr-3">
+                                                <SmartIcon
+                                                    :icon="getFieldIcon(field.field_type)"
+                                                    :size="20"
+                                                />
+                                            </div>
                                         </template>
                                         <v-list-item-title>{{
                                             field.display_name
@@ -238,98 +264,11 @@
                                 {{ t('entities.details.history') }}
                             </v-expansion-panel-title>
                             <v-expansion-panel-text>
-                                <div
-                                    v-if="versions.length === 0"
-                                    class="text-grey text-body-2"
-                                >
-                                    {{ t('entities.details.no_versions') }}
-                                </div>
-                                <div v-else>
-                                    <div class="mb-4">
-                                        <div class="text-subtitle-2 mb-2">
-                                            Select two versions to compare:
-                                        </div>
-                                        <v-list
-                                            density="compact"
-                                            class="version-list"
-                                        >
-                                            <v-list-item
-                                                v-for="version in versions"
-                                                :key="version.version_number"
-                                                :class="{
-                                                    'version-selected': isVersionSelected(
-                                                        version.version_number
-                                                    ),
-                                                    'version-item': true,
-                                                }"
-                                                @click="
-                                                    toggleVersionSelection(version.version_number)
-                                                "
-                                            >
-                                                <template v-slot:prepend>
-                                                    <v-checkbox
-                                                        :model-value="
-                                                            isVersionSelected(
-                                                                version.version_number
-                                                            )
-                                                        "
-                                                        density="compact"
-                                                        hide-details
-                                                        @click.stop="
-                                                            toggleVersionSelection(
-                                                                version.version_number
-                                                            )
-                                                        "
-                                                    />
-                                                </template>
-                                                <v-list-item-title>
-                                                    Version {{ version.version_number }}
-                                                </v-list-item-title>
-                                                <v-list-item-subtitle>
-                                                    {{ formatDate(version.created_at) }}
-                                                    <span v-if="version.created_by_name">
-                                                        • {{ version.created_by_name }}
-                                                    </span>
-                                                </v-list-item-subtitle>
-                                            </v-list-item>
-                                        </v-list>
-                                    </div>
-                                    <v-divider class="my-4" />
-                                    <div
-                                        v-if="
-                                            diffRows.length === 0 &&
-                                            selectedA !== null &&
-                                            selectedB !== null
-                                        "
-                                        class="text-grey text-body-2"
-                                    >
-                                        {{ t('entities.details.no_diff') }}
-                                    </div>
-                                    <v-table
-                                        v-else-if="diffRows.length > 0"
-                                        density="compact"
-                                        class="entity-diff-table"
-                                    >
-                                        <thead>
-                                            <tr>
-                                                <th class="text-left">Field</th>
-                                                <th class="text-left">Version {{ selectedA }}</th>
-                                                <th class="text-left">Version {{ selectedB }}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr
-                                                v-for="row in diffRows"
-                                                :key="row.field"
-                                                :class="row.changed ? 'changed' : ''"
-                                            >
-                                                <td class="field">{{ row.field }}</td>
-                                                <td class="val">{{ row.a }}</td>
-                                                <td class="val">{{ row.b }}</td>
-                                            </tr>
-                                        </tbody>
-                                    </v-table>
-                                </div>
+                                <VersionHistory
+                                    ref="versionHistoryRef"
+                                    :versions="versions"
+                                    @compare="handleVersionCompare"
+                                />
                             </v-expansion-panel-text>
                         </v-expansion-panel>
                     </v-expansion-panels>
@@ -341,9 +280,12 @@
 
 <script setup lang="ts">
     import { useTranslations } from '@/composables/useTranslations'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
+    import VersionHistory from '@/components/common/VersionHistory.vue'
     import type { DynamicEntity, EntityDefinition } from '@/types/schemas'
     import { typedHttpClient } from '@/api/typed-client'
     import { ref, watch } from 'vue'
+    import { computeDiffRows } from '@/utils/versionDiff'
 
     interface Props {
         entity: DynamicEntity | null
@@ -401,9 +343,7 @@
             created_by_name?: string | null
         }>
     >([])
-    const selectedA = ref<number | null>(null)
-    const selectedB = ref<number | null>(null)
-    const diffRows = ref<Array<{ field: string; a: string; b: string; changed: boolean }>>([])
+    const versionHistoryRef = ref<InstanceType<typeof VersionHistory>>()
 
     const loadVersions = async () => {
         if (!props.entity) {
@@ -413,59 +353,27 @@
             const uuid = String(props.entity.field_data?.uuid ?? '')
             const entityType = props.entity.entity_type
             versions.value = await typedHttpClient.listEntityVersions(entityType, uuid)
-            selectedA.value = null
-            selectedB.value = null
-            diffRows.value = []
         } catch (e) {
             console.error('Failed to load versions:', e)
         }
     }
 
-    import { computeDiffRows } from '@/utils/versionDiff'
-
-    const isVersionSelected = (versionNumber: number): boolean => {
-        return selectedA.value === versionNumber || selectedB.value === versionNumber
-    }
-
-    const toggleVersionSelection = async (versionNumber: number) => {
-        if (selectedA.value === versionNumber) {
-            // Deselect A
-            selectedA.value = selectedB.value
-            selectedB.value = null
-        } else if (selectedB.value === versionNumber) {
-            // Deselect B
-            selectedB.value = null
-        } else if (selectedA.value === null) {
-            // Select as A
-            selectedA.value = versionNumber
-        } else if (selectedB.value === null) {
-            // Select as B
-            selectedB.value = versionNumber
-            // Auto-load diff when both are selected
-            await loadDiff()
-        } else {
-            // Both are selected, replace A with this version
-            selectedA.value = versionNumber
-            await loadDiff()
-        }
-    }
-
-    const loadDiff = async () => {
-        diffRows.value = []
-        if (!props.entity || selectedA.value === null || selectedB.value === null) {
+    const handleVersionCompare = async (versionA: number, versionB: number) => {
+        if (!props.entity) {
             return
         }
         const uuid = String(props.entity.field_data?.uuid ?? '')
         const entityType = props.entity.entity_type
         try {
             const [a, b] = await Promise.all([
-                typedHttpClient.getEntityVersion(entityType, uuid, selectedA.value),
-                typedHttpClient.getEntityVersion(entityType, uuid, selectedB.value),
+                typedHttpClient.getEntityVersion(entityType, uuid, versionA),
+                typedHttpClient.getEntityVersion(entityType, uuid, versionB),
             ])
-            diffRows.value = computeDiffRows(
+            const diffRows = computeDiffRows(
                 (a.data as Record<string, unknown>) ?? {},
                 (b.data as Record<string, unknown>) ?? {}
             )
+            versionHistoryRef.value?.updateDiffRows(diffRows)
         } catch (e) {
             console.error('Failed to load diff:', e)
         }
@@ -479,28 +387,24 @@
         { immediate: true }
     )
 
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleString()
-    }
-
     const getFieldIcon = (fieldType: string) => {
         const iconMap: Record<string, string> = {
-            String: 'mdi-text',
-            Text: 'mdi-text-box',
-            Wysiwyg: 'mdi-text-box-edit',
-            Integer: 'mdi-numeric',
-            Float: 'mdi-decimal',
-            Boolean: 'mdi-checkbox-marked',
-            Date: 'mdi-calendar',
-            DateTime: 'mdi-calendar-clock',
-            Time: 'mdi-clock',
-            Email: 'mdi-email',
-            Url: 'mdi-link',
-            File: 'mdi-file',
-            Image: 'mdi-image',
-            Json: 'mdi-code-json',
+            String: 'type',
+            Text: 'file-text',
+            Wysiwyg: 'file-edit',
+            Integer: 'hash',
+            Float: 'hash',
+            Boolean: 'check-square',
+            Date: 'calendar',
+            DateTime: 'calendar-clock',
+            Time: 'clock',
+            Email: 'mail',
+            Url: 'link',
+            File: 'file',
+            Image: 'image',
+            Json: 'code',
         }
-        return iconMap[fieldType] || 'mdi-text'
+        return iconMap[fieldType] || 'type'
     }
 
     const formatFieldValue = (value: unknown, fieldType: string): string => {
@@ -522,6 +426,14 @@
                 return String(value)
         }
     }
+
+    const formatDate = (value: string | undefined | null): string => {
+        if (!value) {
+            return ''
+        }
+        const date = new Date(value)
+        return Number.isNaN(date.getTime()) ? '' : date.toLocaleString()
+    }
 </script>
 
 <style scoped>
@@ -535,36 +447,5 @@
         word-wrap: break-word;
         max-height: 300px;
         overflow-y: auto;
-    }
-
-    .version-list {
-        max-height: 400px;
-        overflow-y: auto;
-    }
-
-    .version-item {
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-
-    .version-item:hover {
-        background-color: rgba(0, 0, 0, 0.04);
-    }
-
-    .version-selected {
-        background-color: rgba(25, 118, 210, 0.08);
-    }
-
-    .entity-diff-table .changed {
-        background-color: rgba(255, 193, 7, 0.1);
-    }
-
-    .entity-diff-table .field {
-        font-weight: 500;
-    }
-
-    .entity-diff-table .val {
-        font-family: monospace;
-        font-size: 0.875rem;
     }
 </style>

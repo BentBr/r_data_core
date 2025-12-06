@@ -5,8 +5,9 @@
                 <v-card>
                     <v-card-title class="d-flex align-center justify-space-between pa-4">
                         <div class="d-flex align-center">
-                            <v-icon
-                                icon="mdi-shield-account"
+                            <SmartIcon
+                                icon="shield"
+                                :size="28"
                                 class="mr-3"
                             />
                             <span class="text-h4">{{
@@ -18,20 +19,26 @@
                     <v-card-text>
                         <v-tabs
                             v-model="activeTab"
-                            bg-color="primary"
+                            color="primary"
                         >
                             <v-tab value="users">
-                                <v-icon
-                                    icon="mdi-account-group"
-                                    class="mr-2"
-                                />
+                                <template #prepend>
+                                    <SmartIcon
+                                        icon="users"
+                                        :size="20"
+                                        class="mr-2"
+                                    />
+                                </template>
                                 {{ t('permissions.page.tabs.users') || 'Users' }}
                             </v-tab>
                             <v-tab value="roles">
-                                <v-icon
-                                    icon="mdi-shield-account"
-                                    class="mr-2"
-                                />
+                                <template #prepend>
+                                    <SmartIcon
+                                        icon="shield"
+                                        :size="20"
+                                        class="mr-2"
+                                    />
+                                </template>
                                 {{ t('permissions.page.tabs.roles') || 'Roles' }}
                             </v-tab>
                         </v-tabs>
@@ -45,9 +52,14 @@
                                     <v-btn
                                         v-if="canCreateUser"
                                         color="primary"
-                                        prepend-icon="mdi-plus"
                                         @click="openCreateUserDialog"
                                     >
+                                        <template #prepend>
+                                            <SmartIcon
+                                                icon="plus"
+                                                :size="20"
+                                            />
+                                        </template>
                                         {{ t('permissions.page.users.new_button') || 'New User' }}
                                     </v-btn>
                                 </div>
@@ -69,10 +81,11 @@
                                     <!-- Username Column -->
                                     <template #item.username="{ item }">
                                         <div class="d-flex align-center">
-                                            <v-icon
+                                            <SmartIcon
                                                 v-if="item.super_admin"
-                                                icon="mdi-shield-star"
+                                                icon="shield-check"
                                                 color="warning"
+                                                :size="20"
                                                 class="mr-2"
                                             />
                                             <span>{{ item.username }}</span>
@@ -126,19 +139,27 @@
                                     <template #item.actions="{ item }">
                                         <div class="d-flex gap-2">
                                             <v-btn
-                                                icon="mdi-pencil"
                                                 variant="text"
                                                 size="small"
                                                 color="info"
                                                 @click="openEditUserDialog(item)"
-                                            />
+                                            >
+                                                <SmartIcon
+                                                    icon="pencil"
+                                                    :size="20"
+                                                />
+                                            </v-btn>
                                             <v-btn
-                                                icon="mdi-delete"
                                                 variant="text"
                                                 size="small"
                                                 color="error"
                                                 @click="confirmDeleteUser(item)"
-                                            />
+                                            >
+                                                <SmartIcon
+                                                    icon="trash-2"
+                                                    :size="20"
+                                                />
+                                            </v-btn>
                                         </div>
                                     </template>
                                 </PaginatedDataTable>
@@ -151,9 +172,14 @@
                                     </h3>
                                     <v-btn
                                         color="primary"
-                                        prepend-icon="mdi-plus"
                                         @click="openCreateDialog"
                                     >
+                                        <template #prepend>
+                                            <SmartIcon
+                                                icon="plus"
+                                                :size="20"
+                                            />
+                                        </template>
                                         {{ t('permissions.page.roles.new_button') || 'New Role' }}
                                     </v-btn>
                                 </div>
@@ -178,10 +204,11 @@
                                     <!-- Name Column -->
                                     <template #item.name="{ item }">
                                         <div class="d-flex align-center">
-                                            <v-icon
+                                            <SmartIcon
                                                 v-if="item.is_system"
-                                                icon="mdi-shield-lock"
+                                                icon="shield-lock"
                                                 color="warning"
+                                                :size="20"
                                                 class="mr-2"
                                             />
                                             <span>{{ item.name }}</span>
@@ -228,21 +255,29 @@
                                     <template #item.actions="{ item }">
                                         <div class="d-flex gap-2">
                                             <v-btn
-                                                icon="mdi-pencil"
                                                 variant="text"
                                                 size="small"
                                                 color="info"
                                                 :disabled="item.is_system"
                                                 @click="openEditDialog(item)"
-                                            />
+                                            >
+                                                <SmartIcon
+                                                    icon="pencil"
+                                                    :size="20"
+                                                />
+                                            </v-btn>
                                             <v-btn
-                                                icon="mdi-delete"
                                                 variant="text"
                                                 size="small"
                                                 color="error"
                                                 :disabled="item.is_system"
                                                 @click="confirmDelete(item)"
-                                            />
+                                            >
+                                                <SmartIcon
+                                                    icon="trash-2"
+                                                    :size="20"
+                                                />
+                                            </v-btn>
                                         </div>
                                     </template>
                                 </PaginatedDataTable>
@@ -323,6 +358,7 @@
     import PaginatedDataTable from '@/components/tables/PaginatedDataTable.vue'
     import RoleDialog from '@/components/permissions/RoleDialog.vue'
     import UserDialog from '@/components/users/UserDialog.vue'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
     import { useSnackbar } from '@/composables/useSnackbar'
     import { useUsers } from '@/composables/useUsers'
     import { usePagination } from '@/composables/usePagination'

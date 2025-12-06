@@ -43,12 +43,16 @@
                     </td>
                     <td class="text-right">
                         <v-btn
-                            icon="mdi-delete"
                             size="x-small"
                             variant="text"
                             color="error"
                             @click="$emit('delete-pair', idx)"
-                        />
+                        >
+                            <SmartIcon
+                                icon="trash-2"
+                                :size="16"
+                            />
+                        </v-btn>
                     </td>
                 </tr>
             </tbody>

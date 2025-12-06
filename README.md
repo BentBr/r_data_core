@@ -388,7 +388,6 @@ Swagger:
 - add options for custom tables (like bricks)
 - have easy-creation of children (entities)
 - test admin routes
-- connect dashboard data to backend
 - check entities and respective columns - we need proper creation and not everything serialized.
 - check env vars
 - custom field type (json with predefined content - like a preferences structure...)

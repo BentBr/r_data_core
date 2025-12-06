@@ -36,12 +36,16 @@
                     {{ step.to?.type || '-' }}
                     <v-spacer />
                     <v-btn
-                        icon="mdi-delete"
                         size="x-small"
                         variant="text"
                         color="error"
                         @click.stop="removeStep(idx)"
-                    />
+                    >
+                        <SmartIcon
+                            icon="trash-2"
+                            :size="16"
+                        />
+                    </v-btn>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
                     <DslStepEditor
@@ -56,6 +60,7 @@
 </template>
 
 <script setup lang="ts">
+    import SmartIcon from '@/components/common/SmartIcon.vue'
     import { onMounted, ref, watch, nextTick, shallowRef } from 'vue'
     import { typedHttpClient } from '@/api/typed-client'
     import { useTranslations } from '@/composables/useTranslations'

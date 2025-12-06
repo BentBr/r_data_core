@@ -720,7 +720,7 @@ VALUES (
     'entity_versioning',
     jsonb_build_object(
         'enabled', true,
-        'max_versions', NULL,
+        'max_versions', 10,
         'max_age_days', 180
     )
 )

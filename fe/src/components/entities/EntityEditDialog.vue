@@ -6,8 +6,9 @@
     >
         <v-card>
             <v-card-title class="d-flex align-center pa-4">
-                <v-icon
-                    icon="mdi-pencil"
+                <SmartIcon
+                    icon="pencil"
+                    :size="24"
                     class="mr-3"
                 />
                 {{ t('entities.edit.title') }}
@@ -34,6 +35,17 @@
                         item-value="uuid"
                         :label="t('entities.create.parent_label')"
                         clearable
+                        class="mt-4"
+                    />
+
+                    <!-- Published Switch -->
+                    <v-switch
+                        v-model="formData.data.published"
+                        :label="t('entities.create.published_label')"
+                        :hint="t('entities.create.published_hint')"
+                        color="success"
+                        inset
+                        persistent-hint
                         class="mt-4"
                     />
 
@@ -95,6 +107,7 @@
 <script setup lang="ts">
     import { ref, computed, watch } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
     import type {
         DynamicEntity,
         EntityDefinition,
@@ -126,7 +139,9 @@
     const form = ref()
     const isValid = ref(false)
     const formData = ref<UpdateEntityRequest>({
-        data: {},
+        data: {
+            published: false,
+        },
         parent_uuid: null,
     })
 
@@ -156,8 +171,12 @@
     // Methods
     const initializeFormData = () => {
         if (props.entity) {
+            const data = { ...(props.entity.field_data || {}) }
+            if (data.published === undefined) {
+                data.published = false
+            }
             formData.value = {
-                data: { ...(props.entity.field_data || {}) },
+                data,
                 parent_uuid: props.entity.field_data?.parent_uuid ?? null,
             }
         }
@@ -170,7 +189,7 @@
             Wysiwyg: 'v-textarea',
             Integer: 'v-text-field',
             Float: 'v-text-field',
-            Boolean: 'v-checkbox',
+            Boolean: 'v-switch',
             Date: 'v-text-field',
             DateTime: 'v-text-field',
             Time: 'v-text-field',
@@ -233,7 +252,9 @@
     const closeDialog = () => {
         dialogVisible.value = false
         formData.value = {
-            data: {},
+            data: {
+                published: false,
+            },
             parent_uuid: undefined,
         }
     }

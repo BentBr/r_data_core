@@ -5,6 +5,7 @@ import type { EntityDefinition, FieldDefinition } from '@/types/schemas'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
+import SmartIcon from '@/components/common/SmartIcon.vue'
 
 // Create Vuetify instance for testing
 const vuetify = createVuetify({
@@ -47,7 +48,7 @@ describe('EntityDefinitionFields', () => {
         description: 'A test entity definition',
         group_name: 'test_group',
         allow_children: true,
-        icon: 'mdi-test',
+        icon: 'test-tube',
         fields: mockFields,
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
@@ -171,7 +172,9 @@ describe('EntityDefinitionFields', () => {
         })
 
         // Check for required field icons (check-circle for required fields)
-        const requiredIcons = wrapper.findAll('.mdi-check-circle')
+        const requiredIcons = wrapper
+            .findAllComponents(SmartIcon)
+            .filter(icon => icon.props('icon') === 'check-circle')
         expect(requiredIcons.length).toBeGreaterThan(0)
     })
 
@@ -188,7 +191,9 @@ describe('EntityDefinitionFields', () => {
         })
 
         // Check for indexed field icons (database icon for indexed fields)
-        const indexedIcons = wrapper.findAll('.mdi-database')
+        const indexedIcons = wrapper
+            .findAllComponents(SmartIcon)
+            .filter(icon => icon.props('icon') === 'database')
         expect(indexedIcons.length).toBeGreaterThan(0)
     })
 
@@ -205,7 +210,9 @@ describe('EntityDefinitionFields', () => {
         })
 
         // Check for filterable field icons (filter icon for filterable fields)
-        const filterIcons = wrapper.findAll('.mdi-filter')
+        const filterIcons = wrapper
+            .findAllComponents(SmartIcon)
+            .filter(icon => icon.props('icon') === 'filter')
         expect(filterIcons.length).toBeGreaterThan(0)
     })
 
@@ -221,16 +228,15 @@ describe('EntityDefinitionFields', () => {
             },
         })
 
-        const editButtons = wrapper.findAll('button')
-        const editButton = editButtons.find(
-            (btn: { attributes: (attr: string) => string }) =>
-                btn.attributes('icon') === 'mdi-pencil'
-        )
+        const editIcon = wrapper
+            .findAllComponents(SmartIcon)
+            .find(icon => icon.props('icon') === 'pencil')
+        const editButton = editIcon
+            ? wrapper.findAll('button').find(btn => btn.element.contains(editIcon.element))
+            : undefined
 
-        if (editButton) {
-            await editButton.trigger('click')
-            expect(wrapper.emitted('edit-field')).toBeTruthy()
-        }
+        await editButton?.trigger('click')
+        expect(wrapper.emitted('edit-field')).toBeTruthy()
     })
 
     it('emits remove-field event when delete button is clicked', async () => {
@@ -245,16 +251,15 @@ describe('EntityDefinitionFields', () => {
             },
         })
 
-        const deleteButtons = wrapper.findAll('button')
-        const deleteButton = deleteButtons.find(
-            (btn: { attributes: (attr: string) => string }) =>
-                btn.attributes('icon') === 'mdi-delete'
-        )
+        const deleteIcon = wrapper
+            .findAllComponents(SmartIcon)
+            .find(icon => icon.props('icon') === 'trash-2')
+        const deleteButton = deleteIcon
+            ? wrapper.findAll('button').find(btn => btn.element.contains(deleteIcon.element))
+            : undefined
 
-        if (deleteButton) {
-            await deleteButton.trigger('click')
-            expect(wrapper.emitted('remove-field')).toBeTruthy()
-        }
+        await deleteButton?.trigger('click')
+        expect(wrapper.emitted('remove-field')).toBeTruthy()
     })
 
     it('shows loading state when saving changes', () => {
