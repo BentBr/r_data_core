@@ -91,7 +91,12 @@
         loading.value = true
         error.value = ''
         try {
-            const response = await typedHttpClient.getWorkflows(page, perPage, sortBy.value, sortOrder.value)
+            const response = await typedHttpClient.getWorkflows(
+                page,
+                perPage,
+                sortBy.value,
+                sortOrder.value
+            )
             // Normalize kind from API response (Consumer/Provider) to lowercase (consumer/provider)
             items.value = response.data.map(item => ({
                 ...item,
@@ -197,7 +202,10 @@
         await loadWorkflows(1, newItemsPerPage)
     }
 
-    const handleSortChange = async (newSortBy: string | null, newSortOrder: 'asc' | 'desc' | null) => {
+    const handleSortChange = async (
+        newSortBy: string | null,
+        newSortOrder: 'asc' | 'desc' | null
+    ) => {
         sortBy.value = newSortBy
         sortOrder.value = newSortOrder
         // Reset to first page when sorting changes
@@ -365,10 +373,10 @@
                                         :total-pages="totalPages"
                                         :has-next="paginationMeta?.has_next"
                                         :has-previous="paginationMeta?.has_previous"
-                            @update:page="handlePageChange"
-                            @update:items-per-page="handleItemsPerPageChange"
-                            @update:sort="handleSortChange"
-                        >
+                                        @update:page="handlePageChange"
+                                        @update:items-per-page="handleItemsPerPageChange"
+                                        @update:sort="handleSortChange"
+                                    >
                                         <template #item.enabled="{ item }">
                                             <Badge
                                                 :status="item.enabled ? 'success' : 'error'"
@@ -454,7 +462,10 @@
                                         v-model="selectedWorkflowUuid"
                                         :items="[
                                             { title: t('workflows.history.all'), value: 'all' },
-                                            ...items.map((i: WorkflowSummary) => ({ title: i.name, value: i.uuid })),
+                                            ...items.map((i: WorkflowSummary) => ({
+                                                title: i.name,
+                                                value: i.uuid,
+                                            })),
                                         ]"
                                         :label="t('workflows.history.select')"
                                         style="max-width: 320px"

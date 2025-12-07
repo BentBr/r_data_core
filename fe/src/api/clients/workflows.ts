@@ -57,10 +57,7 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         if (sortBy && sortOrder) {
             url += `&sort_by=${sortBy}&sort_order=${sortOrder}`
         }
-        return this.paginatedRequest(
-            url,
-            PaginatedApiResponseSchema(Schema)
-        )
+        return this.paginatedRequest(url, PaginatedApiResponseSchema(Schema))
     }
 
     async getWorkflow(uuid: string): Promise<z.infer<typeof WorkflowSchema>> {

@@ -97,7 +97,9 @@ describe('ApiKeysClient', () => {
 
             expect(result.data).toBeDefined()
             expect(mockFetch).toHaveBeenCalledWith(
-                expect.stringContaining('/admin/api/v1/api-keys?page=1&per_page=10&sort_by=name&sort_order=asc'),
+                expect.stringContaining(
+                    '/admin/api/v1/api-keys?page=1&per_page=10&sort_by=name&sort_order=asc'
+                ),
                 expect.any(Object)
             )
         })
@@ -128,7 +130,9 @@ describe('ApiKeysClient', () => {
 
             expect(result.data).toBeDefined()
             expect(mockFetch).toHaveBeenCalledWith(
-                expect.stringContaining('/admin/api/v1/api-keys?page=1&per_page=10&sort_by=created_at&sort_order=desc'),
+                expect.stringContaining(
+                    '/admin/api/v1/api-keys?page=1&per_page=10&sort_by=created_at&sort_order=desc'
+                ),
                 expect.any(Object)
             )
         })

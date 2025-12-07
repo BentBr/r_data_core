@@ -455,7 +455,7 @@
     } | null>(null)
     const sortBy = ref<string | null>(null)
     const sortOrder = ref<'asc' | 'desc' | null>(null)
-    
+
     // Users sorting
     const usersSortBy = ref<string | null>(null)
     const usersSortOrder = ref<'asc' | 'desc' | null>(null)
@@ -560,7 +560,12 @@
     // Methods
     const loadRoles = async (page = 1, perPage = 20) => {
         try {
-            const response = await loadRolesFromComposable(page, perPage, sortBy.value, sortOrder.value)
+            const response = await loadRolesFromComposable(
+                page,
+                perPage,
+                sortBy.value,
+                sortOrder.value
+            )
             if (response.meta?.pagination) {
                 totalItems.value = response.meta.pagination.total
                 totalPages.value = response.meta.pagination.total_pages
@@ -589,7 +594,10 @@
         await loadRoles(1, newItemsPerPage)
     }
 
-    const handleSortChange = async (newSortBy: string | null, newSortOrder: 'asc' | 'desc' | null) => {
+    const handleSortChange = async (
+        newSortBy: string | null,
+        newSortOrder: 'asc' | 'desc' | null
+    ) => {
         sortBy.value = newSortBy
         sortOrder.value = newSortOrder
         currentPage.value = 1
@@ -658,7 +666,12 @@
     // User management methods
     const loadUsers = async (page = 1, perPage = 20) => {
         try {
-            const response = await loadUsersFromComposable(page, perPage, usersSortBy.value, usersSortOrder.value)
+            const response = await loadUsersFromComposable(
+                page,
+                perPage,
+                usersSortBy.value,
+                usersSortOrder.value
+            )
             if (response.meta?.pagination) {
                 usersTotalItems.value = response.meta.pagination.total
                 usersTotalPages.value = response.meta.pagination.total_pages
@@ -687,7 +700,10 @@
         await loadUsers(1, newItemsPerPage)
     }
 
-    const handleUsersSortChange = async (newSortBy: string | null, newSortOrder: 'asc' | 'desc' | null) => {
+    const handleUsersSortChange = async (
+        newSortBy: string | null,
+        newSortOrder: 'asc' | 'desc' | null
+    ) => {
         usersSortBy.value = newSortBy
         usersSortOrder.value = newSortOrder
         usersCurrentPage.value = 1

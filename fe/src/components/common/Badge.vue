@@ -43,7 +43,7 @@
             return getStatusColor(props.status)
         }
         // Otherwise use the color prop, or default to muted
-        return props.color || badgeConfigs.status.default
+        return props.color ?? badgeConfigs.status.default
     })
 
     const customClass = computed(() => {
