@@ -139,7 +139,7 @@
         if (options.itemsPerPage !== props.itemsPerPage) {
             emit('update:items-per-page', options.itemsPerPage)
         }
-        
+
         // Handle sorting
         if (options.sortBy && options.sortBy.length > 0) {
             const sort = options.sortBy[0]
@@ -147,12 +147,12 @@
         } else {
             emit('update:sort', null, null)
         }
-        
+
         // Update local state
         tableOptions.value = {
             page: options.page,
             itemsPerPage: options.itemsPerPage,
-            sortBy: options.sortBy || [],
+            sortBy: options.sortBy ?? [],
         }
     }
 </script>

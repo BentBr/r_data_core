@@ -232,7 +232,7 @@
     import SnackbarManager from '@/components/common/SnackbarManager.vue'
     import PaginatedDataTable from '@/components/tables/PaginatedDataTable.vue'
     import SmartIcon from '@/components/common/SmartIcon.vue'
-import Badge from '@/components/common/Badge.vue'
+    import Badge from '@/components/common/Badge.vue'
 
     const authStore = useAuthStore()
     const route = useRoute()
@@ -326,8 +326,15 @@ import Badge from '@/components/common/Badge.vue'
         error.value = ''
 
         try {
-            console.log(`Loading API keys: page=${page}, itemsPerPage=${itemsPerPage}, sortBy=${sortBy.value}, sortOrder=${sortOrder.value}`)
-            const response = await typedHttpClient.getApiKeys(page, itemsPerPage, sortBy.value, sortOrder.value)
+            console.log(
+                `Loading API keys: page=${page}, itemsPerPage=${itemsPerPage}, sortBy=${sortBy.value}, sortOrder=${sortOrder.value}`
+            )
+            const response = await typedHttpClient.getApiKeys(
+                page,
+                itemsPerPage,
+                sortBy.value,
+                sortOrder.value
+            )
             apiKeys.value = response.data
             if (response.meta?.pagination) {
                 totalItems.value = response.meta.pagination.total
@@ -364,7 +371,10 @@ import Badge from '@/components/common/Badge.vue'
         await loadApiKeys(1, newItemsPerPage)
     }
 
-    const handleSortChange = async (newSortBy: string | null, newSortOrder: 'asc' | 'desc' | null) => {
+    const handleSortChange = async (
+        newSortBy: string | null,
+        newSortOrder: 'asc' | 'desc' | null
+    ) => {
         console.log('Sort changed:', newSortBy, newSortOrder)
         sortBy.value = newSortBy
         sortOrder.value = newSortOrder
