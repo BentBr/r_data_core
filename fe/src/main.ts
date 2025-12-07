@@ -14,7 +14,7 @@ import SmartIcon from '@/components/common/SmartIcon.vue'
 import 'vuetify/styles'
 
 // Design system theme configuration
-import { vuetifyTheme } from './design-system'
+import { vuetifyTheme, vuetifyDefaults } from './design-system'
 
 const iconAliases: Partial<IconAliases> = {
     collapse: 'chevron-up',
@@ -33,6 +33,8 @@ const iconAliases: Partial<IconAliases> = {
     last: 'chevrons-right',
     delimiter: 'circle',
     sort: 'arrow-up-down',
+    sortAsc: 'arrow-up',
+    sortDesc: 'arrow-down',
     expand: 'chevron-down',
     menu: 'menu',
     subgroup: 'chevron-down',
@@ -41,10 +43,6 @@ const iconAliases: Partial<IconAliases> = {
     menuDown: 'chevron-down',
     menuLeft: 'chevron-left',
     menuUp: 'chevron-up',
-    'mdi-menu-right': 'chevron-right',
-    'mdi-menu-down': 'chevron-down',
-    'mdi-menu-left': 'chevron-left',
-    'mdi-menu-up': 'chevron-up',
     radioOn: 'dot',
     radioOff: 'circle',
     edit: 'pencil',
@@ -60,6 +58,7 @@ const vuetify = createVuetify({
     components,
     directives,
     theme: vuetifyTheme,
+    defaults: vuetifyDefaults,
     icons: {
         defaultSet: 'smart',
         aliases: iconAliases,

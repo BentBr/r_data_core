@@ -22,19 +22,20 @@
                                 <template #prepend>
                                     <SmartIcon
                                         icon="refresh-cw"
-                                        :size="20"
+                                        size="sm"
                                     />
                                 </template>
                                 {{ t('common.refresh') }}
                             </v-btn>
                             <v-btn
                                 color="primary"
+                                variant="flat"
                                 @click="showCreateDialog = true"
                             >
                                 <template #prepend>
                                     <SmartIcon
                                         icon="plus"
-                                        :size="20"
+                                        size="sm"
                                     />
                                 </template>
                                 {{ t('entities.create.button') }}

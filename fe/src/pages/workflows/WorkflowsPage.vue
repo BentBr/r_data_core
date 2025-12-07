@@ -7,10 +7,12 @@
     import PaginatedDataTable from '@/components/tables/PaginatedDataTable.vue'
     import CreateWorkflowDialog from '@/components/workflows/CreateWorkflowDialog.vue'
     import EditWorkflowDialog from '@/components/workflows/EditWorkflowDialog.vue'
-    import SnackbarManager from '@/components/common/SnackbarManager.vue'
-    import DialogManager from '@/components/common/DialogManager.vue'
-    import SmartIcon from '@/components/common/SmartIcon.vue'
-    import { useSnackbar } from '@/composables/useSnackbar'
+import SnackbarManager from '@/components/common/SnackbarManager.vue'
+import DialogManager from '@/components/common/DialogManager.vue'
+import SmartIcon from '@/components/common/SmartIcon.vue'
+import Badge from '@/components/common/Badge.vue'
+import { getDialogMaxWidth } from '@/design-system/components'
+import { useSnackbar } from '@/composables/useSnackbar'
 
     type WorkflowSummary = {
         uuid: string
@@ -274,30 +276,48 @@
 </script>
 
 <template>
-    <div class="page-wrapper">
-        <div class="page">
-            <div class="header">
-                <h1>{{ t('navigation.workflows') }}</h1>
-                <v-spacer />
-                <v-btn
-                    color="primary"
-                    @click="showCreate = true"
-                    >{{ t('workflows.create.button') }}</v-btn
-                >
-            </div>
+    <v-container fluid>
+        <v-row>
+            <v-col cols="12">
+                <v-card>
+                    <v-card-title class="d-flex align-center justify-space-between pa-4">
+                        <div class="d-flex align-center">
+                            <SmartIcon
+                                icon="workflow"
+                                size="lg"
+                                class="mr-3"
+                            />
+                            <span class="text-h4">{{ t('navigation.workflows') }}</span>
+                        </div>
+                        <v-btn
+                            color="primary"
+                            variant="flat"
+                            @click="showCreate = true"
+                        >
+                            <template #prepend>
+                                <SmartIcon
+                                    icon="plus"
+                                    size="sm"
+                                />
+                            </template>
+                            {{ t('workflows.create.button') }}
+                        </v-btn>
+                    </v-card-title>
 
-            <v-tabs
-                v-model="activeTab"
-                color="primary"
-            >
-                <v-tab value="list">{{ t('table.list') ?? 'List' }}</v-tab>
-                <v-tab value="history">{{ t('workflows.history.tab') ?? 'History' }}</v-tab>
-            </v-tabs>
+                    <v-card-text>
 
-            <v-window
-                v-model="activeTab"
-                class="mt-4"
-            >
+                        <v-tabs
+                            v-model="activeTab"
+                            color="primary"
+                        >
+                            <v-tab value="list">{{ t('table.list') ?? 'List' }}</v-tab>
+                            <v-tab value="history">{{ t('workflows.history.tab') ?? 'History' }}</v-tab>
+                        </v-tabs>
+
+                        <v-window
+                            v-model="activeTab"
+                            class="mt-4"
+                        >
                 <v-window-item value="list">
                     <div>
                         <PaginatedDataTable
@@ -331,11 +351,12 @@
                             @update:items-per-page="handleItemsPerPageChange"
                         >
                             <template #item.enabled="{ item }">
-                                <v-chip
-                                    :color="item.enabled ? 'success' : 'error'"
-                                    :text="item.enabled ? 'Enabled' : 'Disabled'"
+                                <Badge
+                                    :status="item.enabled ? 'success' : 'error'"
                                     size="small"
-                                />
+                                >
+                                    {{ item.enabled ? 'Enabled' : 'Disabled' }}
+                                </Badge>
                             </template>
                             <template #item.schedule_cron="{ item }">
                                 <span
@@ -357,7 +378,7 @@
                                 >
                                     <SmartIcon
                                         icon="play-circle"
-                                        :size="20"
+                                        size="sm"
                                     />
                                 </v-btn>
                                 <v-btn
@@ -375,7 +396,7 @@
                                 >
                                     <SmartIcon
                                         icon="history"
-                                        :size="20"
+                                        size="sm"
                                     />
                                 </v-btn>
                                 <v-btn
@@ -386,7 +407,7 @@
                                 >
                                     <SmartIcon
                                         icon="pencil"
-                                        :size="20"
+                                        size="sm"
                                     />
                                 </v-btn>
                                 <v-btn
@@ -397,7 +418,7 @@
                                 >
                                     <SmartIcon
                                         icon="trash-2"
-                                        :size="20"
+                                        size="sm"
                                     />
                                 </v-btn>
                             </template>
@@ -467,18 +488,22 @@
                             >
                                 <SmartIcon
                                     icon="file-text"
-                                    :size="20"
+                                    size="sm"
                                 />
                             </v-btn>
                         </template>
                     </PaginatedDataTable>
-                </v-window-item>
-            </v-window>
+                        </v-window-item>
+                        </v-window>
+                    </v-card-text>
+                </v-card>
+            </v-col>
+        </v-row>
 
-            <v-dialog
-                v-model="showLogs"
-                max-width="1200px"
-            >
+        <v-dialog
+            v-model="showLogs"
+            :max-width="getDialogMaxWidth('wide')"
+        >
                 <v-card>
                     <v-card-title>{{ t('workflows.history.logs') }}</v-card-title>
                     <v-card-text>
@@ -539,10 +564,10 @@
                 </v-card>
             </v-dialog>
 
-            <v-dialog
-                v-model="showRunDialog"
-                max-width="560px"
-            >
+        <v-dialog
+            v-model="showRunDialog"
+            :max-width="getDialogMaxWidth('default')"
+        >
                 <v-card>
                     <v-card-title>{{ t('workflows.run.confirm_title') }}</v-card-title>
                     <v-card-text>
@@ -585,8 +610,8 @@
                         >
                     </v-card-actions>
                 </v-card>
-            </v-dialog>
-        </div>
+        </v-dialog>
+
         <CreateWorkflowDialog
             v-model="showCreate"
             @created="onCreated"
@@ -607,33 +632,11 @@
             <p>{{ t('workflows.delete.confirm_message') }}</p>
         </DialogManager>
         <SnackbarManager :snackbar="currentSnackbar" />
-    </div>
+    </v-container>
 </template>
 
 <style scoped>
-    .page {
-        padding: 16px;
-    }
     .error {
         color: rgb(var(--v-theme-error));
-    }
-    .header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 12px;
-    }
-    table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    th,
-    td {
-        border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-        text-align: left;
-        padding: 8px;
-    }
-    button {
-        padding: 6px 10px;
     }
 </style>

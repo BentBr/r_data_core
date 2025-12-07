@@ -53,7 +53,7 @@
                                     <template #prepend-inner>
                                         <SmartIcon
                                             icon="user"
-                                            :size="20"
+                                            size="sm"
                                             class="mr-2"
                                         />
                                     </template>
@@ -75,14 +75,14 @@
                                     <template #prepend-inner>
                                         <SmartIcon
                                             icon="lock"
-                                            :size="20"
+                                            size="sm"
                                             class="mr-2"
                                         />
                                     </template>
                                     <template #append-inner>
                                         <SmartIcon
                                             :icon="showPassword ? 'eye' : 'eye-off'"
-                                            :size="20"
+                                            size="sm"
                                             class="cursor-pointer"
                                             @click="showPassword = !showPassword"
                                         />
@@ -113,7 +113,7 @@
                                     <template #prepend>
                                         <SmartIcon
                                             icon="log-in"
-                                            :size="20"
+                                            size="sm"
                                         />
                                     </template>
                                     {{

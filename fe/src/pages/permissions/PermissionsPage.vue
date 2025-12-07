@@ -100,7 +100,7 @@
                                     <!-- Roles Column -->
                                     <template #item.roles="{ item }">
                                         <div class="d-flex gap-1 flex-wrap">
-                                            <v-chip
+                                            <Badge
                                                 v-for="roleName in getRoleNamesForUser(item)"
                                                 :key="roleName"
                                                 size="small"
@@ -108,7 +108,7 @@
                                                 variant="outlined"
                                             >
                                                 {{ roleName }}
-                                            </v-chip>
+                                            </Badge>
                                             <span
                                                 v-if="getRoleNamesForUser(item).length === 0"
                                                 class="text-body-2 text-medium-emphasis"
@@ -123,16 +123,16 @@
 
                                     <!-- Status Column -->
                                     <template #item.is_active="{ item }">
-                                        <v-chip
+                                        <Badge
                                             size="small"
-                                            :color="item.is_active ? 'success' : 'error'"
+                                            :status="item.is_active ? 'success' : 'error'"
                                         >
                                             {{
                                                 item.is_active
                                                     ? t('permissions.page.users.status.active')
                                                     : t('permissions.page.users.status.inactive')
                                             }}
-                                        </v-chip>
+                                        </Badge>
                                     </template>
 
                                     <!-- Actions Column -->
@@ -228,7 +228,7 @@
 
                                     <!-- Permissions Count Column -->
                                     <template #item.permissions_count="{ item }">
-                                        <v-chip
+                                        <Badge
                                             size="small"
                                             color="primary"
                                             variant="outlined"
@@ -241,7 +241,7 @@
                                                     : t('permissions.page.roles.permissions') ||
                                                       'permissions'
                                             }}
-                                        </v-chip>
+                                        </Badge>
                                     </template>
 
                                     <!-- Created At Column -->
@@ -359,6 +359,7 @@
     import RoleDialog from '@/components/permissions/RoleDialog.vue'
     import UserDialog from '@/components/users/UserDialog.vue'
     import SmartIcon from '@/components/common/SmartIcon.vue'
+    import Badge from '@/components/common/Badge.vue'
     import { useSnackbar } from '@/composables/useSnackbar'
     import { useUsers } from '@/composables/useUsers'
     import { usePagination } from '@/composables/usePagination'

@@ -68,11 +68,12 @@
 
                             <!-- Status Column -->
                             <template #item.is_active="{ item }">
-                                <v-chip
-                                    :color="item.is_active ? 'success' : 'error'"
-                                    :text="item.is_active ? 'Active' : 'Inactive'"
+                                <Badge
+                                    :status="item.is_active ? 'success' : 'error'"
                                     size="small"
-                                />
+                                >
+                                    {{ item.is_active ? 'Active' : 'Inactive' }}
+                                </Badge>
                             </template>
 
                             <!-- Created At Column -->
@@ -230,6 +231,7 @@
     import SnackbarManager from '@/components/common/SnackbarManager.vue'
     import PaginatedDataTable from '@/components/tables/PaginatedDataTable.vue'
     import SmartIcon from '@/components/common/SmartIcon.vue'
+import Badge from '@/components/common/Badge.vue'
 
     const authStore = useAuthStore()
     const route = useRoute()

@@ -1,15 +1,15 @@
 <template>
     <v-dialog
         :model-value="modelValue"
-        max-width="600px"
+        :max-width="getDialogMaxWidth('default')"
         persistent
         @update:model-value="$emit('update:modelValue', $event)"
     >
         <v-card>
-            <v-card-title>
+            <v-card-title class="pa-6">
                 {{ editingUser ? t('users.dialog.edit_title') : t('users.dialog.create_title') }}
             </v-card-title>
-            <v-card-text>
+            <v-card-text class="pa-6">
                 <v-form
                     ref="formRef"
                     v-model="formValid"
@@ -73,16 +73,18 @@
                     />
                 </v-form>
             </v-card-text>
-            <v-card-actions>
+            <v-card-actions class="pa-4 px-6">
                 <v-spacer />
                 <v-btn
                     variant="text"
+                    color="mutedForeground"
                     @click="handleClose"
                 >
                     {{ t('users.dialog.cancel') }}
                 </v-btn>
                 <v-btn
                     color="primary"
+                    variant="flat"
                     :loading="loading"
                     :disabled="!formValid"
                     @click="handleSave"
@@ -98,6 +100,7 @@
     import { ref, watch, onMounted } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import { useRoles } from '@/composables/useRoles'
+    import { getDialogMaxWidth } from '@/design-system/components'
     import type { UserResponse, CreateUserRequest, UpdateUserRequest, Role } from '@/types/schemas'
 
     const { t } = useTranslations()

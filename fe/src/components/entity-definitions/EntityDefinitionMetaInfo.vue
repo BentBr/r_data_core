@@ -121,8 +121,8 @@
                         t('entity_definitions.meta_info.status')
                     }}</v-list-item-title>
                     <v-list-item-subtitle>
-                        <v-chip
-                            :color="definition.published ? 'success' : 'warning'"
+                        <Badge
+                            :status="definition.published ? 'success' : 'warning'"
                             size="small"
                         >
                             {{
@@ -130,7 +130,7 @@
                                     ? t('entity_definitions.meta_info.published')
                                     : t('entity_definitions.meta_info.draft')
                             }}
-                        </v-chip>
+                        </Badge>
                     </v-list-item-subtitle>
                 </v-list-item>
             </v-list>
@@ -142,6 +142,7 @@
     import type { EntityDefinition } from '@/types/schemas'
     import { useTranslations } from '@/composables/useTranslations'
     import SmartIcon from '@/components/common/SmartIcon.vue'
+    import Badge from '@/components/common/Badge.vue'
 
     interface Props {
         definition: EntityDefinition

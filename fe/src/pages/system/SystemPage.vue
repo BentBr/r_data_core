@@ -45,6 +45,7 @@
                                         <v-spacer />
                                         <v-btn
                                             color="primary"
+                                            variant="flat"
                                             :loading="saving"
                                             @click="save"
                                         >
@@ -58,6 +59,8 @@
                 </v-card>
             </v-col>
         </v-row>
+
+        <SnackbarManager :snackbar="currentSnackbar" />
     </v-container>
 </template>
 
@@ -67,8 +70,9 @@
     import { useTranslations } from '@/composables/useTranslations'
     import { typedHttpClient } from '@/api/typed-client'
     import SmartIcon from '@/components/common/SmartIcon.vue'
+    import SnackbarManager from '@/components/common/SnackbarManager.vue'
 
-    const { showSuccess, showError } = useSnackbar()
+    const { currentSnackbar, showSuccess, showError } = useSnackbar()
     const { t } = useTranslations()
 
     const form = ref<{

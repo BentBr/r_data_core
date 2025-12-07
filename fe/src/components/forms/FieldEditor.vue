@@ -1,19 +1,19 @@
 <template>
     <v-dialog
         v-model="showDialog"
-        max-width="800px"
+        :max-width="getDialogMaxWidth('form')"
         persistent
         :retain-focus="false"
     >
         <v-card>
-            <v-card-title class="text-h5 pa-4">
+            <v-card-title class="text-h5 pa-6">
                 {{
                     isEditing
                         ? t('entity_definitions.fields.edit_field')
                         : t('entity_definitions.fields.add_field')
                 }}
             </v-card-title>
-            <v-card-text>
+            <v-card-text class="pa-6">
                 <v-form
                     ref="formRef"
                     v-model="formValid"
@@ -157,12 +157,12 @@
                     </v-row>
                 </v-form>
             </v-card-text>
-            <v-card-actions class="pa-4">
+            <v-card-actions class="pa-4 px-6">
                 <v-spacer />
                 <v-btn
                     data-test="cancel"
-                    color="grey"
                     variant="text"
+                    color="mutedForeground"
                     @click="closeDialog"
                 >
                     {{ t('common.cancel') }}
@@ -170,6 +170,7 @@
                 <v-btn
                     data-test="save"
                     color="primary"
+                    variant="flat"
                     :disabled="!formValid"
                     @click="saveField"
                 >
@@ -188,6 +189,7 @@
     import { ref, computed, watch } from 'vue'
     import type { FieldDefinition } from '@/types/schemas'
     import { useTranslations } from '@/composables/useTranslations'
+    import { getDialogMaxWidth } from '@/design-system/components'
 
     interface Props {
         modelValue: boolean
