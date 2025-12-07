@@ -100,5 +100,4 @@ describe('EntityTree', () => {
         expect(pubItem.published).toBe(true)
         expect(unpubItem.published).toBe(false)
     })
-
 })
