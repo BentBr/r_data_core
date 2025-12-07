@@ -11,20 +11,24 @@
                     <v-list>
                         <v-list-item>
                             <template #prepend>
-                                <SmartIcon
-                                    icon="key"
-                                    :size="20"
-                                />
+                                <div class="mr-3">
+                                    <SmartIcon
+                                        icon="key"
+                                        :size="20"
+                                    />
+                                </div>
                             </template>
                             <v-list-item-title>{{ t('api_keys.view.name') }}</v-list-item-title>
                             <v-list-item-subtitle>{{ apiKey.name }}</v-list-item-subtitle>
                         </v-list-item>
                         <v-list-item v-if="apiKey.description">
                             <template #prepend>
-                                <SmartIcon
-                                    icon="type"
-                                    :size="20"
-                                />
+                                <div class="mr-3">
+                                    <SmartIcon
+                                        icon="type"
+                                        :size="20"
+                                    />
+                                </div>
                             </template>
                             <v-list-item-title>{{
                                 t('api_keys.view.description')
@@ -33,10 +37,12 @@
                         </v-list-item>
                         <v-list-item>
                             <template #prepend>
-                                <SmartIcon
-                                    icon="calendar"
-                                    :size="20"
-                                />
+                                <div class="mr-3">
+                                    <SmartIcon
+                                        icon="calendar"
+                                        :size="20"
+                                    />
+                                </div>
                             </template>
                             <v-list-item-title>{{ t('api_keys.view.created') }}</v-list-item-title>
                             <v-list-item-subtitle>{{
@@ -45,10 +51,12 @@
                         </v-list-item>
                         <v-list-item v-if="apiKey.expires_at">
                             <template #prepend>
-                                <SmartIcon
-                                    icon="calendar-clock"
-                                    :size="20"
-                                />
+                                <div class="mr-3">
+                                    <SmartIcon
+                                        icon="calendar-clock"
+                                        :size="20"
+                                    />
+                                </div>
                             </template>
                             <v-list-item-title>{{ t('api_keys.view.expires') }}</v-list-item-title>
                             <v-list-item-subtitle>{{
@@ -57,10 +65,12 @@
                         </v-list-item>
                         <v-list-item v-if="apiKey.last_used_at">
                             <template #prepend>
-                                <SmartIcon
-                                    icon="clock"
-                                    :size="20"
-                                />
+                                <div class="mr-3">
+                                    <SmartIcon
+                                        icon="clock"
+                                        :size="20"
+                                    />
+                                </div>
                             </template>
                             <v-list-item-title>{{
                                 t('api_keys.view.last_used')
