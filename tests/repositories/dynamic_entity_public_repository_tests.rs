@@ -230,3 +230,51 @@ async fn test_browse_by_path_pagination() -> Result<()> {
 
     Ok(())
 }
+
+/// Test browsing published status
+#[tokio::test]
+async fn test_browse_published_status() -> Result<()> {
+    let pool = setup_test_db().await;
+    let pub_repo = DynamicEntityPublicRepository::new(pool.clone());
+
+    // Create entity definition
+    let entity_type = unique_entity_type("test_published");
+    let entity_def = create_test_entity_definition(&pool, &entity_type).await?;
+
+    let repo = DynamicEntityRepository::new(pool.clone());
+
+    // Create published entity
+    let pub_uuid = Uuid::now_v7();
+    let pub_key = format!("pub-{pub_uuid}");
+    let mut pub_entity = create_test_dynamic_entity(&entity_def, "Published", "/", &pub_key);
+    pub_entity
+        .field_data
+        .insert("published".to_string(), json!(true));
+    repo.create(&pub_entity).await?;
+
+    // Create unpublished entity
+    let unpub_uuid = Uuid::now_v7();
+    let unpub_key = format!("unpub-{unpub_uuid}");
+    let mut unpub_entity = create_test_dynamic_entity(&entity_def, "Unpublished", "/", &unpub_key);
+    unpub_entity
+        .field_data
+        .insert("published".to_string(), json!(false));
+    repo.create(&unpub_entity).await?;
+
+    // Browse root path
+    let (nodes, _) = pub_repo.browse_by_path("/", 100, 0).await?;
+
+    let pub_node = nodes
+        .iter()
+        .find(|n| n.name == pub_key)
+        .expect("Published node not found");
+    assert!(pub_node.published);
+
+    let unpub_node = nodes
+        .iter()
+        .find(|n| n.name == unpub_key)
+        .expect("Unpublished node not found");
+    assert!(!unpub_node.published);
+
+    Ok(())
+}

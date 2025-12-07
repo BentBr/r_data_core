@@ -121,7 +121,7 @@ fn build_files_and_folders(
         if p == prefix {
             let entity_key = r.entity_key.clone();
             let exact_key = format!("{p}::{entity_key}");
-            let (entity_uuid, entity_type, published) = exact
+            let (entity_uuid, entity_type, _published) = exact
                 .get(&exact_key)
                 .cloned()
                 .map_or((None, None, None), |(u, t, p)| (Some(u), Some(t), Some(p)));
@@ -140,7 +140,7 @@ fn build_files_and_folders(
                 entity_uuid,
                 entity_type,
                 has_children: Some(false),
-                published: published.unwrap_or(false),
+                published: r.published, // Use row value directly instead of map lookup since we are iterating the same rows
             });
 
             file_names.insert(entity_key);

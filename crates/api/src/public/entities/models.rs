@@ -51,6 +51,8 @@ pub struct BrowseNode {
     pub entity_type: Option<String>,
     /// Whether the folder has children (only meaningful when kind = folder)
     pub has_children: Option<bool>,
+    /// Whether the entity is published (only meaningful when kind = file)
+    pub published: bool
 }
 
 /// Version metadata for entity versions

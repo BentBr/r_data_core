@@ -358,7 +358,10 @@ async fn test_update_entity_published_status() -> Result<()> {
     repo.expect_update()
         .with(predicate::function(|e: &DynamicEntity| {
             e.entity_type == "test_entity"
-                && e.field_data.get("published").and_then(|v| v.as_bool()) == Some(false)
+                && e.field_data
+                    .get("published")
+                    .and_then(serde_json::Value::as_bool)
+                    == Some(false)
         }))
         .returning(|_| Ok(()));
 
