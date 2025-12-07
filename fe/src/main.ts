@@ -1,4 +1,4 @@
-import { createApp } from 'vue'
+import { createApp, type Component } from 'vue'
 import { createPinia } from 'pinia'
 
 import App from './App.vue'
@@ -7,43 +7,67 @@ import { checkEnvironmentVariables, env } from './env-check'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
+import type { IconAliases } from 'vuetify'
+import SmartIcon from '@/components/common/SmartIcon.vue'
 
 // Vuetify styles
 import 'vuetify/styles'
-import '@mdi/font/css/materialdesignicons.css'
+
+// Design system theme configuration
+import { vuetifyTheme } from './design-system'
+
+const iconAliases: Partial<IconAliases> = {
+    collapse: 'chevron-up',
+    complete: 'check',
+    cancel: 'x',
+    close: 'x',
+    delete: 'trash-2',
+    clear: 'x-circle',
+    success: 'check-circle',
+    info: 'info',
+    warning: 'alert-triangle',
+    error: 'alert-octagon',
+    prev: 'chevron-left',
+    next: 'chevron-right',
+    first: 'chevrons-left',
+    last: 'chevrons-right',
+    delimiter: 'circle',
+    sort: 'arrow-up-down',
+    expand: 'chevron-down',
+    menu: 'menu',
+    subgroup: 'chevron-down',
+    dropdown: 'chevron-down',
+    menuRight: 'chevron-right',
+    menuDown: 'chevron-down',
+    menuLeft: 'chevron-left',
+    menuUp: 'chevron-up',
+    'mdi-menu-right': 'chevron-right',
+    'mdi-menu-down': 'chevron-down',
+    'mdi-menu-left': 'chevron-left',
+    'mdi-menu-up': 'chevron-up',
+    radioOn: 'dot',
+    radioOff: 'circle',
+    edit: 'pencil',
+    ratingEmpty: 'star',
+    ratingFull: 'star',
+    ratingHalf: 'star-half',
+    checkboxOn: 'check-square',
+    checkboxOff: 'square',
+    checkboxIndeterminate: 'minus-square',
+}
 
 const vuetify = createVuetify({
     components,
     directives,
-    theme: {
-        defaultTheme: 'light',
-        themes: {
-            light: {
-                colors: {
-                    primary: '#1976D2',
-                    secondary: '#424242',
-                    accent: '#82B1FF',
-                    error: '#FF5252',
-                    info: '#2196F3',
-                    success: '#4CAF50',
-                    warning: '#FFC107',
-                },
-            },
-            dark: {
-                colors: {
-                    primary: '#2196F3',
-                    secondary: '#424242',
-                    accent: '#FF4081',
-                    error: '#FF5252',
-                    info: '#2196F3',
-                    success: '#4CAF50',
-                    warning: '#FFC107',
-                },
+    theme: vuetifyTheme,
+    icons: {
+        defaultSet: 'smart',
+        aliases: iconAliases,
+        sets: {
+            smart: {
+                component: SmartIcon as Component,
             },
         },
-    },
-    icons: {
-        defaultSet: 'mdi',
     },
 })
 

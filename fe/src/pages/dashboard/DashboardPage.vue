@@ -4,8 +4,9 @@
             <v-col cols="12">
                 <v-card>
                     <v-card-title class="text-h4 pa-4">
-                        <v-icon
-                            icon="mdi-view-dashboard"
+                        <SmartIcon
+                            icon="layout-dashboard"
+                            :size="28"
                             class="mr-3"
                         />
                         {{ t('dashboard.title') }}
@@ -67,7 +68,9 @@
                                             />
                                         </div>
                                         <div v-else>
-                                            <div class="text-h3">{{ stats?.entities?.total ?? 0 }}</div>
+                                            <div class="text-h3">
+                                                {{ stats?.entities?.total ?? 0 }}
+                                            </div>
                                             <div
                                                 v-if="topEntityType"
                                                 class="text-caption mt-1"
@@ -107,7 +110,9 @@
                                             />
                                         </div>
                                         <div v-else>
-                                            <div class="text-h3">{{ stats?.workflows?.total ?? 0 }}</div>
+                                            <div class="text-h3">
+                                                {{ stats?.workflows?.total ?? 0 }}
+                                            </div>
                                             <div
                                                 v-if="latestWorkflowStates.length > 0"
                                                 class="text-caption mt-1"
@@ -183,9 +188,14 @@
                                     color="primary"
                                     variant="outlined"
                                     block
-                                    prepend-icon="mdi-plus"
                                     @click="$router.push('/entity-definitions?create=true')"
                                 >
+                                    <template #prepend>
+                                        <SmartIcon
+                                            icon="plus"
+                                            :size="20"
+                                        />
+                                    </template>
                                     {{ t('dashboard.quick_actions.new_entity_definition') }}
                                 </v-btn>
                             </v-col>
@@ -199,9 +209,14 @@
                                     color="success"
                                     variant="outlined"
                                     block
-                                    prepend-icon="mdi-database-plus"
                                     @click="$router.push('/entities?create=true')"
                                 >
+                                    <template #prepend>
+                                        <SmartIcon
+                                            icon="database"
+                                            :size="20"
+                                        />
+                                    </template>
                                     {{ t('dashboard.quick_actions.create_entity') }}
                                 </v-btn>
                             </v-col>
@@ -215,9 +230,14 @@
                                     color="info"
                                     variant="outlined"
                                     block
-                                    prepend-icon="mdi-key-plus"
                                     @click="$router.push('/api-keys?create=true')"
                                 >
+                                    <template #prepend>
+                                        <SmartIcon
+                                            icon="key-round"
+                                            :size="20"
+                                        />
+                                    </template>
                                     {{ t('dashboard.quick_actions.generate_api_key') }}
                                 </v-btn>
                             </v-col>
@@ -231,9 +251,14 @@
                                     color="purple"
                                     variant="outlined"
                                     block
-                                    prepend-icon="mdi-workflow"
                                     @click="$router.push('/workflows?create=true')"
                                 >
+                                    <template #prepend>
+                                        <SmartIcon
+                                            icon="workflow"
+                                            :size="20"
+                                        />
+                                    </template>
                                     {{ t('dashboard.quick_actions.create_workflow') }}
                                 </v-btn>
                             </v-col>
@@ -247,9 +272,14 @@
                                     color="orange"
                                     variant="outlined"
                                     block
-                                    prepend-icon="mdi-account-plus"
                                     @click="$router.push('/permissions?tab=users&create=true')"
                                 >
+                                    <template #prepend>
+                                        <SmartIcon
+                                            icon="user-plus"
+                                            :size="20"
+                                        />
+                                    </template>
                                     {{ t('dashboard.quick_actions.users') }}
                                 </v-btn>
                             </v-col>
@@ -266,6 +296,7 @@
     import { useAuthStore } from '@/stores/auth'
     import { typedHttpClient } from '@/api/typed-client'
     import { useTranslations } from '@/composables/useTranslations'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
     import type { DashboardStats } from '@/api/clients/meta'
 
     const authStore = useAuthStore()

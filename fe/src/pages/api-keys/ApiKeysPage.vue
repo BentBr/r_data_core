@@ -5,17 +5,23 @@
                 <v-card>
                     <v-card-title class="d-flex align-center justify-space-between pa-4">
                         <div class="d-flex align-center">
-                            <v-icon
-                                icon="mdi-key"
+                            <SmartIcon
+                                icon="key"
+                                :size="28"
                                 class="mr-3"
                             />
                             <span class="text-h4">API Keys Management</span>
                         </div>
                         <v-btn
                             color="primary"
-                            prepend-icon="mdi-key-plus"
                             @click="showCreateDialog = true"
                         >
+                            <template #prepend>
+                                <SmartIcon
+                                    icon="key-round"
+                                    :size="20"
+                                />
+                            </template>
                             {{ t('api_keys.create.button') }}
                         </v-btn>
                     </v-card-title>
@@ -39,9 +45,10 @@
                             <!-- Name Column -->
                             <template #item.name="{ item }">
                                 <div class="d-flex align-center">
-                                    <v-icon
-                                        :icon="item.is_active ? 'mdi-key' : 'mdi-key-off'"
+                                    <SmartIcon
+                                        :icon="item.is_active ? 'key' : 'key-round'"
                                         :color="item.is_active ? 'success' : 'error'"
+                                        :size="20"
                                         class="mr-2"
                                     />
                                     <span
@@ -143,21 +150,29 @@
                             <template #item.actions="{ item }">
                                 <div class="d-flex gap-2">
                                     <v-btn
-                                        icon="mdi-eye"
                                         variant="text"
                                         size="small"
                                         color="info"
                                         :disabled="!item.is_active"
                                         @click="viewKey(item)"
-                                    />
+                                    >
+                                        <SmartIcon
+                                            icon="eye"
+                                            :size="20"
+                                        />
+                                    </v-btn>
                                     <v-btn
-                                        icon="mdi-delete"
                                         variant="text"
                                         size="small"
                                         color="error"
                                         :disabled="!item.is_active"
                                         @click="confirmRevoke(item)"
-                                    />
+                                    >
+                                        <SmartIcon
+                                            icon="trash-2"
+                                            :size="20"
+                                        />
+                                    </v-btn>
                                 </div>
                             </template>
                         </PaginatedDataTable>
@@ -214,6 +229,7 @@
     import DialogManager from '@/components/common/DialogManager.vue'
     import SnackbarManager from '@/components/common/SnackbarManager.vue'
     import PaginatedDataTable from '@/components/tables/PaginatedDataTable.vue'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
 
     const authStore = useAuthStore()
     const route = useRoute()

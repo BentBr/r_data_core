@@ -26,11 +26,10 @@
                         rows="2"
                     />
 
-                    <v-checkbox
+                    <v-switch
                         v-model="formData.super_admin"
                         :label="t('roles.dialog.super_admin')"
-                        :hint="t('roles.dialog.super_admin_hint')"
-                        persistent-hint
+                        color="primary"
                     />
 
                     <v-divider class="my-4" />
@@ -55,17 +54,22 @@
                         :access-levels="accessLevels"
                         :disabled="formData.super_admin"
                         class="mb-4"
-                        @update:permission="updatePermission(index, $event)"
+                        @update="updatePermission(index, $event)"
                         @remove="removePermission(index)"
                     />
 
                     <v-btn
                         color="primary"
                         variant="outlined"
-                        prepend-icon="mdi-plus"
                         :disabled="formData.super_admin"
                         @click="addPermission"
                     >
+                        <template #prepend>
+                            <SmartIcon
+                                icon="plus"
+                                :size="20"
+                            />
+                        </template>
                         {{ t('roles.dialog.add_permission') }}
                     </v-btn>
                 </v-form>
@@ -92,6 +96,7 @@
 </template>
 
 <script setup lang="ts">
+    import SmartIcon from '@/components/common/SmartIcon.vue'
     import { ref, watch } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import PermissionEditor from './PermissionEditor.vue'

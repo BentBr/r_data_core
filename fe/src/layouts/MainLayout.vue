@@ -3,17 +3,26 @@
         <!-- Navigation Drawer -->
         <v-navigation-drawer
             v-model="drawer"
-            :rail="rail"
-            permanent
-            @click="rail = false"
+            app
+            :permanent="!isMobile"
+            :temporary="isMobile"
+            :scrim="isMobile"
+            width="280"
         >
             <!-- App Title -->
             <v-list-item
-                prepend-icon="mdi-database"
                 title="R Data Core"
                 subtitle="Admin Interface"
                 nav
-            />
+            >
+                <template #prepend>
+                    <SmartIcon
+                        icon="database"
+                        :size="24"
+                        class="mr-3"
+                    />
+                </template>
+            </v-list-item>
 
             <v-divider />
 
@@ -22,20 +31,27 @@
                 <v-list-item
                     v-for="item in navigationItems"
                     :key="item.path"
-                    :prepend-icon="item.icon"
                     :title="item.title"
                     :value="item.path"
                     :to="item.path"
                     router
-                />
+                >
+                    <template #prepend>
+                        <SmartIcon
+                            :icon="item.icon"
+                            :size="24"
+                            class="mr-3"
+                        />
+                    </template>
+                </v-list-item>
             </v-list>
         </v-navigation-drawer>
 
         <!-- App Bar -->
-        <v-app-bar>
+        <v-app-bar app>
             <v-app-bar-nav-icon
                 variant="text"
-                @click.stop="rail = !rail"
+                @click.stop="toggleNav"
             />
 
             <v-toolbar-title>{{ currentPageTitle }}</v-toolbar-title>
@@ -71,20 +87,21 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, computed, onMounted } from 'vue'
+    import { ref, computed, onMounted, onUnmounted } from 'vue'
     import { useRoute } from 'vue-router'
     import { useAuthStore } from '@/stores/auth'
     import { useTranslations } from '@/composables/useTranslations'
     import LanguageSwitch from '@/components/common/LanguageSwitch.vue'
     import UserProfileMenu from '@/components/common/UserProfileMenu.vue'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
 
     const route = useRoute()
     const authStore = useAuthStore()
     const { t } = useTranslations()
 
     // State
+    const isMobile = ref(false)
     const drawer = ref(true)
-    const rail = ref(false)
 
     // Theme is now handled by UserProfileMenu component
 
@@ -93,37 +110,37 @@
         const items = [
             {
                 title: t('navigation.dashboard'),
-                icon: 'mdi-view-dashboard',
+                icon: 'layout-dashboard',
                 path: '/dashboard',
             },
             {
                 title: t('navigation.entity_definitions'),
-                icon: 'mdi-file-tree',
+                icon: 'folder-tree',
                 path: '/entity-definitions',
             },
             {
                 title: t('navigation.entities'),
-                icon: 'mdi-database',
+                icon: 'database',
                 path: '/entities',
             },
             {
                 title: t('navigation.api_keys'),
-                icon: 'mdi-key',
+                icon: 'key',
                 path: '/api-keys',
             },
             {
                 title: t('navigation.workflows'),
-                icon: 'mdi-timeline-clock-outline',
+                icon: 'workflow',
                 path: '/workflows',
             },
             {
                 title: t('navigation.permissions'),
-                icon: 'mdi-shield-account',
+                icon: 'shield',
                 path: '/permissions',
             },
             {
                 title: t('navigation.system'),
-                icon: 'mdi-cog',
+                icon: 'settings',
                 path: '/system',
             },
         ]
@@ -145,9 +162,28 @@
         return currentItem?.title ?? 'R Data Core'
     })
 
+    const updateIsMobile = () => {
+        isMobile.value = window.innerWidth < 1200
+        // Default drawer open on desktop, closed on mobile
+        if (isMobile.value) {
+            drawer.value = false
+        } else {
+            drawer.value = true
+        }
+    }
+
+    const toggleNav = () => {
+        drawer.value = !drawer.value
+    }
+
     // Initialize
     onMounted(() => {
-        // You could add any initialization logic here
+        updateIsMobile()
+        window.addEventListener('resize', updateIsMobile)
+    })
+
+    onUnmounted(() => {
+        window.removeEventListener('resize', updateIsMobile)
     })
 </script>
 

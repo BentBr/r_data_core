@@ -1,32 +1,41 @@
 <template>
-    <div>
+    <div class="icon-picker">
         <v-text-field
             v-model="searchQuery"
             :label="label"
-            prepend-inner-icon="mdi-magnify"
             clearable
             placeholder="Search icons..."
             @update:model-value="filterIcons"
-        />
+        >
+            <template #prepend-inner>
+                <SmartIcon
+                    icon="search"
+                    :size="20"
+                    class="mr-2"
+                />
+            </template>
+        </v-text-field>
 
         <v-card
             v-if="showPicker"
-            class="mt-2"
-            max-height="300px"
-            style="overflow-y: auto"
+            class="mt-2 icon-picker-card"
         >
             <v-card-text class="pa-2">
-                <div class="d-flex flex-wrap">
+                <div class="d-flex flex-wrap icon-grid">
                     <v-btn
                         v-for="icon in filteredIcons"
                         :key="icon"
-                        :icon="icon"
                         variant="text"
                         size="small"
-                        class="ma-1"
+                        class="icon-button"
                         :color="selectedIcon === icon ? 'primary' : undefined"
                         @click="selectIcon(icon)"
-                    />
+                    >
+                        <LucideIcon
+                            :name="icon"
+                            :size="20"
+                        />
+                    </v-btn>
                 </div>
             </v-card-text>
         </v-card>
@@ -35,10 +44,10 @@
             v-if="selectedIcon"
             class="d-flex align-center mt-2"
         >
-            <v-icon
-                :icon="selectedIcon"
+            <LucideIcon
+                :name="selectedIcon"
+                :size="24"
                 class="mr-2"
-                size="24"
             />
             <span class="text-body-2">{{ selectedIcon }}</span>
         </div>
@@ -47,6 +56,8 @@
 
 <script setup lang="ts">
     import { ref, computed, watch } from 'vue'
+    import LucideIcon from './LucideIcon.vue'
+    import SmartIcon from './SmartIcon.vue'
 
     interface Props {
         modelValue?: string
@@ -68,167 +79,484 @@
     const searchQuery = ref('')
     const selectedIcon = ref(props.modelValue ?? '')
 
-    // Common Material Design Icons
-    const commonIcons = [
-        'mdi-file-document',
-        'mdi-folder',
-        'mdi-folder-tree',
-        'mdi-database',
-        'mdi-table',
-        'mdi-account',
-        'mdi-account-group',
-        'mdi-account-multiple',
-        'mdi-calendar',
-        'mdi-calendar-clock',
-        'mdi-clock',
-        'mdi-clock-outline',
-        'mdi-tag',
-        'mdi-tag-multiple',
-        'mdi-label',
-        'mdi-label-outline',
-        'mdi-text',
-        'mdi-text-box',
-        'mdi-text-box-outline',
-        'mdi-numeric',
-        'mdi-numeric-0-box',
-        'mdi-numeric-1-box',
-        'mdi-numeric-2-box',
-        'mdi-numeric-3-box',
-        'mdi-numeric-4-box',
-        'mdi-numeric-5-box',
-        'mdi-numeric-6-box',
-        'mdi-numeric-7-box',
-        'mdi-numeric-8-box',
-        'mdi-numeric-9-box',
-        'mdi-checkbox-marked',
-        'mdi-checkbox-blank-outline',
-        'mdi-toggle-switch',
-        'mdi-toggle-switch-off',
-        'mdi-image',
-        'mdi-image-outline',
-        'mdi-file',
-        'mdi-file-outline',
-        'mdi-file-pdf-box',
-        'mdi-file-word-box',
-        'mdi-file-excel-box',
-        'mdi-file-powerpoint-box',
-        'mdi-link',
-        'mdi-link-variant',
-        'mdi-email',
-        'mdi-email-outline',
-        'mdi-phone',
-        'mdi-phone-outline',
-        'mdi-map-marker',
-        'mdi-map-marker-outline',
-        'mdi-home',
-        'mdi-home-outline',
-        'mdi-cog',
-        'mdi-cog-outline',
-        'mdi-settings',
-        'mdi-settings-outline',
-        'mdi-tools',
-        'mdi-wrench',
-        'mdi-wrench-outline',
-        'mdi-hammer',
-        'mdi-hammer-wrench',
-        'mdi-screwdriver',
-        'mdi-palette',
-        'mdi-palette-outline',
-        'mdi-brush',
-        'mdi-brush-outline',
-        'mdi-pencil',
-        'mdi-pencil-outline',
-        'mdi-pen',
-        'mdi-pen-off',
-        'mdi-eraser',
-        'mdi-eraser-variant',
-        'mdi-marker',
-        'mdi-marker-cancel',
-        'mdi-highlighter',
-        'mdi-format-paint',
-        'mdi-format-color-fill',
-        'mdi-format-color-text',
-        'mdi-format-size',
-        'mdi-format-bold',
-        'mdi-format-italic',
-        'mdi-format-underline',
-        'mdi-format-strikethrough',
-        'mdi-format-align-left',
-        'mdi-format-align-center',
-        'mdi-format-align-right',
-        'mdi-format-align-justify',
-        'mdi-format-list-bulleted',
-        'mdi-format-list-numbered',
-        'mdi-format-list-checks',
-        'mdi-format-list-text',
-        'mdi-format-quote-close',
-        'mdi-format-quote-open',
-        'mdi-format-header-1',
-        'mdi-format-header-2',
-        'mdi-format-header-3',
-        'mdi-format-header-4',
-        'mdi-format-header-5',
-        'mdi-format-header-6',
-        'mdi-format-paragraph',
-        'mdi-format-line-spacing',
-        'mdi-format-line-height',
-        'mdi-format-letter-spacing',
-        'mdi-format-letter-case',
-        'mdi-format-letter-case-lower',
-        'mdi-format-letter-case-upper',
-        'mdi-format-letter-matches',
-        'mdi-format-rotate-90',
-        'mdi-format-rotate-180',
-        'mdi-format-rotate-270',
-        'mdi-format-vertical-align-top',
-        'mdi-format-vertical-align-center',
-        'mdi-format-vertical-align-bottom',
-        'mdi-format-horizontal-align-left',
-        'mdi-format-horizontal-align-center',
-        'mdi-format-horizontal-align-right',
-        'mdi-format-horizontal-align-justify',
-        'mdi-format-indent-increase',
-        'mdi-format-indent-decrease',
-        'mdi-format-clear',
-        'mdi-format-color-highlight',
-        'mdi-format-page-break',
-        'mdi-format-columns',
-        'mdi-format-wrap-square',
-        'mdi-format-wrap-tight',
-        'mdi-format-wrap-top-bottom',
-        'mdi-format-wrap-inline',
-        'mdi-format-wrap-text',
-        'mdi-format-wrap-text-inverse',
-        'mdi-format-wrap-text-square',
-        'mdi-format-wrap-text-tight',
-        'mdi-format-wrap-text-top-bottom',
-        'mdi-format-wrap-text-inline',
-        'mdi-format-wrap-text-inverse-square',
-        'mdi-format-wrap-text-inverse-tight',
-        'mdi-format-wrap-text-inverse-top-bottom',
-        'mdi-format-wrap-text-inverse-inline',
-        'mdi-format-wrap-text-square-inverse',
-        'mdi-format-wrap-text-tight-inverse',
-        'mdi-format-wrap-text-top-bottom-inverse',
-        'mdi-format-wrap-text-inline-inverse',
-        'mdi-format-wrap-text-square-tight',
-        'mdi-format-wrap-text-square-top-bottom',
-        'mdi-format-wrap-text-square-inline',
-        'mdi-format-wrap-text-tight-top-bottom',
-        'mdi-format-wrap-text-tight-inline',
-        'mdi-format-wrap-text-top-bottom-inline',
-        'mdi-format-wrap-text-square-tight-top-bottom',
-        'mdi-format-wrap-text-square-tight-inline',
-        'mdi-format-wrap-text-square-top-bottom-inline',
-        'mdi-format-wrap-text-tight-top-bottom-inline',
-        'mdi-format-wrap-text-square-tight-top-bottom-inline',
-    ]
+    // Curated list of ~500 most popular/useful Lucide icons
+    const popularIcons = [
+        // Files & Documents
+        'file',
+        'file-text',
+        'file-edit',
+        'file-plus',
+        'file-minus',
+        'file-x',
+        'file-check',
+        'file-search',
+        'file-code',
+        'file-image',
+        'file-video',
+        'file-audio',
+        'file-type',
+        'folder',
+        'folder-open',
+        'folder-plus',
+        'folder-minus',
+        'folder-x',
+        'folder-check',
+        'folder-search',
+        'folder-tree',
+        'folder-symlink',
+        // Database & Data
+        'database',
+        'table',
+        'table-2',
+        'columns',
+        'rows',
+        'layout-grid',
+        'layout-list',
+        // Users & People
+        'user',
+        'user-plus',
+        'user-minus',
+        'user-x',
+        'user-check',
+        'users',
+        'user-circle',
+        'user-square',
+        'user-cog',
+        'user-search',
+        // Navigation & Arrows
+        'arrow-up',
+        'arrow-down',
+        'arrow-left',
+        'arrow-right',
+        'arrow-up-down',
+        'arrow-left-right',
+        'chevron-up',
+        'chevron-down',
+        'chevron-left',
+        'chevron-right',
+        'chevrons-up',
+        'chevrons-down',
+        'chevrons-left',
+        'chevrons-right',
+        'move',
+        'move-up',
+        'move-down',
+        'move-left',
+        'move-right',
+        // Actions
+        'plus',
+        'minus',
+        'x',
+        'check',
+        'check-circle',
+        'check-square',
+        'x-circle',
+        'x-square',
+        'trash',
+        'trash-2',
+        'edit',
+        'edit-2',
+        'edit-3',
+        'pencil',
+        'pencil-line',
+        'save',
+        'download',
+        'upload',
+        'copy',
+        'clipboard',
+        'clipboard-copy',
+        'clipboard-check',
+        'scissors',
+        // Search & Filter
+        'search',
+        'filter',
+        'filter-x',
+        'sliders',
+        'sliders-horizontal',
+        // Settings & Tools
+        'settings',
+        'cog',
+        'wrench',
+        'hammer',
+        'nut',
+        // Security & Shield
+        'shield',
+        'shield-check',
+        'shield-x',
+        'shield-alert',
+        'shield-off',
+        'lock',
+        'unlock',
+        'key',
+        'key-round',
+        // Communication
+        'mail',
+        'mail-plus',
+        'mail-minus',
+        'mail-x',
+        'mail-check',
+        'message-square',
+        'message-circle',
+        'phone',
+        'phone-call',
+        'phone-incoming',
+        'phone-outgoing',
+        'phone-off',
+        'bell',
+        'bell-ring',
+        'bell-off',
+        // Media
+        'image',
+        'image-plus',
+        'image-minus',
+        'images',
+        'camera',
+        'video',
+        'video-off',
+        'music',
+        'headphones',
+        'play',
+        'play-circle',
+        'pause',
+        'pause-circle',
+        'stop-circle',
+        'skip-back',
+        'skip-forward',
+        // Time & Calendar
+        'clock',
+        'clock-1',
+        'clock-2',
+        'clock-3',
+        'clock-4',
+        'clock-5',
+        'clock-6',
+        'clock-7',
+        'clock-8',
+        'clock-9',
+        'clock-10',
+        'clock-11',
+        'clock-12',
+        'calendar',
+        'calendar-days',
+        'calendar-check',
+        'calendar-x',
+        'calendar-plus',
+        'calendar-minus',
+        'calendar-clock',
+        'timer',
+        'hourglass',
+        // Layout & UI
+        'layout',
+        'layout-dashboard',
+        'layout-grid',
+        'layout-list',
+        'layout-template',
+        'sidebar',
+        'sidebar-open',
+        'sidebar-close',
+        'menu',
+        'menu-square',
+        'panel-left',
+        'panel-right',
+        'panel-top',
+        'panel-bottom',
+        'columns-2',
+        'columns-3',
+        'columns-4',
+        'rows-2',
+        'rows-3',
+        'rows-4',
+        // Status & Indicators
+        'circle',
+        'circle-dot',
+        'square',
+        'triangle',
+        'triangle-alert',
+        'alert-circle',
+        'alert-triangle',
+        'alert-octagon',
+        'info',
+        'help-circle',
+        'check-circle-2',
+        'x-circle',
+        // Business & Finance
+        'dollar-sign',
+        'euro',
+        'pound-sterling',
+        'credit-card',
+        'wallet',
+        'receipt',
+        'shopping-cart',
+        'shopping-bag',
+        'package',
+        'box',
+        'archive',
+        // Location & Maps
+        'map',
+        'map-pin',
+        'map-pin-plus',
+        'map-pin-minus',
+        'map-pin-x',
+        'navigation',
+        'compass',
+        'globe',
+        'globe-2',
+        'home',
+        'building',
+        'building-2',
+        // Network & Connectivity
+        'wifi',
+        'wifi-off',
+        'signal',
+        'signal-zero',
+        'signal-low',
+        'signal-medium',
+        'signal-high',
+        'link',
+        'link-2',
+        'unlink',
+        'share',
+        'share-2',
+        'send',
+        'send-horizontal',
+        // Code & Development
+        'code',
+        'code-2',
+        'brackets',
+        'braces',
+        'terminal',
+        'command',
+        'git-branch',
+        'git-commit',
+        'git-merge',
+        'git-pull-request',
+        'github',
+        'gitlab',
+        // Text & Typography
+        'type',
+        'bold',
+        'italic',
+        'underline',
+        'strikethrough',
+        'align-left',
+        'align-center',
+        'align-right',
+        'align-justify',
+        'list',
+        'list-ordered',
+        'list-checks',
+        'heading-1',
+        'heading-2',
+        'heading-3',
+        'heading-4',
+        'heading-5',
+        'heading-6',
+        'quote',
+        // Charts & Analytics
+        'bar-chart',
+        'bar-chart-2',
+        'bar-chart-3',
+        'line-chart',
+        'pie-chart',
+        'trending-up',
+        'trending-down',
+        'activity',
+        // Workflow & Process
+        'workflow',
+        'git-branch',
+        'git-merge',
+        'git-pull-request',
+        'git-commit',
+        'git-fork',
+        'git-compare',
+        'git-merge',
+        'git-pull-request-closed',
+        'git-pull-request-draft',
+        // Forms & Input
+        'text-cursor',
+        'text-cursor-input',
+        'radio',
+        'toggle-left',
+        'toggle-right',
+        // Tags & Labels
+        'tag',
+        'tags',
+        'bookmark',
+        'bookmark-plus',
+        'bookmark-minus',
+        'bookmark-x',
+        'bookmark-check',
+        // Notifications & Alerts
+        'bell',
+        'bell-ring',
+        'bell-off',
+        'alert-circle',
+        'alert-triangle',
+        'alert-octagon',
+        'info',
+        'help-circle',
+        // Refresh & Sync
+        'refresh-cw',
+        'refresh-ccw',
+        'rotate-cw',
+        'rotate-ccw',
+        'repeat',
+        'repeat-1',
+        // Visibility
+        'eye',
+        'eye-off',
+        'eye-closed',
+        // Power & Control
+        'power',
+        'power-off',
+        'play',
+        'pause',
+        'skip-back',
+        'skip-forward',
+        'rewind',
+        'fast-forward',
+        // Storage & Files
+        'hard-drive',
+        'hard-drive-upload',
+        'hard-drive-download',
+        'server',
+        'server-cog',
+        'cloud',
+        'cloud-upload',
+        'cloud-download',
+        'cloud-off',
+        'cloud-rain',
+        'cloud-snow',
+        'cloud-lightning',
+        // Organization
+        'building',
+        'building-2',
+        'store',
+        'warehouse',
+        'factory',
+        // Transportation
+        'truck',
+        'car',
+        'bike',
+        'plane',
+        'ship',
+        'train',
+        'bus',
+        // Health & Medical
+        'heart',
+        'heart-pulse',
+        'activity',
+        'cross',
+        'crosshair',
+        'stethoscope',
+        // Education & Learning
+        'book',
+        'book-open',
+        'book-marked',
+        'graduation-cap',
+        'school',
+        'library',
+        'award',
+        'trophy',
+        'medal',
+        // Shopping & E-commerce
+        'shopping-cart',
+        'shopping-bag',
+        'shopping-basket',
+        'store',
+        'receipt',
+        'package',
+        'box',
+        'gift',
+        // Social & Communication
+        'message-square',
+        'message-circle',
+        'at-sign',
+        'hash',
+        // Miscellaneous
+        'star',
+        'star-off',
+        'heart',
+        'heart-off',
+        'thumbs-up',
+        'thumbs-down',
+        'flag',
+        'flag-off',
+        'bookmark',
+        'pin',
+        'pin-off',
+        'paperclip',
+        'link',
+        'unlink',
+        'share',
+        'share-2',
+        'copy',
+        'scissors',
+        'undo',
+        'redo',
+        'rotate-cw',
+        'rotate-ccw',
+        'refresh-cw',
+        'refresh-ccw',
+        'maximize',
+        'minimize',
+        'maximize-2',
+        'minimize-2',
+        'expand',
+        'shrink',
+        'zoom-in',
+        'zoom-out',
+        'move',
+        'grip',
+        'grip-vertical',
+        'grip-horizontal',
+        'mouse-pointer',
+        'mouse-pointer-click',
+        'hand',
+        'target',
+        'crosshair',
+        'focus',
+        'sparkles',
+        'zap',
+        'flame',
+        'droplet',
+        'droplets',
+        'sun',
+        'moon',
+        'sunrise',
+        'sunset',
+        'cloud',
+        'cloud-sun',
+        'cloud-moon',
+        'cloud-rain',
+        'cloud-snow',
+        'cloud-lightning',
+        'wind',
+        'tornado',
+        'rainbow',
+        'umbrella',
+        'umbrella-off',
+        'tree-pine',
+        'leaf',
+        'flower',
+        'flower-2',
+        'mountain',
+        'mountain-snow',
+        'waves',
+        'fish',
+        'bug',
+        'cat',
+        'dog',
+        'bird',
+        'rabbit',
+        'turtle',
+    ].filter((icon, index, self) => self.indexOf(icon) === index) // Remove duplicates
 
     const filteredIcons = computed(() => {
         if (!searchQuery.value) {
-            return commonIcons
+            return popularIcons
         }
-        return commonIcons.filter(icon =>
+        return popularIcons.filter(icon =>
             icon.toLowerCase().includes(searchQuery.value.toLowerCase())
         )
     })
@@ -249,3 +577,28 @@
         }
     )
 </script>
+
+<style scoped>
+    .icon-picker {
+        width: 100%;
+    }
+
+    .icon-picker-card {
+        width: 100%;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .icon-grid {
+        width: 100%;
+    }
+
+    /* Ensure icons are at 100% opacity */
+    .icon-button :deep(.lucide-icon) {
+        opacity: 1 !important;
+    }
+
+    .icon-button :deep(.v-btn__overlay) {
+        opacity: 0;
+    }
+</style>

@@ -139,22 +139,22 @@ describe('useFieldRendering', () => {
     describe('getFieldIcon', () => {
         it('should return correct icon for String field', () => {
             const { getFieldIcon } = useFieldRendering()
-            expect(getFieldIcon('String')).toBe('mdi-text')
+            expect(getFieldIcon('String')).toBe('type')
         })
 
         it('should return correct icon for Boolean field', () => {
             const { getFieldIcon } = useFieldRendering()
-            expect(getFieldIcon('Boolean')).toBe('mdi-checkbox-marked')
+            expect(getFieldIcon('Boolean')).toBe('check-square')
         })
 
         it('should return correct icon for Date field', () => {
             const { getFieldIcon } = useFieldRendering()
-            expect(getFieldIcon('Date')).toBe('mdi-calendar')
+            expect(getFieldIcon('Date')).toBe('calendar')
         })
 
         it('should return default icon for unknown field type', () => {
             const { getFieldIcon } = useFieldRendering()
-            expect(getFieldIcon('UnknownType')).toBe('mdi-text')
+            expect(getFieldIcon('UnknownType')).toBe('type')
         })
     })
 

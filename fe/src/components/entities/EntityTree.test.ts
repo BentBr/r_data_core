@@ -50,7 +50,7 @@ describe('EntityTree', () => {
             {
                 id: 'folder:/test',
                 title: 'test',
-                icon: 'mdi-folder',
+                icon: 'folder',
                 path: '/test',
                 children: [
                     {
@@ -62,7 +62,7 @@ describe('EntityTree', () => {
             },
         ]
         // Access component internals for testing
-        const vm1 = wrapper.vm as {
+        const vm1 = wrapper.vm as unknown as {
             treeItems: TreeNode[]
             loadedPaths: Set<string>
             reloadPath: (path: string) => Promise<void>
@@ -110,13 +110,13 @@ describe('EntityTree', () => {
             {
                 id: 'folder:/test',
                 title: 'test',
-                icon: 'mdi-folder',
+                icon: 'folder',
                 path: '/test',
                 children: [],
             },
         ]
         // Access component internals for testing
-        const vm2 = wrapper.vm as {
+        const vm2 = wrapper.vm as unknown as {
             treeItems: TreeNode[]
             loadedPaths: Set<string>
             reloadPath: (path: string) => Promise<void>

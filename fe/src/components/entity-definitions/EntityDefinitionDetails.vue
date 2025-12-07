@@ -5,8 +5,9 @@
     >
         <v-card-title class="d-flex align-center justify-space-between pa-4">
             <div class="d-flex align-center">
-                <v-icon
-                    :icon="definition.icon ?? 'mdi-file-document'"
+                <SmartIcon
+                    :icon="definition.icon ?? 'file-text'"
+                    :size="28"
                     class="mr-3"
                 />
                 <span class="text-h5">{{ definition.display_name }}</span>
@@ -15,19 +16,29 @@
                 <v-btn
                     color="primary"
                     variant="outlined"
-                    prepend-icon="mdi-pencil"
                     class="mr-2"
                     @click="$emit('edit')"
                 >
+                    <template #prepend>
+                        <SmartIcon
+                            icon="pencil"
+                            :size="20"
+                        />
+                    </template>
                     Edit
                 </v-btn>
 
                 <v-btn
                     color="error"
                     variant="outlined"
-                    prepend-icon="mdi-delete"
                     @click="$emit('delete')"
                 >
+                    <template #prepend>
+                        <SmartIcon
+                            icon="trash-2"
+                            :size="20"
+                        />
+                    </template>
                     {{ t('entity_definitions.delete.button') }}
                 </v-btn>
             </div>
@@ -61,84 +72,11 @@
 
                 <!-- History Tab -->
                 <v-window-item value="history">
-                    <div
-                        v-if="versions.length === 0"
-                        class="text-grey text-body-2"
-                    >
-                        {{ t('entities.details.no_versions') }}
-                    </div>
-                    <div v-else>
-                        <div class="mb-4">
-                            <div class="text-subtitle-2 mb-2">Select two versions to compare:</div>
-                            <v-list
-                                density="compact"
-                                class="version-list"
-                            >
-                                <v-list-item
-                                    v-for="version in versions"
-                                    :key="version.version_number"
-                                    :class="{
-                                        'version-selected': isVersionSelected(
-                                            version.version_number
-                                        ),
-                                        'version-item': true,
-                                    }"
-                                    @click="toggleVersionSelection(version.version_number)"
-                                >
-                                    <template v-slot:prepend>
-                                        <v-checkbox
-                                            :model-value="isVersionSelected(version.version_number)"
-                                            density="compact"
-                                            hide-details
-                                            @click.stop="
-                                                toggleVersionSelection(version.version_number)
-                                            "
-                                        />
-                                    </template>
-                                    <v-list-item-title>
-                                        Version {{ version.version_number }}
-                                    </v-list-item-title>
-                                    <v-list-item-subtitle>
-                                        {{ formatDate(version.created_at) }}
-                                        <span v-if="version.created_by_name">
-                                            • {{ version.created_by_name }}
-                                        </span>
-                                    </v-list-item-subtitle>
-                                </v-list-item>
-                            </v-list>
-                        </div>
-                        <v-divider class="my-4" />
-                        <div
-                            v-if="diffRows.length === 0 && selectedA !== null && selectedB !== null"
-                            class="text-grey text-body-2"
-                        >
-                            {{ t('entities.details.no_diff') }}
-                        </div>
-                        <v-table
-                            v-else-if="diffRows.length > 0"
-                            density="compact"
-                            class="entity-diff-table"
-                        >
-                            <thead>
-                                <tr>
-                                    <th class="text-left">Field</th>
-                                    <th class="text-left">Version {{ selectedA }}</th>
-                                    <th class="text-left">Version {{ selectedB }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr
-                                    v-for="row in diffRows"
-                                    :key="row.field"
-                                    :class="row.changed ? 'changed' : ''"
-                                >
-                                    <td class="field">{{ row.field }}</td>
-                                    <td class="val">{{ row.a }}</td>
-                                    <td class="val">{{ row.b }}</td>
-                                </tr>
-                            </tbody>
-                        </v-table>
-                    </div>
+                    <VersionHistory
+                        ref="versionHistoryRef"
+                        :versions="versions"
+                        @compare="handleVersionCompare"
+                    />
                 </v-window-item>
             </v-window>
         </v-card-text>
@@ -149,9 +87,9 @@
         variant="outlined"
     >
         <v-card-text class="text-center pa-8">
-            <v-icon
-                icon="mdi-file-document-outline"
-                size="64"
+            <SmartIcon
+                icon="file-text"
+                :size="64"
                 color="grey"
                 class="mb-4"
             />
@@ -170,6 +108,8 @@
     import { useTranslations } from '@/composables/useTranslations'
     import EntityDefinitionMetaInfo from './EntityDefinitionMetaInfo.vue'
     import EntityDefinitionFields from './EntityDefinitionFields.vue'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
+    import VersionHistory from '@/components/common/VersionHistory.vue'
     import type { EntityDefinition } from '@/types/schemas'
     import { typedHttpClient } from '@/api/typed-client'
     import { computeDiffRows } from '@/utils/versionDiff'
@@ -204,9 +144,7 @@
             created_by_name?: string | null
         }>
     >([])
-    const selectedA = ref<number | null>(null)
-    const selectedB = ref<number | null>(null)
-    const diffRows = ref<Array<{ field: string; a: string; b: string; changed: boolean }>>([])
+    const versionHistoryRef = ref<InstanceType<typeof VersionHistory>>()
 
     const loadVersions = async () => {
         if (!props.definition?.uuid) {
@@ -215,56 +153,26 @@
         try {
             const uuid = props.definition.uuid
             versions.value = await typedHttpClient.listEntityDefinitionVersions(uuid)
-            selectedA.value = null
-            selectedB.value = null
-            diffRows.value = []
         } catch (e) {
             console.error('Failed to load versions:', e)
         }
     }
 
-    const isVersionSelected = (versionNumber: number): boolean => {
-        return selectedA.value === versionNumber || selectedB.value === versionNumber
-    }
-
-    const toggleVersionSelection = async (versionNumber: number) => {
-        if (selectedA.value === versionNumber) {
-            // Deselect A
-            selectedA.value = selectedB.value
-            selectedB.value = null
-        } else if (selectedB.value === versionNumber) {
-            // Deselect B
-            selectedB.value = null
-        } else if (selectedA.value === null) {
-            // Select as A
-            selectedA.value = versionNumber
-        } else if (selectedB.value === null) {
-            // Select as B
-            selectedB.value = versionNumber
-            // Auto-load diff when both are selected
-            await loadDiff()
-        } else {
-            // Both are selected, replace A with this version
-            selectedA.value = versionNumber
-            await loadDiff()
-        }
-    }
-
-    const loadDiff = async () => {
-        diffRows.value = []
-        if (!props.definition?.uuid || selectedA.value === null || selectedB.value === null) {
+    const handleVersionCompare = async (versionA: number, versionB: number) => {
+        if (!props.definition?.uuid) {
             return
         }
         const uuid = props.definition.uuid
         try {
             const [a, b] = await Promise.all([
-                typedHttpClient.getEntityDefinitionVersion(uuid, selectedA.value),
-                typedHttpClient.getEntityDefinitionVersion(uuid, selectedB.value),
+                typedHttpClient.getEntityDefinitionVersion(uuid, versionA),
+                typedHttpClient.getEntityDefinitionVersion(uuid, versionB),
             ])
-            diffRows.value = computeDiffRows(
+            const diffRows = computeDiffRows(
                 (a.data as Record<string, unknown>) || {},
                 (b.data as Record<string, unknown>) || {}
             )
+            versionHistoryRef.value?.updateDiffRows(diffRows)
         } catch (e) {
             console.error('Failed to load diff:', e)
         }
@@ -287,41 +195,6 @@
             }
         }
     )
-
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleString()
-    }
 </script>
 
-<style scoped>
-    .version-list {
-        max-height: 400px;
-        overflow-y: auto;
-    }
-
-    .version-item {
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-
-    .version-item:hover {
-        background-color: rgba(0, 0, 0, 0.04);
-    }
-
-    .version-selected {
-        background-color: rgba(25, 118, 210, 0.08);
-    }
-
-    .entity-diff-table .changed {
-        background-color: rgba(255, 193, 7, 0.1);
-    }
-
-    .entity-diff-table .field {
-        font-weight: 500;
-    }
-
-    .entity-diff-table .val {
-        font-family: monospace;
-        font-size: 0.875rem;
-    }
-</style>
+<style scoped></style>

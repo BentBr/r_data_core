@@ -286,6 +286,7 @@ describe('EntitiesClient', () => {
                         entity_uuid: '01234567-89ab-7def-8123-456789abcdef',
                         entity_type: 'Folder',
                         has_children: true,
+                        published: true,
                     },
                 ],
                 meta: {

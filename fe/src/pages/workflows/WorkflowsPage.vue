@@ -9,6 +9,7 @@
     import EditWorkflowDialog from '@/components/workflows/EditWorkflowDialog.vue'
     import SnackbarManager from '@/components/common/SnackbarManager.vue'
     import DialogManager from '@/components/common/DialogManager.vue'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
     import { useSnackbar } from '@/composables/useSnackbar'
 
     type WorkflowSummary = {
@@ -87,7 +88,11 @@
         error.value = ''
         try {
             const response = await typedHttpClient.getWorkflows(page, perPage)
-            items.value = response.data
+            // Normalize kind from API response (Consumer/Provider) to lowercase (consumer/provider)
+            items.value = response.data.map(item => ({
+                ...item,
+                kind: (item.kind?.toLowerCase() as 'consumer' | 'provider') || 'consumer',
+            }))
             if (response.meta?.pagination) {
                 totalItems.value = response.meta.pagination.total
                 totalPages.value = response.meta.pagination.total_pages
@@ -281,7 +286,10 @@
                 >
             </div>
 
-            <v-tabs v-model="activeTab">
+            <v-tabs
+                v-model="activeTab"
+                color="primary"
+            >
                 <v-tab value="list">{{ t('table.list') ?? 'List' }}</v-tab>
                 <v-tab value="history">{{ t('workflows.history.tab') ?? 'History' }}</v-tab>
             </v-tabs>
@@ -342,14 +350,17 @@
                             </template>
                             <template #item.actions="{ item }">
                                 <v-btn
-                                    icon="mdi-play-circle"
                                     variant="text"
                                     color="primary"
                                     :title="t('workflows.actions.run_now')"
                                     @click="openRunNow(item.uuid)"
-                                />
+                                >
+                                    <SmartIcon
+                                        icon="play-circle"
+                                        :size="20"
+                                    />
+                                </v-btn>
                                 <v-btn
-                                    icon="mdi-history"
                                     variant="text"
                                     color="info"
                                     :title="t('workflows.actions.history')"
@@ -361,21 +372,34 @@
                                             void loadRuns()
                                         }
                                     "
-                                />
+                                >
+                                    <SmartIcon
+                                        icon="history"
+                                        :size="20"
+                                    />
+                                </v-btn>
                                 <v-btn
-                                    icon="mdi-pencil"
                                     variant="text"
                                     color="secondary"
                                     :title="t('common.edit')"
                                     @click="editWorkflow(item.uuid)"
-                                />
+                                >
+                                    <SmartIcon
+                                        icon="pencil"
+                                        :size="20"
+                                    />
+                                </v-btn>
                                 <v-btn
-                                    icon="mdi-delete"
                                     variant="text"
                                     color="error"
                                     :title="t('workflows.actions.delete')"
                                     @click="confirmDeleteWorkflow(item)"
-                                />
+                                >
+                                    <SmartIcon
+                                        icon="trash-2"
+                                        :size="20"
+                                    />
+                                </v-btn>
                             </template>
                         </PaginatedDataTable>
                     </div>
@@ -436,12 +460,16 @@
                     >
                         <template #item.actions="{ item }">
                             <v-btn
-                                icon="mdi-text"
                                 variant="text"
                                 color="info"
                                 :title="t('workflows.history.logs')"
                                 @click="openLogs(item.uuid)"
-                            />
+                            >
+                                <SmartIcon
+                                    icon="file-text"
+                                    :size="20"
+                                />
+                            </v-btn>
                         </template>
                     </PaginatedDataTable>
                 </v-window-item>
@@ -587,7 +615,7 @@
         padding: 16px;
     }
     .error {
-        color: #b00;
+        color: rgb(var(--v-theme-error));
     }
     .header {
         display: flex;
@@ -601,7 +629,7 @@
     }
     th,
     td {
-        border-bottom: 1px solid #ddd;
+        border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
         text-align: left;
         padding: 8px;
     }

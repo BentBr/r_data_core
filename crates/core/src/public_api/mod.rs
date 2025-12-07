@@ -57,6 +57,9 @@ pub struct BrowseNode {
     pub entity_type: Option<String>,
     /// Whether this node has children (for folders or entities with child entities)
     pub has_children: Option<bool>,
+    /// Whether the entity is published (if it is a file/entity)
+    #[serde(default)]
+    pub published: bool,
 }
 
 /// Advanced query for dynamic entities with complex filtering

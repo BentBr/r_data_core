@@ -7,9 +7,10 @@
     >
         <v-card>
             <v-card-title class="d-flex align-center">
-                <v-icon
-                    icon="mdi-check-circle"
+                <SmartIcon
+                    icon="check-circle"
                     color="success"
+                    :size="24"
                     class="mr-2"
                 />
                 {{ t('api_keys.created.title') }}
@@ -33,11 +34,15 @@
                 >
                     <template #append>
                         <v-btn
-                            icon="mdi-content-copy"
                             variant="text"
                             size="small"
                             @click="copyApiKey"
-                        />
+                        >
+                            <SmartIcon
+                                icon="copy"
+                                :size="20"
+                            />
+                        </v-btn>
                     </template>
                 </v-text-field>
 
@@ -60,6 +65,7 @@
 
 <script setup lang="ts">
     import { useTranslations } from '@/composables/useTranslations'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
 
     const { t } = useTranslations()
 

@@ -61,17 +61,15 @@
                         persistent-hint
                         :loading="loadingRoles"
                     />
-                    <v-checkbox
+                    <v-switch
                         v-model="formData.is_active"
                         :label="t('users.dialog.active')"
-                        :hint="t('users.dialog.active_hint')"
-                        persistent-hint
+                        color="primary"
                     />
-                    <v-checkbox
+                    <v-switch
                         v-model="formData.super_admin"
                         :label="t('users.dialog.super_admin')"
-                        :hint="t('users.dialog.super_admin_hint')"
-                        persistent-hint
+                        color="primary"
                     />
                 </v-form>
             </v-card-text>

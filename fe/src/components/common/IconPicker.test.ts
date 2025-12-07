@@ -42,7 +42,7 @@ describe('IconPicker', () => {
         await iconButton.trigger('click')
 
         expect(wrapper.emitted('update:modelValue')).toBeTruthy()
-        expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['mdi-file-document'])
+        expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['file'])
     })
 
     it('filters icons based on search query', async () => {

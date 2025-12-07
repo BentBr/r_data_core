@@ -335,3 +335,47 @@ async fn test_get_entity_by_type() -> Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_update_entity_published_status() -> Result<()> {
+    let mut repo = MockDynamicEntityRepo::new();
+    let mut class_repo = MockEntityDefinitionRepo::new();
+
+    let entity_def = create_test_entity_definition();
+    let mut entity = create_test_entity();
+    // Set initial published status
+    entity
+        .field_data
+        .insert("published".to_string(), json!(true));
+
+    // Setup mock entity definition repository
+    class_repo
+        .expect_get_by_entity_type()
+        .with(predicate::eq("test_entity"))
+        .returning(move |_| Ok(Some(entity_def.clone())));
+
+    // Setup mock repository response for update
+    repo.expect_update()
+        .with(predicate::function(|e: &DynamicEntity| {
+            e.entity_type == "test_entity"
+                && e.field_data
+                    .get("published")
+                    .and_then(serde_json::Value::as_bool)
+                    == Some(false)
+        }))
+        .returning(|_| Ok(()));
+
+    // Create service with proper mocks
+    let class_service = EntityDefinitionService::new_without_cache(Arc::new(class_repo));
+    let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
+
+    // Update published status to false
+    entity
+        .field_data
+        .insert("published".to_string(), json!(false));
+
+    let result = service.update_entity(&entity).await;
+    assert!(result.is_ok());
+
+    Ok(())
+}

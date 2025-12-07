@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import SmartIcon from '@/components/common/SmartIcon.vue'
 import MappingEditor from './MappingEditor.vue'
 import type { Mapping } from './dsl-utils'
 
@@ -65,27 +66,19 @@ describe('MappingEditor', () => {
 
         await nextTick()
         // Find delete button by looking for v-btn components or buttons in the table
-        const deleteButtons = wrapper.findAll('button')
-        // Vuetify buttons might be rendered as v-btn components, so try finding by component
-        const vBtns = wrapper.findAllComponents({ name: 'VBtn' })
-        const deleteBtn =
-            vBtns.find(b => {
-                const icon = b.props('icon')
-                return icon === 'mdi-delete' || icon?.includes('delete')
-            }) ??
-            deleteButtons.find(b => {
-                const attrs = b.attributes()
-                return attrs.icon === 'mdi-delete' || attrs['data-testid']?.includes('delete')
-            })
+        const deleteIcon = wrapper
+            .findAllComponents(SmartIcon)
+            .find(c => c.props('icon') === 'trash-2')
+        const deleteBtn = deleteIcon
+            ? wrapper.findAll('button').find(btn => btn.element.contains(deleteIcon.element))
+            : undefined
 
         if (deleteBtn) {
             await deleteBtn.trigger('click')
             await nextTick()
 
-            const emitted = wrapper.emitted('update:modelValue') as
-                | Array<[Record<string, string>]>
-                | undefined
-            expect(emitted?.length).toBeGreaterThan(0)
+            const emitted = wrapper.emitted('update:modelValue') ?? []
+            expect(emitted.length).toBeGreaterThan(0)
             const updatedMapping = emitted[emitted.length - 1][0] as Mapping
             expect(Object.keys(updatedMapping).length).toBeLessThan(2)
         } else {
@@ -111,10 +104,8 @@ describe('MappingEditor', () => {
             await textFields[0].vm.$emit('update:modelValue', 'new_key')
             await nextTick()
 
-            const emitted = wrapper.emitted('update:modelValue') as
-                | Array<[Record<string, string>]>
-                | undefined
-            expect(emitted?.length).toBeGreaterThan(0)
+            const emitted = wrapper.emitted('update:modelValue') ?? []
+            expect(emitted.length).toBeGreaterThan(0)
             const updatedMapping = emitted[emitted.length - 1][0] as Mapping
             expect(updatedMapping['new_key']).toBe('value')
             expect(updatedMapping['old_key']).toBeUndefined()
@@ -138,10 +129,8 @@ describe('MappingEditor', () => {
             await textFields[1].vm.$emit('update:modelValue', 'new_value')
             await nextTick()
 
-            const emitted = wrapper.emitted('update:modelValue') as
-                | Array<[Record<string, string>]>
-                | undefined
-            expect(emitted?.length).toBeGreaterThan(0)
+            const emitted = wrapper.emitted('update:modelValue') ?? []
+            expect(emitted.length).toBeGreaterThan(0)
             const updatedMapping = emitted[emitted.length - 1][0] as Mapping
             expect(updatedMapping['key']).toBe('new_value')
         }
@@ -228,10 +217,8 @@ describe('MappingEditor', () => {
             await textFields[1].vm.$emit('update:modelValue', 'normalized_field')
             await nextTick()
 
-            const emitted = wrapper.emitted('update:modelValue') as
-                | Array<[Record<string, string>]>
-                | undefined
-            expect(emitted?.length).toBeGreaterThan(0)
+            const emitted = wrapper.emitted('update:modelValue') ?? []
+            expect(emitted.length).toBeGreaterThan(0)
             const updatedMapping = emitted[emitted.length - 1][0] as Mapping
             expect(updatedMapping['source_field']).toBe('normalized_field')
         }

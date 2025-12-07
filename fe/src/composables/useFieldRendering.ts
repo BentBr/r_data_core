@@ -80,29 +80,29 @@ export function useFieldRendering() {
      */
     const getFieldIcon = (fieldType: string): string => {
         const iconMap: Record<string, string> = {
-            String: 'mdi-text',
-            Text: 'mdi-text-box',
-            Wysiwyg: 'mdi-text-box-edit',
-            Integer: 'mdi-numeric',
-            Float: 'mdi-decimal',
-            Boolean: 'mdi-checkbox-marked',
-            Date: 'mdi-calendar',
-            DateTime: 'mdi-calendar-clock',
-            Time: 'mdi-clock',
-            Email: 'mdi-email',
-            Url: 'mdi-link',
-            File: 'mdi-file',
-            Image: 'mdi-image',
-            Json: 'mdi-code-json',
-            Object: 'mdi-code-json',
-            Array: 'mdi-code-array',
-            Uuid: 'mdi-identifier',
-            ManyToOne: 'mdi-link-variant',
-            ManyToMany: 'mdi-link-variant-plus',
-            Select: 'mdi-format-list-bulleted',
-            MultiSelect: 'mdi-format-list-bulleted-square',
+            String: 'type',
+            Text: 'file-text',
+            Wysiwyg: 'file-edit',
+            Integer: 'hash',
+            Float: 'hash',
+            Boolean: 'check-square',
+            Date: 'calendar',
+            DateTime: 'calendar-clock',
+            Time: 'clock',
+            Email: 'mail',
+            Url: 'link',
+            File: 'file',
+            Image: 'image',
+            Json: 'code',
+            Object: 'code',
+            Array: 'list',
+            Uuid: 'hash',
+            ManyToOne: 'link',
+            ManyToMany: 'link-2',
+            Select: 'list-checks',
+            MultiSelect: 'list-checks',
         }
-        return iconMap[fieldType] || 'mdi-text'
+        return iconMap[fieldType] || 'type'
     }
 
     /**

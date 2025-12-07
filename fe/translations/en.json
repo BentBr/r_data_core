@@ -260,6 +260,8 @@
       "raw_data": "Raw Data",
       "formatted_data": "Formatted Data",
       "history": "History",
+      "select_versions": "Select two versions to compare:",
+      "differences": "Differences",
       "version_a": "Version A",
       "version_b": "Version B",
       "compare": "Compare",
@@ -401,6 +403,7 @@
   "common": {
     "cancel": "Cancel",
     "close": "Close",
+    "save": "Save",
     "refresh": "Refresh",
     "edit": "Edit",
     "delete": "Delete",

@@ -1,9 +1,9 @@
 <template>
     <div class="d-flex ga-2 mb-2 flex-wrap">
-        <v-checkbox
+        <v-switch
             :model-value="opts.has_header"
             :label="t('workflows.dsl.csv_header')"
-            color="success"
+            color="primary"
             density="comfortable"
             @update:model-value="updateField('has_header', $event)"
         />
