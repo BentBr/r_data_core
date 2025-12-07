@@ -1,15 +1,15 @@
 <template>
     <v-dialog
         :model-value="modelValue"
-        max-width="900px"
+        :max-width="getDialogMaxWidth('form')"
         persistent
         @update:model-value="$emit('update:modelValue', $event)"
     >
         <v-card>
-            <v-card-title>
+            <v-card-title class="pa-6">
                 {{ editingRole ? t('roles.dialog.edit_title') : t('roles.dialog.create_title') }}
             </v-card-title>
-            <v-card-text>
+            <v-card-text class="pa-6">
                 <v-form
                     ref="formRef"
                     v-model="formValid"
@@ -67,23 +67,25 @@
                         <template #prepend>
                             <SmartIcon
                                 icon="plus"
-                                :size="20"
+                                size="sm"
                             />
                         </template>
                         {{ t('roles.dialog.add_permission') }}
                     </v-btn>
                 </v-form>
             </v-card-text>
-            <v-card-actions>
+            <v-card-actions class="pa-4 px-6">
                 <v-spacer />
                 <v-btn
                     variant="text"
+                    color="mutedForeground"
                     @click="handleClose"
                 >
                     {{ t('roles.dialog.cancel') }}
                 </v-btn>
                 <v-btn
                     color="primary"
+                    variant="flat"
                     :loading="loading"
                     :disabled="!formValid"
                     @click="handleSave"
@@ -99,6 +101,7 @@
     import SmartIcon from '@/components/common/SmartIcon.vue'
     import { ref, watch } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
+    import { getDialogMaxWidth } from '@/design-system/components'
     import PermissionEditor from './PermissionEditor.vue'
 
     const { t } = useTranslations()

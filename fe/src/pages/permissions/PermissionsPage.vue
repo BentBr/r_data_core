@@ -77,6 +77,7 @@
                                     :has-previous="usersPaginationMeta?.has_previous"
                                     @update:page="handleUsersPageChange"
                                     @update:items-per-page="handleUsersItemsPerPageChange"
+                                    @update:sort="handleUsersSortChange"
                                 >
                                     <!-- Username Column -->
                                     <template #item.username="{ item }">
@@ -100,7 +101,7 @@
                                     <!-- Roles Column -->
                                     <template #item.roles="{ item }">
                                         <div class="d-flex gap-1 flex-wrap">
-                                            <v-chip
+                                            <Badge
                                                 v-for="roleName in getRoleNamesForUser(item)"
                                                 :key="roleName"
                                                 size="small"
@@ -108,7 +109,7 @@
                                                 variant="outlined"
                                             >
                                                 {{ roleName }}
-                                            </v-chip>
+                                            </Badge>
                                             <span
                                                 v-if="getRoleNamesForUser(item).length === 0"
                                                 class="text-body-2 text-medium-emphasis"
@@ -123,16 +124,16 @@
 
                                     <!-- Status Column -->
                                     <template #item.is_active="{ item }">
-                                        <v-chip
+                                        <Badge
                                             size="small"
-                                            :color="item.is_active ? 'success' : 'error'"
+                                            :status="item.is_active ? 'success' : 'error'"
                                         >
                                             {{
                                                 item.is_active
                                                     ? t('permissions.page.users.status.active')
                                                     : t('permissions.page.users.status.inactive')
                                             }}
-                                        </v-chip>
+                                        </Badge>
                                     </template>
 
                                     <!-- Actions Column -->
@@ -200,6 +201,7 @@
                                     :has-previous="paginationMeta?.has_previous"
                                     @update:page="handlePageChange"
                                     @update:items-per-page="handleItemsPerPageChange"
+                                    @update:sort="handleSortChange"
                                 >
                                     <!-- Name Column -->
                                     <template #item.name="{ item }">
@@ -228,7 +230,7 @@
 
                                     <!-- Permissions Count Column -->
                                     <template #item.permissions_count="{ item }">
-                                        <v-chip
+                                        <Badge
                                             size="small"
                                             color="primary"
                                             variant="outlined"
@@ -241,7 +243,7 @@
                                                     : t('permissions.page.roles.permissions') ||
                                                       'permissions'
                                             }}
-                                        </v-chip>
+                                        </Badge>
                                     </template>
 
                                     <!-- Created At Column -->
@@ -359,6 +361,7 @@
     import RoleDialog from '@/components/permissions/RoleDialog.vue'
     import UserDialog from '@/components/users/UserDialog.vue'
     import SmartIcon from '@/components/common/SmartIcon.vue'
+    import Badge from '@/components/common/Badge.vue'
     import { useSnackbar } from '@/composables/useSnackbar'
     import { useUsers } from '@/composables/useUsers'
     import { usePagination } from '@/composables/usePagination'
@@ -450,6 +453,12 @@
         has_previous: boolean
         has_next: boolean
     } | null>(null)
+    const sortBy = ref<string | null>(null)
+    const sortOrder = ref<'asc' | 'desc' | null>(null)
+    
+    // Users sorting
+    const usersSortBy = ref<string | null>(null)
+    const usersSortOrder = ref<'asc' | 'desc' | null>(null)
 
     // Options
     const resourceTypes: ResourceNamespace[] = [
@@ -551,7 +560,7 @@
     // Methods
     const loadRoles = async (page = 1, perPage = 20) => {
         try {
-            const response = await loadRolesFromComposable(page, perPage)
+            const response = await loadRolesFromComposable(page, perPage, sortBy.value, sortOrder.value)
             if (response.meta?.pagination) {
                 totalItems.value = response.meta.pagination.total
                 totalPages.value = response.meta.pagination.total_pages
@@ -578,6 +587,14 @@
         currentPage.value = 1
         setPage(1)
         await loadRoles(1, newItemsPerPage)
+    }
+
+    const handleSortChange = async (newSortBy: string | null, newSortOrder: 'asc' | 'desc' | null) => {
+        sortBy.value = newSortBy
+        sortOrder.value = newSortOrder
+        currentPage.value = 1
+        setPage(1)
+        await loadRoles(1, itemsPerPage.value)
     }
 
     const openCreateDialog = () => {
@@ -641,7 +658,7 @@
     // User management methods
     const loadUsers = async (page = 1, perPage = 20) => {
         try {
-            const response = await loadUsersFromComposable(page, perPage)
+            const response = await loadUsersFromComposable(page, perPage, usersSortBy.value, usersSortOrder.value)
             if (response.meta?.pagination) {
                 usersTotalItems.value = response.meta.pagination.total
                 usersTotalPages.value = response.meta.pagination.total_pages
@@ -668,6 +685,14 @@
         usersCurrentPage.value = 1
         setUsersPage(1)
         await loadUsers(1, newItemsPerPage)
+    }
+
+    const handleUsersSortChange = async (newSortBy: string | null, newSortOrder: 'asc' | 'desc' | null) => {
+        usersSortBy.value = newSortBy
+        usersSortOrder.value = newSortOrder
+        usersCurrentPage.value = 1
+        setUsersPage(1)
+        await loadUsers(1, usersItemsPerPage.value)
     }
 
     const openCreateUserDialog = () => {

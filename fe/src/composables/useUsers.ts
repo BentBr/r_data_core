@@ -10,12 +10,17 @@ export function useUsers() {
     const error = ref('')
     const users = ref<UserResponse[]>([])
 
-    const loadUsers = async (page = 1, perPage = 20) => {
+    const loadUsers = async (
+        page = 1,
+        perPage = 20,
+        sortBy?: string | null,
+        sortOrder?: 'asc' | 'desc' | null
+    ) => {
         loading.value = true
         error.value = ''
 
         try {
-            const response = await typedHttpClient.getUsers(page, perPage)
+            const response = await typedHttpClient.getUsers(page, perPage, sortBy, sortOrder)
             users.value = response.data
             return response
         } catch (err) {

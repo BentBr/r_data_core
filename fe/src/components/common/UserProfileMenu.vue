@@ -86,14 +86,14 @@
                 </template>
                 <v-list-item-title>{{ t('general.theme.mode') }}</v-list-item-title>
                 <template v-slot:append>
-                    <v-chip
+                    <Badge
                         size="small"
                         variant="outlined"
                         class="cursor-pointer"
                         @click="toggleTheme"
                     >
                         {{ getThemeDisplayName() }}
-                    </v-chip>
+                    </Badge>
                 </template>
             </v-list-item>
 
@@ -124,6 +124,7 @@
     import { useTranslations } from '@/composables/useTranslations'
     import { useTheme } from '@/composables/useTheme'
     import SmartIcon from '@/components/common/SmartIcon.vue'
+    import Badge from '@/components/common/Badge.vue'
 
     const router = useRouter()
     const authStore = useAuthStore()

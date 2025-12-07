@@ -1,13 +1,13 @@
 <template>
     <v-dialog
         v-model="showDialog"
-        max-width="800px"
+        :max-width="getDialogMaxWidth('form')"
     >
         <v-card>
-            <v-card-title class="text-h5 pa-4">
+            <v-card-title class="text-h5 pa-6">
                 {{ t('entity_definitions.create.title') }}
             </v-card-title>
-            <v-card-text>
+            <v-card-text class="pa-6">
                 <v-form
                     ref="formRef"
                     v-model="formValid"
@@ -79,17 +79,18 @@
                     </v-row>
                 </v-form>
             </v-card-text>
-            <v-card-actions class="pa-4">
+            <v-card-actions class="pa-4 px-6">
                 <v-spacer />
                 <v-btn
-                    color="grey"
                     variant="text"
+                    color="mutedForeground"
                     @click="closeDialog"
                 >
                     {{ t('common.cancel') }}
                 </v-btn>
                 <v-btn
-                    :color="formValid ? 'success' : 'primary'"
+                    color="primary"
+                    variant="flat"
                     :loading="loading"
                     :disabled="!formValid"
                     @click="createEntityDefinition"
@@ -105,6 +106,7 @@
     import { ref, computed } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import IconPicker from '@/components/common/IconPicker.vue'
+    import { getDialogMaxWidth } from '@/design-system/components'
     import type { CreateEntityDefinitionRequest } from '@/types/schemas'
 
     interface Props {

@@ -26,19 +26,19 @@
         </template>
 
         <template #item.status="{ item }">
-            <v-chip
-                :color="getStatusColor(item.status)"
+            <Badge
+                :status="item.status"
                 size="small"
             >
                 {{ item.status }}
-            </v-chip>
+            </Badge>
         </template>
 
         <template #item.published="{ item }">
             <SmartIcon
                 :icon="item.published ? 'check-circle' : 'x-circle'"
                 :color="item.published ? 'success' : 'grey'"
-                :size="20"
+                size="sm"
             />
         </template>
 
@@ -46,7 +46,7 @@
             <SmartIcon
                 :icon="item.required ? 'check-circle' : 'x-circle'"
                 :color="item.required ? 'success' : 'grey'"
-                :size="20"
+                size="sm"
             />
         </template>
 
@@ -54,7 +54,7 @@
             <SmartIcon
                 :icon="item.indexed ? 'check-circle' : 'x-circle'"
                 :color="item.indexed ? 'success' : 'grey'"
-                :size="20"
+                size="sm"
             />
         </template>
 
@@ -62,17 +62,17 @@
             <SmartIcon
                 :icon="item.filterable ? 'check-circle' : 'x-circle'"
                 :color="item.filterable ? 'success' : 'grey'"
-                :size="20"
+                size="sm"
             />
         </template>
 
         <template #item.field_type="{ item }">
-            <v-chip
-                size="x-small"
+            <Badge
                 color="primary"
+                size="small"
             >
                 {{ item.field_type }}
-            </v-chip>
+            </Badge>
         </template>
 
         <template #item.created_at="{ item }">
@@ -95,6 +95,7 @@
 
 <script setup lang="ts">
     import SmartIcon from '@/components/common/SmartIcon.vue'
+    import Badge from '@/components/common/Badge.vue'
 
     interface Props {
         headers: Array<{ title: string; key: string; sortable?: boolean; align?: string }>
@@ -121,16 +122,6 @@
 
     const handleOptionsUpdate = (options: Record<string, unknown>) => {
         emit('update:options', options)
-    }
-
-    const getStatusColor = (status: string) => {
-        const colorMap: Record<string, string> = {
-            active: 'success',
-            inactive: 'error',
-            expired: 'warning',
-            revoked: 'error',
-        }
-        return colorMap[status] || 'grey'
     }
 
     const formatDate = (dateString?: string) => {

@@ -127,3 +127,75 @@ export const vuetifyTheme = {
         dark: darkTheme,
     },
 } as const
+
+/**
+ * Vuetify component defaults
+ * These ensure consistent styling across all components
+ */
+export const vuetifyDefaults = {
+    VBtn: {
+        variant: 'flat',
+        color: 'primary',
+        size: 'default',
+        style: 'border-radius: 8px;',
+    },
+    VTextField: {
+        variant: 'outlined',
+        density: 'comfortable',
+        color: 'primary',
+        style: 'border-radius: 8px;',
+    },
+    VSelect: {
+        variant: 'outlined',
+        density: 'comfortable',
+        color: 'primary',
+        style: 'border-radius: 8px;',
+    },
+    VTextarea: {
+        variant: 'outlined',
+        density: 'comfortable',
+        color: 'primary',
+        style: 'border-radius: 8px;',
+    },
+    VAutocomplete: {
+        variant: 'outlined',
+        density: 'comfortable',
+        color: 'primary',
+        style: 'border-radius: 8px;',
+    },
+    VCombobox: {
+        variant: 'outlined',
+        density: 'comfortable',
+        color: 'primary',
+        style: 'border-radius: 8px;',
+    },
+    VFileInput: {
+        variant: 'outlined',
+        density: 'comfortable',
+        color: 'primary',
+        style: 'border-radius: 8px;',
+    },
+    VChip: {
+        variant: 'flat',
+        size: 'default',
+        style: 'border-radius: 9999px;',
+    },
+    VDialog: {
+        maxWidth: '600px',
+        persistent: false,
+    },
+    VCard: {
+        elevation: 2,
+        style: 'border-radius: 12px;',
+    },
+    VSwitch: {
+        color: 'primary',
+        inset: true,
+    },
+    VCheckbox: {
+        color: 'primary',
+    },
+    VRadio: {
+        color: 'primary',
+    },
+} as const

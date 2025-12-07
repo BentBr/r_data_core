@@ -41,6 +41,7 @@
                             :has-previous="paginationMeta?.has_previous"
                             @update:page="handlePageChange"
                             @update:items-per-page="handleItemsPerPageChange"
+                            @update:sort="handleSortChange"
                         >
                             <!-- Name Column -->
                             <template #item.name="{ item }">
@@ -68,11 +69,12 @@
 
                             <!-- Status Column -->
                             <template #item.is_active="{ item }">
-                                <v-chip
-                                    :color="item.is_active ? 'success' : 'error'"
-                                    :text="item.is_active ? 'Active' : 'Inactive'"
+                                <Badge
+                                    :status="item.is_active ? 'success' : 'error'"
                                     size="small"
-                                />
+                                >
+                                    {{ item.is_active ? 'Active' : 'Inactive' }}
+                                </Badge>
                             </template>
 
                             <!-- Created At Column -->
@@ -230,6 +232,7 @@
     import SnackbarManager from '@/components/common/SnackbarManager.vue'
     import PaginatedDataTable from '@/components/tables/PaginatedDataTable.vue'
     import SmartIcon from '@/components/common/SmartIcon.vue'
+import Badge from '@/components/common/Badge.vue'
 
     const authStore = useAuthStore()
     const route = useRoute()
@@ -249,6 +252,8 @@
     const selectedKey = ref<ApiKey | null>(null)
     const keyToRevoke = ref<ApiKey | null>(null)
     const createdApiKey = ref('')
+    const sortBy = ref<string | null>(null)
+    const sortOrder = ref<'asc' | 'desc' | null>(null)
 
     // Pagination state with persistence
     const { state: paginationState, setPage, setItemsPerPage } = usePagination('api-keys', 10)
@@ -321,8 +326,8 @@
         error.value = ''
 
         try {
-            console.log(`Loading API keys: page=${page}, itemsPerPage=${itemsPerPage}`)
-            const response = await typedHttpClient.getApiKeys(page, itemsPerPage)
+            console.log(`Loading API keys: page=${page}, itemsPerPage=${itemsPerPage}, sortBy=${sortBy.value}, sortOrder=${sortOrder.value}`)
+            const response = await typedHttpClient.getApiKeys(page, itemsPerPage, sortBy.value, sortOrder.value)
             apiKeys.value = response.data
             if (response.meta?.pagination) {
                 totalItems.value = response.meta.pagination.total
@@ -357,6 +362,16 @@
         currentPage.value = 1
         setPage(1)
         await loadApiKeys(1, newItemsPerPage)
+    }
+
+    const handleSortChange = async (newSortBy: string | null, newSortOrder: 'asc' | 'desc' | null) => {
+        console.log('Sort changed:', newSortBy, newSortOrder)
+        sortBy.value = newSortBy
+        sortOrder.value = newSortOrder
+        // Reset to first page when sorting changes
+        currentPage.value = 1
+        setPage(1)
+        await loadApiKeys(1, itemsPerPage.value)
     }
 
     const createApiKey = async (requestData: CreateApiKeyRequest) => {

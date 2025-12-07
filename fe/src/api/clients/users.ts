@@ -6,7 +6,9 @@ import { BaseTypedHttpClient } from './base'
 export class UsersClient extends BaseTypedHttpClient {
     async getUsers(
         page = 1,
-        itemsPerPage = 20
+        itemsPerPage = 20,
+        sortBy?: string | null,
+        sortOrder?: 'asc' | 'desc' | null
     ): Promise<{
         data: UserResponse[]
         meta?: {
@@ -23,8 +25,12 @@ export class UsersClient extends BaseTypedHttpClient {
             custom?: unknown
         }
     }> {
+        let url = `/admin/api/v1/users?page=${page}&per_page=${itemsPerPage}`
+        if (sortBy && sortOrder) {
+            url += `&sort_by=${sortBy}&sort_order=${sortOrder}`
+        }
         const response = await this.paginatedRequest(
-            `/admin/api/v1/users?page=${page}&per_page=${itemsPerPage}`,
+            url,
             PaginatedApiResponseSchema(z.array(UserResponseSchema))
         )
         return response

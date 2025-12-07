@@ -97,6 +97,7 @@
     interface Emits {
         (e: 'update:page', page: number): void
         (e: 'update:items-per-page', itemsPerPage: number): void
+        (e: 'update:sort', sortBy: string | null, sortOrder: 'asc' | 'desc' | null): void
     }
 
     const props = withDefaults(defineProps<Props>(), {
@@ -110,6 +111,7 @@
     const tableOptions = ref({
         page: props.currentPage,
         itemsPerPage: props.itemsPerPage,
+        sortBy: [] as Array<{ key: string; order: 'asc' | 'desc' }>,
     })
 
     // Watch for prop changes and update tableOptions
@@ -117,6 +119,7 @@
         () => [props.currentPage, props.itemsPerPage],
         ([page, itemsPerPage]) => {
             tableOptions.value = {
+                ...tableOptions.value,
                 page: page as number,
                 itemsPerPage: itemsPerPage as number,
             }
@@ -125,12 +128,31 @@
     )
 
     // Methods
-    const handleOptionsUpdate = (options: { page: number; itemsPerPage: number }) => {
+    const handleOptionsUpdate = (options: {
+        page: number
+        itemsPerPage: number
+        sortBy?: Array<{ key: string; order: 'asc' | 'desc' }>
+    }) => {
         if (options.page !== props.currentPage) {
             emit('update:page', options.page)
         }
         if (options.itemsPerPage !== props.itemsPerPage) {
             emit('update:items-per-page', options.itemsPerPage)
+        }
+        
+        // Handle sorting
+        if (options.sortBy && options.sortBy.length > 0) {
+            const sort = options.sortBy[0]
+            emit('update:sort', sort.key, sort.order)
+        } else {
+            emit('update:sort', null, null)
+        }
+        
+        // Update local state
+        tableOptions.value = {
+            page: options.page,
+            itemsPerPage: options.itemsPerPage,
+            sortBy: options.sortBy || [],
         }
     }
 </script>

@@ -1,20 +1,20 @@
 <template>
     <v-dialog
         v-model="dialogVisible"
-        max-width="800px"
+        :max-width="getDialogMaxWidth('form')"
         persistent
     >
         <v-card>
-            <v-card-title class="d-flex align-center pa-4">
+            <v-card-title class="d-flex align-center pa-6">
                 <SmartIcon
                     icon="pencil"
-                    :size="24"
+                    size="md"
                     class="mr-3"
                 />
                 {{ t('entities.edit.title') }}
             </v-card-title>
 
-            <v-card-text class="pa-4">
+            <v-card-text class="pa-6">
                 <v-form
                     ref="form"
                     v-model="isValid"
@@ -82,10 +82,11 @@
                 </v-form>
             </v-card-text>
 
-            <v-card-actions class="pa-4">
+            <v-card-actions class="pa-4 px-6">
                 <v-spacer />
                 <v-btn
                     variant="text"
+                    color="mutedForeground"
                     :disabled="loading"
                     @click="closeDialog"
                 >
@@ -93,6 +94,7 @@
                 </v-btn>
                 <v-btn
                     color="primary"
+                    variant="flat"
                     :loading="loading"
                     :disabled="!isValid"
                     @click="updateEntity"
@@ -108,6 +110,7 @@
     import { ref, computed, watch } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import SmartIcon from '@/components/common/SmartIcon.vue'
+    import { getDialogMaxWidth } from '@/design-system/components'
     import type {
         DynamicEntity,
         EntityDefinition,

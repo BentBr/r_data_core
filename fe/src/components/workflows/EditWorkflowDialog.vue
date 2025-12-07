@@ -1,11 +1,11 @@
 <template>
     <v-dialog
         v-model="model"
-        max-width="1200px"
+        :max-width="getDialogMaxWidth('wide')"
     >
         <v-card>
-            <v-card-title>Edit Workflow</v-card-title>
-            <v-card-text>
+            <v-card-title class="pa-6">Edit Workflow</v-card-title>
+            <v-card-text class="pa-6">
                 <v-tabs v-model="activeTab">
                     <v-tab value="edit">Edit</v-tab>
                     <v-tab value="history">{{ t('entities.details.history') }}</v-tab>
@@ -111,15 +111,17 @@
                     </v-window-item>
                 </v-window>
             </v-card-text>
-            <v-card-actions>
+            <v-card-actions class="pa-4 px-6">
                 <v-spacer />
                 <v-btn
                     variant="text"
+                    color="mutedForeground"
                     @click="cancel"
                     >Cancel</v-btn
                 >
                 <v-btn
                     color="primary"
+                    variant="flat"
                     :loading="loading"
                     @click="submit"
                     >Save</v-btn
@@ -133,6 +135,7 @@
     import { computed, ref, watch } from 'vue'
     import { typedHttpClient } from '@/api/typed-client'
     import { ValidationError } from '@/api/typed-client'
+    import { getDialogMaxWidth } from '@/design-system/components'
     import DslConfigurator from './DslConfigurator.vue'
     import VersionHistory from '@/components/common/VersionHistory.vue'
     import { useTranslations } from '@/composables/useTranslations'

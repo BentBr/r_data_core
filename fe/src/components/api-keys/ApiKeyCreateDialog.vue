@@ -1,13 +1,13 @@
 <template>
     <v-dialog
         :model-value="modelValue"
-        max-width="500px"
+        :max-width="getDialogMaxWidth('default')"
         @update:model-value="$emit('update:modelValue', $event)"
         @after-enter="focusNameField"
     >
         <v-card>
-            <v-card-title>{{ t('api_keys.create.title') }}</v-card-title>
-            <v-card-text>
+            <v-card-title class="pa-6">{{ t('api_keys.create.title') }}</v-card-title>
+            <v-card-text class="pa-6">
                 <v-form
                     ref="createForm"
                     v-model="createFormValid"
@@ -35,17 +35,18 @@
                     />
                 </v-form>
             </v-card-text>
-            <v-card-actions>
+            <v-card-actions class="pa-4 px-6">
                 <v-spacer />
                 <v-btn
-                    color="grey"
                     variant="text"
+                    color="mutedForeground"
                     @click="closeDialog"
                 >
                     {{ t('common.cancel') }}
                 </v-btn>
                 <v-btn
                     color="primary"
+                    variant="flat"
                     :loading="loading"
                     :disabled="!createFormValid"
                     @click="createApiKey"
@@ -60,6 +61,7 @@
 <script setup lang="ts">
     import { ref, watch, nextTick } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
+    import { getDialogMaxWidth } from '@/design-system/components'
     import type { CreateApiKeyRequest } from '@/types/schemas'
 
     const { t } = useTranslations()

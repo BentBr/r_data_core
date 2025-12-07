@@ -1,12 +1,12 @@
 <template>
     <v-dialog
         :model-value="modelValue"
-        max-width="600px"
+        :max-width="getDialogMaxWidth('default')"
         @update:model-value="$emit('update:modelValue', $event)"
     >
         <v-card>
-            <v-card-title>{{ t('api_keys.view.title') }}</v-card-title>
-            <v-card-text>
+            <v-card-title class="pa-6">{{ t('api_keys.view.title') }}</v-card-title>
+            <v-card-text class="pa-6">
                 <div v-if="apiKey">
                     <v-list>
                         <v-list-item>
@@ -14,7 +14,7 @@
                                 <div class="mr-3">
                                     <SmartIcon
                                         icon="key"
-                                        :size="20"
+                                        size="sm"
                                     />
                                 </div>
                             </template>
@@ -26,7 +26,7 @@
                                 <div class="mr-3">
                                     <SmartIcon
                                         icon="type"
-                                        :size="20"
+                                        size="sm"
                                     />
                                 </div>
                             </template>
@@ -40,7 +40,7 @@
                                 <div class="mr-3">
                                     <SmartIcon
                                         icon="calendar"
-                                        :size="20"
+                                        size="sm"
                                     />
                                 </div>
                             </template>
@@ -54,7 +54,7 @@
                                 <div class="mr-3">
                                     <SmartIcon
                                         icon="calendar-clock"
-                                        :size="20"
+                                        size="sm"
                                     />
                                 </div>
                             </template>
@@ -68,7 +68,7 @@
                                 <div class="mr-3">
                                     <SmartIcon
                                         icon="clock"
-                                        :size="20"
+                                        size="sm"
                                     />
                                 </div>
                             </template>
@@ -82,10 +82,11 @@
                     </v-list>
                 </div>
             </v-card-text>
-            <v-card-actions>
+            <v-card-actions class="pa-4 px-6">
                 <v-spacer />
                 <v-btn
                     color="primary"
+                    variant="flat"
                     @click="$emit('update:modelValue', false)"
                 >
                     {{ t('common.close') }}
@@ -98,6 +99,7 @@
 <script setup lang="ts">
     import { useTranslations } from '@/composables/useTranslations'
     import SmartIcon from '@/components/common/SmartIcon.vue'
+    import { getDialogMaxWidth } from '@/design-system/components'
     import type { ApiKey } from '@/types/schemas'
 
     const { t } = useTranslations()

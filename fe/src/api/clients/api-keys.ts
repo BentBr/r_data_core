@@ -16,7 +16,9 @@ import { BaseTypedHttpClient } from './base'
 export class ApiKeysClient extends BaseTypedHttpClient {
     async getApiKeys(
         page = 1,
-        itemsPerPage = 10
+        itemsPerPage = 10,
+        sortBy?: string | null,
+        sortOrder?: 'asc' | 'desc' | null
     ): Promise<{
         data: ApiKey[]
         meta?: {
@@ -33,8 +35,12 @@ export class ApiKeysClient extends BaseTypedHttpClient {
             custom?: unknown
         }
     }> {
+        let url = `/admin/api/v1/api-keys?page=${page}&per_page=${itemsPerPage}`
+        if (sortBy && sortOrder) {
+            url += `&sort_by=${sortBy}&sort_order=${sortOrder}`
+        }
         const response = await this.paginatedRequest(
-            `/admin/api/v1/api-keys?page=${page}&per_page=${itemsPerPage}`,
+            url,
             PaginatedApiResponseSchema(z.array(ApiKeySchema))
         )
         return response

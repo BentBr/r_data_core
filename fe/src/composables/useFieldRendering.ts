@@ -1,11 +1,18 @@
 import { useTranslations } from './useTranslations'
 import type { FieldDefinition } from '@/types/schemas'
 
+/**
+ * Field rendering utilities
+ *
+ * Note: All returned Vuetify components automatically use standardized styling
+ * from the design system defaults configured in fe/src/design-system/theme.ts
+ */
 export function useFieldRendering() {
     const { t } = useTranslations()
 
     /**
      * Maps field types to Vuetify components
+     * All components use standardized styling via Vuetify defaults
      */
     const getFieldComponent = (fieldType: string): string => {
         const componentMap: Record<string, string> = {

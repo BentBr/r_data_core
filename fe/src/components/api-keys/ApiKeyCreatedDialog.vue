@@ -1,21 +1,21 @@
 <template>
     <v-dialog
         :model-value="modelValue"
-        max-width="600px"
+        :max-width="getDialogMaxWidth('default')"
         persistent
         @update:model-value="$emit('update:modelValue', $event)"
     >
         <v-card>
-            <v-card-title class="d-flex align-center">
+            <v-card-title class="d-flex align-center pa-6">
                 <SmartIcon
                     icon="check-circle"
                     color="success"
-                    :size="24"
+                    size="md"
                     class="mr-2"
                 />
                 {{ t('api_keys.created.title') }}
             </v-card-title>
-            <v-card-text>
+            <v-card-text class="pa-6">
                 <v-alert
                     type="warning"
                     variant="tonal"
@@ -40,7 +40,7 @@
                         >
                             <SmartIcon
                                 icon="copy"
-                                :size="20"
+                                size="sm"
                             />
                         </v-btn>
                     </template>
@@ -50,10 +50,11 @@
                     {{ t('api_keys.created.description') }}
                 </p>
             </v-card-text>
-            <v-card-actions>
+            <v-card-actions class="pa-4 px-6">
                 <v-spacer />
                 <v-btn
                     color="primary"
+                    variant="flat"
                     @click="$emit('update:modelValue', false)"
                 >
                     {{ t('common.close') }}
@@ -66,6 +67,7 @@
 <script setup lang="ts">
     import { useTranslations } from '@/composables/useTranslations'
     import SmartIcon from '@/components/common/SmartIcon.vue'
+    import { getDialogMaxWidth } from '@/design-system/components'
 
     const { t } = useTranslations()
 

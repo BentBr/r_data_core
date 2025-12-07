@@ -64,17 +64,17 @@
                         </div>
                     </div>
                     <div class="d-flex align-center">
-                        <v-chip
-                            size="x-small"
+                        <Badge
                             color="primary"
+                            size="small"
                             class="mr-2"
                         >
                             {{ item.field_type }}
-                        </v-chip>
+                        </Badge>
                         <SmartIcon
                             v-if="item.required"
                             icon="check-circle"
-                            :size="20"
+                            size="sm"
                             class="mr-1 text-success"
                         />
                         <SmartIcon
@@ -121,6 +121,7 @@
     import { computed } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import SmartIcon from '@/components/common/SmartIcon.vue'
+    import Badge from '@/components/common/Badge.vue'
     import type { EntityDefinition, FieldDefinition } from '@/types/schemas'
 
     interface Props {

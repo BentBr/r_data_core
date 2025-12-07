@@ -212,3 +212,160 @@ export const zIndex = {
     popover: 1060,
     tooltip: 1070,
 } as const
+
+/**
+ * Component-specific design tokens
+ */
+
+/**
+ * Button component tokens
+ */
+export const buttonTokens = {
+    variants: {
+        primary: {
+            color: 'primary',
+            variant: 'flat',
+        },
+        secondary: {
+            color: 'secondary',
+            variant: 'outlined',
+        },
+        outlined: {
+            variant: 'outlined',
+        },
+        text: {
+            variant: 'text',
+        },
+        destructive: {
+            color: 'error',
+            variant: 'flat',
+        },
+    },
+    sizes: {
+        small: 'small',
+        default: 'default',
+        large: 'large',
+    },
+    borderRadius: borderRadius.lg,
+    minWidth: '80px',
+    padding: {
+        small: `${spacing.xs} ${spacing.sm}`,
+        default: `${spacing.sm} ${spacing.md}`,
+        large: `${spacing.md} ${spacing.lg}`,
+    },
+} as const
+
+/**
+ * Input field component tokens
+ */
+export const inputTokens = {
+    variant: 'outlined',
+    density: 'comfortable',
+    borderRadius: borderRadius.lg,
+    focusColor: 'primary',
+    padding: {
+        horizontal: spacing.md,
+        vertical: spacing.sm,
+    },
+    borderWidth: '1px',
+    fontSize: typography.fontSize.base,
+    lineHeight: typography.lineHeight.normal,
+} as const
+
+/**
+ * Badge/Chip component tokens
+ */
+export const badgeTokens = {
+    sizes: {
+        small: 'small',
+        default: 'default',
+        large: 'large',
+    },
+    borderRadius: borderRadius.full,
+    padding: {
+        small: `${spacing.xs} ${spacing.sm}`,
+        default: `${spacing.xs} ${spacing.md}`,
+        large: `${spacing.sm} ${spacing.md}`,
+    },
+    statusColors: {
+        success: 'success',
+        error: 'error',
+        warning: 'warning',
+        info: 'info',
+        default: 'muted',
+    },
+    variant: 'flat',
+} as const
+
+/**
+ * Dialog/Overlay component tokens
+ */
+export const dialogTokens = {
+    maxWidths: {
+        small: '400px',
+        default: '600px',
+        form: '800px',
+        wide: '1200px',
+    },
+    padding: {
+        card: spacing.lg,
+        actions: spacing.md,
+        content: spacing.lg,
+    },
+    borderRadius: borderRadius.xl,
+    elevation: 8,
+    backdropOpacity: 0.5,
+    spacing: {
+        betweenElements: spacing.md,
+        buttonGap: spacing.sm,
+    },
+} as const
+
+/**
+ * Form element tokens
+ */
+export const formTokens = {
+    spacing: {
+        fieldGap: spacing.md,
+        sectionGap: spacing.lg,
+        labelMargin: spacing.xs,
+        hintMargin: spacing.xs,
+    },
+    label: {
+        fontSize: typography.fontSize.sm,
+        fontWeight: typography.fontWeight.medium,
+        color: 'mutedForeground',
+    },
+    error: {
+        fontSize: typography.fontSize.xs,
+        color: 'error',
+    },
+    hint: {
+        fontSize: typography.fontSize.xs,
+        color: 'mutedForeground',
+    },
+} as const
+
+/**
+ * Card component tokens
+ */
+export const cardTokens = {
+    borderRadius: borderRadius.xl,
+    elevation: 2,
+    padding: spacing.lg,
+    spacing: {
+        title: spacing.md,
+        content: spacing.md,
+        actions: spacing.md,
+    },
+} as const
+
+/**
+ * Switch/Checkbox component tokens
+ */
+export const switchTokens = {
+    color: 'primary',
+    size: 'default',
+    inset: true,
+    spacing: spacing.md,
+} as const

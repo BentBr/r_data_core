@@ -1,21 +1,21 @@
 <template>
     <v-dialog
         v-model="showDialog"
-        :max-width="dialogConfig.maxWidth ?? '600px'"
+        :max-width="computedMaxWidth"
         :persistent="dialogConfig.persistent ?? false"
     >
         <v-card>
-            <v-card-title class="text-h5 pa-4">
+            <v-card-title class="text-h5 pa-6">
                 {{ dialogConfig.title }}
             </v-card-title>
-            <v-card-text>
+            <v-card-text class="pa-6">
                 <slot />
             </v-card-text>
-            <v-card-actions class="pa-4">
+            <v-card-actions class="pa-4 px-6">
                 <v-spacer />
                 <v-btn
-                    color="grey"
                     variant="text"
+                    color="mutedForeground"
                     @click="closeDialog"
                 >
                     {{ cancelText }}
@@ -23,6 +23,7 @@
                 <v-btn
                     v-if="showConfirmButton"
                     color="primary"
+                    variant="flat"
                     :loading="loading"
                     :disabled="disabled"
                     @click="confirmAction"
@@ -37,6 +38,7 @@
 <script setup lang="ts">
     import { computed } from 'vue'
     import type { DialogConfig } from '@/types/schemas'
+    import { getDialogMaxWidth } from '@/design-system/components'
 
     interface Props {
         modelValue: boolean
@@ -69,6 +71,10 @@
     })
 
     const dialogConfig = computed(() => props.config)
+
+    const computedMaxWidth = computed(() => {
+        return dialogConfig.value.maxWidth ?? getDialogMaxWidth('default')
+    })
 
     const closeDialog = () => {
         showDialog.value = false

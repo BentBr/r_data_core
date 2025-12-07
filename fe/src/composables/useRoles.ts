@@ -10,12 +10,17 @@ export function useRoles() {
     const error = ref('')
     const roles = ref<Role[]>([])
 
-    const loadRoles = async (page = 1, perPage = 20) => {
+    const loadRoles = async (
+        page = 1,
+        perPage = 20,
+        sortBy?: string | null,
+        sortOrder?: 'asc' | 'desc' | null
+    ) => {
         loading.value = true
         error.value = ''
 
         try {
-            const response = await typedHttpClient.getRoles(page, perPage)
+            const response = await typedHttpClient.getRoles(page, perPage, sortBy, sortOrder)
             roles.value = response.data
             return response
         } catch (err) {
