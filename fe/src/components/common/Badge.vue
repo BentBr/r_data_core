@@ -52,8 +52,7 @@
 </script>
 
 <style scoped>
-.status-badge {
-    font-weight: 500;
-}
+    .status-badge {
+        font-weight: 500;
+    }
 </style>
-

@@ -18,7 +18,9 @@ export class WorkflowsClient extends BaseTypedHttpClient {
 
     async getWorkflows(
         page = 1,
-        itemsPerPage = 20
+        itemsPerPage = 20,
+        sortBy?: string | null,
+        sortOrder?: 'asc' | 'desc' | null
     ): Promise<{
         data: Array<{
             uuid: string
@@ -51,8 +53,12 @@ export class WorkflowsClient extends BaseTypedHttpClient {
                 has_api_endpoint: z.boolean().optional().default(false),
             })
         )
+        let url = `/admin/api/v1/workflows?page=${page}&per_page=${itemsPerPage}`
+        if (sortBy && sortOrder) {
+            url += `&sort_by=${sortBy}&sort_order=${sortOrder}`
+        }
         return this.paginatedRequest(
-            `/admin/api/v1/workflows?page=${page}&per_page=${itemsPerPage}`,
+            url,
             PaginatedApiResponseSchema(Schema)
         )
     }

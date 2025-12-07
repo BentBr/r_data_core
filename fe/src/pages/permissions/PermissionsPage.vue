@@ -77,6 +77,7 @@
                                     :has-previous="usersPaginationMeta?.has_previous"
                                     @update:page="handleUsersPageChange"
                                     @update:items-per-page="handleUsersItemsPerPageChange"
+                                    @update:sort="handleUsersSortChange"
                                 >
                                     <!-- Username Column -->
                                     <template #item.username="{ item }">
@@ -200,6 +201,7 @@
                                     :has-previous="paginationMeta?.has_previous"
                                     @update:page="handlePageChange"
                                     @update:items-per-page="handleItemsPerPageChange"
+                                    @update:sort="handleSortChange"
                                 >
                                     <!-- Name Column -->
                                     <template #item.name="{ item }">
@@ -451,6 +453,12 @@
         has_previous: boolean
         has_next: boolean
     } | null>(null)
+    const sortBy = ref<string | null>(null)
+    const sortOrder = ref<'asc' | 'desc' | null>(null)
+    
+    // Users sorting
+    const usersSortBy = ref<string | null>(null)
+    const usersSortOrder = ref<'asc' | 'desc' | null>(null)
 
     // Options
     const resourceTypes: ResourceNamespace[] = [
@@ -552,7 +560,7 @@
     // Methods
     const loadRoles = async (page = 1, perPage = 20) => {
         try {
-            const response = await loadRolesFromComposable(page, perPage)
+            const response = await loadRolesFromComposable(page, perPage, sortBy.value, sortOrder.value)
             if (response.meta?.pagination) {
                 totalItems.value = response.meta.pagination.total
                 totalPages.value = response.meta.pagination.total_pages
@@ -579,6 +587,14 @@
         currentPage.value = 1
         setPage(1)
         await loadRoles(1, newItemsPerPage)
+    }
+
+    const handleSortChange = async (newSortBy: string | null, newSortOrder: 'asc' | 'desc' | null) => {
+        sortBy.value = newSortBy
+        sortOrder.value = newSortOrder
+        currentPage.value = 1
+        setPage(1)
+        await loadRoles(1, itemsPerPage.value)
     }
 
     const openCreateDialog = () => {
@@ -642,7 +658,7 @@
     // User management methods
     const loadUsers = async (page = 1, perPage = 20) => {
         try {
-            const response = await loadUsersFromComposable(page, perPage)
+            const response = await loadUsersFromComposable(page, perPage, usersSortBy.value, usersSortOrder.value)
             if (response.meta?.pagination) {
                 usersTotalItems.value = response.meta.pagination.total
                 usersTotalPages.value = response.meta.pagination.total_pages
@@ -669,6 +685,14 @@
         usersCurrentPage.value = 1
         setUsersPage(1)
         await loadUsers(1, newItemsPerPage)
+    }
+
+    const handleUsersSortChange = async (newSortBy: string | null, newSortOrder: 'asc' | 'desc' | null) => {
+        usersSortBy.value = newSortBy
+        usersSortOrder.value = newSortOrder
+        usersCurrentPage.value = 1
+        setUsersPage(1)
+        await loadUsers(1, usersItemsPerPage.value)
     }
 
     const openCreateUserDialog = () => {

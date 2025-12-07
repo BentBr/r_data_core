@@ -124,7 +124,7 @@
     import { useTranslations } from '@/composables/useTranslations'
     import { useTheme } from '@/composables/useTheme'
     import SmartIcon from '@/components/common/SmartIcon.vue'
-import Badge from '@/components/common/Badge.vue'
+    import Badge from '@/components/common/Badge.vue'
 
     const router = useRouter()
     const authStore = useAuthStore()

@@ -70,6 +70,98 @@ describe('ApiKeysClient', () => {
                 expect.any(Object)
             )
         })
+
+        it('should get API keys with sorting', async () => {
+            const mockResponse = {
+                status: 'Success',
+                message: 'OK',
+                data: [],
+                meta: {
+                    pagination: {
+                        total: 0,
+                        page: 1,
+                        per_page: 10,
+                        total_pages: 1,
+                        has_previous: false,
+                        has_next: false,
+                    },
+                },
+            }
+
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: async () => mockResponse,
+            })
+
+            const result = await client.getApiKeys(1, 10, 'name', 'asc')
+
+            expect(result.data).toBeDefined()
+            expect(mockFetch).toHaveBeenCalledWith(
+                expect.stringContaining('/admin/api/v1/api-keys?page=1&per_page=10&sort_by=name&sort_order=asc'),
+                expect.any(Object)
+            )
+        })
+
+        it('should get API keys with descending sort', async () => {
+            const mockResponse = {
+                status: 'Success',
+                message: 'OK',
+                data: [],
+                meta: {
+                    pagination: {
+                        total: 0,
+                        page: 1,
+                        per_page: 10,
+                        total_pages: 1,
+                        has_previous: false,
+                        has_next: false,
+                    },
+                },
+            }
+
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: async () => mockResponse,
+            })
+
+            const result = await client.getApiKeys(1, 10, 'created_at', 'desc')
+
+            expect(result.data).toBeDefined()
+            expect(mockFetch).toHaveBeenCalledWith(
+                expect.stringContaining('/admin/api/v1/api-keys?page=1&per_page=10&sort_by=created_at&sort_order=desc'),
+                expect.any(Object)
+            )
+        })
+
+        it('should not include sort parameters when not provided', async () => {
+            const mockResponse = {
+                status: 'Success',
+                message: 'OK',
+                data: [],
+                meta: {
+                    pagination: {
+                        total: 0,
+                        page: 1,
+                        per_page: 10,
+                        total_pages: 1,
+                        has_previous: false,
+                        has_next: false,
+                    },
+                },
+            }
+
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: async () => mockResponse,
+            })
+
+            const result = await client.getApiKeys(1, 10, null, null)
+
+            expect(result.data).toBeDefined()
+            const url = mockFetch.mock.calls[0][0] as string
+            expect(url).not.toContain('sort_by')
+            expect(url).not.toContain('sort_order')
+        })
     })
 
     describe('createApiKey', () => {

@@ -3,7 +3,7 @@ import type { FieldDefinition } from '@/types/schemas'
 
 /**
  * Field rendering utilities
- * 
+ *
  * Note: All returned Vuetify components automatically use standardized styling
  * from the design system defaults configured in fe/src/design-system/theme.ts
  */

@@ -124,7 +124,6 @@
         emit('update:options', options)
     }
 
-
     const formatDate = (dateString?: string) => {
         if (!dateString) {
             return 'N/A'

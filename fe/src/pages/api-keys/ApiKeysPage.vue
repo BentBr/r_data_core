@@ -41,6 +41,7 @@
                             :has-previous="paginationMeta?.has_previous"
                             @update:page="handlePageChange"
                             @update:items-per-page="handleItemsPerPageChange"
+                            @update:sort="handleSortChange"
                         >
                             <!-- Name Column -->
                             <template #item.name="{ item }">
@@ -251,6 +252,8 @@ import Badge from '@/components/common/Badge.vue'
     const selectedKey = ref<ApiKey | null>(null)
     const keyToRevoke = ref<ApiKey | null>(null)
     const createdApiKey = ref('')
+    const sortBy = ref<string | null>(null)
+    const sortOrder = ref<'asc' | 'desc' | null>(null)
 
     // Pagination state with persistence
     const { state: paginationState, setPage, setItemsPerPage } = usePagination('api-keys', 10)
@@ -323,8 +326,8 @@ import Badge from '@/components/common/Badge.vue'
         error.value = ''
 
         try {
-            console.log(`Loading API keys: page=${page}, itemsPerPage=${itemsPerPage}`)
-            const response = await typedHttpClient.getApiKeys(page, itemsPerPage)
+            console.log(`Loading API keys: page=${page}, itemsPerPage=${itemsPerPage}, sortBy=${sortBy.value}, sortOrder=${sortOrder.value}`)
+            const response = await typedHttpClient.getApiKeys(page, itemsPerPage, sortBy.value, sortOrder.value)
             apiKeys.value = response.data
             if (response.meta?.pagination) {
                 totalItems.value = response.meta.pagination.total
@@ -359,6 +362,16 @@ import Badge from '@/components/common/Badge.vue'
         currentPage.value = 1
         setPage(1)
         await loadApiKeys(1, newItemsPerPage)
+    }
+
+    const handleSortChange = async (newSortBy: string | null, newSortOrder: 'asc' | 'desc' | null) => {
+        console.log('Sort changed:', newSortBy, newSortOrder)
+        sortBy.value = newSortBy
+        sortOrder.value = newSortOrder
+        // Reset to first page when sorting changes
+        currentPage.value = 1
+        setPage(1)
+        await loadApiKeys(1, itemsPerPage.value)
     }
 
     const createApiKey = async (requestData: CreateApiKeyRequest) => {

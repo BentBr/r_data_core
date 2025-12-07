@@ -108,10 +108,18 @@ export const formConfig = {
  */
 export function getStatusColor(status: string): string {
     const statusLower = status.toLowerCase()
-    if (statusLower.includes('success') || statusLower.includes('completed') || statusLower === 'active') {
+    if (
+        statusLower.includes('success') ||
+        statusLower.includes('completed') ||
+        statusLower === 'active'
+    ) {
         return badgeConfigs.status.success
     }
-    if (statusLower.includes('error') || statusLower.includes('failed') || statusLower === 'inactive') {
+    if (
+        statusLower.includes('error') ||
+        statusLower.includes('failed') ||
+        statusLower === 'inactive'
+    ) {
         return badgeConfigs.status.error
     }
     if (statusLower.includes('warning') || statusLower.includes('pending')) {
@@ -140,4 +148,3 @@ export const iconSizes = {
 export function getDialogMaxWidth(type: 'small' | 'default' | 'form' | 'wide' = 'default'): string {
     return dialogConfigs.maxWidths[type]
 }
-
