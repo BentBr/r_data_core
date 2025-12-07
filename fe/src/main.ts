@@ -1,4 +1,4 @@
-import { createApp } from 'vue'
+import { createApp, type Component } from 'vue'
 import { createPinia } from 'pinia'
 
 import App from './App.vue'
@@ -65,7 +65,7 @@ const vuetify = createVuetify({
         aliases: iconAliases,
         sets: {
             smart: {
-                component: SmartIcon as unknown as any,
+                component: SmartIcon as Component,
             },
         },
     },

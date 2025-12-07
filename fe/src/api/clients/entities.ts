@@ -1,17 +1,17 @@
 import { z } from 'zod'
+import type {
+    ApiResponse,
+    CreateEntityRequest,
+    DynamicEntity,
+    EntityResponse,
+    UpdateEntityRequest,
+} from '@/types/schemas'
 import {
     ApiResponseSchema,
-    PaginatedApiResponseSchema,
     DynamicEntitySchema,
     EntityResponseSchema,
+    PaginatedApiResponseSchema,
     UuidSchema,
-} from '@/types/schemas'
-import type {
-    DynamicEntity,
-    CreateEntityRequest,
-    UpdateEntityRequest,
-    EntityResponse,
-    ApiResponse,
 } from '@/types/schemas'
 import { BaseTypedHttpClient } from './base'
 
@@ -38,11 +38,10 @@ export class EntitiesClient extends BaseTypedHttpClient {
         }
     }> {
         const includeParam = include ? `&include=${include}` : ''
-        const response = await this.paginatedRequest(
+        return await this.paginatedRequest(
             `/api/v1/${entityType}?page=${page}&per_page=${itemsPerPage}${includeParam}`,
             PaginatedApiResponseSchema(z.array(DynamicEntitySchema))
         )
-        return response
     }
 
     async browseByPath(
@@ -57,6 +56,7 @@ export class EntitiesClient extends BaseTypedHttpClient {
             entity_uuid?: string
             entity_type?: string
             has_children?: boolean
+            published: boolean
         }>
         meta?: {
             pagination?: {
@@ -73,7 +73,7 @@ export class EntitiesClient extends BaseTypedHttpClient {
         }
     }> {
         const encoded = encodeURIComponent(path)
-        const response = await this.paginatedRequest(
+        return await this.paginatedRequest(
             `/api/v1/entities/by-path?path=${encoded}&limit=${limit}&offset=${offset}`,
             PaginatedApiResponseSchema(
                 z.array(
@@ -84,11 +84,11 @@ export class EntitiesClient extends BaseTypedHttpClient {
                         entity_uuid: UuidSchema.nullable().optional(),
                         entity_type: z.string().nullable().optional(),
                         has_children: z.boolean().nullable().optional(),
+                        published: z.boolean(),
                     })
                 )
             )
         )
-        return response
     }
 
     async queryEntities(

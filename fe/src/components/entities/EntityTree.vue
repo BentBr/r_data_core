@@ -112,7 +112,7 @@
             entity_uuid?: string
             entity_type?: string
             has_children?: boolean
-            published?: boolean | null
+            published: boolean
         }>
     ): TreeNode[] {
         const children: TreeNode[] = []
@@ -125,24 +125,16 @@
                     id: toFolderId(node.path),
                     title: node.name,
                     icon: 'folder',
-                    // Only add children array if has_children is true (so arrow shows)
+                    // Only add the children array if `has_children` is true (so arrow shows)
                     children: node.has_children ? [] : undefined,
                     path: node.path,
                 })
             } else {
                 // Get icon and published status from entity definition if available
                 let icon = 'database' // default
-                
-                let published: boolean | undefined = node.published ?? undefined
+
                 if (node.entity_type && iconMap.value.has(node.entity_type)) {
                     icon = iconMap.value.get(node.entity_type) ?? icon
-                }
-                const defPublished = node.entity_type
-                    ? entityDefinitionPublishedMap.value.get(node.entity_type)
-                    : undefined
-                
-                if (published === undefined || published === null) {
-                    published = defPublished
                 }
 
                 files.push({
@@ -152,8 +144,8 @@
                     entity_type: node.entity_type,
                     uuid: node.entity_uuid,
                     path: node.path,
-                    published: node.published || false,
-                    // Only add children array if has_children is true (so arrow shows)
+                    published: node.published,
+                    // Only add the children array if `has_children` is true (so arrow shows)
                     children: node.has_children ? [] : undefined,
                 })
             }
@@ -352,14 +344,6 @@
         return map
     })
 
-    const entityDefinitionPublishedMap = computed(() => {
-        const map = new Map<string, boolean | undefined>()
-        for (const def of props.entityDefinitions) {
-            map.set(def.entity_type, def.published)
-        }
-        return map
-    })
-
     function updateNodesFromDefinitions(items: TreeNode[]) {
         for (const item of items) {
             if (item.entity_type) {
@@ -367,15 +351,7 @@
                 if (icon) {
                     item.icon = icon
                 }
-
-                // Update published status if it's undefined (meaning not provided by API)
-                // This handles the case where definitions load after the tree nodes
-                if (item.published === undefined) {
-                    const defPublished = entityDefinitionPublishedMap.value.get(item.entity_type)
-                    if (defPublished !== undefined) {
-                        item.published = defPublished
-                    }
-                }
+                // Note: published status is always provided by the API, no fallback needed
             }
             if (item.children && Array.isArray(item.children)) {
                 updateNodesFromDefinitions(item.children as TreeNode[])

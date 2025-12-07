@@ -15,8 +15,20 @@ describe('TreeView', () => {
             entity_type: 'group',
             icon: 'folder',
             children: [
-                { id: 'child-1', title: 'Child 1', icon: 'file', entity_type: 'entity', published: true },
-                { id: 'child-2', title: 'Child 2', icon: 'file', entity_type: 'entity', published: false },
+                {
+                    id: 'child-1',
+                    title: 'Child 1',
+                    icon: 'file',
+                    entity_type: 'entity',
+                    published: true,
+                },
+                {
+                    id: 'child-2',
+                    title: 'Child 2',
+                    icon: 'file',
+                    entity_type: 'entity',
+                    published: false,
+                },
             ],
         },
     ]
@@ -27,9 +39,9 @@ describe('TreeView', () => {
             global: { plugins: [vuetify] },
         })
 
-        const toggle = wrapper.findAllComponents({ name: 'SmartIcon' }).find(c =>
-            ['chevron-down', 'chevron-right'].includes(c.props('icon') as string)
-        )
+        const toggle = wrapper
+            .findAllComponents({ name: 'SmartIcon' })
+            .find(c => ['chevron-down', 'chevron-right'].includes(c.props('icon') as string))
         expect(toggle).toBeTruthy()
         await toggle?.trigger('click')
         const expanded = wrapper.emitted('update:expandedItems')
@@ -58,4 +70,3 @@ describe('TreeView', () => {
         expect(unpublishedIcon).toBeTruthy()
     })
 })
-

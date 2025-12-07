@@ -200,22 +200,22 @@
         background-color: rgba(var(--v-theme-primary), 0.08);
     }
 
-.version-checkbox {
-    opacity: 1 !important;
-    visibility: visible !important;
-    display: inline-flex !important;
-}
+    .version-checkbox {
+        opacity: 1 !important;
+        visibility: visible !important;
+        display: inline-flex !important;
+    }
 
-:deep(.version-checkbox .v-selection-control) {
-    opacity: 1 !important;
-    visibility: visible !important;
-    display: inline-flex !important;
-}
+    :deep(.version-checkbox .v-selection-control) {
+        opacity: 1 !important;
+        visibility: visible !important;
+        display: inline-flex !important;
+    }
 
-:deep(.version-checkbox .v-icon) {
-    opacity: 1 !important;
-    visibility: visible !important;
-}
+    :deep(.version-checkbox .v-icon) {
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
 
     .entity-diff-table {
         border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
