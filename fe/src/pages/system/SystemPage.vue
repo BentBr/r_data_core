@@ -1,67 +1,53 @@
 <template>
-    <v-container fluid>
-        <v-row>
-            <v-col cols="12">
-                <v-card>
-                    <v-card-title class="text-h4 pa-4">
-                        <SmartIcon
-                            icon="settings"
-                            :size="28"
-                            class="mr-3"
-                        />
-                        {{ t('system.admin.title') }}
-                    </v-card-title>
-                    <v-card-text>
-                        <v-row>
-                            <v-col
-                                cols="12"
-                                md="6"
+    <div>
+        <PageLayout>
+            <v-row>
+                <v-col
+                    cols="12"
+                    md="6"
+                >
+                    <v-card variant="outlined">
+                        <v-card-title class="text-subtitle-1 pa-3">
+                            {{ t('system.versioning.section_title') }}
+                        </v-card-title>
+                        <v-card-text class="pa-3">
+                            <v-switch
+                                v-model="form.enabled"
+                                :label="t('system.versioning.enabled')"
+                                color="success"
+                                inset
+                            />
+                            <v-text-field
+                                v-model="form.max_versions"
+                                :label="t('system.versioning.max_versions')"
+                                type="number"
+                                min="0"
+                            />
+                            <v-text-field
+                                v-model="form.max_age_days"
+                                :label="t('system.versioning.max_age_days')"
+                                type="number"
+                                min="0"
+                            />
+                        </v-card-text>
+                        <v-card-actions>
+                            <v-spacer />
+                            <v-btn
+                                color="primary"
+                                variant="flat"
+                                :loading="saving"
+                                @click="save"
                             >
-                                <v-card variant="outlined">
-                                    <v-card-title class="text-subtitle-1 pa-3">
-                                        {{ t('system.versioning.section_title') }}
-                                    </v-card-title>
-                                    <v-card-text class="pa-3">
-                                        <v-switch
-                                            v-model="form.enabled"
-                                            :label="t('system.versioning.enabled')"
-                                            color="success"
-                                            inset
-                                        />
-                                        <v-text-field
-                                            v-model="form.max_versions"
-                                            :label="t('system.versioning.max_versions')"
-                                            type="number"
-                                            min="0"
-                                        />
-                                        <v-text-field
-                                            v-model="form.max_age_days"
-                                            :label="t('system.versioning.max_age_days')"
-                                            type="number"
-                                            min="0"
-                                        />
-                                    </v-card-text>
-                                    <v-card-actions>
-                                        <v-spacer />
-                                        <v-btn
-                                            color="primary"
-                                            variant="flat"
-                                            :loading="saving"
-                                            @click="save"
-                                        >
-                                            {{ t('system.versioning.save') }}
-                                        </v-btn>
-                                    </v-card-actions>
-                                </v-card>
-                            </v-col>
-                        </v-row>
-                    </v-card-text>
-                </v-card>
-            </v-col>
-        </v-row>
+                                {{ t('system.versioning.save') }}
+                            </v-btn>
+                        </v-card-actions>
+                    </v-card>
+                </v-col>
+            </v-row>
 
-        <SnackbarManager :snackbar="currentSnackbar" />
-    </v-container>
+            <SnackbarManager :snackbar="currentSnackbar" />
+        </PageLayout>
+    </div>
 </template>
 
 <script setup lang="ts">
@@ -69,7 +55,7 @@
     import { useSnackbar } from '@/composables/useSnackbar'
     import { useTranslations } from '@/composables/useTranslations'
     import { typedHttpClient } from '@/api/typed-client'
-    import SmartIcon from '@/components/common/SmartIcon.vue'
+    import PageLayout from '@/components/layouts/PageLayout.vue'
     import SnackbarManager from '@/components/common/SnackbarManager.vue'
 
     const { currentSnackbar, showSuccess, showError } = useSnackbar()
@@ -91,7 +77,13 @@
         loading.value = true
         try {
             const settings = await typedHttpClient.getEntityVersioningSettings()
-            form.value = settings ?? form.value
+            if (settings) {
+                form.value = {
+                    enabled: settings.enabled,
+                    max_versions: settings.max_versions ?? null,
+                    max_age_days: settings.max_age_days ?? null,
+                }
+            }
         } catch {
             showError(t('system.versioning.load_failed'))
         } finally {

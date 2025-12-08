@@ -77,3 +77,11 @@ export type Role = z.infer<typeof RoleSchema>
 export type CreateRoleRequest = z.infer<typeof CreateRoleRequestSchema>
 export type UpdateRoleRequest = z.infer<typeof UpdateRoleRequestSchema>
 export type AssignRolesRequest = z.infer<typeof AssignRolesRequestSchema>
+
+/**
+ * Role custom data/metadata
+ * Flexible type for storing custom key-value pairs with roles
+ */
+export interface RoleCustomData extends Record<string, unknown> {
+    [key: string]: unknown
+}

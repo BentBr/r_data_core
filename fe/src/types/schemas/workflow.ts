@@ -37,3 +37,18 @@ export const WorkflowRunLogSchema = z.object({
 export type Workflow = z.infer<typeof WorkflowSchema>
 export type WorkflowRun = z.infer<typeof WorkflowRunSchema>
 export type WorkflowRunLog = z.infer<typeof WorkflowRunLogSchema>
+
+/**
+ * Workflow configuration object
+ * This is a flexible type that can contain any workflow-specific configuration
+ * The actual structure depends on the workflow kind and DSL configuration
+ */
+export interface WorkflowConfig extends Record<string, unknown> {
+    steps?: unknown[]
+    from?: unknown
+    to?: unknown
+    transform?: unknown
+    auth?: unknown
+    csv_options?: unknown
+    [key: string]: unknown
+}

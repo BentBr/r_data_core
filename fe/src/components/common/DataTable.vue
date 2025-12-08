@@ -18,7 +18,7 @@
                     :disabled="action.disabled ?? false"
                     :loading="action.loading ?? false"
                     size="x-small"
-                    variant="text"
+                    :variant="buttonConfigs.text.variant"
                     class="mr-1"
                     @click="action.onClick?.(item)"
                 />
@@ -37,7 +37,7 @@
         <template #item.published="{ item }">
             <SmartIcon
                 :icon="item.published ? 'check-circle' : 'x-circle'"
-                :color="item.published ? 'success' : 'grey'"
+                :color="item.published ? 'success' : 'mutedForeground'"
                 size="sm"
             />
         </template>
@@ -45,7 +45,7 @@
         <template #item.required="{ item }">
             <SmartIcon
                 :icon="item.required ? 'check-circle' : 'x-circle'"
-                :color="item.required ? 'success' : 'grey'"
+                :color="item.required ? 'success' : 'mutedForeground'"
                 size="sm"
             />
         </template>
@@ -53,7 +53,7 @@
         <template #item.indexed="{ item }">
             <SmartIcon
                 :icon="item.indexed ? 'check-circle' : 'x-circle'"
-                :color="item.indexed ? 'success' : 'grey'"
+                :color="item.indexed ? 'success' : 'mutedForeground'"
                 size="sm"
             />
         </template>
@@ -61,7 +61,7 @@
         <template #item.filterable="{ item }">
             <SmartIcon
                 :icon="item.filterable ? 'check-circle' : 'x-circle'"
-                :color="item.filterable ? 'success' : 'grey'"
+                :color="item.filterable ? 'success' : 'mutedForeground'"
                 size="sm"
             />
         </template>
@@ -96,25 +96,28 @@
 <script setup lang="ts">
     import SmartIcon from '@/components/common/SmartIcon.vue'
     import Badge from '@/components/common/Badge.vue'
+    import { buttonConfigs } from '@/design-system/components'
+    import type { TableRow, TableHeader, TableAction } from '@/types/common'
 
     interface Props {
-        headers: Array<{ title: string; key: string; sortable?: boolean; align?: string }>
-        items: Array<Record<string, unknown>>
+        headers: TableHeader[]
+        items: TableRow[]
         loading?: boolean
         itemsPerPage?: number
         page?: number
         totalItems?: number
-        actions?: Array<{
-            icon: string
-            color?: string
-            disabled?: boolean
-            loading?: boolean
-            onClick?: (item: Record<string, unknown>) => void
-        }>
+        actions?: TableAction[]
     }
 
     interface Emits {
-        (e: 'update:options', options: Record<string, unknown>): void
+        (
+            e: 'update:options',
+            options: {
+                page?: number
+                itemsPerPage?: number
+                sortBy?: Array<{ key: string; order: 'asc' | 'desc' }>
+            }
+        ): void
     }
 
     defineProps<Props>()

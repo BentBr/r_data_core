@@ -60,6 +60,29 @@
     })
 </script>
 
+<style>
+    /* Global styles to prevent scrollbar layout shifts */
+    /* Reserve space for scrollbar to prevent layout shift when it appears/disappears */
+    html {
+        scrollbar-gutter: stable; /* Reserve space for scrollbar */
+    }
+
+    body {
+        scrollbar-gutter: stable; /* Reserve space for scrollbar */
+        margin: 0;
+        padding: 0;
+    }
+
+    #app {
+        scrollbar-gutter: stable; /* Reserve space for scrollbar */
+    }
+
+    /* Ensure Vuetify components also reserve scrollbar space */
+    .v-application {
+        scrollbar-gutter: stable;
+    }
+</style>
+
 <style scoped>
     /* Smooth fade transitions for login page only */
     .fade-enter-active,

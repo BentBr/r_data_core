@@ -86,7 +86,7 @@
                         <SmartIcon
                             v-if="item.filterable"
                             icon="filter"
-                            :size="20"
+                            size="sm"
                             class="mr-1 text-warning"
                         />
                         <v-btn
@@ -96,7 +96,7 @@
                         >
                             <SmartIcon
                                 icon="pencil"
-                                :size="16"
+                                size="xs"
                             />
                         </v-btn>
                         <v-btn
@@ -107,7 +107,7 @@
                         >
                             <SmartIcon
                                 icon="trash-2"
-                                :size="16"
+                                size="xs"
                             />
                         </v-btn>
                     </div>

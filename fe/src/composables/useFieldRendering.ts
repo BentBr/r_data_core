@@ -44,8 +44,13 @@ export function useFieldRendering() {
     /**
      * Gets field validation rules based on field definition
      */
-    const getFieldRules = (field: FieldDefinition) => {
-        const rules: ((value: unknown) => boolean | string)[] = []
+    /**
+     * Validation rule function type
+     */
+    type ValidationRule = (value: unknown) => boolean | string
+
+    const getFieldRules = (field: FieldDefinition): ValidationRule[] => {
+        const rules: ValidationRule[] = []
 
         if (field.required) {
             rules.push(v => !!v || `${field.display_name ?? field.name} is required`)

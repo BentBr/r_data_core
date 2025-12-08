@@ -69,13 +69,14 @@
 <script setup lang="ts">
     import { useTranslations } from '@/composables/useTranslations'
     import { ref, watch } from 'vue'
+    import type { TableRow, TableHeader } from '@/types/common'
 
     const { t } = useTranslations()
 
     interface Props {
         // Data
-        items: unknown[]
-        headers: unknown[]
+        items: TableRow[]
+        headers: TableHeader[]
 
         // Loading and error states
         loading: boolean

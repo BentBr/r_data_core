@@ -90,7 +90,7 @@
             <SmartIcon
                 icon="file-text"
                 :size="64"
-                color="grey"
+                color="mutedForeground"
                 class="mb-4"
             />
             <h3 class="text-h6 text-grey">

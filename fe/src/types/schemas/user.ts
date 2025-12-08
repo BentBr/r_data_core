@@ -69,3 +69,11 @@ export type User = z.infer<typeof UserSchema>
 export type UserResponse = z.infer<typeof UserResponseSchema>
 export type CreateUserRequest = z.infer<typeof CreateUserRequestSchema>
 export type UpdateUserRequest = z.infer<typeof UpdateUserRequestSchema>
+
+/**
+ * User custom data/metadata
+ * Flexible type for storing custom key-value pairs with users
+ */
+export interface UserCustomData extends Record<string, unknown> {
+    [key: string]: unknown
+}

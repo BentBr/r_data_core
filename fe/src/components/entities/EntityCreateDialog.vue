@@ -114,7 +114,7 @@
             <v-card-actions class="pa-4 px-6">
                 <v-spacer />
                 <v-btn
-                    variant="text"
+                    :variant="buttonConfigs.text.variant"
                     color="mutedForeground"
                     :disabled="loading"
                     @click="closeDialog"
@@ -122,8 +122,8 @@
                     {{ t('common.cancel') }}
                 </v-btn>
                 <v-btn
-                    color="primary"
-                    variant="flat"
+                    :color="buttonConfigs.primary.color"
+                    :variant="buttonConfigs.primary.variant"
                     :loading="loading"
                     :disabled="!isValid"
                     @click="createEntity"
@@ -139,14 +139,10 @@
     import { ref, computed, watch } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import SmartIcon from '@/components/common/SmartIcon.vue'
-    import { getDialogMaxWidth } from '@/design-system/components'
-    import type {
-        EntityDefinition,
-        CreateEntityRequest,
-        FieldDefinition,
-        DynamicEntity,
-    } from '@/types/schemas'
+    import { getDialogMaxWidth, buttonConfigs } from '@/design-system/components'
+    import type { EntityDefinition, CreateEntityRequest, DynamicEntity } from '@/types/schemas'
     import { ValidationError } from '@/api/typed-client'
+    import { useFieldRendering } from '@/composables/useFieldRendering'
 
     interface Props {
         modelValue: boolean
@@ -168,6 +164,7 @@
     const emit = defineEmits<Emits>()
 
     const { t } = useTranslations()
+    const { getFieldComponent, getFieldRules } = useFieldRendering()
 
     // Form state
     const form = ref()
@@ -236,62 +233,6 @@
                 }
             }
         }
-    }
-
-    const getFieldComponent = (fieldType: string) => {
-        const componentMap: Record<string, string> = {
-            String: 'v-text-field',
-            Text: 'v-textarea',
-            Wysiwyg: 'v-textarea',
-            Integer: 'v-text-field',
-            Float: 'v-text-field',
-            Boolean: 'v-switch',
-            Date: 'v-text-field',
-            DateTime: 'v-text-field',
-            Time: 'v-text-field',
-            Email: 'v-text-field',
-            Url: 'v-text-field',
-            File: 'v-file-input',
-            Image: 'v-file-input',
-            Json: 'v-textarea',
-        }
-        return componentMap[fieldType] || 'v-text-field'
-    }
-
-    const getFieldRules = (field: FieldDefinition) => {
-        const rules: ((value: unknown) => boolean | string)[] = []
-
-        if (field.required) {
-            rules.push((v: unknown) => !!v || `${field.display_name} is required`)
-        }
-
-        if (field.constraints?.min !== undefined) {
-            rules.push(
-                (v: unknown) =>
-                    !v ||
-                    (typeof v === 'number' && v >= field.constraints!.min!) ||
-                    `Minimum value is ${field.constraints!.min}`
-            )
-        }
-
-        if (field.constraints?.max !== undefined) {
-            rules.push(
-                (v: unknown) =>
-                    !v ||
-                    (typeof v === 'number' && v <= field.constraints!.max!) ||
-                    `Maximum value is ${field.constraints!.max}`
-            )
-        }
-
-        if (field.constraints?.pattern) {
-            const pattern = field.constraints.pattern as string
-            rules.push(
-                (v: unknown) =>
-                    !v || (typeof v === 'string' && new RegExp(pattern).test(v)) || 'Invalid format'
-            )
-        }
-
-        return rules
     }
 
     const getFieldErrorMessages = (fieldName: string) => {

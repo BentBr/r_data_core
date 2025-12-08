@@ -70,7 +70,7 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         kind: 'consumer' | 'provider'
         enabled: boolean
         schedule_cron?: string | null
-        config: unknown
+        config: import('@/types/schemas').WorkflowConfig
         versioning_disabled?: boolean
     }): Promise<{ uuid: string }> {
         const Schema = z.object({ uuid: UuidSchema })
@@ -88,7 +88,7 @@ export class WorkflowsClient extends BaseTypedHttpClient {
             kind: 'consumer' | 'provider'
             enabled: boolean
             schedule_cron?: string | null
-            config: unknown
+            config: import('@/types/schemas').WorkflowConfig
             versioning_disabled?: boolean
         }
     ): Promise<{ message: string }> {

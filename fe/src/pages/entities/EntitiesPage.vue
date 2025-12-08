@@ -1,108 +1,91 @@
 <template>
-    <v-container fluid>
-        <v-row>
-            <v-col cols="12">
-                <v-card>
-                    <v-card-title class="d-flex align-center justify-space-between pa-4">
-                        <div class="d-flex align-center">
-                            <SmartIcon
-                                icon="database"
-                                :size="28"
-                                class="mr-3"
-                            />
-                            <span class="text-h4">{{ t('navigation.entities') }}</span>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <v-btn
-                                color="secondary"
-                                variant="outlined"
-                                :loading="loading"
-                                @click="loadEntities"
-                            >
-                                <template #prepend>
-                                    <SmartIcon
-                                        icon="refresh-cw"
-                                        size="sm"
-                                    />
-                                </template>
-                                {{ t('common.refresh') }}
-                            </v-btn>
-                            <v-btn
-                                color="primary"
-                                variant="flat"
-                                @click="showCreateDialog = true"
-                            >
-                                <template #prepend>
-                                    <SmartIcon
-                                        icon="plus"
-                                        size="sm"
-                                    />
-                                </template>
-                                {{ t('entities.create.button') }}
-                            </v-btn>
-                        </div>
-                    </v-card-title>
+    <div>
+        <PageLayout>
+            <template #actions>
+                <v-btn
+                    color="secondary"
+                    variant="outlined"
+                    :loading="loading"
+                    @click="loadEntities"
+                >
+                    <template #prepend>
+                        <SmartIcon
+                            icon="refresh-cw"
+                            size="sm"
+                        />
+                    </template>
+                    {{ t('common.refresh') }}
+                </v-btn>
+                <v-btn
+                    color="primary"
+                    variant="flat"
+                    @click="showCreateDialog = true"
+                >
+                    <template #prepend>
+                        <SmartIcon
+                            icon="plus"
+                            size="sm"
+                        />
+                    </template>
+                    {{ t('entities.create.button') }}
+                </v-btn>
+            </template>
+            <v-row>
+                <!-- Tree View -->
+                <v-col cols="4">
+                    <EntityTree
+                        ref="entityTreeRef"
+                        :root-path="'/'"
+                        :loading="loading"
+                        :expanded-items="expandedItems"
+                        :refresh-key="treeRefreshKey"
+                        :entity-definitions="entityDefinitions"
+                        @update:expanded-items="updateExpandedItems"
+                        @item-click="handleItemClick"
+                        @selection-change="handleTreeSelection"
+                    />
+                </v-col>
 
-                    <v-card-text>
-                        <v-row>
-                            <!-- Tree View -->
-                            <v-col cols="4">
-                                <EntityTree
-                                    ref="entityTreeRef"
-                                    :root-path="'/'"
-                                    :loading="loading"
-                                    :expanded-items="expandedItems"
-                                    :refresh-key="treeRefreshKey"
-                                    :entity-definitions="entityDefinitions"
-                                    @update:expanded-items="updateExpandedItems"
-                                    @item-click="handleItemClick"
-                                    @selection-change="handleTreeSelection"
-                                />
-                            </v-col>
+                <!-- Details Panel -->
+                <v-col cols="8">
+                    <EntityDetails
+                        :entity="selectedEntity"
+                        :entity-definition="selectedEntityDefinition"
+                        @edit="editEntity"
+                        @delete="showDeleteDialog = true"
+                    />
+                </v-col>
+            </v-row>
 
-                            <!-- Details Panel -->
-                            <v-col cols="8">
-                                <EntityDetails
-                                    :entity="selectedEntity"
-                                    :entity-definition="selectedEntityDefinition"
-                                    @edit="editEntity"
-                                    @delete="showDeleteDialog = true"
-                                />
-                            </v-col>
-                        </v-row>
-                    </v-card-text>
-                </v-card>
-            </v-col>
-        </v-row>
+            <!-- Dialogs -->
+            <EntityCreateDialog
+                ref="createDialogRef"
+                v-model="showCreateDialog"
+                :entity-definitions="entityDefinitions"
+                :loading="creating"
+                :default-parent="selectedEntity"
+                @create="createEntity"
+            />
 
-        <!-- Dialogs -->
-        <EntityCreateDialog
-            ref="createDialogRef"
-            v-model="showCreateDialog"
-            :entity-definitions="entityDefinitions"
-            :loading="creating"
-            :default-parent="selectedEntity"
-            @create="createEntity"
-        />
+            <EntityEditDialog
+                v-model="showEditDialog"
+                :entity="selectedEntity"
+                :entity-definition="selectedEntityDefinition"
+                :loading="updating"
+                @update="updateEntity"
+            />
 
-        <EntityEditDialog
-            v-model="showEditDialog"
-            :entity="selectedEntity"
-            :entity-definition="selectedEntityDefinition"
-            :loading="updating"
-            @update="updateEntity"
-        />
+            <DialogManager
+                v-model="showDeleteDialog"
+                :config="deleteDialogConfig"
+                :loading="deleting"
+                @confirm="deleteEntity"
+            />
 
-        <DialogManager
-            v-model="showDeleteDialog"
-            :config="deleteDialogConfig"
-            :loading="deleting"
-            @confirm="deleteEntity"
-        />
-
-        <!-- Snackbar -->
-        <SnackbarManager :snackbar="currentSnackbar" />
-    </v-container>
+            <!-- Snackbar -->
+            <SnackbarManager :snackbar="currentSnackbar" />
+        </PageLayout>
+    </div>
 </template>
 
 <script setup lang="ts">
@@ -125,6 +108,7 @@
     import EntityEditDialog from '@/components/entities/EntityEditDialog.vue'
     import DialogManager from '@/components/common/DialogManager.vue'
     import SnackbarManager from '@/components/common/SnackbarManager.vue'
+    import PageLayout from '@/components/layouts/PageLayout.vue'
     import SmartIcon from '@/components/common/SmartIcon.vue'
 
     const authStore = useAuthStore()
@@ -168,7 +152,10 @@
     const entityTreeRef = ref<EntityTreeInstance | null>(null)
 
     // Computed properties
-    const selectedEntityUuid = computed(() => selectedEntity.value?.field_data?.uuid ?? '')
+    const selectedEntityUuid = computed((): string => {
+        const uuid = selectedEntity.value?.field_data?.uuid
+        return typeof uuid === 'string' ? uuid : ''
+    })
 
     const selectedEntityDefinition = computed(() => {
         if (!selectedEntity.value) {

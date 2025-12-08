@@ -27,7 +27,7 @@ export class RolesClient extends BaseTypedHttpClient {
             }
             request_id?: string
             timestamp?: string
-            custom?: unknown
+            custom?: import('@/types/schemas').RoleCustomData
         }
     }> {
         let url = `/admin/api/v1/roles?page=${page}&per_page=${itemsPerPage}`

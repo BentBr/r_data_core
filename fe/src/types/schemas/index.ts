@@ -39,15 +39,16 @@ import type {
     CreateEntityDefinitionRequest,
     UpdateEntityDefinitionRequest,
 } from './entity'
-import type { Workflow, WorkflowRun, WorkflowRunLog } from './workflow'
+import type { Workflow, WorkflowRun, WorkflowRunLog, WorkflowConfig } from './workflow'
 import type {
     ApiKey,
     CreateApiKeyRequest,
     ApiKeyCreatedResponse,
     ReassignApiKeyRequest,
     ReassignApiKeyResponse,
+    ApiKeyCustomData,
 } from './api-key'
-import type { User } from './user'
+import type { User, UserCustomData } from './user'
 import type {
     Role,
     Permission,
@@ -57,6 +58,7 @@ import type {
     ResourceNamespace,
     PermissionType,
     AccessLevel,
+    RoleCustomData,
 } from './role'
 
 // Common type exports
@@ -88,12 +90,15 @@ export type {
     Workflow,
     WorkflowRun,
     WorkflowRunLog,
+    WorkflowConfig,
     ApiKey,
     CreateApiKeyRequest,
     ApiKeyCreatedResponse,
     ReassignApiKeyRequest,
     ReassignApiKeyResponse,
+    ApiKeyCustomData,
     User,
+    UserCustomData,
     Role,
     Permission,
     CreateRoleRequest,
@@ -102,4 +107,5 @@ export type {
     ResourceNamespace,
     PermissionType,
     AccessLevel,
+    RoleCustomData,
 }
