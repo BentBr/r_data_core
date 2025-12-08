@@ -7,7 +7,7 @@
                         <div class="d-flex align-center">
                             <SmartIcon
                                 icon="key"
-                                :size="28"
+                                size="lg"
                                 class="mr-3"
                             />
                             <span class="text-h4">API Keys Management</span>
@@ -19,7 +19,7 @@
                             <template #prepend>
                                 <SmartIcon
                                     icon="key-round"
-                                    :size="20"
+                                    size="sm"
                                 />
                             </template>
                             {{ t('api_keys.create.button') }}

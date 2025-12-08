@@ -6,7 +6,7 @@
                     <v-card-title class="text-h4 pa-4">
                         <SmartIcon
                             icon="layout-dashboard"
-                            :size="28"
+                            size="lg"
                             class="mr-3"
                         />
                         {{ t('dashboard.title') }}

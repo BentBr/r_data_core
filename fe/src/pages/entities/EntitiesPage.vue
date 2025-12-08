@@ -7,7 +7,7 @@
                         <div class="d-flex align-center">
                             <SmartIcon
                                 icon="database"
-                                :size="28"
+                                size="lg"
                                 class="mr-3"
                             />
                             <span class="text-h4">{{ t('navigation.entities') }}</span>
