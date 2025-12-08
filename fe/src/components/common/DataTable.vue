@@ -45,7 +45,7 @@
         <template #item.required="{ item }">
             <SmartIcon
                 :icon="item.required ? 'check-circle' : 'x-circle'"
-                :color="item.required ? 'success' : 'grey'"
+                :color="item.required ? 'success' : 'mutedForeground'"
                 size="sm"
             />
         </template>

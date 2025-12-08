@@ -22,14 +22,14 @@
                             :model-value="pair.k"
                             :items="leftItems || []"
                             density="comfortable"
-                            variant="underlined"
+                            variant="outlined"
                             @update:model-value="(v: string) => updatePair(idx, { ...pair, k: v })"
                         />
                         <v-text-field
                             v-else
                             :model-value="pair.k"
                             density="comfortable"
-                            variant="underlined"
+                            variant="outlined"
                             @update:model-value="(v: string) => updatePair(idx, { ...pair, k: v })"
                         />
                     </td>
@@ -39,14 +39,14 @@
                             :model-value="pair.v"
                             :items="rightItems || []"
                             density="comfortable"
-                            variant="underlined"
+                            variant="outlined"
                             @update:model-value="(v: string) => updatePair(idx, { ...pair, v })"
                         />
                         <v-text-field
                             v-else
                             :model-value="pair.v"
                             density="comfortable"
-                            variant="underlined"
+                            variant="outlined"
                             @update:model-value="(v: string) => updatePair(idx, { ...pair, v })"
                         />
                     </td>
