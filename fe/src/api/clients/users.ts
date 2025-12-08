@@ -22,7 +22,7 @@ export class UsersClient extends BaseTypedHttpClient {
             }
             request_id?: string
             timestamp?: string
-            custom?: unknown
+            custom?: import('@/types/schemas').UserCustomData
         }
     }> {
         let url = `/admin/api/v1/users?page=${page}&per_page=${itemsPerPage}`

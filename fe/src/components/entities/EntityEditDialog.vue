@@ -85,7 +85,7 @@
             <v-card-actions class="pa-4 px-6">
                 <v-spacer />
                 <v-btn
-                    variant="text"
+                    :variant="buttonConfigs.text.variant"
                     color="mutedForeground"
                     :disabled="loading"
                     @click="closeDialog"
@@ -93,8 +93,8 @@
                     {{ t('common.cancel') }}
                 </v-btn>
                 <v-btn
-                    color="primary"
-                    variant="flat"
+                    :color="buttonConfigs.primary.color"
+                    :variant="buttonConfigs.primary.variant"
                     :loading="loading"
                     :disabled="!isValid"
                     @click="updateEntity"
@@ -111,7 +111,7 @@
     import { useTranslations } from '@/composables/useTranslations'
     import { useFieldRendering } from '@/composables/useFieldRendering'
     import SmartIcon from '@/components/common/SmartIcon.vue'
-    import { getDialogMaxWidth } from '@/design-system/components'
+    import { getDialogMaxWidth, buttonConfigs } from '@/design-system/components'
     import type { DynamicEntity, EntityDefinition, UpdateEntityRequest } from '@/types/schemas'
 
     interface Props {

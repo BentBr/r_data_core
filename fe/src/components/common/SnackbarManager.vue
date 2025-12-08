@@ -10,7 +10,7 @@
         <template #actions>
             <v-btn
                 color="white"
-                variant="text"
+                :variant="buttonConfigs.text.variant"
                 @click="showSnackbar = false"
             >
                 Close
@@ -22,6 +22,7 @@
 <script setup lang="ts">
     import { ref, computed, watch } from 'vue'
     import type { SnackbarConfig } from '@/types/schemas'
+    import { buttonConfigs } from '@/design-system/components'
 
     interface Props {
         snackbar: SnackbarConfig | null

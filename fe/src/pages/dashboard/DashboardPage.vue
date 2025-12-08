@@ -21,7 +21,7 @@
                             >
                                 <v-progress-circular
                                     indeterminate
-                                    size="24"
+                                    size="default"
                                 />
                             </div>
                             <div
@@ -53,7 +53,7 @@
                             >
                                 <v-progress-circular
                                     indeterminate
-                                    size="24"
+                                    size="default"
                                 />
                             </div>
                             <div v-else>
@@ -95,7 +95,7 @@
                             >
                                 <v-progress-circular
                                     indeterminate
-                                    size="24"
+                                    size="default"
                                 />
                             </div>
                             <div v-else>
@@ -138,7 +138,7 @@
                             >
                                 <v-progress-circular
                                     indeterminate
-                                    size="24"
+                                    size="default"
                                 />
                             </div>
                             <div
@@ -174,7 +174,7 @@
                                         <template #prepend>
                                             <SmartIcon
                                                 icon="plus"
-                                                :size="20"
+                                                size="sm"
                                             />
                                         </template>
                                         {{ t('dashboard.quick_actions.new_entity_definition') }}
@@ -195,7 +195,7 @@
                                         <template #prepend>
                                             <SmartIcon
                                                 icon="database"
-                                                :size="20"
+                                                size="sm"
                                             />
                                         </template>
                                         {{ t('dashboard.quick_actions.create_entity') }}
@@ -215,8 +215,8 @@
                                     >
                                         <template #prepend>
                                             <SmartIcon
-                                                icon="key-round"
-                                                :size="20"
+                                                icon="key"
+                                                size="sm"
                                             />
                                         </template>
                                         {{ t('dashboard.quick_actions.generate_api_key') }}
@@ -236,8 +236,8 @@
                                     >
                                         <template #prepend>
                                             <SmartIcon
-                                                icon="workflow"
-                                                :size="20"
+                                                icon="git-branch"
+                                                size="sm"
                                             />
                                         </template>
                                         {{ t('dashboard.quick_actions.create_workflow') }}
@@ -258,7 +258,7 @@
                                         <template #prepend>
                                             <SmartIcon
                                                 icon="user-plus"
-                                                :size="20"
+                                                size="sm"
                                             />
                                         </template>
                                         {{ t('dashboard.quick_actions.users') }}

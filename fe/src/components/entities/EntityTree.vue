@@ -40,7 +40,7 @@
             <SmartIcon
                 icon="database"
                 :size="48"
-                color="grey"
+                color="mutedForeground"
                 class="mr-3"
             />
             <span class="text-grey">{{ t('entities.tree.no_entities') }}</span>

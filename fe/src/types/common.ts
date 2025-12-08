@@ -4,11 +4,11 @@
 
 /**
  * Table row item interface - base structure for all table items
+ * @template T - Optional type parameter for specific row data structure
  */
-export interface TableRow {
+export type TableRow<T extends Record<string, unknown> = Record<string, unknown>> = {
     uuid: string
-    [key: string]: unknown
-}
+} & T
 
 /**
  * Pagination metadata structure

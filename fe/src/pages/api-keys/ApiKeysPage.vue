@@ -9,7 +9,7 @@
                 >
                     <template #prepend>
                         <SmartIcon
-                            icon="key-round"
+                            icon="key"
                             size="sm"
                         />
                     </template>
@@ -38,7 +38,7 @@
                         <SmartIcon
                             :icon="item.is_active ? 'key' : 'key-round'"
                             :color="item.is_active ? 'success' : 'error'"
-                            :size="20"
+                            size="sm"
                             class="mr-2"
                         />
                         <span :class="{ 'text-decoration-line-through': !item.is_active }">
@@ -147,7 +147,7 @@
                         >
                             <SmartIcon
                                 icon="eye"
-                                :size="20"
+                                size="sm"
                             />
                         </v-btn>
                         <v-btn
@@ -159,7 +159,7 @@
                         >
                             <SmartIcon
                                 icon="trash-2"
-                                :size="20"
+                                size="sm"
                             />
                         </v-btn>
                     </div>

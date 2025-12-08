@@ -14,7 +14,7 @@
             <v-card-actions class="pa-4 px-6">
                 <v-spacer />
                 <v-btn
-                    variant="text"
+                    :variant="buttonConfigs.text.variant"
                     color="mutedForeground"
                     @click="closeDialog"
                 >
@@ -22,8 +22,8 @@
                 </v-btn>
                 <v-btn
                     v-if="showConfirmButton"
-                    color="primary"
-                    variant="flat"
+                    :color="buttonConfigs.primary.color"
+                    :variant="buttonConfigs.primary.variant"
                     :loading="loading"
                     :disabled="disabled"
                     @click="confirmAction"
@@ -38,7 +38,7 @@
 <script setup lang="ts">
     import { computed } from 'vue'
     import type { DialogConfig } from '@/types/schemas'
-    import { getDialogMaxWidth } from '@/design-system/components'
+    import { getDialogMaxWidth, buttonConfigs } from '@/design-system/components'
 
     interface Props {
         modelValue: boolean

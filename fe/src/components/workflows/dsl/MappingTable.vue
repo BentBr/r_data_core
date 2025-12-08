@@ -20,7 +20,7 @@
                         <v-text-field
                             v-model="localPairs[idx].k"
                             density="comfortable"
-                            variant="underlined"
+                            variant="outlined"
                             @update:model-value="emitUpdate(idx)"
                         />
                     </td>
@@ -30,27 +30,27 @@
                             v-model="localPairs[idx].v"
                             :items="rightItems || []"
                             density="comfortable"
-                            variant="underlined"
+                            variant="outlined"
                             @update:model-value="emitUpdate(idx)"
                         />
                         <v-text-field
                             v-else
                             v-model="localPairs[idx].v"
                             density="comfortable"
-                            variant="underlined"
+                            variant="outlined"
                             @update:model-value="emitUpdate(idx)"
                         />
                     </td>
                     <td class="text-right">
                         <v-btn
                             size="x-small"
-                            variant="text"
-                            color="error"
+                            :variant="buttonConfigs.text.variant"
+                            :color="buttonConfigs.destructive.color"
                             @click="$emit('delete-pair', idx)"
                         >
                             <SmartIcon
                                 icon="trash-2"
-                                :size="16"
+                                size="xs"
                             />
                         </v-btn>
                     </td>
@@ -62,6 +62,7 @@
 
 <script setup lang="ts">
     import { ref, watch } from 'vue'
+    import { buttonConfigs } from '@/design-system/components'
 
     type Pair = { k: string; v: string }
     const props = defineProps<{

@@ -38,7 +38,23 @@
 
         if (!Icon) {
             console.warn(`Lucide icon "${props.name}" (${iconName}) not found`)
-            return () => h('span', { class: 'lucide-icon-placeholder' }, '?')
+            // Return a placeholder with valid dimensions
+            const size = typeof props.size === 'number' ? props.size : 24
+            return () =>
+                h(
+                    'span',
+                    {
+                        class: 'lucide-icon-placeholder',
+                        style: {
+                            width: `${size}px`,
+                            height: `${size}px`,
+                            display: 'inline-block',
+                            textAlign: 'center',
+                            lineHeight: `${size}px`,
+                        },
+                    },
+                    '?'
+                )
         }
 
         // Convert Vuetify color names to CSS color values
@@ -56,9 +72,17 @@
             }
         }
 
+        // Ensure size is a valid number
+        const iconSize =
+            typeof props.size === 'number'
+                ? props.size
+                : typeof props.size === 'string'
+                  ? parseInt(props.size, 10) || 24
+                  : 24
+
         return () =>
             h(Icon, {
-                size: props.size,
+                size: iconSize,
                 color: iconColor ?? 'currentColor',
                 strokeWidth: props.strokeWidth,
             })

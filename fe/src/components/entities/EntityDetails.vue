@@ -8,7 +8,7 @@
                 <SmartIcon
                     icon="database"
                     :size="48"
-                    color="grey"
+                    color="mutedForeground"
                     class="mb-3"
                 />
                 <p class="text-grey">{{ t('entities.details.select_entity') }}</p>

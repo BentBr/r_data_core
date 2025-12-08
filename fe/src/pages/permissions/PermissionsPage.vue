@@ -9,7 +9,7 @@
                     <template #prepend>
                         <SmartIcon
                             icon="users"
-                            :size="20"
+                            size="sm"
                             class="mr-2"
                         />
                     </template>
@@ -19,7 +19,7 @@
                     <template #prepend>
                         <SmartIcon
                             icon="shield"
-                            :size="20"
+                            size="sm"
                             class="mr-2"
                         />
                     </template>
@@ -41,7 +41,7 @@
                             <template #prepend>
                                 <SmartIcon
                                     icon="plus"
-                                    :size="20"
+                                    size="sm"
                                 />
                             </template>
                             {{ t('permissions.page.users.new_button') || 'New User' }}
@@ -70,7 +70,7 @@
                                     v-if="item.super_admin"
                                     icon="shield-check"
                                     color="warning"
-                                    :size="20"
+                                    size="sm"
                                     class="mr-2"
                                 />
                                 <span>{{ item.username }}</span>
@@ -128,7 +128,7 @@
                                 >
                                     <SmartIcon
                                         icon="pencil"
-                                        :size="20"
+                                        size="sm"
                                     />
                                 </v-btn>
                                 <v-btn
@@ -139,7 +139,7 @@
                                 >
                                     <SmartIcon
                                         icon="trash-2"
-                                        :size="20"
+                                        size="sm"
                                     />
                                 </v-btn>
                             </div>
@@ -159,7 +159,7 @@
                             <template #prepend>
                                 <SmartIcon
                                     icon="plus"
-                                    :size="20"
+                                    size="sm"
                                 />
                             </template>
                             {{ t('permissions.page.roles.new_button') || 'New Role' }}
@@ -189,7 +189,7 @@
                                     v-if="item.is_system"
                                     icon="shield-lock"
                                     color="warning"
-                                    :size="20"
+                                    size="sm"
                                     class="mr-2"
                                 />
                                 <span>{{ item.name }}</span>
@@ -242,7 +242,7 @@
                                 >
                                     <SmartIcon
                                         icon="pencil"
-                                        :size="20"
+                                        size="sm"
                                     />
                                 </v-btn>
                                 <v-btn
@@ -254,7 +254,7 @@
                                 >
                                     <SmartIcon
                                         icon="trash-2"
-                                        :size="20"
+                                        size="sm"
                                     />
                                 </v-btn>
                             </div>
