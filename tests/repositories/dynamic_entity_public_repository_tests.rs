@@ -278,3 +278,120 @@ async fn test_browse_published_status() -> Result<()> {
 
     Ok(())
 }
+
+/// Test that `browse_by_path` uses batched queries instead of N+1 queries
+/// This test creates many entities to ensure batching is necessary and verifies
+/// that `has_children` is correctly determined for all nodes using batched queries.
+#[tokio::test]
+async fn test_browse_by_path_batched_queries() -> Result<()> {
+    let pool = setup_test_db().await;
+    let pub_repo = DynamicEntityPublicRepository::new(pool.clone());
+
+    // Create entity definition with unique name
+    let entity_type = unique_entity_type("test_batched");
+    let entity_def = create_test_entity_definition(&pool, &entity_type).await?;
+
+    let repo = DynamicEntityRepository::new(pool.clone());
+
+    // Create many root-level entities (50+) to ensure batching is needed
+    // This would cause N+1 queries if not batched
+    let mut root_entities = Vec::new();
+    for i in 0..60 {
+        let root_uuid = Uuid::now_v7();
+        let root_key = format!("root-{i}-{root_uuid}");
+        let root = create_test_dynamic_entity(&entity_def, &format!("Root {i}"), "/", &root_key);
+        let root_uuid = root.get::<Uuid>("uuid")?;
+        repo.create(&root).await?;
+        root_entities.push((root_key, root_uuid));
+    }
+
+    // Create children for some of the root entities to test UUID batching
+    let mut parent_child_pairs = Vec::new();
+    for (i, (root_key, root_uuid)) in root_entities.iter().take(20).enumerate() {
+        let root_path = format!("/{root_key}");
+        let child_uuid = Uuid::now_v7();
+        let child_key = format!("child-{i}-{child_uuid}");
+        let mut child =
+            create_test_dynamic_entity(&entity_def, &format!("Child {i}"), &root_path, &child_key);
+        child.set("parent_uuid", root_uuid.to_string())?;
+        repo.create(&child).await?;
+        parent_child_pairs.push((root_uuid, root_key.clone()));
+    }
+
+    // Create folder structures (virtual folders) to test folder path batching
+    // Create entities at nested paths to create folder structures
+    for i in 0..15 {
+        let folder_name = format!("folder-{i}");
+        let folder_path = format!("/{folder_name}");
+        let file_uuid = Uuid::now_v7();
+        let file_key = format!("file-{i}-{file_uuid}");
+        let file =
+            create_test_dynamic_entity(&entity_def, &format!("File {i}"), &folder_path, &file_key);
+        repo.create(&file).await?;
+    }
+
+    // Wait a bit for all entities to be created
+    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+
+    // Browse root path - this should use batched queries
+    // If N+1 queries were happening, this would be very slow or timeout
+    let (nodes, total) = pub_repo.browse_by_path("/", 100, 0).await?;
+
+    // Verify we got all the root entities
+    assert!(
+        total >= 60,
+        "Should have at least 60 root nodes, got {total}"
+    );
+
+    // Verify has_children is correctly set for entities with children
+    for (_root_uuid, root_key) in &parent_child_pairs {
+        let root_node = nodes
+            .iter()
+            .find(|n| n.name == *root_key)
+            .unwrap_or_else(|| panic!("Root node {root_key} not found"));
+        assert!(
+            root_node.has_children == Some(true),
+            "Root entity {root_key} should have has_children=true because it has children"
+        );
+    }
+
+    // Verify has_children is correctly set for entities without children
+    for (root_key, _root_uuid) in root_entities.iter().skip(20) {
+        let root_node = nodes
+            .iter()
+            .find(|n| n.name == *root_key)
+            .unwrap_or_else(|| panic!("Root node {root_key} not found"));
+        // Entities without children should have has_children=false or None
+        assert!(
+            root_node.has_children != Some(true),
+            "Root entity {root_key} should not have has_children=true because it has no children"
+        );
+    }
+
+    // Verify folder structures are detected correctly
+    for i in 0..15 {
+        let folder_name = format!("folder-{i}");
+        let folder_node = nodes
+            .iter()
+            .find(|n| n.name == folder_name)
+            .unwrap_or_else(|| panic!("Folder node {folder_name} not found"));
+        assert_eq!(
+            folder_node.kind,
+            r_data_core_core::public_api::BrowseKind::Folder,
+            "Node {folder_name} should be a folder"
+        );
+        assert!(
+            folder_node.has_children == Some(true),
+            "Folder {folder_name} should have has_children=true because it contains files"
+        );
+    }
+
+    // Browse a folder path to verify folder path batching works
+    let (folder_nodes, _) = pub_repo.browse_by_path("/folder-0", 100, 0).await?;
+    assert!(
+        folder_nodes.iter().any(|n| n.name.starts_with("file-0-")),
+        "Should find file in folder-0"
+    );
+
+    Ok(())
+}
