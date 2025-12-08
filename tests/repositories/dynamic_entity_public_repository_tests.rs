@@ -96,7 +96,7 @@ fn create_test_dynamic_entity(
 #[tokio::test]
 async fn test_list_available_entity_types() -> Result<()> {
     let pool = setup_test_db().await;
-    let pub_repo = DynamicEntityPublicRepository::new(pool.clone());
+    let pub_repo = DynamicEntityPublicRepository::new(pool.pool.clone());
 
     // Create multiple entity definitions with unique names
     let entity_type1 = unique_entity_type("test_type_1");
@@ -105,7 +105,7 @@ async fn test_list_available_entity_types() -> Result<()> {
     let _entity_def2 = create_test_entity_definition(&pool, &entity_type2).await?;
 
     // Create entities for counting
-    let repo = DynamicEntityRepository::new(pool.clone());
+    let repo = DynamicEntityRepository::new(pool.pool.clone());
     let entity1 =
         create_test_dynamic_entity(&entity_def1, "Entity 1", "/", &Uuid::now_v7().to_string());
     let entity2 =
@@ -143,14 +143,14 @@ async fn test_list_available_entity_types() -> Result<()> {
 #[tokio::test]
 async fn test_browse_by_path() -> Result<()> {
     let pool = setup_test_db().await;
-    let pub_repo = DynamicEntityPublicRepository::new(pool.clone());
+    let pub_repo = DynamicEntityPublicRepository::new(pool.pool.clone());
 
     // Create entity definition with unique name
     let entity_type = unique_entity_type("test_browse");
     let entity_def = create_test_entity_definition(&pool, &entity_type).await?;
 
     // Create entities in a hierarchy
-    let repo = DynamicEntityRepository::new(pool.clone());
+    let repo = DynamicEntityRepository::new(pool.pool.clone());
 
     // Root level entities - use entity_key as the key
     let root1_uuid = Uuid::now_v7();
@@ -201,14 +201,14 @@ async fn test_browse_by_path() -> Result<()> {
 #[tokio::test]
 async fn test_browse_by_path_pagination() -> Result<()> {
     let pool = setup_test_db().await;
-    let pub_repo = DynamicEntityPublicRepository::new(pool.clone());
+    let pub_repo = DynamicEntityPublicRepository::new(pool.pool.clone());
 
     // Create entity definition with unique name
     let entity_type = unique_entity_type("test_pagination");
     let entity_def = create_test_entity_definition(&pool, &entity_type).await?;
 
     // Create multiple entities
-    let repo = DynamicEntityRepository::new(pool.clone());
+    let repo = DynamicEntityRepository::new(pool.pool.clone());
     for i in 0..10 {
         let entity = create_test_dynamic_entity(
             &entity_def,
@@ -235,13 +235,13 @@ async fn test_browse_by_path_pagination() -> Result<()> {
 #[tokio::test]
 async fn test_browse_published_status() -> Result<()> {
     let pool = setup_test_db().await;
-    let pub_repo = DynamicEntityPublicRepository::new(pool.clone());
+    let pub_repo = DynamicEntityPublicRepository::new(pool.pool.clone());
 
     // Create entity definition
     let entity_type = unique_entity_type("test_published");
     let entity_def = create_test_entity_definition(&pool, &entity_type).await?;
 
-    let repo = DynamicEntityRepository::new(pool.clone());
+    let repo = DynamicEntityRepository::new(pool.pool.clone());
 
     // Create published entity
     let pub_uuid = Uuid::now_v7();
@@ -285,13 +285,13 @@ async fn test_browse_published_status() -> Result<()> {
 #[tokio::test]
 async fn test_browse_by_path_batched_queries() -> Result<()> {
     let pool = setup_test_db().await;
-    let pub_repo = DynamicEntityPublicRepository::new(pool.clone());
+    let pub_repo = DynamicEntityPublicRepository::new(pool.pool.clone());
 
     // Create entity definition with unique name
     let entity_type = unique_entity_type("test_batched");
     let entity_def = create_test_entity_definition(&pool, &entity_type).await?;
 
-    let repo = DynamicEntityRepository::new(pool.clone());
+    let repo = DynamicEntityRepository::new(pool.pool.clone());
 
     // Create many root-level entities (50+) to ensure batching is needed
     // This would cause N+1 queries if not batched

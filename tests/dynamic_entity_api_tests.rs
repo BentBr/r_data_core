@@ -333,8 +333,9 @@ mod dynamic_entity_tests {
         let (_, entity_def) = create_test_entity_definition(&pool, &entity_type).await?;
 
         // Create repository and service
-        let repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
-        let entity_definition_repository = Arc::new(EntityDefinitionRepository::new(pool.clone()));
+        let repository = Arc::new(DynamicEntityRepository::new(pool.pool.clone()));
+        let entity_definition_repository =
+            Arc::new(EntityDefinitionRepository::new(pool.pool.clone()));
         let class_service =
             EntityDefinitionService::new_without_cache(entity_definition_repository);
         let service = DynamicEntityService::new(repository.clone(), Arc::new(class_service));
@@ -393,8 +394,8 @@ mod dynamic_entity_tests {
         println!("Created entity type: {entity_type}");
 
         // Create dynamic entity service
-        let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
-        let repository = Arc::new(EntityDefinitionRepository::new(pool.clone()));
+        let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.pool.clone()));
+        let repository = Arc::new(EntityDefinitionRepository::new(pool.pool.clone()));
         let class_service = EntityDefinitionService::new_without_cache(repository);
         let dynamic_entity_service =
             DynamicEntityService::new(dynamic_entity_repository.clone(), Arc::new(class_service));
@@ -527,8 +528,8 @@ mod dynamic_entity_tests {
         .await?;
 
         // Create dynamic entity service
-        let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
-        let repository = Arc::new(EntityDefinitionRepository::new(pool.clone()));
+        let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.pool.clone()));
+        let repository = Arc::new(EntityDefinitionRepository::new(pool.pool.clone()));
         let class_service = EntityDefinitionService::new_without_cache(repository);
         let dynamic_entity_service =
             DynamicEntityService::new(dynamic_entity_repository.clone(), Arc::new(class_service));
@@ -668,8 +669,8 @@ mod dynamic_entity_tests {
         println!("Testing pagination with entity type: {entity_type}");
 
         // Create repositories and services for this test
-        let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
-        let repository = Arc::new(EntityDefinitionRepository::new(pool.clone()));
+        let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.pool.clone()));
+        let repository = Arc::new(EntityDefinitionRepository::new(pool.pool.clone()));
         let class_service = EntityDefinitionService::new_without_cache(repository);
         let dynamic_entity_service =
             DynamicEntityService::new(dynamic_entity_repository.clone(), Arc::new(class_service));
@@ -770,8 +771,8 @@ mod dynamic_entity_tests {
         println!("Created entity type: {entity_type}");
 
         // Create dynamic entity service
-        let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
-        let repository = Arc::new(EntityDefinitionRepository::new(pool.clone()));
+        let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.pool.clone()));
+        let repository = Arc::new(EntityDefinitionRepository::new(pool.pool.clone()));
         let class_service = EntityDefinitionService::new_without_cache(repository);
         let dynamic_entity_service =
             DynamicEntityService::new(dynamic_entity_repository, Arc::new(class_service));
@@ -891,7 +892,7 @@ mod dynamic_entity_tests {
         };
 
         // Create entity definition in the database
-        let class_repo = EntityDefinitionRepository::new(pool.clone());
+        let class_repo = EntityDefinitionRepository::new(pool.pool.clone());
         let class_service = EntityDefinitionService::new_without_cache(Arc::new(class_repo));
         let entity_uuid = class_service.create_entity_definition(&entity_def).await?;
 
@@ -938,7 +939,7 @@ mod dynamic_entity_tests {
         );
 
         // Create a repository and service for dynamic entities
-        let entity_repo = Arc::new(DynamicEntityRepository::new(pool.clone()));
+        let entity_repo = Arc::new(DynamicEntityRepository::new(pool.pool.clone()));
         let dynamic_service = DynamicEntityService::new(entity_repo, Arc::new(class_service));
 
         // Create the entity
@@ -990,7 +991,7 @@ mod dynamic_entity_tests {
         };
 
         // Create entity definition in the database
-        let class_repo = EntityDefinitionRepository::new(pool.clone());
+        let class_repo = EntityDefinitionRepository::new(pool.pool.clone());
         let class_service = EntityDefinitionService::new_without_cache(Arc::new(class_repo));
         let entity_def_uuid = class_service.create_entity_definition(&entity_def).await?;
 
@@ -1003,7 +1004,7 @@ mod dynamic_entity_tests {
             .await?;
 
         // Create repository and service
-        let entity_repo = Arc::new(DynamicEntityRepository::new(pool.clone()));
+        let entity_repo = Arc::new(DynamicEntityRepository::new(pool.pool.clone()));
         let dynamic_service = DynamicEntityService::new(entity_repo, Arc::new(class_service));
 
         // Create first entity at "/" with key "test"
@@ -1081,7 +1082,7 @@ mod dynamic_entity_tests {
             "SELECT parent_uuid FROM entities_registry WHERE uuid = $1",
             child_uuid
         )
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
         assert_eq!(
@@ -1091,7 +1092,7 @@ mod dynamic_entity_tests {
         );
 
         // Test 2: Query entities at "/" - should return parent entity with has_children=true
-        let pub_repo = DynamicEntityPublicRepository::new(pool.clone());
+        let pub_repo = DynamicEntityPublicRepository::new(pool.pool.clone());
         let (items, _total) = pub_repo.browse_by_path("/", 100, 0).await?;
 
         let parent_item = items.iter().find(|item| item.name == "test");
@@ -1148,7 +1149,7 @@ mod dynamic_entity_tests {
         };
 
         // Create entity definition in the database
-        let class_repo = EntityDefinitionRepository::new(pool.clone());
+        let class_repo = EntityDefinitionRepository::new(pool.pool.clone());
         let class_service = EntityDefinitionService::new_without_cache(Arc::new(class_repo));
         let entity_def_uuid = class_service.create_entity_definition(&entity_def).await?;
 
@@ -1161,7 +1162,7 @@ mod dynamic_entity_tests {
             .await?;
 
         // Create repository and service
-        let entity_repo = Arc::new(DynamicEntityRepository::new(pool.clone()));
+        let entity_repo = Arc::new(DynamicEntityRepository::new(pool.pool.clone()));
         let dynamic_service = DynamicEntityService::new(entity_repo, Arc::new(class_service));
 
         // Create folder entity at "/some-folder" with key "some-folder"
@@ -1236,7 +1237,7 @@ mod dynamic_entity_tests {
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
         // Test 1: Get-by-path "/" must return "some-folder" as type folder with has_children=true
-        let pub_repo = DynamicEntityPublicRepository::new(pool.clone());
+        let pub_repo = DynamicEntityPublicRepository::new(pool.pool.clone());
         let (root_items, _) = pub_repo.browse_by_path("/", 100, 0).await?;
 
         let folder_node = root_items.iter().find(|item| item.name == "some-folder");

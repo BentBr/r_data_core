@@ -98,7 +98,7 @@ async fn validate_requested_fields(
         ("offset" = Option<i64>, Query, description = "Number of items to skip (alternative to page-based pagination)"),
         ("include" = Option<String>, Query, description = "Comma-separated list of related entities to include"),
         ("sort_by" = Option<String>, Query, description = "Field to sort by"),
-        ("sort_direction" = Option<String>, Query, description = "Sort direction (asc or desc)"),
+        ("sort_order" = Option<String>, Query, description = "Sort order: 'asc' or 'desc' (default: 'asc')"),
         ("fields" = Option<Vec<String>>, Query, description = "Fields to include in the response"),
         ("filter" = Option<HashMap<String, Value>>, Query, description = "Filter criteria")
     ),
@@ -124,7 +124,7 @@ pub async fn list_entities(
     let (limit, offset) = query.pagination.to_limit_offset(20, 100);
     let fields = query.fields.get_fields();
     let sort_by = query.sorting.sort_by.clone();
-    let sort_direction = Some(query.sorting.get_sort_direction());
+    let sort_direction = Some(query.sorting.get_sort_order());
 
     // Handle filters and also accept a "path" query param for folder-style browsing
     let filter = query.filter.parse_filter();

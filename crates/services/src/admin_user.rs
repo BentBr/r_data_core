@@ -4,6 +4,8 @@ use r_data_core_persistence::AdminUserRepositoryTrait;
 use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::query_validation::{validate_list_query, FieldValidator, ValidatedListQuery};
+
 /// Service for admin user operations
 pub struct AdminUserService {
     repository: Arc<dyn AdminUserRepositoryTrait>,
@@ -169,12 +171,55 @@ impl AdminUserService {
     ///
     /// # Errors
     /// Returns an error if the database query fails
-    pub async fn list_users(&self, limit: i64, offset: i64) -> Result<Vec<AdminUser>> {
+    pub async fn list_users(
+        &self,
+        limit: i64,
+        offset: i64,
+        sort_by: Option<String>,
+        sort_order: Option<String>,
+    ) -> Result<Vec<AdminUser>> {
         // Validate input
         let limit = if limit <= 0 { 50 } else { limit };
         let offset = if offset < 0 { 0 } else { offset };
 
-        self.repository.list_admin_users(limit, offset).await
+        self.repository
+            .list_admin_users(limit, offset, sort_by, sort_order)
+            .await
+    }
+
+    /// List users with query validation
+    ///
+    /// This method validates the query parameters and returns validated parameters along with users.
+    ///
+    /// # Arguments
+    /// * `params` - The query parameters
+    /// * `field_validator` - The `FieldValidator` instance (required for validation)
+    ///
+    /// # Returns
+    /// A tuple of (users, `validated_query`) where `validated_query` contains pagination metadata
+    ///
+    /// # Errors
+    /// Returns an error if validation fails or database query fails
+    pub async fn list_users_with_query(
+        &self,
+        params: &crate::query_validation::ListQueryParams,
+        field_validator: &FieldValidator,
+    ) -> Result<(Vec<AdminUser>, ValidatedListQuery)> {
+        let validated = validate_list_query(params, "admin_users", field_validator, 20, 100, true)
+            .await
+            .map_err(r_data_core_core::error::Error::Validation)?;
+
+        let users = self
+            .repository
+            .list_admin_users(
+                validated.limit,
+                validated.offset,
+                validated.sort_by.clone(),
+                validated.sort_order.clone(),
+            )
+            .await?;
+
+        Ok((users, validated))
     }
 }
 
@@ -202,7 +247,7 @@ mod tests {
             ) -> Result<Uuid>;
             async fn update_admin_user(&self, user: &AdminUser) -> Result<()>;
             async fn delete_admin_user(&self, uuid: &Uuid) -> Result<()>;
-            async fn list_admin_users(&self, limit: i64, offset: i64) -> Result<Vec<AdminUser>>;
+            async fn list_admin_users(&self, limit: i64, offset: i64, sort_by: Option<String>, sort_order: Option<String>) -> Result<Vec<AdminUser>>;
         }
     }
 

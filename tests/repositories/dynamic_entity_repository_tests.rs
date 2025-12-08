@@ -90,7 +90,7 @@ async fn test_dynamic_entity_crud() -> Result<()> {
     // In a real test with a database:
     let pool = setup_test_db().await;
     let repo: Box<dyn DynamicEntityRepositoryTrait> =
-        Box::new(DynamicEntityRepository::new(pool.clone()));
+        Box::new(DynamicEntityRepository::new(pool.pool.clone()));
 
     // Create a test entity definition
     let mut entity_def = create_test_entity_definition_struct();
@@ -98,7 +98,7 @@ async fn test_dynamic_entity_crud() -> Result<()> {
     entity_def.created_by = Uuid::now_v7();
 
     // Create the entity definition in the database
-    let def_repo = EntityDefinitionRepository::new(pool.clone());
+    let def_repo = EntityDefinitionRepository::new(pool.pool.clone());
     let def_service = EntityDefinitionService::new_without_cache(Arc::new(def_repo));
     def_service.create_entity_definition(&entity_def).await?;
 
@@ -156,7 +156,7 @@ async fn test_list_entities_by_type() -> Result<()> {
     // In a real test with a database:
     let pool = setup_test_db().await;
     let repo: Box<dyn DynamicEntityRepositoryTrait> =
-        Box::new(DynamicEntityRepository::new(pool.clone()));
+        Box::new(DynamicEntityRepository::new(pool.pool.clone()));
 
     // Create a test entity definition
     let mut entity_def = create_test_entity_definition_struct();
@@ -164,7 +164,7 @@ async fn test_list_entities_by_type() -> Result<()> {
     entity_def.created_by = Uuid::now_v7();
 
     // Create the entity definition in the database
-    let def_repo = EntityDefinitionRepository::new(pool.clone());
+    let def_repo = EntityDefinitionRepository::new(pool.pool.clone());
     let def_service = EntityDefinitionService::new_without_cache(Arc::new(def_repo));
     def_service.create_entity_definition(&entity_def).await?;
 
@@ -202,7 +202,7 @@ async fn test_list_entities_by_parent() -> Result<()> {
     // In a real test with a database:
     let pool = setup_test_db().await;
     let repo: Box<dyn DynamicEntityRepositoryTrait> =
-        Box::new(DynamicEntityRepository::new(pool.clone()));
+        Box::new(DynamicEntityRepository::new(pool.pool.clone()));
 
     // Create a test entity definition
     let mut entity_def = create_test_entity_definition_struct();
@@ -210,7 +210,7 @@ async fn test_list_entities_by_parent() -> Result<()> {
     entity_def.created_by = Uuid::now_v7();
 
     // Create the entity definition in the database
-    let def_repo = EntityDefinitionRepository::new(pool.clone());
+    let def_repo = EntityDefinitionRepository::new(pool.pool.clone());
     let def_service = EntityDefinitionService::new_without_cache(Arc::new(def_repo));
     def_service.create_entity_definition(&entity_def).await?;
 
@@ -259,7 +259,7 @@ async fn test_filter_entities() -> Result<()> {
     // In a real test with a database:
     let pool = setup_test_db().await;
     let repo: Box<dyn DynamicEntityRepositoryTrait> =
-        Box::new(DynamicEntityRepository::new(pool.clone()));
+        Box::new(DynamicEntityRepository::new(pool.pool.clone()));
 
     // Create a test entity definition
     let mut entity_def = create_test_entity_definition_struct();
@@ -267,7 +267,7 @@ async fn test_filter_entities() -> Result<()> {
     entity_def.created_by = Uuid::now_v7();
 
     // Create the entity definition in the database
-    let def_repo = EntityDefinitionRepository::new(pool.clone());
+    let def_repo = EntityDefinitionRepository::new(pool.pool.clone());
     let def_service = EntityDefinitionService::new_without_cache(Arc::new(def_repo));
     def_service.create_entity_definition(&entity_def).await?;
 
@@ -317,7 +317,7 @@ async fn test_count_entities() -> Result<()> {
     // In a real test with a database:
     let pool = setup_test_db().await;
     let repo: Box<dyn DynamicEntityRepositoryTrait> =
-        Box::new(DynamicEntityRepository::new(pool.clone()));
+        Box::new(DynamicEntityRepository::new(pool.pool.clone()));
 
     // Create a test entity definition
     let mut entity_def = create_test_entity_definition_struct();
@@ -325,7 +325,7 @@ async fn test_count_entities() -> Result<()> {
     entity_def.created_by = Uuid::now_v7();
 
     // Create the entity definition in the database
-    let def_repo = EntityDefinitionRepository::new(pool.clone());
+    let def_repo = EntityDefinitionRepository::new(pool.pool.clone());
     let def_service = EntityDefinitionService::new_without_cache(Arc::new(def_repo));
     def_service.create_entity_definition(&entity_def).await?;
 
@@ -364,7 +364,7 @@ async fn test_field_name_case_handling() -> Result<()> {
     use sqlx::Row;
 
     let pool = setup_test_db().await;
-    let repo = DynamicEntityRepository::new(pool.clone());
+    let repo = DynamicEntityRepository::new(pool.pool.clone());
 
     // Create a unique entity type for this test
     let entity_type = unique_entity_type("Customer");
@@ -422,7 +422,7 @@ async fn test_field_name_case_handling() -> Result<()> {
     ];
 
     // Create the entity definition in the database
-    let def_repo = EntityDefinitionRepository::new(pool.clone());
+    let def_repo = EntityDefinitionRepository::new(pool.pool.clone());
     let def_service = EntityDefinitionService::new_without_cache(Arc::new(def_repo));
     def_service.create_entity_definition(&entity_def).await?;
 
@@ -463,7 +463,7 @@ async fn test_field_name_case_handling() -> Result<()> {
         "SELECT firstname, lastname, email FROM {table_name} WHERE uuid = $1"
     ))
     .bind(uuid)
-    .fetch_optional(&pool)
+    .fetch_optional(&pool.pool)
     .await
     .map_err(r_data_core_core::error::Error::Database)?;
 
@@ -573,7 +573,7 @@ async fn test_field_name_case_handling() -> Result<()> {
         "SELECT firstname, lastname FROM {table_name} WHERE uuid = $1"
     ))
     .bind(uuid)
-    .fetch_optional(&pool)
+    .fetch_optional(&pool.pool)
     .await
     .map_err(r_data_core_core::error::Error::Database)?;
 

@@ -339,7 +339,7 @@ async fn test_fixed_entity_type_column_issue() -> Result<()> {
     let user_uuid = create_test_admin_user(&pool).await?;
 
     // Create an API key repository and key BEFORE creating the app (like in authentication_tests.rs)
-    let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+    let api_key_repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
     let (_key_uuid, api_key) = ApiKeyRepositoryTrait::create_new_api_key(
         &api_key_repo,
         "Test API Key",
@@ -356,7 +356,7 @@ async fn test_fixed_entity_type_column_issue() -> Result<()> {
     // Directly test that the API key service in the app can validate the key
     // This helps debug if there's an issue with the service setup
     let test_service =
-        ApiKeyService::from_repository(ApiKeyRepository::new(Arc::new(pool.clone())));
+        ApiKeyService::from_repository(ApiKeyRepository::new(Arc::new(pool.pool.clone())));
     let service_validation = test_service.validate_api_key(&api_key).await?;
     assert!(
         service_validation.is_some(),

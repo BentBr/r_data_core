@@ -109,7 +109,7 @@ async fn test_query_by_parent() -> Result<()> {
     use r_data_core_services::EntityDefinitionService;
 
     let pool = setup_test_db().await;
-    let repo = DynamicEntityRepository::new(pool.clone());
+    let repo = DynamicEntityRepository::new(pool.pool.clone());
 
     // Create a test entity definition with unique name
     let entity_type = unique_entity_type("test_entity");
@@ -118,7 +118,7 @@ async fn test_query_by_parent() -> Result<()> {
     entity_def.published = true;
     entity_def.created_by = Uuid::now_v7();
 
-    let def_repo = EntityDefinitionRepository::new(pool.clone());
+    let def_repo = EntityDefinitionRepository::new(pool.pool.clone());
     let def_service = EntityDefinitionService::new_without_cache(Arc::new(def_repo));
     def_service.create_entity_definition(&entity_def).await?;
 
@@ -177,7 +177,7 @@ async fn test_query_by_path() -> Result<()> {
     use r_data_core_services::EntityDefinitionService;
 
     let pool = setup_test_db().await;
-    let repo = DynamicEntityRepository::new(pool.clone());
+    let repo = DynamicEntityRepository::new(pool.pool.clone());
 
     // Create a test entity definition with unique name
     let entity_type = unique_entity_type("test_entity");
@@ -186,7 +186,7 @@ async fn test_query_by_path() -> Result<()> {
     entity_def.published = true;
     entity_def.created_by = Uuid::now_v7();
 
-    let def_repo = EntityDefinitionRepository::new(pool.clone());
+    let def_repo = EntityDefinitionRepository::new(pool.pool.clone());
     let def_service = EntityDefinitionService::new_without_cache(Arc::new(def_repo));
     def_service.create_entity_definition(&entity_def).await?;
 
@@ -266,7 +266,7 @@ async fn test_has_children() -> Result<()> {
     use r_data_core_services::EntityDefinitionService;
 
     let pool = setup_test_db().await;
-    let repo = DynamicEntityRepository::new(pool.clone());
+    let repo = DynamicEntityRepository::new(pool.pool.clone());
 
     // Create a test entity definition with unique name
     let entity_type = unique_entity_type("test_has_children");
@@ -275,7 +275,7 @@ async fn test_has_children() -> Result<()> {
     entity_def.published = true;
     entity_def.created_by = Uuid::now_v7();
 
-    let def_repo = EntityDefinitionRepository::new(pool.clone());
+    let def_repo = EntityDefinitionRepository::new(pool.pool.clone());
     let def_service = EntityDefinitionService::new_without_cache(Arc::new(def_repo));
     def_service.create_entity_definition(&entity_def).await?;
 

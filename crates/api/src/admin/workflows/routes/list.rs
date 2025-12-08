@@ -2,16 +2,19 @@
 
 use actix_web::{get, web, Responder};
 use log::error;
+use std::sync::Arc;
 use uuid::Uuid;
 
 use super::utils::check_has_api_endpoint;
+use crate::admin::query_helpers::to_list_query_params;
 use crate::admin::workflows::models::{WorkflowRunSummary, WorkflowSummary};
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::auth::permission_check;
-use crate::query::PaginationQuery;
+use crate::query::{PaginationQuery, StandardQuery};
 use crate::response::ApiResponse;
 use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
+use r_data_core_services::query_validation::FieldValidator;
 
 /// List all workflow runs across all workflows
 #[utoipa::path(
@@ -79,19 +82,25 @@ pub async fn list_all_workflow_runs(
     }
 }
 
-/// List available workflows
+/// List available workflows with pagination and sorting
 #[utoipa::path(
     get,
     path = "/admin/api/v1/workflows",
     tag = "workflows",
     params(
         ("page" = Option<i64>, Query, description = "Page number (1-based, default: 1)"),
-        ("per_page" = Option<i64>, Query, description = "Items per page (default: 20, max: 100)"),
+        ("per_page" = Option<i64>, Query, description = "Items per page (default: 20, max: 100, or -1 for unlimited)"),
         ("limit" = Option<i64>, Query, description = "Alternative to per_page"),
-        ("offset" = Option<i64>, Query, description = "Alternative to page-based")
+        ("offset" = Option<i64>, Query, description = "Alternative to page-based"),
+        ("sort_by" = Option<String>, Query, description = "Field to sort by (e.g., name, enabled, created_at)"),
+        ("sort_order" = Option<String>, Query, description = "Sort order: 'asc' or 'desc' (default: 'asc')")
     ),
     responses(
-        (status = 200, description = "List workflows (paginated)", body = [WorkflowSummary])
+        (status = 200, description = "List workflows (paginated)", body = [WorkflowSummary]),
+        (status = 400, description = "Bad request - invalid parameters"),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - insufficient permissions"),
+        (status = 500, description = "Internal server error")
     ),
     security(("jwt" = []))
 )]
@@ -99,7 +108,7 @@ pub async fn list_all_workflow_runs(
 pub async fn list_workflows(
     state: web::Data<ApiStateWrapper>,
     auth: RequiredAuth,
-    query: web::Query<PaginationQuery>,
+    query: web::Query<StandardQuery>,
 ) -> impl Responder {
     // Check permission
     if !permission_check::has_permission(
@@ -111,12 +120,18 @@ pub async fn list_workflows(
         return ApiResponse::<()>::forbidden("Insufficient permissions to list workflows");
     }
 
-    let (limit, offset) = query.to_limit_offset(20, 100);
-    let page = query.get_page(1);
-    let per_page = query.get_per_page(20, 100);
+    // Create field validator
+    let pool = Arc::new(state.db_pool().clone());
+    let field_validator = Arc::new(FieldValidator::new(pool));
 
-    match state.workflow_service().list_paginated(limit, offset).await {
-        Ok((items, total)) => {
+    // Convert StandardQuery to ListQueryParams and use service method that handles all validation
+    let params = to_list_query_params(&query);
+    match state
+        .workflow_service()
+        .list_paginated_with_query(&params, &field_validator)
+        .await
+    {
+        Ok(((items, total), validated)) => {
             let summaries: Vec<WorkflowSummary> = items
                 .into_iter()
                 .map(|workflow| {
@@ -133,9 +148,17 @@ pub async fn list_workflows(
                     }
                 })
                 .collect();
-            ApiResponse::ok_paginated(summaries, total, page, per_page)
+            ApiResponse::ok_paginated(summaries, total, validated.page, validated.per_page)
         }
-        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to list workflows: {e}")),
+        Err(e) => {
+            error!("Failed to list workflows: {e}");
+            let err_msg = e.to_string();
+            if err_msg.contains("validation") {
+                ApiResponse::<()>::bad_request(&err_msg)
+            } else {
+                ApiResponse::<()>::internal_error(&format!("Failed to list workflows: {e}"))
+            }
+        }
     }
 }
 

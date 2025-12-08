@@ -12,6 +12,8 @@ use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository, RoleReposit
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
+use crate::query_validation::{validate_list_query, FieldValidator, ValidatedListQuery};
+
 /// Cached user role UUIDs
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct UserRoles {
@@ -377,16 +379,61 @@ impl RoleService {
         Ok(())
     }
 
-    /// List roles with pagination
+    /// List roles with pagination and sorting
     ///
     /// # Arguments
-    /// * `limit` - Maximum number of roles to return
+    /// * `limit` - Maximum number of roles to return (-1 for unlimited)
     /// * `offset` - Number of roles to skip
+    /// * `sort_by` - Optional field to sort by
+    /// * `sort_order` - Sort order (ASC or DESC), defaults to ASC
     ///
     /// # Errors
     /// Returns an error if database query fails
-    pub async fn list_roles(&self, limit: i64, offset: i64) -> Result<Vec<Role>> {
-        self.repository.list_all(limit, offset).await
+    pub async fn list_roles(
+        &self,
+        limit: i64,
+        offset: i64,
+        sort_by: Option<String>,
+        sort_order: Option<String>,
+    ) -> Result<Vec<Role>> {
+        self.repository
+            .list_all(limit, offset, sort_by, sort_order)
+            .await
+    }
+
+    /// List roles with query validation
+    ///
+    /// This method validates the query parameters and returns validated parameters along with roles.
+    ///
+    /// # Arguments
+    /// * `params` - The query parameters
+    /// * `field_validator` - The `FieldValidator` instance (required for validation)
+    ///
+    /// # Returns
+    /// A tuple of (roles, `validated_query`) where `validated_query` contains pagination metadata
+    ///
+    /// # Errors
+    /// Returns an error if validation fails or database query fails
+    pub async fn list_roles_with_query(
+        &self,
+        params: &crate::query_validation::ListQueryParams,
+        field_validator: &FieldValidator,
+    ) -> Result<(Vec<Role>, ValidatedListQuery)> {
+        let validated = validate_list_query(params, "roles", field_validator, 20, 100, true)
+            .await
+            .map_err(r_data_core_core::error::Error::Validation)?;
+
+        let roles = self
+            .repository
+            .list_all(
+                validated.limit,
+                validated.offset,
+                validated.sort_by.clone(),
+                validated.sort_order.clone(),
+            )
+            .await?;
+
+        Ok((roles, validated))
     }
 
     /// Count all roles

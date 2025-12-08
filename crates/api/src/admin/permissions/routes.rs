@@ -8,16 +8,18 @@ use uuid::Uuid;
 use crate::admin::permissions::models::{
     AssignRolesRequest, CreateRoleRequest, RoleResponse, UpdateRoleRequest,
 };
+use crate::admin::query_helpers::to_list_query_params;
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::auth::permission_check;
 use crate::auth::RequiredAuthExt;
-use crate::query::PaginationQuery;
+use crate::query::StandardQuery;
 use crate::response::ApiResponse;
 use r_data_core_core::permissions::role::{Permission, PermissionType, ResourceNamespace};
 use r_data_core_persistence::{
     AdminUserRepository, AdminUserRepositoryTrait, ApiKeyRepository, ApiKeyRepositoryTrait,
 };
+use r_data_core_services::query_validation::FieldValidator;
 
 /// Register role routes
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
@@ -30,16 +32,18 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
         .service(assign_roles_to_api_key);
 }
 
-/// List all roles with pagination
+/// List all roles with pagination and sorting
 #[utoipa::path(
     get,
     path = "/admin/api/v1/roles",
     tag = "roles",
     params(
         ("page" = Option<i64>, Query, description = "Page number (1-based, default: 1)"),
-        ("per_page" = Option<i64>, Query, description = "Number of items per page (default: 20, max: 100)"),
+        ("per_page" = Option<i64>, Query, description = "Number of items per page (default: 20, max: 100, or -1 for unlimited)"),
         ("limit" = Option<i64>, Query, description = "Maximum number of items to return (alternative to per_page)"),
-        ("offset" = Option<i64>, Query, description = "Number of items to skip (alternative to page-based pagination)")
+        ("offset" = Option<i64>, Query, description = "Number of items to skip (alternative to page-based pagination)"),
+        ("sort_by" = Option<String>, Query, description = "Field to sort by (e.g., name, description, created_at)"),
+        ("sort_order" = Option<String>, Query, description = "Sort order: 'asc' or 'desc' (default: 'asc')")
     ),
     responses(
         (status = 200, description = "List of roles with pagination", body = Vec<RoleResponse>),
@@ -56,7 +60,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
 pub async fn list_roles(
     state: web::Data<ApiStateWrapper>,
     auth: RequiredAuth,
-    query: web::Query<PaginationQuery>,
+    query: web::Query<StandardQuery>,
 ) -> impl Responder {
     // Check permission
     if let Err(resp) =
@@ -65,29 +69,33 @@ pub async fn list_roles(
         return resp;
     }
 
-    let (limit, offset) = query.to_limit_offset(20, 100);
-    let page = query.get_page(1);
-    let per_page = query.get_per_page(20, 100);
+    // Create field validator
+    let pool = Arc::new(state.db_pool().clone());
+    let field_validator = Arc::new(FieldValidator::new(pool));
 
+    // Convert StandardQuery to ListQueryParams and use service method that handles all validation
+    let params = to_list_query_params(&query);
     let service = state.role_service();
+    match service
+        .list_roles_with_query(&params, &field_validator)
+        .await
+    {
+        Ok((roles, validated)) => {
+            // Get total count
+            let total = service.count_roles().await.unwrap_or(0);
 
-    // Get both the roles and the total count
-    let (roles_result, count_result) =
-        tokio::join!(service.list_roles(limit, offset), service.count_roles());
-
-    match (roles_result, count_result) {
-        (Ok(roles), Ok(total)) => {
             let responses: Vec<RoleResponse> = roles.iter().map(RoleResponse::from).collect();
 
-            ApiResponse::ok_paginated(responses, total, page, per_page)
+            ApiResponse::ok_paginated(responses, total, validated.page, validated.per_page)
         }
-        (Err(e), _) => {
+        Err(e) => {
             error!("Failed to list roles: {e}");
-            ApiResponse::<()>::internal_error("Failed to retrieve roles")
-        }
-        (_, Err(e)) => {
-            error!("Failed to count roles: {e}");
-            ApiResponse::<()>::internal_error("Failed to count roles")
+            match e {
+                r_data_core_core::error::Error::Validation(msg) => {
+                    ApiResponse::<()>::bad_request(&msg)
+                }
+                _ => ApiResponse::<()>::internal_error("Failed to retrieve roles"),
+            }
         }
     }
 }

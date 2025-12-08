@@ -22,7 +22,7 @@ mock! {
         async fn find_api_key_for_auth(&self, api_key: &str) -> Result<Option<(ApiKey, Uuid)>>;
         async fn get_by_uuid(&self, uuid: Uuid) -> Result<Option<ApiKey>>;
         async fn create(&self, key: &ApiKey) -> Result<Uuid>;
-        async fn list_by_user(&self, user_uuid: Uuid, limit: i64, offset: i64) -> Result<Vec<ApiKey>>;
+        async fn list_by_user(&self, user_uuid: Uuid, limit: i64, offset: i64, sort_by: Option<String>, sort_order: Option<String>) -> Result<Vec<ApiKey>>;
         async fn count_by_user(&self, user_uuid: Uuid) -> Result<i64>;
         async fn revoke(&self, uuid: Uuid) -> Result<()>;
         async fn get_by_name(&self, user_uuid: Uuid, name: &str) -> Result<Option<ApiKey>>;

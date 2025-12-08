@@ -324,15 +324,43 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         Ok(())
     }
 
-    async fn list_admin_users(&self, limit: i64, offset: i64) -> Result<Vec<AdminUser>> {
-        sqlx::query_as::<_, AdminUser>(
-            "SELECT * FROM admin_users ORDER BY created_at DESC LIMIT $1 OFFSET $2",
-        )
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&*self.pool)
-        .await
-        .map_err(|e| {
+    async fn list_admin_users(
+        &self,
+        limit: i64,
+        offset: i64,
+        sort_by: Option<String>,
+        sort_order: Option<String>,
+    ) -> Result<Vec<AdminUser>> {
+        // Build ORDER BY clause - field is already validated and sanitized by route handler
+        let order_by = sort_by.map_or_else(
+            || "\"created_at\" DESC".to_string(),
+            |field| {
+                // Field name is validated, but we still quote it for safety
+                let quoted_field = format!("\"{}\"", field.replace('"', "\"\""));
+                let order = sort_order
+                    .as_ref()
+                    .map(|o| o.to_uppercase())
+                    .filter(|o| o == "ASC" || o == "DESC")
+                    .unwrap_or_else(|| "ASC".to_string());
+                format!("{quoted_field} {order}")
+            },
+        );
+
+        // Build query with or without LIMIT
+        let query = if limit == i64::MAX {
+            format!("SELECT * FROM admin_users ORDER BY {order_by} OFFSET $1")
+        } else {
+            format!("SELECT * FROM admin_users ORDER BY {order_by} LIMIT $1 OFFSET $2")
+        };
+
+        let mut query_builder = sqlx::query_as::<_, AdminUser>(&query);
+        if limit == i64::MAX {
+            query_builder = query_builder.bind(offset);
+        } else {
+            query_builder = query_builder.bind(limit).bind(offset);
+        }
+
+        query_builder.fetch_all(&*self.pool).await.map_err(|e| {
             error!("Error listing admin users: {e:?}");
             r_data_core_core::error::Error::Database(e)
         })

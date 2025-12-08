@@ -245,27 +245,53 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
     }
 
     /// List all API keys for a user
-    async fn list_by_user(&self, user_uuid: Uuid, limit: i64, offset: i64) -> Result<Vec<ApiKey>> {
-        let api_keys = sqlx::query_as::<_, ApiKey>(
-            "
-            SELECT *
-            FROM api_keys
-            WHERE user_uuid = $1
-            ORDER BY created_at DESC
-            LIMIT $2 OFFSET $3
-            ",
-        )
-        .bind(user_uuid)
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&*self.pool)
-        .await
-        .map_err(|e| {
+    async fn list_by_user(
+        &self,
+        user_uuid: Uuid,
+        limit: i64,
+        offset: i64,
+        sort_by: Option<String>,
+        sort_order: Option<String>,
+    ) -> Result<Vec<ApiKey>> {
+        // Build ORDER BY clause - field is already validated and sanitized by route handler
+        let order_by = sort_by.map_or_else(
+            || "\"created_at\" DESC".to_string(),
+            |field| {
+                let quoted_field = format!("\"{}\"", field.replace('"', "\"\""));
+                let order = sort_order
+                    .as_ref()
+                    .map(|o| o.to_uppercase())
+                    .filter(|o| o == "ASC" || o == "DESC")
+                    .unwrap_or_else(|| "ASC".to_string());
+
+                // Handle NULL values for last_used_at and expires_at
+                if field == "last_used_at" || field == "expires_at" {
+                    format!("{quoted_field} {order} NULLS LAST")
+                } else {
+                    format!("{quoted_field} {order}")
+                }
+            },
+        );
+
+        // Build query with or without LIMIT
+        let query = if limit == -1 {
+            format!("SELECT * FROM api_keys WHERE user_uuid = $1 ORDER BY {order_by} OFFSET $2")
+        } else {
+            format!("SELECT * FROM api_keys WHERE user_uuid = $1 ORDER BY {order_by} LIMIT $2 OFFSET $3")
+        };
+
+        let mut query_builder = sqlx::query_as::<_, ApiKey>(&query);
+        query_builder = query_builder.bind(user_uuid);
+        if limit == -1 {
+            query_builder = query_builder.bind(offset);
+        } else {
+            query_builder = query_builder.bind(limit).bind(offset);
+        }
+
+        query_builder.fetch_all(&*self.pool).await.map_err(|e| {
             error!("Error listing API keys for user: {e:?}");
             r_data_core_core::error::Error::Database(e)
-        })?;
-
-        Ok(api_keys)
+        })
     }
 
     /// Count API keys for a user

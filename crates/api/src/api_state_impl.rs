@@ -64,6 +64,10 @@ impl ApiStateTrait for ApiState {
         &self.api_key_service
     }
 
+    fn admin_user_service_ref(&self) -> &dyn std::any::Any {
+        &self.admin_user_service
+    }
+
     fn role_service_ref(&self) -> &dyn std::any::Any {
         &self.role_service
     }

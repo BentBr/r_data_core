@@ -30,8 +30,17 @@ impl ApiKeyRepositoryTrait for ApiKeyRepositoryAdapter {
         self.inner.create(key).await.map(|_| key.uuid)
     }
 
-    async fn list_by_user(&self, user_uuid: Uuid, limit: i64, offset: i64) -> Result<Vec<ApiKey>> {
-        self.inner.list_by_user(user_uuid, limit, offset).await
+    async fn list_by_user(
+        &self,
+        user_uuid: Uuid,
+        limit: i64,
+        offset: i64,
+        sort_by: Option<String>,
+        sort_order: Option<String>,
+    ) -> Result<Vec<ApiKey>> {
+        self.inner
+            .list_by_user(user_uuid, limit, offset, sort_by, sort_order)
+            .await
     }
 
     async fn revoke(&self, uuid: Uuid) -> Result<()> {

@@ -183,33 +183,77 @@ impl RoleRepository {
         Ok(())
     }
 
-    /// List all roles with pagination
+    /// List all roles with pagination and sorting
     ///
     /// # Arguments
-    /// * `limit` - Maximum number of roles to return
+    /// * `limit` - Maximum number of roles to return (-1 for unlimited)
     /// * `offset` - Number of roles to skip
+    /// * `sort_by` - Optional field to sort by
+    /// * `sort_order` - Sort order (ASC or DESC), defaults to ASC
     ///
     /// # Errors
     /// Returns an error if database query fails
-    pub async fn list_all(&self, limit: i64, offset: i64) -> Result<Vec<Role>> {
-        let rows = sqlx::query(
-            r#"
-            SELECT
-                uuid, path, name, description,
-                permissions as "permissions: serde_json::Value",
-                is_system, super_admin,
-                created_at, updated_at, created_by, updated_by,
-                published, version
-            FROM roles
-            ORDER BY created_at DESC
-            LIMIT $1 OFFSET $2
-            "#,
-        )
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(Error::Database)?;
+    pub async fn list_all(
+        &self,
+        limit: i64,
+        offset: i64,
+        sort_by: Option<String>,
+        sort_order: Option<String>,
+    ) -> Result<Vec<Role>> {
+        // Build ORDER BY clause - field is already validated and sanitized by route handler
+        let order_by = sort_by.map_or_else(
+            || "\"created_at\" DESC".to_string(),
+            |field| {
+                let quoted_field = format!("\"{}\"", field.replace('"', "\"\""));
+                let order = sort_order
+                    .as_ref()
+                    .map(|o| o.to_uppercase())
+                    .filter(|o| o == "ASC" || o == "DESC")
+                    .unwrap_or_else(|| "ASC".to_string());
+                format!("{quoted_field} {order}")
+            },
+        );
+
+        // Build query with or without LIMIT
+        let query = if limit == i64::MAX {
+            format!(
+                r#"
+                SELECT
+                    uuid, path, name, description,
+                    permissions as "permissions: serde_json::Value",
+                    is_system, super_admin,
+                    created_at, updated_at, created_by, updated_by,
+                    published, version
+                FROM roles
+                ORDER BY {order_by} OFFSET $1
+                "#
+            )
+        } else {
+            format!(
+                r#"
+                SELECT
+                    uuid, path, name, description,
+                    permissions as "permissions: serde_json::Value",
+                    is_system, super_admin,
+                    created_at, updated_at, created_by, updated_by,
+                    published, version
+                FROM roles
+                ORDER BY {order_by} LIMIT $1 OFFSET $2
+                "#
+            )
+        };
+
+        let mut query_builder = sqlx::query(&query);
+        if limit == i64::MAX {
+            query_builder = query_builder.bind(offset);
+        } else {
+            query_builder = query_builder.bind(limit).bind(offset);
+        }
+
+        let rows = query_builder
+            .fetch_all(&self.pool)
+            .await
+            .map_err(Error::Database)?;
 
         let mut roles = Vec::new();
         for row in rows {

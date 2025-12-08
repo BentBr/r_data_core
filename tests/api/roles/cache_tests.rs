@@ -26,7 +26,7 @@ async fn test_permission_caching() -> Result<()> {
     clear_test_db(&pool).await?;
 
     let admin_user_uuid = create_test_admin_user(&pool).await?;
-    let user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -36,7 +36,7 @@ async fn test_permission_caching() -> Result<()> {
         max_size: 10000,
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
-    let role_service = RoleService::new(pool.clone(), cache_manager.clone(), Some(3600));
+    let role_service = RoleService::new(pool.pool.clone(), cache_manager.clone(), Some(3600));
 
     // Create a role
     let role = create_test_role("CacheTestRole");
@@ -156,7 +156,7 @@ async fn test_merged_permissions_caching() -> Result<()> {
     clear_test_db(&pool).await?;
 
     let admin_user_uuid = create_test_admin_user(&pool).await?;
-    let user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -166,7 +166,7 @@ async fn test_merged_permissions_caching() -> Result<()> {
         max_size: 10000,
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
-    let role_service = RoleService::new(pool.clone(), cache_manager.clone(), Some(3600));
+    let role_service = RoleService::new(pool.pool.clone(), cache_manager.clone(), Some(3600));
 
     // Create a role with permissions
     let mut role = create_test_role("MergedCacheTest");
@@ -256,7 +256,7 @@ async fn test_cache_invalidation_on_role_deletion() -> Result<()> {
     clear_test_db(&pool).await?;
 
     let admin_user_uuid = create_test_admin_user(&pool).await?;
-    let user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -266,7 +266,7 @@ async fn test_cache_invalidation_on_role_deletion() -> Result<()> {
         max_size: 10000,
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
-    let role_service = RoleService::new(pool.clone(), cache_manager.clone(), Some(3600));
+    let role_service = RoleService::new(pool.pool.clone(), cache_manager.clone(), Some(3600));
 
     // Create a role
     let role = create_test_role("DeleteTestRole");
@@ -320,7 +320,7 @@ async fn test_multiple_users_sharing_role() -> Result<()> {
     clear_test_db(&pool).await?;
 
     let admin_user_uuid = create_test_admin_user(&pool).await?;
-    let user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -330,7 +330,7 @@ async fn test_multiple_users_sharing_role() -> Result<()> {
         max_size: 10000,
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
-    let role_service = RoleService::new(pool.clone(), cache_manager.clone(), Some(3600));
+    let role_service = RoleService::new(pool.pool.clone(), cache_manager.clone(), Some(3600));
 
     // Create a role
     let role = create_test_role("SharedRole");
@@ -425,7 +425,7 @@ async fn test_api_key_permission_caching() -> Result<()> {
     clear_test_db(&pool).await?;
 
     let admin_user_uuid = create_test_admin_user(&pool).await?;
-    let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+    let api_key_repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -435,7 +435,7 @@ async fn test_api_key_permission_caching() -> Result<()> {
         max_size: 10000,
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
-    let role_service = RoleService::new(pool.clone(), cache_manager.clone(), Some(3600));
+    let role_service = RoleService::new(pool.pool.clone(), cache_manager.clone(), Some(3600));
 
     // Create a role
     let role = create_test_role("ApiKeyTestRole");
@@ -491,7 +491,7 @@ async fn test_cache_invalidation_on_role_unassignment() -> Result<()> {
     clear_test_db(&pool).await?;
 
     let admin_user_uuid = create_test_admin_user(&pool).await?;
-    let user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -501,7 +501,7 @@ async fn test_cache_invalidation_on_role_unassignment() -> Result<()> {
         max_size: 10000,
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
-    let role_service = RoleService::new(pool.clone(), cache_manager.clone(), Some(3600));
+    let role_service = RoleService::new(pool.pool.clone(), cache_manager.clone(), Some(3600));
 
     // Create two roles
     let role1 = create_test_role("UnassignRole1");
@@ -568,7 +568,7 @@ async fn test_automatic_cache_invalidation_on_update() -> Result<()> {
     clear_test_db(&pool).await?;
 
     let admin_user_uuid = create_test_admin_user(&pool).await?;
-    let user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -578,7 +578,7 @@ async fn test_automatic_cache_invalidation_on_update() -> Result<()> {
         max_size: 10000,
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
-    let role_service = RoleService::new(pool.clone(), cache_manager.clone(), Some(3600));
+    let role_service = RoleService::new(pool.pool.clone(), cache_manager.clone(), Some(3600));
 
     // Create a role
     let role = create_test_role("AutoInvalidateRole");
@@ -644,7 +644,7 @@ async fn test_merged_permissions_multiple_roles() -> Result<()> {
     clear_test_db(&pool).await?;
 
     let admin_user_uuid = create_test_admin_user(&pool).await?;
-    let user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -654,7 +654,7 @@ async fn test_merged_permissions_multiple_roles() -> Result<()> {
         max_size: 10000,
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
-    let role_service = RoleService::new(pool.clone(), cache_manager.clone(), Some(3600));
+    let role_service = RoleService::new(pool.pool.clone(), cache_manager.clone(), Some(3600));
 
     // Create a role with permissions
     let mut role = Role::new("MultiRole".to_string());
@@ -750,7 +750,7 @@ async fn test_cache_deserialization_failure_handling() -> Result<()> {
     clear_test_db(&pool).await?;
 
     let admin_user_uuid = create_test_admin_user(&pool).await?;
-    let user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -760,7 +760,7 @@ async fn test_cache_deserialization_failure_handling() -> Result<()> {
         max_size: 10000,
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
-    let role_service = RoleService::new(pool.clone(), cache_manager.clone(), Some(3600));
+    let role_service = RoleService::new(pool.pool.clone(), cache_manager.clone(), Some(3600));
 
     // Create a role
     let role = create_test_role("DeserializationTest");
@@ -826,8 +826,8 @@ async fn test_role_update_invalidates_all_related_caches() -> Result<()> {
     clear_test_db(&pool).await?;
 
     let admin_user_uuid = create_test_admin_user(&pool).await?;
-    let user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
-    let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+    let user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
+    let api_key_repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -837,7 +837,7 @@ async fn test_role_update_invalidates_all_related_caches() -> Result<()> {
         max_size: 10000,
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
-    let role_service = RoleService::new(pool.clone(), cache_manager.clone(), Some(3600));
+    let role_service = RoleService::new(pool.pool.clone(), cache_manager.clone(), Some(3600));
 
     // Create a role
     let role = create_test_role("ComprehensiveTest");

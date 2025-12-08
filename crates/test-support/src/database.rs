@@ -1,8 +1,9 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use log::{debug, info};
+use log::{debug, info, warn};
 use r_data_core_core::error::Result;
 use sqlx::{postgres::PgPoolOptions, postgres::PgRow, PgPool, Row};
+use std::ops::Deref;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -27,6 +28,210 @@ fn generate_test_schema_name() -> String {
     let uuid = Uuid::now_v7();
     // Use a shorter format to avoid PostgreSQL identifier length limits
     format!("test_{}", uuid.simple())
+}
+
+/// Wrapper around `PgPool` that automatically cleans up the test schema on drop
+///
+/// This struct ensures that test schemas are automatically dropped when tests
+/// complete, preventing accumulation of schemas that consume `PostgreSQL` shared memory.
+/// The struct implements `Deref` to `PgPool`, so it can be used transparently
+/// wherever a `PgPool` is expected.
+///
+/// For sqlx queries that require an explicit `&PgPool` type, use `&*pool` or access
+/// the `pool` field directly.
+pub struct TestDatabase {
+    /// The underlying `PostgreSQL` connection pool
+    ///
+    /// This field is public to allow direct access when needed for sqlx queries
+    /// that require an explicit `&PgPool` type rather than a deref target.
+    pub pool: PgPool,
+    schema_name: String,
+    database_url: String,
+}
+
+impl Deref for TestDatabase {
+    type Target = PgPool;
+
+    fn deref(&self) -> &Self::Target {
+        &self.pool
+    }
+}
+
+impl AsRef<PgPool> for TestDatabase {
+    fn as_ref(&self) -> &PgPool {
+        &self.pool
+    }
+}
+
+impl Clone for TestDatabase {
+    fn clone(&self) -> Self {
+        // Clone the pool, but use the same schema name and database URL
+        // Only the first TestDatabase to be dropped will clean up the schema
+        Self {
+            pool: self.pool.clone(),
+            schema_name: self.schema_name.clone(),
+            database_url: self.database_url.clone(),
+        }
+    }
+}
+
+impl Drop for TestDatabase {
+    fn drop(&mut self) {
+        let schema_name = self.schema_name.clone();
+        let database_url = self.database_url.clone();
+
+        // We need to drop the schema using a separate connection since we can't
+        // use the pool that's configured for the schema we're dropping.
+        // Drop is synchronous, so we need to block on the async cleanup operation.
+        // If we're already in a tokio runtime, use block_in_place to allow blocking.
+        let result = if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            // We're in an async runtime, use block_in_place to allow blocking
+            tokio::task::block_in_place(|| {
+                handle.block_on(async {
+                    tokio::time::timeout(
+                        Duration::from_secs(10),
+                        teardown_test_schema_internal(&database_url, &schema_name),
+                    )
+                    .await
+                })
+            })
+        } else {
+            // Not in a runtime, create a new one
+            if let Ok(rt) = tokio::runtime::Runtime::new() {
+                rt.block_on(async {
+                    tokio::time::timeout(
+                        Duration::from_secs(10),
+                        teardown_test_schema_internal(&database_url, &schema_name),
+                    )
+                    .await
+                })
+            } else {
+                warn!(
+                    "Could not create runtime to drop test schema {schema_name}. Schema may remain in database."
+                );
+                return;
+            }
+        };
+
+        match result {
+            Ok(Ok(())) => {
+                debug!("Successfully dropped test schema: {schema_name}");
+            }
+            Ok(Err(e)) => {
+                warn!(
+                    "Failed to drop test schema {schema_name}: {e}. This may cause shared memory issues."
+                );
+            }
+            Err(_) => {
+                warn!(
+                    "Timeout dropping test schema {schema_name}. Schema may remain in database."
+                );
+            }
+        }
+    }
+}
+
+/// Internal function to drop a test schema
+///
+/// # Errors
+/// Returns an error if the database connection or drop operation fails
+async fn teardown_test_schema_internal(database_url: &str, schema_name: &str) -> Result<()> {
+    // Create a temporary connection pool to drop the schema
+    // We can't use the pool that's configured for this schema
+    let temp_pool = PgPoolOptions::new()
+        .max_connections(1)
+        .acquire_timeout(Duration::from_secs(5))
+        .connect(database_url)
+        .await
+        .map_err(|e| {
+            r_data_core_core::error::Error::Database(sqlx::Error::Configuration(
+                format!("Failed to connect to database for schema cleanup: {e}").into(),
+            ))
+        })?;
+
+    // Drop the schema with CASCADE to handle all dependencies
+    sqlx::query(&format!("DROP SCHEMA IF EXISTS \"{schema_name}\" CASCADE"))
+        .execute(&temp_pool)
+        .await
+        .map_err(|e| {
+            r_data_core_core::error::Error::Database(sqlx::Error::Configuration(
+                format!("Failed to drop test schema {schema_name}: {e}").into(),
+            ))
+        })?;
+
+    Ok(())
+}
+
+/// Manually drop a test schema
+///
+/// This function can be used to explicitly drop a schema if needed.
+/// Normally, schemas are automatically dropped when `TestDatabase` goes out of scope.
+///
+/// # Panics
+/// Panics if `DATABASE_URL` is not set in `.env.test`
+///
+/// # Errors
+/// Returns an error if the database connection or drop operation fails
+pub async fn teardown_test_schema(schema_name: &str) -> Result<()> {
+    dotenvy::from_filename(".env.test").ok();
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not set in .env.test");
+
+    teardown_test_schema_internal(&database_url, schema_name).await
+}
+
+/// Clean up all orphaned test schemas matching the test schema pattern
+///
+/// This utility function can be used to clean up test schemas that may have been
+/// left behind due to test failures or manual runs. It finds all schemas matching
+/// the pattern `test_*` and drops them.
+///
+/// # Panics
+/// Panics if `DATABASE_URL` is not set in `.env.test`
+///
+/// # Errors
+/// Returns an error if the database connection or cleanup operation fails
+pub async fn cleanup_orphaned_test_schemas() -> Result<usize> {
+    dotenvy::from_filename(".env.test").ok();
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not set in .env.test");
+
+    let pool = PgPoolOptions::new()
+        .max_connections(1)
+        .acquire_timeout(Duration::from_secs(10))
+        .connect(&database_url)
+        .await
+        .map_err(|e| {
+            r_data_core_core::error::Error::Database(sqlx::Error::Configuration(
+                format!("Failed to connect to database for cleanup: {e}").into(),
+            ))
+        })?;
+
+    // Find all test schemas
+    let schemas: Vec<String> = sqlx::query(
+        "SELECT schema_name FROM information_schema.schemata
+         WHERE schema_name LIKE 'test_%'
+         AND schema_name != 'test'",
+    )
+    .map(|row: PgRow| row.get::<String, _>(0))
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| {
+        r_data_core_core::error::Error::Database(sqlx::Error::Configuration(
+            format!("Failed to query test schemas: {e}").into(),
+        ))
+    })?;
+
+    let mut dropped_count = 0;
+    for schema_name in &schemas {
+        if let Err(e) = teardown_test_schema_internal(&database_url, schema_name).await {
+            warn!("Failed to drop orphaned test schema {schema_name}: {e}");
+        } else {
+            debug!("Dropped orphaned test schema: {schema_name}");
+            dropped_count += 1;
+        }
+    }
+
+    info!("Cleaned up {dropped_count} orphaned test schemas");
+    Ok(dropped_count)
 }
 
 /// Run migrations in the test schema
@@ -72,10 +277,13 @@ async fn setup_test_schema(pool: &PgPool, schema_name: &str) -> Result<()> {
 /// without conflicts. The schema is automatically created and migrations
 /// are run in the test-specific schema.
 ///
+/// The returned `TestDatabase` wrapper automatically drops the schema when it
+/// goes out of scope, preventing accumulation of schemas that consume shared memory.
+///
 /// # Panics
 /// Panics if `DATABASE_URL` is not set in `.env.test` or if database connection fails
 #[must_use]
-pub async fn setup_test_db() -> PgPool {
+pub async fn setup_test_db() -> TestDatabase {
     // Load environment variables from .env.test
     dotenvy::from_filename(".env.test").ok();
 
@@ -128,8 +336,12 @@ pub async fn setup_test_db() -> PgPool {
 
     debug!("Test database setup complete with schema: {schema_name}");
 
-    // Return the dedicated pool for this test
-    pool
+    // Return the TestDatabase wrapper which will automatically clean up the schema
+    TestDatabase {
+        pool,
+        schema_name,
+        database_url,
+    }
 }
 
 /// Clear all data from the database - optimized version for faster test runs

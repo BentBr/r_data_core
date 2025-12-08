@@ -24,7 +24,7 @@ mod tests {
             .expect("Failed to clear test database");
 
         // Create a repository to work with admin users directly
-        let repo = AdminUserRepository::new(Arc::new(pool.clone()));
+        let repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
 
         // Generate a username and email that won't conflict
         let unique_id = Uuid::now_v7().to_string()[0..8].to_string();

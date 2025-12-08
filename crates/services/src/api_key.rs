@@ -5,6 +5,8 @@ use r_data_core_persistence::{ApiKeyRepository, ApiKeyRepositoryTrait};
 use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::query_validation::{validate_list_query, FieldValidator, ValidatedListQuery};
+
 /// Service for handling API key operations
 pub struct ApiKeyService {
     repository: Arc<dyn ApiKeyRepositoryTrait>,
@@ -143,7 +145,47 @@ impl ApiKeyService {
         let limit = if limit <= 0 { 50 } else { limit };
         let offset = if offset < 0 { 0 } else { offset };
 
-        self.repository.list_by_user(user_uuid, limit, offset).await
+        self.repository
+            .list_by_user(user_uuid, limit, offset, None, None)
+            .await
+    }
+
+    /// List API keys for a user with query validation
+    ///
+    /// This method validates the query parameters and returns validated parameters along with API keys.
+    ///
+    /// # Arguments
+    /// * `user_uuid` - The user UUID
+    /// * `params` - The query parameters
+    /// * `field_validator` - The `FieldValidator` instance (required for validation)
+    ///
+    /// # Returns
+    /// A tuple of (`api_keys`, `validated_query`) where `validated_query` contains pagination metadata
+    ///
+    /// # Errors
+    /// Returns an error if validation fails or database query fails
+    pub async fn list_keys_for_user_with_query(
+        &self,
+        user_uuid: Uuid,
+        params: &crate::query_validation::ListQueryParams,
+        field_validator: &FieldValidator,
+    ) -> Result<(Vec<ApiKey>, ValidatedListQuery)> {
+        let validated = validate_list_query(params, "api_keys", field_validator, 20, 100, true)
+            .await
+            .map_err(r_data_core_core::error::Error::Validation)?;
+
+        let keys = self
+            .repository
+            .list_by_user(
+                user_uuid,
+                validated.limit,
+                validated.offset,
+                validated.sort_by.clone(),
+                validated.sort_order.clone(),
+            )
+            .await?;
+
+        Ok((keys, validated))
     }
 
     /// Revoke an API key
@@ -222,7 +264,7 @@ mod tests {
             async fn find_api_key_for_auth(&self, api_key: &str) -> Result<Option<(ApiKey, Uuid)>>;
             async fn get_by_uuid(&self, uuid: Uuid) -> Result<Option<ApiKey>>;
             async fn create(&self, key: &ApiKey) -> Result<Uuid>;
-            async fn list_by_user(&self, user_uuid: Uuid, limit: i64, offset: i64) -> Result<Vec<ApiKey>>;
+            async fn list_by_user(&self, user_uuid: Uuid, limit: i64, offset: i64, sort_by: Option<String>, sort_order: Option<String>) -> Result<Vec<ApiKey>>;
             async fn revoke(&self, uuid: Uuid) -> Result<()>;
             async fn get_by_name(&self, user_uuid: Uuid, name: &str) -> Result<Option<ApiKey>>;
             async fn get_by_hash(&self, api_key: &str) -> Result<Option<ApiKey>>;

@@ -48,25 +48,25 @@ async fn setup_test_app() -> Result<(
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
 
-    let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.clone())));
+    let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.pool.clone())));
     let api_key_service = ApiKeyService::new(api_key_repository);
 
-    let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.clone())));
+    let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.pool.clone())));
     let admin_user_service = AdminUserService::new(admin_user_repository);
 
     let entity_definition_service = EntityDefinitionService::new_without_cache(Arc::new(
-        r_data_core_persistence::EntityDefinitionRepository::new(pool.clone()),
+        r_data_core_persistence::EntityDefinitionRepository::new(pool.pool.clone()),
     ));
 
-    let wf_repo = WorkflowRepository::new(pool.clone());
+    let wf_repo = WorkflowRepository::new(pool.pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
     let workflow_service = WorkflowService::new(Arc::new(wf_adapter));
 
-    let dashboard_stats_repository = DashboardStatsRepository::new(pool.clone());
+    let dashboard_stats_repository = DashboardStatsRepository::new(pool.pool.clone());
     let dashboard_stats_service = DashboardStatsService::new(Arc::new(dashboard_stats_repository));
 
     let api_state = ApiState {
-        db_pool: pool.clone(),
+        db_pool: pool.pool.clone(),
         api_config: r_data_core_core::config::ApiConfig {
             host: "0.0.0.0".to_string(),
             port: 8888,
@@ -76,7 +76,7 @@ async fn setup_test_app() -> Result<(
             enable_docs: true,
             cors_origins: vec![],
         },
-        role_service: RoleService::new(pool.clone(), cache_manager.clone(), Some(3600)),
+        role_service: RoleService::new(pool.pool.clone(), cache_manager.clone(), Some(3600)),
         cache_manager: cache_manager.clone(),
         api_key_service,
         admin_user_service,
@@ -94,7 +94,7 @@ async fn setup_test_app() -> Result<(
     )
     .await;
 
-    Ok((app, pool, user_uuid))
+    Ok((app, pool.pool.clone(), user_uuid))
 }
 
 async fn get_auth_token(

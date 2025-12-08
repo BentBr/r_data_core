@@ -28,8 +28,12 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         &self,
         limit: i64,
         offset: i64,
+        sort_by: Option<String>,
+        sort_order: Option<String>,
     ) -> anyhow::Result<Vec<r_data_core_workflow::data::Workflow>> {
-        self.inner.list_paginated(limit, offset).await
+        self.inner
+            .list_paginated(limit, offset, sort_by, sort_order)
+            .await
     }
 
     async fn count_all(&self) -> anyhow::Result<i64> {

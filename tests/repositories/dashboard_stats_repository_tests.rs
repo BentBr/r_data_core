@@ -12,8 +12,8 @@ use uuid::Uuid;
 
 async fn setup_test_repository() -> (Arc<DashboardStatsRepository>, PgPool) {
     let pool = setup_test_db().await;
-    let repository = Arc::new(DashboardStatsRepository::new(pool.clone()));
-    (repository, pool)
+    let repository = Arc::new(DashboardStatsRepository::new(pool.pool.clone()));
+    (repository, pool.pool.clone())
 }
 
 #[tokio::test]
