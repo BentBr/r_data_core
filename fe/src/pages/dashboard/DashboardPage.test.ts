@@ -49,22 +49,6 @@ describe('DashboardPage', () => {
         vi.clearAllMocks()
     })
 
-    it('renders dashboard title', () => {
-        const mockAuthStore = {
-            canAccessRoute: vi.fn(() => true),
-            hasPermission: vi.fn(() => true),
-        }
-        vi.mocked(useAuthStore).mockReturnValue(mockAuthStore as any)
-
-        const wrapper = mount(DashboardPage, {
-            global: {
-                plugins: [router],
-            },
-        })
-
-        expect(wrapper.text()).toContain('R Data Core Admin Dashboard')
-    })
-
     it('displays entity definitions count', async () => {
         const mockStats: DashboardStats = {
             entity_definitions_count: 5,

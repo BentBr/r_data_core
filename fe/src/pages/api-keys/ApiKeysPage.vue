@@ -1,219 +1,203 @@
 <template>
-    <v-container fluid>
-        <v-row>
-            <v-col cols="12">
-                <v-card>
-                    <v-card-title class="d-flex align-center justify-space-between pa-4">
-                        <div class="d-flex align-center">
-                            <SmartIcon
-                                icon="key"
-                                size="lg"
-                                class="mr-3"
-                            />
-                            <span class="text-h4">API Keys Management</span>
-                        </div>
+    <div>
+        <PageLayout>
+            <template #actions>
+                <v-btn
+                    color="primary"
+                    variant="flat"
+                    @click="showCreateDialog = true"
+                >
+                    <template #prepend>
+                        <SmartIcon
+                            icon="key-round"
+                            size="sm"
+                        />
+                    </template>
+                    {{ t('api_keys.create.button') }}
+                </v-btn>
+            </template>
+            <PaginatedDataTable
+                :items="apiKeys"
+                :headers="tableHeaders"
+                :loading="loading"
+                :error="error"
+                :loading-text="t('table.loading')"
+                :current-page="currentPage"
+                :items-per-page="itemsPerPage"
+                :total-items="totalItems"
+                :total-pages="totalPages"
+                :has-next="paginationMeta?.has_next"
+                :has-previous="paginationMeta?.has_previous"
+                @update:page="handlePageChange"
+                @update:items-per-page="handleItemsPerPageChange"
+                @update:sort="handleSortChange"
+            >
+                <!-- Name Column -->
+                <template #item.name="{ item }">
+                    <div class="d-flex align-center">
+                        <SmartIcon
+                            :icon="item.is_active ? 'key' : 'key-round'"
+                            :color="item.is_active ? 'success' : 'error'"
+                            :size="20"
+                            class="mr-2"
+                        />
+                        <span :class="{ 'text-decoration-line-through': !item.is_active }">
+                            {{ item.name }}
+                        </span>
+                    </div>
+                </template>
+
+                <!-- Description Column -->
+                <template #item.description="{ item }">
+                    <span class="text-body-2 text-medium-emphasis">
+                        {{ item.description ?? 'No description' }}
+                    </span>
+                </template>
+
+                <!-- Status Column -->
+                <template #item.is_active="{ item }">
+                    <Badge
+                        :status="item.is_active ? 'success' : 'error'"
+                        size="small"
+                    >
+                        {{ item.is_active ? 'Active' : 'Inactive' }}
+                    </Badge>
+                </template>
+
+                <!-- Created At Column -->
+                <template #item.created_at="{ item }">
+                    <span class="text-body-2">
+                        {{ formatDate(item.created_at) }}
+                    </span>
+                </template>
+
+                <!-- Expires At Column -->
+                <template #item.expires_at="{ item }">
+                    <span
+                        v-if="item.expires_at"
+                        class="text-body-2"
+                    >
+                        {{ formatDate(item.expires_at) }}
+                    </span>
+                    <span
+                        v-else
+                        class="text-body-2 text-medium-emphasis"
+                    >
+                        Never
+                    </span>
+                </template>
+
+                <!-- Last Used Column -->
+                <template #item.last_used_at="{ item }">
+                    <span
+                        v-if="item.last_used_at"
+                        class="text-body-2"
+                    >
+                        {{ formatDate(item.last_used_at) }}
+                    </span>
+                    <span
+                        v-else
+                        class="text-body-2 text-medium-emphasis"
+                    >
+                        Never
+                    </span>
+                </template>
+
+                <!-- User UUID Column (Admin Only) -->
+                <template #item.user_uuid="{ item }">
+                    <span
+                        v-if="isAdmin"
+                        class="text-body-2 font-mono"
+                    >
+                        {{ item.user_uuid }}
+                    </span>
+                    <span
+                        v-else
+                        class="text-body-2 text-medium-emphasis"
+                    >
+                        -
+                    </span>
+                </template>
+
+                <!-- Created By Column (Admin Only) -->
+                <template #item.created_by="{ item }">
+                    <span
+                        v-if="isAdmin"
+                        class="text-body-2 font-mono"
+                    >
+                        {{ item.created_by }}
+                    </span>
+                    <span
+                        v-else
+                        class="text-body-2 text-medium-emphasis"
+                    >
+                        -
+                    </span>
+                </template>
+
+                <!-- Actions Column -->
+                <template #item.actions="{ item }">
+                    <div class="d-flex gap-2">
                         <v-btn
-                            color="primary"
-                            @click="showCreateDialog = true"
+                            variant="text"
+                            size="small"
+                            color="info"
+                            :disabled="!item.is_active"
+                            @click="viewKey(item)"
                         >
-                            <template #prepend>
-                                <SmartIcon
-                                    icon="key-round"
-                                    size="sm"
-                                />
-                            </template>
-                            {{ t('api_keys.create.button') }}
+                            <SmartIcon
+                                icon="eye"
+                                :size="20"
+                            />
                         </v-btn>
-                    </v-card-title>
-
-                    <v-card-text>
-                        <PaginatedDataTable
-                            :items="apiKeys"
-                            :headers="tableHeaders"
-                            :loading="loading"
-                            :error="error"
-                            :loading-text="t('table.loading')"
-                            :current-page="currentPage"
-                            :items-per-page="itemsPerPage"
-                            :total-items="totalItems"
-                            :total-pages="totalPages"
-                            :has-next="paginationMeta?.has_next"
-                            :has-previous="paginationMeta?.has_previous"
-                            @update:page="handlePageChange"
-                            @update:items-per-page="handleItemsPerPageChange"
-                            @update:sort="handleSortChange"
+                        <v-btn
+                            variant="text"
+                            size="small"
+                            color="error"
+                            :disabled="!item.is_active"
+                            @click="confirmRevoke(item)"
                         >
-                            <!-- Name Column -->
-                            <template #item.name="{ item }">
-                                <div class="d-flex align-center">
-                                    <SmartIcon
-                                        :icon="item.is_active ? 'key' : 'key-round'"
-                                        :color="item.is_active ? 'success' : 'error'"
-                                        :size="20"
-                                        class="mr-2"
-                                    />
-                                    <span
-                                        :class="{ 'text-decoration-line-through': !item.is_active }"
-                                    >
-                                        {{ item.name }}
-                                    </span>
-                                </div>
-                            </template>
+                            <SmartIcon
+                                icon="trash-2"
+                                :size="20"
+                            />
+                        </v-btn>
+                    </div>
+                </template>
+            </PaginatedDataTable>
 
-                            <!-- Description Column -->
-                            <template #item.description="{ item }">
-                                <span class="text-body-2 text-medium-emphasis">
-                                    {{ item.description ?? 'No description' }}
-                                </span>
-                            </template>
+            <!-- Dialogs -->
+            <ApiKeyCreateDialog
+                v-model="showCreateDialog"
+                :loading="creating"
+                @create="createApiKey"
+            />
 
-                            <!-- Status Column -->
-                            <template #item.is_active="{ item }">
-                                <Badge
-                                    :status="item.is_active ? 'success' : 'error'"
-                                    size="small"
-                                >
-                                    {{ item.is_active ? 'Active' : 'Inactive' }}
-                                </Badge>
-                            </template>
+            <ApiKeyViewDialog
+                v-model="showViewDialog"
+                :api-key="selectedKey"
+            />
 
-                            <!-- Created At Column -->
-                            <template #item.created_at="{ item }">
-                                <span class="text-body-2">
-                                    {{ formatDate(item.created_at) }}
-                                </span>
-                            </template>
+            <ApiKeyCreatedDialog
+                v-model="showCreatedKeyDialog"
+                :api-key="createdApiKey"
+                @copy-success="handleCopySuccess"
+            />
 
-                            <!-- Expires At Column -->
-                            <template #item.expires_at="{ item }">
-                                <span
-                                    v-if="item.expires_at"
-                                    class="text-body-2"
-                                >
-                                    {{ formatDate(item.expires_at) }}
-                                </span>
-                                <span
-                                    v-else
-                                    class="text-body-2 text-medium-emphasis"
-                                >
-                                    Never
-                                </span>
-                            </template>
+            <!-- Use DialogManager for revoke confirmation -->
+            <DialogManager
+                v-model="showRevokeDialog"
+                :config="revokeDialogConfig"
+                :loading="revoking"
+                @confirm="revokeApiKey"
+            >
+                <p>{{ t('api_keys.revoke.message', { name: keyToRevoke?.name ?? 'Unknown' }) }}</p>
+            </DialogManager>
 
-                            <!-- Last Used Column -->
-                            <template #item.last_used_at="{ item }">
-                                <span
-                                    v-if="item.last_used_at"
-                                    class="text-body-2"
-                                >
-                                    {{ formatDate(item.last_used_at) }}
-                                </span>
-                                <span
-                                    v-else
-                                    class="text-body-2 text-medium-emphasis"
-                                >
-                                    Never
-                                </span>
-                            </template>
-
-                            <!-- User UUID Column (Admin Only) -->
-                            <template #item.user_uuid="{ item }">
-                                <span
-                                    v-if="isAdmin"
-                                    class="text-body-2 font-mono"
-                                >
-                                    {{ item.user_uuid }}
-                                </span>
-                                <span
-                                    v-else
-                                    class="text-body-2 text-medium-emphasis"
-                                >
-                                    -
-                                </span>
-                            </template>
-
-                            <!-- Created By Column (Admin Only) -->
-                            <template #item.created_by="{ item }">
-                                <span
-                                    v-if="isAdmin"
-                                    class="text-body-2 font-mono"
-                                >
-                                    {{ item.created_by }}
-                                </span>
-                                <span
-                                    v-else
-                                    class="text-body-2 text-medium-emphasis"
-                                >
-                                    -
-                                </span>
-                            </template>
-
-                            <!-- Actions Column -->
-                            <template #item.actions="{ item }">
-                                <div class="d-flex gap-2">
-                                    <v-btn
-                                        variant="text"
-                                        size="small"
-                                        color="info"
-                                        :disabled="!item.is_active"
-                                        @click="viewKey(item)"
-                                    >
-                                        <SmartIcon
-                                            icon="eye"
-                                            :size="20"
-                                        />
-                                    </v-btn>
-                                    <v-btn
-                                        variant="text"
-                                        size="small"
-                                        color="error"
-                                        :disabled="!item.is_active"
-                                        @click="confirmRevoke(item)"
-                                    >
-                                        <SmartIcon
-                                            icon="trash-2"
-                                            :size="20"
-                                        />
-                                    </v-btn>
-                                </div>
-                            </template>
-                        </PaginatedDataTable>
-                    </v-card-text>
-                </v-card>
-            </v-col>
-        </v-row>
-
-        <!-- Dialogs -->
-        <ApiKeyCreateDialog
-            v-model="showCreateDialog"
-            :loading="creating"
-            @create="createApiKey"
-        />
-
-        <ApiKeyViewDialog
-            v-model="showViewDialog"
-            :api-key="selectedKey"
-        />
-
-        <ApiKeyCreatedDialog
-            v-model="showCreatedKeyDialog"
-            :api-key="createdApiKey"
-            @copy-success="handleCopySuccess"
-        />
-
-        <!-- Use DialogManager for revoke confirmation -->
-        <DialogManager
-            v-model="showRevokeDialog"
-            :config="revokeDialogConfig"
-            :loading="revoking"
-            @confirm="revokeApiKey"
-        >
-            <p>{{ t('api_keys.revoke.message', { name: keyToRevoke?.name ?? 'Unknown' }) }}</p>
-        </DialogManager>
-
-        <!-- Snackbar -->
-        <SnackbarManager :snackbar="currentSnackbar" />
-    </v-container>
+            <!-- Snackbar -->
+            <SnackbarManager :snackbar="currentSnackbar" />
+        </PageLayout>
+    </div>
 </template>
 
 <script setup lang="ts">
@@ -231,6 +215,7 @@
     import DialogManager from '@/components/common/DialogManager.vue'
     import SnackbarManager from '@/components/common/SnackbarManager.vue'
     import PaginatedDataTable from '@/components/tables/PaginatedDataTable.vue'
+    import PageLayout from '@/components/layouts/PageLayout.vue'
     import SmartIcon from '@/components/common/SmartIcon.vue'
     import Badge from '@/components/common/Badge.vue'
 

@@ -1,64 +1,50 @@
 <template>
-    <v-container fluid>
-        <v-row>
-            <v-col cols="12">
-                <v-card>
-                    <v-card-title class="d-flex align-center justify-space-between pa-4">
-                        <div class="d-flex align-center">
-                            <SmartIcon
-                                icon="folder-tree"
-                                :size="28"
-                                class="mr-3"
-                            />
-                            <span class="text-h4">{{ t('navigation.entity_definitions') }}</span>
-                        </div>
-                        <v-btn
-                            color="primary"
-                            @click="showCreateDialog = true"
-                        >
-                            <template #prepend>
-                                <SmartIcon
-                                    icon="plus"
-                                    :size="20"
-                                />
-                            </template>
-                            {{ t('entity_definitions.create.button') }}
-                        </v-btn>
-                    </v-card-title>
+    <div>
+        <PageLayout>
+            <template #actions>
+                <v-btn
+                    color="primary"
+                    variant="flat"
+                    @click="showCreateDialog = true"
+                >
+                    <template #prepend>
+                        <SmartIcon
+                            icon="plus"
+                            size="sm"
+                        />
+                    </template>
+                    {{ t('entity_definitions.create.button') }}
+                </v-btn>
+            </template>
+            <v-row>
+                <!-- Tree View -->
+                <v-col cols="4">
+                    <EntityDefinitionTree
+                        :entity-definitions="entityDefinitions"
+                        :loading="loading"
+                        :expanded-groups="expandedGroups"
+                        @update:expanded-groups="updateExpandedGroups"
+                        @item-click="handleItemClick"
+                        @selection-change="handleTreeSelection"
+                    />
+                </v-col>
 
-                    <v-card-text>
-                        <v-row>
-                            <!-- Tree View -->
-                            <v-col cols="4">
-                                <EntityDefinitionTree
-                                    :entity-definitions="entityDefinitions"
-                                    :loading="loading"
-                                    :expanded-groups="expandedGroups"
-                                    @update:expanded-groups="updateExpandedGroups"
-                                    @item-click="handleItemClick"
-                                    @selection-change="handleTreeSelection"
-                                />
-                            </v-col>
-
-                            <!-- Details Panel -->
-                            <v-col cols="8">
-                                <EntityDefinitionDetails
-                                    :definition="selectedDefinition"
-                                    :has-unsaved-changes="hasUnsavedChanges"
-                                    :saving-changes="savingChanges"
-                                    @edit="editDefinition"
-                                    @delete="showDeleteDialog = true"
-                                    @save-changes="saveChanges"
-                                    @add-field="addField"
-                                    @edit-field="editField"
-                                    @remove-field="removeField"
-                                />
-                            </v-col>
-                        </v-row>
-                    </v-card-text>
-                </v-card>
-            </v-col>
-        </v-row>
+                <!-- Details Panel -->
+                <v-col cols="8">
+                    <EntityDefinitionDetails
+                        :definition="selectedDefinition"
+                        :has-unsaved-changes="hasUnsavedChanges"
+                        :saving-changes="savingChanges"
+                        @edit="editDefinition"
+                        @delete="showDeleteDialog = true"
+                        @save-changes="saveChanges"
+                        @add-field="addField"
+                        @edit-field="editField"
+                        @remove-field="removeField"
+                    />
+                </v-col>
+            </v-row>
+        </PageLayout>
 
         <!-- Dialogs -->
         <EntityDefinitionCreateDialog
@@ -89,7 +75,7 @@
 
         <!-- Snackbar -->
         <SnackbarManager :snackbar="currentSnackbar" />
-    </v-container>
+    </div>
 </template>
 
 <script setup lang="ts">
@@ -113,6 +99,7 @@
     import FieldEditor from '@/components/forms/FieldEditor.vue'
     import DialogManager from '@/components/common/DialogManager.vue'
     import SnackbarManager from '@/components/common/SnackbarManager.vue'
+    import PageLayout from '@/components/layouts/PageLayout.vue'
     import SmartIcon from '@/components/common/SmartIcon.vue'
 
     const authStore = useAuthStore()

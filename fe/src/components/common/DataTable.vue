@@ -96,25 +96,27 @@
 <script setup lang="ts">
     import SmartIcon from '@/components/common/SmartIcon.vue'
     import Badge from '@/components/common/Badge.vue'
+    import type { TableRow, TableHeader, TableAction } from '@/types/common'
 
     interface Props {
-        headers: Array<{ title: string; key: string; sortable?: boolean; align?: string }>
-        items: Array<Record<string, unknown>>
+        headers: TableHeader[]
+        items: TableRow[]
         loading?: boolean
         itemsPerPage?: number
         page?: number
         totalItems?: number
-        actions?: Array<{
-            icon: string
-            color?: string
-            disabled?: boolean
-            loading?: boolean
-            onClick?: (item: Record<string, unknown>) => void
-        }>
+        actions?: TableAction[]
     }
 
     interface Emits {
-        (e: 'update:options', options: Record<string, unknown>): void
+        (
+            e: 'update:options',
+            options: {
+                page?: number
+                itemsPerPage?: number
+                sortBy?: Array<{ key: string; order: 'asc' | 'desc' }>
+            }
+        ): void
     }
 
     defineProps<Props>()

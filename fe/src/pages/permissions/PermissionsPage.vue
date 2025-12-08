@@ -1,346 +1,322 @@
 <template>
-    <v-container fluid>
-        <v-row>
-            <v-col cols="12">
-                <v-card>
-                    <v-card-title class="d-flex align-center justify-space-between pa-4">
-                        <div class="d-flex align-center">
-                            <SmartIcon
-                                icon="shield"
-                                :size="28"
-                                class="mr-3"
-                            />
-                            <span class="text-h4">{{
-                                t('permissions.page.title') || 'Users & Roles'
-                            }}</span>
-                        </div>
-                    </v-card-title>
+    <div>
+        <PageLayout>
+            <v-tabs
+                v-model="activeTab"
+                color="primary"
+            >
+                <v-tab value="users">
+                    <template #prepend>
+                        <SmartIcon
+                            icon="users"
+                            :size="20"
+                            class="mr-2"
+                        />
+                    </template>
+                    {{ t('permissions.page.tabs.users') || 'Users' }}
+                </v-tab>
+                <v-tab value="roles">
+                    <template #prepend>
+                        <SmartIcon
+                            icon="shield"
+                            :size="20"
+                            class="mr-2"
+                        />
+                    </template>
+                    {{ t('permissions.page.tabs.roles') || 'Roles' }}
+                </v-tab>
+            </v-tabs>
 
-                    <v-card-text>
-                        <v-tabs
-                            v-model="activeTab"
+            <v-window v-model="activeTab">
+                <v-window-item value="users">
+                    <div class="d-flex align-center justify-space-between pa-4">
+                        <h3 class="text-h6">
+                            {{ t('permissions.page.users.title') || 'Users' }}
+                        </h3>
+                        <v-btn
+                            v-if="canCreateUser"
                             color="primary"
+                            @click="openCreateUserDialog"
                         >
-                            <v-tab value="users">
-                                <template #prepend>
-                                    <SmartIcon
-                                        icon="users"
-                                        :size="20"
-                                        class="mr-2"
-                                    />
-                                </template>
-                                {{ t('permissions.page.tabs.users') || 'Users' }}
-                            </v-tab>
-                            <v-tab value="roles">
-                                <template #prepend>
-                                    <SmartIcon
-                                        icon="shield"
-                                        :size="20"
-                                        class="mr-2"
-                                    />
-                                </template>
-                                {{ t('permissions.page.tabs.roles') || 'Roles' }}
-                            </v-tab>
-                        </v-tabs>
+                            <template #prepend>
+                                <SmartIcon
+                                    icon="plus"
+                                    :size="20"
+                                />
+                            </template>
+                            {{ t('permissions.page.users.new_button') || 'New User' }}
+                        </v-btn>
+                    </div>
+                    <PaginatedDataTable
+                        :items="users"
+                        :headers="userTableHeaders"
+                        :loading="usersLoading"
+                        :error="usersError"
+                        :loading-text="t('permissions.page.users.loading')"
+                        :current-page="usersCurrentPage"
+                        :items-per-page="usersItemsPerPage"
+                        :total-items="usersTotalItems"
+                        :total-pages="usersTotalPages"
+                        :has-next="usersPaginationMeta?.has_next"
+                        :has-previous="usersPaginationMeta?.has_previous"
+                        @update:page="handleUsersPageChange"
+                        @update:items-per-page="handleUsersItemsPerPageChange"
+                        @update:sort="handleUsersSortChange"
+                    >
+                        <!-- Username Column -->
+                        <template #item.username="{ item }">
+                            <div class="d-flex align-center">
+                                <SmartIcon
+                                    v-if="item.super_admin"
+                                    icon="shield-check"
+                                    color="warning"
+                                    :size="20"
+                                    class="mr-2"
+                                />
+                                <span>{{ item.username }}</span>
+                            </div>
+                        </template>
 
-                        <v-window v-model="activeTab">
-                            <v-window-item value="users">
-                                <div class="d-flex align-center justify-space-between pa-4">
-                                    <h3 class="text-h6">
-                                        {{ t('permissions.page.users.title') || 'Users' }}
-                                    </h3>
-                                    <v-btn
-                                        v-if="canCreateUser"
-                                        color="primary"
-                                        @click="openCreateUserDialog"
-                                    >
-                                        <template #prepend>
-                                            <SmartIcon
-                                                icon="plus"
-                                                :size="20"
-                                            />
-                                        </template>
-                                        {{ t('permissions.page.users.new_button') || 'New User' }}
-                                    </v-btn>
-                                </div>
-                                <PaginatedDataTable
-                                    :items="users"
-                                    :headers="userTableHeaders"
-                                    :loading="usersLoading"
-                                    :error="usersError"
-                                    :loading-text="t('permissions.page.users.loading')"
-                                    :current-page="usersCurrentPage"
-                                    :items-per-page="usersItemsPerPage"
-                                    :total-items="usersTotalItems"
-                                    :total-pages="usersTotalPages"
-                                    :has-next="usersPaginationMeta?.has_next"
-                                    :has-previous="usersPaginationMeta?.has_previous"
-                                    @update:page="handleUsersPageChange"
-                                    @update:items-per-page="handleUsersItemsPerPageChange"
-                                    @update:sort="handleUsersSortChange"
+                        <!-- Email Column -->
+                        <template #item.email="{ item }">
+                            <span>{{ item.email }}</span>
+                        </template>
+
+                        <!-- Roles Column -->
+                        <template #item.roles="{ item }">
+                            <div class="d-flex gap-1 flex-wrap">
+                                <Badge
+                                    v-for="roleName in getRoleNamesForUser(item)"
+                                    :key="roleName"
+                                    size="small"
+                                    color="primary"
+                                    variant="outlined"
                                 >
-                                    <!-- Username Column -->
-                                    <template #item.username="{ item }">
-                                        <div class="d-flex align-center">
-                                            <SmartIcon
-                                                v-if="item.super_admin"
-                                                icon="shield-check"
-                                                color="warning"
-                                                :size="20"
-                                                class="mr-2"
-                                            />
-                                            <span>{{ item.username }}</span>
-                                        </div>
-                                    </template>
-
-                                    <!-- Email Column -->
-                                    <template #item.email="{ item }">
-                                        <span>{{ item.email }}</span>
-                                    </template>
-
-                                    <!-- Roles Column -->
-                                    <template #item.roles="{ item }">
-                                        <div class="d-flex gap-1 flex-wrap">
-                                            <Badge
-                                                v-for="roleName in getRoleNamesForUser(item)"
-                                                :key="roleName"
-                                                size="small"
-                                                color="primary"
-                                                variant="outlined"
-                                            >
-                                                {{ roleName }}
-                                            </Badge>
-                                            <span
-                                                v-if="getRoleNamesForUser(item).length === 0"
-                                                class="text-body-2 text-medium-emphasis"
-                                            >
-                                                {{
-                                                    t('permissions.page.users.no_roles') ||
-                                                    'No roles'
-                                                }}
-                                            </span>
-                                        </div>
-                                    </template>
-
-                                    <!-- Status Column -->
-                                    <template #item.is_active="{ item }">
-                                        <Badge
-                                            size="small"
-                                            :status="item.is_active ? 'success' : 'error'"
-                                        >
-                                            {{
-                                                item.is_active
-                                                    ? t('permissions.page.users.status.active')
-                                                    : t('permissions.page.users.status.inactive')
-                                            }}
-                                        </Badge>
-                                    </template>
-
-                                    <!-- Actions Column -->
-                                    <template #item.actions="{ item }">
-                                        <div class="d-flex gap-2">
-                                            <v-btn
-                                                variant="text"
-                                                size="small"
-                                                color="info"
-                                                @click="openEditUserDialog(item)"
-                                            >
-                                                <SmartIcon
-                                                    icon="pencil"
-                                                    :size="20"
-                                                />
-                                            </v-btn>
-                                            <v-btn
-                                                variant="text"
-                                                size="small"
-                                                color="error"
-                                                @click="confirmDeleteUser(item)"
-                                            >
-                                                <SmartIcon
-                                                    icon="trash-2"
-                                                    :size="20"
-                                                />
-                                            </v-btn>
-                                        </div>
-                                    </template>
-                                </PaginatedDataTable>
-                            </v-window-item>
-
-                            <v-window-item value="roles">
-                                <div class="d-flex align-center justify-space-between pa-4">
-                                    <h3 class="text-h6">
-                                        {{ t('permissions.page.roles.title') || 'Roles' }}
-                                    </h3>
-                                    <v-btn
-                                        color="primary"
-                                        @click="openCreateDialog"
-                                    >
-                                        <template #prepend>
-                                            <SmartIcon
-                                                icon="plus"
-                                                :size="20"
-                                            />
-                                        </template>
-                                        {{ t('permissions.page.roles.new_button') || 'New Role' }}
-                                    </v-btn>
-                                </div>
-
-                                <PaginatedDataTable
-                                    :items="roles"
-                                    :headers="tableHeaders"
-                                    :loading="loading"
-                                    :error="error"
-                                    :loading-text="
-                                        t('permissions.page.roles.loading') || 'Loading roles...'
-                                    "
-                                    :current-page="currentPage"
-                                    :items-per-page="itemsPerPage"
-                                    :total-items="totalItems"
-                                    :total-pages="totalPages"
-                                    :has-next="paginationMeta?.has_next"
-                                    :has-previous="paginationMeta?.has_previous"
-                                    @update:page="handlePageChange"
-                                    @update:items-per-page="handleItemsPerPageChange"
-                                    @update:sort="handleSortChange"
+                                    {{ roleName }}
+                                </Badge>
+                                <span
+                                    v-if="getRoleNamesForUser(item).length === 0"
+                                    class="text-body-2 text-medium-emphasis"
                                 >
-                                    <!-- Name Column -->
-                                    <template #item.name="{ item }">
-                                        <div class="d-flex align-center">
-                                            <SmartIcon
-                                                v-if="item.is_system"
-                                                icon="shield-lock"
-                                                color="warning"
-                                                :size="20"
-                                                class="mr-2"
-                                            />
-                                            <span>{{ item.name }}</span>
-                                        </div>
-                                    </template>
+                                    {{ t('permissions.page.users.no_roles') || 'No roles' }}
+                                </span>
+                            </div>
+                        </template>
 
-                                    <!-- Description Column -->
-                                    <template #item.description="{ item }">
-                                        <span class="text-body-2 text-medium-emphasis">
-                                            {{
-                                                item.description ||
-                                                t('permissions.page.roles.no_description') ||
-                                                'No description'
-                                            }}
-                                        </span>
-                                    </template>
+                        <!-- Status Column -->
+                        <template #item.is_active="{ item }">
+                            <Badge
+                                size="small"
+                                :status="item.is_active ? 'success' : 'error'"
+                            >
+                                {{
+                                    item.is_active
+                                        ? t('permissions.page.users.status.active')
+                                        : t('permissions.page.users.status.inactive')
+                                }}
+                            </Badge>
+                        </template>
 
-                                    <!-- Permissions Count Column -->
-                                    <template #item.permissions_count="{ item }">
-                                        <Badge
-                                            size="small"
-                                            color="primary"
-                                            variant="outlined"
-                                        >
-                                            {{ (item.permissions || []).length }}
-                                            {{
-                                                (item.permissions || []).length === 1
-                                                    ? t('permissions.page.roles.permission') ||
-                                                      'permission'
-                                                    : t('permissions.page.roles.permissions') ||
-                                                      'permissions'
-                                            }}
-                                        </Badge>
-                                    </template>
+                        <!-- Actions Column -->
+                        <template #item.actions="{ item }">
+                            <div class="d-flex gap-2">
+                                <v-btn
+                                    variant="text"
+                                    size="small"
+                                    color="info"
+                                    @click="openEditUserDialog(item)"
+                                >
+                                    <SmartIcon
+                                        icon="pencil"
+                                        :size="20"
+                                    />
+                                </v-btn>
+                                <v-btn
+                                    variant="text"
+                                    size="small"
+                                    color="error"
+                                    @click="confirmDeleteUser(item)"
+                                >
+                                    <SmartIcon
+                                        icon="trash-2"
+                                        :size="20"
+                                    />
+                                </v-btn>
+                            </div>
+                        </template>
+                    </PaginatedDataTable>
+                </v-window-item>
 
-                                    <!-- Created At Column -->
-                                    <template #item.created_at="{ item }">
-                                        <span class="text-body-2">
-                                            {{ formatDate(item.created_at) }}
-                                        </span>
-                                    </template>
+                <v-window-item value="roles">
+                    <div class="d-flex align-center justify-space-between pa-4">
+                        <h3 class="text-h6">
+                            {{ t('permissions.page.roles.title') || 'Roles' }}
+                        </h3>
+                        <v-btn
+                            color="primary"
+                            @click="openCreateDialog"
+                        >
+                            <template #prepend>
+                                <SmartIcon
+                                    icon="plus"
+                                    :size="20"
+                                />
+                            </template>
+                            {{ t('permissions.page.roles.new_button') || 'New Role' }}
+                        </v-btn>
+                    </div>
 
-                                    <!-- Actions Column -->
-                                    <template #item.actions="{ item }">
-                                        <div class="d-flex gap-2">
-                                            <v-btn
-                                                variant="text"
-                                                size="small"
-                                                color="info"
-                                                :disabled="item.is_system"
-                                                @click="openEditDialog(item)"
-                                            >
-                                                <SmartIcon
-                                                    icon="pencil"
-                                                    :size="20"
-                                                />
-                                            </v-btn>
-                                            <v-btn
-                                                variant="text"
-                                                size="small"
-                                                color="error"
-                                                :disabled="item.is_system"
-                                                @click="confirmDelete(item)"
-                                            >
-                                                <SmartIcon
-                                                    icon="trash-2"
-                                                    :size="20"
-                                                />
-                                            </v-btn>
-                                        </div>
-                                    </template>
-                                </PaginatedDataTable>
-                            </v-window-item>
-                        </v-window>
-                    </v-card-text>
-                </v-card>
-            </v-col>
-        </v-row>
+                    <PaginatedDataTable
+                        :items="roles"
+                        :headers="tableHeaders"
+                        :loading="loading"
+                        :error="error"
+                        :loading-text="t('permissions.page.roles.loading') || 'Loading roles...'"
+                        :current-page="currentPage"
+                        :items-per-page="itemsPerPage"
+                        :total-items="totalItems"
+                        :total-pages="totalPages"
+                        :has-next="paginationMeta?.has_next"
+                        :has-previous="paginationMeta?.has_previous"
+                        @update:page="handlePageChange"
+                        @update:items-per-page="handleItemsPerPageChange"
+                        @update:sort="handleSortChange"
+                    >
+                        <!-- Name Column -->
+                        <template #item.name="{ item }">
+                            <div class="d-flex align-center">
+                                <SmartIcon
+                                    v-if="item.is_system"
+                                    icon="shield-lock"
+                                    color="warning"
+                                    :size="20"
+                                    class="mr-2"
+                                />
+                                <span>{{ item.name }}</span>
+                            </div>
+                        </template>
 
-        <!-- Create/Edit Role Dialog -->
-        <RoleDialog
-            v-model="showDialog"
-            :editing-role="editingRole"
-            :loading="saving"
-            :resource-types="resourceTypes"
-            :permission-types="permissionTypes"
-            :access-levels="accessLevels"
-            @save="handleSaveRole"
-        />
+                        <!-- Description Column -->
+                        <template #item.description="{ item }">
+                            <span class="text-body-2 text-medium-emphasis">
+                                {{
+                                    item.description ||
+                                    t('permissions.page.roles.no_description') ||
+                                    'No description'
+                                }}
+                            </span>
+                        </template>
 
-        <!-- Create/Edit User Dialog -->
-        <UserDialog
-            v-model="showUserDialog"
-            :editing-user="editingUser"
-            :loading="savingUser"
-            @save="handleSaveUser"
-        />
+                        <!-- Permissions Count Column -->
+                        <template #item.permissions_count="{ item }">
+                            <Badge
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                            >
+                                {{ (item.permissions || []).length }}
+                                {{
+                                    (item.permissions || []).length === 1
+                                        ? t('permissions.page.roles.permission') || 'permission'
+                                        : t('permissions.page.roles.permissions') || 'permissions'
+                                }}
+                            </Badge>
+                        </template>
 
-        <!-- Delete Role Confirmation Dialog -->
-        <DialogManager
-            v-model="showDeleteDialog"
-            :config="deleteDialogConfig"
-            :loading="deleting"
-            @confirm="deleteRole"
-        >
-            <p>
-                {{
-                    t('permissions.page.roles.delete.message', { name: roleToDelete?.name }) ||
-                    `Are you sure you want to delete the role "${roleToDelete?.name}"?`
-                }}
-            </p>
-        </DialogManager>
+                        <!-- Created At Column -->
+                        <template #item.created_at="{ item }">
+                            <span class="text-body-2">
+                                {{ formatDate(item.created_at) }}
+                            </span>
+                        </template>
 
-        <!-- Delete User Confirmation Dialog -->
-        <DialogManager
-            v-model="showDeleteUserDialog"
-            :config="deleteUserDialogConfig"
-            :loading="deletingUser"
-            @confirm="deleteUser"
-        >
-            <p>
-                {{
-                    t('permissions.page.users.delete.message', { username: userToDelete?.username })
-                }}
-            </p>
-        </DialogManager>
+                        <!-- Actions Column -->
+                        <template #item.actions="{ item }">
+                            <div class="d-flex gap-2">
+                                <v-btn
+                                    variant="text"
+                                    size="small"
+                                    color="info"
+                                    :disabled="item.is_system"
+                                    @click="openEditDialog(item)"
+                                >
+                                    <SmartIcon
+                                        icon="pencil"
+                                        :size="20"
+                                    />
+                                </v-btn>
+                                <v-btn
+                                    variant="text"
+                                    size="small"
+                                    color="error"
+                                    :disabled="item.is_system"
+                                    @click="confirmDelete(item)"
+                                >
+                                    <SmartIcon
+                                        icon="trash-2"
+                                        :size="20"
+                                    />
+                                </v-btn>
+                            </div>
+                        </template>
+                    </PaginatedDataTable>
+                </v-window-item>
+            </v-window>
 
-        <!-- Snackbar -->
-        <SnackbarManager :snackbar="currentSnackbar" />
-    </v-container>
+            <!-- Create/Edit Role Dialog -->
+            <RoleDialog
+                v-model="showDialog"
+                :editing-role="editingRole"
+                :loading="saving"
+                :resource-types="resourceTypes"
+                :permission-types="permissionTypes"
+                :access-levels="accessLevels"
+                @save="handleSaveRole"
+            />
+
+            <!-- Create/Edit User Dialog -->
+            <UserDialog
+                v-model="showUserDialog"
+                :editing-user="editingUser"
+                :loading="savingUser"
+                @save="handleSaveUser"
+            />
+
+            <!-- Delete Role Confirmation Dialog -->
+            <DialogManager
+                v-model="showDeleteDialog"
+                :config="deleteDialogConfig"
+                :loading="deleting"
+                @confirm="deleteRole"
+            >
+                <p>
+                    {{
+                        t('permissions.page.roles.delete.message', { name: roleToDelete?.name }) ||
+                        `Are you sure you want to delete the role "${roleToDelete?.name}"?`
+                    }}
+                </p>
+            </DialogManager>
+
+            <!-- Delete User Confirmation Dialog -->
+            <DialogManager
+                v-model="showDeleteUserDialog"
+                :config="deleteUserDialogConfig"
+                :loading="deletingUser"
+                @confirm="deleteUser"
+            >
+                <p>
+                    {{
+                        t('permissions.page.users.delete.message', {
+                            username: userToDelete?.username,
+                        })
+                    }}
+                </p>
+            </DialogManager>
+
+            <!-- Snackbar -->
+            <SnackbarManager :snackbar="currentSnackbar" />
+        </PageLayout>
+    </div>
 </template>
 
 <script setup lang="ts">
@@ -357,6 +333,7 @@
     } from '@/types/schemas'
     import DialogManager from '@/components/common/DialogManager.vue'
     import SnackbarManager from '@/components/common/SnackbarManager.vue'
+    import PageLayout from '@/components/layouts/PageLayout.vue'
     import PaginatedDataTable from '@/components/tables/PaginatedDataTable.vue'
     import RoleDialog from '@/components/permissions/RoleDialog.vue'
     import UserDialog from '@/components/users/UserDialog.vue'

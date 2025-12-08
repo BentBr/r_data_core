@@ -191,10 +191,27 @@
     .main-layout {
         height: 100vh;
         width: 100%;
+        overflow-y: scroll; /* Always show scrollbar to prevent layout shift */
     }
 
     .v-navigation-drawer {
         transition: width 0.3s ease;
+    }
+</style>
+
+<style>
+    /* Global styles for v-main to prevent scrollbar layout shifts */
+    .v-main {
+        scrollbar-gutter: stable; /* Reserve space for scrollbar even when not visible */
+    }
+
+    .v-main__wrap {
+        scrollbar-gutter: stable; /* Reserve space for scrollbar even when not visible */
+    }
+
+    /* Ensure router-view and transition containers reserve scrollbar space */
+    router-view {
+        scrollbar-gutter: stable;
     }
 
     /* Smooth fade transitions for page content */
@@ -219,5 +236,6 @@
     .fade-leave-active > * {
         position: relative;
         width: 100%;
+        scrollbar-gutter: stable; /* Reserve space for scrollbar during transitions */
     }
 </style>
