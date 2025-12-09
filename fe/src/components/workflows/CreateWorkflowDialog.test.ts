@@ -186,11 +186,205 @@ describe('CreateWorkflowDialog', () => {
 
         // Check that hasApiSource is false
         expect(vm.hasApiSource).toBe(false)
+    })
+
+    it('disables cron field when to.format.output.mode is api', async () => {
+        const wrapper = mount(CreateWorkflowDialog, {
+            props: { modelValue: true },
+        })
+
+        // Set steps with to.format.output.mode = api (exports via GET)
+        const dsl = [
+            {
+                from: {
+                    type: 'format',
+                    source: {
+                        source_type: 'uri',
+                        config: { uri: 'http://example.com/data.csv' },
+                        auth: { type: 'none' },
+                    },
+                    format: {
+                        format_type: 'csv',
+                        options: {},
+                    },
+                    mapping: {},
+                },
+                transform: { type: 'none' },
+                to: {
+                    type: 'format',
+                    output: { mode: 'api' },
+                    format: {
+                        format_type: 'json',
+                        options: {},
+                    },
+                    mapping: {},
+                },
+            },
+        ]
+
+        const vm = wrapper.vm as {
+            steps: DslStep[]
+            hasApiOutput: boolean
+            form: { schedule_cron: string | null }
+        }
+        vm.steps = dsl as DslStep[]
+        await nextTick()
+
+        // Check that hasApiOutput is true
+        expect(vm.hasApiOutput).toBe(true)
+
+        // Check that cron field is disabled
+        const cronField = wrapper.find('input[type="text"]')
+        if (cronField.exists()) {
+            expect(cronField.attributes('disabled')).toBeDefined()
+        }
+
+        // Check that cron value is cleared
+        expect(vm.form.schedule_cron).toBeNull()
+    })
+
+    it('enables cron field when api output is not used', async () => {
+        const wrapper = mount(CreateWorkflowDialog, {
+            props: { modelValue: true },
+        })
+
+        // Set steps without api output
+        const dsl = [
+            {
+                from: {
+                    type: 'format',
+                    source: {
+                        source_type: 'uri',
+                        config: { uri: 'http://example.com/data.csv' },
+                        auth: { type: 'none' },
+                    },
+                    format: {
+                        format_type: 'csv',
+                        options: {},
+                    },
+                    mapping: {},
+                },
+                transform: { type: 'none' },
+                to: {
+                    type: 'format',
+                    output: { mode: 'download' },
+                    format: {
+                        format_type: 'json',
+                        options: {},
+                    },
+                    mapping: {},
+                },
+            },
+        ]
+
+        const vm = wrapper.vm as {
+            steps: DslStep[]
+            hasApiOutput: boolean
+        }
+        vm.steps = dsl as DslStep[]
+        await nextTick()
+
+        // Check that hasApiOutput is false
+        expect(vm.hasApiOutput).toBe(false)
 
         // Check if cron field is NOT disabled (if found)
         const cronInput = wrapper.find('input[type="text"]')
         if (cronInput.exists()) {
             expect(cronInput.attributes('disabled')).toBeUndefined()
         }
+    })
+
+    it('disables cron field when to.format.output.mode is api', async () => {
+        const wrapper = mount(CreateWorkflowDialog, {
+            props: { modelValue: true },
+        })
+
+        // Set steps with to.format.output.mode = api (exports via GET)
+        const dsl = [
+            {
+                from: {
+                    type: 'format',
+                    source: {
+                        source_type: 'uri',
+                        config: { uri: 'http://example.com/data.csv' },
+                        auth: { type: 'none' },
+                    },
+                    format: {
+                        format_type: 'csv',
+                        options: {},
+                    },
+                    mapping: {},
+                },
+                transform: { type: 'none' },
+                to: {
+                    type: 'format',
+                    output: { mode: 'api' },
+                    format: {
+                        format_type: 'json',
+                        options: {},
+                    },
+                    mapping: {},
+                },
+            },
+        ]
+
+        const vm = wrapper.vm as {
+            steps: DslStep[]
+            hasApiOutput: boolean
+            form: { schedule_cron: string | null }
+        }
+        vm.steps = dsl as DslStep[]
+        await nextTick()
+
+        // Check that hasApiOutput is true
+        expect(vm.hasApiOutput).toBe(true)
+
+        // Check that cron value is cleared
+        expect(vm.form.schedule_cron).toBeNull()
+    })
+
+    it('enables cron field when api output is not used', async () => {
+        const wrapper = mount(CreateWorkflowDialog, {
+            props: { modelValue: true },
+        })
+
+        // Set steps without api output
+        const dsl = [
+            {
+                from: {
+                    type: 'format',
+                    source: {
+                        source_type: 'uri',
+                        config: { uri: 'http://example.com/data.csv' },
+                        auth: { type: 'none' },
+                    },
+                    format: {
+                        format_type: 'csv',
+                        options: {},
+                    },
+                    mapping: {},
+                },
+                transform: { type: 'none' },
+                to: {
+                    type: 'format',
+                    output: { mode: 'download' },
+                    format: {
+                        format_type: 'json',
+                        options: {},
+                    },
+                    mapping: {},
+                },
+            },
+        ]
+
+        const vm = wrapper.vm as {
+            steps: DslStep[]
+            hasApiOutput: boolean
+        }
+        vm.steps = dsl as DslStep[]
+        await nextTick()
+
+        // Check that hasApiOutput is false
+        expect(vm.hasApiOutput).toBe(false)
     })
 })

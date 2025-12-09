@@ -132,22 +132,19 @@ impl DslProgram {
             }
             // Map to output
             let mut produced = json!({});
-            match &step.to {
-                super::to::ToDef::Entity { mapping, .. } if mapping.is_empty() => {
-                    // If no mapping for entity, use normalized directly
-                    produced = normalized.clone();
-                }
-                _ => {
-                    let out_mapping = to::mapping_of(&step.to);
-                    // Sort mapping entries by destination to ensure deterministic execution
-                    // This ensures reserved fields like 'path' are processed in a consistent order
-                    // Mapping structure: { destination_field: normalized_field }
-                    let mut sorted_mapping: Vec<_> = out_mapping.iter().collect();
-                    sorted_mapping.sort_by_key(|(dst, _)| *dst);
-                    for (dst, src) in sorted_mapping {
-                        let v = execution::get_nested(&normalized, src).unwrap_or(Value::Null);
-                        execution::set_nested(&mut produced, dst, v);
-                    }
+            let out_mapping = to::mapping_of(&step.to);
+            if out_mapping.is_empty() {
+                // If no mapping for output, use normalized directly (pass through all fields)
+                produced = normalized.clone();
+            } else {
+                // Sort mapping entries by destination to ensure deterministic execution
+                // This ensures reserved fields like 'path' are processed in a consistent order
+                // Mapping structure: { destination_field: normalized_field }
+                let mut sorted_mapping: Vec<_> = out_mapping.iter().collect();
+                sorted_mapping.sort_by_key(|(dst, _)| *dst);
+                for (dst, src) in sorted_mapping {
+                    let v = execution::get_nested(&normalized, src).unwrap_or(Value::Null);
+                    execution::set_nested(&mut produced, dst, v);
                 }
             }
             results.push((step.to.clone(), produced));

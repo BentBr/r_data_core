@@ -149,7 +149,10 @@
       "field_name": "Feldname",
       "http_method": "HTTP-Methode",
       "endpoint": "Endpunkt",
-      "endpoint_info": "Ihr Endpunkt ist erreichbar unter"
+      "endpoint_info": "Ihr Endpunkt ist erreichbar unter",
+      "filter_operator": "Filter-Operator",
+      "filter_field": "Filterfeld",
+      "filter_value": "Filterwert"
     },
     "create": {
       "button": "Workflow erstellen",
@@ -160,6 +163,7 @@
       "enabled": "Aktiv",
       "cron": "Zeitplan (Cron)",
       "cron_disabled_for_api_source": "Cron ist für Workflows deaktiviert, die POST-Daten akzeptieren (from.api Quelltyp)",
+      "cron_disabled_for_api_output": "Cron ist für Workflows deaktiviert, die über die API exportieren (to.format.output.mode = api)",
       "consumer_config": "Consumer-Konfiguration (JSON)",
       "provider_config": "Provider-Konfiguration (JSON)",
       "create_button": "Erstellen",

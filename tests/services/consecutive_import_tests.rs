@@ -17,10 +17,30 @@ use serde_json::json;
 use std::sync::Arc;
 use uuid::Uuid;
 
+// Import common test utilities for loading workflow examples
+mod api {
+    pub mod workflows {
+        pub mod common {
+            pub fn load_workflow_example(
+                filename: &str,
+                entity_type: &str,
+            ) -> anyhow::Result<serde_json::Value> {
+                use std::fs;
+                let path = format!(".example_files/json_examples/dsl/{filename}");
+                let content = fs::read_to_string(&path)
+                    .map_err(|e| anyhow::anyhow!("Failed to read {path}: {e}"))?;
+                let content = content.replace("${ENTITY_TYPE}", entity_type);
+                serde_json::from_str(&content)
+                    .map_err(|e| anyhow::anyhow!("Failed to parse {path}: {e}"))
+            }
+        }
+    }
+}
+
 /// Test that consecutive imports of the same file produce identical outcomes
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
-async fn test_consecutive_imports_produce_identical_outcomes() {
+async fn test_consecutive_imports_produce_identical_outcomes() -> anyhow::Result<()> {
     // Setup test database
     let pool = setup_test_db().await;
 
@@ -88,46 +108,21 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
         .expect("create test admin user");
 
     let workflow_name = format!("test-wf-{}", Uuid::now_v7().simple());
-    let workflow_config = json!({
-        "steps": [
-            {
-                "from": {
-                    "type": "format",
-                    "source": {
-                        "source_type": "uri",
-                        "config": {
-                            "uri": "http://example.com/data.csv"
-                        },
-                        "auth": null
-                    },
-                    "format": {
-                        "format_type": "csv",
-                        "options": {
-                            "has_header": true,
-                            "delimiter": ","
-                        }
-                    },
-                    "mapping": {
-                        "email": "email",
-                        "name": "name"
-                    }
-                },
-                "transform": {
-                    "type": "none"
-                },
-                "to": {
-                    "type": "entity",
-                    "entity_definition": entity_type,
-                    "path": "/test",
-                    "mode": "create",
-                    "mapping": {
-                        "email": "email",
-                        "name": "name"
-                    }
+    let mut workflow_config =
+        api::workflows::common::load_workflow_example("workflow_csv_to_entity.json", &entity_type)?;
+    // Update path to /test
+    if let Some(steps) = workflow_config
+        .get_mut("steps")
+        .and_then(|s| s.as_array_mut())
+    {
+        if let Some(step) = steps.get_mut(0) {
+            if let Some(to) = step.get_mut("to") {
+                if let Some(to_obj) = to.as_object_mut() {
+                    to_obj.insert("path".to_string(), serde_json::json!("/test"));
                 }
             }
-        ]
-    });
+        }
+    }
 
     let req = CreateWorkflowRequest {
         name: workflow_name.clone(),
@@ -256,4 +251,5 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
     // Clean up
     let _ = wf_service.delete(wf_uuid).await;
     let _ = ed_service.delete_entity_definition(&entity_def.uuid).await;
+    Ok(())
 }

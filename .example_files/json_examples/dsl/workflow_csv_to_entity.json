@@ -1,0 +1,41 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "format",
+        "source": {
+          "source_type": "uri",
+          "config": {
+            "uri": "http://example.com/data.csv"
+          },
+          "auth": null
+        },
+        "format": {
+          "format_type": "csv",
+          "options": {
+            "has_header": true,
+            "delimiter": ","
+          }
+        },
+        "mapping": {
+          "email": "email",
+          "name": "name"
+        }
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "entity",
+        "entity_definition": "${ENTITY_TYPE}",
+        "path": "/test",
+        "mode": "create",
+        "mapping": {
+          "email": "email",
+          "name": "name"
+        }
+      }
+    }
+  ]
+}
+

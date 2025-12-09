@@ -106,18 +106,39 @@
             >
         </template>
         <template v-else-if="modelValue.type === 'entity'">
-            <v-text-field
+            <v-select
                 :model-value="entityDefinition"
+                :items="entityDefItems"
+                item-title="title"
+                item-value="value"
                 :label="t('workflows.dsl.entity_definition')"
                 density="comfortable"
-                @update:model-value="updateField('entity_definition', $event)"
+                @update:model-value="onEntityDefChange"
             />
-            <div class="d-flex ga-2">
-                <v-text-field
+            <div class="d-flex ga-2 flex-wrap">
+                <v-select
                     :model-value="filterField"
+                    :items="filterFieldItems"
                     :label="t('workflows.dsl.filter_field')"
                     density="comfortable"
                     @update:model-value="updateFilterField('field', $event)"
+                />
+                <v-select
+                    :model-value="filterOperator"
+                    :items="[
+                        { title: '=', value: '=' },
+                        { title: '>', value: '>' },
+                        { title: '<', value: '<' },
+                        { title: '<=', value: '<=' },
+                        { title: '>=', value: '>=' },
+                        { title: 'IN', value: 'IN' },
+                        { title: 'NOT IN', value: 'NOT IN' },
+                    ]"
+                    item-title="title"
+                    item-value="value"
+                    :label="t('workflows.dsl.filter_operator')"
+                    density="comfortable"
+                    @update:model-value="updateFilterField('operator', $event)"
                 />
                 <v-text-field
                     :model-value="filterValue"
@@ -147,8 +168,10 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, computed } from 'vue'
+    import { ref, computed, watch, onMounted } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
+    import { useEntityDefinitions } from '@/composables/useEntityDefinitions'
+    import { typedHttpClient } from '@/api/typed-client'
     import { buildApiUrl } from '@/env-check'
     import type { FromDef, AuthConfig } from './dsl-utils'
     import { defaultCsvOptions } from './dsl-utils'
@@ -164,8 +187,11 @@
     const emit = defineEmits<{ (e: 'update:modelValue', value: FromDef): void }>()
 
     const { t } = useTranslations()
+    const { entityDefinitions, loadEntityDefinitions } = useEntityDefinitions()
 
     const mappingEditorRef = ref<{ addEmptyPair: () => void } | null>(null)
+    const entityDefItems = ref<{ title: string; value: string }[]>([])
+    const filterFieldItems = ref<string[]>([])
 
     // Computed properties to avoid 'as any' in templates
     const sourceType = computed(() => {
@@ -228,6 +254,62 @@
         return ''
     })
 
+    const filterOperator = computed(() => {
+        if (props.modelValue.type === 'entity') {
+            return props.modelValue.filter.operator ?? '='
+        }
+        return '='
+    })
+
+    // Load entity definitions on mount
+    watch(
+        () => entityDefinitions.value,
+        defs => {
+            entityDefItems.value = (defs ?? []).map(d => ({
+                title: d.display_name ?? d.entity_type,
+                value: d.entity_type,
+            }))
+        },
+        { immediate: true }
+    )
+
+    // Load entity definitions when component is created
+    onMounted(() => {
+        void loadEntityDefinitions()
+    })
+
+    // Load entity fields when entity definition changes
+    async function onEntityDefChange(entityType: string) {
+        updateField('entity_definition', entityType)
+        await loadEntityFields(entityType)
+    }
+
+    // Load entity fields helper
+    async function loadEntityFields(entityType: string | null | undefined) {
+        if (!entityType) {
+            filterFieldItems.value = []
+            return
+        }
+        try {
+            const fields = await typedHttpClient.getEntityFields(entityType)
+            // Include all fields including system fields
+            filterFieldItems.value = fields.map(f => f.name)
+        } catch {
+            filterFieldItems.value = []
+        }
+    }
+
+    // Load entity fields when entity definition is set initially
+    watch(
+        () => (props.modelValue.type === 'entity' ? props.modelValue.entity_definition : undefined),
+        entityType => {
+            if (props.modelValue.type === 'entity' && entityType) {
+                void loadEntityFields(entityType)
+            }
+        },
+        { immediate: true }
+    )
+
     function getFullEndpointUri(): string {
         const uuid = props.workflowUuid ?? '{workflow-uuid}'
         return buildApiUrl(`/api/v1/workflows/${uuid}`)
@@ -251,7 +333,7 @@
 
     function updateFilterField(field: string, value: unknown) {
         const updated = { ...props.modelValue } as Record<string, unknown>
-        updated.filter ??= { field: '', value: '' }
+        updated.filter ??= { field: '', operator: '=', value: '' }
         updated.filter[field] = value
         emit('update:modelValue', updated as FromDef)
     }
@@ -365,7 +447,7 @@
             newFrom = {
                 type: 'entity',
                 entity_definition: '',
-                filter: { field: '', value: '' },
+                filter: { field: '', operator: '=', value: '' },
                 mapping: {},
             }
         }

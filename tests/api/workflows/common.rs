@@ -7,6 +7,7 @@ use r_data_core_api::{configure_app, ApiState, ApiStateWrapper};
 use r_data_core_core::admin_user::AdminUser;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
+use r_data_core_core::field::FieldDefinition;
 use r_data_core_persistence::{
     AdminUserRepository, ApiKeyRepository, ApiKeyRepositoryTrait, WorkflowRepository,
 };
@@ -15,12 +16,12 @@ use r_data_core_services::{
     WorkflowRepositoryAdapter,
 };
 use r_data_core_test_support::{create_test_admin_user, setup_test_db, test_queue_client_async};
-
-// Re-export for convenience (used by workflow tests)
-pub use r_data_core_test_support::create_test_entity_definition;
 use r_data_core_workflow::data::WorkflowKind;
 use std::sync::Arc;
 use uuid::Uuid;
+
+// Re-export for convenience (used by workflow tests)
+pub use r_data_core_test_support::create_test_entity_definition;
 
 /// Setup test app with entities
 ///
@@ -194,4 +195,56 @@ pub fn generate_entity_type(prefix: &str) -> String {
         prefix,
         Uuid::now_v7().simple().to_string().replace('-', "_")
     )
+}
+
+/// Load a workflow DSL example from `.example_files` and substitute `entity_type`
+///
+/// # Arguments
+/// * `filename` - The filename in `.example_files/json_examples/dsl/`
+/// * `entity_type` - The entity type to substitute for `${ENTITY_TYPE}` placeholder
+///
+/// # Errors
+/// Returns an error if the file cannot be read or parsed
+pub fn load_workflow_example(
+    filename: &str,
+    entity_type: &str,
+) -> anyhow::Result<serde_json::Value> {
+    use std::fs;
+    let path = format!(".example_files/json_examples/dsl/{filename}");
+    let content =
+        fs::read_to_string(&path).map_err(|e| anyhow::anyhow!("Failed to read {path}: {e}"))?;
+    let content = content.replace("${ENTITY_TYPE}", entity_type);
+    serde_json::from_str(&content).map_err(|e| anyhow::anyhow!("Failed to parse {path}: {e}"))
+}
+
+/// Create an entity definition with custom fields
+///
+/// # Errors
+/// Returns an error if entity definition creation fails
+pub async fn create_entity_definition_with_fields(
+    pool: &sqlx::PgPool,
+    entity_type: &str,
+    fields: Vec<FieldDefinition>,
+) -> anyhow::Result<Uuid> {
+    let mut entity_def = r_data_core_core::entity_definition::EntityDefinition {
+        entity_type: entity_type.to_string(),
+        display_name: format!("{entity_type} Class"),
+        description: Some(format!("Test description for {entity_type}")),
+        published: true,
+        fields,
+        ..r_data_core_core::entity_definition::EntityDefinition::default()
+    };
+
+    let created_by = Uuid::now_v7();
+    entity_def.created_by = created_by;
+
+    let repository = r_data_core_persistence::EntityDefinitionRepository::new(pool.clone());
+    let service = EntityDefinitionService::new_without_cache(Arc::new(repository));
+
+    let uuid = service.create_entity_definition(&entity_def).await?;
+
+    // Wait a moment for the view creation
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+    Ok(uuid)
 }

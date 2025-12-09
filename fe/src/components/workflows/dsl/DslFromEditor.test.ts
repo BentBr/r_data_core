@@ -4,13 +4,20 @@ import { nextTick } from 'vue'
 import DslFromEditor from './DslFromEditor.vue'
 import type { FromDef } from './dsl-utils'
 
+const mockGetEntityFields = vi.fn()
+const mockGetEntityDefinitions = vi.fn()
+
 vi.mock('@/api/typed-client', () => ({
     typedHttpClient: {
-        getEntityFields: vi.fn().mockResolvedValue([
-            { name: 'field1', type: 'string' },
-            { name: 'field2', type: 'number' },
-        ]),
+        getEntityFields: (entityType: string) => mockGetEntityFields(entityType),
     },
+}))
+
+vi.mock('@/composables/useEntityDefinitions', () => ({
+    useEntityDefinitions: () => ({
+        entityDefinitions: { value: mockGetEntityDefinitions() },
+        loadEntityDefinitions: vi.fn().mockResolvedValue(undefined),
+    }),
 }))
 
 vi.mock('@/composables/useTranslations', () => ({
@@ -24,30 +31,23 @@ describe('DslFromEditor', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         ;(global.fetch as ReturnType<typeof vi.fn>).mockClear()
+        mockGetEntityFields.mockResolvedValue([
+            { name: 'field1', type: 'string', required: false, system: false },
+            { name: 'field2', type: 'number', required: false, system: false },
+            { name: 'uuid', type: 'Uuid', required: true, system: true },
+            { name: 'published', type: 'Boolean', required: true, system: true },
+        ])
+        mockGetEntityDefinitions.mockReturnValue([
+            { entity_type: 'test_entity', display_name: 'Test Entity' },
+            { entity_type: 'customer', display_name: 'Customer' },
+        ])
     })
 
-    it('renders Entity type editor correctly', () => {
+    it('renders Entity type editor correctly', async () => {
         const fromDef: FromDef = {
             type: 'entity',
             entity_definition: 'test_entity',
-            filter: { field: 'status', value: 'active' },
-            mapping: {},
-        }
-        const wrapper = mount(DslFromEditor, {
-            props: {
-                modelValue: fromDef,
-            },
-        })
-
-        const textFields = wrapper.findAllComponents({ name: 'VTextField' })
-        expect(textFields.length).toBeGreaterThan(0)
-    })
-
-    it('updates entity filter fields', async () => {
-        const fromDef: FromDef = {
-            type: 'entity',
-            entity_definition: 'test_entity',
-            filter: { field: 'status', value: 'active' },
+            filter: { field: 'status', operator: '=', value: 'active' },
             mapping: {},
         }
         const wrapper = mount(DslFromEditor, {
@@ -57,15 +57,173 @@ describe('DslFromEditor', () => {
         })
 
         await nextTick()
-        const textFields = wrapper.findAllComponents({ name: 'VTextField' })
-        // Find the filter field text field (should be the first one after entity_definition)
-        const filterFieldField = textFields.find(tf => {
-            const label = tf.props('label') as string
+        await new Promise(resolve => setTimeout(resolve, 100)) // Wait for async field loading
+
+        // Entity definition should be a dropdown, not text field
+        const selects = wrapper.findAllComponents({ name: 'VSelect' })
+        expect(selects.length).toBeGreaterThan(0)
+
+        // Filter field should also be a dropdown
+        const filterFieldSelect = selects.find(s => {
+            const label = s.props('label') as string
+            return label?.includes('filter_field')
+        })
+        expect(filterFieldSelect).toBeTruthy()
+    })
+
+    it('entity_definition is a dropdown with entity definitions', async () => {
+        const fromDef: FromDef = {
+            type: 'entity',
+            entity_definition: 'test_entity',
+            filter: { field: 'status', operator: '=', value: 'active' },
+            mapping: {},
+        }
+        const wrapper = mount(DslFromEditor, {
+            props: {
+                modelValue: fromDef,
+            },
+        })
+
+        await nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        const selects = wrapper.findAllComponents({ name: 'VSelect' })
+        const entityDefSelect = selects.find(s => {
+            const label = s.props('label') as string
+            return label?.includes('entity_definition')
+        })
+
+        expect(entityDefSelect).toBeTruthy()
+        expect(entityDefSelect?.props('items')).toBeTruthy()
+    })
+
+    it('filter_field is a dropdown with entity fields including system fields', async () => {
+        const fromDef: FromDef = {
+            type: 'entity',
+            entity_definition: 'test_entity',
+            filter: { field: 'status', operator: '=', value: 'active' },
+            mapping: {},
+        }
+        const wrapper = mount(DslFromEditor, {
+            props: {
+                modelValue: fromDef,
+            },
+        })
+
+        await nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        const selects = wrapper.findAllComponents({ name: 'VSelect' })
+        const filterFieldSelect = selects.find(s => {
+            const label = s.props('label') as string
             return label?.includes('filter_field')
         })
 
-        if (filterFieldField) {
-            await filterFieldField.vm.$emit('update:modelValue', 'category')
+        expect(filterFieldSelect).toBeTruthy()
+        expect(mockGetEntityFields).toHaveBeenCalledWith('test_entity')
+
+        // Check that system fields are included
+        const items = filterFieldSelect?.props('items') as string[]
+        expect(items).toContain('uuid')
+        expect(items).toContain('published')
+        expect(items).toContain('field1')
+        expect(items).toContain('field2')
+    })
+
+    it('filter_operator dropdown appears with all operators', async () => {
+        const fromDef: FromDef = {
+            type: 'entity',
+            entity_definition: 'test_entity',
+            filter: { field: 'status', operator: '=', value: 'active' },
+            mapping: {},
+        }
+        const wrapper = mount(DslFromEditor, {
+            props: {
+                modelValue: fromDef,
+            },
+        })
+
+        await nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        const selects = wrapper.findAllComponents({ name: 'VSelect' })
+        const operatorSelect = selects.find(s => {
+            const label = s.props('label') as string
+            return label?.includes('filter_operator')
+        })
+
+        expect(operatorSelect).toBeTruthy()
+        const items = operatorSelect?.props('items') as Array<{ title: string; value: string }>
+        expect(items).toHaveLength(7)
+        expect(items?.map(i => i.value)).toContain('=')
+        expect(items?.map(i => i.value)).toContain('>')
+        expect(items?.map(i => i.value)).toContain('<')
+        expect(items?.map(i => i.value)).toContain('<=')
+        expect(items?.map(i => i.value)).toContain('>=')
+        expect(items?.map(i => i.value)).toContain('IN')
+        expect(items?.map(i => i.value)).toContain('NOT IN')
+    })
+
+    it('selecting filter operator updates filter structure', async () => {
+        const fromDef: FromDef = {
+            type: 'entity',
+            entity_definition: 'test_entity',
+            filter: { field: 'status', operator: '=', value: 'active' },
+            mapping: {},
+        }
+        const wrapper = mount(DslFromEditor, {
+            props: {
+                modelValue: fromDef,
+            },
+        })
+
+        await nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        const selects = wrapper.findAllComponents({ name: 'VSelect' })
+        const operatorSelect = selects.find(s => {
+            const label = s.props('label') as string
+            return label?.includes('filter_operator')
+        })
+
+        if (operatorSelect) {
+            await operatorSelect.vm.$emit('update:modelValue', '>')
+            await nextTick()
+
+            const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]> | undefined
+            expect(emitted?.length).toBeGreaterThan(0)
+            const updated = emitted[emitted.length - 1][0] as FromDef
+            if (updated.type === 'entity') {
+                expect(updated.filter.operator).toBe('>')
+            }
+        }
+    })
+
+    it('updates entity filter fields', async () => {
+        const fromDef: FromDef = {
+            type: 'entity',
+            entity_definition: 'test_entity',
+            filter: { field: 'status', operator: '=', value: 'active' },
+            mapping: {},
+        }
+        const wrapper = mount(DslFromEditor, {
+            props: {
+                modelValue: fromDef,
+            },
+        })
+
+        await nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100)) // Wait for async field loading
+
+        const selects = wrapper.findAllComponents({ name: 'VSelect' })
+        // Find the filter field select (should be a dropdown now)
+        const filterFieldSelect = selects.find(s => {
+            const label = s.props('label') as string
+            return label?.includes('filter_field')
+        })
+
+        if (filterFieldSelect) {
+            await filterFieldSelect.vm.$emit('update:modelValue', 'category')
             await nextTick()
 
             const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]> | undefined
@@ -74,6 +232,9 @@ describe('DslFromEditor', () => {
             if (updated.type === 'entity') {
                 expect(updated.filter.field).toBe('category')
             }
+        } else {
+            // If select not found, just verify the component rendered
+            expect(selects.length).toBeGreaterThan(0)
         }
     })
 
@@ -415,5 +576,42 @@ describe('DslFromEditor', () => {
         if (expansionPanel) {
             expect(expansionPanel.exists()).toBe(true)
         }
+    })
+
+    it('uses filter_operator translation key', () => {
+        const fromDef: FromDef = {
+            type: 'entity',
+            entity_definition: 'test_entity',
+            filter: { field: 'status', operator: '=', value: 'active' },
+            mapping: {},
+        }
+        const wrapper = mount(DslFromEditor, {
+            props: {
+                modelValue: fromDef,
+            },
+        })
+
+        const text = wrapper.text()
+        // Check that translation key is used (mocked to return key itself)
+        expect(text).toContain('filter_operator')
+    })
+
+    it('uses filter_field and filter_value translation keys', () => {
+        const fromDef: FromDef = {
+            type: 'entity',
+            entity_definition: 'test_entity',
+            filter: { field: 'status', operator: '=', value: 'active' },
+            mapping: {},
+        }
+        const wrapper = mount(DslFromEditor, {
+            props: {
+                modelValue: fromDef,
+            },
+        })
+
+        const text = wrapper.text()
+        // Check that translation keys are used
+        expect(text).toContain('filter_field')
+        expect(text).toContain('filter_value')
     })
 })

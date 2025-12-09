@@ -2,6 +2,8 @@
 
 pub mod adapter;
 pub mod entity_persistence;
+pub mod item_processing;
+pub mod output_handling;
 pub mod service;
 pub mod value_formatting;
 

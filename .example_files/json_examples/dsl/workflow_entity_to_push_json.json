@@ -1,0 +1,45 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "entity",
+        "entity_definition": "${ENTITY_TYPE}",
+        "filter": {
+          "field": "name",
+          "operator": "=",
+          "value": "${FILTER_VALUE}"
+        },
+        "mapping": {
+          "name": "name",
+          "email": "email"
+        }
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "format",
+        "output": {
+          "mode": "push",
+          "destination": {
+            "destination_type": "uri",
+            "config": {
+              "uri": "http://example.com/api/data"
+            },
+            "auth": null
+          },
+          "method": "post"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {
+          "name": "name",
+          "email": "email"
+        }
+      }
+    }
+  ]
+}
+

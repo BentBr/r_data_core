@@ -101,41 +101,10 @@ async fn test_pull_from_remote_api_json_into_entities_via_cron() -> anyhow::Resu
     let _ed_uuid = create_test_entity_definition(&pool, &entity_type).await?;
 
     // Create consumer workflow that pulls JSON from remote API via cron into entities
-    let config = serde_json::json!({
-        "steps": [
-            {
-                "from": {
-                    "type": "format",
-                    "source": {
-                        "source_type": "uri",
-                        "config": {
-                            "uri": "http://example.com/data.json"
-                        },
-                        "auth": null
-                    },
-                    "format": {
-                        "format_type": "json",
-                        "options": {}
-                    },
-                    "mapping": {
-                        "name": "name",
-                        "email": "email"
-                    }
-                },
-                "transform": { "type": "none" },
-                "to": {
-                    "type": "entity",
-                    "entity_definition": entity_type,
-                    "path": "/",
-                    "mode": "create",
-                    "mapping": {
-                        "name": "name",
-                        "email": "email"
-                    }
-                }
-            }
-        ]
-    });
+    let config = crate::api::workflows::common::load_workflow_example(
+        "workflow_uri_json_to_entity.json",
+        &entity_type,
+    )?;
 
     let wf_uuid = create_consumer_workflow(
         &pool,

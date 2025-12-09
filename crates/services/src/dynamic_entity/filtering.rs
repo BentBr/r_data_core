@@ -27,12 +27,42 @@ impl DynamicEntityService {
         sort: Option<(String, String)>,
         fields: Option<Vec<String>>,
     ) -> Result<Vec<DynamicEntity>> {
+        self.filter_entities_with_operators(
+            entity_type,
+            limit,
+            offset,
+            filters,
+            None, // Default to "=" for all filters
+            search,
+            sort,
+            fields,
+        )
+        .await
+    }
+
+    /// Filter entities based on field values with operators
+    ///
+    /// # Errors
+    /// Returns an error if entity type is not found, not published, or database query fails
+    #[allow(clippy::too_many_arguments)] // Public API - parameters are clear and well-named
+    pub async fn filter_entities_with_operators(
+        &self,
+        entity_type: &str,
+        limit: i64,
+        offset: i64,
+        filters: Option<HashMap<String, JsonValue>>,
+        filter_operators: Option<HashMap<String, String>>,
+        search: Option<(String, Vec<String>)>,
+        sort: Option<(String, String)>,
+        fields: Option<Vec<String>>,
+    ) -> Result<Vec<DynamicEntity>> {
         // Verify the entity type exists and is published
         self.check_entity_type_exists_and_published(entity_type)
             .await?;
 
         let params = FilterEntitiesParams::new(limit, offset)
             .with_filters(filters)
+            .with_filter_operators(filter_operators)
             .with_search(search)
             .with_sort(sort)
             .with_fields(fields);
@@ -127,6 +157,7 @@ impl DynamicEntityService {
         // Fetch the entities
         let params = FilterEntitiesParams::new(limit, offset)
             .with_filters(Some(filter_conditions))
+            .with_filter_operators(None) // Default to "=" for all filters
             .with_search(search_fields)
             .with_sort(sort_info)
             .with_fields(fields);
@@ -194,6 +225,7 @@ impl DynamicEntityService {
         // Use the new filter_entities method with the structured parameters
         let params = FilterEntitiesParams::new(limit, offset)
             .with_filters(filters)
+            .with_filter_operators(None) // Default to "=" for all filters
             .with_fields(exclusive_fields);
         self.repository.filter_entities(entity_type, &params).await
     }

@@ -10,62 +10,17 @@
                     ref="formRef"
                     @submit.prevent
                 >
-                    <v-text-field
-                        v-model="form.name"
-                        :label="t('workflows.create.name')"
-                        :rules="[rules.required]"
+                    <WorkflowFormFields
+                        :form="form"
+                        :steps="steps"
+                        :cron-error="cronError"
+                        :cron-help="cronHelp"
+                        :next-runs="nextRuns"
+                        @update:form="form = $event"
+                        @update:cron-error="cronError = $event"
+                        @update:next-runs="nextRuns = $event"
+                        @cron-change="onCronChange"
                     />
-                    <v-textarea
-                        v-model="form.description"
-                        :label="t('workflows.create.description')"
-                        rows="2"
-                        auto-grow
-                    />
-                    <v-select
-                        v-model="form.kind"
-                        :label="t('workflows.create.kind')"
-                        :items="kinds"
-                        item-title="label"
-                        item-value="value"
-                    />
-                    <v-switch
-                        v-model="form.enabled"
-                        :label="t('workflows.create.enabled')"
-                        color="success"
-                        inset
-                    ></v-switch>
-                    <v-switch
-                        v-model="form.versioning_disabled"
-                        :label="
-                            t('workflows.create.versioning_disabled') ||
-                            'Disable versioning for this workflow'
-                        "
-                        color="warning"
-                        inset
-                    ></v-switch>
-                    <v-text-field
-                        v-model="form.schedule_cron"
-                        :label="t('workflows.create.cron')"
-                        :error-messages="cronError || ''"
-                        :disabled="hasApiSource"
-                        :hint="
-                            hasApiSource ? t('workflows.create.cron_disabled_for_api_source') : ''
-                        "
-                        persistent-hint
-                        @update:model-value="onCronChange"
-                    />
-                    <div
-                        v-if="cronHelp && !hasApiSource"
-                        class="text-caption mb-2"
-                    >
-                        {{ cronHelp }}
-                    </div>
-                    <div
-                        v-if="nextRuns.length && !hasApiSource"
-                        class="text-caption"
-                    >
-                        Next: {{ nextRuns.join(', ') }}
-                    </div>
 
                     <v-expansion-panels
                         class="mt-2"
@@ -119,6 +74,7 @@
     import { useTranslations } from '@/composables/useTranslations'
     import { getDialogMaxWidth } from '@/design-system/components'
     import DslConfigurator from './DslConfigurator.vue'
+    import WorkflowFormFields from './WorkflowFormFields.vue'
     import type { DslStep } from './dsl/dsl-utils'
 
     const props = defineProps<{ modelValue: boolean }>()
@@ -131,11 +87,6 @@
     const model = computed({ get: () => props.modelValue, set: v => emit('update:modelValue', v) })
     const loading = ref(false)
     const formRef = ref()
-
-    const kinds = [
-        { label: 'Consumer', value: 'consumer' },
-        { label: 'Provider', value: 'provider' },
-    ]
 
     const form = ref({
         name: '',
@@ -157,6 +108,18 @@
     let cronDebounce: ReturnType<typeof setTimeout> | null = null
 
     // Check if any step has from.api source type (accepts POST, no cron needed)
+    const hasApiOutput = computed(() => {
+        if (!steps.value || steps.value.length === 0) {
+            return false
+        }
+        return steps.value.some(step => {
+            if (step.to?.type === 'format' && step.to.output?.mode === 'api') {
+                return true
+            }
+            return false
+        })
+    })
+
     const hasApiSource = computed(() => {
         return steps.value.some((step: DslStep) => {
             if (step.from?.type === 'format' && step.from?.source?.source_type === 'api') {
@@ -167,9 +130,9 @@
         })
     })
 
-    // Watch hasApiSource and clear cron when API source is used
-    watch(hasApiSource, isApi => {
-        if (isApi) {
+    // Watch hasApiSource and hasApiOutput and clear cron when API source or output is used
+    watch([hasApiSource, hasApiOutput], ([isApiSource, isApiOutput]) => {
+        if (isApiSource || isApiOutput) {
             cronError.value = null
             form.value.schedule_cron = null
             nextRuns.value = []
@@ -182,7 +145,7 @@
 
     async function onCronChange(value: string) {
         // Skip validation if API source is used
-        if (hasApiSource.value) {
+        if (hasApiSource.value || hasApiOutput.value) {
             cronError.value = null
             nextRuns.value = []
             return
@@ -204,10 +167,6 @@
                 }
             })()
         }, 350)
-    }
-
-    const rules = {
-        required: (v: unknown) => (!!v && String(v).trim().length > 0) || t('validation.required'),
     }
 
     function parseJson(input: string): { parsed: unknown; error: string | null } {
@@ -281,8 +240,11 @@
                 description: form.value.description ?? null,
                 kind: form.value.kind,
                 enabled: form.value.enabled,
-                // Set schedule_cron to null when API source is used
-                schedule_cron: hasApiSource.value ? null : (form.value.schedule_cron ?? null),
+                // Set schedule_cron to null when API source or API output is used
+                schedule_cron:
+                    hasApiSource.value || hasApiOutput.value
+                        ? null
+                        : (form.value.schedule_cron ?? null),
                 config: parsedConfig ?? {},
                 versioning_disabled: form.value.versioning_disabled,
             }

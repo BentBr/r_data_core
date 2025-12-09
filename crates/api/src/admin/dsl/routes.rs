@@ -515,6 +515,7 @@ pub async fn list_from_options(auth: RequiredAuth) -> impl Responder {
         entity_definition: "product".to_string(),
         filter: EntityFilter {
             field: "sku".to_string(),
+            operator: "=".to_string(),
             value: "ABC-001".to_string(),
         },
         mapping: std::iter::once(("price".to_string(), "price".to_string())).collect(),

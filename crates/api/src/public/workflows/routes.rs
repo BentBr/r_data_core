@@ -33,17 +33,40 @@ async fn collect_entity_input_data(
             };
 
             let mut filter_map = HashMap::new();
-            filter_map.insert(
-                filter.field.clone(),
-                JsonValue::String(filter.value.clone()),
-            );
+            // Handle IN/NOT IN operators - value should be an array
+            let filter_value = if filter.operator == "IN" || filter.operator == "NOT IN" {
+                // Try to parse value as JSON array, otherwise wrap in array
+                match serde_json::from_str::<JsonValue>(&filter.value) {
+                    Ok(JsonValue::Array(_)) => serde_json::from_str(&filter.value)
+                        .unwrap_or_else(|_| json!([filter.value])),
+                    _ => json!([filter.value]),
+                }
+            } else {
+                // Try to parse as a number for numeric comparisons, otherwise use as string
+                // This allows numeric string values like "15" to be compared with integer fields
+                filter.value.parse::<i64>().map_or_else(
+                    |_| {
+                        filter.value.parse::<f64>().map_or_else(
+                            |_| JsonValue::String(filter.value.clone()),
+                            |num| json!(num),
+                        )
+                    },
+                    |num| json!(num),
+                )
+            };
+            filter_map.insert(filter.field.clone(), filter_value);
+
+            // Create operators map
+            let mut operators_map = HashMap::new();
+            operators_map.insert(filter.field.clone(), filter.operator.clone());
 
             let entities = entity_service
-                .filter_entities(
+                .filter_entities_with_operators(
                     entity_definition,
                     1000,
                     0,
                     Some(filter_map),
+                    Some(operators_map),
                     None,
                     None,
                     None,

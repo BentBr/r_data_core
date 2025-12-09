@@ -6,6 +6,7 @@
 // Use Case 4.b: Expose JSON via API with all auth methods (body)
 
 use super::common::setup_app_with_entities;
+use crate::api::workflows::common::load_workflow_example;
 use actix_web::test;
 use uuid::Uuid;
 
@@ -22,37 +23,10 @@ async fn test_expose_data_via_api_endpoint_csv_ignores_cron() -> anyhow::Result<
 
     // Create provider workflow that exposes CSV via API endpoint
     // Provider workflows should ignore cron (they're triggered by GET requests)
-    let config = serde_json::json!({
-        "steps": [
-            {
-                "from": {
-                    "type": "format",
-                    "source": {
-                        "source_type": "uri",
-                        "config": {
-                            "uri": "http://example.com/data.csv"
-                        },
-                        "auth": null
-                    },
-                    "format": {
-                        "format_type": "csv",
-                        "options": { "has_header": true }
-                    },
-                    "mapping": {}
-                },
-                "transform": { "type": "none" },
-                "to": {
-                    "type": "format",
-                    "output": { "mode": "api" },
-                    "format": {
-                        "format_type": "csv",
-                        "options": { "has_header": true }
-                    },
-                    "mapping": {}
-                }
-            }
-        ]
-    });
+    let config = load_workflow_example(
+        "workflow_format_to_api_csv.json",
+        "dummy", // Not used for this workflow type
+    )?;
 
     // Even if we try to set a cron, provider workflows should ignore it
     let repo = r_data_core_persistence::WorkflowRepository::new(pool.pool.clone());

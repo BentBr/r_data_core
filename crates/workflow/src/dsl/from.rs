@@ -9,7 +9,13 @@ use utoipa::ToSchema;
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct EntityFilter {
     pub field: String,
+    #[serde(default = "default_operator")]
+    pub operator: String,
     pub value: String,
+}
+
+fn default_operator() -> String {
+    "=".to_string()
 }
 
 /// Source configuration - references source type and config
@@ -139,6 +145,20 @@ pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> R
             }
             if filter.field.trim().is_empty() || filter.value.trim().is_empty() {
                 bail!("DSL step {idx}: from.entity.filter requires both field and value");
+            }
+            // Validate filter field name is safe (prevents SQL injection)
+            if !safe_field.is_match(&filter.field) {
+                bail!(
+                    "DSL step {idx}: from.entity.filter.field must be a safe identifier (got: '{}')",
+                    filter.field
+                );
+            }
+            // Validate operator is one of the allowed values
+            let allowed_operators = ["=", ">", "<", "<=", ">=", "IN", "NOT IN"];
+            if !allowed_operators.contains(&filter.operator.as_str()) {
+                bail!(
+                    "DSL step {idx}: from.entity.filter.operator must be one of: =, >, <, <=, >=, IN, NOT IN"
+                );
             }
             // Allow empty mappings
             validate_mapping(idx, mapping, safe_field)?;

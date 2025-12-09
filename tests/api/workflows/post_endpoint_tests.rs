@@ -99,39 +99,10 @@ async fn test_post_endpoint_accepts_json_into_entities() -> anyhow::Result<()> {
     let _ed_uuid = create_test_entity_definition(&pool, &entity_type).await?;
 
     // Create consumer workflow with from.api source (accepts POST)
-    let config = serde_json::json!({
-        "steps": [
-            {
-                "from": {
-                    "type": "format",
-                    "source": {
-                        "source_type": "api",
-                        "config": {},
-                        "auth": null
-                    },
-                    "format": {
-                        "format_type": "json",
-                        "options": {}
-                    },
-                    "mapping": {
-                        "name": "name",
-                        "email": "email"
-                    }
-                },
-                "transform": { "type": "none" },
-                "to": {
-                    "type": "entity",
-                    "entity_definition": entity_type,
-                    "path": "/",
-                    "mode": "create",
-                    "mapping": {
-                        "name": "name",
-                        "email": "email"
-                    }
-                }
-            }
-        ]
-    });
+    let config = crate::api::workflows::common::load_workflow_example(
+        "workflow_api_source_json_to_entity.json",
+        &entity_type,
+    )?;
 
     let wf_uuid = create_consumer_workflow(&pool, creator_uuid, config, true, None).await?;
 

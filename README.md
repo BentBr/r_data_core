@@ -395,17 +395,13 @@ Swagger:
 /admin/api/docs/
 
 ## Todos
-- update readme
 - add options for custom tables (like bricks)
 - have easy-creation of children (entities)
-- test admin routes
-- check entities and respective columns - we need proper creation and not everything serialized.
 - check env vars
 - custom field type (json with predefined content - like a preferences structure...)
 - key-value-store
 - relations 1:n + n:n
 - admin swagger field definitions / constraints
-- crons + refresh token deletion
 - load/performance test binary
 - typescript bindings
 - anyhow in the entire repo

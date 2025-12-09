@@ -146,6 +146,7 @@
     })
 
     // Watch for prop changes and update local state
+    // Preserve openPanels state when props change to prevent auto-closing
     watch(
         () => props.modelValue,
         newValue => {
@@ -156,6 +157,8 @@
             const currentStr = JSON.stringify(stepsLocal.value)
             const newStr = JSON.stringify(newValue || [])
             if (currentStr !== newStr) {
+                // Preserve currently open panels
+                const preservedOpenPanels = [...openPanels.value]
                 isUpdating = true
                 try {
                     // Sanitize steps when loading from props
@@ -165,6 +168,15 @@
                         ensureEntityFilter(s)
                     })
                     stepsLocal.value = sanitized
+                    // Restore open panels after update, but only if the number of steps hasn't changed
+                    void nextTick(() => {
+                        if (
+                            preservedOpenPanels.length > 0 &&
+                            preservedOpenPanels.every(idx => idx < sanitized.length)
+                        ) {
+                            openPanels.value = preservedOpenPanels
+                        }
+                    })
                 } finally {
                     // Reset flag after next tick
                     void nextTick(() => {

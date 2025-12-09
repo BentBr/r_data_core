@@ -1,0 +1,31 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "entity",
+        "entity_definition": "test_entity",
+        "filter": {
+          "field": "status",
+          "operator": "${OPERATOR}",
+          "value": "${FILTER_VALUE}"
+        },
+        "mapping": {}
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {}
+      }
+    }
+  ]
+}
+

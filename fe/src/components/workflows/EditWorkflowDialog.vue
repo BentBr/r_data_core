@@ -18,64 +18,17 @@
                             class="mt-4"
                             @submit.prevent
                         >
-                            <v-text-field
-                                v-model="form.name"
-                                label="Name"
-                                :rules="[rules.required]"
+                            <WorkflowFormFields
+                                :form="form"
+                                :steps="steps"
+                                :cron-error="cronError"
+                                :cron-help="cronHelp"
+                                :next-runs="nextRuns"
+                                @update:form="form = $event"
+                                @update:cron-error="cronError = $event"
+                                @update:next-runs="nextRuns = $event"
+                                @cron-change="onCronChange"
                             />
-                            <v-textarea
-                                v-model="form.description"
-                                label="Description"
-                                rows="2"
-                                auto-grow
-                            />
-                            <v-select
-                                v-model="form.kind"
-                                label="Kind"
-                                :items="kinds"
-                                item-title="label"
-                                item-value="value"
-                            />
-                            <v-switch
-                                v-model="form.enabled"
-                                :label="t('workflows.create.enabled')"
-                                color="success"
-                                inset
-                            ></v-switch>
-                            <v-switch
-                                v-model="form.versioning_disabled"
-                                :label="
-                                    t('workflows.create.versioning_disabled') ||
-                                    'Disable versioning for this workflow'
-                                "
-                                color="warning"
-                                inset
-                            ></v-switch>
-                            <v-text-field
-                                v-model="form.schedule_cron"
-                                label="Cron"
-                                :error-messages="cronError || ''"
-                                :disabled="hasApiSource"
-                                :hint="
-                                    hasApiSource
-                                        ? t('workflows.create.cron_disabled_for_api_source')
-                                        : ''
-                                "
-                                persistent-hint
-                                @update:model-value="onCronChange"
-                            />
-                            <div
-                                v-if="cronHelp && !hasApiSource"
-                                class="text-caption mb-2"
-                            >
-                                {{ cronHelp }}
-                            </div>
-                            <div
-                                v-if="nextRuns.length && !hasApiSource"
-                                class="text-caption"
-                            >
-                                Next: {{ nextRuns.join(', ') }}
-                            </div>
 
                             <v-expansion-panels
                                 class="mt-2"
@@ -141,6 +94,7 @@
     import { useTranslations } from '@/composables/useTranslations'
     import { computeDiffRows } from '@/utils/versionDiff'
     import type { DslStep } from './dsl/dsl-utils'
+    import type { WorkflowConfig } from '@/types/schemas/workflow'
 
     const props = defineProps<{ modelValue: boolean; workflowUuid: string | null }>()
     const emit = defineEmits<{
@@ -164,11 +118,6 @@
         }>
     >([])
     const versionHistoryRef = ref<InstanceType<typeof VersionHistory>>()
-
-    const kinds = [
-        { label: 'Consumer', value: 'consumer' },
-        { label: 'Provider', value: 'provider' },
-    ]
 
     const form = ref({
         name: '',
@@ -200,22 +149,21 @@
         })
     })
 
-    // Watch hasApiSource and clear cron when API source is used
-    watch(hasApiSource, isApi => {
-        if (isApi) {
-            cronError.value = null
-            form.value.schedule_cron = null
-            nextRuns.value = []
-            if (cronDebounce) {
-                clearTimeout(cronDebounce)
-                cronDebounce = null
+    // Check if any step has to.format.output.mode === 'api' (exports via GET, no cron needed)
+    const hasApiOutput = computed(() => {
+        return steps.value.some((step: DslStep) => {
+            if (step.to?.type === 'format') {
+                const output = step.to.output
+                if (typeof output === 'string') {
+                    return output === 'api'
+                }
+                if (typeof output === 'object' && output !== null && 'mode' in output) {
+                    return output.mode === 'api'
+                }
             }
-        }
+            return false
+        })
     })
-
-    const rules = {
-        required: (v: unknown) => !!v || 'Required',
-    }
 
     watch(
         () => props.modelValue,
@@ -303,7 +251,7 @@
 
     async function onCronChange(value: string) {
         // Skip validation if API source is used
-        if (hasApiSource.value) {
+        if (hasApiSource.value || hasApiOutput.value) {
             cronError.value = null
             nextRuns.value = []
             return
@@ -363,7 +311,8 @@
         }
         // Strict DSL presence and validation against BE
         try {
-            const steps = Array.isArray(parsedConfig?.steps) ? parsedConfig.steps : null
+            const config = parsedConfig as { steps?: unknown[] }
+            const steps = Array.isArray(config?.steps) ? config.steps : null
             if (!steps || steps.length === 0) {
                 configError.value = 'DSL steps are required'
                 return
@@ -385,10 +334,13 @@
                 }
                 return
             }
-            if (e?.violations) {
-                const v = e.violations[0]
-                configError.value = v?.message ?? 'Invalid DSL'
-                return
+            if (e && typeof e === 'object' && 'violations' in e) {
+                const violations = (e as { violations?: Array<{ message?: string }> }).violations
+                if (violations && violations.length > 0) {
+                    const v = violations[0]
+                    configError.value = v?.message ?? 'Invalid DSL'
+                    return
+                }
             }
             configError.value = e instanceof Error ? e.message : 'Invalid DSL'
             return
@@ -401,9 +353,12 @@
                 description: form.value.description ?? null,
                 kind: form.value.kind,
                 enabled: form.value.enabled,
-                // Set schedule_cron to null when API source is used
-                schedule_cron: hasApiSource.value ? null : (form.value.schedule_cron ?? null),
-                config: parsedConfig ?? {},
+                // Set schedule_cron to null when API source or API output is used
+                schedule_cron:
+                    hasApiSource.value || hasApiOutput.value
+                        ? null
+                        : (form.value.schedule_cron ?? null),
+                config: (parsedConfig ?? {}) as WorkflowConfig,
                 versioning_disabled: form.value.versioning_disabled,
             })
             emit('updated')
