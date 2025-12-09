@@ -205,9 +205,18 @@ impl AdminUserService {
         params: &crate::query_validation::ListQueryParams,
         field_validator: &FieldValidator,
     ) -> Result<(Vec<AdminUser>, ValidatedListQuery)> {
-        let validated = validate_list_query(params, "admin_users", field_validator, 20, 100, true)
-            .await
-            .map_err(r_data_core_core::error::Error::Validation)?;
+        // Allow sorting by virtual "roles" field (number of roles) in addition to DB columns
+        let validated = validate_list_query(
+            params,
+            "admin_users",
+            field_validator,
+            20,
+            100,
+            true,
+            &["roles"],
+        )
+        .await
+        .map_err(r_data_core_core::error::Error::Validation)?;
 
         let users = self
             .repository

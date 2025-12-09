@@ -115,6 +115,12 @@
         sortBy: [] as Array<{ key: string; order: 'asc' | 'desc' }>,
     })
 
+    // Keep track of last emitted sort to avoid redundant events (which can cause refetch loops)
+    const lastEmittedSort = ref<{ key: string | null; order: 'asc' | 'desc' | null }>({
+        key: null,
+        order: null,
+    })
+
     // Watch for prop changes and update tableOptions
     watch(
         () => [props.currentPage, props.itemsPerPage],
@@ -134,19 +140,25 @@
         itemsPerPage: number
         sortBy?: Array<{ key: string; order: 'asc' | 'desc' }>
     }) => {
-        if (options.page !== props.currentPage) {
+        const nextSort = options.sortBy?.[0]
+        const nextSortKey = nextSort?.key ?? null
+        const nextSortOrder = nextSort?.order ?? null
+
+        const pageChanged = options.page !== props.currentPage
+        const itemsPerPageChanged = options.itemsPerPage !== props.itemsPerPage
+        const sortChanged =
+            nextSortKey !== lastEmittedSort.value.key ||
+            nextSortOrder !== lastEmittedSort.value.order
+
+        if (pageChanged) {
             emit('update:page', options.page)
         }
-        if (options.itemsPerPage !== props.itemsPerPage) {
+        if (itemsPerPageChanged) {
             emit('update:items-per-page', options.itemsPerPage)
         }
-
-        // Handle sorting
-        if (options.sortBy && options.sortBy.length > 0) {
-            const sort = options.sortBy[0]
-            emit('update:sort', sort.key, sort.order)
-        } else {
-            emit('update:sort', null, null)
+        if (sortChanged) {
+            emit('update:sort', nextSortKey, nextSortOrder)
+            lastEmittedSort.value = { key: nextSortKey, order: nextSortOrder }
         }
 
         // Update local state

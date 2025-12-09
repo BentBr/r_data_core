@@ -83,6 +83,13 @@ describe('PaginatedDataTable', () => {
         })
 
         const vm = wrapper.vm as any
+        // Apply a sort first
+        vm.handleOptionsUpdate({
+            page: 1,
+            itemsPerPage: 10,
+            sortBy: [{ key: 'name', order: 'asc' }],
+        })
+        await wrapper.vm.$nextTick()
         vm.handleOptionsUpdate({
             page: 1,
             itemsPerPage: 10,
@@ -95,6 +102,36 @@ describe('PaginatedDataTable', () => {
         expect(sortEvents).toBeDefined()
         expect(sortEvents?.length).toBeGreaterThan(0)
         expect(sortEvents?.[sortEvents.length - 1]).toEqual([null, null])
+    })
+
+    it('does not emit redundant sort events for identical options', async () => {
+        const wrapper = mount(PaginatedDataTable, {
+            props: {
+                items: [
+                    { uuid: '1', name: 'A' },
+                    { uuid: '2', name: 'B' },
+                ],
+                headers: [{ title: 'Name', key: 'name', sortable: true }],
+                loading: false,
+                error: '',
+                currentPage: 1,
+                itemsPerPage: 10,
+                totalItems: 2,
+                totalPages: 1,
+            },
+        })
+
+        const vm = wrapper.vm as any
+        vm.handleOptionsUpdate({
+            page: 1,
+            itemsPerPage: 10,
+            sortBy: [],
+        })
+
+        await wrapper.vm.$nextTick()
+
+        const sortEvents = wrapper.emitted('update:sort')
+        expect(sortEvents).toBeUndefined()
     })
 
     it('emits update:page event when page changes', async () => {

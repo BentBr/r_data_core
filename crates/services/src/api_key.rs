@@ -170,9 +170,10 @@ impl ApiKeyService {
         params: &crate::query_validation::ListQueryParams,
         field_validator: &FieldValidator,
     ) -> Result<(Vec<ApiKey>, ValidatedListQuery)> {
-        let validated = validate_list_query(params, "api_keys", field_validator, 20, 100, true)
-            .await
-            .map_err(r_data_core_core::error::Error::Validation)?;
+        let validated =
+            validate_list_query(params, "api_keys", field_validator, 20, 100, true, &[])
+                .await
+                .map_err(r_data_core_core::error::Error::Validation)?;
 
         let keys = self
             .repository

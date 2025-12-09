@@ -179,6 +179,7 @@ pub async fn validate_list_query(
     default_limit: i64,
     max_limit: i64,
     allow_unlimited: bool,
+    allowed_virtual_fields: &[&str],
 ) -> QueryValidationResult<ValidatedListQuery> {
     // Create a temporary PaginationQuery for validation
     let pagination = PaginationQuery {
@@ -205,10 +206,20 @@ pub async fn validate_list_query(
 
     // Validate sort_by field if provided
     if let Some(ref sort_by) = params.sort_by {
-        field_validator
-            .validate_field(table_name, sort_by)
-            .await
-            .map_err(|e| format!("Sort field validation failed: {e}"))?;
+        // Allow whitelisted virtual fields (e.g., derived columns)
+        if allowed_virtual_fields
+            .iter()
+            .any(|field| field == &sort_by.as_str())
+        {
+            // Still sanitize to avoid injection
+            FieldValidator::sanitize_field_name(sort_by)
+                .map_err(|e| format!("Sort field validation failed: {e}"))?;
+        } else {
+            field_validator
+                .validate_field(table_name, sort_by)
+                .await
+                .map_err(|e| format!("Sort field validation failed: {e}"))?;
+        }
     }
 
     // Convert to limit/offset

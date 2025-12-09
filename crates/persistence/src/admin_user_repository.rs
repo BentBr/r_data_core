@@ -332,19 +332,32 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         sort_order: Option<String>,
     ) -> Result<Vec<AdminUser>> {
         // Build ORDER BY clause - field is already validated and sanitized by route handler
-        let order_by = sort_by.map_or_else(
-            || "\"created_at\" DESC".to_string(),
-            |field| {
-                // Field name is validated, but we still quote it for safety
-                let quoted_field = format!("\"{}\"", field.replace('"', "\"\""));
+        let order_by = match sort_by.as_deref() {
+            // Virtual field: sort by number of roles assigned to the user
+            Some("roles") => {
                 let order = sort_order
                     .as_ref()
                     .map(|o| o.to_uppercase())
                     .filter(|o| o == "ASC" || o == "DESC")
                     .unwrap_or_else(|| "ASC".to_string());
-                format!("{quoted_field} {order}")
-            },
-        );
+                format!(
+                    "(SELECT COUNT(*) FROM user_roles ur WHERE ur.user_uuid = admin_users.uuid) {order}"
+                )
+            }
+            _ => sort_by.map_or_else(
+                || "\"created_at\" DESC".to_string(),
+                |field| {
+                    // Field name is validated, but we still quote it for safety
+                    let quoted_field = format!("\"{}\"", field.replace('"', "\"\""));
+                    let order = sort_order
+                        .as_ref()
+                        .map(|o| o.to_uppercase())
+                        .filter(|o| o == "ASC" || o == "DESC")
+                        .unwrap_or_else(|| "ASC".to_string());
+                    format!("{quoted_field} {order}")
+                },
+            ),
+        };
 
         // Build query with or without LIMIT
         let query = if limit == i64::MAX {

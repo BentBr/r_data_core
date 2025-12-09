@@ -1,14 +1,20 @@
 # R Data Core
 
+A robust backend for flexible data management with dynamic entity system, workflow management, API authentication, Redis caching, PostgreSQL database support, and migration system.
+
 ## Workspace Layout
 
 This repository is organized as a Cargo workspace:
 
+- `crates/api` — Actix Web API (admin/public), middleware
 - `crates/core` — domain models, versioning, permissions, prelude
 - `crates/persistence` — SQLx repositories and DB utilities
-- `crates/api` — Actix Web API (admin/public), middleware
-- `crates/worker` — background workers
-- `crates/test-support` — shared test helpers
+- `crates/services` - Business logic and data handling
+- `crates/test-support` — shared test helpers and database setup (only for tests)
+- `crates/worker` — background workers and maintenance tasks
+- `crates/workflow` — workflow engine and DSL
+
+## Strictness
 
 Clippy is enforced strictly across the workspace:
 
@@ -17,7 +23,12 @@ cargo clippy --workspace --all-targets --all-features -- \
   -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery
 ```
 
-A robust backend for flexible data management with dynamic entity system, workflow management, API authentication, Redis caching, PostgreSQL database support, and migration system.
+High test coverage is enforced: \
+(make sure to set the `RUST_LOG` level. Otherwise your console might explode 🤪)
+
+```bash
+RUST_LOG=error cargo test --workspace
+```
 
 ## Features
 
@@ -32,7 +43,7 @@ A robust backend for flexible data management with dynamic entity system, workfl
 - Versioning system for entities, entity definitions, and workflows
 - Workflow worker for processing scheduled and queued workflows
 - Maintenance worker for automated system maintenance tasks
-- API documentation at `/api/docs`
+- API documentation (swagger) at `/api/docs` for public api or `/admin/api/docs` for admin api
 
 ## Database Schema
 
@@ -54,7 +65,7 @@ The project uses a dynamic entity model with the following key tables:
 - Docker and Docker Compose
 - Rust 1.75+ (for development only)
 - PostgreSQL 14+
-- Redis 7+ (optional, for caching)
+- Redis 7+
 
 ## Quick Start
 
@@ -430,7 +441,6 @@ Check DSL:
 fixes:
 
 - setting all fields for dynamic entities
-- testing validations (+ tests)
 - auth tests for all api routes
 - tests (unit and integration) for dynamic entities (more)
 - getting all entity types with fields and validations
