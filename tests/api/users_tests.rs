@@ -31,7 +31,7 @@ async fn setup_test_app() -> Result<(
         Response = actix_web::dev::ServiceResponse,
         Error = actix_web::Error,
     >,
-    sqlx::PgPool,
+    r_data_core_test_support::TestDatabase,
     Uuid, // user_uuid
 )> {
     let pool = setup_test_db().await;
@@ -94,7 +94,7 @@ async fn setup_test_app() -> Result<(
     )
     .await;
 
-    Ok((app, pool.pool.clone(), user_uuid))
+    Ok((app, pool, user_uuid))
 }
 
 async fn get_auth_token(
@@ -103,13 +103,13 @@ async fn get_auth_token(
         Response = actix_web::dev::ServiceResponse,
         Error = actix_web::Error,
     >,
-    pool: &sqlx::PgPool,
+    pool: &r_data_core_test_support::TestDatabase,
 ) -> String {
     // Get the test admin user that was created (super_admin = true)
     let username: String = sqlx::query_scalar(
         "SELECT username FROM admin_users WHERE super_admin = true ORDER BY created_at DESC LIMIT 1"
     )
-    .fetch_one(pool)
+    .fetch_one(&pool.pool)
     .await
     .expect("Test admin user should exist");
 
@@ -228,7 +228,7 @@ async fn test_delete_user() {
     let token = get_auth_token(&app, &pool).await;
 
     // Create a user to delete
-    let repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
     let params = r_data_core_persistence::CreateAdminUserParams {
         username: "todelete",
         email: "todelete@example.com",
@@ -276,7 +276,7 @@ async fn test_assign_roles_to_user() {
 
     // Create a role
     let role_service = r_data_core_services::RoleService::new(
-        pool.clone(),
+        pool.pool.clone(),
         Arc::new(CacheManager::new(CacheConfig {
             entity_definition_ttl: 0,
             api_key_ttl: 600,
@@ -309,7 +309,7 @@ async fn test_super_admin_has_all_permissions() {
     let (app, pool, _user_uuid) = setup_test_app().await.unwrap();
 
     // Create a super admin user
-    let repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
     let params = r_data_core_persistence::CreateAdminUserParams {
         username: "superadmin",
         email: "superadmin@example.com",
@@ -365,7 +365,7 @@ async fn test_super_admin_has_all_permissions_from_user_flag() {
     let (app, pool, _user_uuid) = setup_test_app().await.unwrap();
 
     // Create a user and then set super_admin flag
-    let repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
     let params = r_data_core_persistence::CreateAdminUserParams {
         username: "superadmin_flag",
         email: "superadmin_flag@example.com",
@@ -421,7 +421,7 @@ async fn test_super_admin_has_all_permissions_from_permission() {
 
     // Create a role with super_admin flag
     let role_service = RoleService::new(
-        pool.clone(),
+        pool.pool.clone(),
         Arc::new(CacheManager::new(CacheConfig::default())),
         None,
     );
@@ -430,7 +430,7 @@ async fn test_super_admin_has_all_permissions_from_permission() {
     let role_uuid = role_service.create_role(&role, user_uuid).await.unwrap();
 
     // Create a regular user and assign the super admin role
-    let repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
     let params = r_data_core_persistence::CreateAdminUserParams {
         username: "superadmin_scheme",
         email: "superadmin_scheme@example.com",
@@ -490,7 +490,7 @@ async fn test_super_admin_flag_on_scheme_grants_all_permissions() {
 
     // Create a role with super_admin flag set to true
     let role_service = RoleService::new(
-        pool.clone(),
+        pool.pool.clone(),
         Arc::new(CacheManager::new(CacheConfig::default())),
         None,
     );
@@ -507,7 +507,7 @@ async fn test_super_admin_flag_on_scheme_grants_all_permissions() {
     );
 
     // Create a regular user (not super_admin) and assign the super admin scheme
-    let repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
     let params = r_data_core_persistence::CreateAdminUserParams {
         username: "regular_user_scheme",
         email: "regular_user_scheme@example.com",
@@ -595,7 +595,7 @@ async fn test_user_management_permissions() {
 
     // Create a role for regular users (no admin permissions)
     let role_service = RoleService::new(
-        pool.clone(),
+        pool.pool.clone(),
         Arc::new(CacheManager::new(CacheConfig::default())),
         None,
     );
@@ -613,7 +613,7 @@ async fn test_user_management_permissions() {
         .unwrap();
 
     // Create a regular user (not super_admin, with limited permissions)
-    let repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
     let regular_user_params = r_data_core_persistence::CreateAdminUserParams {
         username: "regular_user",
         email: "regular@example.com",
@@ -767,7 +767,7 @@ async fn test_email_uniqueness() {
     let (app, pool, user_uuid) = setup_test_app().await.unwrap();
 
     // Create first user
-    let repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
     let params1 = r_data_core_persistence::CreateAdminUserParams {
         username: "user1",
         email: "test@example.com",

@@ -80,54 +80,41 @@ impl Drop for TestDatabase {
         let schema_name = self.schema_name.clone();
         let database_url = self.database_url.clone();
 
-        // We need to drop the schema using a separate connection since we can't
-        // use the pool that's configured for the schema we're dropping.
-        // Drop is synchronous, so we need to block on the async cleanup operation.
-        // If we're already in a tokio runtime, use block_in_place to allow blocking.
-        let result = if let Ok(handle) = tokio::runtime::Handle::try_current() {
-            // We're in an async runtime, use block_in_place to allow blocking
-            tokio::task::block_in_place(|| {
-                handle.block_on(async {
-                    tokio::time::timeout(
-                        Duration::from_secs(10),
-                        teardown_test_schema_internal(&database_url, &schema_name),
-                    )
-                    .await
-                })
-            })
-        } else {
-            // Not in a runtime, create a new one
+        // Spawn a background thread to clean up so we never block an active runtime.
+        // Add a small delay to allow any in-flight queries to finish.
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(500));
+
             if let Ok(rt) = tokio::runtime::Runtime::new() {
-                rt.block_on(async {
+                let result = rt.block_on(async {
                     tokio::time::timeout(
                         Duration::from_secs(10),
                         teardown_test_schema_internal(&database_url, &schema_name),
                     )
                     .await
-                })
+                });
+
+                match result {
+                    Ok(Ok(())) => {
+                        debug!("Successfully dropped test schema: {schema_name}");
+                    }
+                    Ok(Err(e)) => {
+                        warn!(
+                            "Failed to drop test schema {schema_name}: {e}. This may cause shared memory issues."
+                        );
+                    }
+                    Err(_) => {
+                        warn!(
+                            "Timeout dropping test schema {schema_name}. Schema may remain in database."
+                        );
+                    }
+                }
             } else {
                 warn!(
                     "Could not create runtime to drop test schema {schema_name}. Schema may remain in database."
                 );
-                return;
             }
-        };
-
-        match result {
-            Ok(Ok(())) => {
-                debug!("Successfully dropped test schema: {schema_name}");
-            }
-            Ok(Err(e)) => {
-                warn!(
-                    "Failed to drop test schema {schema_name}: {e}. This may cause shared memory issues."
-                );
-            }
-            Err(_) => {
-                warn!(
-                    "Timeout dropping test schema {schema_name}. Schema may remain in database."
-                );
-            }
-        }
+        });
     }
 }
 

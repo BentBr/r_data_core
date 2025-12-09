@@ -17,7 +17,7 @@ use uuid::Uuid;
 async fn test_expose_data_via_api_endpoint_csv_ignores_cron() -> anyhow::Result<()> {
     let (app, pool, token, _) = setup_app_with_entities().await?;
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     // Create provider workflow that exposes CSV via API endpoint
@@ -55,7 +55,7 @@ async fn test_expose_data_via_api_endpoint_csv_ignores_cron() -> anyhow::Result<
     });
 
     // Even if we try to set a cron, provider workflows should ignore it
-    let repo = r_data_core_persistence::WorkflowRepository::new(pool.clone());
+    let repo = r_data_core_persistence::WorkflowRepository::new(pool.pool.clone());
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("provider-csv-{}", Uuid::now_v7().simple()),
         description: Some("Provider workflow CSV".to_string()),
@@ -72,7 +72,7 @@ async fn test_expose_data_via_api_endpoint_csv_ignores_cron() -> anyhow::Result<
         "SELECT EXISTS(SELECT 1 FROM workflows WHERE uuid = $1 AND kind = 'provider')",
     )
     .bind(wf_uuid)
-    .fetch_one(&pool)
+    .fetch_one(&pool.pool)
     .await?;
 
     assert!(workflow_exists, "Provider workflow should be created");
@@ -99,7 +99,7 @@ async fn test_expose_data_via_api_endpoint_csv_ignores_cron() -> anyhow::Result<
 async fn test_expose_data_via_api_endpoint_json_ignores_cron() -> anyhow::Result<()> {
     let (app, pool, token, _) = setup_app_with_entities().await?;
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     let config = serde_json::json!({
@@ -134,7 +134,7 @@ async fn test_expose_data_via_api_endpoint_json_ignores_cron() -> anyhow::Result
         ]
     });
 
-    let repo = r_data_core_persistence::WorkflowRepository::new(pool.clone());
+    let repo = r_data_core_persistence::WorkflowRepository::new(pool.pool.clone());
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("provider-json-{}", Uuid::now_v7().simple()),
         description: Some("Provider workflow JSON".to_string()),
@@ -150,7 +150,7 @@ async fn test_expose_data_via_api_endpoint_json_ignores_cron() -> anyhow::Result
         "SELECT EXISTS(SELECT 1 FROM workflows WHERE uuid = $1 AND kind = 'provider')",
     )
     .bind(wf_uuid)
-    .fetch_one(&pool)
+    .fetch_one(&pool.pool)
     .await?;
 
     assert!(workflow_exists, "Provider workflow should be created");

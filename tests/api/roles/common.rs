@@ -34,13 +34,13 @@ pub async fn setup_test_app() -> Result<(
         Response = actix_web::dev::ServiceResponse,
         Error = actix_web::Error,
     >,
-    sqlx::PgPool,
+    r_data_core_test_support::TestDatabase,
     Uuid, // user_uuid
 )> {
     let pool = setup_test_db().await;
-    clear_test_db(&pool).await?;
+    clear_test_db(&pool.pool).await?;
 
-    let user_uuid = create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool.pool).await?;
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -97,7 +97,7 @@ pub async fn setup_test_app() -> Result<(
     )
     .await;
 
-    Ok((app, pool.pool.clone(), user_uuid))
+    Ok((app, pool, user_uuid))
 }
 
 /// Create a test role with default permissions

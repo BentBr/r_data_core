@@ -19,7 +19,7 @@ use uuid::Uuid;
 async fn test_pull_from_remote_api_csv_into_entities_via_cron() -> anyhow::Result<()> {
     let (_app, pool, _token, _) = setup_app_with_entities().await?;
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     // Create entity definition (entity type must start with letter and contain only letters, numbers, underscores)
@@ -77,7 +77,7 @@ async fn test_pull_from_remote_api_csv_into_entities_via_cron() -> anyhow::Resul
         "SELECT schedule_cron FROM workflows WHERE uuid = $1",
     )
     .bind(wf_uuid)
-    .fetch_one(&pool)
+    .fetch_one(&pool.pool)
     .await?;
 
     assert_eq!(
@@ -93,7 +93,7 @@ async fn test_pull_from_remote_api_csv_into_entities_via_cron() -> anyhow::Resul
 async fn test_pull_from_remote_api_json_into_entities_via_cron() -> anyhow::Result<()> {
     let (_app, pool, _token, _) = setup_app_with_entities().await?;
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     // Create entity definition
@@ -151,7 +151,7 @@ async fn test_pull_from_remote_api_json_into_entities_via_cron() -> anyhow::Resu
         "SELECT schedule_cron FROM workflows WHERE uuid = $1",
     )
     .bind(wf_uuid)
-    .fetch_one(&pool)
+    .fetch_one(&pool.pool)
     .await?;
 
     assert_eq!(
@@ -171,7 +171,7 @@ async fn test_pull_from_remote_api_json_into_entities_via_cron() -> anyhow::Resu
 async fn test_pull_from_remote_api_csv_with_api_key_auth() -> anyhow::Result<()> {
     let (_app, pool, _token, _) = setup_app_with_entities().await?;
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     let entity_type = generate_entity_type("test_api_key");
@@ -224,7 +224,7 @@ async fn test_pull_from_remote_api_csv_with_api_key_auth() -> anyhow::Result<()>
     let workflow_config: serde_json::Value =
         sqlx::query_scalar("SELECT config FROM workflows WHERE uuid = $1")
             .bind(wf_uuid)
-            .fetch_one(&pool)
+            .fetch_one(&pool.pool)
             .await?;
 
     let auth_type = workflow_config["steps"][0]["from"]["source"]["auth"]["type"].as_str();
@@ -241,7 +241,7 @@ async fn test_pull_from_remote_api_csv_with_api_key_auth() -> anyhow::Result<()>
 async fn test_pull_from_remote_api_csv_with_pre_shared_key_auth() -> anyhow::Result<()> {
     let (_app, pool, _token, _) = setup_app_with_entities().await?;
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     let entity_type = generate_entity_type("test_psk");
@@ -294,7 +294,7 @@ async fn test_pull_from_remote_api_csv_with_pre_shared_key_auth() -> anyhow::Res
     let workflow_config: serde_json::Value =
         sqlx::query_scalar("SELECT config FROM workflows WHERE uuid = $1")
             .bind(wf_uuid)
-            .fetch_one(&pool)
+            .fetch_one(&pool.pool)
             .await?;
 
     let auth_type = workflow_config["steps"][0]["from"]["source"]["auth"]["type"].as_str();
@@ -311,7 +311,7 @@ async fn test_pull_from_remote_api_csv_with_pre_shared_key_auth() -> anyhow::Res
 async fn test_pull_from_remote_api_csv_with_basic_auth() -> anyhow::Result<()> {
     let (_app, pool, _token, _) = setup_app_with_entities().await?;
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     let entity_type = generate_entity_type("test_basic");
@@ -363,7 +363,7 @@ async fn test_pull_from_remote_api_csv_with_basic_auth() -> anyhow::Result<()> {
     let workflow_config: serde_json::Value =
         sqlx::query_scalar("SELECT config FROM workflows WHERE uuid = $1")
             .bind(wf_uuid)
-            .fetch_one(&pool)
+            .fetch_one(&pool.pool)
             .await?;
 
     let auth_type = workflow_config["steps"][0]["from"]["source"]["auth"]["type"].as_str();
@@ -386,7 +386,7 @@ async fn test_pull_from_remote_api_csv_with_basic_auth() -> anyhow::Result<()> {
 async fn test_pull_from_remote_api_csv_with_get_method() -> anyhow::Result<()> {
     let (_app, pool, _token, _) = setup_app_with_entities().await?;
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     let entity_type = generate_entity_type("test_get");
@@ -436,7 +436,7 @@ async fn test_pull_from_remote_api_csv_with_get_method() -> anyhow::Result<()> {
     let workflow_exists: bool =
         sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM workflows WHERE uuid = $1)")
             .bind(wf_uuid)
-            .fetch_one(&pool)
+            .fetch_one(&pool.pool)
             .await?;
 
     assert!(workflow_exists, "Workflow should be created");

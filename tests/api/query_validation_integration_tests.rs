@@ -26,13 +26,13 @@ async fn setup_test_app() -> Result<(
         Response = actix_web::dev::ServiceResponse,
         Error = actix_web::Error,
     >,
-    sqlx::PgPool,
+    r_data_core_test_support::TestDatabase,
     String, // auth_token
 )> {
     let pool = setup_test_db().await;
-    clear_test_db(&pool).await?;
+    clear_test_db(&pool.pool).await?;
 
-    let _user_uuid = create_test_admin_user(&pool).await?;
+    let _user_uuid = create_test_admin_user(&pool.pool).await?;
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -111,7 +111,7 @@ async fn setup_test_app() -> Result<(
     let body: serde_json::Value = test::read_body_json(resp).await;
     let token = body["data"]["access_token"].as_str().unwrap().to_string();
 
-    Ok((app, pool.pool.clone(), token))
+    Ok((app, pool, token))
 }
 
 #[cfg(test)]

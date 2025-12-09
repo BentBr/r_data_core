@@ -33,7 +33,7 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
         Response = actix_web::dev::ServiceResponse,
         Error = actix_web::Error,
     >,
-    sqlx::PgPool,
+    r_data_core_test_support::TestDatabase,
     String, // JWT token
     String, // API key value
 )> {
@@ -137,7 +137,7 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
         .create_new_api_key("test-api-key", "Test key", user_uuid, 30)
         .await?;
 
-    Ok((app, pool.pool.clone(), token, api_key_value))
+    Ok((app, pool, token, api_key_value))
 }
 
 /// Create a consumer workflow for testing

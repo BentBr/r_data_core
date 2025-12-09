@@ -23,7 +23,7 @@ use uuid::Uuid;
 async fn test_post_endpoint_accepts_csv_into_entities() -> anyhow::Result<()> {
     let (app, pool, _token, _) = setup_app_with_entities().await?;
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     let entity_type = generate_entity_type("test_post_csv");
@@ -92,7 +92,7 @@ async fn test_post_endpoint_accepts_csv_into_entities() -> anyhow::Result<()> {
 async fn test_post_endpoint_accepts_json_into_entities() -> anyhow::Result<()> {
     let (app, pool, _token, _) = setup_app_with_entities().await?;
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     let entity_type = generate_entity_type("test_post_json");
@@ -169,7 +169,7 @@ async fn test_post_endpoint_csv_without_auth_currently_allowed() -> anyhow::Resu
     // When auth is implemented, this test should be updated to expect 401
     let (app, pool, _token, _) = setup_app_with_entities().await?;
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     let entity_type = generate_entity_type("test_post_no_auth_csv");
@@ -231,7 +231,7 @@ async fn test_post_endpoint_json_without_auth_currently_allowed() -> anyhow::Res
     // When auth is implemented, this test should be updated to expect 401
     let (app, pool, _token, _) = setup_app_with_entities().await?;
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     let entity_type = generate_entity_type("test_post_no_auth_json");
@@ -313,7 +313,7 @@ async fn test_post_endpoint_json_without_auth_currently_allowed() -> anyhow::Res
 async fn test_post_endpoint_ignores_cron_for_csv() -> anyhow::Result<()> {
     let (_app, pool, _token, _) = setup_app_with_entities().await?;
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     let entity_type = generate_entity_type("test_ignore_cron_csv");
@@ -363,7 +363,7 @@ async fn test_post_endpoint_ignores_cron_for_csv() -> anyhow::Result<()> {
     let workflow_exists: bool =
         sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM workflows WHERE uuid = $1)")
             .bind(wf_uuid)
-            .fetch_one(&pool)
+            .fetch_one(&pool.pool)
             .await?;
 
     assert!(workflow_exists, "Workflow should be created");
@@ -378,7 +378,7 @@ async fn test_post_endpoint_ignores_cron_for_csv() -> anyhow::Result<()> {
 async fn test_post_endpoint_ignores_cron_for_json() -> anyhow::Result<()> {
     let (_app, pool, _token, _) = setup_app_with_entities().await?;
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     let entity_type = generate_entity_type("test_ignore_cron_json");
@@ -424,7 +424,7 @@ async fn test_post_endpoint_ignores_cron_for_json() -> anyhow::Result<()> {
     let workflow_exists: bool =
         sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM workflows WHERE uuid = $1)")
             .bind(wf_uuid)
-            .fetch_one(&pool)
+            .fetch_one(&pool.pool)
             .await?;
 
     assert!(workflow_exists, "Workflow should be created");
@@ -440,7 +440,7 @@ async fn test_post_endpoint_ignores_cron_for_json() -> anyhow::Result<()> {
 async fn test_from_api_workflow_excluded_from_cron_scheduling() -> anyhow::Result<()> {
     let (_app, pool, _token, _) = setup_app_with_entities().await?;
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     let entity_type = generate_entity_type("test_cron_exclusion");
@@ -529,7 +529,7 @@ async fn test_from_api_workflow_excluded_from_cron_scheduling() -> anyhow::Resul
     let api_cron: Option<String> =
         sqlx::query_scalar("SELECT schedule_cron FROM workflows WHERE uuid = $1")
             .bind(api_wf_uuid)
-            .fetch_one(&pool)
+            .fetch_one(&pool.pool)
             .await?;
     assert_eq!(
         api_cron,
@@ -540,7 +540,7 @@ async fn test_from_api_workflow_excluded_from_cron_scheduling() -> anyhow::Resul
     let uri_cron: Option<String> =
         sqlx::query_scalar("SELECT schedule_cron FROM workflows WHERE uuid = $1")
             .bind(uri_wf_uuid)
-            .fetch_one(&pool)
+            .fetch_one(&pool.pool)
             .await?;
     assert_eq!(
         uri_cron,
@@ -549,7 +549,7 @@ async fn test_from_api_workflow_excluded_from_cron_scheduling() -> anyhow::Resul
     );
 
     // Now test that list_scheduled_consumers excludes the from.api workflow
-    let repo = WorkflowRepository::new(pool.clone());
+    let repo = WorkflowRepository::new(pool.pool.clone());
     let scheduled = repo.list_scheduled_consumers().await?;
 
     // The from.api workflow should NOT be in the scheduled list
