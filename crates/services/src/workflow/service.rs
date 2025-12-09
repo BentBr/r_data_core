@@ -156,9 +156,10 @@ impl WorkflowService {
     )> {
         use crate::query_validation::validate_list_query;
 
-        let validated = validate_list_query(params, "workflows", field_validator, 20, 100, true)
-            .await
-            .map_err(|e| anyhow::anyhow!("Query validation failed: {e}"))?;
+        let validated =
+            validate_list_query(params, "workflows", field_validator, 20, 100, true, &[])
+                .await
+                .map_err(|e| anyhow::anyhow!("Query validation failed: {e}"))?;
 
         let (items, total) = tokio::try_join!(
             self.repo.list_paginated(

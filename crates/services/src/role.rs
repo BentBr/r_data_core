@@ -419,7 +419,7 @@ impl RoleService {
         params: &crate::query_validation::ListQueryParams,
         field_validator: &FieldValidator,
     ) -> Result<(Vec<Role>, ValidatedListQuery)> {
-        let validated = validate_list_query(params, "roles", field_validator, 20, 100, true)
+        let validated = validate_list_query(params, "roles", field_validator, 20, 100, true, &[])
             .await
             .map_err(r_data_core_core::error::Error::Validation)?;
 

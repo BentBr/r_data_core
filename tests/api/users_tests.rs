@@ -148,6 +148,61 @@ async fn test_list_users() {
 
 #[serial]
 #[tokio::test]
+async fn test_list_users_sorted_by_roles() {
+    let (app, pool, _user_uuid) = setup_test_app().await.unwrap();
+    let token = get_auth_token(&app, &pool).await;
+
+    // Ensure at least one user-role link exists
+    let admin_uuid: uuid::Uuid =
+        sqlx::query_scalar("SELECT uuid FROM admin_users ORDER BY created_at DESC LIMIT 1")
+            .fetch_one(&pool.pool)
+            .await
+            .expect("admin user exists");
+    // Ensure there is at least one role to relate; create a simple one if missing
+    let role_uuid: uuid::Uuid = if let Some(existing) = sqlx::query_scalar::<_, uuid::Uuid>(
+        "SELECT uuid FROM roles ORDER BY created_at DESC LIMIT 1",
+    )
+    .fetch_optional(&pool.pool)
+    .await
+    .expect("role lookup")
+    {
+        existing
+    } else {
+        sqlx::query_scalar("INSERT INTO roles (name, description, permissions, created_by) VALUES ($1, $2, $3, $4) RETURNING uuid")
+            .bind("test-role")
+            .bind("role for sorting test")
+            .bind(serde_json::json!([]))
+            .bind(admin_uuid)
+            .fetch_one(&pool.pool)
+            .await
+            .expect("role insert")
+    };
+    let _ = sqlx::query!(
+        "INSERT INTO user_roles (user_uuid, role_uuid) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        admin_uuid,
+        role_uuid
+    )
+    .execute(&pool.pool)
+    .await;
+
+    let req = test::TestRequest::get()
+        .uri("/admin/api/v1/users?per_page=50&sort_by=roles&sort_order=asc")
+        .insert_header(("Authorization", format!("Bearer {token}")))
+        .to_request();
+
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(
+        resp.status(),
+        StatusCode::OK,
+        "sorting by roles should be allowed"
+    );
+
+    let body: serde_json::Value = test::read_body_json(resp).await;
+    assert!(body["data"].is_array());
+}
+
+#[serial]
+#[tokio::test]
 async fn test_get_user() {
     let (app, pool, user_uuid) = setup_test_app().await.unwrap();
     let token = get_auth_token(&app, &pool).await;

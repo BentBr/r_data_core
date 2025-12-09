@@ -199,9 +199,41 @@ mod tests {
             };
 
             let result =
-                validate_list_query(&params, "admin_users", &validator, 20, 100, true).await;
+                validate_list_query(&params, "admin_users", &validator, 20, 100, true, &[]).await;
             assert!(result.is_ok(), "Sort order '{order}' should be valid");
         }
+    }
+
+    /// Allow virtual sort fields when explicitly whitelisted (e.g., roles)
+    #[tokio::test]
+    #[serial]
+    async fn test_validate_list_query_virtual_sort_field_allowed() {
+        let pool = setup_test_db().await;
+        let validator = FieldValidator::new(Arc::new(pool.pool.clone()));
+
+        let params = ListQueryParams {
+            page: Some(1),
+            per_page: Some(20),
+            limit: None,
+            offset: None,
+            sort_by: Some("roles".to_string()),
+            sort_order: Some("asc".to_string()),
+        };
+
+        let result = validate_list_query(
+            &params,
+            "admin_users",
+            &validator,
+            20,
+            100,
+            true,
+            &["roles"],
+        )
+        .await;
+        assert!(
+            result.is_ok(),
+            "Virtual sort field 'roles' should be accepted when whitelisted"
+        );
     }
 
     /// Test sort order validation - invalid values
@@ -233,7 +265,7 @@ mod tests {
             };
 
             let result =
-                validate_list_query(&params, "admin_users", &validator, 20, 100, true).await;
+                validate_list_query(&params, "admin_users", &validator, 20, 100, true, &[]).await;
             assert!(result.is_err(), "Sort order '{order}' should be invalid");
             let err_msg = result.unwrap_err();
             assert!(
@@ -263,7 +295,7 @@ mod tests {
             };
 
             let result =
-                validate_list_query(&params, "admin_users", &validator, 20, 100, true).await;
+                validate_list_query(&params, "admin_users", &validator, 20, 100, true, &[]).await;
             assert!(result.is_ok(), "Page {page} should be valid");
         }
     }
@@ -288,7 +320,7 @@ mod tests {
             };
 
             let result =
-                validate_list_query(&params, "admin_users", &validator, 20, 100, true).await;
+                validate_list_query(&params, "admin_users", &validator, 20, 100, true, &[]).await;
             assert!(result.is_err(), "Page {page} should be invalid");
             let err_msg = result.unwrap_err();
             assert!(
@@ -318,7 +350,7 @@ mod tests {
             };
 
             let result =
-                validate_list_query(&params, "admin_users", &validator, 20, 100, true).await;
+                validate_list_query(&params, "admin_users", &validator, 20, 100, true, &[]).await;
             assert!(result.is_ok(), "per_page {per_page} should be valid");
         }
     }
@@ -343,7 +375,7 @@ mod tests {
             };
 
             let result =
-                validate_list_query(&params, "admin_users", &validator, 20, 100, true).await;
+                validate_list_query(&params, "admin_users", &validator, 20, 100, true, &[]).await;
             assert!(result.is_err(), "per_page {per_page} should be invalid");
         }
     }
@@ -365,7 +397,8 @@ mod tests {
         };
 
         // Should fail when allow_unlimited = false
-        let result = validate_list_query(&params, "admin_users", &validator, 20, 100, false).await;
+        let result =
+            validate_list_query(&params, "admin_users", &validator, 20, 100, false, &[]).await;
         assert!(
             result.is_err(),
             "per_page = -1 should be invalid when allow_unlimited = false"
@@ -397,7 +430,7 @@ mod tests {
             };
 
             let result =
-                validate_list_query(&params, "admin_users", &validator, 20, 100, true).await;
+                validate_list_query(&params, "admin_users", &validator, 20, 100, true, &[]).await;
             assert!(result.is_ok(), "Limit {limit} should be valid");
         }
     }
@@ -422,7 +455,7 @@ mod tests {
             };
 
             let result =
-                validate_list_query(&params, "admin_users", &validator, 20, 100, true).await;
+                validate_list_query(&params, "admin_users", &validator, 20, 100, true, &[]).await;
             assert!(result.is_err(), "Limit {limit} should be invalid");
         }
     }
@@ -447,7 +480,7 @@ mod tests {
             };
 
             let result =
-                validate_list_query(&params, "admin_users", &validator, 20, 100, true).await;
+                validate_list_query(&params, "admin_users", &validator, 20, 100, true, &[]).await;
             assert!(result.is_err(), "Offset {offset} should be invalid");
         }
     }
@@ -468,7 +501,8 @@ mod tests {
             sort_order: Some("asc".to_string()),
         };
 
-        let result = validate_list_query(&params, "admin_users", &validator, 20, 100, true).await;
+        let result =
+            validate_list_query(&params, "admin_users", &validator, 20, 100, true, &[]).await;
         assert!(
             result.is_ok(),
             "All valid parameters should pass validation"
@@ -497,7 +531,8 @@ mod tests {
             sort_order: None,
         };
 
-        let result = validate_list_query(&params, "admin_users", &validator, 20, 100, true).await;
+        let result =
+            validate_list_query(&params, "admin_users", &validator, 20, 100, true, &[]).await;
         assert!(
             result.is_ok(),
             "Missing optional parameters should use defaults"
