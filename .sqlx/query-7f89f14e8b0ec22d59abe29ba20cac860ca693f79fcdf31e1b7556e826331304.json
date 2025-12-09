@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT column_name\n            FROM information_schema.columns\n            WHERE table_schema = current_schema() AND table_name = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "column_name",
+        "type_info": "Name"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Name"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "7f89f14e8b0ec22d59abe29ba20cac860ca693f79fcdf31e1b7556e826331304"
+}

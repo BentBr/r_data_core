@@ -25,7 +25,7 @@ async fn test_create_refresh_token() -> Result<()> {
     clear_refresh_tokens(&pool).await?;
 
     let user_uuid = create_test_admin_user(&pool).await?;
-    let repo = RefreshTokenRepository::new(pool.clone());
+    let repo = RefreshTokenRepository::new(pool.pool.clone());
 
     // Test data
     let token_hash = RefreshToken::hash_token("test_token")?;
@@ -69,7 +69,7 @@ async fn test_find_refresh_token_by_hash() -> Result<()> {
     clear_refresh_tokens(&pool).await?;
 
     let user_uuid = create_test_admin_user(&pool).await?;
-    let repo = RefreshTokenRepository::new(pool.clone());
+    let repo = RefreshTokenRepository::new(pool.pool.clone());
 
     // Create a token
     let token_hash = RefreshToken::hash_token("find_test_token")?;
@@ -99,7 +99,7 @@ async fn test_find_nonexistent_token() -> Result<()> {
     let pool = setup_test_db().await;
     clear_refresh_tokens(&pool).await?;
 
-    let repo = RefreshTokenRepository::new(pool.clone());
+    let repo = RefreshTokenRepository::new(pool.pool.clone());
 
     // Try to find non-existent token
     let fake_hash = RefreshToken::hash_token("nonexistent_token")?;
@@ -119,7 +119,7 @@ async fn test_update_last_used() -> Result<()> {
     clear_refresh_tokens(&pool).await?;
 
     let user_uuid = create_test_admin_user(&pool).await?;
-    let repo = RefreshTokenRepository::new(pool.clone());
+    let repo = RefreshTokenRepository::new(pool.pool.clone());
 
     // Create a token
     let token_hash = RefreshToken::hash_token("last_used_test")?;
@@ -151,7 +151,7 @@ async fn test_revoke_token_by_id() -> Result<()> {
     clear_refresh_tokens(&pool).await?;
 
     let user_uuid = create_test_admin_user(&pool).await?;
-    let repo = RefreshTokenRepository::new(pool.clone());
+    let repo = RefreshTokenRepository::new(pool.pool.clone());
 
     // Create a token
     let token_hash = RefreshToken::hash_token("revoke_test")?;
@@ -182,7 +182,7 @@ async fn test_revoke_token_by_hash() -> Result<()> {
     clear_refresh_tokens(&pool).await?;
 
     let user_uuid = create_test_admin_user(&pool).await?;
-    let repo = RefreshTokenRepository::new(pool.clone());
+    let repo = RefreshTokenRepository::new(pool.pool.clone());
 
     // Create a token
     let token_hash = RefreshToken::hash_token("revoke_hash_test")?;
@@ -209,7 +209,7 @@ async fn test_revoke_all_user_tokens() -> Result<()> {
     clear_refresh_tokens(&pool).await?;
 
     let user_uuid = create_test_admin_user(&pool).await?;
-    let repo = RefreshTokenRepository::new(pool.clone());
+    let repo = RefreshTokenRepository::new(pool.pool.clone());
 
     // Create multiple tokens for the user
     let expires_at = OffsetDateTime::now_utc() + Duration::days(30);

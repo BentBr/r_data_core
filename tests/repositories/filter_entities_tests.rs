@@ -192,7 +192,7 @@ mod filter_entities_tests {
         let _entity_uuid = create_test_entity_definition(&db_pool, &entity_type).await?;
 
         // Create repository
-        let repository = DynamicEntityRepository::new(db_pool.clone());
+        let repository = DynamicEntityRepository::new(db_pool.pool.clone());
 
         // Create 20 test entities
         let _uuids = create_test_entities(&db_pool, &entity_type, 20).await?;
@@ -236,7 +236,7 @@ mod filter_entities_tests {
         let _entity_uuid = create_test_entity_definition(&db_pool, &entity_type).await?;
 
         // Create repository
-        let repository = DynamicEntityRepository::new(db_pool.clone());
+        let repository = DynamicEntityRepository::new(db_pool.pool.clone());
 
         // Create 20 test entities
         let _uuids = create_test_entities(&db_pool, &entity_type, 20).await?;
@@ -274,7 +274,7 @@ mod filter_entities_tests {
         let _entity_uuid = create_test_entity_definition(&db_pool, &entity_type).await?;
 
         // Create repository
-        let repository = DynamicEntityRepository::new(db_pool.clone());
+        let repository = DynamicEntityRepository::new(db_pool.pool.clone());
 
         // Create 20 test entities
         let _uuids = create_test_entities(&db_pool, &entity_type, 20).await?;
@@ -316,7 +316,7 @@ mod filter_entities_tests {
         let _entity_uuid = create_test_entity_definition(&db_pool, &entity_type).await?;
 
         // Create repository
-        let repository = DynamicEntityRepository::new(db_pool.clone());
+        let repository = DynamicEntityRepository::new(db_pool.pool.clone());
 
         // Create 20 test entities
         let _uuids = create_test_entities(&db_pool, &entity_type, 20).await?;
@@ -353,7 +353,7 @@ mod filter_entities_tests {
         let _entity_uuid = create_test_entity_definition(&db_pool, &entity_type).await?;
 
         // Create repository
-        let repository = DynamicEntityRepository::new(db_pool.clone());
+        let repository = DynamicEntityRepository::new(db_pool.pool.clone());
 
         // Create 20 test entities
         let _uuids = create_test_entities(&db_pool, &entity_type, 20).await?;
@@ -394,7 +394,7 @@ mod filter_entities_tests {
         let _entity_uuid = create_test_entity_definition(&db_pool, &entity_type).await?;
 
         // Create repository
-        let repository = DynamicEntityRepository::new(db_pool.clone());
+        let repository = DynamicEntityRepository::new(db_pool.pool.clone());
 
         // Create 30 test entities
         let _uuids = create_test_entities(&db_pool, &entity_type, 30).await?;

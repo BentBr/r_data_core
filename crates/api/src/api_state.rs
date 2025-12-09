@@ -9,6 +9,7 @@ pub trait ApiStateTrait: Send + Sync + 'static {
     fn db_pool(&self) -> &PgPool;
     fn jwt_secret(&self) -> &str;
     fn api_key_service_ref(&self) -> &dyn std::any::Any;
+    fn admin_user_service_ref(&self) -> &dyn std::any::Any;
     fn role_service_ref(&self) -> &dyn std::any::Any;
     fn api_config_ref(&self) -> &dyn std::any::Any;
     fn entity_definition_service_ref(&self) -> &dyn std::any::Any;
@@ -70,6 +71,13 @@ pub trait ApiStateTrait: Send + Sync + 'static {
             .expect("ApiState must provide ApiKeyService")
     }
 
+    /// Get admin user service - helper method that downcasts from `admin_user_service_ref`
+    fn admin_user_service(&self) -> &r_data_core_services::AdminUserService {
+        self.admin_user_service_ref()
+            .downcast_ref::<r_data_core_services::AdminUserService>()
+            .expect("ApiState must provide AdminUserService")
+    }
+
     /// Get dynamic entity service - helper method that downcasts from `dynamic_entity_service_ref`
     /// Returns None if the service is not available
     fn dynamic_entity_service(
@@ -102,6 +110,10 @@ impl ApiStateTrait for ApiStateWrapper {
 
     fn api_key_service_ref(&self) -> &dyn std::any::Any {
         self.0.api_key_service_ref()
+    }
+
+    fn admin_user_service_ref(&self) -> &dyn std::any::Any {
+        self.0.admin_user_service_ref()
     }
 
     fn role_service_ref(&self) -> &dyn std::any::Any {

@@ -21,7 +21,7 @@ mod tests {
         clear_refresh_tokens(&pool).await?;
 
         // Create a repository to work with refresh tokens directly
-        let repo = RefreshTokenRepository::new(pool.clone());
+        let repo = RefreshTokenRepository::new(pool.pool.clone());
 
         // Create a test admin user
         let user_uuid = create_test_admin_user(&pool).await?;
@@ -75,7 +75,7 @@ mod tests {
         clear_refresh_tokens(&pool).await?;
 
         // Create a repository to work with refresh tokens directly
-        let repo = RefreshTokenRepository::new(pool.clone());
+        let repo = RefreshTokenRepository::new(pool.pool.clone());
 
         // Create a test admin user
         let user_uuid = create_test_admin_user(&pool).await?;
@@ -92,7 +92,7 @@ mod tests {
             "UPDATE refresh_tokens SET expires_at = NOW() - INTERVAL '1 day' WHERE id = $1",
             refresh_token.id
         )
-        .execute(&pool)
+        .execute(&pool.pool)
         .await?;
 
         // Try to find the expired token - it should still be found but marked as expired
@@ -117,7 +117,7 @@ mod tests {
         clear_refresh_tokens(&pool).await?;
 
         // Create a repository to work with refresh tokens directly
-        let repo = RefreshTokenRepository::new(pool.clone());
+        let repo = RefreshTokenRepository::new(pool.pool.clone());
 
         // Create a test admin user
         let user_uuid = create_test_admin_user(&pool).await?;
@@ -152,7 +152,7 @@ mod tests {
         clear_refresh_tokens(&pool).await?;
 
         // Create a repository to work with refresh tokens directly
-        let repo = RefreshTokenRepository::new(pool.clone());
+        let repo = RefreshTokenRepository::new(pool.pool.clone());
 
         // Create a test admin user
         let user_uuid = create_test_admin_user(&pool).await?;
@@ -175,7 +175,7 @@ mod tests {
             "UPDATE refresh_tokens SET expires_at = NOW() - INTERVAL '1 day' WHERE id = $1",
             token1.id
         )
-        .execute(&pool)
+        .execute(&pool.pool)
         .await?;
 
         // Cleanup expired tokens
@@ -205,7 +205,7 @@ mod tests {
         clear_refresh_tokens(&pool).await?;
 
         // Create a repository to work with refresh tokens directly
-        let repo = RefreshTokenRepository::new(pool.clone());
+        let repo = RefreshTokenRepository::new(pool.pool.clone());
 
         // Create test admin users
         let user1_uuid = create_test_admin_user(&pool).await?;

@@ -20,7 +20,7 @@ mod tests {
         clear_test_db(&pool).await?;
 
         // Create a repository to work with API keys directly
-        let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+        let repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
 
         // Create a test admin user
         let user_uuid = create_test_admin_user(&pool).await?;

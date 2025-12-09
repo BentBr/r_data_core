@@ -18,7 +18,7 @@ async fn test_create_and_find_api_key() -> Result<()> {
     let pool = setup_test_db().await;
     clear_test_db(&pool).await?;
 
-    let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+    let repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
     let name = random_string("test_key");
 
     let user_uuid = create_test_admin_user(&pool).await?;
@@ -63,7 +63,7 @@ async fn test_create_api_key_with_non_existent_user() -> Result<()> {
     let pool = setup_test_db().await;
     clear_test_db(&pool).await?;
 
-    let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+    let repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
     let name = random_string("test_key");
 
     // Generate a random UUID that doesn't exist in the database
@@ -76,7 +76,7 @@ async fn test_create_api_key_with_non_existent_user() -> Result<()> {
         "SELECT COUNT(*) as count FROM admin_users WHERE uuid = $1",
         non_existent_uuid
     )
-    .fetch_one(&pool)
+    .fetch_one(&pool.pool)
     .await?
     .count
     .unwrap_or(0)
@@ -113,7 +113,7 @@ async fn test_api_key_last_used_update() -> Result<()> {
     let pool = setup_test_db().await;
     clear_test_db(&pool).await?;
 
-    let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+    let repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
     let name = random_string("test_key");
 
     let user_uuid = create_test_admin_user(&pool).await?;
@@ -195,7 +195,7 @@ async fn test_expired_api_key() -> Result<()> {
     let pool = setup_test_db().await;
     clear_test_db(&pool).await?;
 
-    let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+    let repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
     let name = random_string("expired_key");
 
     let user_uuid = create_test_admin_user(&pool).await?;
@@ -225,7 +225,7 @@ async fn test_expired_api_key() -> Result<()> {
         user_uuid,
         true
     )
-    .execute(&pool)
+    .execute(&pool.pool)
     .await?;
 
     // Attempt to authenticate with the expired key

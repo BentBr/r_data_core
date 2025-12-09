@@ -32,7 +32,7 @@ async fn test_dynamic_entity_update_creates_snapshot() {
     let initial_version: i32 =
         sqlx::query_scalar("SELECT version FROM entities_registry WHERE uuid = $1")
             .bind(entity_uuid)
-            .fetch_one(&pool)
+            .fetch_one(&pool.pool)
             .await
             .unwrap();
     assert_eq!(initial_version, 1);
@@ -45,9 +45,9 @@ async fn test_dynamic_entity_update_creates_snapshot() {
         "updated_by": Uuid::now_v7().to_string()
     });
     // Use the view to validate after update
-    let repo = r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
+    let repo = r_data_core_persistence::DynamicEntityRepository::new(pool.pool.clone());
     // We need definition for validation; load from service
-    let def_repo = EntityDefinitionRepository::new(pool.clone());
+    let def_repo = EntityDefinitionRepository::new(pool.pool.clone());
     let def_svc = EntityDefinitionService::new_without_cache(std::sync::Arc::new(def_repo));
     let def = def_svc
         .get_entity_definition_by_entity_type(&entity_type)
@@ -70,7 +70,7 @@ async fn test_dynamic_entity_update_creates_snapshot() {
         "SELECT version_number FROM entities_versions WHERE entity_uuid = $1 ORDER BY version_number DESC LIMIT 1",
     )
     .bind(entity_uuid)
-    .fetch_one(&pool)
+    .fetch_one(&pool.pool)
     .await
     .unwrap();
     let snap_version: i32 = row.try_get("version_number").unwrap();
@@ -80,7 +80,7 @@ async fn test_dynamic_entity_update_creates_snapshot() {
     let after_version: i32 =
         sqlx::query_scalar("SELECT version FROM entities_registry WHERE uuid = $1")
             .bind(entity_uuid)
-            .fetch_one(&pool)
+            .fetch_one(&pool.pool)
             .await
             .unwrap();
     assert_eq!(after_version, 2);
@@ -89,7 +89,7 @@ async fn test_dynamic_entity_update_creates_snapshot() {
 #[tokio::test]
 async fn test_workflow_update_creates_snapshot_and_increments_version() {
     let pool = setup_test_db().await;
-    let repo = WorkflowRepository::new(pool.clone());
+    let repo = WorkflowRepository::new(pool.pool.clone());
 
     // Create workflow with a valid admin user as creator
     let created_by = create_test_admin_user(&pool).await.unwrap();
@@ -107,7 +107,7 @@ async fn test_workflow_update_creates_snapshot_and_increments_version() {
     // initial version
     let ver_before: i32 = sqlx::query_scalar("SELECT version FROM workflows WHERE uuid = $1")
         .bind(wf_uuid)
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await
         .unwrap();
 
@@ -129,7 +129,7 @@ async fn test_workflow_update_creates_snapshot_and_increments_version() {
         "SELECT version_number FROM workflow_versions WHERE workflow_uuid = $1 ORDER BY version_number DESC LIMIT 1",
     )
     .bind(wf_uuid)
-    .fetch_optional(&pool)
+    .fetch_optional(&pool.pool)
     .await
     .unwrap();
     assert!(row.is_some(), "Snapshot should exist");
@@ -139,7 +139,7 @@ async fn test_workflow_update_creates_snapshot_and_increments_version() {
     // Version incremented
     let ver_after: i32 = sqlx::query_scalar("SELECT version FROM workflows WHERE uuid = $1")
         .bind(wf_uuid)
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await
         .unwrap();
     assert_eq!(ver_after, ver_before + 1);
@@ -151,7 +151,7 @@ async fn test_entity_definition_update_creates_snapshot_and_increments_version()
     let entity_type = unique_entity_type("ver_def");
 
     // Create definition
-    let def_repo = EntityDefinitionRepository::new(pool.clone());
+    let def_repo = EntityDefinitionRepository::new(pool.pool.clone());
     let def_service = EntityDefinitionService::new_without_cache(std::sync::Arc::new(def_repo));
 
     let def = r_data_core_core::entity_definition::definition::EntityDefinition {
@@ -168,12 +168,12 @@ async fn test_entity_definition_update_creates_snapshot_and_increments_version()
     let before_ver: i32 =
         sqlx::query_scalar("SELECT version FROM entity_definitions WHERE uuid = $1")
             .bind(def_uuid)
-            .fetch_one(&pool)
+            .fetch_one(&pool.pool)
             .await
             .unwrap();
 
     // Update via repository (service .update calls repository.update)
-    let repo = r_data_core_persistence::EntityDefinitionRepository::new(pool.clone());
+    let repo = r_data_core_persistence::EntityDefinitionRepository::new(pool.pool.clone());
     let mut updated = def_service
         .get_entity_definition_by_entity_type(&entity_type)
         .await
@@ -186,7 +186,7 @@ async fn test_entity_definition_update_creates_snapshot_and_increments_version()
         "SELECT version_number FROM entity_definition_versions WHERE definition_uuid = $1 ORDER BY version_number DESC LIMIT 1",
     )
     .bind(def_uuid)
-    .fetch_optional(&pool)
+    .fetch_optional(&pool.pool)
     .await
     .unwrap();
     assert!(row.is_some(), "Snapshot should exist");
@@ -197,7 +197,7 @@ async fn test_entity_definition_update_creates_snapshot_and_increments_version()
     let after_ver: i32 =
         sqlx::query_scalar("SELECT version FROM entity_definitions WHERE uuid = $1")
             .bind(def_uuid)
-            .fetch_one(&pool)
+            .fetch_one(&pool.pool)
             .await
             .unwrap();
     assert_eq!(after_ver, before_ver + 1);
@@ -206,7 +206,7 @@ async fn test_entity_definition_update_creates_snapshot_and_increments_version()
 #[tokio::test]
 async fn test_maintenance_prunes_by_age_and_count() {
     let pool = setup_test_db().await;
-    let repo = VersionRepository::new(pool.clone());
+    let repo = VersionRepository::new(pool.pool.clone());
     let entity_uuid = Uuid::now_v7();
 
     // Create a dummy entity in entities_registry to satisfy foreign key constraint
@@ -217,7 +217,7 @@ async fn test_maintenance_prunes_by_age_and_count() {
     .bind(entity_uuid)
     .bind("dynamic_entity")
     .bind(Uuid::now_v7())
-    .execute(&pool)
+    .execute(&pool.pool)
     .await
     .unwrap();
 
@@ -231,7 +231,7 @@ async fn test_maintenance_prunes_by_age_and_count() {
         .bind(v)
         .bind(serde_json::json!({"v": v}))
         .bind(200 - (v * 10)) // v=1 => ~190 days ago, v=5 => ~150 days ago
-        .execute(&pool)
+        .execute(&pool.pool)
         .await
         .unwrap();
     }
@@ -244,7 +244,7 @@ async fn test_maintenance_prunes_by_age_and_count() {
     let count_after_age: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM entities_versions WHERE entity_uuid = $1")
             .bind(entity_uuid)
-            .fetch_one(&pool)
+            .fetch_one(&pool.pool)
             .await
             .unwrap();
     assert!(count_after_age <= 4);
@@ -255,7 +255,7 @@ async fn test_maintenance_prunes_by_age_and_count() {
         "SELECT version_number FROM entities_versions WHERE entity_uuid = $1 ORDER BY version_number DESC",
     )
     .bind(entity_uuid)
-    .fetch_all(&pool)
+    .fetch_all(&pool.pool)
     .await
     .unwrap();
     let kept: Vec<i32> = rows
@@ -273,7 +273,7 @@ async fn test_maintenance_prunes_by_age_and_count() {
 async fn test_version_creation_and_endpoint_output() {
     let pool = setup_test_db().await;
     let entity_type = unique_entity_type("ver_endpoint");
-    let version_repo = VersionRepository::new(pool.clone());
+    let version_repo = VersionRepository::new(pool.pool.clone());
 
     // Create definition and entity
     let _def_uuid = create_test_entity_definition(&pool, &entity_type)
@@ -290,7 +290,7 @@ async fn test_version_creation_and_endpoint_output() {
     sqlx::query("UPDATE entities_registry SET created_by = $1 WHERE uuid = $2")
         .bind(creator)
         .bind(entity_uuid)
-        .execute(&pool)
+        .execute(&pool.pool)
         .await
         .unwrap();
 
@@ -298,7 +298,7 @@ async fn test_version_creation_and_endpoint_output() {
     let initial_version: i32 =
         sqlx::query_scalar("SELECT version FROM entities_registry WHERE uuid = $1")
             .bind(entity_uuid)
-            .fetch_one(&pool)
+            .fetch_one(&pool.pool)
             .await
             .unwrap();
     assert_eq!(initial_version, 1);
@@ -312,8 +312,8 @@ async fn test_version_creation_and_endpoint_output() {
         "updated_by": updated_by.to_string()
     });
 
-    let repo = r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
-    let def_repo = EntityDefinitionRepository::new(pool.clone());
+    let repo = r_data_core_persistence::DynamicEntityRepository::new(pool.pool.clone());
+    let def_repo = EntityDefinitionRepository::new(pool.pool.clone());
     let def_svc = EntityDefinitionService::new_without_cache(std::sync::Arc::new(def_repo));
     let def = def_svc
         .get_entity_definition_by_entity_type(&entity_type)
@@ -335,7 +335,7 @@ async fn test_version_creation_and_endpoint_output() {
     let after_version: i32 =
         sqlx::query_scalar("SELECT version FROM entities_registry WHERE uuid = $1")
             .bind(entity_uuid)
-            .fetch_one(&pool)
+            .fetch_one(&pool.pool)
             .await
             .unwrap();
     assert_eq!(after_version, 2);
@@ -424,7 +424,7 @@ async fn test_version_creation_and_endpoint_output() {
 async fn test_version_creator_names_in_json_response() {
     let pool = setup_test_db().await;
     let entity_type = unique_entity_type("ver_names");
-    let version_service = VersionService::new(pool.clone());
+    let version_service = VersionService::new(pool.pool.clone());
 
     // Create definition
     let _def_uuid = create_test_entity_definition(&pool, &entity_type)
@@ -436,7 +436,7 @@ async fn test_version_creator_names_in_json_response() {
     // Set first_name and last_name for creator1
     sqlx::query("UPDATE admin_users SET first_name = 'Creator', last_name = 'One' WHERE uuid = $1")
         .bind(creator1)
-        .execute(&pool)
+        .execute(&pool.pool)
         .await
         .unwrap();
 
@@ -448,7 +448,7 @@ async fn test_version_creator_names_in_json_response() {
     sqlx::query("UPDATE entities_registry SET created_by = $1 WHERE uuid = $2")
         .bind(creator1)
         .bind(entity_uuid)
-        .execute(&pool)
+        .execute(&pool.pool)
         .await
         .unwrap();
 
@@ -457,7 +457,7 @@ async fn test_version_creator_names_in_json_response() {
     // Set first_name and last_name for updater1
     sqlx::query("UPDATE admin_users SET first_name = 'Updater', last_name = 'One' WHERE uuid = $1")
         .bind(updater1)
-        .execute(&pool)
+        .execute(&pool.pool)
         .await
         .unwrap();
     let mut payload1 = serde_json::json!({
@@ -467,8 +467,8 @@ async fn test_version_creator_names_in_json_response() {
         "updated_by": updater1.to_string()
     });
 
-    let repo = r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
-    let def_repo = EntityDefinitionRepository::new(pool.clone());
+    let repo = r_data_core_persistence::DynamicEntityRepository::new(pool.pool.clone());
+    let def_repo = EntityDefinitionRepository::new(pool.pool.clone());
     let def_svc = EntityDefinitionService::new_without_cache(std::sync::Arc::new(def_repo));
     let def = def_svc
         .get_entity_definition_by_entity_type(&entity_type)
@@ -491,7 +491,7 @@ async fn test_version_creator_names_in_json_response() {
     // Set first_name and last_name for updater2
     sqlx::query("UPDATE admin_users SET first_name = 'Updater', last_name = 'Two' WHERE uuid = $1")
         .bind(updater2)
-        .execute(&pool)
+        .execute(&pool.pool)
         .await
         .unwrap();
     let mut payload2 = serde_json::json!({

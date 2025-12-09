@@ -123,12 +123,54 @@ impl WorkflowService {
         &self,
         limit: i64,
         offset: i64,
+        sort_by: Option<String>,
+        sort_order: Option<String>,
     ) -> anyhow::Result<(Vec<Workflow>, i64)> {
         let (items, total) = tokio::try_join!(
-            self.repo.list_paginated(limit, offset),
+            self.repo.list_paginated(limit, offset, sort_by, sort_order),
             self.repo.count_all()
         )?;
         Ok((items, total))
+    }
+
+    /// List workflows with query validation
+    ///
+    /// This method validates the query parameters and returns validated parameters along with workflows.
+    ///
+    /// # Arguments
+    /// * `params` - The query parameters
+    /// * `field_validator` - The `FieldValidator` instance (required for validation)
+    ///
+    /// # Returns
+    /// A tuple of ((workflows, total), `validated_query`) where `validated_query` contains pagination metadata
+    ///
+    /// # Errors
+    /// Returns an error if validation fails or database query fails
+    pub async fn list_paginated_with_query(
+        &self,
+        params: &crate::query_validation::ListQueryParams,
+        field_validator: &crate::query_validation::FieldValidator,
+    ) -> anyhow::Result<(
+        (Vec<Workflow>, i64),
+        crate::query_validation::ValidatedListQuery,
+    )> {
+        use crate::query_validation::validate_list_query;
+
+        let validated = validate_list_query(params, "workflows", field_validator, 20, 100, true)
+            .await
+            .map_err(|e| anyhow::anyhow!("Query validation failed: {e}"))?;
+
+        let (items, total) = tokio::try_join!(
+            self.repo.list_paginated(
+                validated.limit,
+                validated.offset,
+                validated.sort_by.clone(),
+                validated.sort_order.clone(),
+            ),
+            self.repo.count_all()
+        )?;
+
+        Ok(((items, total), validated))
     }
 
     /// List runs for a workflow with pagination

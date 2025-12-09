@@ -6,6 +6,7 @@ pub mod dsl;
 pub mod entity_definitions;
 pub mod meta;
 pub mod permissions;
+pub mod query_helpers;
 pub mod system;
 pub mod users;
 pub mod workflows;

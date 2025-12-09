@@ -37,8 +37,22 @@ pub trait ApiKeyRepositoryTrait: Send + Sync {
     /// Create a new API key
     async fn create(&self, key: &ApiKey) -> Result<Uuid>;
 
-    /// List all API keys for a user
-    async fn list_by_user(&self, user_uuid: Uuid, limit: i64, offset: i64) -> Result<Vec<ApiKey>>;
+    /// List all API keys for a user with pagination and sorting
+    ///
+    /// # Arguments
+    /// * `user_uuid` - User UUID
+    /// * `limit` - Maximum number of keys to return (-1 for unlimited)
+    /// * `offset` - Number of keys to skip
+    /// * `sort_by` - Optional field to sort by
+    /// * `sort_order` - Sort order (ASC or DESC), defaults to ASC
+    async fn list_by_user(
+        &self,
+        user_uuid: Uuid,
+        limit: i64,
+        offset: i64,
+        sort_by: Option<String>,
+        sort_order: Option<String>,
+    ) -> Result<Vec<ApiKey>>;
 
     /// Count API keys for a user
     async fn count_by_user(&self, user_uuid: Uuid) -> Result<i64>;
@@ -102,8 +116,20 @@ pub trait AdminUserRepositoryTrait: Send + Sync {
     /// Delete an admin user
     async fn delete_admin_user(&self, uuid: &Uuid) -> Result<()>;
 
-    /// List admin users with pagination
-    async fn list_admin_users(&self, limit: i64, offset: i64) -> Result<Vec<AdminUser>>;
+    /// List admin users with pagination and sorting
+    ///
+    /// # Arguments
+    /// * `limit` - Maximum number of users to return (-1 for unlimited)
+    /// * `offset` - Number of users to skip
+    /// * `sort_by` - Optional field to sort by
+    /// * `sort_order` - Sort order (ASC or DESC), defaults to ASC
+    async fn list_admin_users(
+        &self,
+        limit: i64,
+        offset: i64,
+        sort_by: Option<String>,
+        sort_order: Option<String>,
+    ) -> Result<Vec<AdminUser>>;
 }
 
 /// Check if an API key is valid (not expired)

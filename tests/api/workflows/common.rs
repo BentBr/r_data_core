@@ -33,7 +33,7 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
         Response = actix_web::dev::ServiceResponse,
         Error = actix_web::Error,
     >,
-    sqlx::PgPool,
+    r_data_core_test_support::TestDatabase,
     String, // JWT token
     String, // API key value
 )> {
@@ -48,25 +48,25 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
 
-    let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.clone())));
+    let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.pool.clone())));
     let api_key_service = ApiKeyService::new(api_key_repository);
 
-    let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.clone())));
+    let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.pool.clone())));
     let admin_user_service = AdminUserService::new(admin_user_repository);
 
     let entity_definition_service = EntityDefinitionService::new_without_cache(Arc::new(
-        r_data_core_persistence::EntityDefinitionRepository::new(pool.clone()),
+        r_data_core_persistence::EntityDefinitionRepository::new(pool.pool.clone()),
     ));
 
     // Create dynamic entity service
-    let de_repo = r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
+    let de_repo = r_data_core_persistence::DynamicEntityRepository::new(pool.pool.clone());
     let de_adapter = r_data_core_services::adapters::DynamicEntityRepositoryAdapter::new(de_repo);
     let dynamic_entity_service = Arc::new(DynamicEntityService::new(
         Arc::new(de_adapter),
         Arc::new(entity_definition_service.clone()),
     ));
 
-    let wf_repo = WorkflowRepository::new(pool.clone());
+    let wf_repo = WorkflowRepository::new(pool.pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
     let workflow_service = r_data_core_services::WorkflowService::new_with_entities(
         Arc::new(wf_adapter),
@@ -74,13 +74,13 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
     );
 
     let dashboard_stats_repository =
-        r_data_core_persistence::DashboardStatsRepository::new(pool.clone());
+        r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone());
     let dashboard_stats_service =
         r_data_core_services::DashboardStatsService::new(Arc::new(dashboard_stats_repository));
 
     let jwt_secret = "test_secret".to_string();
     let api_state = ApiState {
-        db_pool: pool.clone(),
+        db_pool: pool.pool.clone(),
         api_config: r_data_core_core::config::ApiConfig {
             host: "0.0.0.0".to_string(),
             port: 8888,
@@ -91,7 +91,7 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
             cors_origins: vec![],
         },
         role_service: r_data_core_services::RoleService::new(
-            pool.clone(),
+            pool.pool.clone(),
             cache_manager.clone(),
             Some(0),
         ),
@@ -118,7 +118,7 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
     let user_uuid = create_test_admin_user(&pool).await?;
     let user: AdminUser = sqlx::query_as("SELECT * FROM admin_users WHERE uuid = $1")
         .bind(user_uuid)
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
     let api_config = r_data_core_core::config::ApiConfig {
         host: "0.0.0.0".to_string(),
@@ -132,7 +132,7 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
     let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, &[])?;
 
     // Create API key for testing
-    let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+    let api_key_repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
     let (_api_key_uuid, api_key_value) = api_key_repo
         .create_new_api_key("test-api-key", "Test key", user_uuid, 30)
         .await?;

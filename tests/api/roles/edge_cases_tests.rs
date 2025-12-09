@@ -21,7 +21,7 @@ async fn test_empty_permissions_edge_cases() -> Result<()> {
     clear_test_db(&pool).await?;
 
     let admin_user_uuid = create_test_admin_user(&pool).await?;
-    let user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -31,7 +31,7 @@ async fn test_empty_permissions_edge_cases() -> Result<()> {
         max_size: 10000,
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
-    let role_service = RoleService::new(pool.clone(), cache_manager.clone(), Some(3600));
+    let role_service = RoleService::new(pool.pool.clone(), cache_manager.clone(), Some(3600));
 
     // Create a user with no roles
     let user_uuid = user_repo

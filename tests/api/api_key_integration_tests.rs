@@ -90,7 +90,7 @@ mod tests {
     async fn test_list_api_keys_integration() -> Result<()> {
         let pool = setup_test_db().await;
         let user_uuid = create_test_admin_user(&pool).await?;
-        let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+        let repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
 
         // Create some API keys
         let (key1_uuid, key1_value) = repo
@@ -102,10 +102,10 @@ mod tests {
             .await?;
 
         // Create test app
-        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
+        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
-            pool.clone(),
+            pool.pool.clone(),
         ));
 
         let cache_config = CacheConfig {
@@ -123,7 +123,7 @@ mod tests {
         let key2_uuid_clone = key2_uuid;
 
         let api_state = ApiState {
-            db_pool: pool.clone(),
+            db_pool: pool.pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
                 host: "0.0.0.0".to_string(),
                 port: 8888,
@@ -134,7 +134,7 @@ mod tests {
                 cors_origins: vec![],
             },
             role_service: r_data_core_services::RoleService::new(
-                pool.clone(),
+                pool.pool.clone(),
                 cache_manager.clone(),
                 Some(0),
             ),
@@ -145,7 +145,7 @@ mod tests {
             dynamic_entity_service: None,
             workflow_service: make_workflow_service(&pool),
             dashboard_stats_service: r_data_core_services::DashboardStatsService::new(Arc::new(
-                r_data_core_persistence::DashboardStatsRepository::new(pool.clone()),
+                r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone()),
             )),
             queue: test_queue_client_async().await,
         };
@@ -203,7 +203,7 @@ mod tests {
     async fn test_revoke_api_key_integration() -> Result<()> {
         let pool = setup_test_db().await;
         let user_uuid = create_test_admin_user(&pool).await?;
-        let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+        let repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
 
         // Create API key
         let (key_uuid, key_value) = repo
@@ -215,10 +215,10 @@ mod tests {
         assert!(auth_result.is_some());
 
         // Create test app
-        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
+        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
-            pool.clone(),
+            pool.pool.clone(),
         ));
 
         let cache_config = CacheConfig {
@@ -236,7 +236,7 @@ mod tests {
         let repo_for_handler = repo_arc.clone();
 
         let api_state = ApiState {
-            db_pool: pool.clone(),
+            db_pool: pool.pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
                 host: "0.0.0.0".to_string(),
                 port: 8888,
@@ -247,7 +247,7 @@ mod tests {
                 cors_origins: vec![],
             },
             role_service: r_data_core_services::RoleService::new(
-                pool.clone(),
+                pool.pool.clone(),
                 cache_manager.clone(),
                 Some(0),
             ),
@@ -258,7 +258,7 @@ mod tests {
             dynamic_entity_service: None,
             workflow_service: make_workflow_service(&pool),
             dashboard_stats_service: r_data_core_services::DashboardStatsService::new(Arc::new(
-                r_data_core_persistence::DashboardStatsRepository::new(pool.clone()),
+                r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone()),
             )),
             queue: test_queue_client_async().await,
         };
@@ -341,7 +341,7 @@ mod tests {
     async fn test_api_key_protected_endpoint() -> Result<()> {
         let pool = setup_test_db().await;
         let user_uuid = create_test_admin_user(&pool).await?;
-        let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+        let repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
 
         // Create an API key
         let (_key_uuid, key_value) = repo
@@ -349,10 +349,10 @@ mod tests {
             .await?;
 
         // Create the test app
-        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
+        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
-            pool.clone(),
+            pool.pool.clone(),
         ));
 
         let cache_config = CacheConfig {
@@ -366,7 +366,7 @@ mod tests {
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
         let api_state = ApiState {
-            db_pool: pool.clone(),
+            db_pool: pool.pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
                 host: "0.0.0.0".to_string(),
                 port: 8888,
@@ -377,7 +377,7 @@ mod tests {
                 cors_origins: vec![],
             },
             role_service: r_data_core_services::RoleService::new(
-                pool.clone(),
+                pool.pool.clone(),
                 cache_manager.clone(),
                 Some(0),
             ),
@@ -388,7 +388,7 @@ mod tests {
             dynamic_entity_service: None,
             workflow_service: make_workflow_service(&pool),
             dashboard_stats_service: r_data_core_services::DashboardStatsService::new(Arc::new(
-                r_data_core_persistence::DashboardStatsRepository::new(pool.clone()),
+                r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone()),
             )),
             queue: test_queue_client_async().await,
         };
@@ -443,7 +443,7 @@ mod tests {
     async fn test_expired_api_key_integration() -> Result<()> {
         let pool = setup_test_db().await;
         let user_uuid = create_test_admin_user(&pool).await?;
-        let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+        let repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
 
         // Create API key with very short expiration (1 second)
         let (key_uuid, key_value) = repo
@@ -455,14 +455,14 @@ mod tests {
             "UPDATE api_keys SET expires_at = NOW() - INTERVAL '1 day' WHERE uuid = $1",
             key_uuid
         )
-        .execute(&pool)
+        .execute(&pool.pool)
         .await?;
 
         // Create test app
-        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
+        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
-            pool.clone(),
+            pool.pool.clone(),
         ));
 
         let cache_config = CacheConfig {
@@ -476,7 +476,7 @@ mod tests {
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
         let api_state = ApiState {
-            db_pool: pool.clone(),
+            db_pool: pool.pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
                 host: "0.0.0.0".to_string(),
                 port: 8888,
@@ -487,7 +487,7 @@ mod tests {
                 cors_origins: vec![],
             },
             role_service: r_data_core_services::RoleService::new(
-                pool.clone(),
+                pool.pool.clone(),
                 cache_manager.clone(),
                 Some(0),
             ),
@@ -498,7 +498,7 @@ mod tests {
             dynamic_entity_service: None,
             workflow_service: make_workflow_service(&pool),
             dashboard_stats_service: r_data_core_services::DashboardStatsService::new(Arc::new(
-                r_data_core_persistence::DashboardStatsRepository::new(pool.clone()),
+                r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone()),
             )),
             queue: test_queue_client_async().await,
         };
@@ -553,7 +553,7 @@ mod tests {
     async fn test_api_key_usage_tracking() -> Result<()> {
         let pool = setup_test_db().await;
         let user_uuid = create_test_admin_user(&pool).await?;
-        let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+        let repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
 
         // Create API key
         let (key_uuid, key_value) = repo
@@ -576,10 +576,10 @@ mod tests {
         assert!(updated_last_used > initial_last_used);
 
         // Create test app
-        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
+        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
-            pool.clone(),
+            pool.pool.clone(),
         ));
 
         let cache_config = CacheConfig {
@@ -593,7 +593,7 @@ mod tests {
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
         let api_state = ApiState {
-            db_pool: pool.clone(),
+            db_pool: pool.pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
                 host: "0.0.0.0".to_string(),
                 port: 8888,
@@ -604,7 +604,7 @@ mod tests {
                 cors_origins: vec![],
             },
             role_service: r_data_core_services::RoleService::new(
-                pool.clone(),
+                pool.pool.clone(),
                 cache_manager.clone(),
                 Some(0),
             ),
@@ -615,7 +615,7 @@ mod tests {
             dynamic_entity_service: None,
             workflow_service: make_workflow_service(&pool),
             dashboard_stats_service: r_data_core_services::DashboardStatsService::new(Arc::new(
-                r_data_core_persistence::DashboardStatsRepository::new(pool.clone()),
+                r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone()),
             )),
             queue: test_queue_client_async().await,
         };
@@ -674,7 +674,7 @@ mod tests {
     async fn test_api_key_creation_validation() -> Result<()> {
         let pool = setup_test_db().await;
         let user_uuid = create_test_admin_user(&pool).await?;
-        let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+        let repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
 
         // Test empty name validation
         let result = repo
@@ -708,7 +708,7 @@ mod tests {
         let pool = setup_test_db().await;
         let user1_uuid = create_test_admin_user(&pool).await?;
         let user2_uuid = create_test_admin_user(&pool).await?;
-        let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+        let repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
 
         // Create API key for user1
         let (key_uuid, _key_value) = repo
@@ -739,7 +739,7 @@ mod tests {
     async fn test_concurrent_api_key_usage() -> Result<()> {
         let pool = setup_test_db().await;
         let user_uuid = create_test_admin_user(&pool).await?;
-        let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+        let repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
 
         // Create API key
         let (_key_uuid, key_value) = repo
@@ -747,10 +747,10 @@ mod tests {
             .await?;
 
         // Create test app
-        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
+        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
-            pool.clone(),
+            pool.pool.clone(),
         ));
 
         let cache_config = CacheConfig {
@@ -764,7 +764,7 @@ mod tests {
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
         let api_state = ApiState {
-            db_pool: pool.clone(),
+            db_pool: pool.pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
                 host: "0.0.0.0".to_string(),
                 port: 8888,
@@ -775,7 +775,7 @@ mod tests {
                 cors_origins: vec![],
             },
             role_service: r_data_core_services::RoleService::new(
-                pool.clone(),
+                pool.pool.clone(),
                 cache_manager.clone(),
                 Some(0),
             ),
@@ -786,7 +786,7 @@ mod tests {
             dynamic_entity_service: None,
             workflow_service: make_workflow_service(&pool),
             dashboard_stats_service: r_data_core_services::DashboardStatsService::new(Arc::new(
-                r_data_core_persistence::DashboardStatsRepository::new(pool.clone()),
+                r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone()),
             )),
             queue: test_queue_client_async().await,
         };
@@ -847,7 +847,7 @@ mod tests {
     async fn test_api_key_pagination() -> Result<()> {
         let pool = setup_test_db().await;
         let user_uuid = create_test_admin_user(&pool).await?;
-        let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+        let repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
 
         // Create multiple API keys
         for i in 1..=25 {
@@ -862,7 +862,7 @@ mod tests {
 
         // Test pagination with page=1, per_page=10
         let (keys_page1, total) = tokio::join!(
-            repo.list_by_user(user_uuid, 10, 0),
+            repo.list_by_user(user_uuid, 10, 0, None, None),
             repo.count_by_user(user_uuid)
         );
 
@@ -873,22 +873,22 @@ mod tests {
         assert_eq!(total, 25);
 
         // Test pagination with page=2, per_page=10
-        let keys_page2 = repo.list_by_user(user_uuid, 10, 10).await?;
+        let keys_page2 = repo.list_by_user(user_uuid, 10, 10, None, None).await?;
         assert_eq!(keys_page2.len(), 10);
 
         // Test pagination with page=3, per_page=10
-        let keys_page3 = repo.list_by_user(user_uuid, 10, 20).await?;
+        let keys_page3 = repo.list_by_user(user_uuid, 10, 20, None, None).await?;
         assert_eq!(keys_page3.len(), 5); // Should be 5 remaining keys
 
         // Test pagination with page=4, per_page=10
-        let keys_page4 = repo.list_by_user(user_uuid, 10, 30).await?;
+        let keys_page4 = repo.list_by_user(user_uuid, 10, 30, None, None).await?;
         assert_eq!(keys_page4.len(), 0); // Should be no keys
 
         // Test different per_page values
-        let keys_page1_20 = repo.list_by_user(user_uuid, 20, 0).await?;
+        let keys_page1_20 = repo.list_by_user(user_uuid, 20, 0, None, None).await?;
         assert_eq!(keys_page1_20.len(), 20);
 
-        let keys_page2_20 = repo.list_by_user(user_uuid, 20, 20).await?;
+        let keys_page2_20 = repo.list_by_user(user_uuid, 20, 20, None, None).await?;
         assert_eq!(keys_page2_20.len(), 5);
 
         clear_test_db(&pool).await?;
@@ -904,7 +904,7 @@ mod tests {
     async fn test_api_key_http_pagination() -> Result<()> {
         let pool = setup_test_db().await;
         let user_uuid = create_test_admin_user(&pool).await?;
-        let repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+        let repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
 
         // Create multiple API keys
         for i in 1..=25 {
@@ -918,10 +918,10 @@ mod tests {
         }
 
         // Create test app with actual API routes
-        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
+        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
-            pool.clone(),
+            pool.pool.clone(),
         ));
 
         let cache_config = CacheConfig {
@@ -935,7 +935,7 @@ mod tests {
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
         let api_state = ApiState {
-            db_pool: pool.clone(),
+            db_pool: pool.pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
                 host: "0.0.0.0".to_string(),
                 port: 8888,
@@ -946,7 +946,7 @@ mod tests {
                 cors_origins: vec![],
             },
             role_service: r_data_core_services::RoleService::new(
-                pool.clone(),
+                pool.pool.clone(),
                 cache_manager.clone(),
                 Some(0),
             ),
@@ -957,7 +957,7 @@ mod tests {
             dynamic_entity_service: None,
             workflow_service: make_workflow_service(&pool),
             dashboard_stats_service: r_data_core_services::DashboardStatsService::new(Arc::new(
-                r_data_core_persistence::DashboardStatsRepository::new(pool.clone()),
+                r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone()),
             )),
             queue: test_queue_client_async().await,
         };

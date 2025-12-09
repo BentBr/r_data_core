@@ -276,10 +276,14 @@ impl r_data_core_persistence::AdminUserRepositoryTrait for AdminUserRepositoryAd
         &self,
         limit: i64,
         offset: i64,
+        sort_by: Option<String>,
+        sort_order: Option<String>,
     ) -> r_data_core_core::error::Result<Vec<r_data_core_core::admin_user::AdminUser>> {
         log::debug!(
-            "AdminUserRepositoryAdapter::list_admin_users called with limit: {limit}, offset: {offset}"
+            "AdminUserRepositoryAdapter::list_admin_users called with limit: {limit}, offset: {offset}, sort_by: {sort_by:?}, sort_order: {sort_order:?}",
         );
-        self.inner.list_admin_users(limit, offset).await
+        self.inner
+            .list_admin_users(limit, offset, sort_by, sort_order)
+            .await
     }
 }

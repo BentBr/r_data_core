@@ -25,16 +25,17 @@ mod dynamic_entity_api_tests {
     use super::*;
 
     #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
-    async fn setup_test_app() -> Result<
+    async fn setup_test_app() -> Result<(
         impl actix_web::dev::Service<
             actix_http::Request,
             Response = actix_web::dev::ServiceResponse,
             Error = actix_web::Error,
         >,
-    > {
+        r_data_core_test_support::TestDatabase,
+    )> {
         // Setup database
         let pool = setup_test_db().await;
-        clear_test_db(&pool).await?;
+        clear_test_db(&pool.pool).await?;
 
         // Create required services
         let cache_config = CacheConfig {
@@ -62,7 +63,7 @@ mod dynamic_entity_api_tests {
             sqlx::query("UPDATE entities_registry SET path = '/', entity_key = $2 WHERE uuid = $1")
                 .bind(uuid)
                 .bind(format!("root-{i}"))
-                .execute(&pool)
+                .execute(&pool.pool)
                 .await?;
         }
 
@@ -72,7 +73,7 @@ mod dynamic_entity_api_tests {
             "UPDATE entities_registry SET path = '/team', entity_key = 'alice' WHERE uuid = $1",
         )
         .bind(u1)
-        .execute(&pool)
+        .execute(&pool.pool)
         .await?;
 
         let u2 = create_test_entity(&pool, "user", "Bob", "bob@example.com").await?;
@@ -80,7 +81,7 @@ mod dynamic_entity_api_tests {
             "UPDATE entities_registry SET path = '/team/dev', entity_key = 'bob' WHERE uuid = $1",
         )
         .bind(u2)
-        .execute(&pool)
+        .execute(&pool.pool)
         .await?;
 
         // Create an API key
@@ -88,30 +89,31 @@ mod dynamic_entity_api_tests {
         create_test_api_key(&pool, api_key.to_string()).await?;
 
         // Create services
-        let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.clone())));
+        let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.pool.clone())));
         let api_key_service = ApiKeyService::new(api_key_repository);
 
-        let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.clone())));
+        let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.pool.clone())));
         let admin_user_service = AdminUserService::new(admin_user_repository);
 
-        let entity_definition_repository = Arc::new(EntityDefinitionRepository::new(pool.clone()));
+        let entity_definition_repository =
+            Arc::new(EntityDefinitionRepository::new(pool.pool.clone()));
         let entity_definition_service =
             EntityDefinitionService::new_without_cache(entity_definition_repository);
 
-        let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.clone()));
+        let dynamic_entity_repository = Arc::new(DynamicEntityRepository::new(pool.pool.clone()));
         let dynamic_entity_service = Arc::new(DynamicEntityService::new(
             dynamic_entity_repository,
             Arc::new(entity_definition_service.clone()),
         ));
 
         let dashboard_stats_repository =
-            r_data_core_persistence::DashboardStatsRepository::new(pool.clone());
+            r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone());
         let dashboard_stats_service =
             r_data_core_services::DashboardStatsService::new(Arc::new(dashboard_stats_repository));
 
         // Create app state
         let api_state = ApiState {
-            db_pool: pool.clone(),
+            db_pool: pool.pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
                 host: "0.0.0.0".to_string(),
                 port: 8888,
@@ -122,7 +124,7 @@ mod dynamic_entity_api_tests {
                 cors_origins: vec![],
             },
             role_service: r_data_core_services::RoleService::new(
-                pool.clone(),
+                pool.pool.clone(),
                 cache_manager.clone(),
                 Some(0),
             ),
@@ -146,13 +148,13 @@ mod dynamic_entity_api_tests {
         )
         .await;
 
-        Ok(app)
+        Ok((app, pool))
     }
 
     #[actix_web::test]
     #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_query_parameter_deserialization_fix() {
-        let app = setup_test_app().await.expect("Failed to setup test app");
+        let (app, _db) = setup_test_app().await.expect("Failed to setup test app");
 
         // Test cases for the query parameter deserialization fix
         let test_cases = vec![
@@ -236,7 +238,7 @@ mod dynamic_entity_api_tests {
     #[actix_web::test]
     #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_pagination_query_parameters() {
-        let app = setup_test_app().await.expect("Failed to setup test app");
+        let (app, _db) = setup_test_app().await.expect("Failed to setup test app");
 
         // Test the specific case that was failing before the fix
         let req = test::TestRequest::get()
@@ -264,7 +266,7 @@ mod dynamic_entity_api_tests {
     #[actix_web::test]
     #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_various_string_to_integer_conversions() {
-        let app = setup_test_app().await.expect("Failed to setup test app");
+        let (app, _db) = setup_test_app().await.expect("Failed to setup test app");
 
         // Test various string representations of numbers
         let test_urls = vec![
@@ -303,7 +305,7 @@ mod dynamic_entity_api_tests {
     #[actix_web::test]
     #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_browse_by_path_endpoint() {
-        let app = setup_test_app().await.expect("Failed to setup test app");
+        let (app, _db) = setup_test_app().await.expect("Failed to setup test app");
 
         // Browse root
         let req = test::TestRequest::get()
@@ -333,7 +335,7 @@ mod dynamic_entity_api_tests {
     #[actix_web::test]
     #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_unique_key_per_path_conflict() {
-        let app = setup_test_app().await.expect("Failed to setup test app");
+        let (app, _db) = setup_test_app().await.expect("Failed to setup test app");
 
         // Create one entity under /projects with key "alpha"
         let req1 = test::TestRequest::post()
@@ -367,7 +369,7 @@ mod dynamic_entity_api_tests {
     #[actix_web::test]
     #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
     async fn test_include_parameter_with_pagination() {
-        let app = setup_test_app().await.expect("Failed to setup test app");
+        let (app, _db) = setup_test_app().await.expect("Failed to setup test app");
 
         // Test include parameter combinations with pagination
         let test_cases = vec![

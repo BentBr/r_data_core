@@ -17,7 +17,7 @@ mock! {
         async fn find_api_key_for_auth(&self, api_key: &str) -> Result<Option<(ApiKey, Uuid)>>;
         async fn get_by_uuid(&self, uuid: Uuid) -> Result<Option<ApiKey>>;
         async fn create(&self, key: &ApiKey) -> Result<Uuid>;
-        async fn list_by_user(&self, user_uuid: Uuid, limit: i64, offset: i64) -> Result<Vec<ApiKey>>;
+        async fn list_by_user(&self, user_uuid: Uuid, limit: i64, offset: i64, sort_by: Option<String>, sort_order: Option<String>) -> Result<Vec<ApiKey>>;
         async fn revoke(&self, uuid: Uuid) -> Result<()>;
         async fn get_by_name(&self, user_uuid: Uuid, name: &str) -> Result<Option<ApiKey>>;
         async fn get_by_hash(&self, api_key: &str) -> Result<Option<ApiKey>>;
@@ -290,11 +290,11 @@ mod tests {
         // Setup mock for listing
         mock_repo
             .expect_list_by_user()
-            .with(eq(user_uuid), eq(10), eq(0))
-            .returning(move |_, _, _| Ok(mock_keys.clone()));
+            .with(eq(user_uuid), eq(10), eq(0), eq(None), eq(None))
+            .returning(move |_, _, _, _, _| Ok(mock_keys.clone()));
 
         // Test listing
-        let result = mock_repo.list_by_user(user_uuid, 10, 0).await;
+        let result = mock_repo.list_by_user(user_uuid, 10, 0, None, None).await;
         assert!(result.is_ok());
 
         if let Ok(keys) = result {

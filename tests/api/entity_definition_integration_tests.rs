@@ -92,7 +92,7 @@ mod tests {
 
         // Create multiple entity definitions
         let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
-            pool.clone(),
+            pool.pool.clone(),
         ));
 
         for i in 1..=25 {
@@ -118,8 +118,8 @@ mod tests {
         }
 
         // Create test app with actual API routes
-        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
-        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
+        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
 
         let cache_config = CacheConfig {
             entity_definition_ttl: 0,
@@ -132,12 +132,12 @@ mod tests {
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
         let dashboard_stats_repository =
-            r_data_core_persistence::DashboardStatsRepository::new(pool.clone());
+            r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone());
         let dashboard_stats_service =
             r_data_core_services::DashboardStatsService::new(Arc::new(dashboard_stats_repository));
 
         let api_state = ApiState {
-            db_pool: pool.clone(),
+            db_pool: pool.pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
                 host: "0.0.0.0".to_string(),
                 port: 8888,
@@ -148,7 +148,7 @@ mod tests {
                 cors_origins: vec![],
             },
             role_service: r_data_core_services::RoleService::new(
-                pool.clone(),
+                pool.pool.clone(),
                 cache_manager.clone(),
                 Some(0),
             ),
@@ -159,7 +159,7 @@ mod tests {
             dynamic_entity_service: None,
             workflow_service: r_data_core_services::WorkflowService::new(Arc::new(
                 r_data_core_services::WorkflowRepositoryAdapter::new(
-                    r_data_core_persistence::WorkflowRepository::new(pool.clone()),
+                    r_data_core_persistence::WorkflowRepository::new(pool.pool.clone()),
                 ),
             )),
             dashboard_stats_service,

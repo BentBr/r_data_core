@@ -209,20 +209,57 @@ impl WorkflowRepository {
     ///
     /// # Panics
     /// Panics if database row data is invalid
-    pub async fn list_paginated(&self, limit: i64, offset: i64) -> anyhow::Result<Vec<Workflow>> {
-        let rows = sqlx::query(
-            "
-            SELECT uuid, name, description, kind::text, enabled, schedule_cron, config, versioning_disabled
-            FROM workflows
-            ORDER BY name
-            LIMIT $1 OFFSET $2
-            ",
-        )
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&self.pool)
-        .await
-        .context("query workflows paginated")?;
+    pub async fn list_paginated(
+        &self,
+        limit: i64,
+        offset: i64,
+        sort_by: Option<String>,
+        sort_order: Option<String>,
+    ) -> anyhow::Result<Vec<Workflow>> {
+        // Build ORDER BY clause - field is already validated and sanitized by route handler
+        let order_by = sort_by.map_or_else(
+            || "\"name\" ASC".to_string(),
+            |field| {
+                let quoted_field = format!("\"{}\"", field.replace('"', "\"\""));
+                let order = sort_order
+                    .as_ref()
+                    .map(|o| o.to_uppercase())
+                    .filter(|o| o == "ASC" || o == "DESC")
+                    .unwrap_or_else(|| "ASC".to_string());
+                format!("{quoted_field} {order}")
+            },
+        );
+
+        // Build query with or without LIMIT
+        let query = if limit == i64::MAX {
+            format!(
+                "
+                SELECT uuid, name, description, kind::text, enabled, schedule_cron, config, versioning_disabled
+                FROM workflows
+                ORDER BY {order_by} OFFSET $1
+                "
+            )
+        } else {
+            format!(
+                "
+                SELECT uuid, name, description, kind::text, enabled, schedule_cron, config, versioning_disabled
+                FROM workflows
+                ORDER BY {order_by} LIMIT $1 OFFSET $2
+                "
+            )
+        };
+
+        let mut query_builder = sqlx::query(&query);
+        if limit == i64::MAX {
+            query_builder = query_builder.bind(offset);
+        } else {
+            query_builder = query_builder.bind(limit).bind(offset);
+        }
+
+        let rows = query_builder
+            .fetch_all(&self.pool)
+            .await
+            .context("query workflows paginated")?;
 
         let mut out = Vec::with_capacity(rows.len());
         for r in rows {
@@ -582,8 +619,15 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
     async fn list_all(&self) -> anyhow::Result<Vec<Workflow>> {
         self.list_all().await
     }
-    async fn list_paginated(&self, limit: i64, offset: i64) -> anyhow::Result<Vec<Workflow>> {
-        self.list_paginated(limit, offset).await
+    async fn list_paginated(
+        &self,
+        limit: i64,
+        offset: i64,
+        sort_by: Option<String>,
+        sort_order: Option<String>,
+    ) -> anyhow::Result<Vec<Workflow>> {
+        self.list_paginated(limit, offset, sort_by, sort_order)
+            .await
     }
     async fn count_all(&self) -> anyhow::Result<i64> {
         self.count_all().await

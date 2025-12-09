@@ -17,7 +17,7 @@ async fn create_sets_created_by_and_fk_enforced() -> anyhow::Result<()> {
     // Ensure we have at least one admin user to act as creator
     let creator_uuid = create_test_admin_user(&pool).await?;
 
-    let repo = WorkflowRepository::new(pool.clone());
+    let repo = WorkflowRepository::new(pool.pool.clone());
     let adapter = WorkflowRepositoryAdapter::new(repo);
     let _svc = r_data_core_services::WorkflowService::new(Arc::new(adapter));
 
@@ -62,13 +62,13 @@ async fn create_sets_created_by_and_fk_enforced() -> anyhow::Result<()> {
     };
 
     // Create via repository (adapter only used to match service wiring)
-    let repo_core = WorkflowRepository::new(pool.clone());
+    let repo_core = WorkflowRepository::new(pool.pool.clone());
     let wf_uuid = repo_core.create(&req, creator_uuid).await?;
 
     // Verify created_by stored
     let row = sqlx::query("SELECT created_by FROM workflows WHERE uuid = $1")
         .bind(wf_uuid)
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
     let stored_created_by: Uuid = row.try_get("created_by")?;
     assert_eq!(stored_created_by, creator_uuid);
@@ -76,7 +76,7 @@ async fn create_sets_created_by_and_fk_enforced() -> anyhow::Result<()> {
     // Try to delete the admin user -> expect FK restriction error
     let delete_res = sqlx::query("DELETE FROM admin_users WHERE uuid = $1")
         .bind(creator_uuid)
-        .execute(&pool)
+        .execute(&pool.pool)
         .await;
     assert!(
         delete_res.is_err(),
@@ -93,7 +93,7 @@ async fn update_sets_updated_by_and_fk_enforced() -> anyhow::Result<()> {
     let creator_uuid = create_test_admin_user(&pool).await?;
     let updater_uuid = create_test_admin_user(&pool).await?;
 
-    let repo = WorkflowRepository::new(pool.clone());
+    let repo = WorkflowRepository::new(pool.pool.clone());
 
     // Minimal valid config
     let cfg = serde_json::json!({
@@ -152,7 +152,7 @@ async fn update_sets_updated_by_and_fk_enforced() -> anyhow::Result<()> {
     // Verify updated_by stored
     let row = sqlx::query("SELECT updated_by FROM workflows WHERE uuid = $1")
         .bind(wf_uuid)
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
     let stored_updated_by: Option<Uuid> = row.try_get("updated_by")?;
     assert_eq!(stored_updated_by, Some(updater_uuid));
@@ -160,7 +160,7 @@ async fn update_sets_updated_by_and_fk_enforced() -> anyhow::Result<()> {
     // Deleting updater should be restricted
     let delete_res = sqlx::query("DELETE FROM admin_users WHERE uuid = $1")
         .bind(updater_uuid)
-        .execute(&pool)
+        .execute(&pool.pool)
         .await;
     assert!(
         delete_res.is_err(),

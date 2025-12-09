@@ -26,7 +26,7 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
 
     // Create entity definition (must start with a letter)
     let entity_type = format!("TestCustomer{}", Uuid::now_v7().simple());
-    let ed_repo = EntityDefinitionRepository::new(pool.clone());
+    let ed_repo = EntityDefinitionRepository::new(pool.pool.clone());
     let ed_adapter = EntityDefinitionRepositoryAdapter::new(ed_repo);
     let ed_service = EntityDefinitionService::new_without_cache(Arc::new(ed_adapter));
 
@@ -78,7 +78,7 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
         .expect("create entity definition");
 
     // Create workflow with DSL configuration
-    let wf_repo = WorkflowRepository::new(pool.clone());
+    let wf_repo = WorkflowRepository::new(pool.pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
     let wf_service = WorkflowService::new(Arc::new(wf_adapter));
 
@@ -144,12 +144,13 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
         .expect("create workflow");
 
     // Create DynamicEntity service
-    let de_repo = DynamicEntityRepository::new(pool.clone());
+    let de_repo = DynamicEntityRepository::new(pool.pool.clone());
     let de_adapter = DynamicEntityRepositoryAdapter::new(de_repo);
     let de_service = DynamicEntityService::new(Arc::new(de_adapter), Arc::new(ed_service.clone()));
 
     // Create WorkflowService with entity service
-    let wf_adapter_entities = WorkflowRepositoryAdapter::new(WorkflowRepository::new(pool.clone()));
+    let wf_adapter_entities =
+        WorkflowRepositoryAdapter::new(WorkflowRepository::new(pool.pool.clone()));
     let wf_service_with_entities = WorkflowService::new_with_entities(
         Arc::new(wf_adapter_entities),
         Arc::new(de_service.clone()),
@@ -172,7 +173,7 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
     for run_idx in 0..num_runs {
         // Create a new run for each import
         let trigger_id = Uuid::now_v7();
-        let wf_repo_run = WorkflowRepository::new(pool.clone());
+        let wf_repo_run = WorkflowRepository::new(pool.pool.clone());
         let run_uuid = wf_repo_run
             .insert_run_queued(wf_uuid, trigger_id)
             .await
@@ -195,7 +196,7 @@ async fn test_consecutive_imports_produce_identical_outcomes() {
             r#"SELECT level, message FROM workflow_run_logs WHERE run_uuid = $1 ORDER BY ts ASC"#,
             run_uuid
         )
-        .fetch_all(&pool)
+        .fetch_all(&pool.pool)
         .await
         .expect("get run logs");
 

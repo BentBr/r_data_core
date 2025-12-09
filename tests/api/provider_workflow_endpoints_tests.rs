@@ -26,7 +26,7 @@ async fn setup_app_with_entities() -> anyhow::Result<(
         Response = actix_web::dev::ServiceResponse,
         Error = actix_web::Error,
     >,
-    sqlx::PgPool,
+    r_data_core_test_support::TestDatabase,
     String, // JWT token
     String, // API key value
 )> {
@@ -41,25 +41,25 @@ async fn setup_app_with_entities() -> anyhow::Result<(
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
 
-    let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.clone())));
+    let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.pool.clone())));
     let api_key_service = ApiKeyService::new(api_key_repository);
 
-    let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.clone())));
+    let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.pool.clone())));
     let admin_user_service = AdminUserService::new(admin_user_repository);
 
     let entity_definition_service = EntityDefinitionService::new_without_cache(Arc::new(
-        r_data_core_persistence::EntityDefinitionRepository::new(pool.clone()),
+        r_data_core_persistence::EntityDefinitionRepository::new(pool.pool.clone()),
     ));
 
     // Create dynamic entity service
-    let de_repo = r_data_core_persistence::DynamicEntityRepository::new(pool.clone());
+    let de_repo = r_data_core_persistence::DynamicEntityRepository::new(pool.pool.clone());
     let de_adapter = r_data_core_services::adapters::DynamicEntityRepositoryAdapter::new(de_repo);
     let dynamic_entity_service = Arc::new(DynamicEntityService::new(
         Arc::new(de_adapter),
         Arc::new(entity_definition_service.clone()),
     ));
 
-    let wf_repo = WorkflowRepository::new(pool.clone());
+    let wf_repo = WorkflowRepository::new(pool.pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
     let workflow_service = r_data_core_services::WorkflowService::new_with_entities(
         Arc::new(wf_adapter),
@@ -67,13 +67,13 @@ async fn setup_app_with_entities() -> anyhow::Result<(
     );
 
     let dashboard_stats_repository =
-        r_data_core_persistence::DashboardStatsRepository::new(pool.clone());
+        r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone());
     let dashboard_stats_service =
         r_data_core_services::DashboardStatsService::new(Arc::new(dashboard_stats_repository));
 
     let jwt_secret = "test_secret".to_string();
     let api_state = ApiState {
-        db_pool: pool.clone(),
+        db_pool: pool.pool.clone(),
         api_config: r_data_core_core::config::ApiConfig {
             host: "0.0.0.0".to_string(),
             port: 8888,
@@ -84,7 +84,7 @@ async fn setup_app_with_entities() -> anyhow::Result<(
             cors_origins: vec![],
         },
         role_service: r_data_core_services::RoleService::new(
-            pool.clone(),
+            pool.pool.clone(),
             cache_manager.clone(),
             Some(0),
         ),
@@ -108,10 +108,10 @@ async fn setup_app_with_entities() -> anyhow::Result<(
     .await;
 
     // Create test admin user and JWT
-    let user_uuid = create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool.pool).await?;
     let user: AdminUser = sqlx::query_as("SELECT * FROM admin_users WHERE uuid = $1")
         .bind(user_uuid)
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
     let api_config = r_data_core_core::config::ApiConfig {
         host: "0.0.0.0".to_string(),
@@ -125,7 +125,7 @@ async fn setup_app_with_entities() -> anyhow::Result<(
     let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, &[])?;
 
     // Create API key for testing - we need to use the repository directly to get the key value
-    let api_key_repo = ApiKeyRepository::new(Arc::new(pool.clone()));
+    let api_key_repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
     let (_api_key_uuid, api_key_value) = api_key_repo
         .create_new_api_key("test-api-key", "Test key", user_uuid, 30)
         .await?;
@@ -175,7 +175,7 @@ async fn test_provider_endpoint_with_jwt_auth() -> anyhow::Result<()> {
     let (app, pool, token, _) = setup_app_with_entities().await?;
 
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     // Create provider workflow with JSON output
@@ -211,7 +211,7 @@ async fn test_provider_endpoint_with_jwt_auth() -> anyhow::Result<()> {
         ]
     });
 
-    let wf_uuid = create_provider_workflow(&pool, creator_uuid, config).await?;
+    let wf_uuid = create_provider_workflow(&pool.pool, creator_uuid, config).await?;
 
     // Test GET endpoint with JWT
     let req = test::TestRequest::get()
@@ -237,7 +237,7 @@ async fn test_provider_endpoint_with_api_key_auth() -> anyhow::Result<()> {
     let (app, pool, _token, api_key_value) = setup_app_with_entities().await?;
 
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     // Create provider workflow
@@ -271,7 +271,7 @@ async fn test_provider_endpoint_with_api_key_auth() -> anyhow::Result<()> {
         ]
     });
 
-    let wf_uuid = create_provider_workflow(&pool, creator_uuid, config).await?;
+    let wf_uuid = create_provider_workflow(&pool.pool, creator_uuid, config).await?;
 
     // Test GET endpoint with API key
     let req = test::TestRequest::get()
@@ -296,7 +296,7 @@ async fn test_provider_endpoint_with_pre_shared_key() -> anyhow::Result<()> {
     let (app, pool, _token, _) = setup_app_with_entities().await?;
 
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     // Create provider workflow with pre-shared key auth
@@ -336,7 +336,7 @@ async fn test_provider_endpoint_with_pre_shared_key() -> anyhow::Result<()> {
         ]
     });
 
-    let wf_uuid = create_provider_workflow(&pool, creator_uuid, config).await?;
+    let wf_uuid = create_provider_workflow(&pool.pool, creator_uuid, config).await?;
 
     // Test with correct pre-shared key
     let req = test::TestRequest::get()
@@ -375,7 +375,7 @@ async fn test_provider_endpoint_without_auth() -> anyhow::Result<()> {
     let (app, pool, _token, _) = setup_app_with_entities().await?;
 
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     let config = serde_json::json!({
@@ -408,7 +408,7 @@ async fn test_provider_endpoint_without_auth() -> anyhow::Result<()> {
         ]
     });
 
-    let wf_uuid = create_provider_workflow(&pool, creator_uuid, config).await?;
+    let wf_uuid = create_provider_workflow(&pool.pool, creator_uuid, config).await?;
 
     // Test without auth
     let req = test::TestRequest::get()
@@ -432,7 +432,7 @@ async fn test_provider_endpoint_stats() -> anyhow::Result<()> {
     let (app, pool, token, _) = setup_app_with_entities().await?;
 
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     let config = serde_json::json!({
@@ -471,7 +471,7 @@ async fn test_provider_endpoint_stats() -> anyhow::Result<()> {
         ]
     });
 
-    let wf_uuid = create_provider_workflow(&pool, creator_uuid, config).await?;
+    let wf_uuid = create_provider_workflow(&pool.pool, creator_uuid, config).await?;
 
     // Test stats endpoint
     let req = test::TestRequest::get()
@@ -498,7 +498,7 @@ async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
     let (app, pool, _token, _) = setup_app_with_entities().await?;
 
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     // Create consumer workflow with from.api source (accepts POST) - use format output instead of entity to avoid entity definition requirement
@@ -572,7 +572,7 @@ async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
     let (app, pool, _token, _) = setup_app_with_entities().await?;
 
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     // Create consumer workflow with from.api source but disabled
@@ -607,7 +607,7 @@ async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
     });
 
     // Create workflow as disabled
-    let repo = WorkflowRepository::new(pool.clone());
+    let repo = WorkflowRepository::new(pool.pool.clone());
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("consumer-api-disabled-{}", Uuid::now_v7().simple()),
         description: Some("Consumer workflow with API source (disabled)".to_string()),
@@ -653,7 +653,7 @@ async fn test_provider_endpoint_returns_404_for_consumer_workflow() -> anyhow::R
     let (app, pool, token, _) = setup_app_with_entities().await?;
 
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     // Create consumer workflow (not provider)
@@ -685,7 +685,7 @@ async fn test_provider_endpoint_returns_404_for_consumer_workflow() -> anyhow::R
         ]
     });
 
-    let repo = WorkflowRepository::new(pool.clone());
+    let repo = WorkflowRepository::new(pool.pool.clone());
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("consumer-wf-{}", Uuid::now_v7().simple()),
         description: Some("Consumer workflow".to_string()),
@@ -720,7 +720,7 @@ async fn test_consumer_endpoint_post_returns_405_for_provider_workflow() -> anyh
     let (app, pool, _token, _) = setup_app_with_entities().await?;
 
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
-        .fetch_one(&pool)
+        .fetch_one(&pool.pool)
         .await?;
 
     // Create provider workflow
@@ -754,7 +754,7 @@ async fn test_consumer_endpoint_post_returns_405_for_provider_workflow() -> anyh
         ]
     });
 
-    let wf_uuid = create_provider_workflow(&pool, creator_uuid, config).await?;
+    let wf_uuid = create_provider_workflow(&pool.pool, creator_uuid, config).await?;
 
     // Try to POST to provider workflow
     let payload: Vec<u8> = b"{}".to_vec();

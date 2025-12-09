@@ -11,7 +11,7 @@ async fn get_workflow_uuid_for_run_round_trip() -> anyhow::Result<()> {
     // Setup test database
     let pool = setup_test_db().await;
 
-    let repo = WorkflowRepository::new(pool.clone());
+    let repo = WorkflowRepository::new(pool.pool.clone());
 
     // Create a test admin user
     let creator_uuid = create_test_admin_user(&pool)

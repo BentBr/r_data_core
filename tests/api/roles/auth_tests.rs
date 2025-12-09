@@ -26,7 +26,7 @@ async fn test_successful_auth_with_roles() -> Result<()> {
     let (app, pool, admin_user_uuid) = setup_test_app().await?;
 
     // Create a test user (not super_admin)
-    let user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
     let user_uuid = user_repo
         .create_admin_user(&CreateAdminUserParams {
             username: "testuser",
@@ -47,7 +47,7 @@ async fn test_successful_auth_with_roles() -> Result<()> {
 
     // Create a role
     let role_service = RoleService::new(
-        pool.clone(),
+        pool.pool.clone(),
         Arc::new(CacheManager::new(CacheConfig {
             entity_definition_ttl: 0,
             api_key_ttl: 600,
@@ -102,7 +102,7 @@ async fn test_successful_auth_with_roles() -> Result<()> {
         "Should have permission to read roles"
     );
 
-    clear_test_db(&pool).await?;
+    clear_test_db(&pool.pool).await?;
     Ok(())
 }
 
@@ -125,7 +125,7 @@ async fn test_failing_auth_invalid_token() -> Result<()> {
         "Should reject invalid token"
     );
 
-    clear_test_db(&pool).await?;
+    clear_test_db(&pool.pool).await?;
     Ok(())
 }
 
@@ -136,7 +136,7 @@ async fn test_failing_permissions_no_permission() -> Result<()> {
     let (app, pool, admin_user_uuid) = setup_test_app().await?;
 
     // Create a test user without super_admin
-    let user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
     let user_uuid = user_repo
         .create_admin_user(&CreateAdminUserParams {
             username: "testuser2",
@@ -180,7 +180,7 @@ async fn test_failing_permissions_no_permission() -> Result<()> {
         "Should reject request without required permission"
     );
 
-    clear_test_db(&pool).await?;
+    clear_test_db(&pool.pool).await?;
     Ok(())
 }
 
@@ -190,7 +190,7 @@ async fn test_failing_permissions_no_permission() -> Result<()> {
 async fn test_successful_auth_with_different_roles() -> Result<()> {
     let (app, pool, admin_user_uuid) = setup_test_app().await?;
 
-    let user_repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
     let user_uuid = user_repo
         .create_admin_user(&CreateAdminUserParams {
             username: "testuser3",
@@ -209,7 +209,7 @@ async fn test_successful_auth_with_different_roles() -> Result<()> {
     user_repo.update_admin_user(&user).await?;
 
     let role_service = RoleService::new(
-        pool.clone(),
+        pool.pool.clone(),
         Arc::new(CacheManager::new(CacheConfig {
             entity_definition_ttl: 0,
             api_key_ttl: 600,
@@ -275,6 +275,6 @@ async fn test_successful_auth_with_different_roles() -> Result<()> {
         "Should have Read permission from role1"
     );
 
-    clear_test_db(&pool).await?;
+    clear_test_db(&pool.pool).await?;
     Ok(())
 }

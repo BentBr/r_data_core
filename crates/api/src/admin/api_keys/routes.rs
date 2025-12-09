@@ -8,13 +8,15 @@ use uuid::Uuid;
 use crate::admin::api_keys::models::{
     ApiKeyCreatedResponse, ApiKeyResponse, CreateApiKeyRequest, ReassignApiKeyRequest,
 };
+use crate::admin::query_helpers::to_list_query_params;
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::auth::permission_check;
-use crate::query::PaginationQuery;
+use crate::query::StandardQuery;
 use crate::response::ApiResponse;
 use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 use r_data_core_persistence::{ApiKeyRepository, ApiKeyRepositoryTrait};
+use r_data_core_services::query_validation::FieldValidator;
 
 /// Register API key routes
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
@@ -24,16 +26,18 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
         .service(reassign_api_key);
 }
 
-/// List API keys for the authenticated user with pagination
+/// List API keys for the authenticated user with pagination and sorting
 #[utoipa::path(
     get,
     path = "/admin/api/v1/api-keys",
     tag = "api-keys",
     params(
         ("page" = Option<i64>, Query, description = "Page number (1-based, default: 1)"),
-        ("per_page" = Option<i64>, Query, description = "Number of items per page (default: 20, max: 100)"),
+        ("per_page" = Option<i64>, Query, description = "Number of items per page (default: 20, max: 100, or -1 for unlimited)"),
         ("limit" = Option<i64>, Query, description = "Maximum number of items to return (alternative to per_page)"),
-        ("offset" = Option<i64>, Query, description = "Number of items to skip (alternative to page-based pagination)")
+        ("offset" = Option<i64>, Query, description = "Number of items to skip (alternative to page-based pagination)"),
+        ("sort_by" = Option<String>, Query, description = "Field to sort by (e.g., name, is_active, last_used_at, created_at)"),
+        ("sort_order" = Option<String>, Query, description = "Sort order: 'asc' or 'desc' (default: 'asc')")
     ),
     responses(
         (status = 200, description = "List of API keys with pagination", body = Vec<ApiKeyResponse>),
@@ -49,7 +53,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
 pub async fn list_api_keys(
     state: web::Data<ApiStateWrapper>,
     auth: RequiredAuth,
-    query: web::Query<PaginationQuery>,
+    query: web::Query<StandardQuery>,
 ) -> impl Responder {
     // Check permission
     if !permission_check::has_permission(
@@ -61,23 +65,25 @@ pub async fn list_api_keys(
         return ApiResponse::<()>::forbidden("Insufficient permissions to list API keys");
     }
 
-    let pool = Arc::new(state.db_pool().clone());
     let user_uuid = Uuid::parse_str(&auth.0.sub).expect("Invalid UUID in auth token");
 
-    let (limit, offset) = query.to_limit_offset(20, 100);
-    let page = query.get_page(1);
-    let per_page = query.get_per_page(20, 100);
+    // Create field validator
+    let pool = Arc::new(state.db_pool().clone());
+    let field_validator = Arc::new(FieldValidator::new(pool));
 
-    let repo = ApiKeyRepository::new(pool);
+    // Convert StandardQuery to ListQueryParams and use service method that handles all validation
+    let params = to_list_query_params(&query);
+    let service = state.api_key_service();
+    match service
+        .list_keys_for_user_with_query(user_uuid, &params, &field_validator)
+        .await
+    {
+        Ok((rows, validated)) => {
+            // Get total count
+            let pool = Arc::new(state.db_pool().clone());
+            let repo = ApiKeyRepository::new(pool);
+            let total = repo.count_by_user(user_uuid).await.unwrap_or(0);
 
-    // Get both the API keys and the total count
-    let (api_keys_result, count_result) = tokio::join!(
-        repo.list_by_user(user_uuid, limit, offset),
-        repo.count_by_user(user_uuid)
-    );
-
-    match (api_keys_result, count_result) {
-        (Ok(rows), Ok(total)) => {
             let api_keys: Vec<ApiKeyResponse> = rows
                 .into_iter()
                 .map(|row| ApiKeyResponse {
@@ -94,15 +100,16 @@ pub async fn list_api_keys(
                 })
                 .collect::<Vec<_>>();
 
-            ApiResponse::ok_paginated(api_keys, total, page, per_page)
+            ApiResponse::ok_paginated(api_keys, total, validated.page, validated.per_page)
         }
-        (Err(e), _) => {
+        Err(e) => {
             error!("Failed to list API keys: {e}");
-            ApiResponse::<()>::internal_error("Failed to retrieve API keys")
-        }
-        (_, Err(e)) => {
-            error!("Failed to count API keys: {e}");
-            ApiResponse::<()>::internal_error("Failed to count API keys")
+            match e {
+                r_data_core_core::error::Error::Validation(msg) => {
+                    ApiResponse::<()>::bad_request(&msg)
+                }
+                _ => ApiResponse::<()>::internal_error("Failed to retrieve API keys"),
+            }
         }
     }
 }

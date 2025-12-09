@@ -17,7 +17,7 @@ async fn test_create_and_find_admin_user() -> Result<()> {
     let pool = setup_test_db().await;
     clear_test_db(&pool).await?;
 
-    let repo = AdminUserRepository::new(Arc::new(pool.clone()));
+    let repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
 
     let username = random_string("test_user");
     let email = format!("{username}@example.com");

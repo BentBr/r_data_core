@@ -303,7 +303,7 @@ mod dynamic_entity_api_tests {
         let api_key = create_test_api_key(&db_pool).await?;
 
         // Create test app
-        let app = create_test_app(db_pool.clone()).await;
+        let app = create_test_app(db_pool.pool.clone()).await;
 
         // Test GET /api/v1/user endpoint with pagination
         let req = test::TestRequest::get()
@@ -526,7 +526,7 @@ mod dynamic_entity_api_tests {
         let api_key = create_test_api_key(&db_pool).await?;
 
         // Create test app
-        let app = create_test_app(db_pool.clone()).await;
+        let app = create_test_app(db_pool.pool.clone()).await;
 
         // Test GET /api/v1/user/{id} endpoint
         let req = test::TestRequest::get()
@@ -606,7 +606,7 @@ mod dynamic_entity_api_tests {
         let api_key = create_test_api_key(&db_pool).await?;
 
         // Create test app
-        let app = create_test_app(db_pool.clone()).await;
+        let app = create_test_app(db_pool.pool.clone()).await;
 
         // Now test the API endpoint that previously would fail due to missing entity_type column
         let req = test::TestRequest::get()

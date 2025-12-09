@@ -34,13 +34,13 @@ pub async fn setup_test_app() -> Result<(
         Response = actix_web::dev::ServiceResponse,
         Error = actix_web::Error,
     >,
-    sqlx::PgPool,
+    r_data_core_test_support::TestDatabase,
     Uuid, // user_uuid
 )> {
     let pool = setup_test_db().await;
-    clear_test_db(&pool).await?;
+    clear_test_db(&pool.pool).await?;
 
-    let user_uuid = create_test_admin_user(&pool).await?;
+    let user_uuid = create_test_admin_user(&pool.pool).await?;
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -51,25 +51,25 @@ pub async fn setup_test_app() -> Result<(
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
 
-    let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.clone())));
+    let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.pool.clone())));
     let api_key_service = ApiKeyService::new(api_key_repository);
 
-    let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.clone())));
+    let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.pool.clone())));
     let admin_user_service = AdminUserService::new(admin_user_repository);
 
     let entity_definition_service = EntityDefinitionService::new_without_cache(Arc::new(
-        r_data_core_persistence::EntityDefinitionRepository::new(pool.clone()),
+        r_data_core_persistence::EntityDefinitionRepository::new(pool.pool.clone()),
     ));
 
-    let wf_repo = WorkflowRepository::new(pool.clone());
+    let wf_repo = WorkflowRepository::new(pool.pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
     let workflow_service = WorkflowService::new(Arc::new(wf_adapter));
 
-    let dashboard_stats_repository = DashboardStatsRepository::new(pool.clone());
+    let dashboard_stats_repository = DashboardStatsRepository::new(pool.pool.clone());
     let dashboard_stats_service = DashboardStatsService::new(Arc::new(dashboard_stats_repository));
 
     let api_state = ApiState {
-        db_pool: pool.clone(),
+        db_pool: pool.pool.clone(),
         api_config: r_data_core_core::config::ApiConfig {
             host: "0.0.0.0".to_string(),
             port: 8888,
@@ -79,7 +79,7 @@ pub async fn setup_test_app() -> Result<(
             enable_docs: true,
             cors_origins: vec![],
         },
-        role_service: RoleService::new(pool.clone(), cache_manager.clone(), Some(3600)),
+        role_service: RoleService::new(pool.pool.clone(), cache_manager.clone(), Some(3600)),
         cache_manager: cache_manager.clone(),
         api_key_service,
         admin_user_service,

@@ -8,7 +8,7 @@ use r_data_core_test_support::setup_test_db;
 #[tokio::test]
 async fn test_version_repository_list_and_get() {
     let pool = setup_test_db().await;
-    let repo = VersionRepository::new(pool.clone());
+    let repo = VersionRepository::new(pool.pool.clone());
     let entity_uuid = Uuid::now_v7();
 
     // First create the entity in entities_registry (required for foreign key)
@@ -21,7 +21,7 @@ async fn test_version_repository_list_and_get() {
     .bind(format!("test-entity-{}", entity_uuid.simple()))
     .bind("/")
     .bind(created_by)
-    .execute(&pool)
+    .execute(&pool.pool)
     .await
     .unwrap();
 
@@ -34,7 +34,7 @@ async fn test_version_repository_list_and_get() {
         .bind("dynamic_entity")
         .bind(v)
         .bind(serde_json::json!({"v": v}))
-        .execute(&pool)
+        .execute(&pool.pool)
         .await
         .unwrap();
     }

@@ -8,6 +8,7 @@ pub mod bootstrap;
 pub mod dashboard_stats;
 pub mod dynamic_entity;
 pub mod entity_definition;
+pub mod query_validation;
 pub mod role;
 pub mod settings;
 pub mod version;
@@ -26,6 +27,9 @@ pub use bootstrap::{init_cache_manager, init_logger_with_default, init_pg_pool};
 pub use dashboard_stats::DashboardStatsService;
 pub use dynamic_entity::DynamicEntityService;
 pub use entity_definition::{EntityDefinitionService, ServiceEntityFieldInfo};
+pub use query_validation::{
+    validate_list_query, FieldValidator, ListQueryParams, ValidatedListQuery,
+};
 pub use role::RoleService;
 pub use settings::SettingsService;
 pub use version::{VersionMetaWithName, VersionService};

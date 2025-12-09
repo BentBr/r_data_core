@@ -14,7 +14,7 @@ async fn run_now_creates_queued_run_and_worker_marks_success() {
     // Setup test database
     let pool = setup_test_db().await;
 
-    let repo = WorkflowRepository::new(pool.clone());
+    let repo = WorkflowRepository::new(pool.pool.clone());
     let adapter = WorkflowRepositoryAdapter::new(repo);
     let service = WorkflowService::new(Arc::new(adapter));
 
@@ -66,7 +66,7 @@ async fn run_now_creates_queued_run_and_worker_marks_success() {
         .expect("create workflow");
 
     // Simulate run enqueue
-    let repo_core = WorkflowRepository::new(pool.clone());
+    let repo_core = WorkflowRepository::new(pool.pool.clone());
     let trigger_id = Uuid::now_v7();
     repo_core
         .insert_run_queued(wf_uuid, trigger_id)
@@ -86,7 +86,7 @@ async fn run_now_creates_queued_run_and_worker_marks_success() {
         r#"SELECT status::text AS status FROM workflow_runs WHERE workflow_uuid = $1 ORDER BY queued_at DESC LIMIT 1"#,
         wf_uuid
     )
-    .fetch_one(&pool)
+    .fetch_one(&pool.pool)
     .await
     .expect("fetch run");
 

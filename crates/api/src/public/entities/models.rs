@@ -24,7 +24,7 @@ pub struct EntityQuery {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
     pub sort_by: Option<String>,
-    pub sort_direction: Option<String>,
+    pub sort_order: Option<String>,
 }
 
 /// Kind of browse node
