@@ -10,12 +10,20 @@ export default defineConfig({
             '@': fileURLToPath(new URL('./src', import.meta.url)),
         },
     },
+    server: {
+        port: 80,
+        strictPort: true,
+        host: '0.0.0.0',
+        allowedHosts: ['website.rdatacore.docker', 'localhost'],
+    },
     build: {
         target: 'esnext',
         sourcemap: true,
         outDir: 'dist',
     },
+    // Configure for SPA routing in production
     preview: {
-        port: 4173,
+        port: 80,
+        host: '0.0.0.0',
     },
 })

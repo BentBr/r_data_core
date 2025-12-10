@@ -222,7 +222,7 @@ services:
             # Frontend Environment Variables
             - VITE_BASE_URL=http://website.rdatacore.docker
             - VITE_SITE_NAME=RDataCore
-            - R_DATA_CORE_DEMO_URL=http://admin.rdatacore.docker
+            - VITE_R_DATA_CORE_DEMO_URL=http://admin.rdatacore.docker
 
 volumes:
     postgres_data:

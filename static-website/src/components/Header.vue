@@ -20,7 +20,7 @@
                     size="small"
                     @click="openDemo"
                 >
-                    {{ t('cta.try_demo') }}
+                    {{ t('cta.primary') }}
                 </v-btn>
             </div>
         </div>

@@ -1,28 +1,11 @@
-type EnvConfig = {
-    baseUrl: string
-    siteName: string
-    demoUrl: string
-    isProduction: boolean
-    isDevelopment: boolean
-}
+// Environment Variables Check
+// This utility helps verify that Vite is properly reading environment variables
 
-function getEnv(name: string): string {
-    const value = import.meta.env[name]
-    if (value === undefined || value === null) {
-        return ''
-    }
-    return String(value)
-}
-
-export function checkEnvironmentVariables(): EnvConfig {
-    const baseUrl = getEnv('VITE_BASE_URL')
-    const siteName = getEnv('VITE_SITE_NAME')
-    const demoUrl = getEnv('R_DATA_CORE_DEMO_URL')
-
+export function checkEnvironmentVariables() {
     const envVars = {
-        VITE_BASE_URL: baseUrl,
-        VITE_SITE_NAME: siteName,
-        R_DATA_CORE_DEMO_URL: demoUrl,
+        VITE_BASE_URL: import.meta.env.VITE_BASE_URL,
+        VITE_SITE_NAME: import.meta.env.VITE_SITE_NAME,
+        VITE_R_DATA_CORE_DEMO_URL: import.meta.env.VITE_R_DATA_CORE_DEMO_URL,
         MODE: import.meta.env.MODE,
         DEV: import.meta.env.DEV,
         PROD: import.meta.env.PROD,
@@ -34,27 +17,38 @@ export function checkEnvironmentVariables(): EnvConfig {
         console.groupEnd()
     }
 
-    return {
-        baseUrl,
-        siteName,
-        demoUrl,
-        isProduction: import.meta.env.PROD,
-        isDevelopment: import.meta.env.DEV,
-    }
+    return envVars
 }
 
+/**
+ * Get the base URL with proper fallback
+ * In production, uses env var or falls back to window.location.origin
+ */
+export function getBaseUrl(): string {
+    const envUrl = import.meta.env.VITE_BASE_URL
+
+    // If env var is explicitly set, use it
+    if (envUrl && envUrl.trim() !== '') {
+        return envUrl.trim()
+    }
+
+    // In production, fall back to current origin if env var not set
+    if (typeof window !== 'undefined') {
+        return window.location.origin
+    }
+
+    // Server-side rendering fallback
+    return ''
+}
+
+// Type-safe environment variable getters
+// Using direct property access instead of getters to avoid reactive loops
 export const env = {
     get baseUrl() {
-        return (
-            getEnv('VITE_BASE_URL') || (typeof window !== 'undefined' ? window.location.origin : '')
-        )
+        return getBaseUrl()
     },
-    get siteName() {
-        return getEnv('VITE_SITE_NAME') || 'RDataCore'
-    },
-    get demoUrl() {
-        return getEnv('R_DATA_CORE_DEMO_URL')
-    },
+    siteName: import.meta.env.VITE_SITE_NAME ?? 'RDataCore',
+    demoUrl: import.meta.env.VITE_R_DATA_CORE_DEMO_URL ?? '',
     isProduction: import.meta.env.PROD,
     isDevelopment: import.meta.env.DEV,
 }

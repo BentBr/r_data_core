@@ -117,5 +117,6 @@ export function useTranslations() {
     }
 }
 
+// Initialize translations on module load
 const translationInstance = useTranslations()
 void translationInstance.initTranslations()

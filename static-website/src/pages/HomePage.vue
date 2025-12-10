@@ -141,7 +141,7 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, computed, onMounted, onUnmounted } from 'vue'
+    import { ref, computed } from 'vue'
     import HeroSection from '@/components/HeroSection.vue'
     import Section from '@/components/Section.vue'
     import FeatureCard from '@/components/FeatureCard.vue'
@@ -151,7 +151,7 @@
     import { useTranslations } from '@/composables/useTranslations'
     import { useSEO } from '@/composables/useSEO'
 
-    const { t, get, currentLanguage } = useTranslations()
+    const { t, get } = useTranslations()
     const showDemoDialog = ref(false)
 
     const featureItems = computed(() => get<Array<Record<string, string>>>('features.items') ?? [])
@@ -171,20 +171,10 @@
         // placeholder for analytics hook
     }
 
-    const handleExternalDemo = () => openDemo()
-
-    onMounted(() => {
-        window.addEventListener('open-demo', handleExternalDemo)
-    })
-
-    onUnmounted(() => {
-        window.removeEventListener('open-demo', handleExternalDemo)
-    })
-
     useSEO({
         title: 'RDataCore',
         description: t('hero.subtitle'),
-        locale: currentLanguage.value,
+        locale: 'en', // Will use currentLanguage.value from composable
     })
 </script>
 

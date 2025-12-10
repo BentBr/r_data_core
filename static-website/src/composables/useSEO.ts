@@ -1,6 +1,6 @@
 import { onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { env } from '@/env-check'
+import { env, getBaseUrl } from '@/env-check'
 import { useTranslations } from './useTranslations'
 
 type SeoOptions = {
@@ -31,9 +31,13 @@ function setPropertyTag(property: string, content: string) {
 }
 
 function setLinkTag(rel: string, href: string, hreflang?: string) {
-    let tag = document.querySelector<HTMLLinkElement>(
-        `link[rel="${rel}"][${hreflang ? 'hreflang' : 'href'}="${hreflang ?? href}"]`
-    )
+    let selector = `link[rel="${rel}"]`
+    if (hreflang) {
+        selector += `[hreflang="${hreflang}"]`
+    } else {
+        selector += `[href="${href}"]`
+    }
+    let tag = document.querySelector<HTMLLinkElement>(selector)
     if (!tag) {
         tag = document.createElement('link')
         tag.setAttribute('rel', rel)
@@ -53,22 +57,26 @@ export function useSEO(options: SeoOptions) {
     const { currentLanguage } = useTranslations()
 
     const applySeo = () => {
-        const siteName = env.siteName || 'RDataCore'
+        // Access env properties directly (not in reactive context) to avoid recursion
+        // Call getBaseUrl() directly instead of using env.baseUrl getter to avoid reactive tracking
+        const siteName = env.siteName ?? 'RDataCore'
+        const baseUrl = getBaseUrl()
         const baseTitle = options.title || siteName
         const fullTitle = `${baseTitle} · ${siteName}`
         const description = options.description || siteName
         const keywords = options.keywords?.join(', ') ?? 'data, rdatacore'
-        const locale = options.locale || currentLanguage.value
+        // Use current language from composable instead of static options
+        const locale = currentLanguage.value
 
         document.title = fullTitle
         setMetaTag('description', description)
         setMetaTag('keywords', keywords)
 
-        const canonicalUrl = `${env.baseUrl}${route.fullPath}`
+        const canonicalUrl = `${baseUrl}${route.fullPath}`
         setLinkTag('canonical', canonicalUrl)
 
-        const altEn = `${env.baseUrl}/`
-        const altDe = `${env.baseUrl}/`
+        const altEn = `${baseUrl}/`
+        const altDe = `${baseUrl}/`
         setLinkTag('alternate', altEn, 'en')
         setLinkTag('alternate', altDe, 'de')
         setLinkTag('alternate', canonicalUrl, 'x-default')
@@ -84,8 +92,10 @@ export function useSEO(options: SeoOptions) {
     }
 
     onMounted(applySeo)
+    // Watch route and language separately to avoid recursion
     watch(
-        () => [route.fullPath, currentLanguage.value],
+        () => route.fullPath,
         () => applySeo()
     )
+    watch(currentLanguage, () => applySeo(), { deep: false })
 }
