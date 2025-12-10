@@ -6,6 +6,7 @@
         "entity_definition": "source_entity",
         "filter": {
           "field": "status",
+          "operator": "=",
           "value": "active"
         },
         "mapping": {

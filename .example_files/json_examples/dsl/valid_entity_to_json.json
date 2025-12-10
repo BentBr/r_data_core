@@ -6,6 +6,7 @@
         "entity_definition": "customer",
         "filter": {
           "field": "active",
+          "operator": "=",
           "value": "true"
         },
         "mapping": {

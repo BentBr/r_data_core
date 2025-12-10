@@ -6,6 +6,7 @@
         "entity_definition": "nonexistent_entity_type",
         "filter": {
           "field": "status",
+          "operator": "=",
           "value": "active"
         },
         "mapping": {}
