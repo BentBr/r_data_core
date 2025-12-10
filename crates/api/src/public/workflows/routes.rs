@@ -2,6 +2,7 @@
 
 use actix_web::{get, post, web, HttpMessage, HttpRequest, HttpResponse, Responder};
 use serde_json::json;
+use std::collections::HashMap;
 use std::result::Result;
 use uuid::Uuid;
 
@@ -12,8 +13,16 @@ use r_data_core_workflow::data::adapters::format::FormatHandler;
 use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::FetchAndStageJob;
 use r_data_core_workflow::dsl::{DslProgram, FromDef, OutputMode, ToDef};
+use serde::Deserialize;
 use serde_json::Value as JsonValue;
-use std::collections::HashMap;
+
+#[derive(Deserialize)]
+struct WorkflowQuery {
+    #[serde(default)]
+    r#async: Option<bool>,
+    #[serde(default)]
+    run_uuid: Option<Uuid>,
+}
 
 /// Collect input data from entity sources in workflow steps
 async fn collect_entity_input_data(
@@ -161,10 +170,13 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
     path = "/api/v1/workflows/{uuid}",
     tag = "workflows",
     params(
-        ("uuid" = Uuid, Path, description = "Workflow UUID")
+        ("uuid" = Uuid, Path, description = "Workflow UUID"),
+        ("async" = Option<bool>, Query, description = "Execute async (202) or sync (200)"),
+        ("run_uuid" = Option<Uuid>, Query, description = "Run UUID to poll when async=true")
     ),
     responses(
         (status = 200, description = "Workflow data in configured format (CSV or JSON)", content_type = "text/csv,application/json"),
+        (status = 202, description = "Workflow execution queued (use /workflows/{uuid} again to check status)"),
         (status = 401, description = "Unauthorized - authentication required"),
         (status = 404, description = "Workflow not found"),
         (status = 500, description = "Internal server error")
@@ -181,7 +193,7 @@ pub async fn get_workflow_data(
     path: web::Path<Uuid>,
     req: HttpRequest,
     state: web::Data<ApiStateWrapper>,
-    query: web::Query<HashMap<String, String>>,
+    query: web::Query<WorkflowQuery>,
 ) -> impl Responder {
     let uuid = path.into_inner();
 
@@ -223,8 +235,8 @@ pub async fn get_workflow_data(
     };
     let _ = state.workflow_service().mark_run_running(run_uuid).await;
 
-    let async_mode = query.get("async").is_some_and(|v| v == "true");
-    let run_uuid_param = query.get("run_uuid").and_then(|v| Uuid::parse_str(v).ok());
+    let async_mode = query.r#async.unwrap_or(false);
+    let run_uuid_param = query.run_uuid;
 
     if async_mode {
         if let Some(resp) = match handle_async_get(uuid, run_uuid_param, &state).await {
