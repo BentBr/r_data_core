@@ -298,11 +298,12 @@ impl WorkflowRepository {
     }
 
     /// Check if a workflow config has from.api source type (accepts POST, cron disabled)
+    /// or to.format.output.mode === 'api' (exports via GET, cron disabled)
     fn check_has_api_endpoint(config: &Value) -> bool {
         if let Some(steps) = config.get("steps").and_then(|v| v.as_array()) {
             for step in steps {
+                // Check for from.api source type (accepts POST, cron disabled)
                 if let Some(from) = step.get("from") {
-                    // Check for from.format.source.source_type === "api" without endpoint field
                     if let Some(source) = from
                         .get("source")
                         .or_else(|| from.get("format").and_then(|f| f.get("source")))
@@ -321,6 +322,27 @@ impl WorkflowRepository {
                                 } else {
                                     // No config object or empty config = accepts POST
                                     return true;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Check for to.format.output.mode === 'api' (exports via GET, cron disabled)
+                if let Some(to) = step.get("to") {
+                    if let Some(to_type) = to.get("type").and_then(|v| v.as_str()) {
+                        if to_type == "format" {
+                            if let Some(output) = to.get("output") {
+                                // Check if output is a string "api" or object with mode: "api"
+                                if output.as_str() == Some("api") {
+                                    return true;
+                                }
+                                if let Some(output_obj) = output.as_object() {
+                                    if output_obj.get("mode").and_then(|v| v.as_str())
+                                        == Some("api")
+                                    {
+                                        return true;
+                                    }
                                 }
                             }
                         }
@@ -447,6 +469,19 @@ impl WorkflowRepository {
             .await
             .context("mark run failure")?;
         Ok(())
+    }
+
+    /// Get run status
+    ///
+    /// # Errors
+    /// Returns an error if query fails
+    pub async fn get_run_status(&self, run_uuid: Uuid) -> anyhow::Result<Option<String>> {
+        let row = sqlx::query("SELECT status::text FROM workflow_runs WHERE uuid = $1")
+            .bind(run_uuid)
+            .fetch_optional(&self.pool)
+            .await
+            .context("get run status")?;
+        Ok(row.and_then(|r| r.try_get::<String, _>("status").ok()))
     }
 
     /// Insert a log entry for a workflow run
@@ -660,6 +695,27 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         self.insert_run_queued(workflow_uuid, trigger_id).await
     }
 
+    async fn mark_run_running(&self, run_uuid: Uuid) -> anyhow::Result<()> {
+        self.mark_run_running(run_uuid).await
+    }
+
+    async fn mark_run_success(
+        &self,
+        run_uuid: Uuid,
+        processed: i64,
+        failed: i64,
+    ) -> anyhow::Result<()> {
+        self.mark_run_success(run_uuid, processed, failed).await
+    }
+
+    async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
+        self.mark_run_failure(run_uuid, message).await
+    }
+
+    async fn get_run_status(&self, run_uuid: Uuid) -> anyhow::Result<Option<String>> {
+        self.get_run_status(run_uuid).await
+    }
+
     async fn list_runs_paginated(
         &self,
         workflow_uuid: Uuid,
@@ -867,19 +923,6 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         error: Option<&str>,
     ) -> anyhow::Result<()> {
         self.set_raw_item_status(item_uuid, status, error).await
-    }
-
-    async fn mark_run_success(
-        &self,
-        run_uuid: Uuid,
-        processed: i64,
-        failed: i64,
-    ) -> anyhow::Result<()> {
-        self.mark_run_success(run_uuid, processed, failed).await
-    }
-
-    async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
-        self.mark_run_failure(run_uuid, message).await
     }
 
     async fn get_workflow_uuid_for_run(&self, run_uuid: Uuid) -> anyhow::Result<Option<Uuid>> {

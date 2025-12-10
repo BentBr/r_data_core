@@ -26,47 +26,14 @@ async fn test_push_to_remote_api_csv_from_entities_via_cron() -> anyhow::Result<
     let _ed_uuid = create_test_entity_definition(&pool, &entity_type).await?;
 
     // Create consumer workflow that pushes CSV to remote API from entities via cron
-    let config = serde_json::json!({
-        "steps": [
-            {
-                "from": {
-                    "type": "entity",
-                    "entity_definition": entity_type,
-                    "filter": {
-                        "field": "name",
-                        "value": "test"
-                    },
-                    "mapping": {
-                        "name": "name",
-                        "email": "email"
-                    }
-                },
-                "transform": { "type": "none" },
-                "to": {
-                    "type": "format",
-                    "output": {
-                        "mode": "push",
-                        "destination": {
-                            "destination_type": "uri",
-                            "config": {
-                                "uri": "http://example.com/api/data"
-                            },
-                            "auth": null
-                        },
-                        "method": "post"
-                    },
-                    "format": {
-                        "format_type": "csv",
-                        "options": { "has_header": true }
-                    },
-                    "mapping": {
-                        "name": "name",
-                        "email": "email"
-                    }
-                }
-            }
-        ]
-    });
+    let mut config = crate::api::workflows::common::load_workflow_example(
+        "workflow_entity_to_push_csv.json",
+        &entity_type,
+    )?;
+    // Replace filter value placeholder
+    let config_str = serde_json::to_string(&config)?;
+    let config_str = config_str.replace("${FILTER_VALUE}", "test");
+    config = serde_json::from_str(&config_str)?;
 
     let wf_uuid = create_consumer_workflow(
         &pool,
@@ -104,47 +71,14 @@ async fn test_push_to_remote_api_json_from_entities_via_cron() -> anyhow::Result
     let entity_type = generate_entity_type("test_push_json");
     let _ed_uuid = create_test_entity_definition(&pool, &entity_type).await?;
 
-    let config = serde_json::json!({
-        "steps": [
-            {
-                "from": {
-                    "type": "entity",
-                    "entity_definition": entity_type,
-                    "filter": {
-                        "field": "name",
-                        "value": "test"
-                    },
-                    "mapping": {
-                        "name": "name",
-                        "email": "email"
-                    }
-                },
-                "transform": { "type": "none" },
-                "to": {
-                    "type": "format",
-                    "output": {
-                        "mode": "push",
-                        "destination": {
-                            "destination_type": "uri",
-                            "config": {
-                                "uri": "http://example.com/api/data"
-                            },
-                            "auth": null
-                        },
-                        "method": "post"
-                    },
-                    "format": {
-                        "format_type": "json",
-                        "options": {}
-                    },
-                    "mapping": {
-                        "name": "name",
-                        "email": "email"
-                    }
-                }
-            }
-        ]
-    });
+    let mut config = crate::api::workflows::common::load_workflow_example(
+        "workflow_entity_to_push_json.json",
+        &entity_type,
+    )?;
+    // Replace filter value placeholder
+    let config_str = serde_json::to_string(&config)?;
+    let config_str = config_str.replace("${FILTER_VALUE}", "test");
+    config = serde_json::from_str(&config_str)?;
 
     let wf_uuid = create_consumer_workflow(
         &pool,

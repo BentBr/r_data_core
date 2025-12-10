@@ -54,7 +54,7 @@ export type FromDef =
     | {
           type: 'entity'
           entity_definition: string
-          filter: { field: string; value: string }
+          filter?: { field: string; operator?: string; value: string }
           mapping: Mapping
       }
 
@@ -205,10 +205,9 @@ export function ensureCsvOptions(step: DslStep) {
 export function ensureEntityFilter(step: DslStep) {
     if (step.from?.type === 'entity') {
         const f = step.from as {
-            filter?: { field: string; value: string }
+            filter?: { field: string; operator?: string; value: string }
             mapping?: Record<string, string>
         }
-        f.filter ??= { field: '', value: '' }
         f.mapping ??= {}
     }
 }

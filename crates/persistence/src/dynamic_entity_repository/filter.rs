@@ -25,6 +25,7 @@ pub async fn filter_entities_impl(
     let (mut query, _param_index) = build_where_clause(
         query_prefix,
         params.filters.as_ref(),
+        params.filter_operators.as_ref(),
         params.search.as_ref(),
     );
 
@@ -51,7 +52,9 @@ pub async fn filter_entities_impl(
         &query,
         &repo.pool,
         params.filters.as_ref(),
+        params.filter_operators.as_ref(),
         params.search.as_ref(),
+        &entity_def,
     )
     .await?;
 
@@ -98,6 +101,7 @@ fn build_query_prefix(view_name: &str, fields: Option<&Vec<String>>) -> String {
 fn build_where_clause(
     mut query: String,
     filters: Option<&std::collections::HashMap<String, JsonValue>>,
+    filter_operators: Option<&std::collections::HashMap<String, String>>,
     search: Option<&(String, Vec<String>)>,
 ) -> (String, i32) {
     let mut param_index = 1;
@@ -113,7 +117,12 @@ fn build_where_clause(
                     query.push_str(" AND ");
                 }
 
-                param_index = add_filter_condition(&mut query, field, value, param_index);
+                // Get operator for this field, default to "="
+                let operator = filter_operators
+                    .and_then(|ops| ops.get(field))
+                    .map_or("=", std::string::String::as_str);
+
+                param_index = add_filter_condition(&mut query, field, value, operator, param_index);
                 is_first = false;
             }
         }
@@ -151,38 +160,101 @@ fn build_where_clause(
 }
 
 /// Add a single filter condition to the query
+///
+/// # Arguments
+/// * `query` - The SQL query string being built
+/// * `field` - The field name to filter on
+/// * `value` - The filter value
+/// * `operator` - The comparison operator (=, >, <, <=, >=, IN, NOT IN)
+/// * `param_index` - Current parameter index for SQL parameter binding
+///
+/// # Returns
+/// The next parameter index to use
 fn add_filter_condition(
     query: &mut String,
     field: &str,
     value: &JsonValue,
+    operator: &str,
     param_index: i32,
 ) -> i32 {
-    // Special handling for path-based filters
+    // Sanitize operator to prevent SQL injection - only allow whitelisted operators
+    let sanitized_operator = match operator {
+        "=" | ">" | "<" | "<=" | ">=" | "IN" | "NOT IN" => operator,
+        _ => {
+            // Default to "=" if operator is invalid
+            "="
+        }
+    };
+
+    // Special handling for path-based filters (these ignore operator)
     if field == "path_prefix" {
         #[allow(clippy::format_push_string)]
         {
             query.push_str(&format!("path LIKE ${param_index} || '/%'"));
         }
-        param_index + 1
-    } else if field == "path_equals" || field == "path" {
+        return param_index + 1;
+    }
+    if field == "path_equals" || field == "path" {
         #[allow(clippy::format_push_string)]
         {
             query.push_str(&format!("path = ${param_index}"));
         }
-        param_index + 1
-    } else if value == &JsonValue::Null {
+        return param_index + 1;
+    }
+
+    // Handle NULL values
+    if value == &JsonValue::Null {
         #[allow(clippy::format_push_string)]
         {
             query.push_str(&format!("{field} IS NULL"));
         }
-        param_index
-    } else {
+        return param_index;
+    }
+
+    // Handle IN and NOT IN operators with array values
+    if sanitized_operator == "IN" || sanitized_operator == "NOT IN" {
+        if let Some(arr) = value.as_array() {
+            if arr.is_empty() {
+                // Empty IN list means no matches
+                #[allow(clippy::format_push_string)]
+                {
+                    query.push_str(if sanitized_operator == "IN" {
+                        "1 = 0"
+                    } else {
+                        "1 = 1"
+                    });
+                }
+                return param_index;
+            }
+            // Build IN clause with multiple parameters
+            #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+            let placeholders: Vec<String> = (0..arr.len())
+                .map(|i| format!("${}", param_index + i as i32))
+                .collect();
+            #[allow(clippy::format_push_string)]
+            {
+                query.push_str(&format!(
+                    "{field} {sanitized_operator} ({})",
+                    placeholders.join(", ")
+                ));
+            }
+            #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+            return param_index + arr.len() as i32;
+        }
+        // If value is not an array for IN/NOT IN, treat as single value
         #[allow(clippy::format_push_string)]
         {
-            query.push_str(&format!("{field} = ${param_index}"));
+            query.push_str(&format!("{field} {sanitized_operator} (${param_index})"));
         }
-        param_index + 1
+        return param_index + 1;
     }
+
+    // Standard comparison operators (=, >, <, <=, >=)
+    #[allow(clippy::format_push_string)]
+    {
+        query.push_str(&format!("{field} {sanitized_operator} ${param_index}"));
+    }
+    param_index + 1
 }
 
 /// Add sort and pagination to query
@@ -221,13 +293,20 @@ async fn execute_filter_query(
     query: &str,
     pool: &sqlx::PgPool,
     filters: Option<&std::collections::HashMap<String, JsonValue>>,
+    filter_operators: Option<&std::collections::HashMap<String, String>>,
     search: Option<&(String, Vec<String>)>,
+    entity_def: &r_data_core_core::entity_definition::definition::EntityDefinition,
 ) -> Result<Vec<sqlx::postgres::PgRow>> {
     let mut sql = sqlx::query(query);
 
     // Bind filter parameters with proper types
     if let Some(filter_map) = filters {
         for (field, value) in filter_map {
+            // Get operator for this field to determine if it's IN/NOT IN
+            let operator = filter_operators
+                .and_then(|ops| ops.get(field))
+                .map_or("=", std::string::String::as_str);
+
             // Special handling for parent_uuid - bind as UUID type
             if field == "parent_uuid" {
                 if let Some(uuid_str) = value.as_str() {
@@ -239,7 +318,42 @@ async fn execute_filter_query(
                 }
                 continue;
             }
-            match value {
+
+            // Get field type from entity definition or system fields
+            let field_type = get_field_type(field, entity_def);
+
+            // Handle IN/NOT IN with array values
+            if operator == "IN" || operator == "NOT IN" {
+                if let Some(arr) = value.as_array() {
+                    for item in arr {
+                        let converted = convert_value_to_type(item, field_type.as_ref());
+                        match converted {
+                            JsonValue::String(s) => sql = sql.bind(s),
+                            JsonValue::Number(n) => {
+                                if let Some(i) = n.as_i64() {
+                                    sql = sql.bind(i);
+                                } else if let Some(f) = n.as_f64() {
+                                    sql = sql.bind(f);
+                                } else {
+                                    sql = sql.bind(n.to_string());
+                                }
+                            }
+                            JsonValue::Bool(b) => sql = sql.bind(b),
+                            JsonValue::Null => {
+                                // Skip NULL values in arrays
+                            }
+                            _ => sql = sql.bind(item.to_string()),
+                        }
+                    }
+                    continue;
+                }
+            }
+
+            // Convert value to appropriate type based on field definition
+            let converted = convert_value_to_type(value, field_type.as_ref());
+
+            // Standard single value binding with type conversion
+            match converted {
                 JsonValue::String(s) => sql = sql.bind(s),
                 JsonValue::Number(n) => {
                     if let Some(i) = n.as_i64() {
@@ -250,12 +364,12 @@ async fn execute_filter_query(
                         sql = sql.bind(n.to_string());
                     }
                 }
-                JsonValue::Bool(b) => sql = sql.bind(*b),
+                JsonValue::Bool(b) => sql = sql.bind(b),
                 JsonValue::Null => {
                     // NULL values are handled in the query with IS NULL
                     // Skip binding for NULL values
                 }
-                _ => sql = sql.bind(value.to_string()),
+                _ => sql = sql.bind(converted.to_string()),
             }
         }
     }
@@ -273,4 +387,62 @@ async fn execute_filter_query(
     })?;
 
     Ok(rows)
+}
+
+/// Get the field type for a given field name
+/// Returns the field type from entity definition or system field types
+fn get_field_type(
+    field: &str,
+    entity_def: &r_data_core_core::entity_definition::definition::EntityDefinition,
+) -> Option<r_data_core_core::field::FieldType> {
+    // System fields with known types
+    match field {
+        "published" => Some(r_data_core_core::field::FieldType::Boolean),
+        "version" => Some(r_data_core_core::field::FieldType::Integer),
+        "uuid" | "parent_uuid" | "created_by" | "updated_by" => {
+            Some(r_data_core_core::field::FieldType::Uuid)
+        }
+        "created_at" | "updated_at" => Some(r_data_core_core::field::FieldType::DateTime),
+        "path" => Some(r_data_core_core::field::FieldType::String),
+        _ => {
+            // Look up in entity definition
+            entity_def.get_field(field).map(|f| f.field_type.clone())
+        }
+    }
+}
+
+/// Convert a JSON value to the appropriate type based on field definition
+fn convert_value_to_type(
+    value: &JsonValue,
+    field_type: Option<&r_data_core_core::field::FieldType>,
+) -> JsonValue {
+    field_type.map_or_else(
+        || value.clone(),
+        |ft| match (value, ft) {
+            // String values that need conversion
+            (JsonValue::String(s), r_data_core_core::field::FieldType::Boolean) => {
+                match s.to_lowercase().as_str() {
+                    "true" | "1" | "yes" | "on" => JsonValue::Bool(true),
+                    "false" | "0" | "no" | "off" => JsonValue::Bool(false),
+                    _ => value.clone(), // Keep original if can't parse
+                }
+            }
+            (JsonValue::String(s), r_data_core_core::field::FieldType::Integer) => s
+                .parse::<i64>()
+                .map_or_else(|_| value.clone(), |i| JsonValue::Number(i.into())),
+            (JsonValue::String(s), r_data_core_core::field::FieldType::Float) => {
+                s.parse::<f64>().map_or_else(
+                    |_| value.clone(),
+                    |f| {
+                        JsonValue::Number(
+                            serde_json::Number::from_f64(f)
+                                .unwrap_or_else(|| serde_json::Number::from(0)),
+                        )
+                    },
+                )
+            }
+            // Already correct type or unknown type - return as-is
+            _ => value.clone(),
+        },
+    )
 }

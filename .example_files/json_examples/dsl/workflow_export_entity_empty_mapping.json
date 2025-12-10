@@ -1,0 +1,27 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "entity",
+        "entity_definition": "${ENTITY_TYPE}",
+        "filter": {
+          "field": "name",
+          "operator": "=",
+          "value": "Test"
+        },
+        "mapping": {}
+      },
+      "transform": { "type": "none" },
+      "to": {
+        "type": "format",
+        "output": { "mode": "api" },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {}
+      }
+    }
+  ]
+}
+

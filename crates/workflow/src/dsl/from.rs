@@ -9,6 +9,7 @@ use utoipa::ToSchema;
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct EntityFilter {
     pub field: String,
+    pub operator: String,
     pub value: String,
 }
 
@@ -50,7 +51,9 @@ pub enum FromDef {
     /// Existing entities as input
     Entity {
         entity_definition: String,
-        filter: EntityFilter,
+        /// Optional filter; if omitted, all entities are included
+        #[serde(default)]
+        filter: Option<EntityFilter>,
         /// One-to-one mapping: `source_field` -> `normalized_field`
         mapping: std::collections::HashMap<String, String>,
     },
@@ -137,8 +140,27 @@ pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> R
             if entity_definition.trim().is_empty() {
                 bail!("DSL step {idx}: from.entity.entity_definition must not be empty");
             }
-            if filter.field.trim().is_empty() || filter.value.trim().is_empty() {
-                bail!("DSL step {idx}: from.entity.filter requires both field and value");
+            if let Some(filter) = filter {
+                if filter.field.trim().is_empty()
+                    || filter.value.trim().is_empty()
+                    || filter.operator.trim().is_empty()
+                {
+                    bail!("DSL step {idx}: from.entity.filter requires field, operator, and value");
+                }
+                // Validate filter field name is safe (prevents SQL injection)
+                if !safe_field.is_match(&filter.field) {
+                    bail!(
+                        "DSL step {idx}: from.entity.filter.field must be a safe identifier (got: '{}')",
+                        filter.field
+                    );
+                }
+                // Validate operator is one of the allowed values
+                let allowed_operators = ["=", ">", "<", "<=", ">=", "IN", "NOT IN"];
+                if !allowed_operators.contains(&filter.operator.as_str()) {
+                    bail!(
+                        "DSL step {idx}: from.entity.filter.operator must be one of: =, >, <, <=, >=, IN, NOT IN"
+                    );
+                }
             }
             // Allow empty mappings
             validate_mapping(idx, mapping, safe_field)?;

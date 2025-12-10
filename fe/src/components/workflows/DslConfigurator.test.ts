@@ -119,7 +119,7 @@ describe('DslConfigurator', () => {
                         from: {
                             type: 'entity',
                             entity_definition: 'test_entity',
-                            filter: { field: 'status', value: 'active' },
+                            filter: { field: 'status', operator: '=', value: 'active' },
                             mapping: {},
                         },
                         transform: { type: 'none' },
@@ -143,6 +143,76 @@ describe('DslConfigurator', () => {
             const steps = emitted[emitted.length - 1][0]
             expect(steps[0].from.type).toBe('entity')
             expect(steps[0].to.type).toBe('entity')
+        }
+    })
+
+    it('preserves open panels when props change', async () => {
+        const initialSteps: DslStep[] = [
+            {
+                from: {
+                    type: 'format',
+                    source: {
+                        source_type: 'uri',
+                        config: { uri: 'http://example.com/data.csv' },
+                        auth: { type: 'none' },
+                    },
+                    format: {
+                        format_type: 'csv',
+                        options: {},
+                    },
+                    mapping: {},
+                },
+                transform: { type: 'none' },
+                to: {
+                    type: 'format',
+                    output: { mode: 'download' },
+                    format: {
+                        format_type: 'json',
+                        options: {},
+                    },
+                    mapping: {},
+                },
+            },
+        ]
+
+        const wrapper = mount(DslConfigurator, {
+            props: {
+                modelValue: initialSteps,
+            },
+        })
+
+        await nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // Open the first panel
+        const expansionPanels = wrapper.findAllComponents({ name: 'VExpansionPanel' })
+        if (expansionPanels.length > 0) {
+            const vm = wrapper.vm as { openPanels: number[] }
+            vm.openPanels = [0]
+            await nextTick()
+
+            // Update props (simulating parent component update)
+            const updatedSteps: DslStep[] = [
+                {
+                    ...initialSteps[0],
+                    to: {
+                        type: 'format',
+                        output: { mode: 'api' }, // Changed to api (would disable cron)
+                        format: {
+                            format_type: 'json',
+                            options: {},
+                        },
+                        mapping: {},
+                    },
+                },
+            ]
+
+            await wrapper.setProps({ modelValue: updatedSteps })
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            // Panel should still be open
+            expect(vm.openPanels).toContain(0)
         }
     })
 })

@@ -14,6 +14,9 @@ pub struct FilterEntitiesParams {
     pub offset: i64,
     /// Field filters as key-value pairs
     pub filters: Option<HashMap<String, JsonValue>>,
+    /// Filter operators: field name -> operator (e.g., "=", ">", "<", "<=", ">=", "IN", "NOT IN")
+    /// If not provided, defaults to "=" for all filters
+    pub filter_operators: Option<HashMap<String, String>>,
     /// Search parameters: (`search_term`, `fields_to_search`)
     pub search: Option<(String, Vec<String>)>,
     /// Sort parameters: (field, direction)
@@ -30,6 +33,7 @@ impl FilterEntitiesParams {
             limit,
             offset,
             filters: None,
+            filter_operators: None,
             search: None,
             sort: None,
             fields: None,
@@ -40,6 +44,13 @@ impl FilterEntitiesParams {
     #[must_use]
     pub fn with_filters(mut self, filters: Option<HashMap<String, JsonValue>>) -> Self {
         self.filters = filters;
+        self
+    }
+
+    /// Set filter operators
+    #[must_use]
+    pub fn with_filter_operators(mut self, operators: Option<HashMap<String, String>>) -> Self {
+        self.filter_operators = operators;
         self
     }
 

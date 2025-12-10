@@ -147,6 +147,7 @@ mod tests {
                 ..
             } => {
                 assert_eq!(entity_definition, "source_entity");
+                let filter = filter.as_ref().expect("Filter should exist");
                 assert_eq!(filter.field, "status");
                 assert_eq!(filter.value, "active");
             }
@@ -312,5 +313,125 @@ mod tests {
                 "Should fail validation with empty steps array"
             );
         }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_validate_filter_operators() {
+        // Test all valid operators
+        let valid_operators = ["=", ">", "<", "<=", ">=", "IN", "NOT IN"];
+
+        for operator in valid_operators {
+            let template = load_example("workflow_entity_filter_operators_template.json");
+            let cfg_str = serde_json::to_string(&template).expect("serialize");
+            let filter_value = if operator == "IN" || operator == "NOT IN" {
+                r#"["active", "pending"]"#
+            } else {
+                "active"
+            };
+            let cfg_str = cfg_str.replace("${OPERATOR}", operator);
+            // Replace the placeholder - it's inside a JSON string, so we need to escape it properly
+            let cfg_str = cfg_str.replace("${FILTER_VALUE}", &filter_value.replace('"', r#"\""#));
+            let cfg: Value = serde_json::from_str(&cfg_str).expect("parse");
+
+            let prog = DslProgram::from_config(&cfg);
+            assert!(prog.is_ok(), "Should parse with valid operator: {operator}");
+
+            if let Ok(p) = prog {
+                assert!(
+                    p.validate().is_ok(),
+                    "Should validate with valid operator: {operator}"
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_validate_invalid_filter_operator() {
+        // Test invalid operators
+        let invalid_operators = [
+            "= OR 1=1 --",
+            "=; DROP TABLE entities; --",
+            "LIKE",
+            "BETWEEN",
+            "invalid",
+        ];
+
+        for operator in invalid_operators {
+            let cfg = json!({
+                "steps": [
+                    {
+                        "from": {
+                            "type": "entity",
+                            "entity_definition": "test_entity",
+                            "filter": {
+                                "field": "status",
+                                "operator": operator,
+                                "value": "active"
+                            },
+                            "mapping": {}
+                        },
+                        "transform": { "type": "none" },
+                        "to": {
+                            "type": "format",
+                            "output": { "mode": "api" },
+                            "format": {
+                                "format_type": "json",
+                                "options": {}
+                            },
+                            "mapping": {}
+                        }
+                    }
+                ]
+            });
+
+            let prog = DslProgram::from_config(&cfg);
+            if let Ok(p) = prog {
+                // Should fail validation with invalid operator
+                assert!(
+                    p.validate().is_err(),
+                    "Should reject invalid operator: {operator}"
+                );
+            }
+        }
+    }
+
+    // Removed default-operator behavior: operator must now be provided when a filter is set.
+
+    #[tokio::test]
+    #[serial]
+    async fn test_mapping_fallback_with_empty_mapping() {
+        // Test that empty mapping passes through all fields
+        let cfg = load_example("workflow_export_entity_empty_mapping.json");
+        // Replace entity_type placeholder
+        let cfg_str = serde_json::to_string(&cfg).expect("serialize");
+        let cfg_str = cfg_str.replace("${ENTITY_TYPE}", "test_entity");
+        let cfg: Value = serde_json::from_str(&cfg_str).expect("parse");
+
+        let prog = DslProgram::from_config(&cfg).expect("parse dsl");
+        prog.validate().expect("valid dsl");
+
+        // Test with input that has multiple fields
+        let input = json!({
+            "name": "Test",
+            "email": "test@example.com",
+            "age": 30,
+            "status": "active"
+        });
+
+        let outputs = prog.execute(&input).expect("execute");
+        assert_eq!(outputs.len(), 1);
+
+        let (_, produced) = &outputs[0];
+
+        // All fields should be present (empty mapping = pass through)
+        assert!(produced["name"].is_string(), "Should include name field");
+        assert!(produced["email"].is_string(), "Should include email field");
+        assert!(produced["age"].is_number(), "Should include age field");
+        assert!(
+            produced["status"].is_string(),
+            "Should include status field"
+        );
     }
 }

@@ -1,12 +1,12 @@
 use crate::dynamic_entity::DynamicEntityService;
-use crate::workflow::entity_persistence::{
-    create_entity, create_or_update_entity, update_entity, PersistenceContext,
-};
+use crate::workflow::item_processing::process_single_item;
 use cron::Schedule;
 use futures::StreamExt;
 use r_data_core_persistence::WorkflowRepositoryTrait;
 use r_data_core_workflow::data::requests::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use r_data_core_workflow::data::Workflow;
+use serde_json::Value as JsonValue;
+use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -270,6 +270,61 @@ impl WorkflowService {
         Ok(run_uuid)
     }
 
+    /// Mark a run as running
+    ///
+    /// # Errors
+    /// Returns an error if the database update fails
+    pub async fn mark_run_running(&self, run_uuid: Uuid) -> anyhow::Result<()> {
+        self.repo.mark_run_running(run_uuid).await
+    }
+
+    /// Mark a run as succeeded with processed/failed counts
+    ///
+    /// # Errors
+    /// Returns an error if the database update fails
+    pub async fn mark_run_success(
+        &self,
+        run_uuid: Uuid,
+        processed: i64,
+        failed: i64,
+    ) -> anyhow::Result<()> {
+        self.repo
+            .mark_run_success(run_uuid, processed, failed)
+            .await
+    }
+
+    /// Mark a run as failed with error message
+    ///
+    /// # Errors
+    /// Returns an error if the database update fails
+    pub async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
+        self.repo.mark_run_failure(run_uuid, message).await
+    }
+
+    /// Insert a log entry for a run
+    ///
+    /// # Errors
+    /// Returns an error if the database insert fails
+    pub async fn insert_run_log(
+        &self,
+        run_uuid: Uuid,
+        level: &str,
+        message: &str,
+        meta: Option<serde_json::Value>,
+    ) -> anyhow::Result<()> {
+        self.repo
+            .insert_run_log(run_uuid, level, message, meta)
+            .await
+    }
+
+    /// Get run status (for async polling)
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
+    pub async fn get_run_status(&self, run_uuid: Uuid) -> anyhow::Result<Option<String>> {
+        self.repo.get_run_status(run_uuid).await
+    }
+
     /// Stage raw items for processing
     ///
     /// # Errors
@@ -473,105 +528,215 @@ impl WorkflowService {
         let program = r_data_core_workflow::dsl::DslProgram::from_config(&wf.config)
             .map_err(|e| anyhow::anyhow!("Failed to parse DSL for fetch: {e}"))?;
 
-        // Find Format-based FromDef steps that need fetching
+        // Find Format-based and Entity-based FromDef steps that need fetching
         let mut total_staged = 0_i64;
         for step in &program.steps {
+            if let r_data_core_workflow::dsl::FromDef::Entity {
+                entity_definition,
+                filter,
+                ..
+            } = &step.from
+            {
+                let staged = self
+                    .handle_entity_source(
+                        entity_definition,
+                        filter.as_ref(),
+                        workflow_uuid,
+                        run_uuid,
+                    )
+                    .await?;
+                total_staged += staged;
+                continue;
+            }
+
             if let r_data_core_workflow::dsl::FromDef::Format { source, format, .. } = &step.from {
-                // Skip "api" source type (handled by POST endpoint)
                 if source.source_type == "api" {
                     continue;
                 }
-
-                // Create auth provider
-                let auth_provider = source
-                    .auth
-                    .as_ref()
-                    .map(|auth_cfg| {
-                        r_data_core_workflow::data::adapters::auth::create_auth_provider(auth_cfg)
-                    })
-                    .transpose()?;
-
-                // Create source context
-                let source_ctx = r_data_core_workflow::data::adapters::source::SourceContext {
-                    auth: auth_provider,
-                    config: source.config.clone(),
-                };
-
-                // Get appropriate source based on source_type
-                let source_adapter: Box<
-                    dyn r_data_core_workflow::data::adapters::source::DataSource,
-                > = match source.source_type.as_str() {
-                    "uri" => Box::new(
-                        r_data_core_workflow::data::adapters::source::uri::UriSource::new(),
-                    ),
-                    _ => {
-                        return Err(anyhow::anyhow!(
-                            "Unsupported source type: {}",
-                            source.source_type
-                        ));
-                    }
-                };
-
-                // Fetch data
-                let mut stream = source_adapter.fetch(&source_ctx).await?;
-                let mut all_data = Vec::new();
-                while let Some(chunk_result) = stream.next().await {
-                    let chunk = chunk_result?;
-                    all_data.extend_from_slice(&chunk);
-                }
-
-                // Get format handler
-                let format_handler: Box<
-                    dyn r_data_core_workflow::data::adapters::format::FormatHandler,
-                > = match format.format_type.as_str() {
-                    "csv" => Box::new(
-                        r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new(),
-                    ),
-                    "json" => Box::new(
-                        r_data_core_workflow::data::adapters::format::json::JsonFormatHandler::new(
-                        ),
-                    ),
-                    _ => {
-                        return Err(anyhow::anyhow!(
-                            "Unsupported format type: {}",
-                            format.format_type
-                        ));
-                    }
-                };
-
-                // Parse data
-                let payloads = format_handler.parse(&all_data, &format.options)?;
-
-                // Stage items
                 let staged = self
-                    .stage_raw_items(workflow_uuid, run_uuid, payloads)
+                    .handle_format_source(source, format, workflow_uuid, run_uuid)
                     .await?;
                 total_staged += staged;
-
-                let _ = self
-                    .repo
-                    .insert_run_log(
-                        run_uuid,
-                        "info",
-                        "Fetched and staged",
-                        Some(serde_json::json!({
-                            "staged_items": staged,
-                            "source_type": source.source_type,
-                            "format_type": format.format_type
-                        })),
-                    )
-                    .await;
             }
         }
 
         Ok(total_staged)
     }
 
+    async fn handle_entity_source(
+        &self,
+        entity_definition: &str,
+        filter: Option<&r_data_core_workflow::dsl::EntityFilter>,
+        workflow_uuid: Uuid,
+        run_uuid: Uuid,
+    ) -> anyhow::Result<i64> {
+        let Some(entity_service) = &self.dynamic_entity_service else {
+            return Err(anyhow::anyhow!(
+                "Entity service not available for entity source workflow"
+            ));
+        };
+
+        let (filter_map, operators_map) = build_filter_maps(filter);
+        let (filters_opt, operators_opt) = if filter_map.is_empty() {
+            (None, None)
+        } else {
+            (Some(filter_map), Some(operators_map))
+        };
+        let entities = entity_service
+            .filter_entities_with_operators(
+                entity_definition,
+                10000, // Large limit for exports
+                0,
+                filters_opt,
+                operators_opt,
+                None,
+                None,
+                None,
+            )
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to fetch entities: {e}"))?;
+
+        #[allow(clippy::cast_possible_wrap)]
+        let entity_count = entities.len() as i64;
+
+        let payloads: Vec<JsonValue> = entities
+            .into_iter()
+            .map(|entity| {
+                serde_json::to_value(&entity.field_data).unwrap_or_else(|_| serde_json::json!({}))
+            })
+            .collect();
+
+        let staged = self
+            .stage_raw_items(workflow_uuid, run_uuid, payloads)
+            .await?;
+
+        self.repo
+            .insert_run_log(
+                run_uuid,
+                "info",
+                &format!("Fetched {entity_count} entities from {entity_definition}"),
+                Some(serde_json::json!({
+                    "staged_items": staged,
+                    "entity_count": entity_count,
+                    "entity_definition": entity_definition,
+                    "filter_field": filter.map(|f| f.field.clone()),
+                    "filter_operator": filter.map(|f| f.operator.clone()),
+                    "filter_value": filter.map(|f| f.value.clone())
+                })),
+            )
+            .await?;
+
+        Ok(staged)
+    }
+
+    async fn handle_format_source(
+        &self,
+        source: &r_data_core_workflow::dsl::from::SourceConfig,
+        format: &r_data_core_workflow::dsl::from::FormatConfig,
+        workflow_uuid: Uuid,
+        run_uuid: Uuid,
+    ) -> anyhow::Result<i64> {
+        let auth_provider = source
+            .auth
+            .as_ref()
+            .map(|auth_cfg| {
+                r_data_core_workflow::data::adapters::auth::create_auth_provider(auth_cfg)
+            })
+            .transpose()?;
+
+        let source_ctx = r_data_core_workflow::data::adapters::source::SourceContext {
+            auth: auth_provider,
+            config: source.config.clone(),
+        };
+
+        let source_adapter: Box<dyn r_data_core_workflow::data::adapters::source::DataSource> =
+            match source.source_type.as_str() {
+                "uri" => {
+                    Box::new(r_data_core_workflow::data::adapters::source::uri::UriSource::new())
+                }
+                _ => {
+                    return Err(anyhow::anyhow!(
+                        "Unsupported source type: {}",
+                        source.source_type
+                    ));
+                }
+            };
+
+        let mut stream = source_adapter.fetch(&source_ctx).await?;
+        let mut all_data = Vec::new();
+        while let Some(chunk_result) = stream.next().await {
+            let chunk = chunk_result?;
+            all_data.extend_from_slice(&chunk);
+        }
+
+        let format_handler: Box<dyn r_data_core_workflow::data::adapters::format::FormatHandler> =
+            match format.format_type.as_str() {
+                "csv" => Box::new(
+                    r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new(),
+                ),
+                "json" => Box::new(
+                    r_data_core_workflow::data::adapters::format::json::JsonFormatHandler::new(),
+                ),
+                _ => {
+                    return Err(anyhow::anyhow!(
+                        "Unsupported format type: {}",
+                        format.format_type
+                    ));
+                }
+            };
+
+        let payloads = format_handler.parse(&all_data, &format.options)?;
+        let staged = self
+            .stage_raw_items(workflow_uuid, run_uuid, payloads)
+            .await?;
+
+        let _ = self
+            .repo
+            .insert_run_log(
+                run_uuid,
+                "info",
+                "Fetched and staged",
+                Some(serde_json::json!({
+                    "staged_items": staged,
+                    "source_type": source.source_type,
+                    "format_type": format.format_type
+                })),
+            )
+            .await;
+
+        Ok(staged)
+    }
+}
+
+fn build_filter_maps(
+    filter: Option<&r_data_core_workflow::dsl::EntityFilter>,
+) -> (HashMap<String, JsonValue>, HashMap<String, String>) {
+    let mut filter_map = HashMap::new();
+    let mut operators_map = HashMap::new();
+
+    if let Some(filter) = filter {
+        let filter_value = if filter.operator == "IN" || filter.operator == "NOT IN" {
+            match serde_json::from_str::<JsonValue>(&filter.value) {
+                Ok(JsonValue::Array(_)) => serde_json::from_str(&filter.value)
+                    .unwrap_or_else(|_| serde_json::json!([filter.value])),
+                _ => serde_json::json!([filter.value]),
+            }
+        } else {
+            JsonValue::String(filter.value.clone())
+        };
+        filter_map.insert(filter.field.clone(), filter_value);
+
+        operators_map.insert(filter.field.clone(), filter.operator.clone());
+    }
+
+    (filter_map, operators_map)
+}
+
+impl WorkflowService {
     /// Process staged raw items for a run using the workflow DSL
     ///
     /// # Errors
     /// Returns an error if workflow not found, DSL validation fails, or processing fails
-    #[allow(clippy::too_many_lines)] // Complex workflow processing logic - would benefit from future refactoring
     pub async fn process_staged_items(
         &self,
         workflow_uuid: Uuid,
@@ -611,304 +776,20 @@ impl WorkflowService {
                 break;
             }
             for (item_uuid, payload) in items {
-                // Execute steps; on each step, handle ToDef::Entity create/update and ToDef::Format with Push
-                match program.execute(&payload) {
-                    Ok(outputs) => {
-                        let mut entity_ops_ok = true;
-                        for (to_def, produced) in outputs {
-                            // Handle Format outputs with Push mode
-                            if let r_data_core_workflow::dsl::ToDef::Format {
-                                output:
-                                    r_data_core_workflow::dsl::OutputMode::Push {
-                                        ref destination,
-                                        ref method,
-                                    },
-                                ref format,
-                                ..
-                            } = to_def
-                            {
-                                // Serialize data using format handler
-                                let format_handler: Box<
-                                        dyn r_data_core_workflow::data::adapters::format::FormatHandler,
-                                    > = match format.format_type.as_str() {
-                                        "csv" => Box::new(
-                                            r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new(),
-                                        ),
-                                        "json" => Box::new(
-                                            r_data_core_workflow::data::adapters::format::json::JsonFormatHandler::new(),
-                                        ),
-                                        _ => {
-                                            let _ = self
-                                                .repo
-                                                .insert_run_log(
-                                                    run_uuid,
-                                                    "error",
-                                                    "Unsupported format for push",
-                                                    Some(serde_json::json!({
-                                                        "item_uuid": item_uuid,
-                                                        "format_type": format.format_type
-                                                    })),
-                                                )
-                                                .await;
-                                            entity_ops_ok = false;
-                                            break;
-                                        }
-                                    };
-
-                                // Serialize to bytes (clone produced since it may be used later for Entity outputs)
-                                let data_bytes = match format_handler
-                                    .serialize(std::slice::from_ref(&produced), &format.options)
-                                {
-                                    Ok(bytes) => bytes,
-                                    Err(e) => {
-                                        let _ = self
-                                            .repo
-                                            .insert_run_log(
-                                                run_uuid,
-                                                "error",
-                                                "Failed to serialize data for push",
-                                                Some(serde_json::json!({
-                                                    "item_uuid": item_uuid,
-                                                    "error": e.to_string()
-                                                })),
-                                            )
-                                            .await;
-                                        entity_ops_ok = false;
-                                        break;
-                                    }
-                                };
-
-                                // Create auth provider
-                                let auth_provider = destination
-                                        .auth
-                                        .as_ref()
-                                        .map(|auth_cfg| {
-                                            r_data_core_workflow::data::adapters::auth::create_auth_provider(auth_cfg)
-                                        })
-                                        .transpose()?;
-
-                                // Create destination context
-                                let dest_ctx = r_data_core_workflow::data::adapters::destination::DestinationContext {
-                                        auth: auth_provider,
-                                        method: method.as_ref().copied(),
-                                        config: destination.config.clone(),
-                                    };
-
-                                // Get appropriate destination based on destination_type
-                                let dest_adapter: Box<
-                                        dyn r_data_core_workflow::data::adapters::destination::DataDestination,
-                                    > = if destination.destination_type.as_str() == "uri" {
-                                        Box::new(
-                                            r_data_core_workflow::data::adapters::destination::uri::UriDestination::new(),
-                                        )
-                                    } else {
-                                        let _ = self
-                                            .repo
-                                            .insert_run_log(
-                                                run_uuid,
-                                                "error",
-                                                "Unsupported destination type",
-                                                Some(serde_json::json!({
-                                                    "item_uuid": item_uuid,
-                                                    "destination_type": destination.destination_type
-                                                })),
-                                            )
-                                            .await;
-                                        entity_ops_ok = false;
-                                        break;
-                                    };
-
-                                // Push data
-                                if let Err(e) = dest_adapter.push(&dest_ctx, data_bytes).await {
-                                    let _ = self
-                                        .repo
-                                        .insert_run_log(
-                                            run_uuid,
-                                            "error",
-                                            "Failed to push data to destination",
-                                            Some(serde_json::json!({
-                                                "item_uuid": item_uuid,
-                                                "destination_type": destination.destination_type,
-                                                "error": e.to_string()
-                                            })),
-                                        )
-                                        .await;
-                                    entity_ops_ok = false;
-                                    break;
-                                }
-                            }
-
-                            // Handle Entity outputs
-                            if let r_data_core_workflow::dsl::ToDef::Entity {
-                                entity_definition,
-                                path,
-                                mode,
-                                identify: _,
-                                update_key,
-                                mapping: _,
-                            } = to_def
-                            {
-                                if let Some(de_service) = &self.dynamic_entity_service {
-                                    // For update mode, merge payload into produced to ensure update_key is available
-                                    let produced_for_update = if matches!(
-                                        mode,
-                                        r_data_core_workflow::dsl::EntityWriteMode::Update
-                                            | r_data_core_workflow::dsl::EntityWriteMode::CreateOrUpdate
-                                    ) {
-                                        let mut merged = produced.clone();
-                                        if let (Some(merged_obj), Some(payload_obj)) =
-                                            (merged.as_object_mut(), payload.as_object())
-                                        {
-                                            // Merge payload fields into produced (payload takes precedence for update_key)
-                                            for (k, v) in payload_obj {
-                                                if k == "entity_key"
-                                                    || update_key
-                                                        .as_ref()
-                                                        .is_some_and(|uk| k == uk)
-                                                {
-                                                    merged_obj.insert(k.clone(), v.clone());
-                                                }
-                                            }
-                                        }
-                                        merged
-                                    } else {
-                                        produced.clone()
-                                    };
-
-                                    let ctx = PersistenceContext {
-                                        entity_type: entity_definition.clone(),
-                                        produced: produced_for_update.clone(),
-                                        path: Some(path.clone()),
-                                        run_uuid,
-                                        update_key: update_key.clone(),
-                                        skip_versioning: wf.versioning_disabled,
-                                    };
-
-                                    let result = match mode {
-                                        r_data_core_workflow::dsl::EntityWriteMode::Create => {
-                                            let create_ctx = PersistenceContext {
-                                                entity_type: entity_definition.clone(),
-                                                produced: produced.clone(),
-                                                path: Some(path.clone()),
-                                                run_uuid,
-                                                update_key: None,
-                                                skip_versioning: wf.versioning_disabled,
-                                            };
-                                            create_entity(de_service, &create_ctx).await
-                                        }
-                                        r_data_core_workflow::dsl::EntityWriteMode::Update => {
-                                            update_entity(de_service, &ctx).await
-                                        }
-                                        r_data_core_workflow::dsl::EntityWriteMode::CreateOrUpdate => {
-                                            create_or_update_entity(de_service, &ctx).await
-                                        }
-                                    };
-                                    if let Err(e) = result {
-                                        let operation = match mode {
-                                            r_data_core_workflow::dsl::EntityWriteMode::Create => {
-                                                "create"
-                                            }
-                                            r_data_core_workflow::dsl::EntityWriteMode::Update => {
-                                                "update"
-                                            }
-                                            r_data_core_workflow::dsl::EntityWriteMode::CreateOrUpdate => {
-                                                "create_or_update"
-                                            }
-                                        };
-                                        let _ = self
-                                            .repo
-                                            .insert_run_log(
-                                                run_uuid,
-                                                "error",
-                                                &format!("Entity {operation} failed"),
-                                                Some(serde_json::json!({
-                                                    "item_uuid": item_uuid,
-                                                    "entity_type": entity_definition,
-                                                    "mode": format!("{:?}", mode),
-                                                    "error": e.to_string()
-                                                })),
-                                            )
-                                            .await;
-                                        entity_ops_ok = false;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-
-                        if entity_ops_ok {
-                            // Mark processed
-                            if let Err(e) = self
-                                .repo
-                                .set_raw_item_status(item_uuid, "processed", None)
-                                .await
-                            {
-                                let db_meta = extract_sqlx_meta(&e);
-                                let _ = self
-                                    .repo
-                                    .insert_run_log(
-                                        run_uuid,
-                                        "error",
-                                        "Failed to mark item processed",
-                                        Some(serde_json::json!({
-                                            "item_uuid": item_uuid,
-                                            "attempted_status": "processed",
-                                            "error": e.to_string(),
-                                            "db": db_meta
-                                        })),
-                                    )
-                                    .await;
-                                failed += 1;
-                            } else {
-                                processed += 1;
-                            }
-                        } else {
-                            // Entity op failed, mark item failed
-                            let _ = self
-                                .repo
-                                .set_raw_item_status(
-                                    item_uuid,
-                                    "failed",
-                                    Some("entity operation failed"),
-                                )
-                                .await;
-                            failed += 1;
-                        }
-                    }
-                    Err(e) => {
-                        // Mark item as error to prevent reprocessing
-                        if let Err(set_err) = self
-                            .repo
-                            .set_raw_item_status(item_uuid, "failed", Some(&e.to_string()))
-                            .await
-                        {
-                            let db_meta = extract_sqlx_meta(&set_err);
-                            let _ = self
-                                .repo
-                                .insert_run_log(
-                                    run_uuid,
-                                    "error",
-                                    "Failed to mark item failed",
-                                    Some(serde_json::json!({
-                                        "item_uuid": item_uuid,
-                                        "attempted_status": "failed",
-                                        "error": set_err.to_string(),
-                                        "db": db_meta
-                                    })),
-                                )
-                                .await;
-                        }
-                        let _ = self
-                            .repo
-                            .insert_run_log(
-                                run_uuid,
-                                "error",
-                                "DSL execute failed for item; item marked as error",
-                                Some(serde_json::json!({ "item_uuid": item_uuid, "error": e.to_string() })),
-                            )
-                            .await;
-                        failed += 1;
-                    }
+                let success = process_single_item(
+                    &program,
+                    &payload,
+                    item_uuid,
+                    run_uuid,
+                    wf.versioning_disabled,
+                    self.dynamic_entity_service.as_deref(),
+                    &self.repo,
+                )
+                .await?;
+                if success {
+                    processed += 1;
+                } else {
+                    failed += 1;
                 }
             }
         }
@@ -940,27 +821,4 @@ impl WorkflowService {
         let _ = self.repo.mark_run_failure(run_uuid, &message).await;
         Err(anyhow::anyhow!(message))
     }
-}
-
-fn extract_sqlx_meta(e: &anyhow::Error) -> serde_json::Value {
-    // Walk the error chain and extract sqlx::Error::Database details if present
-    // Fall back to debug formatting of the full chain
-    let mut code: Option<String> = None;
-    let mut message: Option<String> = None;
-
-    let mut cause: Option<&(dyn std::error::Error + 'static)> = Some(e.as_ref());
-    while let Some(err) = cause {
-        if let Some(sqlx::Error::Database(db_err)) = err.downcast_ref::<sqlx::Error>() {
-            code = db_err.code().map(|s| s.to_string());
-            message = Some(db_err.message().to_string());
-            break;
-        }
-        cause = err.source();
-    }
-
-    serde_json::json!({
-        "code": code,
-        "message": message,
-        "chain": format!("{:?}", e),
-    })
 }

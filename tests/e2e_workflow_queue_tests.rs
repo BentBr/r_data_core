@@ -20,6 +20,26 @@ use r_data_core_test_support::{
     create_test_admin_user, create_test_entity_definition, setup_test_db, unique_entity_type,
 };
 
+// Import common test utilities for loading workflow examples
+mod api {
+    pub mod workflows {
+        pub mod common {
+            pub fn load_workflow_example(
+                filename: &str,
+                entity_type: &str,
+            ) -> anyhow::Result<serde_json::Value> {
+                use std::fs;
+                let path = format!(".example_files/json_examples/dsl/{filename}");
+                let content = fs::read_to_string(&path)
+                    .map_err(|e| anyhow::anyhow!("Failed to read {path}: {e}"))?;
+                let content = content.replace("${ENTITY_TYPE}", entity_type);
+                serde_json::from_str(&content)
+                    .map_err(|e| anyhow::anyhow!("Failed to parse {path}: {e}"))
+            }
+        }
+    }
+}
+
 #[tokio::test]
 #[allow(clippy::too_many_lines)] // E2E test with comprehensive workflow testing
 async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> {
@@ -51,35 +71,10 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
     // Resolve a creator (admin user) or use a generated UUID for created_by
     let creator_uuid = create_test_admin_user(&pool).await?;
 
-    let cfg = serde_json::json!({
-        "steps": [
-            {
-                "from": {
-                    "type": "format",
-                    "source": {
-                        "source_type": "uri",
-                        "config": { "uri": "http://example.com/staging-data.csv" }
-                    },
-                    "format": {
-                        "format_type": "csv",
-                        "options": {}
-                    },
-                    "mapping": {}
-                },
-                "transform": { "type": "none" },
-                "to": {
-                    "type": "entity",
-                    "entity_definition": entity_type,
-                    "path": "/",
-                    "mode": "create",
-                    "mapping": {
-                        "name": "name",
-                        "email": "email"
-                    }
-                }
-            }
-        ]
-    });
+    let cfg = api::workflows::common::load_workflow_example(
+        "workflow_csv_to_entity_simple.json",
+        &entity_type,
+    )?;
 
     let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
         name: format!("e2e-wf-{}", Uuid::now_v7().simple()),

@@ -1,0 +1,40 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "format",
+        "source": {
+          "source_type": "uri",
+          "config": {
+            "uri": "http://example.com/data.csv"
+          },
+          "auth": null
+        },
+        "format": {
+          "format_type": "csv",
+          "options": {
+            "has_header": true
+          }
+        },
+        "mapping": {}
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "csv",
+          "options": {
+            "has_header": true
+          }
+        },
+        "mapping": {}
+      }
+    }
+  ]
+}
+

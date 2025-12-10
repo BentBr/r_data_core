@@ -78,6 +78,10 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
             .await
     }
 
+    async fn mark_run_running(&self, run_uuid: Uuid) -> anyhow::Result<()> {
+        self.inner.mark_run_running(run_uuid).await
+    }
+
     async fn list_runs_paginated(
         &self,
         workflow_uuid: Uuid,
@@ -198,6 +202,10 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
 
     async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
         self.inner.mark_run_failure(run_uuid, message).await
+    }
+
+    async fn get_run_status(&self, run_uuid: Uuid) -> anyhow::Result<Option<String>> {
+        self.inner.get_run_status(run_uuid).await
     }
 
     async fn get_workflow_uuid_for_run(&self, run_uuid: Uuid) -> anyhow::Result<Option<Uuid>> {

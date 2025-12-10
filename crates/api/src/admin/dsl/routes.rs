@@ -513,10 +513,11 @@ pub async fn list_from_options(auth: RequiredAuth) -> impl Responder {
     .unwrap();
     let ex_entity = serde_json::to_value(FromDef::Entity {
         entity_definition: "product".to_string(),
-        filter: EntityFilter {
+        filter: Some(EntityFilter {
             field: "sku".to_string(),
+            operator: "=".to_string(),
             value: "ABC-001".to_string(),
-        },
+        }),
         mapping: std::iter::once(("price".to_string(), "price".to_string())).collect(),
     })
     .unwrap();

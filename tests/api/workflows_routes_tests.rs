@@ -308,53 +308,18 @@ async fn create_workflow_accepts_valid_complex_dsl_config() -> anyhow::Result<()
     let (app, _pool, token) = setup_app_and_token().await?;
 
     // Valid complex DSL config with mappings
+    let config = std::fs::read_to_string(
+        ".example_files/json_examples/dsl/workflow_complex_arithmetic.json",
+    )
+    .expect("read example");
+    let config: serde_json::Value = serde_json::from_str(&config).expect("parse json");
     let payload = serde_json::json!({
         "name": format!("wf-valid-complex-{}", Uuid::now_v7().simple()),
         "description": "test complex DSL",
         "kind": WorkflowKind::Consumer.to_string(),
         "enabled": true,
         "schedule_cron": null,
-        "config": {
-            "steps": [
-                {
-                    "from": {
-                        "type": "format",
-                        "source": {
-                            "source_type": "uri",
-                            "config": { "uri": "http://example.com/data.csv" }
-                        },
-                        "format": {
-                            "format_type": "csv",
-                            "options": { "header": true, "delimiter": "," }
-                        },
-                        "mapping": {
-                            "source_col1": "normalized_field1",
-                            "source_col2": "normalized_field2"
-                        }
-                    },
-                    "transform": {
-                        "type": "arithmetic",
-                        "target": "total",
-                        "left": { "kind": "field", "field": "normalized_field1" },
-                        "op": "add",
-                        "right": { "kind": "const", "value": 5.0 }
-                    },
-                    "to": {
-                        "type": "format",
-                        "output": { "mode": "api" },
-                        "format": {
-                            "format_type": "json",
-                            "options": {}
-                        },
-                        "mapping": {
-                            "normalized_field1": "output_field1",
-                            "normalized_field2": "output_field2",
-                            "total": "total"
-                        }
-                    }
-                }
-            ]
-        }
+        "config": config
     });
 
     let req = test::TestRequest::post()
