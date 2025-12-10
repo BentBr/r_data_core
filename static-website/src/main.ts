@@ -1,7 +1,20 @@
 import { createApp } from 'vue'
 import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
+// Import only the components we use for tree-shaking
+import {
+    VApp,
+    VBtn,
+    VCard,
+    VCardText,
+    VCol,
+    VContainer,
+    VDialog,
+    VList,
+    VListItem,
+    VListItemTitle,
+    VMenu,
+    VRow,
+} from 'vuetify/components'
 import router from './router'
 import App from './App.vue'
 import { vuetifyDefaults, vuetifyTheme } from './design-system'
@@ -50,8 +63,20 @@ const iconAliases: Partial<IconAliases> = {
 }
 
 const vuetify = createVuetify({
-    components,
-    directives,
+    components: {
+        VApp,
+        VBtn,
+        VCard,
+        VCardText,
+        VCol,
+        VContainer,
+        VDialog,
+        VList,
+        VListItem,
+        VListItemTitle,
+        VMenu,
+        VRow,
+    },
     theme: vuetifyTheme,
     defaults: vuetifyDefaults,
     icons: {

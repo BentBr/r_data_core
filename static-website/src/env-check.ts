@@ -6,6 +6,8 @@ export function checkEnvironmentVariables() {
         VITE_BASE_URL: import.meta.env.VITE_BASE_URL,
         VITE_SITE_NAME: import.meta.env.VITE_SITE_NAME,
         VITE_R_DATA_CORE_DEMO_URL: import.meta.env.VITE_R_DATA_CORE_DEMO_URL,
+        VITE_API_DOCS_URL: import.meta.env.VITE_API_DOCS_URL,
+        VITE_ADMIN_API_DOCS_URL: import.meta.env.VITE_ADMIN_API_DOCS_URL,
         MODE: import.meta.env.MODE,
         DEV: import.meta.env.DEV,
         PROD: import.meta.env.PROD,
@@ -49,6 +51,8 @@ export const env = {
     },
     siteName: import.meta.env.VITE_SITE_NAME ?? 'RDataCore',
     demoUrl: import.meta.env.VITE_R_DATA_CORE_DEMO_URL ?? '',
+    apiDocsUrl: import.meta.env.VITE_API_DOCS_URL ?? '',
+    adminApiDocsUrl: import.meta.env.VITE_ADMIN_API_DOCS_URL ?? '',
     isProduction: import.meta.env.PROD,
     isDevelopment: import.meta.env.DEV,
 }

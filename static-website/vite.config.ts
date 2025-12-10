@@ -4,7 +4,12 @@ import vuetify from 'vite-plugin-vuetify'
 import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
-    plugins: [vue(), vuetify({ autoImport: true })],
+    plugins: [
+        vue(),
+        vuetify({
+            autoImport: false, // Disable auto-import for better tree-shaking
+        }),
+    ],
     resolve: {
         alias: {
             '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -20,6 +25,20 @@ export default defineConfig({
         target: 'esnext',
         sourcemap: true,
         outDir: 'dist',
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    // Separate vendor chunks
+                    'vue-vendor': ['vue', 'vue-router'],
+                    'vuetify-vendor': ['vuetify'],
+                    icons: ['lucide-vue-next'],
+                },
+            },
+        },
+        // Enable CSS code splitting
+        cssCodeSplit: true,
+        // Optimize chunk size
+        chunkSizeWarningLimit: 600,
     },
     // Configure for SPA routing in production
     preview: {

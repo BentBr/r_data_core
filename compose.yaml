@@ -206,8 +206,9 @@ services:
 
     node-static:
         container_name: rdata_node_static
-        image: node:22-alpine
-        command: sh -c "cd /var/www/html/ && npm install && npm run dev && tail -f /dev/null" # preventing it from stopping again
+        build:
+            context: .
+            dockerfile: ./.docker/static-website/Dockerfile
         volumes:
             - ./static-website:/var/www/html
         working_dir: /var/www/html/
@@ -223,6 +224,8 @@ services:
             - VITE_BASE_URL=http://website.rdatacore.docker
             - VITE_SITE_NAME=RDataCore
             - VITE_R_DATA_CORE_DEMO_URL=http://admin.rdatacore.docker
+            - VITE_API_DOCS_URL=http://rdatacore.docker/api/docs/
+            - VITE_ADMIN_API_DOCS_URL=http://rdatacore.docker/admin/api/docs/
 
 volumes:
     postgres_data:

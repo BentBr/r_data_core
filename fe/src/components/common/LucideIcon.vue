@@ -95,12 +95,4 @@
         align-items: center;
         justify-content: center;
     }
-
-    .lucide-icon-placeholder {
-        display: inline-block;
-        width: 24px;
-        height: 24px;
-        text-align: center;
-        line-height: 24px;
-    }
 </style>

@@ -9,13 +9,20 @@
                 <span>RDataCore</span>
             </div>
             <div class="links">
-                <a href="#features">{{ t('nav.features') }}</a>
-                <a href="#benefits">{{ t('nav.benefits') }}</a>
-                <a href="#pricing">{{ t('nav.pricing') }}</a>
+                <router-link :to="getLocalizedPath('/')">{{ t('nav.home') }}</router-link>
+                <router-link :to="getLocalizedPath('/about')">{{ t('nav.about') }}</router-link>
+                <router-link :to="getLocalizedPath('/pricing')">{{ t('nav.pricing') }}</router-link>
+                <router-link :to="getLocalizedPath('/imprint')">{{
+                    t('footer.imprint')
+                }}</router-link>
+                <router-link :to="getLocalizedPath('/privacy')">{{
+                    t('footer.privacy')
+                }}</router-link>
             </div>
-            <p class="copyright">
-                © {{ new Date().getFullYear() }} RDataCore. {{ t('footer.rights') }}
-            </p>
+            <div class="footer__bottom">
+                <p class="copyright">{{ t('footer.rights') }}</p>
+                <p class="made-with">{{ t('footer.made_with') }}</p>
+            </div>
         </div>
     </footer>
 </template>
@@ -23,8 +30,16 @@
 <script setup lang="ts">
     import { useTranslations } from '@/composables/useTranslations'
     import SmartIcon from './common/SmartIcon.vue'
+    import { useRoute } from 'vue-router'
 
-    const { t } = useTranslations()
+    const { t, currentLanguage } = useTranslations()
+    const route = useRoute()
+
+    const getLocalizedPath = (path: string) => {
+        // Get current language from route or default to currentLanguage
+        const lang = (route.params.lang as string) || currentLanguage.value
+        return `/${lang}${path === '/' ? '' : path}`
+    }
 </script>
 
 <style scoped>
@@ -64,8 +79,26 @@
         color: rgb(var(--v-theme-primary));
     }
 
-    .copyright {
+    .footer__bottom {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(var(--v-theme-on-surface-variant), 0.2);
+    }
+
+    .copyright,
+    .made-with {
         margin: 0;
         color: rgb(var(--v-theme-on-surface-variant));
+        font-size: 0.875rem;
+    }
+
+    @media (min-width: 600px) {
+        .footer__bottom {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+        }
     }
 </style>
