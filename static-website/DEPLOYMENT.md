@@ -103,18 +103,55 @@ const getLocalizedPath = (path: string) => {
 
 ## Environment Variables
 
-Set the base URL for sitemap generation:
+All environment variables must be prefixed with `VITE_` to be accessible in the client-side code.
+
+### Required Variables
+
+Create a `.env` file in the `static-website` directory:
 
 ```env
+# Base URL for the website (used in sitemap generation and meta tags)
 VITE_BASE_URL=https://rdatacore.eu
+
+# Site name (appears in page titles and branding)
+VITE_SITE_NAME=RDataCore
+
+# Demo application URL (opened when clicking "Try Demo" button)
+VITE_R_DATA_CORE_DEMO_URL=https://demo.rdatacore.eu
+
+# API Documentation URLs
+VITE_API_DOCS_URL=https://rdatacore.eu/api/docs/
+VITE_ADMIN_API_DOCS_URL=https://rdatacore.eu/admin/api/docs/
 ```
 
-For production, update `compose.yaml`:
+### Development (Docker Compose)
+
+For local development with Docker, update `compose.yaml`:
 
 ```yaml
-environment:
-  - VITE_BASE_URL=https://rdatacore.eu
+node-static:
+  # ...
+  environment:
+    - VITE_BASE_URL=http://website.rdatacore.docker
+    - VITE_SITE_NAME=RDataCore
+    - VITE_R_DATA_CORE_DEMO_URL=http://admin.rdatacore.docker
+    - VITE_API_DOCS_URL=http://rdatacore.docker/api/docs/
+    - VITE_ADMIN_API_DOCS_URL=http://rdatacore.docker/admin/api/docs/
 ```
+
+### Production
+
+For production deployment, set these in your hosting environment or build pipeline:
+
+```bash
+export VITE_BASE_URL=https://rdatacore.eu
+export VITE_SITE_NAME=RDataCore
+export VITE_R_DATA_CORE_DEMO_URL=https://demo.rdatacore.eu
+export VITE_API_DOCS_URL=https://rdatacore.eu/api/docs/
+export VITE_ADMIN_API_DOCS_URL=https://rdatacore.eu/admin/api/docs/
+```
+
+**Note**: Environment variables are embedded during build time. Rebuild the application when changing environment variables.
 
 ## Build Process
 
