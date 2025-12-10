@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import DemoCredentialsDialog from '../DemoCredentialsDialog.vue'
+import DemoCredentialsDialog from './DemoCredentialsDialog.vue'
 
 describe('DemoCredentialsDialog', () => {
     const defaultProps = {

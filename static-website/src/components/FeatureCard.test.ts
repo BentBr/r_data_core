@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import FeatureCard from '../FeatureCard.vue'
+import FeatureCard from './FeatureCard.vue'
 
 describe('FeatureCard', () => {
     const defaultProps = {

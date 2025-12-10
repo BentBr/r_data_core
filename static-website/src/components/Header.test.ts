@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
-import Header from '../Header.vue'
+import Header from './Header.vue'
 
 const router = createRouter({
     history: createMemoryHistory(),

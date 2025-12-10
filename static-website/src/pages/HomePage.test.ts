@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
-import HomePage from '../HomePage.vue'
+import HomePage from './HomePage.vue'
 
 const router = createRouter({
     history: createMemoryHistory(),

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import SmartIcon from '../SmartIcon.vue'
+import SmartIcon from './SmartIcon.vue'
 
 describe('SmartIcon', () => {
     it('should render the component', () => {

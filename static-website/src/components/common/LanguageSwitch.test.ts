@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
-import LanguageSwitch from '../LanguageSwitch.vue'
+import LanguageSwitch from './LanguageSwitch.vue'
 
 const router = createRouter({
     history: createMemoryHistory(),

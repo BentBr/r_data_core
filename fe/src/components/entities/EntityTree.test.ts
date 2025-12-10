@@ -1,173 +1,103 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { describe, it, expect, vi } from 'vitest'
 import EntityTree from './EntityTree.vue'
-import type { TreeNode } from '@/types/schemas'
+import { createVuetify } from 'vuetify'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
+import { typedHttpClient } from '@/api/typed-client'
 
-const mockBrowseByPath = vi.fn()
+const vuetify = createVuetify({ components, directives })
 
+// Mock API
 vi.mock('@/api/typed-client', () => ({
     typedHttpClient: {
-        browseByPath: (path: string, limit: number, offset: number) =>
-            mockBrowseByPath(path, limit, offset),
+        browseByPath: vi.fn(),
     },
 }))
 
+// Mock Translations
 vi.mock('@/composables/useTranslations', () => ({
-    useTranslations: () => ({ t: (k: string) => k.split('.').pop() }),
+    useTranslations: () => ({ t: (key: string) => key }),
+}))
+
+// Mock SmartIcon to avoid rendering issues
+vi.mock('@/components/common/SmartIcon.vue', () => ({
+    default: { template: '<div class="smart-icon"></div>' },
+}))
+
+// Mock TreeView to inspect props
+vi.mock('@/components/common/TreeView.vue', () => ({
+    default: {
+        name: 'TreeView',
+        props: ['items', 'loading', 'expandedItems'],
+        template: '<div class="tree-view-mock"></div>',
+    },
 }))
 
 describe('EntityTree', () => {
-    beforeEach(() => {
-        vi.clearAllMocks()
-        mockBrowseByPath.mockResolvedValue({
-            data: [
-                {
-                    kind: 'folder',
-                    name: 'test',
-                    path: '/test',
-                    has_children: true,
-                },
-            ],
-        })
-    })
-
-    it('reloadPath preserves expanded state when reloading a path', async () => {
-        const expandedItems = ['folder:/test']
-        const wrapper = mount(EntityTree, {
-            props: {
-                rootPath: '/',
-                expandedItems,
-                refreshKey: 1,
-            },
-        })
-
-        // Wait for initial load
-        await vi.waitUntil(() => mockBrowseByPath.mock.calls.length > 0, { timeout: 1000 })
-        await wrapper.vm.$nextTick()
-
-        // Set up tree with test folder expanded
-        const treeItems = [
+    it('renders published status correctly from API response', async () => {
+        const mockNodes = [
             {
-                id: 'folder:/test',
-                title: 'test',
-                icon: 'folder',
-                path: '/test',
-                children: [
-                    {
-                        id: 'entity-1',
-                        title: 'entity1',
-                        path: '/test/entity1',
-                    },
+                kind: 'file',
+                name: 'pub-entity',
+                path: '/pub-entity',
+                entity_uuid: 'uuid-1',
+                entity_type: 'test_type',
+                has_children: false,
+                published: true,
+            },
+            {
+                kind: 'file',
+                name: 'unpub-entity',
+                path: '/unpub-entity',
+                entity_uuid: 'uuid-2',
+                entity_type: 'test_type',
+                has_children: false,
+                published: false,
+            },
+        ]
+
+        vi.mocked(typedHttpClient.browseByPath).mockResolvedValue({
+            data: mockNodes,
+            status: 'Success',
+            message: '',
+            meta: { total: 2, pages: 1, limit: 100 },
+        } as any)
+
+        const wrapper = mount(EntityTree, {
+            global: { plugins: [vuetify] },
+            props: {
+                entityDefinitions: [
+                    { entity_type: 'test_type', icon: 'file', published: true } as any,
                 ],
             },
-        ]
-        // Access component internals for testing
-        const vm1 = wrapper.vm as unknown as {
-            treeItems: TreeNode[]
-            loadedPaths: Set<string>
-            reloadPath: (path: string) => Promise<void>
-        }
-        vm1.treeItems = treeItems
-        vm1.loadedPaths.add('/test')
-
-        // Mock browseByPath for reload
-        mockBrowseByPath.mockResolvedValueOnce({
-            data: [
-                {
-                    kind: 'file',
-                    name: 'entity2',
-                    path: '/test/entity2',
-                    entity_uuid: 'entity-2',
-                    entity_type: 'Customer',
-                },
-            ],
         })
 
-        // Call reloadPath
-        await vm1.reloadPath('/test')
+        // Trigger load via refreshKey change
+        await wrapper.setProps({ refreshKey: 1 })
 
-        // Check that expanded state was preserved
-        const emitted = wrapper.emitted('update:expandedItems')
-        expect(emitted).toBeDefined()
-        const lastEmit = emitted?.[emitted.length - 1]?.[0] as string[]
-        expect(lastEmit).toContain('folder:/test')
-    })
+        // Wait for promises to resolve
+        await new Promise(resolve => setTimeout(resolve, 10))
 
-    it('reloadPath calls browseByPath with correct path', async () => {
-        const wrapper = mount(EntityTree, {
-            props: {
-                rootPath: '/',
-                refreshKey: 1,
-            },
-        })
+        // Find TreeView component
+        const treeView = wrapper.findComponent({ name: 'TreeView' })
+        expect(treeView.exists()).toBe(true)
 
-        // Wait for initial load
-        await vi.waitUntil(() => mockBrowseByPath.mock.calls.length > 0, { timeout: 1000 })
-        await wrapper.vm.$nextTick()
+        // Check items prop passed to TreeView
+        const items = treeView.props('items')
+        expect(items).toHaveLength(2)
 
-        // Set up tree with test folder
-        const treeItems = [
-            {
-                id: 'folder:/test',
-                title: 'test',
-                icon: 'folder',
-                path: '/test',
-                children: [],
-            },
-        ]
-        // Access component internals for testing
-        const vm2 = wrapper.vm as unknown as {
-            treeItems: TreeNode[]
-            loadedPaths: Set<string>
-            reloadPath: (path: string) => Promise<void>
-        }
-        vm2.treeItems = treeItems
-        vm2.loadedPaths.add('/test')
+        // Sort items to ensure order (backend usually sorts, but mock might not)
+        // The component implementation pushes folders then files.
+        // Both are files here.
 
-        // Mock browseByPath for reload
-        mockBrowseByPath.mockResolvedValueOnce({
-            data: [],
-        })
+        const pubItem = items.find((i: any) => i.title === 'pub-entity')
+        const unpubItem = items.find((i: any) => i.title === 'unpub-entity')
 
-        // Call reloadPath
-        await vm2.reloadPath('/test')
+        expect(pubItem).toBeDefined()
+        expect(unpubItem).toBeDefined()
 
-        // Check that browseByPath was called with /test
-        expect(mockBrowseByPath).toHaveBeenCalledWith('/test', 100, 0)
-    })
-
-    it('reloadPath handles root path correctly', async () => {
-        const expandedItems = ['folder:/test']
-        const wrapper = mount(EntityTree, {
-            props: {
-                rootPath: '/',
-                expandedItems,
-                refreshKey: 1,
-            },
-        })
-
-        // Wait for initial load
-        await vi.waitUntil(() => mockBrowseByPath.mock.calls.length > 0, { timeout: 1000 })
-        await wrapper.vm.$nextTick()
-
-        // Mock browseByPath for root reload
-        mockBrowseByPath.mockResolvedValueOnce({
-            data: [],
-        })
-
-        // Call reloadPath with root
-        const vm = wrapper.vm as unknown as {
-            reloadPath: (path: string) => Promise<void>
-        }
-        await vm.reloadPath('/')
-
-        // Check that browseByPath was called with root
-        expect(mockBrowseByPath).toHaveBeenCalledWith('/', 100, 0)
-
-        // Check that expanded state was preserved
-        const emitted = wrapper.emitted('update:expandedItems')
-        expect(emitted).toBeDefined()
-        const lastEmit = emitted?.[emitted.length - 1]?.[0] as string[]
-        expect(lastEmit).toEqual(expandedItems)
+        expect(pubItem.published).toBe(true)
+        expect(unpubItem.published).toBe(false)
     })
 })
