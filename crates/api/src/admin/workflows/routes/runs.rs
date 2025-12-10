@@ -86,7 +86,8 @@ pub async fn run_workflow_now(
                         );
                         ApiResponse::<serde_json::Value>::ok(json!({
                             "status": "queued",
-                            "run_uuid": run_uuid
+                            "run_uuid": run_uuid,
+                            "message": "Workflow run enqueued"
                         }))
                     }
                     Err(e) => {

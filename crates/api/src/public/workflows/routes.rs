@@ -446,7 +446,8 @@ async fn handle_async_get(
         let run_uuid = enqueue_run_for_api(workflow_uuid, state).await?;
         return Ok(Some(HttpResponse::Accepted().json(json!({
             "status": "queued",
-            "run_uuid": run_uuid
+            "run_uuid": run_uuid,
+            "message": "Workflow run enqueued"
         }))));
     }
 
