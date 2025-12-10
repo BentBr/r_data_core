@@ -182,6 +182,7 @@ services:
         command: sh -c "cd /var/www/html/ && npm install && npm run dev && tail -f /dev/null" # preventing it from stopping again
         volumes:
             - ./fe:/var/www/html
+            - /var/www/html/node_modules # Prevent node_modules override from host
         working_dir: /var/www/html/
         ports:
             - '80'
@@ -211,6 +212,7 @@ services:
             dockerfile: ./.docker/static-website/Dockerfile
         volumes:
             - ./static-website:/var/www/html
+            - /var/www/html/node_modules # Prevent node_modules override from host
         working_dir: /var/www/html/
         ports:
             - '80'
