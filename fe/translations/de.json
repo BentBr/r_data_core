@@ -59,7 +59,7 @@
       "kind": "Typ",
       "enabled": "Aktiv",
       "cron": "Cron",
-      "cron_disabled_endpoint": "Deaktiviert (Endpunkt)",
+      "cron_disabled_endpoint": "Deaktiviert (API)",
       "actions": "Aktionen"
     },
     "history": {
@@ -152,7 +152,8 @@
       "endpoint_info": "Ihr Endpunkt ist erreichbar unter",
       "filter_operator": "Filter-Operator",
       "filter_field": "Filterfeld",
-      "filter_value": "Filterwert"
+      "filter_value": "Filterwert",
+      "apply_filter": "Filter anwenden"
     },
     "create": {
       "button": "Workflow erstellen",

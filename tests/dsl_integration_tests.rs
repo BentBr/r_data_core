@@ -147,6 +147,7 @@ mod tests {
                 ..
             } => {
                 assert_eq!(entity_definition, "source_entity");
+                let filter = filter.as_ref().expect("Filter should exist");
                 assert_eq!(filter.field, "status");
                 assert_eq!(filter.value, "active");
             }
@@ -396,49 +397,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn test_validate_filter_default_operator() {
-        // Test that filter without operator defaults to "="
-        let cfg = json!({
-            "steps": [
-                {
-                    "from": {
-                        "type": "entity",
-                        "entity_definition": "test_entity",
-                        "filter": {
-                            "field": "status",
-                            "value": "active"
-                        },
-                        "mapping": {}
-                    },
-                    "transform": { "type": "none" },
-                    "to": {
-                        "type": "format",
-                        "output": { "mode": "api" },
-                        "format": {
-                            "format_type": "json",
-                            "options": {}
-                        },
-                        "mapping": {}
-                    }
-                }
-            ]
-        });
-
-        let prog = DslProgram::from_config(&cfg);
-        assert!(prog.is_ok(), "Should parse filter without operator");
-
-        if let Ok(p) = prog {
-            // Check that operator defaults to "="
-            match &p.steps[0].from {
-                FromDef::Entity { filter, .. } => {
-                    assert_eq!(filter.operator, "=", "Operator should default to '='");
-                }
-                FromDef::Format { .. } => panic!("Expected Entity FromDef"),
-            }
-        }
-    }
+    // Removed default-operator behavior: operator must now be provided when a filter is set.
 
     #[tokio::test]
     #[serial]

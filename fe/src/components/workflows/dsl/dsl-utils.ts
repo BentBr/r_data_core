@@ -54,7 +54,7 @@ export type FromDef =
     | {
           type: 'entity'
           entity_definition: string
-          filter: { field: string; operator?: string; value: string }
+          filter?: { field: string; operator?: string; value: string }
           mapping: Mapping
       }
 
@@ -207,11 +207,6 @@ export function ensureEntityFilter(step: DslStep) {
         const f = step.from as {
             filter?: { field: string; operator?: string; value: string }
             mapping?: Record<string, string>
-        }
-        f.filter ??= { field: '', operator: '=', value: '' }
-        // Ensure operator exists for existing filters (backward compatibility)
-        if (f.filter && !f.filter.operator) {
-            f.filter.operator = '='
         }
         f.mapping ??= {}
     }

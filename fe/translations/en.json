@@ -59,7 +59,7 @@
       "kind": "Kind",
       "enabled": "Enabled",
       "cron": "Cron",
-      "cron_disabled_endpoint": "Disabled (endpoint)",
+      "cron_disabled_endpoint": "Disabled (API)",
       "actions": "Actions"
     },
     "history": {
@@ -152,7 +152,8 @@
       "endpoint_info": "Your endpoint can be reached at",
       "filter_operator": "Filter operator",
       "filter_field": "Filter field",
-      "filter_value": "Filter value"
+      "filter_value": "Filter value",
+      "apply_filter": "Apply filter"
     },
     "create": {
       "button": "Create Workflow",

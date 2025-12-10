@@ -483,7 +483,12 @@ impl WorkflowService {
             } = &step.from
             {
                 let staged = self
-                    .handle_entity_source(entity_definition, filter, workflow_uuid, run_uuid)
+                    .handle_entity_source(
+                        entity_definition,
+                        filter.as_ref(),
+                        workflow_uuid,
+                        run_uuid,
+                    )
                     .await?;
                 total_staged += staged;
                 continue;
@@ -506,7 +511,7 @@ impl WorkflowService {
     async fn handle_entity_source(
         &self,
         entity_definition: &str,
-        filter: &r_data_core_workflow::dsl::EntityFilter,
+        filter: Option<&r_data_core_workflow::dsl::EntityFilter>,
         workflow_uuid: Uuid,
         run_uuid: Uuid,
     ) -> anyhow::Result<i64> {
@@ -517,13 +522,18 @@ impl WorkflowService {
         };
 
         let (filter_map, operators_map) = build_filter_maps(filter);
+        let (filters_opt, operators_opt) = if filter_map.is_empty() {
+            (None, None)
+        } else {
+            (Some(filter_map), Some(operators_map))
+        };
         let entities = entity_service
             .filter_entities_with_operators(
                 entity_definition,
                 10000, // Large limit for exports
                 0,
-                Some(filter_map),
-                Some(operators_map),
+                filters_opt,
+                operators_opt,
                 None,
                 None,
                 None,
@@ -554,9 +564,9 @@ impl WorkflowService {
                     "staged_items": staged,
                     "entity_count": entity_count,
                     "entity_definition": entity_definition,
-                    "filter_field": filter.field,
-                    "filter_operator": filter.operator,
-                    "filter_value": filter.value
+                    "filter_field": filter.map(|f| f.field.clone()),
+                    "filter_operator": filter.map(|f| f.operator.clone()),
+                    "filter_value": filter.map(|f| f.value.clone())
                 })),
             )
             .await?;
@@ -644,22 +654,25 @@ impl WorkflowService {
 }
 
 fn build_filter_maps(
-    filter: &r_data_core_workflow::dsl::EntityFilter,
+    filter: Option<&r_data_core_workflow::dsl::EntityFilter>,
 ) -> (HashMap<String, JsonValue>, HashMap<String, String>) {
     let mut filter_map = HashMap::new();
-    let filter_value = if filter.operator == "IN" || filter.operator == "NOT IN" {
-        match serde_json::from_str::<JsonValue>(&filter.value) {
-            Ok(JsonValue::Array(_)) => serde_json::from_str(&filter.value)
-                .unwrap_or_else(|_| serde_json::json!([filter.value])),
-            _ => serde_json::json!([filter.value]),
-        }
-    } else {
-        JsonValue::String(filter.value.clone())
-    };
-    filter_map.insert(filter.field.clone(), filter_value);
-
     let mut operators_map = HashMap::new();
-    operators_map.insert(filter.field.clone(), filter.operator.clone());
+
+    if let Some(filter) = filter {
+        let filter_value = if filter.operator == "IN" || filter.operator == "NOT IN" {
+            match serde_json::from_str::<JsonValue>(&filter.value) {
+                Ok(JsonValue::Array(_)) => serde_json::from_str(&filter.value)
+                    .unwrap_or_else(|_| serde_json::json!([filter.value])),
+                _ => serde_json::json!([filter.value]),
+            }
+        } else {
+            JsonValue::String(filter.value.clone())
+        };
+        filter_map.insert(filter.field.clone(), filter_value);
+
+        operators_map.insert(filter.field.clone(), filter.operator.clone());
+    }
 
     (filter_map, operators_map)
 }

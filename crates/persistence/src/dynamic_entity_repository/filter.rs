@@ -54,6 +54,7 @@ pub async fn filter_entities_impl(
         params.filters.as_ref(),
         params.filter_operators.as_ref(),
         params.search.as_ref(),
+        &entity_def,
     )
     .await?;
 
@@ -294,6 +295,7 @@ async fn execute_filter_query(
     filters: Option<&std::collections::HashMap<String, JsonValue>>,
     filter_operators: Option<&std::collections::HashMap<String, String>>,
     search: Option<&(String, Vec<String>)>,
+    entity_def: &r_data_core_core::entity_definition::definition::EntityDefinition,
 ) -> Result<Vec<sqlx::postgres::PgRow>> {
     let mut sql = sqlx::query(query);
 
@@ -317,11 +319,15 @@ async fn execute_filter_query(
                 continue;
             }
 
+            // Get field type from entity definition or system fields
+            let field_type = get_field_type(field, entity_def);
+
             // Handle IN/NOT IN with array values
             if operator == "IN" || operator == "NOT IN" {
                 if let Some(arr) = value.as_array() {
                     for item in arr {
-                        match item {
+            let converted = convert_value_to_type(item, field_type.as_ref());
+                        match converted {
                             JsonValue::String(s) => sql = sql.bind(s),
                             JsonValue::Number(n) => {
                                 if let Some(i) = n.as_i64() {
@@ -332,7 +338,10 @@ async fn execute_filter_query(
                                     sql = sql.bind(n.to_string());
                                 }
                             }
-                            JsonValue::Bool(b) => sql = sql.bind(*b),
+                            JsonValue::Bool(b) => sql = sql.bind(b),
+                            JsonValue::Null => {
+                                // Skip NULL values in arrays
+                            }
                             _ => sql = sql.bind(item.to_string()),
                         }
                     }
@@ -340,8 +349,11 @@ async fn execute_filter_query(
                 }
             }
 
-            // Standard single value binding
-            match value {
+            // Convert value to appropriate type based on field definition
+            let converted = convert_value_to_type(value, field_type.as_ref());
+
+            // Standard single value binding with type conversion
+            match converted {
                 JsonValue::String(s) => sql = sql.bind(s),
                 JsonValue::Number(n) => {
                     if let Some(i) = n.as_i64() {
@@ -352,12 +364,12 @@ async fn execute_filter_query(
                         sql = sql.bind(n.to_string());
                     }
                 }
-                JsonValue::Bool(b) => sql = sql.bind(*b),
+                JsonValue::Bool(b) => sql = sql.bind(b),
                 JsonValue::Null => {
                     // NULL values are handled in the query with IS NULL
                     // Skip binding for NULL values
                 }
-                _ => sql = sql.bind(value.to_string()),
+                _ => sql = sql.bind(converted.to_string()),
             }
         }
     }
@@ -375,4 +387,63 @@ async fn execute_filter_query(
     })?;
 
     Ok(rows)
+}
+
+/// Get the field type for a given field name
+/// Returns the field type from entity definition or system field types
+fn get_field_type(
+    field: &str,
+    entity_def: &r_data_core_core::entity_definition::definition::EntityDefinition,
+) -> Option<r_data_core_core::field::FieldType> {
+    // System fields with known types
+    match field {
+        "published" => Some(r_data_core_core::field::FieldType::Boolean),
+        "version" => Some(r_data_core_core::field::FieldType::Integer),
+        "uuid" | "parent_uuid" | "created_by" | "updated_by" => {
+            Some(r_data_core_core::field::FieldType::Uuid)
+        }
+        "created_at" | "updated_at" => Some(r_data_core_core::field::FieldType::DateTime),
+        "path" => Some(r_data_core_core::field::FieldType::String),
+        _ => {
+            // Look up in entity definition
+            entity_def.get_field(field).map(|f| f.field_type.clone())
+        }
+    }
+}
+
+/// Convert a JSON value to the appropriate type based on field definition
+fn convert_value_to_type(
+    value: &JsonValue,
+    field_type: Option<&r_data_core_core::field::FieldType>,
+) -> JsonValue {
+    field_type.map_or_else(
+        || value.clone(),
+        |ft| match (value, ft) {
+            // String values that need conversion
+            (JsonValue::String(s), r_data_core_core::field::FieldType::Boolean) => {
+                match s.to_lowercase().as_str() {
+                    "true" | "1" | "yes" | "on" => JsonValue::Bool(true),
+                    "false" | "0" | "no" | "off" => JsonValue::Bool(false),
+                    _ => value.clone(), // Keep original if can't parse
+                }
+            }
+            (JsonValue::String(s), r_data_core_core::field::FieldType::Integer) => {
+                s.parse::<i64>()
+                    .map_or_else(|_| value.clone(), |i| JsonValue::Number(i.into()))
+            }
+            (JsonValue::String(s), r_data_core_core::field::FieldType::Float) => {
+                s.parse::<f64>().map_or_else(
+                    |_| value.clone(),
+                    |f| {
+                        JsonValue::Number(
+                            serde_json::Number::from_f64(f)
+                                .unwrap_or_else(|| serde_json::Number::from(0)),
+                        )
+                    },
+                )
+            }
+            // Already correct type or unknown type - return as-is
+            _ => value.clone(),
+        },
+    )
 }

@@ -30,12 +30,17 @@
                                 @cron-change="onCronChange"
                             />
 
+                            <div class="mt-4 mb-2">
+                                <h3>{{ t('workflows.create.config_label') }}</h3>
+                            </div>
                             <v-expansion-panels
+                                v-model="expansionPanels"
                                 class="mt-2"
-                                :model-value="[]"
                             >
                                 <v-expansion-panel>
-                                    <v-expansion-panel-title>Config (JSON)</v-expansion-panel-title>
+                                    <v-expansion-panel-title>{{
+                                        t('workflows.create.config_label')
+                                    }}</v-expansion-panel-title>
                                     <v-expansion-panel-text>
                                         <div class="mb-4">
                                             <DslConfigurator
@@ -90,6 +95,7 @@
     import { ValidationError } from '@/api/typed-client'
     import { getDialogMaxWidth } from '@/design-system/components'
     import DslConfigurator from './DslConfigurator.vue'
+    import WorkflowFormFields from './WorkflowFormFields.vue'
     import VersionHistory from '@/components/common/VersionHistory.vue'
     import { useTranslations } from '@/composables/useTranslations'
     import { computeDiffRows } from '@/utils/versionDiff'
@@ -136,6 +142,7 @@
         'Use standard 5-field cron (min hour day month dow), e.g. "*/5 * * * *"'
     )
     const nextRuns = ref<string[]>([])
+    const expansionPanels = ref<number[]>([])
     let cronDebounce: ReturnType<typeof setTimeout> | null = null
 
     // Check if any step has from.api source type (accepts POST, no cron needed)

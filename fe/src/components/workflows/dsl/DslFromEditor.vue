@@ -115,7 +115,19 @@
                 density="comfortable"
                 @update:model-value="onEntityDefChange"
             />
-            <div class="d-flex ga-2 flex-wrap">
+            <div class="d-flex ga-2 flex-wrap align-center mb-2">
+                <v-switch
+                    :model-value="filterEnabled"
+                    density="comfortable"
+                    :label="t('workflows.dsl.apply_filter')"
+                    color="primary"
+                    @update:model-value="toggleFilter"
+                />
+            </div>
+            <div
+                v-if="filterEnabled"
+                class="d-flex ga-2 flex-wrap"
+            >
                 <v-select
                     :model-value="filterField"
                     :items="filterFieldItems"
@@ -242,23 +254,27 @@
 
     const filterField = computed(() => {
         if (props.modelValue.type === 'entity') {
-            return props.modelValue.filter.field
+            return props.modelValue.filter?.field ?? ''
         }
         return ''
     })
 
     const filterValue = computed(() => {
         if (props.modelValue.type === 'entity') {
-            return props.modelValue.filter.value
+            return props.modelValue.filter?.value ?? ''
         }
         return ''
     })
 
     const filterOperator = computed(() => {
         if (props.modelValue.type === 'entity') {
-            return props.modelValue.filter.operator ?? '='
+            return props.modelValue.filter?.operator ?? '='
         }
         return '='
+    })
+
+    const filterEnabled = computed(() => {
+        return props.modelValue.type === 'entity' ? !!props.modelValue.filter : false
     })
 
     // Load entity definitions on mount
@@ -323,9 +339,8 @@
     function updateField(field: string, value: unknown) {
         const updated = { ...props.modelValue } as Record<string, unknown>
         updated[field] = value
-        // Ensure entity filter exists if type is entity
+        // Ensure entity mapping exists; filter is optional
         if (updated.type === 'entity') {
-            updated.filter ??= { field: '', value: '' }
             updated.mapping ??= {}
         }
         emit('update:modelValue', updated as FromDef)
@@ -335,6 +350,16 @@
         const updated = { ...props.modelValue } as Record<string, unknown>
         updated.filter ??= { field: '', operator: '=', value: '' }
         updated.filter[field] = value
+        emit('update:modelValue', updated as FromDef)
+    }
+
+    function toggleFilter(enabled: boolean) {
+        const updated = { ...props.modelValue } as Record<string, unknown>
+        if (enabled) {
+            updated.filter ??= { field: '', operator: '=', value: '' }
+        } else {
+            delete updated.filter
+        }
         emit('update:modelValue', updated as FromDef)
     }
 
