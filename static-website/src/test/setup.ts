@@ -65,3 +65,19 @@ global.IntersectionObserver = class IntersectionObserver {
     }
     unobserve() {}
 } as unknown as typeof IntersectionObserver
+
+// Mock visualViewport
+Object.defineProperty(window, 'visualViewport', {
+    writable: true,
+    value: {
+        width: 1024,
+        height: 768,
+        scale: 1,
+        offsetLeft: 0,
+        offsetTop: 0,
+        pageLeft: 0,
+        pageTop: 0,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+    },
+})
