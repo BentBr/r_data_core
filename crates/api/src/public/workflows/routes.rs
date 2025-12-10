@@ -66,7 +66,11 @@ async fn collect_entity_input_data(
                     entity_definition,
                     1000,
                     0,
-                    if filter_map.is_empty() { None } else { Some(filter_map) },
+                    if filter_map.is_empty() {
+                        None
+                    } else {
+                        Some(filter_map)
+                    },
                     if operators_map.is_empty() {
                         None
                     } else {

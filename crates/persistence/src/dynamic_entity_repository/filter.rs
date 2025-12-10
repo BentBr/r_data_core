@@ -326,7 +326,7 @@ async fn execute_filter_query(
             if operator == "IN" || operator == "NOT IN" {
                 if let Some(arr) = value.as_array() {
                     for item in arr {
-            let converted = convert_value_to_type(item, field_type.as_ref());
+                        let converted = convert_value_to_type(item, field_type.as_ref());
                         match converted {
                             JsonValue::String(s) => sql = sql.bind(s),
                             JsonValue::Number(n) => {
@@ -427,10 +427,9 @@ fn convert_value_to_type(
                     _ => value.clone(), // Keep original if can't parse
                 }
             }
-            (JsonValue::String(s), r_data_core_core::field::FieldType::Integer) => {
-                s.parse::<i64>()
-                    .map_or_else(|_| value.clone(), |i| JsonValue::Number(i.into()))
-            }
+            (JsonValue::String(s), r_data_core_core::field::FieldType::Integer) => s
+                .parse::<i64>()
+                .map_or_else(|_| value.clone(), |i| JsonValue::Number(i.into())),
             (JsonValue::String(s), r_data_core_core::field::FieldType::Float) => {
                 s.parse::<f64>().map_or_else(
                     |_| value.clone(),
