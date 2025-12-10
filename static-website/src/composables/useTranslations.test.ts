@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useTranslations } from '../useTranslations'
+import { useTranslations } from './useTranslations'
 
 describe('useTranslations', () => {
     beforeEach(() => {

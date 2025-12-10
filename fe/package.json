@@ -5,14 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc && vite build",
+    "build": "npm run generate:favicons && vue-tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint . --fix",
     "format": "prettier --write src/",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "generate:favicons": "node scripts/generate-favicons.js"
   },
   "dependencies": {
     "@vueuse/core": "^10.9.0",
@@ -24,6 +25,7 @@
     "zod": "^4.0.13"
   },
   "devDependencies": {
+    "sharp": "^0.33.5",
     "@eslint/js": "^9.9.0",
     "@types/node": "^20.11.30",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
