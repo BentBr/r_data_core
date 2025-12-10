@@ -344,6 +344,164 @@ jobs:
         working-directory: fe
         run: npm audit --audit-level=moderate
 
+  static-website-prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: static-website/package-lock.json
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: static-website/node_modules
+          key: ${{ runner.os }}-static-website-node-modules-${{ hashFiles('static-website/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-static-website-node-modules-
+
+      - name: Install dependencies
+        working-directory: static-website
+        run: npm ci
+
+  static-website-lint:
+    needs: static-website-prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: static-website/package-lock.json
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: static-website/node_modules
+          key: ${{ runner.os }}-static-website-node-modules-${{ hashFiles('static-website/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-static-website-node-modules-
+
+      - name: Install dependencies
+        working-directory: static-website
+        run: npm ci
+
+      - name: Lint
+        working-directory: static-website
+        run: npm run lint
+
+  static-website-build:
+    needs: static-website-prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: static-website/package-lock.json
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: static-website/node_modules
+          key: ${{ runner.os }}-static-website-node-modules-${{ hashFiles('static-website/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-static-website-node-modules-
+
+      - name: Install dependencies
+        working-directory: static-website
+        run: npm ci
+
+      - name: Build
+        working-directory: static-website
+        env:
+          VITE_BASE_URL: https://rdatacore.eu
+          VITE_SITE_NAME: RDataCore
+          VITE_R_DATA_CORE_DEMO_URL: https://demo.rdatacore.eu
+          VITE_API_DOCS_URL: https://rdatacore.eu/api/docs/
+          VITE_ADMIN_API_DOCS_URL: https://rdatacore.eu/admin/api/docs/
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-website-dist
+          path: static-website/dist
+          retention-days: 7
+
+  static-website-test:
+    needs: static-website-prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: static-website/package-lock.json
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: static-website/node_modules
+          key: ${{ runner.os }}-static-website-node-modules-${{ hashFiles('static-website/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-static-website-node-modules-
+
+      - name: Install dependencies
+        working-directory: static-website
+        run: npm ci
+
+      - name: Run tests
+        working-directory: static-website
+        run: npm run test
+
+  static-website-audit:
+    needs: static-website-prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: static-website/package-lock.json
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: static-website/node_modules
+          key: ${{ runner.os }}-static-website-node-modules-${{ hashFiles('static-website/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-static-website-node-modules-
+
+      - name: Install dependencies
+        working-directory: static-website
+        run: npm ci
+
+      - name: Security audit
+        working-directory: static-website
+        run: npm audit --audit-level=moderate
+
   ci-gate:
     needs:
       - backend-clippy
@@ -354,6 +512,10 @@ jobs:
       - frontend-lint
       - frontend-tests
       - frontend-audit
+      - static-website-lint
+      - static-website-test
+      - static-website-build
+      - static-website-audit
     runs-on: ubuntu-latest
     steps:
       - name: All checks passed

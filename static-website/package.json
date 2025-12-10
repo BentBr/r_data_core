@@ -1,0 +1,47 @@
+{
+  "name": "static-website",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run generate:images && vue-tsc && vite build && npm run generate:sitemap",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui",
+    "lint": "eslint . --fix",
+    "format": "prettier --write src/",
+    "generate:images": "node scripts/generate-images.js",
+    "generate:sitemap": "node scripts/generate-sitemap.js"
+  },
+  "dependencies": {
+    "@vueuse/core": "^10.11.1",
+    "lucide-vue-next": "^0.559.0",
+    "vue": "^3.5.25",
+    "vue-router": "^4.6.3",
+    "vuetify": "^3.11.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^20.19.26",
+    "@typescript-eslint/eslint-plugin": "^8.49.0",
+    "@typescript-eslint/parser": "^8.49.0",
+    "@vitejs/plugin-vue": "^5.2.4",
+    "@vue/test-utils": "^2.4.6",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-vue": "^9.33.0",
+    "happy-dom": "^15.11.7",
+    "prettier": "^3.7.4",
+    "sharp": "^0.33.5",
+    "typescript": "~5.4.3",
+    "vite": "^6.4.1",
+    "vite-plugin-vuetify": "^2.1.2",
+    "vitest": "^2.1.8",
+    "vue-eslint-parser": "^9.4.3",
+    "vue-tsc": "^2.2.12"
+  }
+}

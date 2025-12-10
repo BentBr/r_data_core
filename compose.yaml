@@ -1,7 +1,7 @@
 services:
     postgres:
-        image: postgres:18-alpine
         container_name: rdata_postgres
+        image: postgres:18-alpine
         environment:
             POSTGRES_USER: postgres
             POSTGRES_PASSWORD: postgres
@@ -22,8 +22,8 @@ services:
                     - pg.rdatacore.docker
 
     postgres_test:
-        image: postgres:18-alpine
         container_name: rdata_postgres_test
+        image: postgres:18-alpine
         environment:
             POSTGRES_USER: postgres
             POSTGRES_PASSWORD: postgres
@@ -44,8 +44,8 @@ services:
                     - pg-test.rdatacore.docker
 
     redis:
-        image: redis:8-alpine
         container_name: rdata_redis
+        image: redis:8-alpine
         ports:
             - "6379:6379"
         volumes:
@@ -63,6 +63,7 @@ services:
             VIRTUAL_HOST: .redis.rdatacore.docker
 
     app:
+        container_name: rdata_app
         build:
             context: .
             dockerfile: ./.docker/app/Dockerfile
@@ -72,7 +73,6 @@ services:
                 PACKAGE_NAME: "r_data_core"
                 BINARY_NAME: "r_data_core"
                 RUST_LOG_LEVEL: "info"
-        container_name: rdata_app
         volumes:
             - .env:/usr/local/bin/.env:ro
         env_file:
@@ -107,6 +107,7 @@ services:
                     - rdatacore.docker
 
     worker:
+        container_name: rdata_worker
         build:
             context: .
             dockerfile: ./.docker/app/Dockerfile
@@ -116,7 +117,6 @@ services:
                 PACKAGE_NAME: "r_data_core_worker"
                 BINARY_NAME: "r_data_core_worker"
                 RUST_LOG_LEVEL: "info"
-        container_name: rdata_worker
         volumes:
             - .env:/usr/local/bin/.env:ro
         env_file:
@@ -140,7 +140,8 @@ services:
                 aliases:
                     - worker.rdatacore.docker
 
-    worker_maintenance:
+    maintenance:
+        container_name: rdata_maintenance
         build:
             context: .
             dockerfile: ./.docker/app/Dockerfile
@@ -150,7 +151,6 @@ services:
                 PACKAGE_NAME: "r_data_core_worker"
                 BINARY_NAME: "r_data_core_maintenance"
                 RUST_LOG_LEVEL: "info"
-        container_name: rdata_worker_maintenance
         volumes:
             - .env:/usr/local/bin/.env:ro
         env_file:
@@ -177,6 +177,7 @@ services:
                     - maintenance.rdatacore.docker
 
     node:
+        container_name: rdata_node
         image: node:22-alpine
         command: sh -c "cd /var/www/html/ && npm install && npm run dev && tail -f /dev/null" # preventing it from stopping again
         volumes:
@@ -202,6 +203,29 @@ services:
             - VITE_ENABLE_USER_MANAGEMENT=true
             - VITE_ENABLE_SYSTEM_METRICS=true
             - VITE_ENABLE_PRODUCTION_SOURCEMAPS=false
+
+    node-static:
+        container_name: rdata_node_static
+        build:
+            context: .
+            dockerfile: ./.docker/static-website/Dockerfile
+        volumes:
+            - ./static-website:/var/www/html
+        working_dir: /var/www/html/
+        ports:
+            - '80'
+        networks:
+            default:
+                aliases:
+                    - website.rdatacore.docker
+        environment:
+            - VIRTUAL_HOST=.website.rdatacore.docker
+            # Frontend Environment Variables
+            - VITE_BASE_URL=http://website.rdatacore.docker
+            - VITE_SITE_NAME=RDataCore
+            - VITE_R_DATA_CORE_DEMO_URL=http://admin.rdatacore.docker
+            - VITE_API_DOCS_URL=http://rdatacore.docker/api/docs/
+            - VITE_ADMIN_API_DOCS_URL=http://rdatacore.docker/admin/api/docs/
 
 volumes:
     postgres_data:
