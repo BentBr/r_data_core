@@ -4,6 +4,7 @@ use actix_multipart::Multipart;
 use actix_web::{get, post, web, Responder};
 use futures_util::StreamExt;
 use log::{error, info};
+use serde_json::json;
 use uuid::Uuid;
 
 use crate::admin::workflows::models::WorkflowRunLogDto;
@@ -83,7 +84,10 @@ pub async fn run_workflow_now(
                         info!(
                             "Successfully enqueued fetch job for workflow {uuid} (run: {run_uuid})"
                         );
-                        ApiResponse::<()>::message("Workflow run enqueued")
+                        ApiResponse::<serde_json::Value>::ok(json!({
+                            "status": "queued",
+                            "run_uuid": run_uuid
+                        }))
                     }
                     Err(e) => {
                         error!(

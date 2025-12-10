@@ -317,6 +317,14 @@ impl WorkflowService {
             .await
     }
 
+    /// Get run status (for async polling)
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
+    pub async fn get_run_status(&self, run_uuid: Uuid) -> anyhow::Result<Option<String>> {
+        self.repo.get_run_status(run_uuid).await
+    }
+
     /// Stage raw items for processing
     ///
     /// # Errors

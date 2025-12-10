@@ -105,6 +105,9 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
     /// Mark a run as failed
     async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()>;
 
+    /// Get run status
+    async fn get_run_status(&self, run_uuid: Uuid) -> anyhow::Result<Option<String>>;
+
     /// Insert a new workflow run in queued status
     ///
     /// # Arguments

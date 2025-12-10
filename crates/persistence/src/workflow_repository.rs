@@ -471,6 +471,19 @@ impl WorkflowRepository {
         Ok(())
     }
 
+    /// Get run status
+    ///
+    /// # Errors
+    /// Returns an error if query fails
+    pub async fn get_run_status(&self, run_uuid: Uuid) -> anyhow::Result<Option<String>> {
+        let row = sqlx::query("SELECT status::text FROM workflow_runs WHERE uuid = $1")
+            .bind(run_uuid)
+            .fetch_optional(&self.pool)
+            .await
+            .context("get run status")?;
+        Ok(row.and_then(|r| r.try_get::<String, _>("status").ok()))
+    }
+
     /// Insert a log entry for a workflow run
     ///
     /// # Errors
@@ -697,6 +710,10 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
 
     async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
         self.mark_run_failure(run_uuid, message).await
+    }
+
+    async fn get_run_status(&self, run_uuid: Uuid) -> anyhow::Result<Option<String>> {
+        self.get_run_status(run_uuid).await
     }
 
     async fn list_runs_paginated(

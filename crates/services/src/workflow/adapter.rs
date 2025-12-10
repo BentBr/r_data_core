@@ -204,6 +204,10 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         self.inner.mark_run_failure(run_uuid, message).await
     }
 
+    async fn get_run_status(&self, run_uuid: Uuid) -> anyhow::Result<Option<String>> {
+        self.inner.get_run_status(run_uuid).await
+    }
+
     async fn get_workflow_uuid_for_run(&self, run_uuid: Uuid) -> anyhow::Result<Option<Uuid>> {
         self.inner
             .get_workflow_uuid_for_run_internal(run_uuid)

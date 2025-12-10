@@ -2,6 +2,7 @@
 // Workflow E2E tests organized by use case
 
 pub mod common;
+pub mod export_async_tests;
 pub mod export_cron_tests;
 pub mod export_filter_tests;
 pub mod export_mapping_tests;
