@@ -182,7 +182,7 @@ pub async fn get_workflow_data(
 ) -> impl Responder {
     let uuid = path.into_inner();
 
-    // Get workflow config
+    // Get workflow config and validate auth
     let workflow = match state.workflow_service().get(uuid).await {
         Ok(Some(wf)) => wf,
         Ok(None) => return HttpResponse::NotFound().json(json!({"error": "Workflow not found"})),
@@ -192,43 +192,8 @@ pub async fn get_workflow_data(
                 .json(json!({"error": "Internal server error"}));
         }
     };
-
-    // Only provider workflows can be accessed via GET
-    if workflow.kind != r_data_core_workflow::data::WorkflowKind::Provider {
-        return HttpResponse::NotFound().json(json!({"error": "Workflow not found"}));
-    }
-
-    // Validate pre-shared key if configured (sets extension for CombinedRequiredAuth)
-    if let Err(e) = validate_provider_auth(&req, &workflow.config, &**state) {
-        log::debug!("Provider pre-shared key auth failed: {e}");
-        return HttpResponse::Unauthorized().json(json!({"error": "Authentication required"}));
-    }
-
-    // Extract pre-shared key status and clone request before any await points
-    let has_pre_shared_key = req.extensions().get::<bool>().copied().unwrap_or(false);
-    let req_clone = req.clone(); // Clone request for use in async block
-
-    // Use CombinedRequiredAuth to validate JWT/API key (or check pre-shared key extension)
-    // Note: We can't use the extractor directly here since we need workflow config first
-    // So we manually check the extension set by validate_provider_auth
-    if !has_pre_shared_key {
-        // Try to validate via CombinedRequiredAuth (JWT/API key)
-        // Use cloned request to avoid Send issues
-        use crate::auth::auth_enum::CombinedRequiredAuth;
-        use actix_web::FromRequest;
-        let mut payload = actix_web::dev::Payload::None;
-        if CombinedRequiredAuth::from_request(&req_clone, &mut payload)
-            .await
-            .is_err()
-        {
-            // Check if pre-shared key was required
-            if extract_provider_auth_config(&workflow.config).is_some() {
-                return HttpResponse::Unauthorized()
-                    .json(json!({"error": "Authentication required"}));
-            }
-            // If no pre-shared key required, still need JWT/API key
-            return HttpResponse::Unauthorized().json(json!({"error": "Authentication required"}));
-        }
+    if let Err(resp) = validate_and_authenticate_provider(&req, &workflow, &state).await {
+        return resp;
     }
 
     // Parse DSL program
@@ -244,20 +209,59 @@ pub async fn get_workflow_data(
         }
     };
 
+    // Create a run and mark running for logging/history
+    let run_uuid = match state.workflow_service().enqueue_run(uuid).await {
+        Ok(run_uuid) => run_uuid,
+        Err(e) => {
+            log::error!("Failed to enqueue run: {e}");
+            return HttpResponse::InternalServerError()
+                .json(json!({"error": "Failed to enqueue workflow run"}));
+        }
+    };
+    let _ = state.workflow_service().mark_run_running(run_uuid).await;
+
     // Collect input data from entity sources
     let input_data = match collect_entity_input_data(&program, &state).await {
         Ok(data) => data,
-        Err(resp) => return resp,
+        Err(resp) => {
+            let _ = state
+                .workflow_service()
+                .mark_run_failure(run_uuid, "Failed to fetch entities")
+                .await;
+            return resp;
+        }
     };
+
+    // Log fetch result (including zero entities)
+    let entity_count = i64::try_from(input_data.len()).unwrap_or(0);
+    let _ = state
+        .workflow_service()
+        .insert_run_log(
+            run_uuid,
+            "info",
+            &format!("Fetched {entity_count} entities for API export"),
+            Some(json!({ "entity_count": entity_count })),
+        )
+        .await;
 
     // Execute workflow and collect format outputs
     let (format_outputs, format_config) =
         match execute_workflow_and_collect_outputs(&program, input_data) {
             Ok(result) => result,
-            Err(resp) => return resp,
+            Err(resp) => {
+                let _ = state
+                    .workflow_service()
+                    .mark_run_failure(run_uuid, "Workflow execution failed")
+                    .await;
+                return resp;
+            }
         };
 
     if format_outputs.is_empty() || format_config.is_none() {
+        let _ = state
+            .workflow_service()
+            .mark_run_failure(run_uuid, "No API output format found")
+            .await;
         return HttpResponse::InternalServerError()
             .json(json!({"error": "No API output format found"}));
     }
@@ -266,14 +270,81 @@ pub async fn get_workflow_data(
     let all_data = format_outputs;
 
     // Serialize based on format
+    let response = serialize_api_output(format, &all_data, run_uuid, &state).await;
+
+    // Mark run success with counts (processed = entity_count)
+    let _ = state
+        .workflow_service()
+        .mark_run_success(run_uuid, entity_count, 0)
+        .await;
+
+    response
+}
+
+#[allow(clippy::future_not_send)]
+async fn validate_and_authenticate_provider(
+    req: &HttpRequest,
+    workflow: &r_data_core_workflow::data::Workflow,
+    state: &web::Data<ApiStateWrapper>,
+) -> Result<(), HttpResponse> {
+    // Only provider workflows can be accessed via GET
+    if workflow.kind != r_data_core_workflow::data::WorkflowKind::Provider {
+        return Err(HttpResponse::NotFound().json(json!({"error": "Workflow not found"})));
+    }
+
+    // Validate pre-shared key if configured (sets extension for CombinedRequiredAuth)
+    if let Err(e) = validate_provider_auth(req, &workflow.config, &***state) {
+        log::debug!("Provider pre-shared key auth failed: {e}");
+        return Err(HttpResponse::Unauthorized().json(json!({"error": "Authentication required"})));
+    }
+
+    // Extract pre-shared key status and clone request before any await points
+    let has_pre_shared_key = req.extensions().get::<bool>().copied().unwrap_or(false);
+    let req_clone = req.clone(); // Clone request for use in async block
+
+    // Use CombinedRequiredAuth to validate JWT/API key (or check pre-shared key extension)
+    if !has_pre_shared_key {
+        use crate::auth::auth_enum::CombinedRequiredAuth;
+        use actix_web::FromRequest;
+        let mut payload = actix_web::dev::Payload::None;
+        if CombinedRequiredAuth::from_request(&req_clone, &mut payload)
+            .await
+            .is_err()
+        {
+            // Check if pre-shared key was required
+            if extract_provider_auth_config(&workflow.config).is_some() {
+                return Err(
+                    HttpResponse::Unauthorized().json(json!({"error": "Authentication required"}))
+                );
+            }
+            // If no pre-shared key required, still need JWT/API key
+            return Err(
+                HttpResponse::Unauthorized().json(json!({"error": "Authentication required"}))
+            );
+        }
+    }
+
+    Ok(())
+}
+
+async fn serialize_api_output(
+    format: r_data_core_workflow::dsl::FormatConfig,
+    all_data: &[JsonValue],
+    run_uuid: Uuid,
+    state: &web::Data<ApiStateWrapper>,
+) -> HttpResponse {
     match format.format_type.as_str() {
         "csv" => {
             let handler =
                 r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new();
-            match handler.serialize(&all_data, &format.options) {
+            match handler.serialize(all_data, &format.options) {
                 Ok(bytes) => HttpResponse::Ok().content_type("text/csv").body(bytes),
                 Err(e) => {
                     log::error!("Failed to serialize CSV: {e}");
+                    let _ = state
+                        .workflow_service()
+                        .mark_run_failure(run_uuid, "Failed to serialize data (csv)")
+                        .await;
                     HttpResponse::InternalServerError()
                         .json(json!({"error": "Failed to serialize data"}))
                 }
@@ -282,18 +353,29 @@ pub async fn get_workflow_data(
         "json" => {
             let handler =
                 r_data_core_workflow::data::adapters::format::json::JsonFormatHandler::new();
-            match handler.serialize(&all_data, &format.options) {
+            match handler.serialize(all_data, &format.options) {
                 Ok(bytes) => HttpResponse::Ok()
                     .content_type("application/json")
                     .body(bytes),
                 Err(e) => {
                     log::error!("Failed to serialize JSON: {e}");
+                    let _ = state
+                        .workflow_service()
+                        .mark_run_failure(run_uuid, "Failed to serialize data (json)")
+                        .await;
                     HttpResponse::InternalServerError()
                         .json(json!({"error": "Failed to serialize data"}))
                 }
             }
         }
-        _ => HttpResponse::NotImplemented().json(json!({"error": "Format not supported"})),
+        other => {
+            log::error!("Unsupported format: {other}");
+            let _ = state
+                .workflow_service()
+                .mark_run_failure(run_uuid, "Unsupported format")
+                .await;
+            HttpResponse::InternalServerError().json(json!({"error": "Unsupported format"}))
+        }
     }
 }
 

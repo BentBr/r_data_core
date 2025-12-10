@@ -682,6 +682,23 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         self.insert_run_queued(workflow_uuid, trigger_id).await
     }
 
+    async fn mark_run_running(&self, run_uuid: Uuid) -> anyhow::Result<()> {
+        self.mark_run_running(run_uuid).await
+    }
+
+    async fn mark_run_success(
+        &self,
+        run_uuid: Uuid,
+        processed: i64,
+        failed: i64,
+    ) -> anyhow::Result<()> {
+        self.mark_run_success(run_uuid, processed, failed).await
+    }
+
+    async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
+        self.mark_run_failure(run_uuid, message).await
+    }
+
     async fn list_runs_paginated(
         &self,
         workflow_uuid: Uuid,
@@ -889,19 +906,6 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         error: Option<&str>,
     ) -> anyhow::Result<()> {
         self.set_raw_item_status(item_uuid, status, error).await
-    }
-
-    async fn mark_run_success(
-        &self,
-        run_uuid: Uuid,
-        processed: i64,
-        failed: i64,
-    ) -> anyhow::Result<()> {
-        self.mark_run_success(run_uuid, processed, failed).await
-    }
-
-    async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
-        self.mark_run_failure(run_uuid, message).await
     }
 
     async fn get_workflow_uuid_for_run(&self, run_uuid: Uuid) -> anyhow::Result<Option<Uuid>> {

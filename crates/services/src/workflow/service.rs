@@ -270,6 +270,53 @@ impl WorkflowService {
         Ok(run_uuid)
     }
 
+    /// Mark a run as running
+    ///
+    /// # Errors
+    /// Returns an error if the database update fails
+    pub async fn mark_run_running(&self, run_uuid: Uuid) -> anyhow::Result<()> {
+        self.repo.mark_run_running(run_uuid).await
+    }
+
+    /// Mark a run as succeeded with processed/failed counts
+    ///
+    /// # Errors
+    /// Returns an error if the database update fails
+    pub async fn mark_run_success(
+        &self,
+        run_uuid: Uuid,
+        processed: i64,
+        failed: i64,
+    ) -> anyhow::Result<()> {
+        self.repo
+            .mark_run_success(run_uuid, processed, failed)
+            .await
+    }
+
+    /// Mark a run as failed with error message
+    ///
+    /// # Errors
+    /// Returns an error if the database update fails
+    pub async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
+        self.repo.mark_run_failure(run_uuid, message).await
+    }
+
+    /// Insert a log entry for a run
+    ///
+    /// # Errors
+    /// Returns an error if the database insert fails
+    pub async fn insert_run_log(
+        &self,
+        run_uuid: Uuid,
+        level: &str,
+        message: &str,
+        meta: Option<serde_json::Value>,
+    ) -> anyhow::Result<()> {
+        self.repo
+            .insert_run_log(run_uuid, level, message, meta)
+            .await
+    }
+
     /// Stage raw items for processing
     ///
     /// # Errors

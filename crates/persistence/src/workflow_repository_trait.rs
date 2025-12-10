@@ -91,6 +91,20 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
     /// Returns an error if database query fails
     async fn list_scheduled_consumers(&self) -> anyhow::Result<Vec<(Uuid, String)>>;
 
+    /// Mark a run as running (transition queued -> running)
+    async fn mark_run_running(&self, run_uuid: Uuid) -> anyhow::Result<()>;
+
+    /// Mark a run as successful
+    async fn mark_run_success(
+        &self,
+        run_uuid: Uuid,
+        processed: i64,
+        failed: i64,
+    ) -> anyhow::Result<()>;
+
+    /// Mark a run as failed
+    async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()>;
+
     /// Insert a new workflow run in queued status
     ///
     /// # Arguments
@@ -264,32 +278,6 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
         status: &str,
         error: Option<&str>,
     ) -> anyhow::Result<()>;
-
-    /// Mark run as successful
-    ///
-    /// # Arguments
-    /// * `run_uuid` - Run UUID
-    /// * `processed` - Number of processed items
-    /// * `failed` - Number of failed items
-    ///
-    /// # Errors
-    /// Returns an error if update fails
-    async fn mark_run_success(
-        &self,
-        run_uuid: Uuid,
-        processed: i64,
-        failed: i64,
-    ) -> anyhow::Result<()>;
-
-    /// Mark run as failed
-    ///
-    /// # Arguments
-    /// * `run_uuid` - Run UUID
-    /// * `message` - Error message
-    ///
-    /// # Errors
-    /// Returns an error if update fails
-    async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()>;
 
     /// Get workflow UUID for a run
     ///
