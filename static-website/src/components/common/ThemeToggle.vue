@@ -21,7 +21,7 @@
 
     const toggleTheme = () => {
         const newTheme = isDark.value ? 'light' : 'dark'
-        theme.global.name.value = newTheme
+        theme.toggle([newTheme])
         // Store preference in localStorage
         localStorage.setItem('theme-preference', newTheme)
     }
@@ -30,7 +30,7 @@
     onMounted(() => {
         const savedTheme = localStorage.getItem('theme-preference')
         if (savedTheme === 'dark' || savedTheme === 'light') {
-            theme.global.name.value = savedTheme
+            theme.toggle([savedTheme])
         }
     })
 </script>

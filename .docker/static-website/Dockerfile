@@ -9,14 +9,15 @@ RUN apk add --no-cache \
 
 WORKDIR /var/www/html
 
-# Copy package files
+# Copy package files first for better caching
 COPY static-website/package*.json ./
+RUN npm ci --include=dev
 
-# Install dependencies
-RUN npm install
-
-# Copy the rest of the application
+# Copy source files
 COPY static-website/ ./
+
+# Clean any cached build artifacts to avoid esbuild version mismatches
+RUN rm -rf node_modules/.vite node_modules/.cache
 
 # Build the application
 RUN npm run build
