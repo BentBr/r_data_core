@@ -1,0 +1,76 @@
+{
+  "general": {
+    "language": {
+      "switch": "Sprache wechseln"
+    }
+  },
+  "nav": {
+    "features": "Funktionen",
+    "benefits": "Vorteile",
+    "pricing": "Preise"
+  },
+  "hero": {
+    "eyebrow": "Daten. Gesteuert. Geliefert.",
+    "title": "Eine Plattform zum Modellieren, Steuern und Bereitstellen",
+    "subtitle": "RDataCore macht komplexe Daten­domänen zu API-fähigen Produkten. Entitäten definieren, Workflows steuern und Daten schneller veröffentlichen – ohne Kontrolle zu verlieren.",
+    "primary": "Demo ausprobieren",
+    "secondary": "Mit uns sprechen"
+  },
+  "features": {
+    "title": "Was Sie mit RDataCore tun können",
+    "items": [
+      {
+        "title": "Jede Domäne modellieren",
+        "description": "Entitätstypen, Beziehungen und Regeln flexibel und schema-first beschreiben.",
+        "icon": "box"
+      },
+      {
+        "title": "Sicher steuern",
+        "description": "Rollen, API-Keys und Nachvollziehbarkeit inklusive – Zusammenarbeit ohne Risiko.",
+        "icon": "shield"
+      },
+      {
+        "title": "Workflows automatisieren",
+        "description": "Freigaben, Validierungen und Veröffentlichungen mit wiederverwendbaren Vorlagen steuern.",
+        "icon": "workflow"
+      }
+    ]
+  },
+  "benefits": {
+    "title": "Gemacht für Data-Product-Teams",
+    "items": [
+      "Schneller Start mit geführten Entitäts-Definitionen",
+      "Konsistente APIs für jedes Datenprodukt",
+      "Transparente Zugriffssteuerung und Audit-Trails",
+      "Bereit für Ihre Cloud oder On-Prem"
+    ]
+  },
+  "cta": {
+    "try_demo": "Demo ausprobieren",
+    "eyebrow": "Jetzt ansehen",
+    "title": "Demo nutzen oder Walkthrough buchen",
+    "subtitle": "Nutzen Sie den Demo-User, um RDataCore zu erkunden, oder sprechen Sie mit uns über Ihre Anforderungen.",
+    "primary": "Demo ausprobieren",
+    "secondary": "Termin buchen",
+    "demo_overlay": {
+      "title": "Demo-Zugang",
+      "hint": "Unsere Demo-Zugangsdaten",
+      "username": "Nutzer",
+      "password": "Passwort",
+      "cancel": "Abbrechen",
+      "open": "Demo öffnen"
+    }
+  },
+  "pricing": {
+    "title": "Preise",
+    "subtitle": "Einfaches, transparentes Preismodell für jedes Team.",
+    "bullets": [
+      "Start mit der gehosteten Demo",
+      "Upgrade auf dedizierte Umgebungen",
+      "Enterprise-Support und SLAs"
+    ]
+  },
+  "footer": {
+    "rights": "Alle Rechte vorbehalten."
+  }
+}

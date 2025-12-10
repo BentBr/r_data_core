@@ -23,5 +23,9 @@ no_docker_compose = true
         "alias" = "lint"
         "execution" = "docker compose exec node npm run lint"
         "description" = "Runs ESLint (with prettier) and fixes it's findings"
+    [commands.lint-static]
+        "alias" = "lint-static"
+        "execution" = "docker compose exec node-static npm run lint"
+        "description" = "Runs ESLint (with prettier) and fixes it's findings"
 # Mandatory node
 [environments]

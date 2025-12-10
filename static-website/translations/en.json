@@ -1,0 +1,76 @@
+{
+  "general": {
+    "language": {
+      "switch": "Switch language"
+    }
+  },
+  "nav": {
+    "features": "Features",
+    "benefits": "Benefits",
+    "pricing": "Pricing"
+  },
+  "hero": {
+    "eyebrow": "Data. Governed. Delivered.",
+    "title": "One platform to model, govern, and ship your data", 
+    "subtitle": "RDataCore turns complex data domains into governed, API-ready products. Define entities, manage workflows, and publish data faster—without sacrificing control.",
+    "primary": "Try demo",
+    "secondary": "Talk to us"
+  },
+  "features": {
+    "title": "What you can do with RDataCore",
+    "items": [
+      {
+        "title": "Model any domain",
+        "description": "Define entity types, relationships, and constraints with a flexible schema-first approach.",
+        "icon": "box"
+      },
+      {
+        "title": "Govern with confidence",
+        "description": "Role-based access, API keys, and auditability built-in so teams can collaborate safely.",
+        "icon": "shield"
+      },
+      {
+        "title": "Automate workflows",
+        "description": "Kick off workflows for approvals, data validation, and publishing using repeatable templates.",
+        "icon": "workflow"
+      }
+    ]
+  },
+  "benefits": {
+    "title": "Built for data product teams",
+    "items": [
+      "Faster onboarding with guided entity definitions",
+      "Consistent APIs for every data product",
+      "Transparent access controls and audit trails",
+      "Ready to deploy to your cloud or on-prem"
+    ]
+  },
+  "cta": {
+    "try_demo": "Try demo",
+    "eyebrow": "See it in action",
+    "title": "Try the hosted demo or schedule a walkthrough",
+    "subtitle": "Spin up the demo user to explore RDataCore, or talk to our team about your requirements.",
+    "primary": "Try demo",
+    "secondary": "Book a call",
+    "demo_overlay": {
+      "title": "Demo credentials",
+      "hint": "Our demo user data",
+      "username": "User",
+      "password": "Password",
+      "cancel": "Cancel",
+      "open": "Open demo"
+    }
+  },
+  "pricing": {
+    "title": "Pricing",
+    "subtitle": "Simple, transparent pricing for teams of any size.",
+    "bullets": [
+      "Start with the hosted demo",
+      "Upgrade to dedicated environments",
+      "Enterprise support and SLAs"
+    ]
+  },
+  "footer": {
+    "rights": "All rights reserved."
+  }
+}
