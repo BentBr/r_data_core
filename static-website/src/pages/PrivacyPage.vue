@@ -10,7 +10,7 @@
                         <p>{{ t('privacy.intro.text') }}</p>
                     </section>
 
-                    <section>
+                    <!-- <section>
                         <h2>{{ t('privacy.controller.title') }}</h2>
                         <p>
                             Slothlike GmbH<br />
@@ -20,17 +20,11 @@
                             {{ t('imprint.contact.email') }}:
                             <a :href="`mailto:${t('contact.email')}`">{{ t('contact.email') }}</a>
                         </p>
-                    </section>
+                    </section> -->
 
                     <section>
                         <h2>{{ t('privacy.data_collection.title') }}</h2>
                         <p>{{ t('privacy.data_collection.text') }}</p>
-                        <ul>
-                            <li>{{ t('privacy.data_collection.items.0') }}</li>
-                            <li>{{ t('privacy.data_collection.items.1') }}</li>
-                            <li>{{ t('privacy.data_collection.items.2') }}</li>
-                            <li>{{ t('privacy.data_collection.items.3') }}</li>
-                        </ul>
                     </section>
 
                     <section>

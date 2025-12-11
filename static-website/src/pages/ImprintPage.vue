@@ -5,10 +5,10 @@
                 <h1>{{ t('imprint.title') }}</h1>
 
                 <div class="imprint-content">
-                    <section>
+                    <!-- <section>
                         <h2>{{ t('imprint.company.title') }}</h2>
                         <p v-html="t('imprint.company.address')"></p>
-                    </section>
+                    </section> -->
 
                     <section>
                         <h2>{{ t('imprint.contact.title') }}</h2>
@@ -21,7 +21,7 @@
                         </p>
                     </section>
 
-                    <section>
+                    <!-- <section>
                         <h2>{{ t('imprint.legal.title') }}</h2>
                         <p>
                             {{ t('imprint.legal.registration') }}:
@@ -30,7 +30,7 @@
                             }}<br />
                             {{ t('imprint.legal.vat') }}: {{ t('imprint.legal.vat_number') }}
                         </p>
-                    </section>
+                    </section> -->
 
                     <section>
                         <h2>{{ t('imprint.responsible.title') }}</h2>

@@ -510,7 +510,7 @@
       "title": "Contact",
       "email": "Email",
       "phone": "Phone",
-      "phone_number": "+49 (0) 123 456789"
+      "phone_number": "+49 (0) 172 511 2820"
     },
     "legal": {
       "title": "Legal Information",
@@ -523,7 +523,7 @@
     },
     "responsible": {
       "title": "Responsible for Content",
-      "text": "Managing Director: John Doe"
+      "text": "Bent Brüggemann"
     },
     "disclaimer": {
       "title": "Disclaimer",
@@ -542,28 +542,22 @@
     "title": "Privacy Policy",
     "intro": {
       "title": "Introduction",
-      "text": "We take the protection of your personal data very seriously. We treat your personal data confidentially and in accordance with the statutory data protection regulations and this privacy policy."
+      "text": "Your privacy is important to us. This website is designed with privacy in mind - we do not collect, store, or track any personal data."
     },
     "controller": {
       "title": "Data Controller"
     },
     "data_collection": {
       "title": "Data Collection",
-      "text": "We collect the following types of data when you use our website:",
-      "items": [
-        "Browser type and version",
-        "Operating system",
-        "Date and time of access",
-        "IP address (anonymized)"
-      ]
+      "text": "We do not collect any personal data from visitors to this website. No information is logged, stored, or transmitted to any third parties."
     },
     "cookies": {
       "title": "Cookies",
-      "text": "Our website uses cookies only for essential functionality. We store your language and theme preferences locally in your browser. No tracking cookies are used."
+      "text": "This website does not use any cookies. We do not store any information in your browser."
     },
     "analytics": {
       "title": "Analytics",
-      "text": "We do not use any analytics or tracking tools on this website. Your privacy is important to us."
+      "text": "We do not use any analytics, tracking tools, or third-party services on this website. Your visit is completely private."
     },
     "your_rights": {
       "title": "Your Rights",

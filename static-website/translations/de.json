@@ -510,7 +510,7 @@
       "title": "Kontakt",
       "email": "E-Mail",
       "phone": "Telefon",
-      "phone_number": "+49 (0) 123 456789"
+      "phone_number": "+49 (0) 172 511 2820"
     },
     "legal": {
       "title": "Rechtliche Angaben",
@@ -523,7 +523,7 @@
     },
     "responsible": {
       "title": "Verantwortlich für den Inhalt",
-      "text": "Geschäftsführer: John Doe"
+      "text": "Bent Brüggemann"
     },
     "disclaimer": {
       "title": "Haftungsausschluss",
@@ -542,28 +542,22 @@
     "title": "Datenschutzerklärung",
     "intro": {
       "title": "Einleitung",
-      "text": "Wir nehmen den Schutz Ihrer persönlichen Daten sehr ernst. Wir behandeln Ihre personenbezogenen Daten vertraulich und entsprechend der gesetzlichen Datenschutzvorschriften sowie dieser Datenschutzerklärung."
+      "text": "Ihre Privatsphäre ist uns wichtig. Diese Website wurde mit Fokus auf Datenschutz entwickelt - wir sammeln, speichern oder verfolgen keine personenbezogenen Daten."
     },
     "controller": {
       "title": "Verantwortlicher"
     },
     "data_collection": {
       "title": "Datenerfassung",
-      "text": "Wir erfassen folgende Daten, wenn Sie unsere Website nutzen:",
-      "items": [
-        "Browsertyp und Browserversion",
-        "Verwendetes Betriebssystem",
-        "Datum und Uhrzeit des Zugriffs",
-        "IP-Adresse (anonymisiert)"
-      ]
+      "text": "Wir sammeln keine personenbezogenen Daten von Besuchern dieser Website. Es werden keine Informationen protokolliert, gespeichert oder an Dritte übermittelt."
     },
     "cookies": {
       "title": "Cookies",
-      "text": "Unsere Website verwendet Cookies nur für wesentliche Funktionen. Wir speichern Ihre Sprach- und Theme-Einstellungen lokal in Ihrem Browser. Es werden keine Tracking-Cookies verwendet."
+      "text": "Diese Website verwendet keine Cookies. Wir speichern keine Informationen in Ihrem Browser."
     },
     "analytics": {
       "title": "Analyse-Tools",
-      "text": "Wir verwenden keine Analyse- oder Tracking-Tools auf dieser Website. Ihre Privatsphäre ist uns wichtig."
+      "text": "Wir verwenden keine Analyse-Tools, Tracking-Tools oder Drittanbieter-Dienste auf dieser Website. Ihr Besuch ist vollständig privat."
     },
     "your_rights": {
       "title": "Ihre Rechte",
