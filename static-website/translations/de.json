@@ -7,7 +7,9 @@
   "nav": {
     "home": "Start",
     "about": "Über uns",
-    "pricing": "Preise"
+    "pricing": "Preise",
+    "roadmap": "Roadmap",
+    "use_cases": "Anwendungsfälle"
   },
   "home": {
     "hero": {
@@ -510,7 +512,7 @@
       "title": "Kontakt",
       "email": "E-Mail",
       "phone": "Telefon",
-      "phone_number": "+49 (0) 123 456789"
+      "phone_number": "+49 (0) 172 511 2820"
     },
     "legal": {
       "title": "Rechtliche Angaben",
@@ -523,7 +525,7 @@
     },
     "responsible": {
       "title": "Verantwortlich für den Inhalt",
-      "text": "Geschäftsführer: John Doe"
+      "text": "Bent Brüggemann"
     },
     "disclaimer": {
       "title": "Haftungsausschluss",
@@ -542,28 +544,22 @@
     "title": "Datenschutzerklärung",
     "intro": {
       "title": "Einleitung",
-      "text": "Wir nehmen den Schutz Ihrer persönlichen Daten sehr ernst. Wir behandeln Ihre personenbezogenen Daten vertraulich und entsprechend der gesetzlichen Datenschutzvorschriften sowie dieser Datenschutzerklärung."
+      "text": "Ihre Privatsphäre ist uns wichtig. Diese Website wurde mit Fokus auf Datenschutz entwickelt - wir sammeln, speichern oder verfolgen keine personenbezogenen Daten."
     },
     "controller": {
       "title": "Verantwortlicher"
     },
     "data_collection": {
       "title": "Datenerfassung",
-      "text": "Wir erfassen folgende Daten, wenn Sie unsere Website nutzen:",
-      "items": [
-        "Browsertyp und Browserversion",
-        "Verwendetes Betriebssystem",
-        "Datum und Uhrzeit des Zugriffs",
-        "IP-Adresse (anonymisiert)"
-      ]
+      "text": "Wir sammeln keine personenbezogenen Daten von Besuchern dieser Website. Es werden keine Informationen protokolliert, gespeichert oder an Dritte übermittelt."
     },
     "cookies": {
       "title": "Cookies",
-      "text": "Unsere Website verwendet Cookies nur für wesentliche Funktionen. Wir speichern Ihre Sprach- und Theme-Einstellungen lokal in Ihrem Browser. Es werden keine Tracking-Cookies verwendet."
+      "text": "Diese Website verwendet keine Cookies. Wir speichern keine Informationen in Ihrem Browser."
     },
     "analytics": {
       "title": "Analyse-Tools",
-      "text": "Wir verwenden keine Analyse- oder Tracking-Tools auf dieser Website. Ihre Privatsphäre ist uns wichtig."
+      "text": "Wir verwenden keine Analyse-Tools, Tracking-Tools oder Drittanbieter-Dienste auf dieser Website. Ihr Besuch ist vollständig privat."
     },
     "your_rights": {
       "title": "Ihre Rechte",
@@ -591,6 +587,146 @@
     "seo": {
       "title": "Datenschutz - RDataCore",
       "description": "Erfahren Sie, wie wir Ihre Privatsphäre schützen und Ihre persönlichen Daten behandeln"
+    }
+  },
+  "roadmap": {
+    "hero": {
+      "badge": "Produkt-Roadmap",
+      "title": "Die Zukunft von MDM gestalten",
+      "subtitle": "Sehen Sie, was wir erreicht haben und was als nächstes kommt. Wir sind der kontinuierlichen Verbesserung und Transparenz in unserem Entwicklungsprozess verpflichtet."
+    },
+    "done": {
+      "title": "Fertiggestellte Features",
+      "subtitle": "Diese Funktionen sind live und heute einsatzbereit",
+      "features": [
+        {
+          "title": "Benutzer & Rollen",
+          "desc": "Umfassende Benutzerverwaltung mit rollenbasierter Zugriffskontrolle. Definieren Sie benutzerdefinierte Rollen, Berechtigungen und Benutzerhierarchien passend zu Ihrer Organisationsstruktur."
+        },
+        {
+          "title": "Workflows",
+          "desc": "Leistungsstarke Workflow-Engine zur Automatisierung von Datenprozessen. Erstellen Sie komplexe Datentransformations-Pipelines mit bedingter Logik, Fehlerbehandlung und Freigabeketten."
+        },
+        {
+          "title": "Asynchrone Ausführung",
+          "desc": "Nicht-blockierende asynchrone Job-Verarbeitung für hohe Performance. Verarbeiten Sie Tausende gleichzeitiger Operationen ohne Beeinträchtigung der Systemreaktionsfähigkeit."
+        },
+        {
+          "title": "Umfangreiches Caching",
+          "desc": "Mehrstufiges Caching-System powered by Redis. Verbessern Sie Antwortzeiten dramatisch und reduzieren Sie die Datenbanklast mit intelligenter Cache-Invalidierung."
+        },
+        {
+          "title": "Entity-Definitionen",
+          "desc": "Flexible Entity-Schema-Definitionen mit einer breiten Palette von Feldtypen, Validierungsregeln und Beziehungen. Modellieren Sie jede benötigte Datenstruktur."
+        },
+        {
+          "title": "Admin-API-Dokumentation",
+          "desc": "Vollständige OpenAPI-Dokumentation für administrative Endpunkte. Vollständige API-Referenz mit Beispielen, Authentifizierungsdetails und Response-Schemas."
+        },
+        {
+          "title": "Public-API-Dokumentation",
+          "desc": "Umfassende Dokumentation für öffentlich zugängliche APIs. Ermöglichen Sie Partnern und Kunden eine nahtlose Integration mit detaillierten Anleitungen und Beispielen."
+        },
+        {
+          "title": "Docker-Setup",
+          "desc": "Vollständig containerisierte Bereitstellung mit Docker und Docker Compose. Deployen Sie auf jeder Infrastruktur mit minimaler Konfiguration und maximaler Portabilität."
+        },
+        {
+          "title": "Workflow-DSL",
+          "desc": "Domänenspezifische Sprache zur Definition von Workflows. Schreiben Sie komplexe Datentransformationen und Geschäftslogik in einem einfachen, lesbaren Format."
+        },
+        {
+          "title": "Baumansicht von Entities",
+          "desc": "Hierarchische Visualisierung von Entity-Beziehungen. Navigieren Sie durch komplexe Datenstrukturen mit einer intuitiven baumbasierten Oberfläche."
+        }
+      ]
+    },
+    "open": {
+      "title": "In Kürze verfügbar",
+      "subtitle": "Features, an denen wir aktiv arbeiten oder die wir zu implementieren planen",
+      "features": [
+        {
+          "title": "SSO-Integration",
+          "desc": "Single Sign-On-Unterstützung für Enterprise-Identity-Provider einschließlich GitHub, Google, Azure AD, Okta und SAML-basierte Systeme. Nahtlose Integration mit Ihrer bestehenden Authentifizierungsinfrastruktur."
+        },
+        {
+          "title": "Erweiterte DSL-Extension",
+          "desc": "Verbesserte Workflow-DSL mit zusätzlichen Funktionen, Operatoren und integrierten Utilities. Leistungsfähigere Datentransformationen mit weniger Code."
+        },
+        {
+          "title": "Erweiterte Feldtypen",
+          "desc": "Erweiterte Feldtyp-Bibliothek für Entity-Definitionen einschließlich Rich-Text, Geolokation, Dateianhänge, JSON-Schemas und benutzerdefinierte zusammengesetzte Typen."
+        },
+        {
+          "title": "Benutzerdefinierte Feldvalidierungen",
+          "desc": "Definieren Sie benutzerdefinierte Validierungsregeln mit JavaScript-Ausdrücken. Erstellen Sie komplexe Business-Logic-Validatoren speziell für Ihre Domänenanforderungen."
+        },
+        {
+          "title": "Entity-Listenansichten",
+          "desc": "Anpassbare Listenansichten mit erweiterten Filter-, Sortier- und Suchfunktionen. Speichern Sie Filter-Voreinstellungen und erstellen Sie benutzerdefinierte Ansichten für verschiedene Benutzerrollen."
+        },
+        {
+          "title": "Verbesserte Baumansicht",
+          "desc": "Verbesserte Baumansicht mit Drag-and-Drop-Neuordnung, Massenoperationen, Eltern-Kontrollmechanismen und besserer Handhabung großer Hierarchien."
+        }
+      ]
+    },
+    "seo": {
+      "title": "Roadmap - RDataCore",
+      "description": "Sehen Sie, was wir gebaut haben und was als nächstes für die RDataCore MDM-Plattform kommt"
+    }
+  },
+  "use_cases": {
+    "hero": {
+      "badge": "Praxisnahe Anwendungen",
+      "title": "Wie Teams RDataCore nutzen",
+      "subtitle": "Vom E-Commerce bis zu Unternehmenssystemen – sehen Sie, wie RDataCore echte Datenintegrations-Herausforderungen über alle Branchen hinweg löst."
+    },
+    "intro": {
+      "title": "Leistungsstarke Datenintegration leicht gemacht",
+      "description": "RDataCore zeichnet sich durch Massen-Import und -Export von Daten über mehrere Formate und Systeme hinweg aus. Ob Sie mit CSV-Dateien, JSON-Daten, Dritt-APIs oder unserer flexiblen REST-API arbeiten – wir machen Datenintegration nahtlos.",
+      "capabilities": [
+        "Import/Export CSV & JSON",
+        "Dritt-API-Integration",
+        "Dateibasierter Datenaustausch",
+        "RESTful-API-Zugriff",
+        "Echtzeit-Datensynchronisation"
+      ]
+    },
+    "cases": {
+      "title": "Anwendungsfälle",
+      "subtitle": "Fünf leistungsstarke Möglichkeiten, RDataCore in Ihrer Organisation zu nutzen",
+      "items": [
+        {
+          "title": "Single Source of Truth",
+          "description": "Importieren Sie Kundendaten aus Ihrem Online-Shop und aggregieren Sie diese mit Bestellungen, Support-Anfragen und Interaktionen über mehrere Kanäle hinweg. Erstellen Sie ein einheitliches Kundenprofil, das als definitive Wahrheitsquelle für Ihre gesamte Organisation dient."
+        },
+        {
+          "title": "Daten-Sammler",
+          "description": "Holen Sie aktiv Daten aus verschiedenen Quellen – Datenbanken, APIs, Dateisystemen und Drittanbieterdiensten – und konsolidieren Sie alles in Ihrem CRM-System. Automatisieren Sie Datenerfassungs-Workflows, um aktuelle, aggregierte Datensätze ohne manuelle Eingriffe zu pflegen."
+        },
+        {
+          "title": "Öffentlicher Kommunikator",
+          "description": "Bieten Sie einen sicheren Einstiegspunkt für Partner und externe Systeme, um über eine öffentliche API auf Ihre Daten zuzugreifen. Verwenden Sie Pre-Shared-Keys oder API-Tokens zur Zugriffskontrolle und ermöglichen Sie nahtlosen B2B-Datenaustausch unter Wahrung der Sicherheit."
+        },
+        {
+          "title": "Zentraler Datenaggregator",
+          "description": "Nutzen Sie RDataCore als zentrale MDM-Instanz, an die alle Tools und Services ihre Daten senden. Sammeln und aggregieren Sie jede Art von Information – Produkte, Kunden, Bestellungen, Inventar – solange Sie das Entity-Schema definiert haben. Ein zentraler Hub für alle Ihre Daten."
+        },
+        {
+          "title": "Datenformatierer & Rechner",
+          "description": "Transformieren Sie Daten on-the-fly von einem Format ins andere. Nehmen Sie CSV-Eingaben aus Legacy-Systemen und konvertieren Sie diese in JSON für moderne APIs. Wenden Sie Berechnungen, Feldtransformationen und Datenanreicherung während des Konvertierungsprozesses an, ohne Zwischenergebnisse zu speichern."
+        }
+      ]
+    },
+    "cta": {
+      "title": "Bereit, Ihren Daten-Workflow zu transformieren?",
+      "subtitle": "Sehen Sie, wie RDataCore Ihre spezifischen Integrations-Herausforderungen lösen kann. Probieren Sie unsere Demo aus oder kontaktieren Sie uns, um Ihren Anwendungsfall zu besprechen.",
+      "contact": "Kontaktieren Sie uns"
+    },
+    "seo": {
+      "title": "Anwendungsfälle - RDataCore",
+      "description": "Entdecken Sie, wie Organisationen RDataCore für Datenintegration, -aggregation und -transformation nutzen"
     }
   }
 }

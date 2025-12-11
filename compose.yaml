@@ -210,9 +210,10 @@ services:
         build:
             context: .
             dockerfile: ./.docker/static-website/Dockerfile
+        platform: linux/amd64
         volumes:
             - ./static-website:/var/www/html
-            - /var/www/html/node_modules # Prevent node_modules override from host
+            - node_static_modules:/var/www/html/node_modules
         working_dir: /var/www/html/
         ports:
             - '80'
@@ -233,3 +234,4 @@ volumes:
     postgres_data:
     postgres_test_data:
     redis_data:
+    node_static_modules:

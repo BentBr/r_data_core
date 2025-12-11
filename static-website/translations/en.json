@@ -7,7 +7,9 @@
   "nav": {
     "home": "Home",
     "about": "About",
-    "pricing": "Pricing"
+    "pricing": "Pricing",
+    "roadmap": "Roadmap",
+    "use_cases": "Use Cases"
   },
   "home": {
     "hero": {
@@ -510,7 +512,7 @@
       "title": "Contact",
       "email": "Email",
       "phone": "Phone",
-      "phone_number": "+49 (0) 123 456789"
+      "phone_number": "+49 (0) 172 511 2820"
     },
     "legal": {
       "title": "Legal Information",
@@ -523,7 +525,7 @@
     },
     "responsible": {
       "title": "Responsible for Content",
-      "text": "Managing Director: John Doe"
+      "text": "Bent Brüggemann"
     },
     "disclaimer": {
       "title": "Disclaimer",
@@ -542,28 +544,22 @@
     "title": "Privacy Policy",
     "intro": {
       "title": "Introduction",
-      "text": "We take the protection of your personal data very seriously. We treat your personal data confidentially and in accordance with the statutory data protection regulations and this privacy policy."
+      "text": "Your privacy is important to us. This website is designed with privacy in mind - we do not collect, store, or track any personal data."
     },
     "controller": {
       "title": "Data Controller"
     },
     "data_collection": {
       "title": "Data Collection",
-      "text": "We collect the following types of data when you use our website:",
-      "items": [
-        "Browser type and version",
-        "Operating system",
-        "Date and time of access",
-        "IP address (anonymized)"
-      ]
+      "text": "We do not collect any personal data from visitors to this website. No information is logged, stored, or transmitted to any third parties."
     },
     "cookies": {
       "title": "Cookies",
-      "text": "Our website uses cookies only for essential functionality. We store your language and theme preferences locally in your browser. No tracking cookies are used."
+      "text": "This website does not use any cookies. We do not store any information in your browser."
     },
     "analytics": {
       "title": "Analytics",
-      "text": "We do not use any analytics or tracking tools on this website. Your privacy is important to us."
+      "text": "We do not use any analytics, tracking tools, or third-party services on this website. Your visit is completely private."
     },
     "your_rights": {
       "title": "Your Rights",
@@ -591,6 +587,146 @@
     "seo": {
       "title": "Privacy Policy - RDataCore",
       "description": "Learn how we protect your privacy and handle your personal data"
+    }
+  },
+  "roadmap": {
+    "hero": {
+      "badge": "Product Roadmap",
+      "title": "Building the Future of MDM",
+      "subtitle": "See what we've accomplished and what's coming next. We're committed to continuous improvement and transparency in our development process."
+    },
+    "done": {
+      "title": "Completed Features",
+      "subtitle": "These features are live and ready to use today",
+      "features": [
+        {
+          "title": "Users & Roles",
+          "desc": "Comprehensive user management with role-based access control. Define custom roles, permissions, and user hierarchies to match your organization's structure."
+        },
+        {
+          "title": "Workflows",
+          "desc": "Powerful workflow engine for automating data processes. Create complex data transformation pipelines with conditional logic, error handling, and approval chains."
+        },
+        {
+          "title": "Async Execution",
+          "desc": "Non-blocking asynchronous job processing for high performance. Handle thousands of concurrent operations without impacting system responsiveness."
+        },
+        {
+          "title": "Extensive Caching",
+          "desc": "Multi-layer caching system powered by Redis. Dramatically improve response times and reduce database load with intelligent cache invalidation."
+        },
+        {
+          "title": "Entity Definitions",
+          "desc": "Flexible entity schema definitions with a wide range of field types, validation rules, and relationships. Model any data structure you need."
+        },
+        {
+          "title": "Admin API Documentation",
+          "desc": "Complete OpenAPI documentation for administrative endpoints. Full API reference with examples, authentication details, and response schemas."
+        },
+        {
+          "title": "Public API Documentation",
+          "desc": "Comprehensive documentation for public-facing APIs. Enable partners and customers to integrate seamlessly with detailed guides and examples."
+        },
+        {
+          "title": "Docker Setup",
+          "desc": "Fully containerized deployment with Docker and Docker Compose. Deploy to any infrastructure with minimal configuration and maximum portability."
+        },
+        {
+          "title": "Workflow DSL",
+          "desc": "Domain-specific language for defining workflows. Write complex data transformations and business logic in a simple, readable format."
+        },
+        {
+          "title": "Tree View of Entities",
+          "desc": "Hierarchical visualization of entity relationships. Navigate complex data structures with an intuitive tree-based interface."
+        }
+      ]
+    },
+    "open": {
+      "title": "Coming Soon",
+      "subtitle": "Features we're actively working on or planning to implement",
+      "features": [
+        {
+          "title": "SSO Integration",
+          "desc": "Single Sign-On support for enterprise identity providers including GitHub, Google, Azure AD, Okta, and SAML-based systems. Seamlessly integrate with your existing authentication infrastructure."
+        },
+        {
+          "title": "Extensive DSL Extension",
+          "desc": "Enhanced workflow DSL with additional functions, operators, and built-in utilities. More powerful data transformations with less code."
+        },
+        {
+          "title": "Advanced Field Types",
+          "desc": "Extended field type library for entity definitions including rich text, geolocation, file attachments, JSON schemas, and custom composite types."
+        },
+        {
+          "title": "Custom Field Validations",
+          "desc": "Define custom validation rules using JavaScript expressions. Create complex business logic validators specific to your domain requirements."
+        },
+        {
+          "title": "Entity List Views",
+          "desc": "Customizable list views with advanced filtering, sorting, and search capabilities. Save filter presets and create custom views for different user roles."
+        },
+        {
+          "title": "Enhanced Tree View",
+          "desc": "Improved tree view with drag-and-drop reordering, bulk operations, parent control mechanisms, and better handling of large hierarchies."
+        }
+      ]
+    },
+    "seo": {
+      "title": "Roadmap - RDataCore",
+      "description": "See what we've built and what's coming next for RDataCore MDM platform"
+    }
+  },
+  "use_cases": {
+    "hero": {
+      "badge": "Real-World Applications",
+      "title": "How Teams Use RDataCore",
+      "subtitle": "From e-commerce to enterprise systems, see how RDataCore solves real data integration challenges across industries."
+    },
+    "intro": {
+      "title": "Powerful Data Integration Made Simple",
+      "description": "RDataCore excels at mass import and export of data across multiple formats and systems. Whether you're working with CSV files, JSON data, third-party APIs, or our flexible REST API, we make data integration seamless.",
+      "capabilities": [
+        "Import/Export CSV & JSON",
+        "Third-party API Integration",
+        "File-based Data Exchange",
+        "RESTful API Access",
+        "Real-time Data Sync"
+      ]
+    },
+    "cases": {
+      "title": "Use Cases",
+      "subtitle": "Five powerful ways to leverage RDataCore in your organization",
+      "items": [
+        {
+          "title": "Single Source of Truth",
+          "description": "Import customer data from your online shop and aggregate it with orders, support requests, and interactions across multiple channels. Create a unified customer profile that serves as the definitive source of truth for your entire organization."
+        },
+        {
+          "title": "Data Collector",
+          "description": "Actively fetch data from various sources—databases, APIs, file systems, and third-party services—and consolidate everything into your CRM system. Automate data collection workflows to maintain up-to-date, aggregated records without manual intervention."
+        },
+        {
+          "title": "Public Communicator",
+          "description": "Provide a secure entry point for partners and external systems to access your data through a public API. Use pre-shared keys or API tokens to control access and enable seamless B2B data exchange while maintaining security."
+        },
+        {
+          "title": "Central Data Aggregator",
+          "description": "Use RDataCore as your central MDM instance where all tools and services send their data. Collect and aggregate any type of information—products, customers, orders, inventory—as long as you've defined the entity schema. One central hub for all your data."
+        },
+        {
+          "title": "Data Formatter & Calculator",
+          "description": "Transform data on-the-fly from one format to another. Take CSV input from legacy systems and convert it to JSON for modern APIs. Apply calculations, field transformations, and data enrichment during the conversion process without storing intermediate results."
+        }
+      ]
+    },
+    "cta": {
+      "title": "Ready to Transform Your Data Workflow?",
+      "subtitle": "See how RDataCore can solve your specific integration challenges. Try our demo or get in touch to discuss your use case.",
+      "contact": "Contact Us"
+    },
+    "seo": {
+      "title": "Use Cases - RDataCore",
+      "description": "Discover how organizations use RDataCore for data integration, aggregation, and transformation"
     }
   }
 }
