@@ -19,6 +19,16 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/PricingPage.vue'),
     },
     {
+        path: '/:lang(en|de)/roadmap',
+        name: 'Roadmap',
+        component: () => import('@/pages/RoadmapPage.vue'),
+    },
+    {
+        path: '/:lang(en|de)/use-cases',
+        name: 'UseCases',
+        component: () => import('@/pages/UseCasesPage.vue'),
+    },
+    {
         path: '/:lang(en|de)/imprint',
         name: 'Imprint',
         component: () => import('@/pages/ImprintPage.vue'),
