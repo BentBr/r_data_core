@@ -1,5 +1,31 @@
 # Deployment Guide
 
+## Docker Development
+
+**Important**: The `compose.yaml` uses a volume mount exclusion for `node_modules` to prevent architecture conflicts:
+
+```yaml
+volumes:
+  - ./static-website:/var/www/html
+  - /var/www/html/node_modules  # Prevents host node_modules override
+```
+
+This ensures the container uses Linux ARM64 musl binaries, not macOS ARM64 binaries from the host.
+
+### Running Tests in Docker
+
+```bash
+# Build and start container
+docker compose up -d node-static
+
+# Run tests
+docker compose exec node-static npm run test
+
+# If tests fail with rollup/esbuild errors, rebuild:
+docker compose build node-static
+docker compose up -d node-static
+```
+
 ## Static File Serving
 
 ### Sitemaps & Robots.txt

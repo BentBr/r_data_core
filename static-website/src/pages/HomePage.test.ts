@@ -71,8 +71,9 @@ describe('HomePage', () => {
                 plugins: [router],
             },
         })
-        const links = wrapper.findAll('a')
-        expect(links.length).toBeGreaterThan(0)
+        const apiDocsText = wrapper.text()
+        // Check that API documentation section exists
+        expect(apiDocsText).toContain('API')
     })
 
     it('should handle open-demo event', () => {

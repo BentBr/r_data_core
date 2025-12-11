@@ -298,6 +298,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: fe/package-lock.json
 
+      - name: Install system dependencies for sharp
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvips-dev
+
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
@@ -308,7 +313,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: fe
-        run: npm ci
+        run: npm ci --include=optional
 
       - name: Run tests
         working-directory: fe
@@ -456,6 +461,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: static-website/package-lock.json
 
+      - name: Install system dependencies for sharp
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvips-dev
+
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
@@ -466,7 +476,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: static-website
-        run: npm ci
+        run: npm ci --include=optional
 
       - name: Run tests
         working-directory: static-website
