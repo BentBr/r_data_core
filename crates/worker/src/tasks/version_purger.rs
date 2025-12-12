@@ -51,16 +51,15 @@ impl MaintenanceTask for VersionPurgerTask {
         let pool = context.pool();
 
         // Use shared cache manager from context, or create a minimal fallback for settings lookup
-        let cache_manager: Arc<CacheManager> =
-            context.cache_manager().unwrap_or_else(|| {
-                Arc::new(CacheManager::new(r_data_core_core::config::CacheConfig {
-                    entity_definition_ttl: 3600,
-                    api_key_ttl: 600,
-                    enabled: true,
-                    ttl: 3600,
-                    max_size: 10000,
-                }))
-            });
+        let cache_manager: Arc<CacheManager> = context.cache_manager().unwrap_or_else(|| {
+            Arc::new(CacheManager::new(r_data_core_core::config::CacheConfig {
+                entity_definition_ttl: 3600,
+                api_key_ttl: 600,
+                enabled: true,
+                ttl: 3600,
+                max_size: 10000,
+            }))
+        });
         let settings_service = SettingsService::new(pool.clone(), cache_manager);
 
         let settings = match settings_service.get_entity_versioning_settings().await {
