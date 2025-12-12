@@ -201,32 +201,4 @@ impl DynamicEntityService {
 
         Ok(entity_def)
     }
-
-    #[allow(dead_code)]
-    async fn get_entities_with_filters(
-        &self,
-        entity_type: &str,
-        filters: Option<HashMap<String, JsonValue>>,
-        limit: i64,
-        offset: i64,
-        exclusive_fields: Option<Vec<String>>,
-    ) -> Result<Vec<DynamicEntity>> {
-        // If no filters, use the standard method
-        if filters.is_none() {
-            return self
-                .repository
-                .get_all_by_type(entity_type, limit, offset, exclusive_fields)
-                .await;
-        }
-
-        // Validate entity type
-        let _ = self.get_entity_definition_for_query(entity_type).await?;
-
-        // Use the new filter_entities method with the structured parameters
-        let params = FilterEntitiesParams::new(limit, offset)
-            .with_filters(filters)
-            .with_filter_operators(None) // Default to "=" for all filters
-            .with_fields(exclusive_fields);
-        self.repository.filter_entities(entity_type, &params).await
-    }
 }

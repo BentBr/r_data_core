@@ -17,7 +17,7 @@
                     <p>{{ t('use_cases.intro.description') }}</p>
                     <div class="capabilities">
                         <div
-                            v-for="(capability, index) in 5"
+                            v-for="(_capability, index) in 5"
                             :key="index"
                             class="capability-item"
                         >

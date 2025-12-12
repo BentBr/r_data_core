@@ -18,7 +18,7 @@
                 </div>
                 <div class="features-grid">
                     <div
-                        v-for="(feature, index) in doneFeatures"
+                        v-for="(_feature, index) in doneFeatures"
                         :key="`done-${index}`"
                         class="feature-card done"
                     >
@@ -38,7 +38,7 @@
                 </div>
                 <div class="features-grid">
                     <div
-                        v-for="(feature, index) in openFeatures"
+                        v-for="(_feature, index) in openFeatures"
                         :key="`open-${index}`"
                         class="feature-card open"
                     >

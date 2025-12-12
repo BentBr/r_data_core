@@ -55,4 +55,28 @@ pub trait RoleRepositoryTrait: Send + Sync {
     /// # Errors
     /// Returns an error if database delete fails
     async fn delete(&self, uuid: Uuid) -> Result<()>;
+
+    /// List all roles with pagination and sorting
+    ///
+    /// # Arguments
+    /// * `limit` - Maximum number of roles to return (-1 for unlimited)
+    /// * `offset` - Number of roles to skip
+    /// * `sort_by` - Optional field to sort by
+    /// * `sort_order` - Sort order (ASC or DESC), defaults to ASC
+    ///
+    /// # Errors
+    /// Returns an error if database query fails
+    async fn list_all(
+        &self,
+        limit: i64,
+        offset: i64,
+        sort_by: Option<String>,
+        sort_order: Option<String>,
+    ) -> Result<Vec<Role>>;
+
+    /// Count all roles
+    ///
+    /// # Errors
+    /// Returns an error if database query fails
+    async fn count_all(&self) -> Result<i64>;
 }

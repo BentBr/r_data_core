@@ -8,3 +8,7 @@ logs
 
 # Mac-specific
 .DS_Store
+
+#AI tools
+CLAUDE.md
+.cursor-context.md

@@ -44,14 +44,11 @@ impl VersionRepository {
     /// * `entity_uuid` - UUID of the entity
     ///
     /// # Errors
-    /// Returns an error if database query fails
-    ///
-    /// # Panics
-    /// May panic if database row parsing fails
+    /// Returns an error if database query or row parsing fails
     pub async fn list_entity_versions(&self, entity_uuid: Uuid) -> Result<Vec<EntityVersionMeta>> {
         let rows = sqlx::query(
             "
-            SELECT 
+            SELECT
                 ev.version_number,
                 ev.created_at,
                 ev.created_by,
@@ -75,8 +72,9 @@ impl VersionRepository {
 
         let mut out: Vec<EntityVersionMeta> = Vec::with_capacity(rows.len());
         for r in rows {
-            let version_number: i32 = r.try_get("version_number").unwrap();
-            let created_at: time::OffsetDateTime = r.try_get("created_at").unwrap();
+            let version_number: i32 = r.try_get("version_number").map_err(Error::Database)?;
+            let created_at: time::OffsetDateTime =
+                r.try_get("created_at").map_err(Error::Database)?;
             let created_by: Option<Uuid> = r.try_get("created_by").ok();
             let created_by_name: Option<String> = r.try_get("created_by_name").ok();
             out.push(EntityVersionMeta {
@@ -96,10 +94,7 @@ impl VersionRepository {
     /// * `version_number` - Version number to retrieve
     ///
     /// # Errors
-    /// Returns an error if database query fails
-    ///
-    /// # Panics
-    /// May panic if database row parsing fails
+    /// Returns an error if database query or row parsing fails
     pub async fn get_entity_version(
         &self,
         entity_uuid: Uuid,
@@ -118,18 +113,22 @@ impl VersionRepository {
         .await
         .map_err(Error::Database)?;
 
-        Ok(row.map(|r| {
-            let version_number: i32 = r.try_get("version_number").unwrap();
-            let created_at: time::OffsetDateTime = r.try_get("created_at").unwrap();
-            let created_by: Option<Uuid> = r.try_get("created_by").ok();
-            let data: serde_json::Value = r.try_get("data").unwrap();
-            EntityVersionPayload {
-                version_number,
-                created_at,
-                created_by,
-                data,
+        match row {
+            Some(r) => {
+                let version_number: i32 = r.try_get("version_number").map_err(Error::Database)?;
+                let created_at: time::OffsetDateTime =
+                    r.try_get("created_at").map_err(Error::Database)?;
+                let created_by: Option<Uuid> = r.try_get("created_by").ok();
+                let data: serde_json::Value = r.try_get("data").map_err(Error::Database)?;
+                Ok(Some(EntityVersionPayload {
+                    version_number,
+                    created_at,
+                    created_by,
+                    data,
+                }))
             }
-        }))
+            None => Ok(None),
+        }
     }
 
     /// Insert a version snapshot for an entity
@@ -274,17 +273,14 @@ impl VersionRepository {
     /// Tuple of (`version`, `updated_at`, `updated_by`, `updated_by_name`)
     ///
     /// # Errors
-    /// Returns an error if database query fails
-    ///
-    /// # Panics
-    /// May panic if database row parsing fails
+    /// Returns an error if database query or row parsing fails
     pub async fn get_current_entity_metadata(
         &self,
         entity_uuid: Uuid,
     ) -> Result<Option<(i32, OffsetDateTime, Option<Uuid>, Option<String>)>> {
         let row = sqlx::query(
             "
-            SELECT 
+            SELECT
                 er.version,
                 er.updated_at,
                 er.updated_by,
@@ -305,13 +301,17 @@ impl VersionRepository {
         .await
         .map_err(Error::Database)?;
 
-        Ok(row.map(|r| {
-            let version: i32 = r.try_get("version").unwrap();
-            let updated_at: OffsetDateTime = r.try_get("updated_at").unwrap();
-            let updated_by: Option<Uuid> = r.try_get("updated_by").ok();
-            let updated_by_name: Option<String> = r.try_get("updated_by_name").ok();
-            (version, updated_at, updated_by, updated_by_name)
-        }))
+        match row {
+            Some(r) => {
+                let version: i32 = r.try_get("version").map_err(Error::Database)?;
+                let updated_at: OffsetDateTime =
+                    r.try_get("updated_at").map_err(Error::Database)?;
+                let updated_by: Option<Uuid> = r.try_get("updated_by").ok();
+                let updated_by_name: Option<String> = r.try_get("updated_by_name").ok();
+                Ok(Some((version, updated_at, updated_by, updated_by_name)))
+            }
+            None => Ok(None),
+        }
     }
 
     /// Get current entity data as JSON from the entity view

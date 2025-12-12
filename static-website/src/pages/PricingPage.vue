@@ -881,6 +881,17 @@
         background: rgba(var(--v-theme-surface-variant), 0.2);
     }
 
+    /* Ensure v-col allows badge overflow */
+    .free-licenses-section :deep(.v-col),
+    .company-licenses-section :deep(.v-col) {
+        overflow: visible;
+    }
+
+    .free-licenses-section :deep(.v-row),
+    .company-licenses-section :deep(.v-row) {
+        overflow: visible;
+    }
+
     .pricing-tier-card {
         height: 100%;
         border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
@@ -889,7 +900,8 @@
         padding-top: 32px; /* Extra space for badge */
         position: relative;
         transition: transform 0.3s ease;
-        margin-top: 16px; /* Space above card for badge */
+        margin-top: 20px; /* Space above card for badge */
+        overflow: visible; /* Allow badge to overflow */
     }
 
     .pricing-tier-card:hover {
@@ -902,7 +914,7 @@
 
     .free-badge {
         position: absolute;
-        top: -10px;
+        top: -14px;
         right: 16px;
         background: rgb(var(--v-theme-primary));
         color: white;
@@ -912,12 +924,12 @@
         font-weight: 600;
         box-shadow: 0 2px 8px rgba(var(--v-theme-primary), 0.4);
         white-space: nowrap;
-        z-index: 1;
+        z-index: 10;
     }
 
     .popular-badge {
         position: absolute;
-        top: -10px;
+        top: -14px;
         left: 50%;
         transform: translateX(-50%);
         background: rgb(var(--v-theme-primary));
@@ -928,7 +940,7 @@
         font-weight: 600;
         box-shadow: 0 2px 8px rgba(var(--v-theme-primary), 0.4);
         white-space: nowrap;
-        z-index: 1;
+        z-index: 10;
     }
 
     .pricing-tier-card h3 {

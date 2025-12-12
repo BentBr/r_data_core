@@ -1,17 +1,13 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 
-mod csv;
 mod execution;
 pub mod from;
-mod processor;
 mod program;
 pub mod to;
 pub mod transform;
 mod validation;
 
-// pub use csv::CsvOptions; // TODO: Re-enable when used
 pub use from::{EntityFilter, FormatConfig, FromDef, SourceConfig};
-// pub use processor::DslProcessor; // TODO: Re-enable when used
 pub use program::DslProgram;
 pub use to::{EntityWriteMode, OutputMode, ToDef};
 pub use transform::{
