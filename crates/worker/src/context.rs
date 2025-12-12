@@ -12,7 +12,6 @@ pub struct TaskContext {
     /// Database connection pool
     pool: PgPool,
     /// Cache manager (optional, for tasks that need caching)
-    #[allow(dead_code)] // Will be used by tasks that need caching
     cache: Option<Arc<CacheManager>>,
 }
 
@@ -38,5 +37,9 @@ impl TaskContext {
 impl TaskContextTrait for TaskContext {
     fn pool(&self) -> &PgPool {
         &self.pool
+    }
+
+    fn cache_manager(&self) -> Option<Arc<CacheManager>> {
+        self.cache.clone()
     }
 }
