@@ -1,5 +1,27 @@
 use thiserror::Error;
 
+/// Specific authentication error kinds for better error handling
+#[derive(Error, Debug, Clone)]
+pub enum AuthErrorKind {
+    #[error("Invalid credentials")]
+    InvalidCredentials,
+
+    #[error("Token expired")]
+    TokenExpired,
+
+    #[error("Token validation failed: {0}")]
+    TokenValidation(String),
+
+    #[error("Token generation failed: {0}")]
+    TokenGeneration(String),
+
+    #[error("Account is not active")]
+    AccountInactive,
+
+    #[error("{0}")]
+    Other(String),
+}
+
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Database error: {0}")]
@@ -11,14 +33,14 @@ pub enum Error {
     #[error("Authentication error: {0}")]
     Auth(String),
 
+    #[error("Authentication error: {0}")]
+    AuthError(#[from] AuthErrorKind),
+
     #[error("Authorization error: {0}")]
     Forbidden(String),
 
     #[error("Entity error: {0}")]
     Entity(String),
-
-    #[error("Workflow error: {0}")]
-    Workflow(String),
 
     #[error("Configuration error: {0}")]
     Config(String),
@@ -113,5 +135,78 @@ pub trait SqlxErrorExt: Sized {
 impl SqlxErrorExt for sqlx::Error {
     fn into_db_error(self) -> std::result::Result<sqlx::Error, Self> {
         Ok(self)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_auth_error_kind_display() {
+        assert_eq!(
+            AuthErrorKind::InvalidCredentials.to_string(),
+            "Invalid credentials"
+        );
+        assert_eq!(AuthErrorKind::TokenExpired.to_string(), "Token expired");
+        assert_eq!(
+            AuthErrorKind::AccountInactive.to_string(),
+            "Account is not active"
+        );
+        assert_eq!(
+            AuthErrorKind::TokenValidation("bad token".to_string()).to_string(),
+            "Token validation failed: bad token"
+        );
+        assert_eq!(
+            AuthErrorKind::TokenGeneration("key error".to_string()).to_string(),
+            "Token generation failed: key error"
+        );
+        assert_eq!(
+            AuthErrorKind::Other("custom".to_string()).to_string(),
+            "custom"
+        );
+    }
+
+    #[test]
+    fn test_auth_error_kind_clone() {
+        let err = AuthErrorKind::InvalidCredentials;
+        let cloned = err.clone();
+        assert_eq!(err.to_string(), cloned.to_string());
+    }
+
+    #[test]
+    fn test_error_from_auth_error_kind() {
+        let auth_err = AuthErrorKind::TokenExpired;
+        let err: Error = auth_err.into();
+        assert!(matches!(err, Error::AuthError(AuthErrorKind::TokenExpired)));
+    }
+
+    #[test]
+    fn test_error_from_string() {
+        let err: Error = "test error".to_string().into();
+        assert!(matches!(err, Error::Unknown(_)));
+        assert_eq!(err.to_string(), "Unknown error: test error");
+    }
+
+    #[test]
+    fn test_error_from_str() {
+        let err: Error = "test".into();
+        assert!(matches!(err, Error::Unknown(_)));
+    }
+
+    #[test]
+    fn test_error_variants_display() {
+        assert_eq!(
+            Error::NotFound("item".to_string()).to_string(),
+            "Not found: item"
+        );
+        assert_eq!(
+            Error::Validation("invalid".to_string()).to_string(),
+            "Validation error: invalid"
+        );
+        assert_eq!(
+            Error::Forbidden("denied".to_string()).to_string(),
+            "Authorization error: denied"
+        );
     }
 }

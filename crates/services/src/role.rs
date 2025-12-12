@@ -8,7 +8,9 @@ use uuid::Uuid;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::error::Result;
 use r_data_core_core::permissions::role::{Permission, Role};
-use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository, RoleRepository};
+use r_data_core_persistence::{
+    AdminUserRepository, ApiKeyRepository, RoleRepository, RoleRepositoryTrait,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -28,14 +30,17 @@ struct MergedPermissions {
 
 /// Service for managing roles with caching
 pub struct RoleService {
-    repository: RoleRepository,
+    repository: Arc<dyn RoleRepositoryTrait>,
     pool: PgPool,
     cache_manager: Arc<CacheManager>,
     cache_ttl: Option<u64>,
 }
 
 impl RoleService {
-    /// Create a new role service
+    /// Create a new role service with a database pool
+    ///
+    /// This convenience constructor creates a default `RoleRepository` from the pool.
+    /// For testing or custom implementations, use `new_with_repository`.
     ///
     /// # Arguments
     /// * `pool` - Database connection pool
@@ -44,7 +49,32 @@ impl RoleService {
     #[must_use]
     pub fn new(pool: PgPool, cache_manager: Arc<CacheManager>, cache_ttl: Option<u64>) -> Self {
         Self {
-            repository: RoleRepository::new(pool.clone()),
+            repository: Arc::new(RoleRepository::new(pool.clone())),
+            pool,
+            cache_manager,
+            cache_ttl,
+        }
+    }
+
+    /// Create a new role service with a custom repository implementation
+    ///
+    /// Use this constructor when you need to inject a mock repository for testing
+    /// or provide a custom implementation.
+    ///
+    /// # Arguments
+    /// * `repository` - Role repository implementation
+    /// * `pool` - Database connection pool (needed for auxiliary operations like cache invalidation)
+    /// * `cache_manager` - Cache manager for caching roles
+    /// * `cache_ttl` - Optional cache TTL in seconds
+    #[must_use]
+    pub fn new_with_repository(
+        repository: Arc<dyn RoleRepositoryTrait>,
+        pool: PgPool,
+        cache_manager: Arc<CacheManager>,
+        cache_ttl: Option<u64>,
+    ) -> Self {
+        Self {
+            repository,
             pool,
             cache_manager,
             cache_ttl,
@@ -444,6 +474,47 @@ impl RoleService {
         self.repository.count_all().await
     }
 
+    /// Internal helper to get roles with caching
+    ///
+    /// This consolidates the common logic for fetching roles by UUIDs with caching.
+    async fn get_roles_with_caching(
+        &self,
+        cache_key: &str,
+        role_uuids: Vec<Uuid>,
+        entity_id: Uuid,
+        entity_type: &str,
+    ) -> Result<Vec<Role>> {
+        // Try cache first
+        if let Ok(Some(cached)) = self.cache_manager.get::<UserRoles>(cache_key).await {
+            let mut roles = Vec::new();
+            for uuid in &cached.role_uuids {
+                if let Some(role) = self.get_role(*uuid).await? {
+                    roles.push(role);
+                }
+            }
+            return Ok(roles);
+        }
+
+        // Cache the UUIDs
+        let ttl = self.cache_ttl;
+        let cached = UserRoles {
+            role_uuids: role_uuids.clone(),
+        };
+        if let Err(e) = self.cache_manager.set(cache_key, &cached, ttl).await {
+            log::warn!("Failed to cache {entity_type} roles {entity_id}: {e}");
+        }
+
+        // Load full roles
+        let mut roles = Vec::new();
+        for uuid in role_uuids {
+            if let Some(role) = self.get_role(uuid).await? {
+                roles.push(role);
+            }
+        }
+
+        Ok(roles)
+    }
+
     /// Get all roles for a user (with caching)
     ///
     /// # Arguments
@@ -458,39 +529,11 @@ impl RoleService {
     ) -> Result<Vec<Role>> {
         let cache_key = Self::user_roles_cache_key(&user_uuid);
 
-        // Try cache first
-        if let Ok(Some(cached)) = self.cache_manager.get::<UserRoles>(&cache_key).await {
-            // Load roles from cached UUIDs
-            let mut roles = Vec::new();
-            for uuid in &cached.role_uuids {
-                if let Some(role) = self.get_role(*uuid).await? {
-                    roles.push(role);
-                }
-            }
-            return Ok(roles);
-        }
-
         // Load role UUIDs from database
         let role_uuids = admin_user_repo.get_user_roles(user_uuid).await?;
 
-        // Cache the UUIDs
-        let ttl = self.cache_ttl;
-        let cached = UserRoles {
-            role_uuids: role_uuids.clone(),
-        };
-        if let Err(e) = self.cache_manager.set(&cache_key, &cached, ttl).await {
-            log::warn!("Failed to cache user roles {user_uuid}: {e}");
-        }
-
-        // Load full roles
-        let mut roles = Vec::new();
-        for uuid in role_uuids {
-            if let Some(role) = self.get_role(uuid).await? {
-                roles.push(role);
-            }
-        }
-
-        Ok(roles)
+        self.get_roles_with_caching(&cache_key, role_uuids, user_uuid, "user")
+            .await
     }
 
     /// Get all roles for an API key (with caching)
@@ -507,39 +550,11 @@ impl RoleService {
     ) -> Result<Vec<Role>> {
         let cache_key = Self::api_key_roles_cache_key(&api_key_uuid);
 
-        // Try cache first
-        if let Ok(Some(cached)) = self.cache_manager.get::<UserRoles>(&cache_key).await {
-            // Load roles from cached UUIDs
-            let mut roles = Vec::new();
-            for uuid in &cached.role_uuids {
-                if let Some(role) = self.get_role(*uuid).await? {
-                    roles.push(role);
-                }
-            }
-            return Ok(roles);
-        }
-
         // Load role UUIDs from database
         let role_uuids = api_key_repo.get_api_key_roles(api_key_uuid).await?;
 
-        // Cache the UUIDs
-        let ttl = self.cache_ttl;
-        let cached = UserRoles {
-            role_uuids: role_uuids.clone(),
-        };
-        if let Err(e) = self.cache_manager.set(&cache_key, &cached, ttl).await {
-            log::warn!("Failed to cache API key roles {api_key_uuid}: {e}");
-        }
-
-        // Load full roles
-        let mut roles = Vec::new();
-        for uuid in role_uuids {
-            if let Some(role) = self.get_role(uuid).await? {
-                roles.push(role);
-            }
-        }
-
-        Ok(roles)
+        self.get_roles_with_caching(&cache_key, role_uuids, api_key_uuid, "API key")
+            .await
     }
 
     /// Merge permissions from multiple roles

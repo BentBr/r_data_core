@@ -4,43 +4,22 @@ use actix_cors::Cors;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use log::{debug, error, info};
-use sqlx::postgres::PgPoolOptions;
-use std::sync::Arc;
 
-// Todo: These modules will be implemented later
-// mod notification;
-
-use r_data_core_api::ApiResponse;
-use r_data_core_api::{ApiState, ApiStateWrapper};
-use r_data_core_core::cache::CacheManager;
+use r_data_core::bootstrap::{build_api_state, create_cache_manager, create_db_pool, init_logger};
+use r_data_core_api::{ApiResponse, ApiStateWrapper};
 use r_data_core_core::config::load_app_config;
-use r_data_core_persistence::DynamicEntityRepository;
-use r_data_core_persistence::EntityDefinitionRepository;
-use r_data_core_persistence::WorkflowRepository;
-use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository, DashboardStatsRepository};
-use r_data_core_services::adapters::ApiKeyRepositoryAdapter;
-use r_data_core_services::adapters::{
-    AdminUserRepositoryAdapter, DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter,
-};
-use r_data_core_services::{
-    AdminUserService, ApiKeyService, DashboardStatsService, DynamicEntityService,
-    EntityDefinitionService, RoleService,
-};
-use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
-use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
-// 404 handler function
+/// 404 handler function
 async fn default_404_handler() -> impl actix_web::Responder {
     ApiResponse::<()>::not_found("Resource not found")
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Load environment variables and configure the application
+    // Load configuration
     let config = match load_app_config() {
         Ok(cfg) => {
             debug!("Loaded conf: {cfg:?}");
-            info!("Configuration loaded successfully");
             cfg
         }
         Err(e) => {
@@ -50,127 +29,27 @@ async fn main() -> std::io::Result<()> {
     };
 
     // Initialize logger
-    let env = env_logger::Env::new().default_filter_or(&config.log.level);
-    env_logger::Builder::from_env(env)
-        .format_timestamp(Some(env_logger::fmt::TimestampPrecision::Millis))
-        .format_module_path(true)
-        .format_target(true)
-        .init();
+    init_logger(&config.log.level);
 
     info!("Starting R Data Core server...");
     info!("Environment: {}", config.environment);
     info!("Log level: {}", config.log.level);
     info!("API docs enabled: {}", config.api.enable_docs);
 
-    // Create a database connection pool
-    let pool = PgPoolOptions::new()
-        .max_connections(config.database.max_connections)
-        .connect(&config.database.connection_string)
+    // Create database pool
+    let pool = create_db_pool(&config)
         .await
         .expect("Failed to create database connection pool");
 
-    // Run migrations using SQLx instead of custom Rust migrations
-    // Note: Run SQLx migrations with `cargo sqlx migrate run` before starting the application
     info!("Using SQLx migrations (run with 'cargo sqlx migrate run')");
 
     // Initialize cache manager
-    let redis_url = std::env::var("REDIS_URL").ok();
+    let cache_manager = create_cache_manager(&config).await;
 
-    let cache_manager = match redis_url {
-        Some(url) if !url.is_empty() => {
-            match CacheManager::new(config.cache.clone())
-                .with_redis(&url)
-                .await
-            {
-                Ok(manager) => {
-                    info!("Cache manager initialized with Redis");
-                    Arc::new(manager)
-                }
-                Err(e) => {
-                    error!("Failed to initialize Redis cache: {e}, falling back to in-memory only");
-                    Arc::new(CacheManager::new(config.cache.clone()))
-                }
-            }
-        }
-        _ => {
-            info!("Redis URL not provided, using in-memory cache only");
-            Arc::new(CacheManager::new(config.cache.clone()))
-        }
-    };
-
-    // Initialize repositories and services
-    let pool_arc = Arc::new(pool.clone());
-    let api_key_repository = ApiKeyRepository::new(pool_arc.clone());
-    let admin_user_repository = AdminUserRepository::new(pool_arc.clone());
-    let entity_definition_repository = EntityDefinitionRepository::new(pool.clone());
-    let dynamic_entity_repository =
-        DynamicEntityRepository::with_cache(pool.clone(), cache_manager.clone());
-
-    // Initialize services with adapters
-    let api_key_adapter = ApiKeyRepositoryAdapter::new(api_key_repository);
-    let api_key_service = ApiKeyService::with_cache(
-        Arc::new(api_key_adapter),
-        cache_manager.clone(),
-        config.cache.api_key_ttl,
-    );
-
-    // Use adapter for AdminUserRepository
-    let admin_user_adapter = AdminUserRepositoryAdapter::new(admin_user_repository);
-    let admin_user_service = AdminUserService::new(Arc::new(admin_user_adapter));
-
-    // Use the adapter for EntityDefinitionRepository
-    let entity_definition_adapter =
-        EntityDefinitionRepositoryAdapter::new(entity_definition_repository);
-    let entity_definition_service =
-        EntityDefinitionService::new(Arc::new(entity_definition_adapter), cache_manager.clone());
-
-    // Initialize dynamic entity service
-    let dynamic_entity_adapter =
-        DynamicEntityRepositoryAdapter::from_repository(dynamic_entity_repository);
-    let dynamic_entity_service = DynamicEntityService::new(
-        Arc::new(dynamic_entity_adapter),
-        Arc::new(entity_definition_service.clone()),
-    );
-
-    // Shared application state
-    let workflow_repo = WorkflowRepository::new(pool.clone());
-    let workflow_adapter = WorkflowRepositoryAdapter::new(workflow_repo);
-    let workflow_service = WorkflowService::new(Arc::new(workflow_adapter));
-
-    // Initialize role service
-    let role_service = RoleService::new(
-        pool.clone(),
-        cache_manager.clone(),
-        Some(config.cache.entity_definition_ttl), // Use entity_definition_ttl for role caching
-    );
-
-    // Initialize dashboard stats service
-    let dashboard_stats_repository = DashboardStatsRepository::new(pool.clone());
-    let dashboard_stats_service = DashboardStatsService::new(Arc::new(dashboard_stats_repository));
-    // Initialize mandatory queue client (fail fast if invalid)
-    let queue_client = Arc::new(
-        ApalisRedisQueue::from_parts(
-            &config.queue.redis_url,
-            &config.queue.fetch_key,
-            &config.queue.process_key,
-        )
+    // Build API state with all services
+    let api_state = build_api_state(&config, pool, cache_manager)
         .await
-        .expect("Failed to initialize Redis queue client"),
-    );
-
-    let api_state = ApiState {
-        db_pool: pool,
-        api_config: config.api.clone(),
-        cache_manager: cache_manager.clone(),
-        api_key_service,
-        admin_user_service,
-        entity_definition_service,
-        dynamic_entity_service: Some(Arc::new(dynamic_entity_service)),
-        workflow_service,
-        role_service,
-        dashboard_stats_service,
-        queue: queue_client.clone(),
-    };
+        .expect("Failed to initialize API state");
 
     let app_state = web::Data::new(ApiStateWrapper::new(api_state));
 
@@ -179,7 +58,6 @@ async fn main() -> std::io::Result<()> {
 
     // Start HTTP server
     HttpServer::new(move || {
-        // Configure CORS
         let cors = Cors::default()
             .allow_any_origin()
             .allow_any_method()
@@ -188,9 +66,9 @@ async fn main() -> std::io::Result<()> {
             .max_age(3600);
 
         let api_config = r_data_core_api::ApiConfiguration {
-            enable_auth: false,  // Todo
-            enable_admin: true,  // Todo
-            enable_public: true, // Todo
+            enable_auth: false,
+            enable_admin: true,
+            enable_public: true,
             enable_docs: config.api.enable_docs,
         };
 

@@ -50,7 +50,9 @@ impl MaintenanceTask for VersionPurgerTask {
         let pool = context.pool();
 
         // Get settings service
-        // TODO: Move SettingsService to appropriate crate
+        // FIXME: SettingsService is created here with a fresh CacheManager, which doesn't share
+        // state with the main application. Consider injecting SettingsService via TaskContext
+        // or using a shared cache manager instance.
         let cache_manager = CacheManager::new(r_data_core_core::config::CacheConfig {
             entity_definition_ttl: 3600,
             api_key_ttl: 600,

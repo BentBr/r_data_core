@@ -304,6 +304,20 @@ impl RoleRepositoryTrait for RoleRepository {
     async fn delete(&self, uuid: Uuid) -> Result<()> {
         Self::delete(self, uuid).await
     }
+
+    async fn list_all(
+        &self,
+        limit: i64,
+        offset: i64,
+        sort_by: Option<String>,
+        sort_order: Option<String>,
+    ) -> Result<Vec<Role>> {
+        Self::list_all(self, limit, offset, sort_by, sort_order).await
+    }
+
+    async fn count_all(&self) -> Result<i64> {
+        Self::count_all(self).await
+    }
 }
 
 /// Helper function to deserialize `Role` from database row
