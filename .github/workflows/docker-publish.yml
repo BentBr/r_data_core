@@ -1,0 +1,126 @@
+name: Build and Publish Docker Images
+
+on:
+  release:
+    types: [published]
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag for the images (e.g., test, custom-v1)'
+        required: true
+        default: 'manual'
+
+env:
+  REGISTRY: ghcr.io
+  # Images will be: ghcr.io/<owner>/r-data-core, ghcr.io/<owner>/r-data-core-worker, etc.
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        include:
+          - binary: r_data_core
+            image: r-data-core
+            target: r_data_core
+          - binary: r_data_core_worker
+            image: r-data-core-worker
+            target: r_data_core_worker
+          - binary: r_data_core_maintenance
+            image: r-data-core-maintenance
+            target: r_data_core_maintenance
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
+          tags: |
+            # On release: version tag + latest
+            type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'release' }}
+            type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+            # On develop push: develop + sha
+            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
+            type=sha,prefix=develop-,enable=${{ github.ref == 'refs/heads/develop' }}
+            # On manual dispatch
+            type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: ${{ matrix.target }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BINARY=${{ matrix.binary }}
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
+          subject-digest: ${{ steps.build-push.outputs.digest }}
+          push-to-registry: true
+        continue-on-error: true
+
+  # Summary job that runs after all images are built
+  publish-summary:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "## Docker Images Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ github.event_name }}" == "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+          elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
+            TAG="develop"
+          else
+            TAG="${{ inputs.tag }}"
+          fi
+
+          echo "| Image | Tag |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| \`ghcr.io/${{ github.repository_owner }}/r-data-core\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| \`ghcr.io/${{ github.repository_owner }}/r-data-core-worker\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| \`ghcr.io/${{ github.repository_owner }}/r-data-core-maintenance\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Usage" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ghcr.io/${{ github.repository_owner }}/r-data-core:${TAG}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
