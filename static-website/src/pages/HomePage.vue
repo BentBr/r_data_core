@@ -59,6 +59,15 @@
                     >
                         {{ t('home.hero.admin_api_docs') }}
                     </a>
+                    <a
+                        v-if="githubReleasesUrl"
+                        :href="githubReleasesUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="doc-link"
+                    >
+                        {{ t('home.hero.github_releases') }}
+                    </a>
                 </div>
             </div>
         </Section>
@@ -126,27 +135,29 @@
             id="features"
             class="features-section"
         >
-            <header class="section-heading">
-                <h2>{{ t('home.features.title') }}</h2>
-                <p class="section-subtitle">
-                    {{ t('home.features.subtitle') }}
-                </p>
-            </header>
-            <v-row>
-                <v-col
-                    v-for="feature in featureItems"
-                    :key="feature.title"
-                    cols="12"
-                    md="6"
-                    lg="4"
-                >
-                    <FeatureCard
-                        :icon="feature.icon"
-                        :title="feature.title"
-                        :description="feature.description"
-                    />
-                </v-col>
-            </v-row>
+            <div class="page-container">
+                <header class="section-heading">
+                    <h2>{{ t('home.features.title') }}</h2>
+                    <p class="section-subtitle">
+                        {{ t('home.features.subtitle') }}
+                    </p>
+                </header>
+                <v-row>
+                    <v-col
+                        v-for="feature in featureItems"
+                        :key="feature.title"
+                        cols="12"
+                        md="6"
+                        lg="4"
+                    >
+                        <FeatureCard
+                            :icon="feature.icon"
+                            :title="feature.title"
+                            :description="feature.description"
+                        />
+                    </v-col>
+                </v-row>
+            </div>
         </Section>
 
         <!-- Data Flows Diagram Section -->
@@ -234,147 +245,149 @@
 
         <!-- Flexible Section -->
         <Section class="flexible-section">
-            <header class="section-heading">
-                <div class="section-badge">{{ t('home.flexible.badge') }}</div>
-                <h2>{{ t('home.flexible.title') }}</h2>
-                <p class="section-subtitle">
-                    {{ t('home.flexible.subtitle') }}
-                </p>
-            </header>
-            <v-row>
-                <v-col
-                    cols="12"
-                    md="6"
-                    lg="4"
-                >
-                    <v-card
-                        class="feature-detail-card"
-                        elevation="0"
+            <div class="page-container">
+                <header class="section-heading">
+                    <div class="section-badge">{{ t('home.flexible.badge') }}</div>
+                    <h2>{{ t('home.flexible.title') }}</h2>
+                    <p class="section-subtitle">
+                        {{ t('home.flexible.subtitle') }}
+                    </p>
+                </header>
+                <v-row>
+                    <v-col
+                        cols="12"
+                        md="6"
+                        lg="4"
                     >
-                        <v-card-text>
-                            <SmartIcon
-                                icon="git-branch"
-                                color="primary"
-                                size="lg"
-                            />
-                            <h3>{{ t('home.flexible.workflow.title') }}</h3>
-                            <p>
-                                {{ t('home.flexible.workflow.desc') }}
-                            </p>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-                <v-col
-                    cols="12"
-                    md="6"
-                    lg="4"
-                >
-                    <v-card
-                        class="feature-detail-card"
-                        elevation="0"
+                        <v-card
+                            class="feature-detail-card"
+                            elevation="0"
+                        >
+                            <v-card-text>
+                                <SmartIcon
+                                    icon="git-branch"
+                                    color="primary"
+                                    size="lg"
+                                />
+                                <h3>{{ t('home.flexible.workflow.title') }}</h3>
+                                <p>
+                                    {{ t('home.flexible.workflow.desc') }}
+                                </p>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        md="6"
+                        lg="4"
                     >
-                        <v-card-text>
-                            <SmartIcon
-                                icon="file-input"
-                                color="primary"
-                                size="lg"
-                            />
-                            <h3>{{ t('home.flexible.import_export.title') }}</h3>
-                            <p>
-                                {{ t('home.flexible.import_export.desc') }}
-                            </p>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-                <v-col
-                    cols="12"
-                    md="6"
-                    lg="4"
-                >
-                    <v-card
-                        class="feature-detail-card"
-                        elevation="0"
+                        <v-card
+                            class="feature-detail-card"
+                            elevation="0"
+                        >
+                            <v-card-text>
+                                <SmartIcon
+                                    icon="file-input"
+                                    color="primary"
+                                    size="lg"
+                                />
+                                <h3>{{ t('home.flexible.import_export.title') }}</h3>
+                                <p>
+                                    {{ t('home.flexible.import_export.desc') }}
+                                </p>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        md="6"
+                        lg="4"
                     >
-                        <v-card-text>
-                            <SmartIcon
-                                icon="code-2"
-                                color="primary"
-                                size="lg"
-                            />
-                            <h3>{{ t('home.flexible.custom_api.title') }}</h3>
-                            <p>
-                                {{ t('home.flexible.custom_api.desc') }}
-                            </p>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-                <v-col
-                    cols="12"
-                    md="6"
-                    lg="4"
-                >
-                    <v-card
-                        class="feature-detail-card"
-                        elevation="0"
+                        <v-card
+                            class="feature-detail-card"
+                            elevation="0"
+                        >
+                            <v-card-text>
+                                <SmartIcon
+                                    icon="code-2"
+                                    color="primary"
+                                    size="lg"
+                                />
+                                <h3>{{ t('home.flexible.custom_api.title') }}</h3>
+                                <p>
+                                    {{ t('home.flexible.custom_api.desc') }}
+                                </p>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        md="6"
+                        lg="4"
                     >
-                        <v-card-text>
-                            <SmartIcon
-                                icon="key"
-                                color="primary"
-                                size="lg"
-                            />
-                            <h3>{{ t('home.flexible.auth.title') }}</h3>
-                            <p>
-                                {{ t('home.flexible.auth.desc') }}
-                            </p>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-                <v-col
-                    cols="12"
-                    md="6"
-                    lg="4"
-                >
-                    <v-card
-                        class="feature-detail-card highlighted"
-                        elevation="2"
+                        <v-card
+                            class="feature-detail-card"
+                            elevation="0"
+                        >
+                            <v-card-text>
+                                <SmartIcon
+                                    icon="key"
+                                    color="primary"
+                                    size="lg"
+                                />
+                                <h3>{{ t('home.flexible.auth.title') }}</h3>
+                                <p>
+                                    {{ t('home.flexible.auth.desc') }}
+                                </p>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        md="6"
+                        lg="4"
                     >
-                        <v-card-text>
-                            <SmartIcon
-                                icon="link"
-                                color="primary"
-                                size="lg"
-                            />
-                            <h3>{{ t('home.flexible.integrations.title') }}</h3>
-                            <p>
-                                {{ t('home.flexible.integrations.desc') }}
-                            </p>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-                <v-col
-                    cols="12"
-                    md="6"
-                    lg="4"
-                >
-                    <v-card
-                        class="feature-detail-card"
-                        elevation="0"
+                        <v-card
+                            class="feature-detail-card highlighted"
+                            elevation="2"
+                        >
+                            <v-card-text>
+                                <SmartIcon
+                                    icon="link"
+                                    color="primary"
+                                    size="lg"
+                                />
+                                <h3>{{ t('home.flexible.integrations.title') }}</h3>
+                                <p>
+                                    {{ t('home.flexible.integrations.desc') }}
+                                </p>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        md="6"
+                        lg="4"
                     >
-                        <v-card-text>
-                            <SmartIcon
-                                icon="zap"
-                                color="primary"
-                                size="lg"
-                            />
-                            <h3>{{ t('home.flexible.performance.title') }}</h3>
-                            <p>
-                                {{ t('home.flexible.performance.desc') }}
-                            </p>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-            </v-row>
+                        <v-card
+                            class="feature-detail-card"
+                            elevation="0"
+                        >
+                            <v-card-text>
+                                <SmartIcon
+                                    icon="zap"
+                                    color="primary"
+                                    size="lg"
+                                />
+                                <h3>{{ t('home.flexible.performance.title') }}</h3>
+                                <p>
+                                    {{ t('home.flexible.performance.desc') }}
+                                </p>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                </v-row>
+            </div>
         </Section>
 
         <!-- Final CTA Section -->
@@ -442,9 +455,10 @@
 
     const featureItems = computed(() => get<Array<Record<string, string>>>('features.items') ?? [])
 
-    // API documentation URLs from environment
+    // API documentation and releases URLs from environment
     const apiDocsUrl = env.apiDocsUrl
     const adminApiDocsUrl = env.adminApiDocsUrl
+    const githubReleasesUrl = env.githubReleasesUrl
 
     const openDemo = () => {
         showDemoDialog.value = true
@@ -481,6 +495,12 @@
 <style scoped>
     .home-page {
         padding-top: 80px; /* Account for fixed header */
+    }
+
+    .page-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 8px;
     }
 
     /* Hero Section */

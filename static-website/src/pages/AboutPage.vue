@@ -14,344 +14,358 @@
 
         <!-- Our Story Section -->
         <Section class="story-section">
-            <v-row align="center">
-                <v-col
-                    cols="12"
-                    md="6"
-                >
-                    <h2>{{ t('about.story.title') }}</h2>
-                    <p>
-                        {{ t('about.story.paragraph1') }}
-                    </p>
-                    <p>
-                        {{ t('about.story.paragraph2') }}
-                    </p>
-                    <p>
-                        {{ t('about.story.paragraph3') }}
-                    </p>
-                </v-col>
-                <v-col
-                    cols="12"
-                    md="6"
-                >
-                    <div class="story-image">
-                        <picture>
-                            <source
-                                type="image/webp"
-                                srcset="
-                                    /images/Slothlike-400w.webp   400w,
-                                    /images/Slothlike-800w.webp   800w,
-                                    /images/Slothlike-1200w.webp 1200w,
-                                    /images/Slothlike-1600w.webp 1600w
-                                "
-                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 500px"
-                            />
-                            <img
-                                src="/images/Slothlike.png"
-                                :alt="t('about.story.image_alt')"
-                                class="slothlike-image"
-                                loading="lazy"
-                            />
-                        </picture>
-                    </div>
-                </v-col>
-            </v-row>
+            <div class="page-container">
+                <v-row align="center">
+                    <v-col
+                        cols="12"
+                        md="6"
+                    >
+                        <h2>{{ t('about.story.title') }}</h2>
+                        <p>
+                            {{ t('about.story.paragraph1') }}
+                        </p>
+                        <p>
+                            {{ t('about.story.paragraph2') }}
+                        </p>
+                        <p>
+                            {{ t('about.story.paragraph3') }}
+                        </p>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        md="6"
+                    >
+                        <div class="story-image">
+                            <picture>
+                                <source
+                                    type="image/webp"
+                                    srcset="
+                                        /images/Slothlike-400w.webp   400w,
+                                        /images/Slothlike-800w.webp   800w,
+                                        /images/Slothlike-1200w.webp 1200w,
+                                        /images/Slothlike-1600w.webp 1600w
+                                    "
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 500px"
+                                />
+                                <img
+                                    src="/images/Slothlike.png"
+                                    :alt="t('about.story.image_alt')"
+                                    class="slothlike-image"
+                                    loading="lazy"
+                                />
+                            </picture>
+                        </div>
+                    </v-col>
+                </v-row>
+            </div>
         </Section>
 
         <!-- Our Values Section -->
         <Section class="values-section">
-            <header class="section-heading">
-                <h2>{{ t('about.values.title') }}</h2>
-                <p class="section-subtitle">{{ t('about.values.subtitle') }}</p>
-            </header>
-            <v-row>
-                <v-col
-                    cols="12"
-                    sm="6"
-                    lg="3"
-                >
-                    <v-card
-                        class="value-card"
-                        elevation="0"
+            <div class="page-container">
+                <header class="section-heading">
+                    <h2>{{ t('about.values.title') }}</h2>
+                    <p class="section-subtitle">{{ t('about.values.subtitle') }}</p>
+                </header>
+                <v-row>
+                    <v-col
+                        cols="12"
+                        sm="6"
+                        lg="3"
                     >
-                        <v-card-text>
-                            <div class="value-icon">
-                                <SmartIcon
-                                    icon="shield"
-                                    color="primary"
-                                    size="lg"
-                                />
-                            </div>
-                            <h3>{{ t('about.values.security.title') }}</h3>
-                            <p>
-                                {{ t('about.values.security.desc') }}
-                            </p>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-                <v-col
-                    cols="12"
-                    sm="6"
-                    lg="3"
-                >
-                    <v-card
-                        class="value-card"
-                        elevation="0"
+                        <v-card
+                            class="value-card"
+                            elevation="0"
+                        >
+                            <v-card-text>
+                                <div class="value-icon">
+                                    <SmartIcon
+                                        icon="shield"
+                                        color="primary"
+                                        size="lg"
+                                    />
+                                </div>
+                                <h3>{{ t('about.values.security.title') }}</h3>
+                                <p>
+                                    {{ t('about.values.security.desc') }}
+                                </p>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        sm="6"
+                        lg="3"
                     >
-                        <v-card-text>
-                            <div class="value-icon">
-                                <SmartIcon
-                                    icon="code-2"
-                                    color="primary"
-                                    size="lg"
-                                />
-                            </div>
-                            <h3>{{ t('about.values.open_source.title') }}</h3>
-                            <p>
-                                {{ t('about.values.open_source.desc') }}
-                            </p>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-                <v-col
-                    cols="12"
-                    sm="6"
-                    lg="3"
-                >
-                    <v-card
-                        class="value-card"
-                        elevation="0"
+                        <v-card
+                            class="value-card"
+                            elevation="0"
+                        >
+                            <v-card-text>
+                                <div class="value-icon">
+                                    <SmartIcon
+                                        icon="code-2"
+                                        color="primary"
+                                        size="lg"
+                                    />
+                                </div>
+                                <h3>{{ t('about.values.open_source.title') }}</h3>
+                                <p>
+                                    {{ t('about.values.open_source.desc') }}
+                                </p>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        sm="6"
+                        lg="3"
                     >
-                        <v-card-text>
-                            <div class="value-icon">
-                                <SmartIcon
-                                    icon="zap"
-                                    color="primary"
-                                    size="lg"
-                                />
-                            </div>
-                            <h3>{{ t('about.values.fast.title') }}</h3>
-                            <p>{{ t('about.values.fast.desc') }}</p>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-                <v-col
-                    cols="12"
-                    sm="6"
-                    lg="3"
-                >
-                    <v-card
-                        class="value-card"
-                        elevation="0"
+                        <v-card
+                            class="value-card"
+                            elevation="0"
+                        >
+                            <v-card-text>
+                                <div class="value-icon">
+                                    <SmartIcon
+                                        icon="zap"
+                                        color="primary"
+                                        size="lg"
+                                    />
+                                </div>
+                                <h3>{{ t('about.values.fast.title') }}</h3>
+                                <p>{{ t('about.values.fast.desc') }}</p>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        sm="6"
+                        lg="3"
                     >
-                        <v-card-text>
-                            <div class="value-icon">
-                                <SmartIcon
-                                    icon="coffee"
-                                    color="primary"
-                                    size="lg"
-                                />
-                            </div>
-                            <h3>{{ t('about.values.developer_love.title') }}</h3>
-                            <p>
-                                {{ t('about.values.developer_love.desc') }}
-                            </p>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-            </v-row>
+                        <v-card
+                            class="value-card"
+                            elevation="0"
+                        >
+                            <v-card-text>
+                                <div class="value-icon">
+                                    <SmartIcon
+                                        icon="coffee"
+                                        color="primary"
+                                        size="lg"
+                                    />
+                                </div>
+                                <h3>{{ t('about.values.developer_love.title') }}</h3>
+                                <p>
+                                    {{ t('about.values.developer_love.desc') }}
+                                </p>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                </v-row>
+            </div>
         </Section>
 
         <!-- By the Numbers Section -->
         <Section class="numbers-section">
-            <header class="section-heading">
-                <h2>{{ t('about.numbers.title') }}</h2>
-            </header>
-            <v-row>
-                <v-col
-                    cols="12"
-                    sm="6"
-                    lg="3"
-                >
-                    <div class="number-stat">
-                        <div class="number-value">{{ t('about.numbers.open_source.value') }}</div>
-                        <div class="number-label">{{ t('about.numbers.open_source.label') }}</div>
-                        <div class="number-desc">{{ t('about.numbers.open_source.desc') }}</div>
-                    </div>
-                </v-col>
-                <v-col
-                    cols="12"
-                    sm="6"
-                    lg="3"
-                >
-                    <div class="number-stat">
-                        <div class="number-value">{{ t('about.numbers.coffee.value') }}</div>
-                        <div class="number-label">{{ t('about.numbers.coffee.label') }}</div>
-                        <div class="number-desc">{{ t('about.numbers.coffee.desc') }}</div>
-                    </div>
-                </v-col>
-                <v-col
-                    cols="12"
-                    sm="6"
-                    lg="3"
-                >
-                    <div class="number-stat">
-                        <div class="number-value">{{ t('about.numbers.sloth.value') }}</div>
-                        <div class="number-label">{{ t('about.numbers.sloth.label') }}</div>
-                        <div class="number-desc">{{ t('about.numbers.sloth.desc') }}</div>
-                    </div>
-                </v-col>
-                <v-col
-                    cols="12"
-                    sm="6"
-                    lg="3"
-                >
-                    <div class="number-stat">
-                        <div class="number-value">{{ t('about.numbers.rust.value') }}</div>
-                        <div class="number-label">{{ t('about.numbers.rust.label') }}</div>
-                        <div class="number-desc">{{ t('about.numbers.rust.desc') }}</div>
-                    </div>
-                </v-col>
-            </v-row>
+            <div class="page-container">
+                <header class="section-heading">
+                    <h2>{{ t('about.numbers.title') }}</h2>
+                </header>
+                <v-row>
+                    <v-col
+                        cols="12"
+                        sm="6"
+                        lg="3"
+                    >
+                        <div class="number-stat">
+                            <div class="number-value">
+                                {{ t('about.numbers.open_source.value') }}
+                            </div>
+                            <div class="number-label">
+                                {{ t('about.numbers.open_source.label') }}
+                            </div>
+                            <div class="number-desc">{{ t('about.numbers.open_source.desc') }}</div>
+                        </div>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        sm="6"
+                        lg="3"
+                    >
+                        <div class="number-stat">
+                            <div class="number-value">{{ t('about.numbers.coffee.value') }}</div>
+                            <div class="number-label">{{ t('about.numbers.coffee.label') }}</div>
+                            <div class="number-desc">{{ t('about.numbers.coffee.desc') }}</div>
+                        </div>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        sm="6"
+                        lg="3"
+                    >
+                        <div class="number-stat">
+                            <div class="number-value">{{ t('about.numbers.sloth.value') }}</div>
+                            <div class="number-label">{{ t('about.numbers.sloth.label') }}</div>
+                            <div class="number-desc">{{ t('about.numbers.sloth.desc') }}</div>
+                        </div>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        sm="6"
+                        lg="3"
+                    >
+                        <div class="number-stat">
+                            <div class="number-value">{{ t('about.numbers.rust.value') }}</div>
+                            <div class="number-label">{{ t('about.numbers.rust.label') }}</div>
+                            <div class="number-desc">{{ t('about.numbers.rust.desc') }}</div>
+                        </div>
+                    </v-col>
+                </v-row>
+            </div>
         </Section>
 
         <!-- Meet the Squad Section -->
         <Section class="squad-section">
-            <header class="section-heading">
-                <h2>{{ t('about.squad.title') }}</h2>
-                <p class="section-subtitle">
-                    {{ t('about.squad.subtitle') }}
-                </p>
-            </header>
+            <div class="page-container">
+                <header class="section-heading">
+                    <h2>{{ t('about.squad.title') }}</h2>
+                    <p class="section-subtitle">
+                        {{ t('about.squad.subtitle') }}
+                    </p>
+                </header>
+            </div>
         </Section>
 
         <!-- Tech Stack Section -->
         <Section class="tech-stack-section">
-            <header class="section-heading">
-                <div class="section-badge">{{ t('about.tech_stack.badge') }}</div>
-                <h2>{{ t('about.tech_stack.title') }}</h2>
-                <p class="section-subtitle">
-                    {{ t('about.tech_stack.subtitle') }}
-                </p>
-            </header>
-            <v-row>
-                <v-col
-                    cols="12"
-                    lg="6"
-                >
-                    <v-card
-                        class="tech-card"
-                        elevation="0"
+            <div class="page-container">
+                <header class="section-heading">
+                    <div class="section-badge">{{ t('about.tech_stack.badge') }}</div>
+                    <h2>{{ t('about.tech_stack.title') }}</h2>
+                    <p class="section-subtitle">
+                        {{ t('about.tech_stack.subtitle') }}
+                    </p>
+                </header>
+                <v-row>
+                    <v-col
+                        cols="12"
+                        lg="6"
                     >
-                        <v-card-text>
-                            <div class="tech-header">
-                                <SmartIcon
-                                    icon="database"
-                                    color="primary"
-                                    size="lg"
-                                />
-                                <h3>{{ t('about.tech_stack.backend.title') }}</h3>
-                            </div>
-                            <div class="tech-list">
-                                <div class="tech-item">
-                                    <span class="tech-name">{{
-                                        t('about.tech_stack.backend.rust.name')
-                                    }}</span>
-                                    <span class="tech-desc">
-                                        {{ t('about.tech_stack.backend.rust.desc') }}
-                                    </span>
+                        <v-card
+                            class="tech-card"
+                            elevation="0"
+                        >
+                            <v-card-text>
+                                <div class="tech-header">
+                                    <SmartIcon
+                                        icon="database"
+                                        color="primary"
+                                        size="lg"
+                                    />
+                                    <h3>{{ t('about.tech_stack.backend.title') }}</h3>
                                 </div>
-                                <div class="tech-item">
-                                    <span class="tech-name">{{
-                                        t('about.tech_stack.backend.actix.name')
-                                    }}</span>
-                                    <span class="tech-desc">
-                                        {{ t('about.tech_stack.backend.actix.desc') }}
-                                    </span>
+                                <div class="tech-list">
+                                    <div class="tech-item">
+                                        <span class="tech-name">{{
+                                            t('about.tech_stack.backend.rust.name')
+                                        }}</span>
+                                        <span class="tech-desc">
+                                            {{ t('about.tech_stack.backend.rust.desc') }}
+                                        </span>
+                                    </div>
+                                    <div class="tech-item">
+                                        <span class="tech-name">{{
+                                            t('about.tech_stack.backend.actix.name')
+                                        }}</span>
+                                        <span class="tech-desc">
+                                            {{ t('about.tech_stack.backend.actix.desc') }}
+                                        </span>
+                                    </div>
+                                    <div class="tech-item">
+                                        <span class="tech-name">{{
+                                            t('about.tech_stack.backend.postgresql.name')
+                                        }}</span>
+                                        <span class="tech-desc">
+                                            {{ t('about.tech_stack.backend.postgresql.desc') }}
+                                        </span>
+                                    </div>
+                                    <div class="tech-item">
+                                        <span class="tech-name">{{
+                                            t('about.tech_stack.backend.redis.name')
+                                        }}</span>
+                                        <span class="tech-desc">
+                                            {{ t('about.tech_stack.backend.redis.desc') }}
+                                        </span>
+                                    </div>
+                                    <div class="tech-item">
+                                        <span class="tech-name">{{
+                                            t('about.tech_stack.backend.openapi.name')
+                                        }}</span>
+                                        <span class="tech-desc">
+                                            {{ t('about.tech_stack.backend.openapi.desc') }}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div class="tech-item">
-                                    <span class="tech-name">{{
-                                        t('about.tech_stack.backend.postgresql.name')
-                                    }}</span>
-                                    <span class="tech-desc">
-                                        {{ t('about.tech_stack.backend.postgresql.desc') }}
-                                    </span>
-                                </div>
-                                <div class="tech-item">
-                                    <span class="tech-name">{{
-                                        t('about.tech_stack.backend.redis.name')
-                                    }}</span>
-                                    <span class="tech-desc">
-                                        {{ t('about.tech_stack.backend.redis.desc') }}
-                                    </span>
-                                </div>
-                                <div class="tech-item">
-                                    <span class="tech-name">{{
-                                        t('about.tech_stack.backend.openapi.name')
-                                    }}</span>
-                                    <span class="tech-desc">
-                                        {{ t('about.tech_stack.backend.openapi.desc') }}
-                                    </span>
-                                </div>
-                            </div>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-                <v-col
-                    cols="12"
-                    lg="6"
-                >
-                    <v-card
-                        class="tech-card highlighted"
-                        elevation="2"
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        lg="6"
                     >
-                        <v-card-text>
-                            <div class="tech-header">
-                                <SmartIcon
-                                    icon="code-2"
-                                    color="primary"
-                                    size="lg"
-                                />
-                                <h3>{{ t('about.tech_stack.frontend.title') }}</h3>
-                            </div>
-                            <div class="tech-list">
-                                <div class="tech-item">
-                                    <span class="tech-name">{{
-                                        t('about.tech_stack.frontend.vue.name')
-                                    }}</span>
-                                    <span class="tech-desc">
-                                        {{ t('about.tech_stack.frontend.vue.desc') }}
-                                    </span>
+                        <v-card
+                            class="tech-card highlighted"
+                            elevation="2"
+                        >
+                            <v-card-text>
+                                <div class="tech-header">
+                                    <SmartIcon
+                                        icon="code-2"
+                                        color="primary"
+                                        size="lg"
+                                    />
+                                    <h3>{{ t('about.tech_stack.frontend.title') }}</h3>
                                 </div>
-                                <div class="tech-item">
-                                    <span class="tech-name">{{
-                                        t('about.tech_stack.frontend.pinia.name')
-                                    }}</span>
-                                    <span class="tech-desc">
-                                        {{ t('about.tech_stack.frontend.pinia.desc') }}
-                                    </span>
+                                <div class="tech-list">
+                                    <div class="tech-item">
+                                        <span class="tech-name">{{
+                                            t('about.tech_stack.frontend.vue.name')
+                                        }}</span>
+                                        <span class="tech-desc">
+                                            {{ t('about.tech_stack.frontend.vue.desc') }}
+                                        </span>
+                                    </div>
+                                    <div class="tech-item">
+                                        <span class="tech-name">{{
+                                            t('about.tech_stack.frontend.pinia.name')
+                                        }}</span>
+                                        <span class="tech-desc">
+                                            {{ t('about.tech_stack.frontend.pinia.desc') }}
+                                        </span>
+                                    </div>
+                                    <div class="tech-item">
+                                        <span class="tech-name">{{
+                                            t('about.tech_stack.frontend.router.name')
+                                        }}</span>
+                                        <span class="tech-desc">
+                                            {{ t('about.tech_stack.frontend.router.desc') }}
+                                        </span>
+                                    </div>
+                                    <div class="tech-item">
+                                        <span class="tech-name">{{
+                                            t('about.tech_stack.frontend.vuetify.name')
+                                        }}</span>
+                                        <span class="tech-desc">
+                                            {{ t('about.tech_stack.frontend.vuetify.desc') }}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div class="tech-item">
-                                    <span class="tech-name">{{
-                                        t('about.tech_stack.frontend.router.name')
-                                    }}</span>
-                                    <span class="tech-desc">
-                                        {{ t('about.tech_stack.frontend.router.desc') }}
-                                    </span>
-                                </div>
-                                <div class="tech-item">
-                                    <span class="tech-name">{{
-                                        t('about.tech_stack.frontend.vuetify.name')
-                                    }}</span>
-                                    <span class="tech-desc">
-                                        {{ t('about.tech_stack.frontend.vuetify.desc') }}
-                                    </span>
-                                </div>
-                            </div>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-            </v-row>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                </v-row>
+            </div>
         </Section>
 
         <!-- Architecture Section -->
@@ -523,6 +537,12 @@
 <style scoped>
     .about-page {
         padding-top: 80px;
+    }
+
+    .page-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 8px;
     }
 
     /* Hero Section */

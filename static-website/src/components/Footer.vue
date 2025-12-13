@@ -18,6 +18,19 @@
                 <router-link :to="getLocalizedPath('/privacy')">{{
                     t('footer.privacy')
                 }}</router-link>
+                <a
+                    v-if="githubReleasesUrl"
+                    :href="githubReleasesUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="external-link"
+                >
+                    <SmartIcon
+                        icon="github"
+                        size="16"
+                    />
+                    {{ t('footer.releases') }}
+                </a>
             </div>
             <div class="footer__bottom">
                 <p class="copyright">{{ t('footer.rights') }}</p>
@@ -31,9 +44,12 @@
     import { useTranslations } from '@/composables/useTranslations'
     import SmartIcon from './common/SmartIcon.vue'
     import { useRoute } from 'vue-router'
+    import { env } from '@/env-check'
 
     const { t, currentLanguage } = useTranslations()
     const route = useRoute()
+
+    const githubReleasesUrl = env.githubReleasesUrl
 
     const getLocalizedPath = (path: string) => {
         // Get current language from route or default to currentLanguage
@@ -77,6 +93,12 @@
 
     .links a:hover {
         color: rgb(var(--v-theme-primary));
+    }
+
+    .links .external-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
     }
 
     .footer__bottom {

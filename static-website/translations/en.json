@@ -9,7 +9,8 @@
     "about": "About",
     "pricing": "Pricing",
     "roadmap": "Roadmap",
-    "use_cases": "Use Cases"
+    "use_cases": "Use Cases",
+    "menu": "Menu"
   },
   "home": {
     "hero": {
@@ -21,7 +22,8 @@
       "try_demo": "Try Demo 🎮",
       "footnote": "Free for developers, educators & small teams. No credit card needed! 🎉",
       "api_docs": "📚 API Documentation",
-      "admin_api_docs": "🔧 Admin API Docs"
+      "admin_api_docs": "🔧 Admin API Docs",
+      "github_releases": "📦 Docker Images"
     },
     "built_different": {
       "self_hosted": {
@@ -483,7 +485,9 @@
     "rights": "© 2025 Slothlike. All rights reserved.",
     "made_with": "Built with Rust and Vue.js",
     "imprint": "Imprint",
-    "privacy": "Privacy Policy"
+    "privacy": "Privacy Policy",
+    "releases": "Releases",
+    "github": "GitHub"
   },
   "contact": {
     "email": "hello@rdatacore.eu"
