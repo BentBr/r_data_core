@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.2](https://github.com/BentBr/r_data_core/compare/v0.1.1...v0.1.2) (2025-12-13)
+
+
+### Bug Fixes
+
+* added todos again ([4b069ff](https://github.com/BentBr/r_data_core/commit/4b069ff640f537db79335428553383bd7452ba4d))
+* updating ci to run not redundant and deploy to gh image repo ([12f19d7](https://github.com/BentBr/r_data_core/commit/12f19d7fc9103b145fe1ba7065dc4e14f2991dc7))
+* updating ci to run not redundant and deploy to gh image repo ([44d758c](https://github.com/BentBr/r_data_core/commit/44d758cc619fa62ab9ccd4e9513f6da3c58f27e3))
+
 ## [0.1.1](https://github.com/BentBr/r_data_core/compare/v0.1.0...v0.1.1) (2025-12-13)
 
 
