@@ -155,6 +155,7 @@
                                     size="large"
                                     rounded
                                     variant="outlined"
+                                    @click="openReleasesPage"
                                 >
                                     {{ t('pricing.free_licenses.community.button') }}
                                 </v-btn>
@@ -208,6 +209,7 @@
                                     size="large"
                                     rounded
                                     variant="outlined"
+                                    @click="openReleasesPage"
                                 >
                                     {{ t('pricing.free_licenses.education.button') }}
                                 </v-btn>
@@ -291,6 +293,7 @@
                                     size="large"
                                     rounded
                                     variant="outlined"
+                                    @click="openContact"
                                 >
                                     Get License
                                 </v-btn>
@@ -358,6 +361,7 @@
                                     size="large"
                                     rounded
                                     color="primary"
+                                    @click="openContact"
                                 >
                                     Get License
                                 </v-btn>
@@ -424,6 +428,7 @@
                                     size="large"
                                     rounded
                                     variant="outlined"
+                                    @click="openContact"
                                 >
                                     Get License
                                 </v-btn>
@@ -492,6 +497,7 @@
                                     size="large"
                                     rounded
                                     variant="outlined"
+                                    @click="openContact"
                                 >
                                     Get License
                                 </v-btn>
@@ -541,6 +547,7 @@
                                     size="large"
                                     rounded
                                     variant="outlined"
+                                    @click="openContact"
                                 >
                                     Get License
                                 </v-btn>
@@ -590,6 +597,7 @@
                                     size="large"
                                     rounded
                                     variant="outlined"
+                                    @click="openContact"
                                 >
                                     Get License
                                 </v-btn>
@@ -676,9 +684,14 @@
     import DemoCredentialsDialog from '@/components/DemoCredentialsDialog.vue'
     import { useSEO } from '@/composables/useSEO'
     import { useTranslations } from '@/composables/useTranslations'
+    import { env } from '@/env-check'
 
     const { t, get } = useTranslations()
     const showDemoDialog = ref(false)
+
+    const openReleasesPage = () => {
+        window.open(env.githubReleasesUrl, '_blank', 'noopener,noreferrer')
+    }
 
     const openContact = () => {
         const email = t('contact.email')
