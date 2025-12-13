@@ -1,10 +1,11 @@
 name: CI
 
 on:
-  push:
-    branches: [ main, develop ]
+  # Only run on PRs - merges to main/develop already passed CI on the PR
   pull_request:
     branches: [ main, develop ]
+  # Allow other workflows to call this one (for release-please PRs)
+  workflow_call:
 
 jobs:
   backend-prepare:
@@ -438,6 +439,7 @@ jobs:
           VITE_R_DATA_CORE_DEMO_URL: https://demo.rdatacore.eu
           VITE_API_DOCS_URL: https://rdatacore.eu/api/docs/
           VITE_ADMIN_API_DOCS_URL: https://rdatacore.eu/admin/api/docs/
+          VITE_GITHUB_RELEASES_URL: https://github.com/${{ github.repository }}/releases/latest
         run: npm run build
 
       - name: Upload build artifacts

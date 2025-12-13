@@ -1,17 +1,31 @@
 name: Build and Publish Docker Images
 
 on:
+  # Keep release trigger for manual releases (not via release-please)
   release:
     types: [published]
+  # Build on develop push
   push:
     branches:
       - develop
+  # Manual trigger
   workflow_dispatch:
     inputs:
       tag:
         description: 'Tag for the images (e.g., test, custom-v1)'
         required: true
         default: 'manual'
+  # Called by release-please workflow
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version from release-please'
+        required: true
+        type: string
+      tag_name:
+        description: 'Tag name from release-please'
+        required: true
+        type: string
 
 env:
   REGISTRY: ghcr.io
@@ -62,10 +76,13 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
           tags: |
-            # On release: version tag + latest
+            # On release (manual): version tag + latest
             type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
             type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'release' }}
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+            # On workflow_call from release-please: version tag + latest
+            type=raw,value=${{ inputs.version }},enable=${{ github.event_name == 'workflow_call' }}
+            type=raw,value=latest,enable=${{ github.event_name == 'workflow_call' }}
             # On develop push: develop + sha
             type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
             type=sha,prefix=develop-,enable=${{ github.ref == 'refs/heads/develop' }}
@@ -73,6 +90,7 @@ jobs:
             type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
 
       - name: Build and push
+        id: build-push
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -108,6 +126,8 @@ jobs:
 
           if [ "${{ github.event_name }}" == "release" ]; then
             TAG="${{ github.event.release.tag_name }}"
+          elif [ "${{ github.event_name }}" == "workflow_call" ]; then
+            TAG="${{ inputs.tag_name }}"
           elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
             TAG="develop"
           else

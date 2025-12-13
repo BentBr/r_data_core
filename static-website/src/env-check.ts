@@ -8,6 +8,7 @@ export function checkEnvironmentVariables() {
         VITE_R_DATA_CORE_DEMO_URL: import.meta.env.VITE_R_DATA_CORE_DEMO_URL,
         VITE_API_DOCS_URL: import.meta.env.VITE_API_DOCS_URL,
         VITE_ADMIN_API_DOCS_URL: import.meta.env.VITE_ADMIN_API_DOCS_URL,
+        VITE_GITHUB_RELEASES_URL: import.meta.env.VITE_GITHUB_RELEASES_URL,
         MODE: import.meta.env.MODE,
         DEV: import.meta.env.DEV,
         PROD: import.meta.env.PROD,
@@ -53,6 +54,7 @@ export const env = {
     demoUrl: import.meta.env.VITE_R_DATA_CORE_DEMO_URL ?? '',
     apiDocsUrl: import.meta.env.VITE_API_DOCS_URL ?? '',
     adminApiDocsUrl: import.meta.env.VITE_ADMIN_API_DOCS_URL ?? '',
+    githubReleasesUrl: import.meta.env.VITE_GITHUB_RELEASES_URL ?? '',
     isProduction: import.meta.env.PROD,
     isDevelopment: import.meta.env.DEV,
 }

@@ -17,31 +17,33 @@
 
         <!-- What's Included Section -->
         <Section class="whats-included-section">
-            <header class="section-heading">
-                <h2>{{ t('pricing.whats_included.title') }}</h2>
-                <p class="section-subtitle">
-                    {{ t('pricing.whats_included.subtitle') }}
-                </p>
-            </header>
-            <v-row>
-                <v-col
-                    v-for="(feature, index) in get('pricing.whats_included.features')"
-                    :key="index"
-                    cols="12"
-                    sm="6"
-                    md="4"
-                    lg="3"
-                >
-                    <div class="feature-check">
-                        <SmartIcon
-                            icon="check"
-                            color="primary"
-                            size="sm"
-                        />
-                        <span>{{ feature }}</span>
-                    </div>
-                </v-col>
-            </v-row>
+            <div class="page-container">
+                <header class="section-heading">
+                    <h2>{{ t('pricing.whats_included.title') }}</h2>
+                    <p class="section-subtitle">
+                        {{ t('pricing.whats_included.subtitle') }}
+                    </p>
+                </header>
+                <v-row>
+                    <v-col
+                        v-for="(feature, index) in get('pricing.whats_included.features')"
+                        :key="index"
+                        cols="12"
+                        sm="6"
+                        md="4"
+                        lg="3"
+                    >
+                        <div class="feature-check">
+                            <SmartIcon
+                                icon="check"
+                                color="primary"
+                                size="sm"
+                            />
+                            <span>{{ feature }}</span>
+                        </div>
+                    </v-col>
+                </v-row>
+            </div>
         </Section>
 
         <!-- Flexibility Callout -->
@@ -98,498 +100,504 @@
 
         <!-- Free Licenses Section -->
         <Section class="free-licenses-section">
-            <header class="section-heading">
-                <h2>{{ t('pricing.free_licenses.title') }}</h2>
-                <p class="section-subtitle">
-                    {{ t('pricing.free_licenses.subtitle') }}
-                </p>
-            </header>
-            <v-row>
-                <v-col
-                    cols="12"
-                    lg="6"
-                >
-                    <v-card
-                        class="pricing-tier-card"
-                        elevation="2"
+            <div class="page-container">
+                <header class="section-heading">
+                    <h2>{{ t('pricing.free_licenses.title') }}</h2>
+                    <p class="section-subtitle">
+                        {{ t('pricing.free_licenses.subtitle') }}
+                    </p>
+                </header>
+                <v-row>
+                    <v-col
+                        cols="12"
+                        lg="6"
                     >
-                        <div class="free-badge">
-                            {{ t('pricing.free_licenses.community.badge') }}
-                        </div>
-                        <v-card-text>
-                            <h3>{{ t('pricing.free_licenses.community.title') }}</h3>
-                            <p class="tier-desc">
-                                {{ t('pricing.free_licenses.community.desc') }}
-                            </p>
-                            <div class="price">
-                                <span class="price-amount">{{
-                                    t('pricing.free_licenses.community.price')
-                                }}</span>
-                                <span class="price-period">{{
-                                    t('pricing.free_licenses.community.period')
-                                }}</span>
+                        <v-card
+                            class="pricing-tier-card"
+                            elevation="2"
+                        >
+                            <div class="free-badge">
+                                {{ t('pricing.free_licenses.community.badge') }}
                             </div>
-                            <ul class="tier-features">
-                                <li
-                                    v-for="(feature, index) in get(
-                                        'pricing.free_licenses.community.features'
-                                    )"
-                                    :key="index"
+                            <v-card-text>
+                                <h3>{{ t('pricing.free_licenses.community.title') }}</h3>
+                                <p class="tier-desc">
+                                    {{ t('pricing.free_licenses.community.desc') }}
+                                </p>
+                                <div class="price">
+                                    <span class="price-amount">{{
+                                        t('pricing.free_licenses.community.price')
+                                    }}</span>
+                                    <span class="price-period">{{
+                                        t('pricing.free_licenses.community.period')
+                                    }}</span>
+                                </div>
+                                <ul class="tier-features">
+                                    <li
+                                        v-for="(feature, index) in get(
+                                            'pricing.free_licenses.community.features'
+                                        )"
+                                        :key="index"
+                                    >
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        {{ feature }}
+                                    </li>
+                                </ul>
+                                <p class="tier-footnote">
+                                    {{ t('pricing.free_licenses.community.footnote') }}
+                                </p>
+                                <v-btn
+                                    block
+                                    size="large"
+                                    rounded
+                                    variant="outlined"
                                 >
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    {{ feature }}
-                                </li>
-                            </ul>
-                            <p class="tier-footnote">
-                                {{ t('pricing.free_licenses.community.footnote') }}
-                            </p>
-                            <v-btn
-                                block
-                                size="large"
-                                rounded
-                                variant="outlined"
-                            >
-                                {{ t('pricing.free_licenses.community.button') }}
-                            </v-btn>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-                <v-col
-                    cols="12"
-                    lg="6"
-                >
-                    <v-card
-                        class="pricing-tier-card"
-                        elevation="2"
+                                    {{ t('pricing.free_licenses.community.button') }}
+                                </v-btn>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        lg="6"
                     >
-                        <div class="free-badge">
-                            {{ t('pricing.free_licenses.education.badge') }}
-                        </div>
-                        <v-card-text>
-                            <h3>{{ t('pricing.free_licenses.education.title') }}</h3>
-                            <p class="tier-desc">
-                                {{ t('pricing.free_licenses.education.desc') }}
-                            </p>
-                            <div class="price">
-                                <span class="price-amount">{{
-                                    t('pricing.free_licenses.education.price')
-                                }}</span>
-                                <span class="price-period">{{
-                                    t('pricing.free_licenses.education.period')
-                                }}</span>
+                        <v-card
+                            class="pricing-tier-card"
+                            elevation="2"
+                        >
+                            <div class="free-badge">
+                                {{ t('pricing.free_licenses.education.badge') }}
                             </div>
-                            <ul class="tier-features">
-                                <li
-                                    v-for="(feature, index) in get(
-                                        'pricing.free_licenses.education.features'
-                                    )"
-                                    :key="index"
+                            <v-card-text>
+                                <h3>{{ t('pricing.free_licenses.education.title') }}</h3>
+                                <p class="tier-desc">
+                                    {{ t('pricing.free_licenses.education.desc') }}
+                                </p>
+                                <div class="price">
+                                    <span class="price-amount">{{
+                                        t('pricing.free_licenses.education.price')
+                                    }}</span>
+                                    <span class="price-period">{{
+                                        t('pricing.free_licenses.education.period')
+                                    }}</span>
+                                </div>
+                                <ul class="tier-features">
+                                    <li
+                                        v-for="(feature, index) in get(
+                                            'pricing.free_licenses.education.features'
+                                        )"
+                                        :key="index"
+                                    >
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        {{ feature }}
+                                    </li>
+                                </ul>
+                                <p class="tier-footnote">
+                                    {{ t('pricing.free_licenses.education.footnote') }}
+                                </p>
+                                <v-btn
+                                    block
+                                    size="large"
+                                    rounded
+                                    variant="outlined"
                                 >
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    {{ feature }}
-                                </li>
-                            </ul>
-                            <p class="tier-footnote">
-                                {{ t('pricing.free_licenses.education.footnote') }}
-                            </p>
-                            <v-btn
-                                block
-                                size="large"
-                                rounded
-                                variant="outlined"
-                            >
-                                {{ t('pricing.free_licenses.education.button') }}
-                            </v-btn>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-            </v-row>
+                                    {{ t('pricing.free_licenses.education.button') }}
+                                </v-btn>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                </v-row>
+            </div>
         </Section>
 
         <!-- Company Licenses Section -->
         <Section class="company-licenses-section">
-            <header class="section-heading">
-                <h2>{{ t('pricing.company_licenses.title') }}</h2>
-                <p class="section-subtitle">
-                    {{ t('pricing.company_licenses.subtitle') }}
-                </p>
-                <div class="feature-equality">
-                    {{ t('pricing.company_licenses.equality') }}
-                </div>
-            </header>
-            <v-row>
-                <v-col
-                    cols="12"
-                    lg="4"
-                >
-                    <v-card
-                        class="pricing-tier-card"
-                        elevation="0"
+            <div class="page-container">
+                <header class="section-heading">
+                    <h2>{{ t('pricing.company_licenses.title') }}</h2>
+                    <p class="section-subtitle">
+                        {{ t('pricing.company_licenses.subtitle') }}
+                    </p>
+                    <div class="feature-equality">
+                        {{ t('pricing.company_licenses.equality') }}
+                    </div>
+                </header>
+                <v-row>
+                    <v-col
+                        cols="12"
+                        lg="4"
                     >
-                        <v-card-text>
-                            <h3>Company I</h3>
-                            <p class="tier-desc">5M€ or 10+ Employees</p>
-                            <p class="tier-subdesc">Fair pricing for growing companies</p>
-                            <div class="price">
-                                <span class="price-amount">400€</span>
-                                <span class="price-period">/month</span>
-                            </div>
-                            <div class="price-annual">
-                                <span class="annual-amount">4,500€</span>
-                                <span class="annual-period">/year</span>
-                                <span class="annual-discount">6.25% off</span>
-                            </div>
-                            <ul class="tier-features">
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    All 18 features included
-                                </li>
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    Email & chat support
-                                </li>
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    Regular updates & patches
-                                </li>
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    Commercial license
-                                </li>
-                            </ul>
-                            <v-btn
-                                block
-                                size="large"
-                                rounded
-                                variant="outlined"
-                            >
-                                Get License
-                            </v-btn>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-                <v-col
-                    cols="12"
-                    lg="4"
-                >
-                    <v-card
-                        class="pricing-tier-card popular"
-                        elevation="4"
+                        <v-card
+                            class="pricing-tier-card"
+                            elevation="0"
+                        >
+                            <v-card-text>
+                                <h3>Company I</h3>
+                                <p class="tier-desc">5M€ or 10+ Employees</p>
+                                <p class="tier-subdesc">Fair pricing for growing companies</p>
+                                <div class="price">
+                                    <span class="price-amount">400€</span>
+                                    <span class="price-period">/month</span>
+                                </div>
+                                <div class="price-annual">
+                                    <span class="annual-amount">4,500€</span>
+                                    <span class="annual-period">/year</span>
+                                    <span class="annual-discount">6.25% off</span>
+                                </div>
+                                <ul class="tier-features">
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        All 18 features included
+                                    </li>
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        Email & chat support
+                                    </li>
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        Regular updates & patches
+                                    </li>
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        Commercial license
+                                    </li>
+                                </ul>
+                                <v-btn
+                                    block
+                                    size="large"
+                                    rounded
+                                    variant="outlined"
+                                >
+                                    Get License
+                                </v-btn>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        lg="4"
                     >
-                        <div class="popular-badge">⭐ Most Popular</div>
-                        <v-card-text>
-                            <h3>Company II</h3>
-                            <p class="tier-desc">15M€ or 40+ Employees</p>
-                            <p class="tier-subdesc">Most common for mid-size organizations</p>
-                            <div class="price">
-                                <span class="price-amount">900€</span>
-                                <span class="price-period">/month</span>
-                            </div>
-                            <div class="price-annual">
-                                <span class="annual-amount">10,000€</span>
-                                <span class="annual-period">/year</span>
-                                <span class="annual-discount">8.3% off</span>
-                            </div>
-                            <ul class="tier-features">
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    All 18 features included
-                                </li>
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    Email & chat support
-                                </li>
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    Regular updates & patches
-                                </li>
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    Commercial license
-                                </li>
-                            </ul>
-                            <v-btn
-                                block
-                                size="large"
-                                rounded
-                                color="primary"
-                            >
-                                Get License
-                            </v-btn>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-                <v-col
-                    cols="12"
-                    lg="4"
-                >
-                    <v-card
-                        class="pricing-tier-card"
-                        elevation="0"
+                        <v-card
+                            class="pricing-tier-card popular"
+                            elevation="4"
+                        >
+                            <div class="popular-badge">⭐ Most Popular</div>
+                            <v-card-text>
+                                <h3>Company II</h3>
+                                <p class="tier-desc">15M€ or 40+ Employees</p>
+                                <p class="tier-subdesc">Most common for mid-size organizations</p>
+                                <div class="price">
+                                    <span class="price-amount">900€</span>
+                                    <span class="price-period">/month</span>
+                                </div>
+                                <div class="price-annual">
+                                    <span class="annual-amount">10,000€</span>
+                                    <span class="annual-period">/year</span>
+                                    <span class="annual-discount">8.3% off</span>
+                                </div>
+                                <ul class="tier-features">
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        All 18 features included
+                                    </li>
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        Email & chat support
+                                    </li>
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        Regular updates & patches
+                                    </li>
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        Commercial license
+                                    </li>
+                                </ul>
+                                <v-btn
+                                    block
+                                    size="large"
+                                    rounded
+                                    color="primary"
+                                >
+                                    Get License
+                                </v-btn>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        lg="4"
                     >
-                        <v-card-text>
-                            <h3>Company III</h3>
-                            <p class="tier-desc">150M€ or 100+ Employees</p>
-                            <p class="tier-subdesc">Enterprise-scale organizations</p>
-                            <div class="price">
-                                <span class="price-amount">3,000€</span>
-                                <span class="price-period">/month</span>
-                            </div>
-                            <div class="price-annual">
-                                <span class="annual-amount">30,000€</span>
-                                <span class="annual-period">/year</span>
-                                <span class="annual-discount">17% off</span>
-                            </div>
-                            <ul class="tier-features">
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    All 18 features included
-                                </li>
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    Email & chat support
-                                </li>
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    Regular updates & patches
-                                </li>
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    Commercial license
-                                </li>
-                            </ul>
-                            <v-btn
-                                block
-                                size="large"
-                                rounded
-                                variant="outlined"
-                            >
-                                Get License
-                            </v-btn>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-            </v-row>
+                        <v-card
+                            class="pricing-tier-card"
+                            elevation="0"
+                        >
+                            <v-card-text>
+                                <h3>Company III</h3>
+                                <p class="tier-desc">150M€ or 100+ Employees</p>
+                                <p class="tier-subdesc">Enterprise-scale organizations</p>
+                                <div class="price">
+                                    <span class="price-amount">3,000€</span>
+                                    <span class="price-period">/month</span>
+                                </div>
+                                <div class="price-annual">
+                                    <span class="annual-amount">30,000€</span>
+                                    <span class="annual-period">/year</span>
+                                    <span class="annual-discount">17% off</span>
+                                </div>
+                                <ul class="tier-features">
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        All 18 features included
+                                    </li>
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        Email & chat support
+                                    </li>
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        Regular updates & patches
+                                    </li>
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        Commercial license
+                                    </li>
+                                </ul>
+                                <v-btn
+                                    block
+                                    size="large"
+                                    rounded
+                                    variant="outlined"
+                                >
+                                    Get License
+                                </v-btn>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                </v-row>
+            </div>
         </Section>
 
         <!-- Society Licenses Section -->
         <Section class="society-licenses-section">
-            <header class="section-heading">
-                <h2>{{ t('pricing.society_licenses.title') }}</h2>
-                <p class="section-subtitle">
-                    {{ t('pricing.society_licenses.subtitle') }}
-                </p>
-                <div class="feature-equality">
-                    {{ t('pricing.society_licenses.equality') }}
-                </div>
-            </header>
-            <v-row>
-                <v-col
-                    cols="12"
-                    lg="4"
-                >
-                    <v-card
-                        class="pricing-tier-card"
-                        elevation="0"
+            <div class="page-container">
+                <header class="section-heading">
+                    <h2>{{ t('pricing.society_licenses.title') }}</h2>
+                    <p class="section-subtitle">
+                        {{ t('pricing.society_licenses.subtitle') }}
+                    </p>
+                    <div class="feature-equality">
+                        {{ t('pricing.society_licenses.equality') }}
+                    </div>
+                </header>
+                <v-row>
+                    <v-col
+                        cols="12"
+                        lg="4"
                     >
-                        <v-card-text>
-                            <h3>Society I</h3>
-                            <p class="tier-desc">
-                                10+ Employees (NGOs, Private schools, Private universities)
-                            </p>
-                            <div class="price">
-                                <span class="price-amount">200€</span>
-                                <span class="price-period">/month</span>
-                            </div>
-                            <div class="price-annual">
-                                <span class="annual-amount">2,250€</span>
-                                <span class="annual-period">/year</span>
-                                <span class="annual-discount">6.7% off</span>
-                            </div>
-                            <ul class="tier-features">
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    All features included
-                                </li>
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    Email support
-                                </li>
-                            </ul>
-                            <v-btn
-                                block
-                                size="large"
-                                rounded
-                                variant="outlined"
-                            >
-                                Get License
-                            </v-btn>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-                <v-col
-                    cols="12"
-                    lg="4"
-                >
-                    <v-card
-                        class="pricing-tier-card"
-                        elevation="0"
+                        <v-card
+                            class="pricing-tier-card"
+                            elevation="0"
+                        >
+                            <v-card-text>
+                                <h3>Society I</h3>
+                                <p class="tier-desc">
+                                    10+ Employees (NGOs, Private schools, Private universities)
+                                </p>
+                                <div class="price">
+                                    <span class="price-amount">200€</span>
+                                    <span class="price-period">/month</span>
+                                </div>
+                                <div class="price-annual">
+                                    <span class="annual-amount">2,250€</span>
+                                    <span class="annual-period">/year</span>
+                                    <span class="annual-discount">6.7% off</span>
+                                </div>
+                                <ul class="tier-features">
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        All features included
+                                    </li>
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        Email support
+                                    </li>
+                                </ul>
+                                <v-btn
+                                    block
+                                    size="large"
+                                    rounded
+                                    variant="outlined"
+                                >
+                                    Get License
+                                </v-btn>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        lg="4"
                     >
-                        <v-card-text>
-                            <h3>Society II</h3>
-                            <p class="tier-desc">40+ Employees</p>
-                            <div class="price">
-                                <span class="price-amount">450€</span>
-                                <span class="price-period">/month</span>
-                            </div>
-                            <div class="price-annual">
-                                <span class="annual-amount">5,000€</span>
-                                <span class="annual-period">/year</span>
-                                <span class="annual-discount">7.4% off</span>
-                            </div>
-                            <ul class="tier-features">
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    All features included
-                                </li>
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    Email support
-                                </li>
-                            </ul>
-                            <v-btn
-                                block
-                                size="large"
-                                rounded
-                                variant="outlined"
-                            >
-                                Get License
-                            </v-btn>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-                <v-col
-                    cols="12"
-                    lg="4"
-                >
-                    <v-card
-                        class="pricing-tier-card"
-                        elevation="0"
+                        <v-card
+                            class="pricing-tier-card"
+                            elevation="0"
+                        >
+                            <v-card-text>
+                                <h3>Society II</h3>
+                                <p class="tier-desc">40+ Employees</p>
+                                <div class="price">
+                                    <span class="price-amount">450€</span>
+                                    <span class="price-period">/month</span>
+                                </div>
+                                <div class="price-annual">
+                                    <span class="annual-amount">5,000€</span>
+                                    <span class="annual-period">/year</span>
+                                    <span class="annual-discount">7.4% off</span>
+                                </div>
+                                <ul class="tier-features">
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        All features included
+                                    </li>
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        Email support
+                                    </li>
+                                </ul>
+                                <v-btn
+                                    block
+                                    size="large"
+                                    rounded
+                                    variant="outlined"
+                                >
+                                    Get License
+                                </v-btn>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        lg="4"
                     >
-                        <v-card-text>
-                            <h3>Society III</h3>
-                            <p class="tier-desc">100+ Employees</p>
-                            <div class="price">
-                                <span class="price-amount">1,500€</span>
-                                <span class="price-period">/month</span>
-                            </div>
-                            <div class="price-annual">
-                                <span class="annual-amount">15,000€</span>
-                                <span class="annual-period">/year</span>
-                                <span class="annual-discount">1.7% off</span>
-                            </div>
-                            <ul class="tier-features">
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    All features included
-                                </li>
-                                <li>
-                                    <SmartIcon
-                                        icon="check"
-                                        color="primary"
-                                        size="sm"
-                                    />
-                                    Email support
-                                </li>
-                            </ul>
-                            <v-btn
-                                block
-                                size="large"
-                                rounded
-                                variant="outlined"
-                            >
-                                Get License
-                            </v-btn>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-            </v-row>
+                        <v-card
+                            class="pricing-tier-card"
+                            elevation="0"
+                        >
+                            <v-card-text>
+                                <h3>Society III</h3>
+                                <p class="tier-desc">100+ Employees</p>
+                                <div class="price">
+                                    <span class="price-amount">1,500€</span>
+                                    <span class="price-period">/month</span>
+                                </div>
+                                <div class="price-annual">
+                                    <span class="annual-amount">15,000€</span>
+                                    <span class="annual-period">/year</span>
+                                    <span class="annual-discount">1.7% off</span>
+                                </div>
+                                <ul class="tier-features">
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        All features included
+                                    </li>
+                                    <li>
+                                        <SmartIcon
+                                            icon="check"
+                                            color="primary"
+                                            size="sm"
+                                        />
+                                        Email support
+                                    </li>
+                                </ul>
+                                <v-btn
+                                    block
+                                    size="large"
+                                    rounded
+                                    variant="outlined"
+                                >
+                                    Get License
+                                </v-btn>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                </v-row>
+            </div>
         </Section>
 
         <!-- Corporate Edition CTA -->
@@ -699,6 +707,12 @@
 <style scoped>
     .pricing-page {
         padding-top: 80px;
+    }
+
+    .page-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 8px;
     }
 
     /* Hero Section */
