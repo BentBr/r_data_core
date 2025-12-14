@@ -2,6 +2,70 @@
 
 This document covers development setup, testing, and contribution guidelines for RDataCore.
 
+## Contributing
+
+### Signed Commits
+
+All commits must be signed. Configure Git to sign your commits:
+
+```bash
+# Configure GPG signing
+git config --global user.signingkey YOUR_GPG_KEY_ID
+git config --global commit.gpgsign true
+
+# Or use SSH signing (Git 2.34+)
+git config --global gpg.format ssh
+git config --global user.signingkey ~/.ssh/id_ed25519.pub
+git config --global commit.gpgsign true
+```
+
+Unsigned commits will be rejected by branch protection rules.
+
+### Conventional Commits
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) for automated versioning and changelog generation via release-please.
+
+**Commit message format:**
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+**Required prefixes:**
+
+| Prefix | Description | Version Bump |
+|--------|-------------|--------------|
+| `feat:` | New feature | Minor |
+| `fix:` | Bug fix | Patch |
+| `docs:` | Documentation only | None |
+| `style:` | Code style (formatting, semicolons) | None |
+| `refactor:` | Code change that neither fixes a bug nor adds a feature | None |
+| `perf:` | Performance improvement | Patch |
+| `test:` | Adding or correcting tests | None |
+| `build:` | Changes to build system or dependencies | None |
+| `ci:` | Changes to CI configuration | None |
+| `chore:` | Other changes that don't modify src or test files | None |
+
+**Breaking changes:**
+
+Add `!` after the type or include `BREAKING CHANGE:` in the footer:
+```
+feat!: remove deprecated API endpoints
+
+BREAKING CHANGE: The /api/v1/legacy endpoints have been removed.
+```
+
+**Examples:**
+```bash
+git commit -m "feat(api): add bulk entity import endpoint"
+git commit -m "fix(workflow): correct timeout handling in fetch stage"
+git commit -m "docs: update API authentication guide"
+git commit -m "refactor(persistence): simplify query builder"
+```
+
 ## Workspace Layout
 
 This repository is organized as a Cargo workspace:

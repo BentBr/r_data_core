@@ -62,4 +62,5 @@ fixes:
   - LinkedIn groups
   - Stefano
   - Matthias
+- Check all provided images (ghcr.io)
   
