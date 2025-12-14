@@ -1,5 +1,4 @@
 ## Todos
-- update readme
 - add options for custom tables (like bricks)
 - have easy-creation of children (entities)
 - test admin routes
@@ -49,3 +48,18 @@ fixes:
 - tests (unit and integration) for dynamic entities (more)
 - getting all entity types with fields and validations
 - filter entities (by field and value) (validate against entity-definition)
+
+
+- Release
+  - Register domain rdatacore.eu
+    - emailing
+  - setup subdomain: demo.rdatacore.eu
+  - find a hoster -> deploy website (statically)
+    - check sitemap + robots.txt for google
+    - setup search console account
+  - find a hoster -> deploy RDataCore FE + Backend (demo)
+- communicate
+  - LinkedIn groups
+  - Stefano
+  - Matthias
+  
