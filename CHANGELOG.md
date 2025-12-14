@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/BentBr/r_data_core/compare/v0.1.2...v0.1.3) (2025-12-14)
+
+
+### Bug Fixes
+
+* Updated flows ([b0ad7b7](https://github.com/BentBr/r_data_core/commit/b0ad7b704b36d77300c84cac66d083dea2702166))
+
 ## [0.1.2](https://github.com/BentBr/r_data_core/compare/v0.1.1...v0.1.2) (2025-12-13)
 
 
