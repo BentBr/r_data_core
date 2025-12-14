@@ -675,6 +675,25 @@
         }
       ]
     },
+    "wish": {
+      "title": "Wish a Feature",
+      "subtitle": "Have a specific need? We build custom features for our clients. Tell us what you need!",
+      "cta": "Request Feature",
+      "items": [
+        {
+          "title": "Custom Integration",
+          "desc": "Need to connect to a specific system? We can build custom connectors for your ERP, CRM, or any third-party service."
+        },
+        {
+          "title": "Specialized Workflow",
+          "desc": "Complex data transformation needs? We can develop custom workflow actions and DSL extensions tailored to your business."
+        },
+        {
+          "title": "Enterprise Features",
+          "desc": "Need advanced features like multi-tenancy, custom auth providers, or specific compliance requirements? Let's talk!"
+        }
+      ]
+    },
     "seo": {
       "title": "Roadmap - RDataCore",
       "description": "See what we've built and what's coming next for RDataCore MDM platform"

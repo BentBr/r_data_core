@@ -675,6 +675,25 @@
         }
       ]
     },
+    "wish": {
+      "title": "Feature wünschen",
+      "subtitle": "Haben Sie spezielle Anforderungen? Wir entwickeln individuelle Features für unsere Kunden. Sagen Sie uns, was Sie brauchen!",
+      "cta": "Feature anfragen",
+      "items": [
+        {
+          "title": "Individuelle Integration",
+          "desc": "Müssen Sie sich mit einem bestimmten System verbinden? Wir können benutzerdefinierte Konnektoren für Ihr ERP, CRM oder jeden anderen Drittanbieterdienst entwickeln."
+        },
+        {
+          "title": "Spezialisierter Workflow",
+          "desc": "Komplexe Datentransformationsanforderungen? Wir können benutzerdefinierte Workflow-Aktionen und DSL-Erweiterungen entwickeln, die auf Ihr Unternehmen zugeschnitten sind."
+        },
+        {
+          "title": "Enterprise-Features",
+          "desc": "Benötigen Sie erweiterte Funktionen wie Multi-Tenancy, benutzerdefinierte Auth-Provider oder spezifische Compliance-Anforderungen? Lassen Sie uns sprechen!"
+        }
+      ]
+    },
     "seo": {
       "title": "Roadmap - RDataCore",
       "description": "Sehen Sie, was wir gebaut haben und was als nächstes für die RDataCore MDM-Plattform kommt"

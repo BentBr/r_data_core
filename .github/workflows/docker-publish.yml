@@ -80,14 +80,14 @@ jobs:
             type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
             type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'release' }}
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
-            # On workflow_call from release-please: version tag + latest
-            type=raw,value=${{ inputs.version }},enable=${{ github.event_name == 'workflow_call' }}
-            type=raw,value=latest,enable=${{ github.event_name == 'workflow_call' }}
+            # On workflow_call from release-please (check if inputs.version is set)
+            type=raw,value=${{ inputs.version }},enable=${{ inputs.version != '' }}
+            type=raw,value=latest,enable=${{ inputs.version != '' }}
             # On develop push: develop + sha
-            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
-            type=sha,prefix=develop-,enable=${{ github.ref == 'refs/heads/develop' }}
+            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' && inputs.version == '' }}
+            type=sha,prefix=develop-,enable=${{ github.ref == 'refs/heads/develop' && inputs.version == '' }}
             # On manual dispatch
-            type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.version == '' }}
 
       - name: Build and push
         id: build-push
@@ -124,10 +124,10 @@ jobs:
           echo "## Docker Images Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ "${{ github.event_name }}" == "release" ]; then
-            TAG="${{ github.event.release.tag_name }}"
-          elif [ "${{ github.event_name }}" == "workflow_call" ]; then
+          if [ -n "${{ inputs.version }}" ]; then
             TAG="${{ inputs.tag_name }}"
+          elif [ "${{ github.event_name }}" == "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
           elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
             TAG="develop"
           else
