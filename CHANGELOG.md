@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.4](https://github.com/BentBr/r_data_core/compare/v0.1.3...v0.1.4) (2025-12-14)
+
+
+### Bug Fixes
+
+* inserting the tag properly ([9310123](https://github.com/BentBr/r_data_core/commit/9310123d9479b312c90376705fb68c8ef5079c49))
+* inserting the tag properly ([366ce61](https://github.com/BentBr/r_data_core/commit/366ce6160b1a778bde383f97b726206d7cc6d170))
+* Updated release-please to report to ci-gate ([3625521](https://github.com/BentBr/r_data_core/commit/3625521d0f582842a37a10a16e220cf23de5cec4))
+
 ## [0.1.3](https://github.com/BentBr/r_data_core/compare/v0.1.2...v0.1.3) (2025-12-14)
 
 
