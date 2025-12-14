@@ -49,6 +49,30 @@
                 </div>
             </div>
         </Section>
+
+        <Section class="wish-section">
+            <div class="roadmap-container">
+                <div class="section-header">
+                    <h2>{{ t('roadmap.wish.title') }}</h2>
+                    <p class="section-subtitle">{{ t('roadmap.wish.subtitle') }}</p>
+                </div>
+                <div class="wish-grid">
+                    <div
+                        v-for="(item, index) in wishItems"
+                        :key="`wish-${index}`"
+                        class="wish-card"
+                        @click="openContact"
+                    >
+                        <div class="wish-icon">{{ item.icon }}</div>
+                        <h3>{{ t(`roadmap.wish.items.${index}.title`) }}</h3>
+                        <p>{{ t(`roadmap.wish.items.${index}.desc`) }}</p>
+                        <div class="wish-cta">
+                            {{ t('roadmap.wish.cta') }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Section>
     </div>
 </template>
 
@@ -67,6 +91,15 @@
     // Array lengths for v-for loops
     const doneFeatures = Array(10).fill(null)
     const openFeatures = Array(6).fill(null)
+
+    // Wish items with icons
+    const wishItems = [{ icon: '💡' }, { icon: '🔧' }, { icon: '🚀' }]
+
+    const openContact = () => {
+        const email = t('contact.email')
+        const subject = encodeURIComponent('Feature Request for RDataCore')
+        window.open(`mailto:${email}?subject=${subject}`, '_blank', 'noopener,noreferrer')
+    }
 </script>
 
 <style scoped>
@@ -218,6 +251,75 @@
         margin: 0;
     }
 
+    /* Wish a Feature Section */
+    .wish-section {
+        padding: 80px 0;
+        background: linear-gradient(
+            180deg,
+            rgba(var(--v-theme-surface-variant), 0.2) 0%,
+            rgba(var(--v-theme-surface), 1) 100%
+        );
+    }
+
+    .wish-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 24px;
+    }
+
+    .wish-card {
+        background: rgba(var(--v-theme-surface), 1);
+        border-radius: 16px;
+        padding: 32px 24px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        border: 2px dashed rgba(var(--v-theme-primary), 0.4);
+        cursor: pointer;
+        text-align: center;
+    }
+
+    .wish-card:hover {
+        transform: translateY(-4px);
+        border-color: rgb(var(--v-theme-primary));
+        box-shadow: 0 8px 24px rgba(var(--v-theme-primary), 0.2);
+    }
+
+    .wish-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+    }
+
+    .wish-card h3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0 0 12px;
+        color: rgb(var(--v-theme-on-surface));
+    }
+
+    .wish-card p {
+        font-size: 0.95rem;
+        color: rgb(var(--v-theme-on-surface-variant));
+        line-height: 1.6;
+        margin: 0 0 20px;
+    }
+
+    .wish-cta {
+        display: inline-block;
+        padding: 10px 24px;
+        background: rgba(var(--v-theme-primary), 0.1);
+        color: rgb(var(--v-theme-primary));
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .wish-card:hover .wish-cta {
+        background: rgb(var(--v-theme-primary));
+        color: white;
+    }
+
     @media (max-width: 960px) {
         .roadmap-page {
             padding-top: 60px;
@@ -232,6 +334,14 @@
         }
 
         .features-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .wish-section {
+            padding: 60px 0;
+        }
+
+        .wish-grid {
             grid-template-columns: 1fr;
         }
     }
