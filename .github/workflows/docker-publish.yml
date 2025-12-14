@@ -41,15 +41,23 @@ jobs:
     strategy:
       matrix:
         include:
+          # Backend images (use main Dockerfile)
           - binary: r_data_core
             image: r-data-core
             target: r_data_core
+            dockerfile: ./Dockerfile
           - binary: r_data_core_worker
             image: r-data-core-worker
             target: r_data_core_worker
+            dockerfile: ./Dockerfile
           - binary: r_data_core_maintenance
             image: r-data-core-maintenance
             target: r_data_core_maintenance
+            dockerfile: ./Dockerfile
+          # Frontend image (uses separate Dockerfile with nginx)
+          - image: r-data-core-admin-fe
+            target: production
+            dockerfile: ./.docker/fe/Dockerfile
 
     steps:
       - name: Checkout
@@ -94,7 +102,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile
+          file: ${{ matrix.dockerfile }}
           target: ${{ matrix.target }}
           platforms: linux/amd64,linux/arm64
           push: true
@@ -102,8 +110,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            BINARY=${{ matrix.binary }}
+          build-args: ${{ matrix.binary && format('BINARY={0}', matrix.binary) || '' }}
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
@@ -139,8 +146,63 @@ jobs:
           echo "| \`ghcr.io/${{ github.repository_owner }}/r-data-core\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| \`ghcr.io/${{ github.repository_owner }}/r-data-core-worker\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| \`ghcr.io/${{ github.repository_owner }}/r-data-core-maintenance\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| \`ghcr.io/${{ github.repository_owner }}/r-data-core-admin-fe\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Usage" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "# Backend" >> $GITHUB_STEP_SUMMARY
           echo "docker pull ghcr.io/${{ github.repository_owner }}/r-data-core:${TAG}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Admin Frontend (nginx)" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ghcr.io/${{ github.repository_owner }}/r-data-core-admin-fe:${TAG}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  # Build and upload frontend ZIP to release
+  upload-frontend-zip:
+    runs-on: ubuntu-latest
+    # Only run for releases (not develop builds)
+    if: ${{ inputs.version != '' || github.event_name == 'release' }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: fe/package-lock.json
+
+      - name: Install dependencies
+        working-directory: fe
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: fe
+        run: npm run build
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+            echo "tag_name=${{ inputs.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+            echo "tag_name=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create ZIP archive
+        run: |
+          cd fe/dist
+          zip -r ../../r-data-core-admin-fe-${{ steps.version.outputs.version }}.zip .
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag_name }}
+          files: r-data-core-admin-fe-${{ steps.version.outputs.version }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -239,7 +239,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: fe/package-lock.json
 
@@ -265,7 +265,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: fe/package-lock.json
 
@@ -295,7 +295,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: fe/package-lock.json
 
@@ -330,7 +330,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: fe/package-lock.json
 
@@ -349,6 +349,48 @@ jobs:
       - name: Security audit
         working-directory: fe
         run: npm audit --audit-level=moderate
+
+  frontend-build:
+    needs: frontend-prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: fe/package-lock.json
+
+      - name: Install system dependencies for sharp
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvips-dev
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: fe/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install dependencies
+        working-directory: fe
+        run: npm ci
+
+      - name: Build
+        working-directory: fe
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: fe/dist
+          retention-days: 7
 
   static-website-prepare:
     runs-on: ubuntu-latest
@@ -524,6 +566,7 @@ jobs:
       - frontend-lint
       - frontend-tests
       - frontend-audit
+      - frontend-build
       - static-website-lint
       - static-website-test
       - static-website-build
