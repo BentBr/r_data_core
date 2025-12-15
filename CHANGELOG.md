@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.5](https://github.com/BentBr/r_data_core/compare/v0.1.4...v0.1.5) (2025-12-15)
+
+
+### Bug Fixes
+
+* changes to ci to have the FE released as well ([fe6d78f](https://github.com/BentBr/r_data_core/commit/fe6d78f6beca5b584422af8ff35f0f251b3076f4))
+* changes to ci to have the FE released as well ([1810c57](https://github.com/BentBr/r_data_core/commit/1810c5704505e3de55a0411027ced4512ce9f6b8))
+* removed vuetify old icons in tree view ([a56675c](https://github.com/BentBr/r_data_core/commit/a56675c97dc9ffc97168628eed91f6ea92b79cf9))
+
 ## [0.1.4](https://github.com/BentBr/r_data_core/compare/v0.1.3...v0.1.4) (2025-12-14)
 
 
