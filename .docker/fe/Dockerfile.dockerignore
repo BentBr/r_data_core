@@ -1,0 +1,59 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Development artifacts
+target/
+.idea/
+.vscode/
+.example_files/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+
+# CI/CD
+.github/
+
+# Backend source (not needed for frontend build)
+api/
+core/
+persistence/
+services/
+workflow/
+worker/
+test-support/
+migrations/
+.sqlx/
+Cargo.toml
+Cargo.lock
+*.rs
+
+# Other frontend (static-website not needed for admin fe)
+static-website/
+
+# Test files
+tests/
+**/tests/
+
+# Temp files
+**/*.rs.bk
+*.swp
+*.swo
+
+# Logs
+server.log
+*.log
+
+# Docker files
+Dockerfile
+docker-compose*.yml
+
+# Node modules (will be installed fresh)
+fe/node_modules/
