@@ -250,7 +250,7 @@
         return ''
     })
 
-    const outputDestinationAuth = computed(() => {
+    const outputDestinationAuth = computed((): AuthConfig => {
         if (props.modelValue.type === 'format') {
             const output = props.modelValue.output
             if (
@@ -260,10 +260,10 @@
                 'destination' in output &&
                 'auth' in output.destination
             ) {
-                return output.destination.auth
+                return output.destination.auth ?? { type: 'none' }
             }
         }
-        return { type: 'none' as const }
+        return { type: 'none' }
     })
 
     const entityDefinition = computed(() => {

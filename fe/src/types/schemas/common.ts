@@ -18,23 +18,43 @@ export const TableColumnSchema = z.object({
     fixed: z.boolean().optional(),
 })
 
-// Tree view schemas - recursive type (type annotation removed to avoid circular reference)
-export const TreeNodeSchema = z.object({
+// Tree node type definition
+export interface TreeNode {
+    id: string
+    title: string
+    icon?: string
+    color?: string
+    children?: TreeNode[]
+    expanded?: boolean
+    selected?: boolean
+    disabled?: boolean
+    entity_type?: string
+    uuid?: string
+    display_name?: string
+    published?: boolean
+    hasChildren?: boolean
+    path?: string
+}
+
+// Tree view schemas - recursive type with explicit base schema
+const TreeNodeBaseSchema = z.object({
     id: z.string(),
     title: z.string(),
     icon: z.string().optional(),
     color: z.string().optional(),
-    children: z.array(z.lazy(() => TreeNodeSchema)).optional(),
     expanded: z.boolean().optional(),
     selected: z.boolean().optional(),
     disabled: z.boolean().optional(),
-    // Allow additional properties for specific use cases
     entity_type: z.string().optional(),
     uuid: z.string().optional(),
     display_name: z.string().optional(),
     published: z.boolean().optional(),
     hasChildren: z.boolean().optional(),
     path: z.string().optional(),
+})
+
+export const TreeNodeSchema: z.ZodType<TreeNode> = TreeNodeBaseSchema.extend({
+    children: z.lazy(() => z.array(TreeNodeSchema)).optional(),
 })
 
 // Snackbar schemas
@@ -69,7 +89,7 @@ export const FormFieldSchema = z.object({
 // Type exports
 export type TableAction = z.infer<typeof TableActionSchema>
 export type TableColumn = z.infer<typeof TableColumnSchema>
-export type TreeNode = z.infer<typeof TreeNodeSchema>
+// TreeNode is exported as an interface above
 export type SnackbarConfig = z.infer<typeof SnackbarConfigSchema>
 export type DialogConfig = z.infer<typeof DialogConfigSchema>
 export type FormField = z.infer<typeof FormFieldSchema>

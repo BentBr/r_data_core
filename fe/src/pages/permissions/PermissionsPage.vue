@@ -291,8 +291,9 @@
             >
                 <p>
                     {{
-                        t('permissions.page.roles.delete.message', { name: roleToDelete?.name }) ||
-                        `Are you sure you want to delete the role "${roleToDelete?.name}"?`
+                        t('permissions.page.roles.delete.message', {
+                            name: roleToDelete?.name ?? '',
+                        }) || `Are you sure you want to delete the role "${roleToDelete?.name}"?`
                     }}
                 </p>
             </DialogManager>
@@ -307,7 +308,7 @@
                 <p>
                     {{
                         t('permissions.page.users.delete.message', {
-                            username: userToDelete?.username,
+                            username: userToDelete?.username ?? '',
                         })
                     }}
                 </p>

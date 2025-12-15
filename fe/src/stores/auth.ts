@@ -66,6 +66,7 @@ export const useAuthStore = defineStore('auth', () => {
                 first_name: '',
                 last_name: '',
                 is_active: true,
+                is_admin: false, // Will be determined from permissions
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
             }
@@ -257,6 +258,7 @@ export const useAuthStore = defineStore('auth', () => {
                     first_name: '',
                     last_name: '',
                     is_active: true,
+                    is_admin: false,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
                 }
@@ -342,6 +344,7 @@ export const useAuthStore = defineStore('auth', () => {
                         first_name: '',
                         last_name: '',
                         is_active: true,
+                        is_admin: false,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString(),
                     }

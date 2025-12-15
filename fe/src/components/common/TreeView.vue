@@ -6,8 +6,8 @@
         item-title="title"
         item-value="id"
         item-children="children"
-        :expand-icon="null"
-        :collapse-icon="null"
+        :expand-icon="undefined"
+        :collapse-icon="undefined"
         activatable
         hoverable
         :open-on-click="false"

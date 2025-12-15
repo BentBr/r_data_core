@@ -172,7 +172,7 @@
             if (!v) {
                 return true
             }
-            return v.length >= min || t('users.dialog.validation.min_length', { min })
+            return v.length >= min || t('users.dialog.validation.min_length', { min: String(min) })
         },
     }
 
@@ -196,6 +196,7 @@
         newUser => {
             if (newUser) {
                 formData.value = {
+                    username: newUser.username,
                     email: newUser.email,
                     password: '',
                     first_name: newUser.first_name ?? '',

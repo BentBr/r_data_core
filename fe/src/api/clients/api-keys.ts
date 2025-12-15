@@ -32,7 +32,7 @@ export class ApiKeysClient extends BaseTypedHttpClient {
             }
             request_id?: string
             timestamp?: string
-            custom?: import('@/types/schemas').ApiKeyCustomData
+            custom?: unknown
         }
     }> {
         let url = `/admin/api/v1/api-keys?page=${page}&per_page=${itemsPerPage}`

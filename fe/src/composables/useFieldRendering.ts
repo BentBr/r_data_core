@@ -57,20 +57,16 @@ export function useFieldRendering() {
         }
 
         if (field.constraints?.min !== undefined) {
+            const minVal = Number(field.constraints.min)
             rules.push(
-                v =>
-                    !v ||
-                    (typeof v === 'number' && v >= field.constraints!.min!) ||
-                    `Minimum value is ${field.constraints!.min}`
+                v => !v || (typeof v === 'number' && v >= minVal) || `Minimum value is ${minVal}`
             )
         }
 
         if (field.constraints?.max !== undefined) {
+            const maxVal = Number(field.constraints.max)
             rules.push(
-                v =>
-                    !v ||
-                    (typeof v === 'number' && v <= field.constraints!.max!) ||
-                    `Maximum value is ${field.constraints!.max}`
+                v => !v || (typeof v === 'number' && v <= maxVal) || `Maximum value is ${maxVal}`
             )
         }
 

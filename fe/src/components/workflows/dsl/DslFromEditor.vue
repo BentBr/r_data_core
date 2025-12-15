@@ -349,11 +349,11 @@
     function updateFilterField(field: string, value: unknown) {
         const updated = { ...props.modelValue } as Record<string, unknown>
         updated.filter ??= { field: '', operator: '=', value: '' }
-        updated.filter[field] = value
+        ;(updated.filter as Record<string, unknown>)[field] = value
         emit('update:modelValue', updated as FromDef)
     }
 
-    function toggleFilter(enabled: boolean) {
+    function toggleFilter(enabled: boolean | null) {
         const updated = { ...props.modelValue } as Record<string, unknown>
         if (enabled) {
             updated.filter ??= { field: '', operator: '=', value: '' }
@@ -535,8 +535,8 @@
             return
         }
         const header = props.modelValue.format.options?.has_header !== false
-        const delimiter = props.modelValue.format.options?.delimiter ?? ','
-        const quote = props.modelValue.format.options?.quote ?? '"'
+        const delimiter = (props.modelValue.format.options?.delimiter as string) ?? ','
+        const quote = (props.modelValue.format.options?.quote as string) ?? '"'
         let fields: string[]
         if (header) {
             fields = parseCsvHeader(text, delimiter, quote)
@@ -570,8 +570,8 @@
             const res = await fetch(uri)
             const txt = await res.text()
             const header = props.modelValue.format.options?.has_header !== false
-            const delimiter = props.modelValue.format.options?.delimiter ?? ','
-            const quote = props.modelValue.format.options?.quote ?? '"'
+            const delimiter = (props.modelValue.format.options?.delimiter as string) ?? ','
+            const quote = (props.modelValue.format.options?.quote as string) ?? '"'
             let fields: string[]
             if (header) {
                 fields = parseCsvHeader(txt, delimiter, quote)

@@ -110,7 +110,7 @@
                                         t('entities.details.created_at')
                                     }}</v-list-item-title>
                                     <v-list-item-subtitle>{{
-                                        formatDate(entity.field_data?.created_at ?? '')
+                                        formatDate((entity.field_data?.created_at as string) ?? '')
                                     }}</v-list-item-subtitle>
                                 </v-list-item>
                                 <v-list-item>
@@ -126,7 +126,7 @@
                                         t('entities.details.updated_at')
                                     }}</v-list-item-title>
                                     <v-list-item-subtitle>{{
-                                        formatDate(entity.field_data?.updated_at ?? '')
+                                        formatDate((entity.field_data?.updated_at as string) ?? '')
                                     }}</v-list-item-subtitle>
                                 </v-list-item>
                                 <v-list-item v-if="entity.field_data?.path">

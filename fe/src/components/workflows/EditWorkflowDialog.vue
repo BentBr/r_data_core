@@ -324,7 +324,7 @@
                 configError.value = 'DSL steps are required'
                 return
             }
-            await typedHttpClient.validateDsl(steps)
+            await typedHttpClient.validateDsl(steps as import('@/types/schemas').DslStep[])
         } catch (e: unknown) {
             if (e instanceof ValidationError) {
                 // Handle Symfony-style validation errors

@@ -187,26 +187,20 @@
     })
 
     // Field-specific errors
-    const fieldErrors = reactive({
+    const fieldErrors = reactive<{ username: string[]; password: string[] }>({
         username: [],
         password: [],
     })
 
     // Validation rules with translations
     const usernameRules = [
-        (v: unknown) => !!v,
-        (v: unknown) => {
-            const isValid = v && typeof v === 'string' && v.length >= 3
-            return isValid ?? t('auth.login.errors.username_too_short')
-        },
+        (v: string) => !!v || t('auth.login.errors.username_required'),
+        (v: string) => v.length >= 3 || t('auth.login.errors.username_too_short'),
     ]
 
     const passwordRules = [
-        (v: unknown) => !!v,
-        (v: unknown) => {
-            const isValid = v && typeof v === 'string' && v.length >= 8
-            return isValid ?? t('auth.login.errors.password_too_short')
-        },
+        (v: string) => !!v || t('auth.login.errors.password_required'),
+        (v: string) => v.length >= 8 || t('auth.login.errors.password_too_short'),
     ]
 
     // Methods
@@ -263,7 +257,7 @@
         }
     }
 
-    const clearFieldError = field => {
+    const clearFieldError = (field: 'username' | 'password') => {
         fieldErrors[field] = []
         authStore.clearError()
     }

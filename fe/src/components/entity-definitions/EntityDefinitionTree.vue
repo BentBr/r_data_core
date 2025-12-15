@@ -89,15 +89,17 @@
                 entity_type: 'group',
                 icon: 'folder',
                 published: false,
-                children: definitions.map(def => ({
-                    id: def.uuid,
-                    title: def.display_name,
-                    uuid: def.uuid,
-                    display_name: def.display_name,
-                    entity_type: def.entity_type,
-                    icon: def.icon ?? 'file-text',
-                    published: def.published,
-                })),
+                children: definitions.map(
+                    (def): TreeNode => ({
+                        id: def.uuid ?? '',
+                        title: def.display_name,
+                        uuid: def.uuid,
+                        display_name: def.display_name,
+                        entity_type: def.entity_type,
+                        icon: def.icon ?? 'file-text',
+                        published: def.published,
+                    })
+                ),
             })
         )
 

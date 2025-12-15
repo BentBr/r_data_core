@@ -68,13 +68,14 @@
 
                     <!-- Parent Entity Selection -->
                     <v-select
-                        v-model="parentUuidValue"
+                        :model-value="parentUuidValue"
                         :items="availableParents"
                         item-title="title"
                         item-value="uuid"
                         :label="t('entities.create.parent_label')"
                         clearable
                         class="mt-4"
+                        @update:model-value="(v: string | null) => (parentUuidValue = v)"
                     />
 
                     <!-- Dynamic Fields based on Entity Definition -->
@@ -141,7 +142,7 @@
     import SmartIcon from '@/components/common/SmartIcon.vue'
     import { getDialogMaxWidth, buttonConfigs } from '@/design-system/components'
     import type { EntityDefinition, CreateEntityRequest, DynamicEntity } from '@/types/schemas'
-    import { ValidationError } from '@/api/typed-client'
+    import { ValidationError, typedHttpClient } from '@/api/typed-client'
     import { useFieldRendering } from '@/composables/useFieldRendering'
 
     interface Props {
@@ -199,7 +200,7 @@
         return props.entityDefinitions.find(def => def.entity_type === formData.value.entity_type)
     })
 
-    const availableParents = computed(() => {
+    const availableParents = computed((): Array<{ title: string; uuid: string }> => {
         if (!formData.value.entity_type) {
             return []
         }
@@ -210,9 +211,9 @@
     })
 
     const parentUuidValue = computed({
-        get: () => formData.value.parent_uuid ?? null,
-        set: (value: string | null) => {
-            formData.value.parent_uuid = value
+        get: () => formData.value.parent_uuid,
+        set: (value: string | null | undefined) => {
+            formData.value.parent_uuid = value ?? null
         },
     })
 
@@ -300,7 +301,7 @@
     // Watch path changes - if user manually edits path, clear parent
     watch(
         () => formData.value.data.path,
-        (newPath, oldPath) => {
+        (_newPath, oldPath) => {
             // Only clear parent if path changed manually (not when setting based on parent)
             if (oldPath !== undefined && formData.value.parent_uuid) {
                 // User is manually editing the path, so clear the parent
@@ -315,7 +316,7 @@
         async newParent => {
             // Only prefill if dialog is open AND entity_type is already selected
             if (newParent && dialogVisible.value && formData.value.entity_type) {
-                formData.value.parent_uuid = newParent.field_data?.uuid ?? null
+                formData.value.parent_uuid = (newParent.field_data?.uuid as string) ?? null
 
                 // Also update the path based on parent
                 const parentPath = newParent.field_data?.path as string | undefined
@@ -334,7 +335,7 @@
     // Watch for when dialog opens to potentially set default parent if already selected
     watch(dialogVisible, async visible => {
         if (visible && props.defaultParent && formData.value.entity_type) {
-            formData.value.parent_uuid = props.defaultParent.field_data?.uuid ?? null
+            formData.value.parent_uuid = (props.defaultParent.field_data?.uuid as string) ?? null
 
             const parentPath = props.defaultParent.field_data?.path as string | undefined
             const parentKey = props.defaultParent.field_data?.entity_key as string | undefined

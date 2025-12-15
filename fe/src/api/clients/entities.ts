@@ -53,9 +53,9 @@ export class EntitiesClient extends BaseTypedHttpClient {
             kind: 'folder' | 'file'
             name: string
             path: string
-            entity_uuid?: string
-            entity_type?: string
-            has_children?: boolean
+            entity_uuid?: string | null
+            entity_type?: string | null
+            has_children?: boolean | null
             published: boolean
         }>
         meta?: {

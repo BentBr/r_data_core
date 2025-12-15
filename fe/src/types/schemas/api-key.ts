@@ -39,3 +39,6 @@ export type CreateApiKeyRequest = z.infer<typeof CreateApiKeyRequestSchema>
 export type ApiKeyCreatedResponse = z.infer<typeof ApiKeyCreatedResponseSchema>
 export type ReassignApiKeyRequest = z.infer<typeof ReassignApiKeyRequestSchema>
 export type ReassignApiKeyResponse = z.infer<typeof ReassignApiKeyResponseSchema>
+
+// Custom data type for API key meta
+export type ApiKeyCustomData = Record<string, unknown>

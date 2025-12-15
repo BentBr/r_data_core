@@ -224,26 +224,43 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         const { ApiResponseSchema } = await import('@/types/schemas')
         const parsed = ApiResponseSchema(schema).parse(json)
 
+        if (!parsed.data) {
+            throw new Error('No data in upload response')
+        }
         return parsed.data
     }
 
-    // DSL endpoints (delegated)
-    async getDslFromOptions() {
-        const { getDslFromOptions } = await import('./dsl')
-        // Pass this instance which has the request method from BaseTypedHttpClient
-        return getDslFromOptions(this)
+    // DSL endpoints
+    async getDslFromOptions(): Promise<import('@/types/schemas').DslOptionsResponse> {
+        const { DslOptionsResponseSchema } = await import('@/types/schemas/dsl')
+        return this.request(
+            '/admin/api/v1/dsl/from/options',
+            ApiResponseSchema(DslOptionsResponseSchema)
+        )
     }
-    async getDslToOptions() {
-        const { getDslToOptions } = await import('./dsl')
-        return getDslToOptions(this)
+
+    async getDslToOptions(): Promise<import('@/types/schemas').DslOptionsResponse> {
+        const { DslOptionsResponseSchema } = await import('@/types/schemas/dsl')
+        return this.request(
+            '/admin/api/v1/dsl/to/options',
+            ApiResponseSchema(DslOptionsResponseSchema)
+        )
     }
-    async getDslTransformOptions() {
-        const { getDslTransformOptions } = await import('./dsl')
-        return getDslTransformOptions(this)
+
+    async getDslTransformOptions(): Promise<import('@/types/schemas').DslOptionsResponse> {
+        const { DslOptionsResponseSchema } = await import('@/types/schemas/dsl')
+        return this.request(
+            '/admin/api/v1/dsl/transform/options',
+            ApiResponseSchema(DslOptionsResponseSchema)
+        )
     }
-    async validateDsl(steps: unknown[]) {
-        const { validateDsl } = await import('./dsl')
-        return validateDsl(this, steps)
+
+    async validateDsl(steps: import('@/types/schemas').DslStep[]): Promise<{ valid: boolean }> {
+        const ValidateRespSchema = z.object({ valid: z.boolean() })
+        return this.request('/admin/api/v1/dsl/validate', ApiResponseSchema(ValidateRespSchema), {
+            method: 'POST',
+            body: JSON.stringify({ steps }),
+        })
     }
 
     async listWorkflowVersions(uuid: string): Promise<

@@ -67,7 +67,7 @@
                                     {{
                                         t('dashboard.tiles.top_entity_type', {
                                             type: topEntityType.entity_type,
-                                            count: topEntityType.count,
+                                            count: String(topEntityType.count),
                                         })
                                     }}
                                 </div>
