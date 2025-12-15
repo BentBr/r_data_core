@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/BentBr/r_data_core/compare/v0.1.5...v0.1.6) (2025-12-15)
+
+
+### Bug Fixes
+
+* making sure ci is properly caching ([f8095cd](https://github.com/BentBr/r_data_core/commit/f8095cd83b12728ce38f3c4a7a7b1fc5f0b03393))
+
 ## [0.1.5](https://github.com/BentBr/r_data_core/compare/v0.1.4...v0.1.5) (2025-12-15)
 
 
