@@ -60,6 +60,7 @@ export const DslFromJsonSchema = z.object({
 
 export const DslEntityFilterSchema = z.object({
     field: z.string(),
+    operator: z.string().optional(),
     value: z.string(),
 })
 
@@ -207,6 +208,19 @@ export type DslStep = z.infer<typeof DslStepSchema>
 export type DslValidateRequest = z.infer<typeof DslValidateRequestSchema>
 export type DslValidateResponse = z.infer<typeof DslValidateResponseSchema>
 export type DslOptionsResponse = z.infer<typeof DslOptionsResponseSchema>
+
+// Export component types for DSL editors
+export type FromDef = z.infer<typeof DslFromSchema>
+export type ToDef = z.infer<typeof DslToSchema>
+export type Transform = z.infer<typeof DslTransformSchema>
+export type OutputMode = z.infer<typeof OutputModeSchema>
+export type HttpMethod = z.infer<typeof HttpMethodSchema>
+export type Operand = z.infer<typeof DslOperandSchema>
+export type StringOperand = z.infer<typeof DslStringOperandSchema>
+export type AuthConfig = z.infer<typeof AuthConfigSchema>
+export type SourceConfig = z.infer<typeof SourceConfigSchema>
+export type FormatConfig = z.infer<typeof FormatConfigSchema>
+export type DestinationConfig = z.infer<typeof DestinationConfigSchema>
 
 // Re-export ApiResponseSchema for consumers that need it alongside DSL
 export { ApiResponseSchema }

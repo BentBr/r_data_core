@@ -6,8 +6,8 @@
         item-title="title"
         item-value="id"
         item-children="children"
-        :expand-icon="null"
-        :collapse-icon="null"
+        expand-icon=""
+        collapse-icon=""
         activatable
         hoverable
         :open-on-click="false"
@@ -207,5 +207,24 @@
         align-items: center !important;
         gap: 8px !important;
         min-width: auto !important;
+    }
+
+    /* Hide Vuetify's internal expand/collapse icons - we use our own in prepend slot */
+    :deep(.v-treeview-item__toggle) {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        visibility: hidden !important;
+    }
+
+    /* Also hide any icon inside the toggle */
+    :deep(.v-treeview-item__toggle .v-icon) {
+        display: none !important;
+    }
+
+    /* Hide the spacer that Vuetify adds for items without children */
+    :deep(.v-treeview-item__level) {
+        width: 0 !important;
     }
 </style>

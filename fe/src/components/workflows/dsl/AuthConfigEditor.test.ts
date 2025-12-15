@@ -133,7 +133,7 @@ describe('AuthConfigEditor', () => {
 
         const emitted = wrapper.emitted('update:modelValue')
         expect(emitted?.length).toBeGreaterThan(0)
-        const updated = emitted![emitted.length - 1][0] as AuthConfig
+        const updated = emitted![emitted!.length - 1][0] as AuthConfig
         expect(updated.type).toBe('api_key')
         if (updated.type === 'api_key') {
             expect(updated.key).toBe('')
@@ -294,7 +294,7 @@ describe('AuthConfigEditor', () => {
 
         const emitted = wrapper.emitted('update:modelValue')
         expect(emitted?.length).toBeGreaterThan(0)
-        const updated = emitted![emitted.length - 1][0] as AuthConfig
+        const updated = emitted![emitted!.length - 1][0] as AuthConfig
         expect(updated.type).toBe('basic_auth')
         if (updated.type === 'basic_auth') {
             expect(updated.username).toBe('')
@@ -316,7 +316,7 @@ describe('AuthConfigEditor', () => {
 
         const emitted = wrapper.emitted('update:modelValue')
         expect(emitted?.length).toBeGreaterThan(0)
-        const updated = emitted![emitted.length - 1][0] as AuthConfig
+        const updated = emitted![emitted!.length - 1][0] as AuthConfig
         expect(updated.type).toBe('pre_shared_key')
         if (updated.type === 'pre_shared_key') {
             expect(updated.key).toBe('')

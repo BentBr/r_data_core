@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { typedHttpClient } from '@/api/typed-client'
+import type { DslStep } from '@/types/schemas'
 
 vi.mock('@/stores/auth', () => {
     return {
@@ -19,7 +20,17 @@ describe('DSL client', () => {
     it('validates a proper DSL via backend', async () => {
         const steps = [
             {
-                from: { type: 'csv', uri: 'http://example.com/c.csv', mapping: { price: 'price' } },
+                from: {
+                    type: 'format',
+                    source: {
+                        source_type: 'uri',
+                        config: { uri: 'http://example.com/c.csv' },
+                    },
+                    format: {
+                        format_type: 'csv',
+                    },
+                    mapping: { price: 'price' },
+                },
                 transform: {
                     type: 'arithmetic',
                     target: 'price',
@@ -27,7 +38,12 @@ describe('DSL client', () => {
                     op: 'add',
                     right: { kind: 'const', value: 5.0 },
                 },
-                to: { type: 'json', output: 'api', mapping: { price: 'entity.total' } },
+                to: {
+                    type: 'format',
+                    output: { mode: 'api' },
+                    format: { format_type: 'json' },
+                    mapping: { price: 'entity.total' },
+                },
             },
         ]
         const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
@@ -39,7 +55,7 @@ describe('DSL client', () => {
                 }
             ) as Response
         )
-        const res = await typedHttpClient.validateDsl(steps)
+        const res = await typedHttpClient.validateDsl(steps as unknown as DslStep[])
         expect(res.valid).toBe(true)
         expect(fetchSpy).toHaveBeenCalled()
     })
@@ -47,7 +63,17 @@ describe('DSL client', () => {
     it('returns validation error on invalid DSL', async () => {
         const steps = [
             {
-                from: { type: 'csv', uri: '', mapping: {} }, // invalid mapping, empty uri
+                from: {
+                    type: 'format',
+                    source: {
+                        source_type: 'uri',
+                        config: { uri: '' },
+                    },
+                    format: {
+                        format_type: 'csv',
+                    },
+                    mapping: {},
+                }, // invalid mapping, empty uri
                 transform: {
                     type: 'arithmetic',
                     target: 'x',
@@ -55,7 +81,12 @@ describe('DSL client', () => {
                     op: 'add',
                     right: { kind: 'const', value: 2 },
                 },
-                to: { type: 'json', output: 'api', mapping: {} },
+                to: {
+                    type: 'format',
+                    output: { mode: 'api' },
+                    format: { format_type: 'json' },
+                    mapping: {},
+                },
             },
         ]
         // Backend responds with 422 Symfony-style
@@ -69,7 +100,9 @@ describe('DSL client', () => {
                 headers: { 'Content-Type': 'application/json' },
             }) as Response
         )
-        await expect(typedHttpClient.validateDsl(steps)).rejects.toMatchObject({
+        await expect(
+            typedHttpClient.validateDsl(steps as unknown as DslStep[])
+        ).rejects.toMatchObject({
             violations: body.violations,
         })
     })

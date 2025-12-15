@@ -25,6 +25,11 @@
     })
 
     const iconComponent = computed(() => {
+        // Handle empty or whitespace-only names - render nothing
+        if (!props.name || !props.name.trim()) {
+            return () => h('span', { style: { display: 'none' } })
+        }
+
         // Convert kebab-case to PascalCase (e.g., "file-document" -> "FileDocument")
         const iconName = props.name
             .split('-')
@@ -38,23 +43,8 @@
 
         if (!Icon) {
             console.warn(`Lucide icon "${props.name}" (${iconName}) not found`)
-            // Return a placeholder with valid dimensions
-            const size = typeof props.size === 'number' ? props.size : 24
-            return () =>
-                h(
-                    'span',
-                    {
-                        class: 'lucide-icon-placeholder',
-                        style: {
-                            width: `${size}px`,
-                            height: `${size}px`,
-                            display: 'inline-block',
-                            textAlign: 'center',
-                            lineHeight: `${size}px`,
-                        },
-                    },
-                    '?'
-                )
+            // Return nothing instead of placeholder for missing icons
+            return () => h('span', { style: { display: 'none' } })
         }
 
         // Convert Vuetify color names to CSS color values

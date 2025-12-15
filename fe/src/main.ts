@@ -1,4 +1,4 @@
-import { createApp, type Component } from 'vue'
+import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 
 import App from './App.vue'
@@ -43,6 +43,11 @@ const iconAliases: Partial<IconAliases> = {
     menuDown: 'chevron-down',
     menuLeft: 'chevron-left',
     menuUp: 'chevron-up',
+    // Kebab-case versions for internal Vuetify components (like v-treeview)
+    'menu-right': 'chevron-right',
+    'menu-down': 'chevron-down',
+    'menu-left': 'chevron-left',
+    'menu-up': 'chevron-up',
     radioOn: 'dot',
     radioOff: 'circle',
     edit: 'pencil',
@@ -64,7 +69,8 @@ const vuetify = createVuetify({
         aliases: iconAliases,
         sets: {
             smart: {
-                component: SmartIcon as Component,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                component: SmartIcon as any,
             },
         },
     },

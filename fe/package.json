@@ -7,12 +7,13 @@
     "dev": "vite",
     "build": "npm run generate:favicons && vue-tsc && vite build",
     "preview": "vite preview",
-    "lint": "eslint . --fix",
+    "typecheck": "vue-tsc --noEmit",
+    "lint": "vue-tsc --noEmit && eslint . --fix",
     "format": "prettier --write src/",
-    "test": "vitest",
+    "test": "vue-tsc --noEmit && vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test:run": "vue-tsc --noEmit && vitest run",
+    "test:coverage": "vue-tsc --noEmit && vitest run --coverage",
     "generate:favicons": "node scripts/generate-favicons.js"
   },
   "dependencies": {

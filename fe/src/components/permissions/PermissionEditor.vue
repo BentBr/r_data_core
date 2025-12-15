@@ -5,7 +5,7 @@
             md="3"
         >
             <v-select
-                :model-value="permission.resource_type"
+                :model-value="permission.resource_type as ResourceNamespace"
                 :items="resourceTypes"
                 label="Resource Type"
                 density="compact"

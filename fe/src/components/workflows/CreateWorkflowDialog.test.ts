@@ -45,13 +45,24 @@ describe('CreateWorkflowDialog', () => {
         const dsl = [
             {
                 from: {
-                    type: 'csv',
-                    uri: 'http://example.com/data.csv',
-                    options: { header: true },
+                    type: 'format',
+                    source: {
+                        source_type: 'uri',
+                        config: { uri: 'http://example.com/data.csv' },
+                    },
+                    format: {
+                        format_type: 'csv',
+                        options: { has_header: true },
+                    },
                     mapping: {},
                 },
                 transform: { type: 'none' },
-                to: { type: 'json', output: 'api', mapping: {} },
+                to: {
+                    type: 'format',
+                    output: { mode: 'api' },
+                    format: { format_type: 'json' },
+                    mapping: {},
+                },
             },
         ]
         // Set steps directly via exposed API
@@ -59,14 +70,14 @@ describe('CreateWorkflowDialog', () => {
             steps: DslStep[]
             submit: () => Promise<void>
         }
-        vm.steps = dsl as DslStep[]
+        vm.steps = dsl as unknown as DslStep[]
         await nextTick()
 
         await vm.submit()
 
         const emitted = wrapper.emitted('created') as Array<[string]> | undefined
         expect(emitted?.length).toBe(1)
-        expect(emitted[0][0]).toBeTypeOf('string')
+        expect(emitted![0][0]).toBeTypeOf('string')
     })
 
     it('shows validation error when DSL missing', async () => {
@@ -124,7 +135,7 @@ describe('CreateWorkflowDialog', () => {
             steps: DslStep[]
             hasApiSource?: boolean
         }
-        vm.steps = dsl as DslStep[]
+        vm.steps = dsl as unknown as DslStep[]
         await nextTick()
 
         // Find the cron field by label
@@ -181,7 +192,7 @@ describe('CreateWorkflowDialog', () => {
             steps: DslStep[]
             hasApiSource?: boolean
         }
-        vm.steps = dsl as DslStep[]
+        vm.steps = dsl as unknown as DslStep[]
         await nextTick()
 
         // Check that hasApiSource is false
@@ -222,12 +233,12 @@ describe('CreateWorkflowDialog', () => {
             },
         ]
 
-        const vm = wrapper.vm as {
+        const vm = wrapper.vm as unknown as {
             steps: DslStep[]
             hasApiOutput: boolean
             form: { schedule_cron: string | null }
         }
-        vm.steps = dsl as DslStep[]
+        vm.steps = dsl as unknown as DslStep[]
         await nextTick()
 
         // Check that hasApiOutput is true
@@ -277,11 +288,11 @@ describe('CreateWorkflowDialog', () => {
             },
         ]
 
-        const vm = wrapper.vm as {
+        const vm = wrapper.vm as unknown as {
             steps: DslStep[]
             hasApiOutput: boolean
         }
-        vm.steps = dsl as DslStep[]
+        vm.steps = dsl as unknown as DslStep[]
         await nextTick()
 
         // Check that hasApiOutput is false
@@ -328,12 +339,12 @@ describe('CreateWorkflowDialog', () => {
             },
         ]
 
-        const vm = wrapper.vm as {
+        const vm = wrapper.vm as unknown as {
             steps: DslStep[]
             hasApiOutput: boolean
             form: { schedule_cron: string | null }
         }
-        vm.steps = dsl as DslStep[]
+        vm.steps = dsl as unknown as DslStep[]
         await nextTick()
 
         // Check that hasApiOutput is true
@@ -377,11 +388,11 @@ describe('CreateWorkflowDialog', () => {
             },
         ]
 
-        const vm = wrapper.vm as {
+        const vm = wrapper.vm as unknown as {
             steps: DslStep[]
             hasApiOutput: boolean
         }
-        vm.steps = dsl as DslStep[]
+        vm.steps = dsl as unknown as DslStep[]
         await nextTick()
 
         // Check that hasApiOutput is false

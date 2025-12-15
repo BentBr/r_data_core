@@ -78,7 +78,7 @@
     import { getDialogMaxWidth } from '@/design-system/components'
     import DslConfigurator from './DslConfigurator.vue'
     import WorkflowFormFields from './WorkflowFormFields.vue'
-    import type { DslStep } from './dsl/dsl-utils'
+    import type { DslStep } from '@/types/schemas'
 
     const props = defineProps<{ modelValue: boolean }>()
     const emit = defineEmits<{
@@ -206,12 +206,13 @@
         }
         // Strict DSL presence and validation against BE
         try {
-            const steps = Array.isArray(parsedConfig?.steps) ? parsedConfig.steps : null
-            if (!steps || steps.length === 0) {
+            const configObj = parsedConfig as Record<string, unknown> | null
+            const configSteps = Array.isArray(configObj?.steps) ? configObj.steps : null
+            if (!configSteps || configSteps.length === 0) {
                 configError.value = t('workflows.create.dsl_required')
                 return
             }
-            await typedHttpClient.validateDsl(steps)
+            await typedHttpClient.validateDsl(configSteps as DslStep[])
         } catch (e: unknown) {
             if (e instanceof ValidationError) {
                 // Handle Symfony-style validation errors
@@ -228,8 +229,10 @@
                 }
                 return
             }
-            if (e?.violations) {
-                const v = e.violations[0]
+            const errorObj = e as Record<string, unknown> | null
+            if (errorObj?.violations) {
+                const violations = errorObj.violations as Array<{ message?: string }>
+                const v = violations[0]
                 configError.value = v?.message ?? t('workflows.create.dsl_invalid')
                 return
             }
@@ -249,7 +252,7 @@
                     hasApiSource.value || hasApiOutput.value
                         ? null
                         : (form.value.schedule_cron ?? null),
-                config: parsedConfig ?? {},
+                config: (parsedConfig ?? {}) as import('@/types/schemas').WorkflowConfig,
                 versioning_disabled: form.value.versioning_disabled,
             }
             const res = await typedHttpClient.createWorkflow(payload)

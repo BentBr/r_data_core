@@ -206,7 +206,7 @@ describe('DslToEditor', () => {
 
             const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
-            const updated = emitted[emitted.length - 1][0] as ToDef
+            const updated = emitted![emitted!.length - 1][0] as ToDef
             if (updated.type === 'entity') {
                 expect(updated.mode).toBe('update')
             }
@@ -331,7 +331,7 @@ describe('DslToEditor', () => {
 
             const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
-            const updated = emitted[emitted.length - 1][0] as ToDef
+            const updated = emitted![emitted!.length - 1][0] as ToDef
             if (updated.type === 'entity') {
                 expect(updated.mode).toBe('create_or_update')
             }
@@ -340,9 +340,12 @@ describe('DslToEditor', () => {
 
     it('adds mapping via addMapping button', async () => {
         const toDef: ToDef = {
-            type: 'csv',
-            output: 'api',
-            options: { header: true },
+            type: 'format',
+            output: { mode: 'api' },
+            format: {
+                format_type: 'csv',
+                options: { has_header: true },
+            },
             mapping: {},
         }
         const wrapper = mount(DslToEditor, {
@@ -386,7 +389,7 @@ describe('DslToEditor', () => {
 
         const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]> | undefined
         expect(emitted?.length).toBeGreaterThan(0)
-        const updated = emitted[emitted.length - 1][0] as ToDef
+        const updated = emitted![emitted!.length - 1][0] as ToDef
         expect(updated.type).toBe('entity')
     })
 
@@ -439,7 +442,7 @@ describe('DslToEditor', () => {
 
             const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
-            const updated = emitted[emitted.length - 1][0] as ToDef
+            const updated = emitted![emitted!.length - 1][0] as ToDef
             if (updated.type === 'format') {
                 expect(updated.format.format_type).toBe('csv')
             }
@@ -475,7 +478,7 @@ describe('DslToEditor', () => {
 
             const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
-            const updated = emitted[emitted.length - 1][0] as ToDef
+            const updated = emitted![emitted!.length - 1][0] as ToDef
             if (updated.type === 'format') {
                 expect(updated.output.mode).toBe('push')
                 if (updated.output.mode === 'push') {
@@ -556,7 +559,7 @@ describe('DslToEditor', () => {
 
             const emitted = wrapper.emitted('update:modelValue')
             if (emitted && emitted.length > 0) {
-                const updated = emitted[emitted.length - 1][0] as ToDef
+                const updated = emitted![emitted!.length - 1][0] as ToDef
                 if (updated.type === 'format' && updated.output.mode === 'push') {
                     expect(updated.output.destination.config.uri).toBe(
                         'http://example.com/new-endpoint'
@@ -607,7 +610,7 @@ describe('DslToEditor', () => {
 
             const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
-            const updated = emitted[emitted.length - 1][0] as ToDef
+            const updated = emitted![emitted!.length - 1][0] as ToDef
             if (updated.type === 'format' && updated.output.mode === 'push') {
                 expect(updated.output.method).toBe('PUT')
             }
@@ -683,7 +686,7 @@ describe('DslToEditor', () => {
 
             const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
-            const updated = emitted[emitted.length - 1][0] as ToDef
+            const updated = emitted![emitted!.length - 1][0] as ToDef
             if (updated.type === 'format') {
                 expect(updated.output.mode).toBe('api')
             }

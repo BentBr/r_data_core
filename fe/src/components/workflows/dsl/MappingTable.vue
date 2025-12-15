@@ -13,7 +13,7 @@
             </thead>
             <tbody>
                 <tr
-                    v-for="(pair, idx) in pairs"
+                    v-for="(_pair, idx) in pairs"
                     :key="idx"
                 >
                     <td>

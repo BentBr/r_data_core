@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useAuthStore } from '@/stores/auth'
 
-const mockStore = {
+const mockStore: {
+    isSuperAdmin: boolean
+    allowedRoutes: string[]
+    hasPermission: ReturnType<typeof vi.fn>
+    canAccessRoute: ReturnType<typeof vi.fn>
+} = {
     isSuperAdmin: false,
     allowedRoutes: ['/dashboard', '/workflows'],
     hasPermission: vi.fn((namespace: string, permissionType: string) => {

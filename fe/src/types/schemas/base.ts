@@ -76,8 +76,8 @@ export const ApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
     z.object({
         status: z.enum(['Success', 'Error']),
         message: z.string(),
-        data: dataSchema.optional().nullable(),
-        meta: MetaSchema.nullish(),
+        data: dataSchema.optional(),
+        meta: MetaSchema.nullable().optional(), // Backend may return null
     })
 
 export const PaginatedApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>

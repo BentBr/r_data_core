@@ -109,9 +109,9 @@
             kind: 'folder' | 'file'
             name: string
             path: string
-            entity_uuid?: string
-            entity_type?: string
-            has_children?: boolean
+            entity_uuid?: string | null
+            entity_type?: string | null
+            has_children?: boolean | null
             published: boolean
         }>
     ): TreeNode[] {
@@ -141,8 +141,8 @@
                     id: node.entity_uuid ?? node.path,
                     title: node.name,
                     icon,
-                    entity_type: node.entity_type,
-                    uuid: node.entity_uuid,
+                    entity_type: node.entity_type ?? undefined,
+                    uuid: node.entity_uuid ?? undefined,
                     path: node.path,
                     published: node.published,
                     // Only add the children array if `has_children` is true (so arrow shows)

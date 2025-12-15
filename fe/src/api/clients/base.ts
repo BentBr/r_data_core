@@ -11,7 +11,7 @@ export type ApiResponse<T> = {
     status: 'Success' | 'Error'
     message: string
     data?: T
-    meta?: Meta
+    meta?: Meta | null // Backend may return null
 }
 
 /**

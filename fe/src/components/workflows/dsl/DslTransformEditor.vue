@@ -45,7 +45,7 @@
                     @update:model-value="updateLeftField"
                 />
                 <v-text-field
-                    v-else
+                    v-else-if="left.kind === 'const'"
                     :model-value="String(left.value)"
                     :label="t('workflows.dsl.left_value')"
                     type="number"
@@ -71,7 +71,7 @@
                     @update:model-value="updateRightField"
                 />
                 <v-text-field
-                    v-else
+                    v-else-if="right.kind === 'const'"
                     :model-value="String(right.value)"
                     :label="t('workflows.dsl.right_value')"
                     type="number"
@@ -265,9 +265,9 @@
         emit('update:modelValue', newTransform)
     }
 
-    // Arithmetic operand updates
-    function updateLeftKind(kind: 'field' | 'const') {
-        if (kind === 'field') {
+    // Arithmetic operand updates (UI only supports field/const, not external_entity_field)
+    function updateLeftKind(kind: 'field' | 'const' | 'external_entity_field') {
+        if (kind === 'field' || kind === 'external_entity_field') {
             left.value = { kind: 'field', field: '' }
         } else {
             left.value = { kind: 'const', value: 0 }
@@ -285,8 +285,8 @@
         syncLeft()
     }
 
-    function updateRightKind(kind: 'field' | 'const') {
-        if (kind === 'field') {
+    function updateRightKind(kind: 'field' | 'const' | 'external_entity_field') {
+        if (kind === 'field' || kind === 'external_entity_field') {
             right.value = { kind: 'field', field: '' }
         } else {
             right.value = { kind: 'const', value: 0 }
