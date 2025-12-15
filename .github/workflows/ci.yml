@@ -270,6 +270,7 @@ jobs:
           cache-dependency-path: fe/package-lock.json
 
       - name: Cache node_modules
+        id: cache-node-modules
         uses: actions/cache@v4
         with:
           path: fe/node_modules
@@ -278,6 +279,7 @@ jobs:
             ${{ runner.os }}-node-modules-
 
       - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         working-directory: fe
         run: npm ci
 
@@ -299,12 +301,8 @@ jobs:
           cache: 'npm'
           cache-dependency-path: fe/package-lock.json
 
-      - name: Install system dependencies for sharp
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libvips-dev
-
       - name: Cache node_modules
+        id: cache-node-modules
         uses: actions/cache@v4
         with:
           path: fe/node_modules
@@ -313,8 +311,9 @@ jobs:
             ${{ runner.os }}-node-modules-
 
       - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         working-directory: fe
-        run: npm ci --include=optional
+        run: npm ci
 
       - name: Run tests
         working-directory: fe
@@ -335,6 +334,7 @@ jobs:
           cache-dependency-path: fe/package-lock.json
 
       - name: Cache node_modules
+        id: cache-node-modules
         uses: actions/cache@v4
         with:
           path: fe/node_modules
@@ -343,6 +343,7 @@ jobs:
             ${{ runner.os }}-node-modules-
 
       - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         working-directory: fe
         run: npm ci
 
@@ -364,20 +365,23 @@ jobs:
           cache: 'npm'
           cache-dependency-path: fe/package-lock.json
 
+      - name: Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: fe/node_modules
+          key: ${{ runner.os }}-node-modules-sharp-${{ hashFiles('fe/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-sharp-
+
       - name: Install system dependencies for sharp
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y libvips-dev
 
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: fe/node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
-
       - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         working-directory: fe
         run: npm ci
 
@@ -432,6 +436,7 @@ jobs:
           cache-dependency-path: static-website/package-lock.json
 
       - name: Cache node_modules
+        id: cache-node-modules
         uses: actions/cache@v4
         with:
           path: static-website/node_modules
@@ -440,6 +445,7 @@ jobs:
             ${{ runner.os }}-static-website-node-modules-
 
       - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         working-directory: static-website
         run: npm ci
 
@@ -462,14 +468,22 @@ jobs:
           cache-dependency-path: static-website/package-lock.json
 
       - name: Cache node_modules
+        id: cache-node-modules
         uses: actions/cache@v4
         with:
           path: static-website/node_modules
-          key: ${{ runner.os }}-static-website-node-modules-${{ hashFiles('static-website/package-lock.json') }}
+          key: ${{ runner.os }}-static-website-node-modules-sharp-${{ hashFiles('static-website/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-static-website-node-modules-
+            ${{ runner.os }}-static-website-node-modules-sharp-
+
+      - name: Install system dependencies for sharp
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvips-dev
 
       - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         working-directory: static-website
         run: npm ci
 
@@ -505,12 +519,8 @@ jobs:
           cache: 'npm'
           cache-dependency-path: static-website/package-lock.json
 
-      - name: Install system dependencies for sharp
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libvips-dev
-
       - name: Cache node_modules
+        id: cache-node-modules
         uses: actions/cache@v4
         with:
           path: static-website/node_modules
@@ -519,8 +529,9 @@ jobs:
             ${{ runner.os }}-static-website-node-modules-
 
       - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         working-directory: static-website
-        run: npm ci --include=optional
+        run: npm ci
 
       - name: Run tests
         working-directory: static-website
@@ -541,6 +552,7 @@ jobs:
           cache-dependency-path: static-website/package-lock.json
 
       - name: Cache node_modules
+        id: cache-node-modules
         uses: actions/cache@v4
         with:
           path: static-website/node_modules
@@ -549,6 +561,7 @@ jobs:
             ${{ runner.os }}-static-website-node-modules-
 
       - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         working-directory: static-website
         run: npm ci
 
