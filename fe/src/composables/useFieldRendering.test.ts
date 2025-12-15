@@ -56,6 +56,8 @@ describe('useFieldRendering', () => {
                 display_name: 'Test Field',
                 field_type: 'String',
                 required: true,
+                indexed: false,
+                filterable: false,
             }
 
             const rules = getFieldRules(field)
@@ -72,6 +74,8 @@ describe('useFieldRendering', () => {
                 display_name: 'Test Field',
                 field_type: 'Integer',
                 required: false,
+                indexed: false,
+                filterable: false,
                 constraints: { min: 5 },
             }
 
@@ -91,6 +95,8 @@ describe('useFieldRendering', () => {
                 display_name: 'Test Field',
                 field_type: 'Integer',
                 required: false,
+                indexed: false,
+                filterable: false,
                 constraints: { max: 10 },
             }
 
@@ -109,6 +115,8 @@ describe('useFieldRendering', () => {
                 display_name: 'Test Field',
                 field_type: 'String',
                 required: false,
+                indexed: false,
+                filterable: false,
                 constraints: { pattern: '^[A-Z]+$' },
             }
 
@@ -127,6 +135,8 @@ describe('useFieldRendering', () => {
                 display_name: 'Test Field',
                 field_type: 'Integer',
                 required: true,
+                indexed: false,
+                filterable: false,
                 constraints: { min: 5, max: 10 },
             }
 

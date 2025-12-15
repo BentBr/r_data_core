@@ -73,6 +73,9 @@ describe('useEntityDefinitions', () => {
                     name: 'test',
                     display_name: 'Test',
                     field_type: 'String',
+                    required: false,
+                    indexed: false,
+                    filterable: false,
                     // Missing constraints and ui_settings
                 },
             ]
@@ -90,6 +93,7 @@ describe('useEntityDefinitions', () => {
                     uuid: 'def-1',
                     entity_type: 'Customer',
                     display_name: 'Customer',
+                    allow_children: false,
                     fields: [],
                 },
             ]
@@ -109,11 +113,15 @@ describe('useEntityDefinitions', () => {
                     uuid: 'def-1',
                     entity_type: 'Customer',
                     display_name: 'Customer',
+                    allow_children: false,
                     fields: [
                         {
                             name: 'test',
                             display_name: 'Test',
                             field_type: 'String',
+                            required: false,
+                            indexed: false,
+                            filterable: false,
                         },
                     ],
                 },
@@ -145,6 +153,7 @@ describe('useEntityDefinitions', () => {
             const request: CreateEntityDefinitionRequest = {
                 entity_type: 'Customer',
                 display_name: 'Customer',
+                allow_children: false,
                 fields: [],
             }
             mockCreateEntityDefinition.mockResolvedValue(undefined)
@@ -162,6 +171,7 @@ describe('useEntityDefinitions', () => {
             const request: CreateEntityDefinitionRequest = {
                 entity_type: 'Customer',
                 display_name: 'Customer',
+                allow_children: false,
                 fields: [],
             }
             const error = new Error('Creation failed')
@@ -182,10 +192,14 @@ describe('useEntityDefinitions', () => {
                 uuid: 'def-1',
                 entity_type: 'Customer',
                 display_name: 'Customer',
+                allow_children: false,
                 fields: [],
             }
             const updateData: UpdateEntityDefinitionRequest = {
+                entity_type: 'Customer',
                 display_name: 'Updated Customer',
+                allow_children: false,
+                fields: [],
             }
             mockUpdateEntityDefinition.mockResolvedValue(undefined)
 
@@ -201,7 +215,10 @@ describe('useEntityDefinitions', () => {
 
         it('should return false if no definition selected', async () => {
             const updateData: UpdateEntityDefinitionRequest = {
+                entity_type: 'Customer',
                 display_name: 'Updated',
+                allow_children: false,
+                fields: [],
             }
 
             const { updateEntityDefinition, updating } = useEntityDefinitions()
@@ -217,10 +234,14 @@ describe('useEntityDefinitions', () => {
                 uuid: 'def-1',
                 entity_type: 'Customer',
                 display_name: 'Customer',
+                allow_children: false,
                 fields: [],
             }
             const updateData: UpdateEntityDefinitionRequest = {
+                entity_type: 'Customer',
                 display_name: 'Updated',
+                allow_children: false,
+                fields: [],
             }
             const error = new Error('Update failed')
             mockUpdateEntityDefinition.mockRejectedValue(error)
@@ -241,6 +262,7 @@ describe('useEntityDefinitions', () => {
                 uuid: 'def-1',
                 entity_type: 'Customer',
                 display_name: 'Customer',
+                allow_children: false,
                 fields: [],
             }
             mockDeleteEntityDefinition.mockResolvedValue(undefined)
@@ -270,6 +292,7 @@ describe('useEntityDefinitions', () => {
                 uuid: 'def-1',
                 entity_type: 'Customer',
                 display_name: 'Customer',
+                allow_children: false,
                 fields: [],
             }
             const error = new Error('Delete failed')

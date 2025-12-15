@@ -49,12 +49,15 @@ describe('SystemPage', () => {
         await new Promise(resolve => setTimeout(resolve, 100))
 
         // Set form values as strings (as v-text-field would)
-        const form = wrapper.vm.form
-        form.max_versions = '10' as unknown as number
-        form.max_age_days = '180' as unknown as number
+        const vm = wrapper.vm as unknown as {
+            form: { max_versions: number | string; max_age_days: number | string; enabled: boolean }
+            save: () => Promise<void>
+        }
+        vm.form.max_versions = '10' as unknown as number
+        vm.form.max_age_days = '180' as unknown as number
 
         // Trigger save
-        await wrapper.vm.save()
+        await vm.save()
         await wrapper.vm.$nextTick()
 
         // Verify that numbers were sent, not strings
@@ -81,12 +84,15 @@ describe('SystemPage', () => {
         await new Promise(resolve => setTimeout(resolve, 100))
 
         // Set form values as empty strings
-        const form = wrapper.vm.form
-        form.max_versions = '' as unknown as number
-        form.max_age_days = '' as unknown as number
+        const vm = wrapper.vm as unknown as {
+            form: { max_versions: number | string; max_age_days: number | string; enabled: boolean }
+            save: () => Promise<void>
+        }
+        vm.form.max_versions = '' as unknown as number
+        vm.form.max_age_days = '' as unknown as number
 
         // Trigger save
-        await wrapper.vm.save()
+        await vm.save()
         await wrapper.vm.$nextTick()
 
         // Verify that null was sent, not empty strings
@@ -113,8 +119,11 @@ describe('SystemPage', () => {
         await new Promise(resolve => setTimeout(resolve, 100))
 
         // Form should be populated with the values
-        expect(wrapper.vm.form.max_versions).toBe(10)
-        expect(wrapper.vm.form.max_age_days).toBe(180)
+        const vm = wrapper.vm as unknown as {
+            form: { max_versions: number | string; max_age_days: number | string; enabled: boolean }
+        }
+        expect(vm.form.max_versions).toBe(10)
+        expect(vm.form.max_age_days).toBe(180)
     })
 
     it('should show error message when save fails', async () => {
@@ -134,7 +143,8 @@ describe('SystemPage', () => {
         await new Promise(resolve => setTimeout(resolve, 100))
 
         // Trigger save
-        await wrapper.vm.save()
+        const vm = wrapper.vm as unknown as { save: () => Promise<void> }
+        await vm.save()
         await wrapper.vm.$nextTick()
 
         // Verify error was shown

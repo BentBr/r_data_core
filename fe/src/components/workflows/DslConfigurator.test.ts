@@ -41,7 +41,7 @@ describe('DslConfigurator', () => {
         // expect one step
         const emitted = wrapper.emitted('update:modelValue') as Array<[DslStep[]]> | undefined
         expect(emitted?.length).toBeGreaterThan(0)
-        const steps = emitted[emitted.length - 1][0]
+        const steps = emitted![emitted!.length - 1][0]
         expect(Array.isArray(steps)).toBe(true)
         expect(steps.length).toBe(1)
     })
@@ -72,7 +72,7 @@ describe('DslConfigurator', () => {
 
         const emitted = wrapper.emitted('update:modelValue') as Array<[DslStep[]]> | undefined
         expect(emitted?.length).toBeGreaterThan(0)
-        const steps = emitted[emitted.length - 1][0]
+        const steps = emitted![emitted!.length - 1][0]
         expect(steps.length).toBe(1)
         expect(steps[0].from.mapping).toBeDefined()
         expect(steps[0].to.mapping).toBeDefined()
@@ -84,15 +84,24 @@ describe('DslConfigurator', () => {
                 modelValue: [
                     {
                         from: {
-                            type: 'csv',
-                            uri: 'http://example.com/data.csv',
-                            options: { header: true },
+                            type: 'format',
+                            source: {
+                                source_type: 'uri',
+                                config: { uri: 'http://example.com/data.csv' },
+                            },
+                            format: {
+                                format_type: 'csv',
+                                options: { has_header: true },
+                            },
                             mapping: { col1: 'field1', col2: 'field2' },
                         },
                         transform: { type: 'none' },
                         to: {
-                            type: 'json',
-                            output: 'api',
+                            type: 'format',
+                            output: { mode: 'api' },
+                            format: {
+                                format_type: 'json',
+                            },
                             mapping: { field1: 'out1', field2: 'out2' },
                         },
                     },
@@ -105,7 +114,7 @@ describe('DslConfigurator', () => {
         // Verify mappings are preserved
         const emitted = wrapper.emitted('update:modelValue') as Array<[DslStep[]]> | undefined
         if (emitted && emitted.length > 0) {
-            const steps = emitted[emitted.length - 1][0]
+            const steps = emitted![emitted!.length - 1][0]
             expect(steps[0].from.mapping.col1).toBe('field1')
             expect(steps[0].to.mapping.field1).toBe('out1')
         }
@@ -140,7 +149,7 @@ describe('DslConfigurator', () => {
         // Verify entity types are preserved
         const emitted = wrapper.emitted('update:modelValue') as Array<[DslStep[]]> | undefined
         if (emitted && emitted.length > 0) {
-            const steps = emitted[emitted.length - 1][0]
+            const steps = emitted![emitted!.length - 1][0]
             expect(steps[0].from.type).toBe('entity')
             expect(steps[0].to.type).toBe('entity')
         }
@@ -187,7 +196,7 @@ describe('DslConfigurator', () => {
         // Open the first panel
         const expansionPanels = wrapper.findAllComponents({ name: 'VExpansionPanel' })
         if (expansionPanels.length > 0) {
-            const vm = wrapper.vm as { openPanels: number[] }
+            const vm = wrapper.vm as unknown as { openPanels: number[] }
             vm.openPanels = [0]
             await nextTick()
 

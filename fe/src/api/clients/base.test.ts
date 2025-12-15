@@ -31,13 +31,24 @@ vi.mock('@/env-check', () => ({
     buildApiUrl: (endpoint: string) => `http://localhost:3000${endpoint}`,
 }))
 
+// Import ApiResponse type from base for typing
+import type { ApiResponse } from './base'
+
 // Create a test client class
 class TestClient extends BaseTypedHttpClient {
-    async testRequest<T>(endpoint: string, schema: z.ZodType<T>, options?: RequestInit) {
+    async testRequest<T>(
+        endpoint: string,
+        schema: z.ZodType<ApiResponse<T>>,
+        options?: RequestInit
+    ) {
         return this.request(endpoint, schema, options)
     }
 
-    async testPaginatedRequest<T>(endpoint: string, schema: z.ZodType<T>, options?: RequestInit) {
+    async testPaginatedRequest<T>(
+        endpoint: string,
+        schema: z.ZodType<ApiResponse<T>>,
+        options?: RequestInit
+    ) {
         return this.paginatedRequest(endpoint, schema, options)
     }
 }

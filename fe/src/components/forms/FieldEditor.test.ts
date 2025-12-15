@@ -30,7 +30,7 @@ describe('FieldEditor', () => {
         const wrapper = mount(FieldEditor, {
             props: {
                 modelValue: true,
-                field: null, // Adding new field
+                field: undefined, // Adding new field
             },
             global: {
                 plugins: [vuetify],
@@ -63,7 +63,7 @@ describe('FieldEditor', () => {
         const wrapper = mount(FieldEditor, {
             props: {
                 modelValue: true,
-                field: null,
+                field: undefined,
             },
             global: {
                 plugins: [vuetify],
@@ -95,7 +95,7 @@ describe('FieldEditor', () => {
         const wrapper = mount(FieldEditor, {
             props: {
                 modelValue: true,
-                field: null,
+                field: undefined,
             },
             global: {
                 plugins: [vuetify],
@@ -143,7 +143,7 @@ describe('FieldEditor', () => {
         const wrapper = mount(FieldEditor, {
             props: {
                 modelValue: true,
-                field: null,
+                field: undefined,
             },
             global: {
                 plugins: [vuetify],
@@ -189,7 +189,7 @@ describe('FieldEditor', () => {
         const wrapper = mount(FieldEditor, {
             props: {
                 modelValue: true,
-                field: null,
+                field: undefined,
             },
             global: {
                 plugins: [vuetify],
@@ -235,7 +235,7 @@ describe('FieldEditor', () => {
         const wrapper = mount(FieldEditor, {
             props: {
                 modelValue: true,
-                field: null,
+                field: undefined,
             },
             global: {
                 plugins: [vuetify],
@@ -264,7 +264,7 @@ describe('FieldEditor', () => {
         const wrapper = mount(FieldEditor, {
             props: {
                 modelValue: true,
-                field: null,
+                field: undefined,
             },
             global: {
                 plugins: [vuetify],
@@ -288,7 +288,7 @@ describe('FieldEditor', () => {
         const wrapper = mount(FieldEditor, {
             props: {
                 modelValue: true,
-                field: null,
+                field: undefined,
             },
             global: {
                 plugins: [vuetify],
@@ -309,7 +309,7 @@ describe('FieldEditor', () => {
         const wrapper = mount(FieldEditor, {
             props: {
                 modelValue: true,
-                field: null,
+                field: undefined,
             },
             global: {
                 plugins: [vuetify],
@@ -356,7 +356,7 @@ describe('FieldEditor', () => {
         const wrapper = mount(FieldEditor, {
             props: {
                 modelValue: true,
-                field: null,
+                field: undefined,
             },
             global: {
                 plugins: [vuetify],

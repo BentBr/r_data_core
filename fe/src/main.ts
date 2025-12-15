@@ -43,6 +43,11 @@ const iconAliases: Partial<IconAliases> = {
     menuDown: 'chevron-down',
     menuLeft: 'chevron-left',
     menuUp: 'chevron-up',
+    // Kebab-case versions for internal Vuetify components (like v-treeview)
+    'menu-right': 'chevron-right',
+    'menu-down': 'chevron-down',
+    'menu-left': 'chevron-left',
+    'menu-up': 'chevron-up',
     radioOn: 'dot',
     radioOff: 'circle',
     edit: 'pencil',

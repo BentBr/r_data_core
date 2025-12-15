@@ -208,4 +208,9 @@
         gap: 8px !important;
         min-width: auto !important;
     }
+
+    /* Hide Vuetify's internal expand/collapse icons - we use our own in prepend slot */
+    :deep(.v-treeview-item__toggle) {
+        display: none !important;
+    }
 </style>

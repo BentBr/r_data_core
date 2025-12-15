@@ -369,4 +369,13 @@
         emit('save', sanitizedField)
         closeDialog()
     }
+
+    // Expose for tests
+    defineExpose({
+        form,
+        formValid,
+        formRef,
+        showDefaultValue,
+        saveField,
+    })
 </script>
