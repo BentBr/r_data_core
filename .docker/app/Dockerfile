@@ -17,7 +17,7 @@ ARG DEBIAN_VERSION=bookworm
 # ==============================================================================
 # Chef stage - compute recipe for dependency caching
 # ==============================================================================
-FROM rustlang/rust:${RUST_VERSION} AS chef
+FROM rust:${RUST_VERSION} AS chef
 RUN cargo install cargo-chef --locked
 WORKDIR /app
 
