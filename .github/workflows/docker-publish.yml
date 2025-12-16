@@ -44,6 +44,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set lowercase repo owner
+        id: repo
+        run: echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
@@ -87,7 +91,7 @@ jobs:
             *.cache-to=type=gha,mode=max
         env:
           REGISTRY: ${{ env.REGISTRY }}
-          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_OWNER: ${{ steps.repo.outputs.owner_lc }}
           TAG: ${{ steps.tag.outputs.tag }}
 
       # Also push 'latest' tag for releases
@@ -102,13 +106,13 @@ jobs:
             *.cache-from=type=gha
         env:
           REGISTRY: ${{ env.REGISTRY }}
-          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_OWNER: ${{ steps.repo.outputs.owner_lc }}
           TAG: latest
 
       - name: Generate artifact attestation for r-data-core
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/r-data-core
+          subject-name: ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core
           subject-digest: ${{ steps.tag.outputs.tag }}
           push-to-registry: true
         continue-on-error: true
@@ -123,6 +127,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set lowercase repo owner
+        id: repo
+        run: echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -143,7 +151,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/r-data-core-admin-fe
+          images: ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core-admin-fe
           tags: |
             # On release (manual): version tag + latest
             type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
@@ -175,7 +183,7 @@ jobs:
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/r-data-core-admin-fe
+          subject-name: ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core-admin-fe
           subject-digest: ${{ steps.build-push.outputs.digest }}
           push-to-registry: true
         continue-on-error: true
@@ -188,6 +196,7 @@ jobs:
     steps:
       - name: Summary
         run: |
+          OWNER_LC="${GITHUB_REPOSITORY_OWNER,,}"
           echo "## Docker Images Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -203,18 +212,18 @@ jobs:
 
           echo "| Image | Tag |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|-----|" >> $GITHUB_STEP_SUMMARY
-          echo "| \`ghcr.io/${{ github.repository_owner }}/r-data-core\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| \`ghcr.io/${{ github.repository_owner }}/r-data-core-worker\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| \`ghcr.io/${{ github.repository_owner }}/r-data-core-maintenance\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| \`ghcr.io/${{ github.repository_owner }}/r-data-core-admin-fe\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| \`ghcr.io/${OWNER_LC}/r-data-core\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| \`ghcr.io/${OWNER_LC}/r-data-core-worker\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| \`ghcr.io/${OWNER_LC}/r-data-core-maintenance\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| \`ghcr.io/${OWNER_LC}/r-data-core-admin-fe\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Usage" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
           echo "# Backend" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ghcr.io/${{ github.repository_owner }}/r-data-core:${TAG}" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ghcr.io/${OWNER_LC}/r-data-core:${TAG}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "# Admin Frontend (nginx)" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ghcr.io/${{ github.repository_owner }}/r-data-core-admin-fe:${TAG}" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ghcr.io/${OWNER_LC}/r-data-core-admin-fe:${TAG}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
   # Build and upload frontend ZIP to release
