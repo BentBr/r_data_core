@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.12](https://github.com/BentBr/r_data_core/compare/v0.1.11...v0.1.12) (2025-12-16)
+
+
+### Bug Fixes
+
+* updating todos, but need deploy of release please ([d04da70](https://github.com/BentBr/r_data_core/commit/d04da704b1ade5f239e7fa206f0df111b2a6ab7a))
+* updating todos, but need deploy of release please ([7b5716d](https://github.com/BentBr/r_data_core/commit/7b5716ddfa54aaf6017b455ff1e74a855cd21b57))
+
 ## [0.1.11](https://github.com/BentBr/r_data_core/compare/v0.1.10...v0.1.11) (2025-12-16)
 
 
