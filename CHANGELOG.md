@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.8](https://github.com/BentBr/r_data_core/compare/v0.1.7...v0.1.8) (2025-12-16)
+
+
+### Bug Fixes
+
+* **ci:** named repos correctly lowercase ([610e1dd](https://github.com/BentBr/r_data_core/commit/610e1dd9785c5ea52eb58cd9df03f8fd2bb606d8))
+* **ci:** named repos correctly lowercase ([10648bc](https://github.com/BentBr/r_data_core/commit/10648bcc9b8c004da111abd7c3b58a46dc086cf4))
+
 ## [0.1.7](https://github.com/BentBr/r_data_core/compare/v0.1.6...v0.1.7) (2025-12-16)
 
 
