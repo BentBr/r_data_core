@@ -13,7 +13,6 @@
 - run now file upload with different file types / formats
 - DSL FE + be tests
 - DSL readme
-- admin easy default password warning (admin admin) -> hint in admin if default pw is being used
 - add unique constraint to entity_definitions (FE + BE)
 - uuid refactoring -> all in db
 - toDef ->update action -> by key -> dropdown of existing one

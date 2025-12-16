@@ -44,7 +44,9 @@ async fn main() -> std::io::Result<()> {
     info!("Using SQLx migrations (run with 'cargo sqlx migrate run')");
 
     // Initialize cache manager
-    let cache_manager = create_cache_manager(&config).await;
+    let cache_manager = create_cache_manager(&config)
+        .await
+        .expect("Failed to initialize cache manager with Redis");
 
     // Build API state with all services
     let api_state = build_api_state(&config, pool, cache_manager)
