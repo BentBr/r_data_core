@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.9](https://github.com/BentBr/r_data_core/compare/v0.1.8...v0.1.9) (2025-12-16)
+
+
+### Bug Fixes
+
+* **ci:** new try with dockerfile from backe ([8e8dfc5](https://github.com/BentBr/r_data_core/commit/8e8dfc5747aea4837b18845a426ebf6f4ac9ca3e))
+* **ci:** new try with dockerfile from backe ([d30e56d](https://github.com/BentBr/r_data_core/commit/d30e56de26fd6be92d988e089234aae47f2c5e93))
+
 ## [0.1.8](https://github.com/BentBr/r_data_core/compare/v0.1.7...v0.1.8) (2025-12-16)
 
 
