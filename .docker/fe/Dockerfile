@@ -18,12 +18,13 @@ RUN npm run build
 # Stage 2: Serve with nginx
 FROM nginx:alpine AS production
 
-# Copy built assets from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy nginx configuration
+# Copy built assets and config with correct ownership
+COPY --from=builder --chown=nginx:nginx /app/dist /usr/share/nginx/html
 COPY .docker/fe/nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+# Switch to non-root user
+USER nginx
+
+EXPOSE 8080
 
 CMD ["nginx", "-g", "daemon off;"]

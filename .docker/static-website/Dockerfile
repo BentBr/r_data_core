@@ -10,8 +10,14 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /var/www/html
 
-# Expose port 80
-EXPOSE 80
+# Change ownership to node user
+RUN chown -R node:node /var/www/html
+
+# Switch to non-root user
+USER node
+
+# Expose port 8080
+EXPOSE 8080
 
 # Install dependencies and start dev server at runtime
 # This ensures dependencies are installed after the volume mount

@@ -94,12 +94,6 @@ WORKDIR /home/appuser
 # Copy main binary
 COPY --from=builder --chown=appuser:appuser /app/target/release/r_data_core /usr/local/bin/r_data_core
 
-# When helper binaries exist, uncomment these:
-# COPY --from=builder --chown=appuser:appuser /app/target/release/hash_password /usr/local/bin/hash_password
-# COPY --from=builder --chown=appuser:appuser /app/target/release/clear_cache /usr/local/bin/clear_cache
-# COPY --from=builder --chown=appuser:appuser /app/target/release/run_migrations /usr/local/bin/run_migrations
-# COPY --from=builder --chown=appuser:appuser /app/target/release/apply_schema /usr/local/bin/apply_schema
-
 ENTRYPOINT ["/usr/local/bin/r_data_core"]
 
 EXPOSE 8080
