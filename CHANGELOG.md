@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.7](https://github.com/BentBr/r_data_core/compare/v0.1.6...v0.1.7) (2025-12-16)
+
+
+### Bug Fixes
+
+* **ci:** add attestations permission for docker-publish workflow ([79b9a29](https://github.com/BentBr/r_data_core/commit/79b9a29cdb655a45b4f66e40373e785c6346c1de))
+* **ci:** add attestations permission for docker-publish workflow ([15eb7f1](https://github.com/BentBr/r_data_core/commit/15eb7f1b5633a85d41030c2cf7727883d56e93c2))
+* making ci compatible with workflows being called from other work… ([31f957d](https://github.com/BentBr/r_data_core/commit/31f957d524ceeeeb82bd9f856b3450a3d12a1033))
+* making ci compatible with workflows being called from other workflows ([1575f07](https://github.com/BentBr/r_data_core/commit/1575f070a739dc5ab57ba6b31b2d1eb1cdc70a19))
+
 ## [0.1.6](https://github.com/BentBr/r_data_core/compare/v0.1.5...v0.1.6) (2025-12-15)
 
 
