@@ -5,6 +5,7 @@ pub mod cache;
 pub mod repositories;
 pub mod services;
 pub mod utils;
+pub mod worker;
 
 // Top level integration test modules
 mod dsl_integration_tests;

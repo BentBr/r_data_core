@@ -5,6 +5,7 @@ use r_data_core_core::config::load_maintenance_config;
 use r_data_core_core::maintenance::MaintenanceTask;
 use r_data_core_services::bootstrap::{init_cache_manager, init_logger_with_default, init_pg_pool};
 use r_data_core_worker::context::TaskContext;
+use r_data_core_worker::tasks::refresh_token_cleanup::RefreshTokenCleanupTask;
 use r_data_core_worker::tasks::version_purger::VersionPurgerTask;
 use tokio_cron_scheduler::JobScheduler;
 
@@ -58,6 +59,27 @@ async fn main() -> anyhow::Result<()> {
         },
     )?;
     scheduler.add(job).await?;
+
+    // Register refresh token cleanup task
+    let refresh_token_cleanup_cron = config.refresh_token_cleanup_cron.clone();
+    let pool_clone2 = pool.clone();
+    let cache_manager_clone2 = cache_manager.clone();
+    let job2 = tokio_cron_scheduler::Job::new_async(
+        refresh_token_cleanup_cron.clone().as_str(),
+        move |_uuid, _l| {
+            let pool = pool_clone2.clone();
+            let cache_manager = cache_manager_clone2.clone();
+            let cron = refresh_token_cleanup_cron.clone();
+            Box::pin(async move {
+                let refresh_token_cleanup = RefreshTokenCleanupTask::new(cron);
+                let context = TaskContext::with_cache(pool, cache_manager);
+                if let Err(e) = refresh_token_cleanup.execute(&context).await {
+                    error!("Refresh token cleanup task failed: {e}");
+                }
+            })
+        },
+    )?;
+    scheduler.add(job2).await?;
 
     info!("Maintenance scheduler started");
     scheduler.start().await?;

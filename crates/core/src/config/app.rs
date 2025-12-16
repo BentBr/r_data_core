@@ -45,11 +45,11 @@ pub struct WorkerConfig {
 /// Maintenance worker configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MaintenanceConfig {
-    /// Cron expression for maintenance scheduler
-    pub cron: String,
-
     /// Cron expression for version purger task (required)
     pub version_purger_cron: String,
+
+    /// Cron expression for refresh token cleanup task (required)
+    pub refresh_token_cleanup_cron: String,
 
     /// Database configuration used by maintenance worker
     pub database: DatabaseConfig,
