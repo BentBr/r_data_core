@@ -75,6 +75,7 @@ async fn setup_test_app() -> Result<(
             jwt_expiration: 3600,
             enable_docs: true,
             cors_origins: vec![],
+            check_default_admin_password: true,
         },
         role_service: RoleService::new(pool.pool.clone(), cache_manager.clone(), Some(3600)),
         cache_manager: cache_manager.clone(),

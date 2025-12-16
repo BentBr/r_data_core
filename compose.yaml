@@ -67,6 +67,7 @@ services:
         build:
             context: .
             dockerfile: ./.docker/app/Dockerfile
+            target: r_data_core
             args:
                 RUST_VERSION: "1.92.0"
                 BUILD_MODE: "debug"
@@ -111,6 +112,7 @@ services:
         build:
             context: .
             dockerfile: ./.docker/app/Dockerfile
+            target: r_data_core_worker
             args:
                 RUST_VERSION: "1.92.0"
                 BUILD_MODE: "debug"
@@ -145,6 +147,7 @@ services:
         build:
             context: .
             dockerfile: ./.docker/app/Dockerfile
+            target: r_data_core_maintenance
             args:
                 RUST_VERSION: "1.92.0"
                 BUILD_MODE: "debug"

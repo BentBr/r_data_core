@@ -20,9 +20,28 @@ export const useAuthStore = defineStore('auth', () => {
     const permissions = ref<string[]>([])
     const isSuperAdmin = ref(false)
     const allowedRoutes = ref<string[]>([])
+    const usingDefaultPassword = ref(false)
+
+    // LocalStorage key for banner dismissal
+    const DISMISSED_BANNER_KEY = 'default_password_banner_dismissed'
 
     // Getters
     const isAuthenticated = computed(() => !!access_token.value && !!user.value)
+    const isDefaultPasswordInUse = computed(() => {
+        // Return false if password changed (false)
+        if (!usingDefaultPassword.value) {
+            return false
+        }
+        // Check if banner was dismissed
+        if (typeof window !== 'undefined') {
+            const dismissed = localStorage.getItem(DISMISSED_BANNER_KEY)
+            if (dismissed === 'true') {
+                return false
+            }
+        }
+        // Only return true if using default password and not dismissed
+        return usingDefaultPassword.value
+    })
     const isTokenExpired = computed(() => {
         if (!access_token.value) {
             return true
@@ -80,10 +99,14 @@ export const useAuthStore = defineStore('auth', () => {
             // Set up automatic token refresh
             setupTokenRefresh(response.access_expires_at)
 
+            // Store default password check result
+            usingDefaultPassword.value = response.using_default_password
+
             if (env.enableApiLogging) {
                 console.log('[Auth] Login successful:', {
                     username: response.username,
                     expires_at: response.access_expires_at,
+                    using_default_password: usingDefaultPassword.value,
                 })
             }
         } catch (err) {
@@ -104,6 +127,15 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    const dismissDefaultPasswordBanner = (): void => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(DISMISSED_BANNER_KEY, 'true')
+        }
+        if (env.enableApiLogging) {
+            console.log('[Auth] Default password banner dismissed')
+        }
+    }
+
     const clearAuthState = (): void => {
         // Clear state immediately to prevent API calls
         access_token.value = null
@@ -112,6 +144,7 @@ export const useAuthStore = defineStore('auth', () => {
         isSuperAdmin.value = false
         allowedRoutes.value = []
         error.value = null
+        usingDefaultPassword.value = false
 
         // Clear refresh token from secure cookie
         deleteRefreshToken()
@@ -155,6 +188,7 @@ export const useAuthStore = defineStore('auth', () => {
         access_token.value = null
         user.value = null
         error.value = null
+        usingDefaultPassword.value = false
 
         // Clear refresh token from secure cookie
         deleteRefreshToken()
@@ -477,6 +511,7 @@ export const useAuthStore = defineStore('auth', () => {
         // Getters
         isAuthenticated,
         isTokenExpired,
+        isDefaultPasswordInUse,
 
         // Actions
         login,
@@ -488,5 +523,6 @@ export const useAuthStore = defineStore('auth', () => {
         canAccessRoute,
         hasPermission,
         loadUserPermissions,
+        dismissDefaultPasswordBanner,
     }
 })

@@ -20,7 +20,9 @@
         "server_error": "Server error, please try again later",
         "authentication_required": "Authentication required"
       }
-    }
+    },
+    "default_password_warning": "Security Warning: The default admin password is still in use. Please change it immediately for security.",
+    "default_password_warning_dismiss": "Dismiss"
   },
   "navigation": {
     "dashboard": "Dashboard",

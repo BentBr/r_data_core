@@ -86,6 +86,7 @@ async fn test_successful_auth_with_roles() -> Result<()> {
         jwt_expiration: 3600,
         enable_docs: true,
         cors_origins: vec![],
+        check_default_admin_password: true,
     };
     let token = generate_access_token(&user, &api_config, &roles)?;
 
@@ -164,6 +165,7 @@ async fn test_failing_permissions_no_permission() -> Result<()> {
         jwt_expiration: 3600,
         enable_docs: true,
         cors_origins: vec![],
+        check_default_admin_password: true,
     };
     let token = generate_access_token(&user, &api_config, &[])?;
 
@@ -259,6 +261,7 @@ async fn test_successful_auth_with_different_roles() -> Result<()> {
         jwt_expiration: 3600,
         enable_docs: true,
         cors_origins: vec![],
+        check_default_admin_password: true,
     };
     let token = generate_access_token(&user, &api_config, &roles)?;
 
