@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /var/www/html
 
-# Change ownership to node user
-RUN chown -R node:node /var/www/html
+# Change ownership to node user and create node_modules directory
+RUN chown -R node:node /var/www/html && mkdir -p /var/www/html/node_modules && chown -R node:node /var/www/html/node_modules
 
 # Switch to non-root user
 USER node
