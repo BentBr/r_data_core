@@ -25,7 +25,7 @@ group "backend" {
 # Note: context is relative to the bake file location, dockerfile is relative to context
 target "_common" {
   context    = ".."
-  dockerfile = "app/Dockerfile"
+  dockerfile = ".docker/app/Dockerfile"
   platforms  = ["linux/amd64", "linux/arm64"]
   cache-from = ["type=gha"]
   cache-to   = ["type=gha,mode=max"]
