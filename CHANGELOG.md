@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.11](https://github.com/BentBr/r_data_core/compare/v0.1.10...v0.1.11) (2025-12-16)
+
+
+### Features
+
+* Added refresh token clean-up for old ones via maintenance task ([ad5459f](https://github.com/BentBr/r_data_core/commit/ad5459f6f11143f4127f54fb3274804cdd6db049))
+* Added refresh token clean-up for old ones via maintenance task ([be113ee](https://github.com/BentBr/r_data_core/commit/be113ee4c773f3af90b179670fe448c2d6b6a5a5))
+* showing a banner to every user if the default password has not been changed yet. ([a849df6](https://github.com/BentBr/r_data_core/commit/a849df69b2537cd36f282210ecdd45b79173cab0))
+
+
+### Bug Fixes
+
+* Added the db query for admin users default pw check ([ad95635](https://github.com/BentBr/r_data_core/commit/ad95635e968d4b08000002b4004fd961b76cd734))
+* local setup now works with proper targets ([484ddec](https://github.com/BentBr/r_data_core/commit/484ddec0c3dd1dd17611760c467160c771361264))
+* making sure local builds are still running ([79b873c](https://github.com/BentBr/r_data_core/commit/79b873c618d351850b3457d4737a62ce876c2d7e))
+* making sure local builds are still running ([edb456c](https://github.com/BentBr/r_data_core/commit/edb456c492f647e3f4f5c04c994780d1163f9a72))
+* removed logout redirect ([1d173fd](https://github.com/BentBr/r_data_core/commit/1d173fd2a9021ae348a5a7b21a32c3d383257901))
+* removed logout redirect ([530a389](https://github.com/BentBr/r_data_core/commit/530a389773bddfd174abd2631bdf2d0042ba9e9a))
+
 ## [0.1.10](https://github.com/BentBr/r_data_core/compare/v0.1.9...v0.1.10) (2025-12-16)
 
 
