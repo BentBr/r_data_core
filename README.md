@@ -43,7 +43,25 @@ cp .env.example .env
 docker compose up -d
 ```
 
-The application will be available at `http://rdatacore.docker:80`.
+The application will be available at `http://rdatacore.docker` if you setup dinghy DNS routing:
+1. Install Dinghy (just another docker container) - for MAC OS:
+    ```bash
+   docker run -d --restart=always \
+   -v /var/run/docker.sock:/tmp/docker.sock:ro \
+   -v ~/.dinghy/certs:/etc/nginx/certs \
+   -p 80:80 -p 443:443 -p 19322:19322/udp \
+   -e CONTAINER_NAME=http-proxy \
+   --name http-proxy \
+   codekitchen/dinghy-http-proxy
+   ```
+2. Setup routing
+    ```bash
+    sudo mkdir -pv /etc/resolver
+    sudo bash -c 'echo "nameserver 127.0.0.1" > /etc/resolver/docker'
+    sudo bash -c 'echo "port 19322" >> /etc/resolver/docker'
+    ```
+
+If you are not on macOS, you should create an `compose.override.yaml` and re-assign ports to for the web service to your localhosts.
 
 ### Using Pre-built Docker Images
 
