@@ -2364,7 +2364,7 @@ checksum = "69cdb34c158ceb288df11e18b4bd39de994f6657d83847bdffdbd7f346754b0f"
 
 [[package]]
 name = "r_data_core"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "actix-cors",
  "actix-http",
@@ -2401,7 +2401,7 @@ dependencies = [
 
 [[package]]
 name = "r_data_core_api"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "actix-cors",
  "actix-multipart",
@@ -2439,7 +2439,7 @@ dependencies = [
 
 [[package]]
 name = "r_data_core_core"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "anyhow",
  "argon2",
@@ -2467,7 +2467,7 @@ dependencies = [
 
 [[package]]
 name = "r_data_core_persistence"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "anyhow",
  "argon2",
@@ -2486,7 +2486,7 @@ dependencies = [
 
 [[package]]
 name = "r_data_core_services"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2510,7 +2510,7 @@ dependencies = [
 
 [[package]]
 name = "r_data_core_test_support"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "dotenvy",
  "lazy_static",
@@ -2529,7 +2529,7 @@ dependencies = [
 
 [[package]]
 name = "r_data_core_worker"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2548,7 +2548,7 @@ dependencies = [
 
 [[package]]
 name = "r_data_core_workflow"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "actix-web",
  "anyhow",
