@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.10](https://github.com/BentBr/r_data_core/compare/v0.1.9...v0.1.10) (2025-12-16)
+
+
+### Bug Fixes
+
+* **ci:** added the last missing attestation permission + id (for fe b… ([2f9e3f3](https://github.com/BentBr/r_data_core/commit/2f9e3f3e2654ec576a3789d2b91c851530f1eeae))
+* **ci:** added the last missing attestation permission + id (for fe build) ([bfdee7e](https://github.com/BentBr/r_data_core/commit/bfdee7ef52e4c0941c97a43a8abb593f3454990f))
+
 ## [0.1.9](https://github.com/BentBr/r_data_core/compare/v0.1.8...v0.1.9) (2025-12-16)
 
 
