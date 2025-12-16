@@ -11,7 +11,7 @@
 #   docker build --build-arg BINARY=r_data_core -t r-data-core:latest .
 # ==============================================================================
 
-ARG RUST_VERSION=nightly
+ARG RUST_VERSION=1.92.0
 ARG DEBIAN_VERSION=bookworm
 
 # ==============================================================================
