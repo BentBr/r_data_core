@@ -143,32 +143,37 @@ jobs:
   backend-tests:
     needs: backend-prepare
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: rdata_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:8-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    # Note: Using docker run instead of services: block to support workflow_call (reusable workflows)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Start PostgreSQL
+        run: |
+          docker run -d --name postgres \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=rdata_test \
+            -p 5432:5432 \
+            postgres:18-alpine
+          # Wait for postgres to be ready
+          for i in {1..30}; do
+            docker exec postgres pg_isready -U postgres && break
+            echo "Waiting for postgres..."
+            sleep 1
+          done
+
+      - name: Start Redis
+        run: |
+          docker run -d --name redis \
+            -p 6379:6379 \
+            redis:8-alpine
+          # Wait for redis to be ready
+          for i in {1..30}; do
+            docker exec redis redis-cli ping && break
+            echo "Waiting for redis..."
+            sleep 1
+          done
 
       - name: Install Rust (nightly)
         uses: dtolnay/rust-toolchain@master
