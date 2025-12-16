@@ -101,6 +101,16 @@ docker pull ghcr.io/bentbr/r-data-core-maintenance:latest
 | `CACHE_ENABLED` | true | Enable caching |
 | `CACHE_TTL` | 300 | Default cache TTL (seconds) |
 
+### Maintenance Worker Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `VERSION_PURGER_CRON` | Cron expression for version purger task |
+| `REFRESH_TOKEN_CLEANUP_CRON` | Cron expression for refresh token cleanup task |
+| `MAINTENANCE_DATABASE_URL` | PostgreSQL connection string for maintenance worker |
+| `MAINTENANCE_DATABASE_MAX_CONNECTIONS` | Maximum database connections (default: 10) |
+| `MAINTENANCE_DATABASE_CONNECTION_TIMEOUT` | Connection timeout in seconds (default: 30) |
+
 See `.env.example` for the complete list of configuration options.
 
 ## Architecture

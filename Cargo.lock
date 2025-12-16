@@ -2385,6 +2385,7 @@ dependencies = [
  "r_data_core_persistence",
  "r_data_core_services",
  "r_data_core_test_support",
+ "r_data_core_worker",
  "r_data_core_workflow",
  "redis",
  "reqwest",

@@ -150,18 +150,20 @@ pub fn load_maintenance_config() -> Result<MaintenanceConfig> {
     // Ensure .env is loaded for binaries that only use MaintenanceConfig
     dotenv().ok();
 
-    let cron = env::var("MAINTENANCE_CRON")
-        .map_err(|_| crate::error::Error::Config("MAINTENANCE_CRON not set".to_string()))?;
-    // Validate cron expression using the same logic as cron preview
-    utils::validate_cron(&cron).map_err(|e| {
-        crate::error::Error::Config(format!("Invalid MAINTENANCE_CRON '{cron}': {e}"))
-    })?;
-
     let version_purger_cron = env::var("VERSION_PURGER_CRON")
         .map_err(|_| crate::error::Error::Config("VERSION_PURGER_CRON not set".to_string()))?;
     utils::validate_cron(&version_purger_cron).map_err(|e| {
         crate::error::Error::Config(format!(
             "Invalid VERSION_PURGER_CRON '{version_purger_cron}': {e}",
+        ))
+    })?;
+
+    let refresh_token_cleanup_cron = env::var("REFRESH_TOKEN_CLEANUP_CRON").map_err(|_| {
+        crate::error::Error::Config("REFRESH_TOKEN_CLEANUP_CRON not set".to_string())
+    })?;
+    utils::validate_cron(&refresh_token_cleanup_cron).map_err(|e| {
+        crate::error::Error::Config(format!(
+            "Invalid REFRESH_TOKEN_CLEANUP_CRON '{refresh_token_cleanup_cron}': {e}",
         ))
     })?;
 
@@ -190,8 +192,8 @@ pub fn load_maintenance_config() -> Result<MaintenanceConfig> {
         .map_err(|_| crate::error::Error::Config("REDIS_URL not set".to_string()))?;
 
     Ok(MaintenanceConfig {
-        cron,
         version_purger_cron,
+        refresh_token_cleanup_cron,
         database,
         cache,
         redis_url,
