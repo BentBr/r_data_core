@@ -69,11 +69,11 @@ const router = createRouter({
 })
 
 // Navigation guard for authentication
-router.beforeEach(async (to, _from, next) => {
+router.beforeEach(async (to, from, next) => {
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
     const authStore = useAuthStore()
 
-    // If going to login page, allow it
+    // If going to login page, allow it (no auth checks needed)
     if (to.name === 'Login') {
         next()
         return
@@ -82,10 +82,12 @@ router.beforeEach(async (to, _from, next) => {
     if (requiresAuth) {
         // Check if user is authenticated first
         if (!authStore.isAuthenticated) {
-            // Immediately redirect to login
+            // If coming from login page, don't add redirect query (prevents loops after logout)
+            // Otherwise, preserve the redirect query for normal auth redirects
+            const redirectQuery = from.name === 'Login' ? {} : { redirect: to.fullPath }
             next({
                 name: 'Login',
-                query: { redirect: to.fullPath },
+                query: redirectQuery,
             })
             return
         }
@@ -99,21 +101,23 @@ router.beforeEach(async (to, _from, next) => {
 
         // Check again after potential refresh
         if (!authStore.isAuthenticated) {
-            // Redirect to login with return URL
+            // If coming from login page, don't add redirect query (prevents loops after logout)
+            // Otherwise, preserve the redirect query for normal auth redirects
+            const redirectQuery = from.name === 'Login' ? {} : { redirect: to.fullPath }
             next({
                 name: 'Login',
-                query: { redirect: to.fullPath },
+                query: redirectQuery,
             })
             return
         }
 
         // Check if token is expired after potential refresh
         if (authStore.isTokenExpired) {
-            // Token is expired, logout and redirect to login
+            // Token is expired, logout and redirect to login without redirect query
             await authStore.logout()
             next({
                 name: 'Login',
-                query: { redirect: to.fullPath },
+                query: {},
             })
             return
         }

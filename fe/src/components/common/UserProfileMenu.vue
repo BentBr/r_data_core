@@ -154,8 +154,8 @@
         // Clear auth state immediately to prevent API calls
         authStore.clearAuthState()
 
-        // Redirect immediately
-        void router.push('/login')
+        // Redirect to login page without any query parameters to prevent redirect loops
+        void router.push({ name: 'Login', query: {} })
 
         // Then handle the full logout process
         try {
