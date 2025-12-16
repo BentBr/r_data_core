@@ -277,6 +277,7 @@ mod tests {
             jwt_expiration: 3600,
             enable_docs: true,
             cors_origins: vec!["*".to_string()],
+            check_default_admin_password: true,
         }
     }
 

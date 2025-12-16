@@ -70,6 +70,7 @@
 
         <!-- Main Content -->
         <v-main>
+            <DefaultPasswordBanner />
             <router-view v-slot="{ Component, route }">
                 <transition
                     name="fade"
@@ -94,6 +95,7 @@
     import LanguageSwitch from '@/components/common/LanguageSwitch.vue'
     import UserProfileMenu from '@/components/common/UserProfileMenu.vue'
     import SmartIcon from '@/components/common/SmartIcon.vue'
+    import DefaultPasswordBanner from '@/components/common/DefaultPasswordBanner.vue'
 
     const route = useRoute()
     const authStore = useAuthStore()

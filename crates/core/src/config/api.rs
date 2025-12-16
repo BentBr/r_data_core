@@ -25,4 +25,7 @@ pub struct ApiConfig {
 
     /// CORS allowed origins
     pub cors_origins: Vec<String>,
+
+    /// Check if default admin password is still in use
+    pub check_default_admin_password: bool,
 }

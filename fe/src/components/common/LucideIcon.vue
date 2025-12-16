@@ -26,7 +26,7 @@
 
     const iconComponent = computed(() => {
         // Handle empty or whitespace-only names - render nothing
-        if (!props.name || !props.name.trim()) {
+        if (!props.name?.trim()) {
             return () => h('span', { style: { display: 'none' } })
         }
 

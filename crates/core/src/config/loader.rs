@@ -60,6 +60,10 @@ pub fn load_app_config() -> Result<AppConfig> {
             .split(',')
             .map(|s| s.trim().to_string())
             .collect(),
+        check_default_admin_password: env::var("CHECK_DEFAULT_ADMIN_PASSWORD")
+            .unwrap_or_else(|_| "true".to_string())
+            .parse()
+            .unwrap_or(true),
     };
 
     let log = LogConfig {

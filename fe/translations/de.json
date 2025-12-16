@@ -20,7 +20,9 @@
         "server_error": "Serverfehler, bitte versuchen Sie es später erneut",
         "authentication_required": "Authentifizierung erforderlich"
       }
-    }
+    },
+    "default_password_warning": "Sicherheitswarnung: Das Standard-Admin-Passwort wird noch verwendet. Bitte ändern Sie es sofort aus Sicherheitsgründen.",
+    "default_password_warning_dismiss": "Ausblenden"
   },
   "navigation": {
     "dashboard": "Dashboard",

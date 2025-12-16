@@ -82,6 +82,7 @@ async fn setup_app_with_entities() -> anyhow::Result<(
             jwt_expiration: 3600,
             enable_docs: true,
             cors_origins: vec![],
+            check_default_admin_password: true,
         },
         role_service: r_data_core_services::RoleService::new(
             pool.pool.clone(),
@@ -121,6 +122,7 @@ async fn setup_app_with_entities() -> anyhow::Result<(
         jwt_expiration: 3600,
         enable_docs: true,
         cors_origins: vec![],
+        check_default_admin_password: true,
     };
     let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, &[])?;
 

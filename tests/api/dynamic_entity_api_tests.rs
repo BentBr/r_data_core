@@ -262,6 +262,7 @@ mod dynamic_entity_api_tests {
                 jwt_expiration: 3600,
                 enable_docs: true,
                 cors_origins: vec![],
+                check_default_admin_password: true,
             },
             role_service: r_data_core_services::RoleService::new(
                 db_pool.clone(),

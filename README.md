@@ -90,16 +90,17 @@ docker pull ghcr.io/bentbr/r-data-core-maintenance:latest
 
 ### Optional Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `APP_ENV` | development | Application environment |
-| `API_HOST` | 0.0.0.0 | Server host address |
-| `API_PORT` | 8888 | Server port |
-| `JWT_EXPIRATION` | 86400 | JWT token expiration (seconds) |
-| `API_ENABLE_DOCS` | true | Enable Swagger API documentation |
-| `CORS_ORIGINS` | * | Allowed CORS origins |
-| `CACHE_ENABLED` | true | Enable caching |
-| `CACHE_TTL` | 300 | Default cache TTL (seconds) |
+| Variable | Default     | Description                           |
+|----------|-------------|---------------------------------------|
+| `APP_ENV` | development | Application environment               |
+| `API_HOST` | 0.0.0.0     | Server host address                   |
+| `API_PORT` | 8888        | Server port                           |
+| `JWT_EXPIRATION` | 86400       | JWT token expiration (seconds)        |
+| `API_ENABLE_DOCS` | true        | Enable Swagger API documentation      |
+| `CORS_ORIGINS` | *           | Allowed CORS origins                  |
+| `CACHE_ENABLED` | true        | Enable caching                        |
+| `CACHE_TTL` | 300         | Default cache TTL (seconds)           |
+| `CHECK_DEFAULT_ADMIN_PASSWORD` | true        | Defines if the warning in FE is shown |
 
 ### Maintenance Worker Environment Variables
 
