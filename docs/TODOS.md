@@ -2,7 +2,6 @@
 - add options for custom tables (like bricks)
 - have easy-creation of children (entities)
 - test admin routes
-- check entities and respective columns - we need proper creation and not everything serialized.
 - custom field type (json with predefined content - like a preferences structure...)
 - key-value-store
 - relations 1:n + n:n
