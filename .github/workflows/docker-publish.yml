@@ -29,35 +29,96 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  # Images will be: ghcr.io/<owner>/r-data-core, ghcr.io/<owner>/r-data-core-worker, etc.
 
 jobs:
-  build-and-push:
+  # Build all backend images in a single job to share the compiled Rust artifacts
+  build-backend:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+      id-token: write
+      attestations: write
 
-    strategy:
-      matrix:
-        include:
-          # Backend images (use main Dockerfile)
-          - binary: r_data_core
-            image: r-data-core
-            target: r_data_core
-            dockerfile: ./Dockerfile
-          - binary: r_data_core_worker
-            image: r-data-core-worker
-            target: r_data_core_worker
-            dockerfile: ./Dockerfile
-          - binary: r_data_core_maintenance
-            image: r-data-core-maintenance
-            target: r_data_core_maintenance
-            dockerfile: ./Dockerfile
-          # Frontend image (uses separate Dockerfile with nginx)
-          - image: r-data-core-admin-fe
-            target: production
-            dockerfile: ./.docker/fe/Dockerfile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "tag=${{ inputs.version }}" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "release" ]; then
+            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
+            echo "tag=develop" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push backend images
+        uses: docker/bake-action@v6
+        with:
+          files: .docker/docker-bake.hcl
+          targets: backend
+          push: true
+          set: |
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          TAG: ${{ steps.tag.outputs.tag }}
+
+      # Also push 'latest' tag for releases
+      - name: Push latest tags for releases
+        if: steps.tag.outputs.is_release == 'true'
+        uses: docker/bake-action@v6
+        with:
+          files: .docker/docker-bake.hcl
+          targets: backend
+          push: true
+          set: |
+            *.cache-from=type=gha
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          TAG: latest
+
+      - name: Generate artifact attestation for r-data-core
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/r-data-core
+          subject-digest: ${{ steps.tag.outputs.tag }}
+          push-to-registry: true
+        continue-on-error: true
+
+  # Build frontend image separately (fast, doesn't need shared cache with backend)
+  build-frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout
@@ -82,7 +143,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/r-data-core-admin-fe
           tags: |
             # On release (manual): version tag + latest
             type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
@@ -102,27 +163,26 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ${{ matrix.dockerfile }}
-          target: ${{ matrix.target }}
+          file: ./.docker/fe/Dockerfile
+          target: production
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: ${{ matrix.binary && format('BINARY={0}', matrix.binary) || '' }}
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
+          subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/r-data-core-admin-fe
           subject-digest: ${{ steps.build-push.outputs.digest }}
           push-to-registry: true
         continue-on-error: true
 
   # Summary job that runs after all images are built
   publish-summary:
-    needs: build-and-push
+    needs: [build-backend, build-frontend]
     runs-on: ubuntu-latest
     if: always()
     steps:
