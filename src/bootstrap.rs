@@ -5,7 +5,7 @@
 
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use log::{error, info};
+use log::info;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -49,31 +49,24 @@ pub async fn create_db_pool(config: &AppConfig) -> Result<PgPool, sqlx::Error> {
         .await
 }
 
-/// Initialize the cache manager with optional Redis backend
-pub async fn create_cache_manager(config: &AppConfig) -> Arc<CacheManager> {
-    let redis_url = std::env::var("REDIS_URL").ok();
+/// Initialize the cache manager with Redis backend
+///
+/// # Errors
+/// Returns an error if Redis URL is empty or if Redis connection fails
+pub async fn create_cache_manager(config: &AppConfig) -> Result<Arc<CacheManager>, anyhow::Error> {
+    let redis_url = &config.queue.redis_url;
 
-    match redis_url {
-        Some(url) if !url.is_empty() => {
-            match CacheManager::new(config.cache.clone())
-                .with_redis(&url)
-                .await
-            {
-                Ok(manager) => {
-                    info!("Cache manager initialized with Redis");
-                    Arc::new(manager)
-                }
-                Err(e) => {
-                    error!("Failed to initialize Redis cache: {e}, falling back to in-memory only");
-                    Arc::new(CacheManager::new(config.cache.clone()))
-                }
-            }
-        }
-        _ => {
-            info!("Redis URL not provided, using in-memory cache only");
-            Arc::new(CacheManager::new(config.cache.clone()))
-        }
+    if redis_url.is_empty() {
+        return Err(anyhow::anyhow!("Redis URL is required but was empty"));
     }
+
+    let manager = CacheManager::new(config.cache.clone())
+        .with_redis(redis_url)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to initialize Redis cache: {e}"))?;
+
+    info!("Cache manager initialized with Redis");
+    Ok(Arc::new(manager))
 }
 
 /// Initialize the Redis queue client for workflows
