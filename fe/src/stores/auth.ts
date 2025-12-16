@@ -187,6 +187,9 @@ export const useAuthStore = defineStore('auth', () => {
         // Clear state
         access_token.value = null
         user.value = null
+        permissions.value = []
+        isSuperAdmin.value = false
+        allowedRoutes.value = []
         error.value = null
         usingDefaultPassword.value = false
 
