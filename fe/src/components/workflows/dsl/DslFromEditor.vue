@@ -176,6 +176,47 @@
                 >{{ t('workflows.dsl.add_mapping') }}</v-btn
             >
         </template>
+        <template v-else-if="modelValue.type === 'previous_step'">
+            <!-- Info banner -->
+            <v-alert
+                v-if="stepIndex === 0"
+                type="error"
+                density="compact"
+                class="mb-2"
+            >
+                {{ t('workflows.dsl.previous_step_error_first_step') }}
+            </v-alert>
+            <div
+                v-else
+                class="text-caption mb-2 pa-2"
+                style="background-color: rgba(var(--v-theme-info), 0.1); border-radius: 4px"
+            >
+                <v-icon
+                    size="small"
+                    class="mr-1"
+                    >mdi-arrow-up-circle</v-icon
+                >
+                {{ t('workflows.dsl.previous_step_info') }}
+            </div>
+            <div class="text-caption mb-1 mt-2">
+                {{ t('workflows.dsl.mapping_previous_normalized') }}
+            </div>
+            <MappingEditor
+                ref="mappingEditorRef"
+                :model-value="modelValue.mapping"
+                :left-label="t('workflows.dsl.previous_field')"
+                :right-label="t('workflows.dsl.normalized')"
+                :left-items="previousStepFields"
+                :use-select-for-left="previousStepFields.length > 0"
+                @update:model-value="updateField('mapping', $event)"
+            />
+            <v-btn
+                size="x-small"
+                variant="tonal"
+                @click="addMapping"
+                >{{ t('workflows.dsl.add_mapping') }}</v-btn
+            >
+        </template>
     </div>
 </template>
 
@@ -194,6 +235,8 @@
     const props = defineProps<{
         modelValue: FromDef
         workflowUuid?: string | null
+        stepIndex?: number
+        previousStepFields?: string[]
     }>()
 
     const emit = defineEmits<{ (e: 'update:modelValue', value: FromDef): void }>()
@@ -204,6 +247,10 @@
     const mappingEditorRef = ref<{ addEmptyPair: () => void } | null>(null)
     const entityDefItems = ref<{ title: string; value: string }[]>([])
     const filterFieldItems = ref<string[]>([])
+
+    // Default props
+    const stepIndex = computed(() => props.stepIndex ?? 0)
+    const previousStepFields = computed(() => props.previousStepFields ?? [])
 
     // Computed properties to avoid 'as any' in templates
     const sourceType = computed(() => {
@@ -334,6 +381,7 @@
     const fromTypes = [
         { title: 'Format (CSV/JSON)', value: 'format' },
         { title: 'Entity', value: 'entity' },
+        { title: 'Previous Step', value: 'previous_step' },
     ]
 
     function updateField(field: string, value: unknown) {
@@ -452,7 +500,7 @@
         emit('update:modelValue', updated)
     }
 
-    function onTypeChange(newType: 'format' | 'entity') {
+    function onTypeChange(newType: 'format' | 'entity' | 'previous_step') {
         let newFrom: FromDef
         if (newType === 'format') {
             newFrom = {
@@ -468,11 +516,17 @@
                 },
                 mapping: {},
             }
-        } else {
+        } else if (newType === 'entity') {
             newFrom = {
                 type: 'entity',
                 entity_definition: '',
                 filter: { field: '', operator: '=', value: '' },
+                mapping: {},
+            }
+        } else {
+            // previous_step
+            newFrom = {
+                type: 'previous_step',
                 mapping: {},
             }
         }

@@ -86,6 +86,7 @@ jobs:
           files: .docker/docker-bake.hcl
           targets: backend
           push: true
+          provenance: false
           set: |
             *.cache-from=type=gha
             *.cache-to=type=gha,mode=max
@@ -102,12 +103,31 @@ jobs:
           files: .docker/docker-bake.hcl
           targets: backend
           push: true
+          provenance: false
           set: |
             *.cache-from=type=gha
         env:
           REGISTRY: ${{ env.REGISTRY }}
           REPO_OWNER: ${{ steps.repo.outputs.owner_lc }}
           TAG: latest
+
+      - name: Verify backend multi-arch manifests
+        run: |
+          echo "Verifying multi-arch manifests for backend images..."
+          
+          for image in r-data-core r-data-core-worker r-data-core-maintenance; do
+            echo "Checking $image:${{ steps.tag.outputs.tag }}..."
+            docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/${image}:${{ steps.tag.outputs.tag }}
+            
+            # Verify both architectures are present
+            if docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/${image}:${{ steps.tag.outputs.tag }} | grep -q "linux/amd64" && \
+               docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/${image}:${{ steps.tag.outputs.tag }} | grep -q "linux/arm64"; then
+              echo "✓ Both linux/amd64 and linux/arm64 architectures found for ${image}"
+            else
+              echo "✗ Missing architecture for ${image}"
+              exit 1
+            fi
+          done
 
       - name: Generate artifact attestation for r-data-core
         uses: actions/attest-build-provenance@v2
@@ -181,6 +201,25 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: false
+
+      - name: Verify frontend multi-arch manifest
+        run: |
+          echo "Verifying multi-arch manifest for frontend image..."
+          
+          # Use the image digest to inspect
+          IMAGE_REF="${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core-admin-fe@${{ steps.build-push.outputs.digest }}"
+          echo "Inspecting: $IMAGE_REF"
+          docker buildx imagetools inspect "$IMAGE_REF"
+          
+          # Verify both architectures are present
+          if docker buildx imagetools inspect "$IMAGE_REF" | grep -q "linux/amd64" && \
+             docker buildx imagetools inspect "$IMAGE_REF" | grep -q "linux/arm64"; then
+            echo "✓ Both linux/amd64 and linux/arm64 architectures found for frontend image"
+          else
+            echo "✗ Missing architecture for frontend image"
+            exit 1
+          fi
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2

@@ -1,0 +1,24 @@
+{
+  "steps": [{
+    "from": {
+      "type": "format",
+      "source": { "source_type": "api", "config": {} },
+      "format": { "format_type": "json", "options": {} },
+      "mapping": { "value": "value" }
+    },
+    "transform": {
+      "type": "arithmetic",
+      "target": "result",
+      "left": { "kind": "field", "field": "value" },
+      "op": "add",
+      "right": { "kind": "const", "value": 10.0 }
+    },
+    "to": {
+      "type": "format",
+      "output": { "mode": "api" },
+      "format": { "format_type": "json", "options": {} },
+      "mapping": {}
+    }
+  }]
+}
+

@@ -1,0 +1,103 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "format",
+        "source": {
+          "source_type": "api",
+          "config": {}
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {
+          "product_name": "product_name",
+          "original_price": "original_price",
+          "discount_percent": "discount_percent"
+        }
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "previous_step",
+        "mapping": {
+          "original_price": "original_price",
+          "discount_percent": "discount_percent",
+          "product_name": "product_name"
+        }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "discount_amount",
+        "left": {
+          "kind": "field",
+          "field": "original_price"
+        },
+        "op": "mul",
+        "right": {
+          "kind": "field",
+          "field": "discount_percent"
+        }
+      },
+      "to": {
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "previous_step",
+        "mapping": {
+          "original_price": "original_price",
+          "discount_amount": "discount_amount",
+          "product_name": "product_name"
+        }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "final_price",
+        "left": {
+          "kind": "field",
+          "field": "original_price"
+        },
+        "op": "sub",
+        "right": {
+          "kind": "field",
+          "field": "discount_amount"
+        }
+      },
+      "to": {
+        "type": "entity",
+        "entity_definition": "discounted_products",
+        "mapping": {
+          "product_name": "name",
+          "final_price": "price",
+          "discount_amount": "savings"
+        }
+      }
+    }
+  ]
+}
+

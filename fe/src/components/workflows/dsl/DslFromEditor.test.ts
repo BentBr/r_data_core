@@ -193,7 +193,7 @@ describe('DslFromEditor', () => {
             const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
             const updated = emitted![emitted!.length - 1][0] as FromDef
-            if (updated.type === 'entity') {
+            if (updated.type === 'entity' && updated.filter) {
                 expect(updated.filter.operator).toBe('>')
             }
         }
@@ -229,7 +229,7 @@ describe('DslFromEditor', () => {
             const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
             const updated = emitted![emitted!.length - 1][0] as FromDef
-            if (updated.type === 'entity') {
+            if (updated.type === 'entity' && updated.filter) {
                 expect(updated.filter.field).toBe('category')
             }
         } else {

@@ -1,0 +1,47 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "format",
+        "source": {
+          "source_type": "uri",
+          "config": {
+            "uri": "https://api.example.com/sales"
+          }
+        },
+        "format": {
+          "format_type": "csv",
+          "options": {
+            "has_header": true,
+            "delimiter": ","
+          }
+        },
+        "mapping": {
+          "units_sold": "units_sold",
+          "unit_price": "unit_price"
+        }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "total_amount",
+        "left": {
+          "kind": "field",
+          "field": "units_sold"
+        },
+        "op": "mul",
+        "right": {
+          "kind": "field",
+          "field": "unit_price"
+        }
+      },
+      "to": {
+        "type": "entity",
+        "entity_definition": "sales_records",
+        "mapping": {
+          "total_amount": "total"
+        }
+      }
+    }
+  ]
+}
+

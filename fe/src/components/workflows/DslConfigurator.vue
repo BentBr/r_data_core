@@ -51,6 +51,10 @@
                     <DslStepEditor
                         :model-value="step"
                         :workflow-uuid="workflowUuid"
+                        :step-index="idx"
+                        :previous-step-fields="getPreviousStepFields(idx)"
+                        :normalized-fields="getNormalizedFields(idx)"
+                        :is-last-step="idx === stepsLocal.length - 1"
                         @update:model-value="updateStep(idx, $event)"
                     />
                 </v-expansion-panel-text>
@@ -65,6 +69,7 @@
     import { typedHttpClient } from '@/api/typed-client'
     import { useTranslations } from '@/composables/useTranslations'
     import { useEntityDefinitions } from '@/composables/useEntityDefinitions'
+    import { useNormalizedFields } from './dsl/useNormalizedFields'
     import type { DslStep } from './dsl/dsl-utils'
     import {
         sanitizeDslSteps,
@@ -91,6 +96,28 @@
 
     // Track if we're currently updating to prevent recursive loops
     let isUpdating = false
+
+    // Helper functions for context passing
+    function getPreviousStepFields(stepIndex: number): string[] {
+        if (stepIndex === 0) {
+            return []
+        }
+        const previousStep = stepsLocal.value[stepIndex - 1]
+        if (!previousStep) {
+            return []
+        }
+        const { normalizedFields } = useNormalizedFields(previousStep)
+        return normalizedFields.value
+    }
+
+    function getNormalizedFields(stepIndex: number): string[] {
+        const step = stepsLocal.value[stepIndex]
+        if (!step) {
+            return []
+        }
+        const { normalizedFields } = useNormalizedFields(step)
+        return normalizedFields.value
+    }
 
     function updateStep(idx: number, newStep: DslStep) {
         if (isUpdating) {

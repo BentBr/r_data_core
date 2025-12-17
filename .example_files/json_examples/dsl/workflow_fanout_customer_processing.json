@@ -1,0 +1,101 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "format",
+        "source": {
+          "source_type": "api",
+          "config": {}
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {
+          "first_name": "first_name",
+          "last_name": "last_name",
+          "birth_year": "birth_year"
+        }
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "previous_step",
+        "mapping": {
+          "first_name": "first_name",
+          "last_name": "last_name",
+          "birth_year": "birth_year"
+        }
+      },
+      "transform": {
+        "type": "concat",
+        "target": "full_name",
+        "left": {
+          "kind": "field",
+          "field": "first_name"
+        },
+        "separator": " ",
+        "right": {
+          "kind": "field",
+          "field": "last_name"
+        }
+      },
+      "to": {
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "previous_step",
+        "mapping": {
+          "birth_year": "birth_year",
+          "full_name": "full_name"
+        }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "age",
+        "left": {
+          "kind": "const",
+          "value": 2025.0
+        },
+        "op": "sub",
+        "right": {
+          "kind": "field",
+          "field": "birth_year"
+        }
+      },
+      "to": {
+        "type": "entity",
+        "entity_definition": "customers",
+        "mapping": {
+          "full_name": "name",
+          "age": "age"
+        }
+      }
+    }
+  ]
+}
+
