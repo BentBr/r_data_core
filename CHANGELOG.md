@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.14](https://github.com/BentBr/r_data_core/compare/v0.1.13...v0.1.14) (2025-12-17)
+
+
+### Features
+
+* pushing uuid-creation into db (away from rust cod) ([8578f8b](https://github.com/BentBr/r_data_core/commit/8578f8bad53744e28e7a794a22efbfdc457d002d))
+
+
+### Bug Fixes
+
+* added missing sqlx files ([ae5ff2b](https://github.com/BentBr/r_data_core/commit/ae5ff2b9c3ba2d12a3e30e9e34d7eab351e0a1bf))
+
 ## [0.1.13](https://github.com/BentBr/r_data_core/compare/v0.1.12...v0.1.13) (2025-12-17)
 
 
