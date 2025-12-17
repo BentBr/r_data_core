@@ -10,7 +10,6 @@
 - typescript bindings
 - anyhow in the entire repo
 - run now file upload with different file types / formats
-- DSL FE + be tests
 - DSL readme
 - add unique constraint to entity_definitions (FE + BE)
 - uuid refactoring -> all in db

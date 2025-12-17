@@ -57,6 +57,12 @@ pub enum FromDef {
         /// One-to-one mapping: `source_field` -> `normalized_field`
         mapping: std::collections::HashMap<String, String>,
     },
+    /// Read from previous step's normalized data (including calculated fields)
+    /// Can only be used in steps after step 0
+    PreviousStep {
+        /// Field mapping from previous step's fields to this step's normalized fields
+        mapping: std::collections::HashMap<String, String>,
+    },
 }
 
 pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> Result<()> {
@@ -165,6 +171,14 @@ pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> R
             // Allow empty mappings
             validate_mapping(idx, mapping, safe_field)?;
         }
+        FromDef::PreviousStep { mapping } => {
+            // PreviousStep can only be used in steps after step 0
+            if idx == 0 {
+                bail!("DSL step {idx}: from.previous_step cannot be used in the first step (step 0). The first step must read from a Format or Entity source.");
+            }
+            // Allow empty mappings (pass through all fields from previous step)
+            validate_mapping(idx, mapping, safe_field)?;
+        }
     }
     Ok(())
 }
@@ -210,6 +224,8 @@ fn validate_auth_config(idx: usize, auth: &AuthConfig, context: &str) -> Result<
 #[allow(clippy::missing_const_for_fn)] // Cannot be const due to pattern matching
 pub(crate) fn mapping_of(from: &FromDef) -> &std::collections::HashMap<String, String> {
     match from {
-        FromDef::Format { mapping, .. } | FromDef::Entity { mapping, .. } => mapping,
+        FromDef::Format { mapping, .. }
+        | FromDef::Entity { mapping, .. }
+        | FromDef::PreviousStep { mapping } => mapping,
     }
 }

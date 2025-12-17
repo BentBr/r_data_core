@@ -692,4 +692,222 @@ describe('DslToEditor', () => {
             }
         }
     })
+
+    describe('NextStep ToDef', () => {
+        it('includes NextStep in type selector', async () => {
+            const toDef: ToDef = {
+                type: 'format',
+                output: { mode: 'api' },
+                format: {
+                    format_type: 'json',
+                    options: {},
+                },
+                mapping: {},
+            }
+            const wrapper = mount(DslToEditor, {
+                props: {
+                    modelValue: toDef,
+                },
+            })
+
+            await nextTick()
+
+            const selects = wrapper.findAllComponents({ name: 'VSelect' })
+            const typeSelect = selects[0]
+            const items = typeSelect.props('items') as Array<{ value: string; title: string }> | undefined
+            const hasNextStep = items?.some(item => item.value === 'next_step') ?? false
+
+            expect(hasNextStep).toBe(true)
+        })
+
+        it('renders NextStep editor correctly', async () => {
+            const toDef: ToDef = {
+                type: 'next_step',
+                mapping: {},
+            }
+            const wrapper = mount(DslToEditor, {
+                props: {
+                    modelValue: toDef,
+                    isLastStep: false,
+                },
+            })
+
+            await nextTick()
+
+            const mappingEditor = wrapper.findComponent({ name: 'MappingEditor' })
+            expect(mappingEditor.exists()).toBe(true)
+        })
+
+        it('shows error alert when isLastStep is true', async () => {
+            const toDef: ToDef = {
+                type: 'next_step',
+                mapping: {},
+            }
+            const wrapper = mount(DslToEditor, {
+                props: {
+                    modelValue: toDef,
+                    isLastStep: true,
+                },
+            })
+
+            await nextTick()
+
+            const alerts = wrapper.findAllComponents({ name: 'VAlert' })
+            const errorAlert = alerts.find(a => a.props('type') === 'error')
+
+            expect(errorAlert).toBeDefined()
+            if (errorAlert) {
+                expect(errorAlert.exists()).toBe(true)
+                expect(errorAlert.text()).toContain('next_step_error_last_step')
+            }
+        })
+
+        it('shows info banner when isLastStep is false', async () => {
+            const toDef: ToDef = {
+                type: 'next_step',
+                mapping: {},
+            }
+            const wrapper = mount(DslToEditor, {
+                props: {
+                    modelValue: toDef,
+                    isLastStep: false,
+                },
+            })
+
+            await nextTick()
+
+            const alerts = wrapper.findAllComponents({ name: 'VAlert' })
+            const errorAlert = alerts.find(a => a.props('type') === 'error')
+            expect(errorAlert).toBeUndefined()
+
+            // Check for info banner (div with info styling)
+            const infoBanner = wrapper.find('[style*="background-color"]')
+            expect(infoBanner.exists()).toBe(true)
+            expect(infoBanner.text()).toContain('next_step_info')
+        })
+
+        it('shows mapping editor with correct labels for NextStep', async () => {
+            const toDef: ToDef = {
+                type: 'next_step',
+                mapping: { normalized_field: 'next_step_field' },
+            }
+            const wrapper = mount(DslToEditor, {
+                props: {
+                    modelValue: toDef,
+                    isLastStep: false,
+                },
+            })
+
+            await nextTick()
+
+            const mappingEditor = wrapper.findComponent({ name: 'MappingEditor' })
+            expect(mappingEditor.exists()).toBe(true)
+            // Translation mock returns the key as-is
+            expect(mappingEditor.props('leftLabel')).toBe('workflows.dsl.normalized')
+            expect(mappingEditor.props('rightLabel')).toBe('workflows.dsl.next_step_field')
+        })
+
+        it('changes to NextStep type correctly', async () => {
+            const toDef: ToDef = {
+                type: 'format',
+                output: { mode: 'api' },
+                format: {
+                    format_type: 'json',
+                    options: {},
+                },
+                mapping: {},
+            }
+            const wrapper = mount(DslToEditor, {
+                props: {
+                    modelValue: toDef,
+                    isLastStep: false,
+                },
+            })
+
+            await nextTick()
+
+            const selects = wrapper.findAllComponents({ name: 'VSelect' })
+            const typeSelect = selects[0]
+            await typeSelect.vm.$emit('update:modelValue', 'next_step')
+            await nextTick()
+
+            const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]> | undefined
+            expect(emitted?.length).toBeGreaterThan(0)
+            const updated = emitted![emitted!.length - 1][0] as ToDef
+            expect(updated.type).toBe('next_step')
+            if (updated.type === 'next_step') {
+                expect(updated.mapping).toEqual({})
+            }
+        })
+
+        it('changes from NextStep to entity type correctly', async () => {
+            const toDef: ToDef = {
+                type: 'next_step',
+                mapping: { field1: 'field2' },
+            }
+            const wrapper = mount(DslToEditor, {
+                props: {
+                    modelValue: toDef,
+                    isLastStep: false,
+                },
+            })
+
+            await nextTick()
+
+            const selects = wrapper.findAllComponents({ name: 'VSelect' })
+            const typeSelect = selects[0]
+            await typeSelect.vm.$emit('update:modelValue', 'entity')
+            await nextTick()
+
+            const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]> | undefined
+            expect(emitted?.length).toBeGreaterThan(0)
+            const updated = emitted![emitted!.length - 1][0] as ToDef
+            expect(updated.type).toBe('entity')
+        })
+
+        it('updates NextStep mapping', async () => {
+            const toDef: ToDef = {
+                type: 'next_step',
+                mapping: {},
+            }
+            const wrapper = mount(DslToEditor, {
+                props: {
+                    modelValue: toDef,
+                    isLastStep: false,
+                },
+            })
+
+            await nextTick()
+
+            const mappingEditor = wrapper.findComponent({ name: 'MappingEditor' })
+            const newMapping = { normalized_field: 'next_step_field' }
+            await mappingEditor.vm.$emit('update:modelValue', newMapping)
+            await nextTick()
+
+            const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]> | undefined
+            expect(emitted?.length).toBeGreaterThan(0)
+            const updated = emitted![emitted!.length - 1][0] as ToDef
+            if (updated.type === 'next_step') {
+                expect(updated.mapping).toEqual(newMapping)
+            }
+        })
+
+        it('defaults isLastStep to false when not provided', async () => {
+            const toDef: ToDef = {
+                type: 'next_step',
+                mapping: {},
+            }
+            const wrapper = mount(DslToEditor, {
+                props: {
+                    modelValue: toDef,
+                },
+            })
+
+            await nextTick()
+
+            const alerts = wrapper.findAllComponents({ name: 'VAlert' })
+            const errorAlert = alerts.find(a => a.props('type') === 'error')
+            expect(errorAlert).toBeUndefined()
+        })
+    })
 })

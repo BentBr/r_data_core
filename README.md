@@ -5,7 +5,7 @@ A self-hosted master data management (MDM) platform built with Rust. Connect Sho
 ## Features
 
 - **Dynamic Entity System** - Create custom data structures at runtime through the API
-- **Workflow Engine** - DSL-based data pipelines with scheduled and on-demand execution
+- **Workflow Engine** - DSL-based data pipelines with scheduled and on-demand execution ([DSL Documentation](./docs/DSL.md))
 - **API Authentication** - JWT and API key support with role-based access control
 - **Import/Export** - CSV, JSON, XML, and third-party API integrations
 - **Versioning** - Full version history for entities, definitions, and workflows

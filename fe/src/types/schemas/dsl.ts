@@ -67,13 +67,19 @@ export const DslEntityFilterSchema = z.object({
 export const DslFromEntitySchema = z.object({
     type: z.literal('entity'),
     entity_definition: z.string(),
-    filter: DslEntityFilterSchema,
+    filter: DslEntityFilterSchema.optional(),
+    mapping: z.record(z.string(), z.string()),
+})
+
+export const DslFromPreviousStepSchema = z.object({
+    type: z.literal('previous_step'),
     mapping: z.record(z.string(), z.string()),
 })
 
 export const DslFromSchema = z.discriminatedUnion('type', [
     DslFromFormatSchema, // New format-based structure
     DslFromEntitySchema,
+    DslFromPreviousStepSchema, // Step chaining support
 ])
 
 // Destination configuration
@@ -114,7 +120,17 @@ export const DslToEntitySchema = z.object({
     update_key: z.string().optional(),
     mapping: z.record(z.string(), z.string()),
 })
-export const DslToSchema = z.discriminatedUnion('type', [DslToFormatSchema, DslToEntitySchema])
+
+export const DslToNextStepSchema = z.object({
+    type: z.literal('next_step'),
+    mapping: z.record(z.string(), z.string()),
+})
+
+export const DslToSchema = z.discriminatedUnion('type', [
+    DslToFormatSchema,
+    DslToEntitySchema,
+    DslToNextStepSchema,
+])
 
 export const DslOperandFieldSchema = z.object({
     kind: z.literal('field'),

@@ -67,6 +67,9 @@ export function sanitizeDslStep(step: unknown): DslStep {
             toDef.output ??= { mode: 'api' }
             // Ensure format exists
             toDef.format ??= { format_type: 'json', options: {} }
+        } else if (toDef.type === 'next_step') {
+            // Ensure mapping exists
+            toDef.mapping ??= {}
         }
     }
 

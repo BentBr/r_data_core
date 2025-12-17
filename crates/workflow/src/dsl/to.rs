@@ -71,6 +71,13 @@ pub enum ToDef {
         /// Mapping from `normalized_field` -> `destination_field`
         mapping: std::collections::HashMap<String, String>,
     },
+    /// Explicitly pass data to the next step
+    /// This makes step chaining explicit and allows field mapping control
+    NextStep {
+        /// Mapping from `normalized_field` -> `next_step_field`
+        /// Empty mapping passes through all fields
+        mapping: std::collections::HashMap<String, String>,
+    },
 }
 
 pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<()> {
@@ -174,6 +181,10 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<
             // Allow empty mappings
             validate_mapping(idx, mapping, safe_field)?;
         }
+        ToDef::NextStep { mapping } => {
+            // Allow empty mappings (passes through all fields)
+            validate_mapping(idx, mapping, safe_field)?;
+        }
     }
     Ok(())
 }
@@ -219,6 +230,8 @@ fn validate_auth_config(idx: usize, auth: &AuthConfig, context: &str) -> Result<
 #[allow(clippy::missing_const_for_fn)] // Cannot be const due to pattern matching
 pub(crate) fn mapping_of(to: &ToDef) -> &std::collections::HashMap<String, String> {
     match to {
-        ToDef::Format { mapping, .. } | ToDef::Entity { mapping, .. } => mapping,
+        ToDef::Format { mapping, .. }
+        | ToDef::Entity { mapping, .. }
+        | ToDef::NextStep { mapping } => mapping,
     }
 }

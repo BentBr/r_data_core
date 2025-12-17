@@ -20,12 +20,37 @@
                 <v-select
                     :model-value="arithmeticOp"
                     :items="ops"
+                    item-title="title"
+                    item-value="value"
                     :label="t('workflows.dsl.op')"
                     density="comfortable"
                     class="flex-0"
                     style="max-width: 160px"
                     @update:model-value="updateField('op', $event)"
-                />
+                >
+                    <template #item="{ item, props: itemProps }">
+                        <v-list-item
+                            v-bind="itemProps"
+                            :title="item.raw?.title || item.title"
+                        >
+                            <template #prepend>
+                                <SmartIcon
+                                    :icon="item.raw?.icon || item.icon"
+                                    size="sm"
+                                    class="mr-2"
+                                />
+                            </template>
+                        </v-list-item>
+                    </template>
+                    <template #selection="{ item }">
+                        <SmartIcon
+                            :icon="item.raw?.icon || item.icon"
+                            size="sm"
+                            class="mr-1"
+                        />
+                        <span>{{ item.raw?.title || item.title }}</span>
+                    </template>
+                </v-select>
             </div>
             <div class="d-flex ga-2">
                 <v-select
@@ -37,8 +62,16 @@
                     style="max-width: 180px"
                     @update:model-value="updateLeftKind"
                 />
+                <v-select
+                    v-if="left.kind === 'field' && availableFields.length > 0"
+                    :model-value="left.field"
+                    :items="availableFields"
+                    :label="t('workflows.dsl.left_field')"
+                    density="comfortable"
+                    @update:model-value="updateLeftField"
+                />
                 <v-text-field
-                    v-if="left.kind === 'field'"
+                    v-else-if="left.kind === 'field'"
                     :model-value="left.field"
                     :label="t('workflows.dsl.left_field')"
                     density="comfortable"
@@ -63,8 +96,16 @@
                     style="max-width: 180px"
                     @update:model-value="updateRightKind"
                 />
+                <v-select
+                    v-if="right.kind === 'field' && availableFields.length > 0"
+                    :model-value="right.field"
+                    :items="availableFields"
+                    :label="t('workflows.dsl.right_field')"
+                    density="comfortable"
+                    @update:model-value="updateRightField"
+                />
                 <v-text-field
-                    v-if="right.kind === 'field'"
+                    v-else-if="right.kind === 'field'"
                     :model-value="right.field"
                     :label="t('workflows.dsl.right_field')"
                     density="comfortable"
@@ -105,8 +146,16 @@
                     style="max-width: 200px"
                     @update:model-value="updateLeftConcatKind"
                 />
+                <v-select
+                    v-if="leftConcat.kind === 'field' && availableFields.length > 0"
+                    :model-value="leftConcat.field"
+                    :items="availableFields"
+                    :label="t('workflows.dsl.left_field')"
+                    density="comfortable"
+                    @update:model-value="updateLeftConcatField"
+                />
                 <v-text-field
-                    v-if="leftConcat.kind === 'field'"
+                    v-else-if="leftConcat.kind === 'field'"
                     :model-value="leftConcat.field"
                     :label="t('workflows.dsl.left_field')"
                     density="comfortable"
@@ -130,8 +179,16 @@
                     style="max-width: 200px"
                     @update:model-value="updateRightConcatKind"
                 />
+                <v-select
+                    v-if="rightConcat.kind === 'field' && availableFields.length > 0"
+                    :model-value="rightConcat.field"
+                    :items="availableFields"
+                    :label="t('workflows.dsl.right_field')"
+                    density="comfortable"
+                    @update:model-value="updateRightConcatField"
+                />
                 <v-text-field
-                    v-if="rightConcat.kind === 'field'"
+                    v-else-if="rightConcat.kind === 'field'"
                     :model-value="rightConcat.field"
                     :label="t('workflows.dsl.right_field')"
                     density="comfortable"
@@ -152,17 +209,27 @@
 <script setup lang="ts">
     import { ref, watch, computed } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
     import type { Transform, Operand, StringOperand } from './dsl-utils'
 
     const props = defineProps<{
         modelValue: Transform
+        availableFields?: string[]
     }>()
 
     const emit = defineEmits<{ (e: 'update:modelValue', value: Transform): void }>()
 
     const { t } = useTranslations()
 
-    const ops = ['add', 'sub', 'mul', 'div']
+    // Use available fields or empty array
+    const availableFields = computed(() => props.availableFields ?? [])
+
+    const ops = computed(() => [
+        { title: t('workflows.dsl.op_add'), value: 'add', icon: 'plus' },
+        { title: t('workflows.dsl.op_sub'), value: 'sub', icon: 'minus' },
+        { title: t('workflows.dsl.op_mul'), value: 'mul', icon: 'x' },
+        { title: t('workflows.dsl.op_div'), value: 'div', icon: 'divide' },
+    ])
     const operandKinds = ['field', 'const']
     const stringOperandKinds = ['field', 'const_string']
     const transformTypes = [

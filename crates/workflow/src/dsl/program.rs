@@ -53,33 +53,62 @@ impl DslProgram {
             bail!("DSL must contain at least one step");
         }
         let safe_field = Regex::new(r"^[A-Za-z_][A-Za-z0-9_\.]*$").unwrap();
+        let last_step_idx = self.steps.len() - 1;
         for (idx, step) in self.steps.iter().enumerate() {
             from::validate_from(idx, &step.from, &safe_field)?;
             to::validate_to(idx, &step.to, &safe_field)?;
             super::transform::validate_transform(idx, &step.transform, &safe_field)?;
+            // NextStep cannot be used in the last step
+            if idx == last_step_idx {
+                if let super::to::ToDef::NextStep { .. } = &step.to {
+                    bail!(
+                        "Step {idx} (last step) cannot use NextStep ToDef - there is no next step"
+                    );
+                }
+            }
         }
         Ok(())
     }
 
     /// Execute all steps and return produced outputs per step along with their target (`to`) definitions.
-    /// For `to.entity` with empty mapping, we return the normalized object for that step.
+    /// Supports step chaining via `PreviousStep` `FromDef` type.
     ///
     /// # Arguments
     /// * `input` - Input JSON value
     ///
     /// # Errors
     /// Returns an error if execution fails
+    #[allow(clippy::too_many_lines)] // Complex but cohesive function
     pub fn execute(&self, input: &Value) -> anyhow::Result<Vec<(super::to::ToDef, Value)>> {
         use super::execution;
+        use super::from::FromDef;
+
         let mut results: Vec<(super::to::ToDef, Value)> = Vec::new();
-        for step in &self.steps {
+        let mut step_outputs: Vec<Value> = Vec::new(); // Store normalized data from each step
+
+        for (step_idx, step) in self.steps.iter().enumerate() {
+            // Determine source data based on FromDef type
+            let source_data = match &step.from {
+                FromDef::PreviousStep { .. } => {
+                    // Read from previous step's normalized data
+                    if step_idx == 0 {
+                        bail!("Step 0 cannot use PreviousStep source");
+                    }
+                    &step_outputs[step_idx - 1]
+                }
+                FromDef::Format { .. } | FromDef::Entity { .. } => {
+                    // Read from original input
+                    input
+                }
+            };
+
             // Normalize
             let mut normalized = json!({});
             let mapping = from::mapping_of(&step.from);
             if mapping.is_empty() {
-                // If mapping is empty, pass through all fields from input
-                if let Some(input_obj) = input.as_object() {
-                    for (k, v) in input_obj {
+                // If mapping is empty, pass through all fields from source
+                if let Some(source_obj) = source_data.as_object() {
+                    for (k, v) in source_obj {
                         execution::set_nested(&mut normalized, k, v.clone());
                     }
                 }
@@ -88,73 +117,119 @@ impl DslProgram {
                 let mut sorted_mapping: Vec<_> = mapping.iter().collect();
                 sorted_mapping.sort_by_key(|(src, _)| *src);
                 for (src, dst) in sorted_mapping {
-                    let v = execution::get_nested(input, src).unwrap_or(Value::Null);
+                    let v = execution::get_nested(source_data, src).unwrap_or(Value::Null);
                     execution::set_nested(&mut normalized, dst, v);
                 }
             }
-            // Transform
+
+            // Transform with proper error handling
             match &step.transform {
                 Transform::Arithmetic(ar) => {
-                    let left = execution::eval_operand(&normalized, &ar.left);
-                    let right = execution::eval_operand(&normalized, &ar.right);
-                    if let (Some(ln), Some(rn)) = (left, right) {
-                        let new_val = match ar.op {
-                            ArithmeticOp::Add => ln + rn,
-                            ArithmeticOp::Sub => ln - rn,
-                            ArithmeticOp::Mul => ln * rn,
-                            ArithmeticOp::Div => {
-                                if rn == 0.0 {
-                                    ln
-                                } else {
-                                    ln / rn
+                    let left_result = execution::eval_operand(&normalized, &ar.left);
+                    let right_result = execution::eval_operand(&normalized, &ar.right);
+
+                    match (left_result, right_result) {
+                        (Ok(left_val), Ok(right_val)) => {
+                            let new_val = match ar.op {
+                                ArithmeticOp::Add => left_val + right_val,
+                                ArithmeticOp::Sub => left_val - right_val,
+                                ArithmeticOp::Mul => left_val * right_val,
+                                ArithmeticOp::Div => {
+                                    #[allow(clippy::float_cmp)]
+                                    // We explicitly want exact comparison for zero
+                                    if right_val == 0.0 {
+                                        bail!(
+                                            "Step {step_idx}: Division by zero in target field '{}'",
+                                            ar.target
+                                        );
+                                    }
+                                    left_val / right_val
                                 }
-                            }
-                        };
-                        execution::set_nested(&mut normalized, &ar.target, Value::from(new_val));
+                            };
+                            execution::set_nested(
+                                &mut normalized,
+                                &ar.target,
+                                Value::from(new_val),
+                            );
+                        }
+                        (Err(e), _) | (_, Err(e)) => {
+                            bail!(
+                                "Step {step_idx}: Arithmetic error in target field '{}': {}",
+                                ar.target,
+                                e
+                            );
+                        }
                     }
                 }
                 Transform::Concat(ct) => {
-                    let left =
-                        execution::eval_string_operand(&normalized, &ct.left).unwrap_or_default();
-                    let right =
-                        execution::eval_string_operand(&normalized, &ct.right).unwrap_or_default();
-                    let sep = ct.separator.clone().unwrap_or_default();
-                    let combined = if sep.is_empty() {
-                        format!("{left}{right}")
-                    } else {
-                        format!("{left}{sep}{right}")
-                    };
-                    execution::set_nested(&mut normalized, &ct.target, Value::from(combined));
+                    let left_result = execution::eval_string_operand(&normalized, &ct.left);
+                    let right_result = execution::eval_string_operand(&normalized, &ct.right);
+
+                    match (left_result, right_result) {
+                        (Ok(left_str), Ok(right_str)) => {
+                            let sep = ct.separator.as_deref().unwrap_or("");
+                            let combined = format!("{left_str}{sep}{right_str}");
+                            execution::set_nested(
+                                &mut normalized,
+                                &ct.target,
+                                Value::from(combined),
+                            );
+                        }
+                        (Err(e), _) | (_, Err(e)) => {
+                            bail!(
+                                "Step {step_idx}: Concat error in target field '{}': {}",
+                                ct.target,
+                                e
+                            );
+                        }
+                    }
                 }
                 Transform::None => {
                     // no-op
                 }
             }
+
             // Map to output
-            let mut produced = json!({});
             let out_mapping = to::mapping_of(&step.to);
-            if out_mapping.is_empty() {
+            let produced = if out_mapping.is_empty() {
                 // If no mapping for output, use normalized directly (pass through all fields)
-                produced = normalized.clone();
+                normalized.clone()
             } else {
                 // Sort mapping entries by destination to ensure deterministic execution
                 // This ensures reserved fields like 'path' are processed in a consistent order
                 // Mapping structure: { destination_field: normalized_field }
+                let mut produced = json!({});
                 let mut sorted_mapping: Vec<_> = out_mapping.iter().collect();
                 sorted_mapping.sort_by_key(|(dst, _)| *dst);
                 for (dst, src) in sorted_mapping {
                     let v = execution::get_nested(&normalized, src).unwrap_or(Value::Null);
                     execution::set_nested(&mut produced, dst, v);
                 }
+                produced
+            };
+
+            // Store data for next step (for PreviousStep references)
+            // For NextStep ToDef, store the mapped output; otherwise store normalized
+            match &step.to {
+                super::to::ToDef::NextStep { .. } => {
+                    // For NextStep, store the mapped output so next step sees the mapped fields
+                    step_outputs.push(produced.clone());
+                }
+                _ => {
+                    // For Format/Entity, store normalized (next step reads via PreviousStep mapping)
+                    step_outputs.push(normalized.clone());
+                }
             }
+
             results.push((step.to.clone(), produced));
         }
         Ok(results)
     }
 
-    /// Apply a single-step-at-a-time process:
+    /// Apply a single-step-at-a-time process and return the last produced value.
+    /// Supports step chaining via `PreviousStep` `FromDef` type.
     /// 1) normalize input using from.mapping
-    /// 2) transform (arithmetic) using operands (fields or constants)
+    /// 2) transform (arithmetic/concat) using operands
     /// 3) map to output using to.mapping (returned result is the last produced)
     ///
     /// # Arguments
@@ -162,70 +237,149 @@ impl DslProgram {
     ///
     /// # Errors
     /// Returns an error if execution fails
+    #[allow(clippy::too_many_lines)]
     pub fn apply(&self, input: &Value) -> anyhow::Result<Value> {
         use super::execution;
+        use super::from::FromDef;
+
         let mut last = json!({});
-        for step in &self.steps {
+        let mut step_outputs: Vec<Value> = Vec::new(); // Store normalized data from each step
+
+        for (step_idx, step) in self.steps.iter().enumerate() {
+            // Determine source data based on FromDef type
+            let source_data = match &step.from {
+                FromDef::PreviousStep { .. } => {
+                    // Read from previous step's normalized data
+                    if step_idx == 0 {
+                        bail!("Step 0 cannot use PreviousStep source");
+                    }
+                    &step_outputs[step_idx - 1]
+                }
+                FromDef::Format { .. } | FromDef::Entity { .. } => {
+                    // Read from original input
+                    input
+                }
+            };
+
             // Normalize
             let mut normalized = json!({});
             let mapping = from::mapping_of(&step.from);
-            // Sort mapping entries to ensure deterministic execution
-            let mut sorted_mapping: Vec<_> = mapping.iter().collect();
-            sorted_mapping.sort_by_key(|(src, _)| *src);
-            for (src, dst) in sorted_mapping {
-                let v = execution::get_nested(input, src).unwrap_or(Value::Null);
-                execution::set_nested(&mut normalized, dst, v);
+            if mapping.is_empty() {
+                // If mapping is empty, pass through all fields from source
+                if let Some(source_obj) = source_data.as_object() {
+                    for (k, v) in source_obj {
+                        execution::set_nested(&mut normalized, k, v.clone());
+                    }
+                }
+            } else {
+                // Sort mapping entries to ensure deterministic execution
+                let mut sorted_mapping: Vec<_> = mapping.iter().collect();
+                sorted_mapping.sort_by_key(|(src, _)| *src);
+                for (src, dst) in sorted_mapping {
+                    let v = execution::get_nested(source_data, src).unwrap_or(Value::Null);
+                    execution::set_nested(&mut normalized, dst, v);
+                }
             }
-            // Transform
+
+            // Transform with proper error handling
             match &step.transform {
                 Transform::Arithmetic(ar) => {
-                    let left = execution::eval_operand(&normalized, &ar.left);
-                    let right = execution::eval_operand(&normalized, &ar.right);
-                    if let (Some(ln), Some(rn)) = (left, right) {
-                        let new_val = match ar.op {
-                            ArithmeticOp::Add => ln + rn,
-                            ArithmeticOp::Sub => ln - rn,
-                            ArithmeticOp::Mul => ln * rn,
-                            ArithmeticOp::Div => {
-                                if rn == 0.0 {
-                                    ln
-                                } else {
-                                    ln / rn
+                    let left_result = execution::eval_operand(&normalized, &ar.left);
+                    let right_result = execution::eval_operand(&normalized, &ar.right);
+
+                    match (left_result, right_result) {
+                        (Ok(left_val), Ok(right_val)) => {
+                            let new_val = match ar.op {
+                                ArithmeticOp::Add => left_val + right_val,
+                                ArithmeticOp::Sub => left_val - right_val,
+                                ArithmeticOp::Mul => left_val * right_val,
+                                ArithmeticOp::Div => {
+                                    #[allow(clippy::float_cmp)]
+                                    // We explicitly want exact comparison for zero
+                                    if right_val == 0.0 {
+                                        bail!(
+                                            "Step {step_idx}: Division by zero in target field '{}'",
+                                            ar.target
+                                        );
+                                    }
+                                    left_val / right_val
                                 }
-                            }
-                        };
-                        execution::set_nested(&mut normalized, &ar.target, Value::from(new_val));
+                            };
+                            execution::set_nested(
+                                &mut normalized,
+                                &ar.target,
+                                Value::from(new_val),
+                            );
+                        }
+                        (Err(e), _) | (_, Err(e)) => {
+                            bail!(
+                                "Step {step_idx}: Arithmetic error in target field '{}': {}",
+                                ar.target,
+                                e
+                            );
+                        }
                     }
                 }
                 Transform::Concat(ct) => {
-                    let left =
-                        execution::eval_string_operand(&normalized, &ct.left).unwrap_or_default();
-                    let right =
-                        execution::eval_string_operand(&normalized, &ct.right).unwrap_or_default();
-                    let sep = ct.separator.clone().unwrap_or_default();
-                    let combined = if sep.is_empty() {
-                        format!("{left}{right}")
-                    } else {
-                        format!("{left}{sep}{right}")
-                    };
-                    execution::set_nested(&mut normalized, &ct.target, Value::from(combined));
+                    let left_result = execution::eval_string_operand(&normalized, &ct.left);
+                    let right_result = execution::eval_string_operand(&normalized, &ct.right);
+
+                    match (left_result, right_result) {
+                        (Ok(left_str), Ok(right_str)) => {
+                            let sep = ct.separator.as_deref().unwrap_or("");
+                            let combined = format!("{left_str}{sep}{right_str}");
+                            execution::set_nested(
+                                &mut normalized,
+                                &ct.target,
+                                Value::from(combined),
+                            );
+                        }
+                        (Err(e), _) | (_, Err(e)) => {
+                            bail!(
+                                "Step {step_idx}: Concat error in target field '{}': {}",
+                                ct.target,
+                                e
+                            );
+                        }
+                    }
                 }
                 Transform::None => {
                     // no-op
                 }
             }
+
             // Map to output
             let out_mapping = to::mapping_of(&step.to);
-            let mut produced = json!({});
-            // Sort mapping entries by destination to ensure deterministic execution
-            // This ensures reserved fields like 'path' are processed in a consistent order
-            // Mapping structure: { destination_field: normalized_field }
-            let mut sorted_out_mapping: Vec<_> = out_mapping.iter().collect();
-            sorted_out_mapping.sort_by_key(|(dst, _)| *dst);
-            for (dst, src) in sorted_out_mapping {
-                let v = execution::get_nested(&normalized, src).unwrap_or(Value::Null);
-                execution::set_nested(&mut produced, dst, v);
+            let produced = if out_mapping.is_empty() {
+                // If no mapping for output, use normalized directly (pass through all fields)
+                normalized.clone()
+            } else {
+                // Sort mapping entries by destination to ensure deterministic execution
+                // This ensures reserved fields like 'path' are processed in a consistent order
+                // Mapping structure: { destination_field: normalized_field }
+                let mut produced = json!({});
+                let mut sorted_out_mapping: Vec<_> = out_mapping.iter().collect();
+                sorted_out_mapping.sort_by_key(|(dst, _)| *dst);
+                for (dst, src) in sorted_out_mapping {
+                    let v = execution::get_nested(&normalized, src).unwrap_or(Value::Null);
+                    execution::set_nested(&mut produced, dst, v);
+                }
+                produced
+            };
+
+            // Store data for next step (for PreviousStep references)
+            // For NextStep ToDef, store the mapped output; otherwise store normalized
+            match &step.to {
+                super::to::ToDef::NextStep { .. } => {
+                    // For NextStep, store the mapped output so next step sees the mapped fields
+                    step_outputs.push(produced.clone());
+                }
+                _ => {
+                    // For Format/Entity, store normalized (next step reads via PreviousStep mapping)
+                    step_outputs.push(normalized.clone());
+                }
             }
+
             last = produced;
         }
         Ok(last)

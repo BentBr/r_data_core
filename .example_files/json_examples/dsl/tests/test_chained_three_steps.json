@@ -1,0 +1,58 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "format",
+        "source": { "source_type": "uri", "config": { "uri": "http://example.com/data.csv" } },
+        "format": { "format_type": "csv", "options": {} },
+        "mapping": { "price": "price" }
+      },
+      "transform": { "type": "none" },
+      "to": {
+        "type": "format",
+        "output": { "mode": "api" },
+        "format": { "format_type": "json", "options": {} },
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "previous_step",
+        "mapping": { "price": "price" }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "tax",
+        "left": { "kind": "field", "field": "price" },
+        "op": "mul",
+        "right": { "kind": "const", "value": 0.19 }
+      },
+      "to": {
+        "type": "format",
+        "output": { "mode": "api" },
+        "format": { "format_type": "json", "options": {} },
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "previous_step",
+        "mapping": { "price": "price", "tax": "tax" }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "total",
+        "left": { "kind": "field", "field": "price" },
+        "op": "add",
+        "right": { "kind": "field", "field": "tax" }
+      },
+      "to": {
+        "type": "format",
+        "output": { "mode": "api" },
+        "format": { "format_type": "json", "options": {} },
+        "mapping": { "final_total": "total" }
+      }
+    }
+  ]
+}
+
