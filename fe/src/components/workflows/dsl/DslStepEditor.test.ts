@@ -230,4 +230,3 @@ describe('DslStepEditor', () => {
         expect(updated.transform).toEqual(defaultStep.transform)
     })
 })
-

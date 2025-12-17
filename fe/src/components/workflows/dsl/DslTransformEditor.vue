@@ -35,7 +35,7 @@
                         >
                             <template #prepend>
                                 <SmartIcon
-                                    :icon="item.raw?.icon || item.icon"
+                                    :icon="item.raw?.icon || 'file-text'"
                                     size="sm"
                                     class="mr-2"
                                 />
@@ -44,7 +44,7 @@
                     </template>
                     <template #selection="{ item }">
                         <SmartIcon
-                            :icon="item.raw?.icon || item.icon"
+                            :icon="item.raw?.icon || 'file-text'"
                             size="sm"
                             class="mr-1"
                         />

@@ -714,7 +714,9 @@ describe('DslToEditor', () => {
 
             const selects = wrapper.findAllComponents({ name: 'VSelect' })
             const typeSelect = selects[0]
-            const items = typeSelect.props('items') as Array<{ value: string; title: string }> | undefined
+            const items = typeSelect.props('items') as
+                | Array<{ value: string; title: string }>
+                | undefined
             const hasNextStep = items?.some(item => item.value === 'next_step') ?? false
 
             expect(hasNextStep).toBe(true)
