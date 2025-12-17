@@ -59,7 +59,6 @@ pub async fn query_by_parent_impl(
     limit: i64,
     offset: i64,
 ) -> Result<Vec<DynamicEntity>> {
-    let table_name = dynamic_entity_utils::get_table_name(entity_type);
     let entity_def = dynamic_entity_utils::get_entity_definition(
         &repo.pool,
         entity_type,
@@ -67,18 +66,20 @@ pub async fn query_by_parent_impl(
     )
     .await?;
 
-    // Build the query
+    // Use the view which properly handles all columns including UUID
+    // The view already has UUID as r.uuid, so we don't need to worry about duplicates
+    let view_name = dynamic_entity_utils::get_view_name(entity_type);
+
+    // Build query using the view - it already has all fields properly structured
     let query = format!(
-        "SELECT e.*, r.path, r.entity_key, r.parent_uuid FROM {table_name} e
-        INNER JOIN entities_registry r ON e.uuid = r.uuid
-        WHERE r.entity_type = $1 AND r.parent_uuid = $2
-        ORDER BY r.created_at DESC LIMIT $3 OFFSET $4"
+        "SELECT * FROM {view_name}
+        WHERE parent_uuid = $1
+        ORDER BY created_at DESC LIMIT $2 OFFSET $3"
     );
 
     debug!("Query by parent: {query}");
 
     let rows = sqlx::query(&query)
-        .bind(entity_type)
         .bind(parent_uuid)
         .bind(limit)
         .bind(offset)
@@ -117,9 +118,9 @@ pub async fn query_by_path_impl(
     )
     .await?;
 
-    // Build the query
+    // Build the query - use e.uuid explicitly to ensure it's included (e.* might not include it if there's a conflict)
     let query = format!(
-        "SELECT e.*, r.path, r.entity_key, r.parent_uuid FROM {table_name} e
+        "SELECT e.*, e.uuid AS uuid, r.path, r.entity_key, r.parent_uuid FROM {table_name} e
         INNER JOIN entities_registry r ON e.uuid = r.uuid
         WHERE r.entity_type = $1 AND r.path = $2
         ORDER BY r.created_at DESC LIMIT $3 OFFSET $4"

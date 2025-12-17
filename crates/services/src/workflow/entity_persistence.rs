@@ -184,11 +184,7 @@ pub async fn create_entity(
 
     let normalized_field_data = build_final_field_data(field_data, &def);
 
-    // Force uuid generation (repository requires uuid on create)
     let mut final_data = normalized_field_data;
-    final_data
-        .entry("uuid".to_string())
-        .or_insert_with(|| Value::String(Uuid::now_v7().to_string()));
 
     // Ensure audit fields exist
     ensure_audit_fields(&mut final_data, ctx.run_uuid);
@@ -218,7 +214,7 @@ pub async fn create_entity(
         field_data: final_data,
         definition: Arc::new(def),
     };
-    de_service.create_entity(&entity).await?;
+    let _uuid = de_service.create_entity(&entity).await?;
     Ok(())
 }
 
@@ -326,11 +322,6 @@ pub async fn create_or_update_entity(
             // Create new entity
             let mut final_data = normalized_field_data;
 
-            // Force uuid generation
-            final_data
-                .entry("uuid".to_string())
-                .or_insert_with(|| Value::String(Uuid::now_v7().to_string()));
-
             // Ensure audit fields exist
             ensure_audit_fields(&mut final_data, ctx.run_uuid);
 
@@ -342,7 +333,7 @@ pub async fn create_or_update_entity(
                 field_data: final_data,
                 definition: Arc::new(def),
             };
-            de_service.create_entity(&entity).await?;
+            let _uuid = de_service.create_entity(&entity).await?;
         }
     }
     Ok(())

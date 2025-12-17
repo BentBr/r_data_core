@@ -256,7 +256,6 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
         // that entity definitions don't have
 
         // Build the SQL fields and values
-        let uuid = definition.uuid;
         let entity_type = &definition.entity_type;
         let display_name = &definition.display_name;
         let description = definition.description.as_ref();
@@ -272,7 +271,7 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
         let version = definition.version;
 
         // Log values for debugging
-        log::debug!("Creating entity definition with UUID: {uuid}");
+        log::debug!("Creating entity definition");
         log::debug!("Entity type: {entity_type}");
         log::debug!(
             "Created by: {created_by} (type: {})",
@@ -283,15 +282,14 @@ impl EntityDefinitionRepositoryTrait for EntityDefinitionRepository {
 
         // SQL query with named parameters for clarity
         let query = "INSERT INTO entity_definitions
-                    (uuid, entity_type, display_name, description, group_name, allow_children,
+                    (entity_type, display_name, description, group_name, allow_children,
                      icon, field_definitions, created_at, updated_at, created_by, updated_by,
                      published, version)
                     VALUES
-                    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                     RETURNING uuid";
 
         let result = sqlx::query_scalar::<_, Uuid>(query)
-            .bind(uuid)
             .bind(entity_type)
             .bind(display_name)
             .bind(description)

@@ -221,9 +221,7 @@ pub async fn create_entity(
                 }
 
                 // We need to create a dynamic entity
-                let uuid = Uuid::now_v7();
                 let mut field_data = entity.into_inner();
-                field_data.insert("uuid".to_string(), json!(uuid.to_string()));
                 field_data.insert("created_by".to_string(), json!(user_uuid.to_string()));
                 field_data.insert("updated_by".to_string(), json!(user_uuid.to_string()));
 
@@ -262,7 +260,7 @@ pub async fn create_entity(
                 };
 
                 match service.create_entity(&dynamic_entity).await {
-                    Ok(()) => {
+                    Ok(uuid) => {
                         let response_data = EntityResponse { uuid, entity_type };
                         ApiResponse::<EntityResponse>::created(response_data)
                     }

@@ -452,7 +452,6 @@ async fn test_create_entity_definition_from_json_examples() {
 
         // Set creator ID and other required fields
         definition.created_by = creator_id;
-        definition.uuid = Uuid::now_v7();
 
         // Convert entity_type to lowercase to avoid case sensitivity issues
         definition.entity_type = definition.entity_type.to_lowercase();

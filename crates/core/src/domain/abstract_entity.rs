@@ -96,7 +96,7 @@ impl AbstractRDataEntity {
     pub fn new(path: String) -> Self {
         let now = OffsetDateTime::now_utc();
         Self {
-            uuid: Uuid::now_v7(),
+            uuid: Uuid::nil(),
             path,
             created_at: now,
             updated_at: now,

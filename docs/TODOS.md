@@ -11,8 +11,6 @@
 - anyhow in the entire repo
 - run now file upload with different file types / formats
 - add unique constraint to entity_definitions (FE + BE)
-- uuid refactoring -> all in db
-- push all path / params / post body usages to dependency injection
 - role testing and creation
     - entities: publish
     - workflows: activate
