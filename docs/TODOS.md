@@ -10,10 +10,8 @@
 - typescript bindings
 - anyhow in the entire repo
 - run now file upload with different file types / formats
-- DSL readme
 - add unique constraint to entity_definitions (FE + BE)
 - uuid refactoring -> all in db
-- toDef ->update action -> by key -> dropdown of existing one
 - push all path / params / post body usages to dependency injection
 - role testing and creation
     - entities: publish
@@ -29,12 +27,7 @@
 
 Check DSL:
 
-- map to entity
-- map to field
 - map to validation
-- map to uri / source
-- calculate (basic arithmetic)
-- concatenation of string (conversion of int, float etc)
 
 fixes:
 
