@@ -366,11 +366,13 @@ impl RoleService {
     pub async fn create_role(&self, role: &Role, created_by: Uuid) -> Result<Uuid> {
         let uuid = self.repository.create(role, created_by).await?;
 
-        // Cache the new role
+        // Cache the new role - retrieve it from DB to ensure it has the UUID set
         let cache_key = Self::cache_key(&uuid);
         let ttl = self.cache_ttl;
-        if let Err(e) = self.cache_manager.set(&cache_key, role, ttl).await {
-            log::warn!("Failed to cache new role {uuid}: {e}");
+        if let Ok(Some(ref created_role)) = self.repository.get_by_uuid(uuid).await {
+            if let Err(e) = self.cache_manager.set(&cache_key, created_role, ttl).await {
+                log::warn!("Failed to cache new role {uuid}: {e}");
+            }
         }
 
         Ok(uuid)

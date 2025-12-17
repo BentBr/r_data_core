@@ -14,7 +14,8 @@ use super::DynamicEntityRepository;
 ///
 /// # Errors
 /// Returns an error if the database operation fails or validation fails
-pub async fn create_entity(repo: &DynamicEntityRepository, entity: &DynamicEntity) -> Result<()> {
+/// Returns the UUID
+pub async fn create_entity(repo: &DynamicEntityRepository, entity: &DynamicEntity) -> Result<Uuid> {
     // Get the entity definition to validate against
     let _entity_def = dynamic_entity_utils::get_entity_definition(
         &repo.pool,
@@ -25,15 +26,6 @@ pub async fn create_entity(repo: &DynamicEntityRepository, entity: &DynamicEntit
 
     // Validate the entity against the entity definition
     entity.validate()?;
-
-    // Extract UUID from the entity
-    let uuid =
-        dynamic_entity_utils::extract_uuid_from_entity_field_data(&entity.field_data, "uuid")
-            .ok_or_else(|| {
-                r_data_core_core::error::Error::Validation(
-                    "Entity is missing a valid UUID".to_string(),
-                )
-            })?;
 
     // Extract the path (default root) and mandatory key
     let mut path = entity
@@ -110,32 +102,33 @@ pub async fn create_entity(repo: &DynamicEntityRepository, entity: &DynamicEntit
     // Start a transaction
     let mut tx = repo.pool.begin().await?;
 
-    // Insert into entities_registry
-    insert_into_registry(&mut tx, entity, &uuid, &path, &key, resolved_parent_uuid).await?;
+    // Insert into entities_registry and get UUID
+    let uuid = insert_into_registry(&mut tx, entity, &path, &key, resolved_parent_uuid).await?;
 
-    // Insert into entity-specific table
+    // Insert into entity-specific table using the UUID
     insert_into_entity_table(&mut tx, entity, &uuid).await?;
 
     // Commit the transaction
     tx.commit().await?;
 
-    Ok(())
+    Ok(uuid)
 }
 
 /// Insert entity metadata into `entities_registry`
+/// Returns the UUID
 async fn insert_into_registry(
     tx: &mut Transaction<'_, Postgres>,
     entity: &DynamicEntity,
-    uuid: &Uuid,
     path: &str,
     key: &str,
     resolved_parent_uuid: Option<Uuid>,
-) -> Result<()> {
+) -> Result<Uuid> {
     let registry_query = "
         INSERT INTO entities_registry
-            (uuid, entity_type, path, entity_key, created_at, updated_at, created_by, updated_by, published, version, parent_uuid)
+            (entity_type, path, entity_key, created_at, updated_at, created_by, updated_by, published, version, parent_uuid)
         VALUES
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING uuid
     ";
 
     // Extract metadata fields or use defaults
@@ -156,8 +149,7 @@ async fn insert_into_registry(
         .and_then(JsonValue::as_i64)
         .unwrap_or(1);
 
-    let result = sqlx::query(registry_query)
-        .bind(uuid)
+    let result = sqlx::query_scalar::<_, Uuid>(registry_query)
         .bind(&entity.entity_type)
         .bind(path)
         .bind(key)
@@ -168,23 +160,24 @@ async fn insert_into_registry(
         .bind(published)
         .bind(version)
         .bind(resolved_parent_uuid)
-        .execute(&mut **tx)
+        .fetch_one(&mut **tx)
         .await;
 
     // Map unique violations on (path,key) to a conflict error
-    if let Err(e) = result {
-        if let sqlx::Error::Database(db_err) = &e {
-            // Postgres unique_violation code
-            if db_err.code().as_deref() == Some("23505") {
-                return Err(r_data_core_core::error::Error::ValidationFailed(
-                    "An entity with the same key already exists in this path".to_string(),
-                ));
+    match result {
+        Ok(uuid) => Ok(uuid),
+        Err(e) => {
+            if let sqlx::Error::Database(db_err) = &e {
+                // Postgres unique_violation code
+                if db_err.code().as_deref() == Some("23505") {
+                    return Err(r_data_core_core::error::Error::ValidationFailed(
+                        "An entity with the same key already exists in this path".to_string(),
+                    ));
+                }
             }
+            Err(r_data_core_core::error::Error::Database(e))
         }
-        return Err(r_data_core_core::error::Error::Database(e));
     }
-
-    Ok(())
 }
 
 /// Insert entity data into entity-specific table

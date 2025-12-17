@@ -28,17 +28,6 @@ fn hash_password(password: &str) -> Result<String> {
         .map(|hash| hash.to_string())
 }
 
-/// Determine the `created_by` UUID value
-/// For authenticated requests, use the authenticated user's UUID as creator
-/// For unauthenticated requests or if `creator_uuid` is nil, use the new user's UUID
-const fn determine_created_by(creator_uuid: Uuid, user_uuid: Uuid) -> Uuid {
-    if creator_uuid.is_nil() {
-        user_uuid // Self-reference for unauthenticated registrations
-    } else {
-        creator_uuid
-    }
-}
-
 impl AdminUserRepository {
     /// Create a new repository instance
     #[must_use]
@@ -225,8 +214,6 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         let is_active = params.is_active;
         let creator_uuid = params.creator_uuid;
 
-        // Create UUID for the new user
-        let user_uuid = Uuid::now_v7();
         let now = OffsetDateTime::now_utc();
 
         // Set default values
@@ -237,21 +224,22 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         let password_hash = hash_password(password)?;
 
         // Determine created_by value
-        let created_by = determine_created_by(creator_uuid, user_uuid);
+        // If creator_uuid is nil, we'll use self-reference (update after insert)
+        let is_self_creation = creator_uuid.is_nil();
+        let initial_created_by = creator_uuid;
 
         // Insert the new admin user
-        let result = sqlx::query_scalar::<_, Uuid>(
+        let user_uuid = sqlx::query_scalar::<_, Uuid>(
             "INSERT INTO admin_users (
-                uuid, path, username, email, password_hash, first_name, last_name,
+                path, username, email, password_hash, first_name, last_name,
                 is_active, created_at, updated_at, published, version, 
                 created_by, super_admin
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, 
-                $8, $9, $9, $10, 1, 
-                $11, $12
+                $1, $2, $3, $4, $5, $6, 
+                $7, $8, $8, $9, 1, 
+                $10, $11
             ) RETURNING uuid",
         )
-        .bind(user_uuid)
         .bind(path)
         .bind(username)
         .bind(email)
@@ -261,7 +249,7 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         .bind(is_active)
         .bind(now)
         .bind(published)
-        .bind(created_by)
+        .bind(initial_created_by)
         .bind(false) // Default super_admin to false
         .fetch_one(&*self.pool)
         .await
@@ -270,10 +258,22 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
             r_data_core_core::error::Error::Database(e)
         })?;
 
+        // If this is self-creation (no creator provided), update created_by to self-reference
+        if is_self_creation {
+            sqlx::query("UPDATE admin_users SET created_by = $1 WHERE uuid = $1")
+                .bind(user_uuid)
+                .execute(&*self.pool)
+                .await
+                .map_err(|e| {
+                    error!("Error updating created_by for self-creation: {e:?}");
+                    r_data_core_core::error::Error::Database(e)
+                })?;
+        }
+
         // In the future, we'd store the role in a separate table or add it to this table
         // For now, we'll ignore the role parameter
 
-        Ok(result)
+        Ok(user_uuid)
     }
 
     async fn update_admin_user(&self, user: &AdminUser) -> Result<()> {

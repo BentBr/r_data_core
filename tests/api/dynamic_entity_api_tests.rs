@@ -102,16 +102,13 @@ mod dynamic_entity_api_tests {
 
         entity_def.fields = fields;
 
-        // Save to database
         let create_query =
-            "INSERT INTO entity_definitions (uuid, entity_type, display_name, description, field_definitions, created_at, created_by, published)
-             VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7) RETURNING uuid";
+            "INSERT INTO entity_definitions (entity_type, display_name, description, field_definitions, created_at, created_by, published)
+             VALUES ($1, $2, $3, $4, NOW(), $5, $6) RETURNING uuid";
 
-        let uuid = Uuid::now_v7();
         let created_by = Uuid::now_v7();
 
-        sqlx::query(create_query)
-            .bind(uuid)
+        let uuid = sqlx::query_scalar::<_, Uuid>(create_query)
             .bind(&entity_def.entity_type)
             .bind(&entity_def.display_name)
             .bind(&entity_def.description)
@@ -145,11 +142,9 @@ mod dynamic_entity_api_tests {
         let repository = DynamicEntityRepository::new(db_pool.clone());
 
         for i in 1..=count {
-            let uuid = Uuid::now_v7();
             let created_by = Uuid::now_v7();
 
             let mut field_data = HashMap::new();
-            field_data.insert("uuid".to_string(), json!(uuid.to_string()));
             field_data.insert("entity_key".to_string(), json!(format!("user-{i}")));
             field_data.insert("name".to_string(), json!(format!("User {i}")));
             field_data.insert("email".to_string(), json!(format!("user{i}@example.com")));
@@ -163,7 +158,7 @@ mod dynamic_entity_api_tests {
                 definition: Arc::new(EntityDefinition::default()),
             };
 
-            repository.create(&entity).await?;
+            let uuid = repository.create(&entity).await?;
             uuids.push(uuid);
         }
 

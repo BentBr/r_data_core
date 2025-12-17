@@ -139,10 +139,6 @@ impl DynamicEntity {
 
         // Initialize system fields
         field_data.insert(
-            "uuid".to_string(),
-            JsonValue::String(Uuid::now_v7().to_string()),
-        );
-        field_data.insert(
             "path".to_string(),
             JsonValue::String(format!("/{}", entity_type.to_lowercase())),
         );

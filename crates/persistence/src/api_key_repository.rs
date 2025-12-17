@@ -395,8 +395,6 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         // Hash the key for storage
         let key_hash = ApiKey::hash_api_key(&key_value)?;
 
-        // Create a new UUID for the API key
-        let uuid = Uuid::now_v7();
         let created_at = OffsetDateTime::now_utc();
         let expires_at = if expires_in_days > 0 {
             Some(created_at + Duration::days(i64::from(expires_in_days)))
@@ -407,11 +405,10 @@ impl ApiKeyRepositoryTrait for ApiKeyRepository {
         let result = sqlx::query!(
             "
             INSERT INTO api_keys 
-            (uuid, user_uuid, key_hash, name, description, is_active, created_at, expires_at, created_by, published)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            (user_uuid, key_hash, name, description, is_active, created_at, expires_at, created_by, published)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING uuid
             ",
-            uuid,
             created_by,  // Use the creator as the owner initially
             key_hash,
             name,

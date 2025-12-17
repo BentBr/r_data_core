@@ -95,11 +95,10 @@ pub async fn create_test_entity(
     name: &str,
     email: &str,
 ) -> Result<Uuid> {
-    let uuid = Uuid::now_v7();
+    let unique_key = Uuid::now_v7();
     let created_by = Uuid::now_v7();
 
     let mut field_data = HashMap::new();
-    field_data.insert("uuid".to_string(), json!(uuid.to_string()));
     field_data.insert("name".to_string(), json!(name));
     field_data.insert("email".to_string(), json!(email));
     // Provide required registry fields for tests
@@ -108,7 +107,7 @@ pub async fn create_test_entity(
         json!(format!(
             "{}-{}",
             name.to_lowercase().replace(' ', "-"),
-            uuid.simple()
+            unique_key.simple()
         )),
     );
     field_data.insert("path".to_string(), json!("/"));
@@ -135,9 +134,8 @@ pub async fn create_test_entity(
         definition: Arc::new(entity_def),
     };
 
-    // Create the entity
     let repository = DynamicEntityRepository::new(pool.clone());
-    repository.create(&entity).await?;
+    let uuid = repository.create(&entity).await?;
 
     // Allow time for any triggers to execute
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
@@ -151,9 +149,10 @@ pub async fn create_test_entity(
 /// Returns an error if database operations fail
 pub async fn create_test_admin_user(pool: &PgPool) -> Result<Uuid> {
     // Generate a truly unique username with UUID
-    let uuid = Uuid::now_v7();
-    let username = format!("test_admin_{}", uuid.simple());
-    let email = format!("test_{}@example.com", uuid.simple());
+    let unique_id = Uuid::now_v7();
+    let username = format!("test_admin_{}", unique_id.simple());
+    let email = format!("test_{}@example.com", unique_id.simple());
+    let created_by = Uuid::now_v7();
 
     // Use a transaction to ensure atomicity
     let mut tx = pool.begin().await?;
@@ -170,16 +169,25 @@ pub async fn create_test_admin_user(pool: &PgPool) -> Result<Uuid> {
     let exists = count > 0;
 
     if exists {
-        log::debug!("User already exists, returning UUID: {uuid}");
+        // If user exists, get their UUID
+        let existing_uuid: Uuid = sqlx::query_scalar::<_, Uuid>(
+            "SELECT uuid FROM admin_users WHERE username = $1 OR email = $2 LIMIT 1",
+        )
+        .bind(&username)
+        .bind(&email)
+        .fetch_one(&mut *tx)
+        .await?;
+        log::debug!("User already exists, returning UUID: {existing_uuid}");
         tx.commit().await?;
-        return Ok(uuid);
+        return Ok(existing_uuid);
     }
 
     // Create a new admin user with super_admin = true for tests
     log::debug!("Creating test admin user: {username}");
-    sqlx::query("INSERT INTO admin_users (uuid, username, email, password_hash, first_name, last_name, is_active, created_at, updated_at, created_by, super_admin)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $1, $9)")
-        .bind(uuid)
+    let uuid = sqlx::query_scalar::<_, Uuid>(
+        "INSERT INTO admin_users (username, email, password_hash, first_name, last_name, is_active, created_at, updated_at, created_by, super_admin)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8, $9)
+         RETURNING uuid")
         .bind(&username)
         .bind(&email)
         .bind("$argon2id$v=19$m=19456,t=2,p=1$AyU4SymrYGzpmYfqDSbugg$AhzMvJ1bOxrv2WQ1ks3PRFXGezp966kjJwkoUdJbFY4")  // Hash of "adminadmin"
@@ -187,8 +195,9 @@ pub async fn create_test_admin_user(pool: &PgPool) -> Result<Uuid> {
         .bind("User")
         .bind(true)
         .bind(OffsetDateTime::now_utc())
+        .bind(created_by) // created_by
         .bind(true) // super_admin = true for test users
-        .execute(&mut *tx)
+        .fetch_one(&mut *tx)
         .await?;
 
     // Commit the transaction
@@ -226,23 +235,20 @@ pub async fn create_test_api_key(pool: &PgPool, api_key: String) -> Result<()> {
         .await
         .map_err(r_data_core_core::error::Error::Database)?;
 
-    // Create an API key
-    let key_uuid = Uuid::now_v7();
-
     // Hash the API key properly
     let key_hash = ApiKey::hash_api_key(&api_key)
         .map_err(|e| r_data_core_core::error::Error::Unknown(e.to_string()))?;
 
-    sqlx::query(
-        "INSERT INTO api_keys (uuid, user_uuid, name, key_hash, is_active, created_at, created_by, published)
-         VALUES ($1, $2, $3, $4, true, NOW(), $5, true)"
+    let _key_uuid = sqlx::query_scalar::<_, Uuid>(
+        "INSERT INTO api_keys (user_uuid, name, key_hash, is_active, created_at, created_by, published)
+         VALUES ($1, $2, $3, true, NOW(), $4, true)
+         RETURNING uuid"
     )
-        .bind(key_uuid)
         .bind(admin_uuid)
         .bind("Test API Key")
         .bind(key_hash)  // Use the properly hashed key
         .bind(created_by)
-        .execute(pool)
+        .fetch_one(pool)
         .await
         .map_err(r_data_core_core::error::Error::Database)?;
 

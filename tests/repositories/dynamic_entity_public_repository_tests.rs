@@ -25,7 +25,7 @@ async fn create_test_entity_definition(
     use r_data_core_services::EntityDefinitionService;
 
     let entity_def = EntityDefinition {
-        uuid: Uuid::now_v7(),
+        uuid: Uuid::nil(),
         entity_type: entity_type.to_string(),
         display_name: format!("Test {entity_type}"),
         description: Some(format!("Test description for {entity_type}")),
@@ -77,9 +77,7 @@ fn create_test_dynamic_entity(
     path: &str,
     entity_key: &str,
 ) -> DynamicEntity {
-    let uuid = Uuid::now_v7();
     let mut field_data = HashMap::new();
-    field_data.insert("uuid".to_string(), json!(uuid.to_string()));
     field_data.insert("name".to_string(), json!(name));
     field_data.insert("entity_key".to_string(), json!(entity_key));
     field_data.insert("path".to_string(), json!(path));
@@ -153,17 +151,12 @@ async fn test_browse_by_path() -> Result<()> {
     let repo = DynamicEntityRepository::new(pool.pool.clone());
 
     // Root level entities - use entity_key as the key
-    let root1_uuid = Uuid::now_v7();
-    let root2_uuid = Uuid::now_v7();
-    let root1_key = format!("root1-{root1_uuid}");
-    let root2_key = format!("root2-{root2_uuid}");
+    let root1_key = format!("root1-{}", Uuid::now_v7());
+    let root2_key = format!("root2-{}", Uuid::now_v7());
     let root1 = create_test_dynamic_entity(&entity_def, "Root 1", "/", &root1_key);
     let root2 = create_test_dynamic_entity(&entity_def, "Root 2", "/", &root2_key);
-    repo.create(&root1).await?;
-    repo.create(&root2).await?;
-
-    // Get root1 UUID and path for child
-    let root1_uuid = root1.get::<Uuid>("uuid")?;
+    let root1_uuid = repo.create(&root1).await?;
+    let _root2_uuid = repo.create(&root2).await?;
     let root1_path = format!("/{root1_key}");
 
     // Child entities
@@ -297,11 +290,9 @@ async fn test_browse_by_path_batched_queries() -> Result<()> {
     // This would cause N+1 queries if not batched
     let mut root_entities = Vec::new();
     for i in 0..60 {
-        let root_uuid = Uuid::now_v7();
-        let root_key = format!("root-{i}-{root_uuid}");
+        let root_key = format!("root-{i}-{}", Uuid::now_v7());
         let root = create_test_dynamic_entity(&entity_def, &format!("Root {i}"), "/", &root_key);
-        let root_uuid = root.get::<Uuid>("uuid")?;
-        repo.create(&root).await?;
+        let root_uuid = repo.create(&root).await?;
         root_entities.push((root_key, root_uuid));
     }
 

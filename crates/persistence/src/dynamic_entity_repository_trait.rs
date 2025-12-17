@@ -97,7 +97,8 @@ pub trait DynamicEntityRepositoryTrait: Send + Sync {
     ) -> Result<Option<DynamicEntity>>;
 
     /// Create a new dynamic entity
-    async fn create(&self, entity: &DynamicEntity) -> Result<()>;
+    /// Returns the UUID
+    async fn create(&self, entity: &DynamicEntity) -> Result<Uuid>;
 
     /// Update an existing dynamic entity
     async fn update(&self, entity: &DynamicEntity) -> Result<()>;

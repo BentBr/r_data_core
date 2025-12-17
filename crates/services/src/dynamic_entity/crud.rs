@@ -87,7 +87,8 @@ impl DynamicEntityService {
     ///
     /// # Errors
     /// Returns an error if validation fails, entity type is not found/not published, or creation fails
-    pub async fn create_entity(&self, entity: &DynamicEntity) -> Result<()> {
+    /// Returns the UUID
+    pub async fn create_entity(&self, entity: &DynamicEntity) -> Result<Uuid> {
         // Check if the entity type is published
         self.check_entity_type_exists_and_published(&entity.entity_type)
             .await?;

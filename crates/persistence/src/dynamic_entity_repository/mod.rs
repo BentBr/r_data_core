@@ -51,7 +51,8 @@ impl DynamicEntityRepository {
     ///
     /// # Errors
     /// Returns an error if the database operation fails or validation fails
-    pub async fn create(&self, entity: &DynamicEntity) -> Result<()> {
+    /// Returns the UUID
+    pub async fn create(&self, entity: &DynamicEntity) -> Result<Uuid> {
         create_entity(self, entity).await
     }
 
@@ -110,7 +111,7 @@ impl DynamicEntityRepository {
 
 #[async_trait::async_trait]
 impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
-    async fn create(&self, entity: &DynamicEntity) -> Result<()> {
+    async fn create(&self, entity: &DynamicEntity) -> Result<Uuid> {
         self.create(entity).await
     }
 

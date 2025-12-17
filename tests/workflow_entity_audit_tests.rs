@@ -201,9 +201,7 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     let de_adapter = DynamicEntityRepositoryAdapter::new(de_repo);
     let de_service = DynamicEntityService::new(Arc::new(de_adapter), Arc::new(ed_service.clone()));
 
-    let entity_uuid = Uuid::now_v7();
     let mut field_data = HashMap::new();
-    field_data.insert("uuid".to_string(), json!(entity_uuid.to_string()));
     field_data.insert("name".to_string(), json!("Original Name"));
     field_data.insert("email".to_string(), json!("original@example.com"));
     field_data.insert("entity_key".to_string(), json!("original-key"));
@@ -220,7 +218,7 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
         definition: Arc::new(entity_def),
     };
 
-    de_service.create_entity(&entity).await?;
+    let entity_uuid = de_service.create_entity(&entity).await?;
 
     // Create workflow with update mode
     let wf_repo = WorkflowRepository::new(pool.pool.clone());
