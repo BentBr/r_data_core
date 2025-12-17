@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.13](https://github.com/BentBr/r_data_core/compare/v0.1.12...v0.1.13) (2025-12-17)
+
+
+### Features
+
+* comprehensive DSL rework (be + fe). now with better transform a… ([a290d1f](https://github.com/BentBr/r_data_core/commit/a290d1ff905a8598778c1fef9e46a085af0b00f8))
+* comprehensive DSL rework (be + fe). now with better transform and stepping ([e94c0c4](https://github.com/BentBr/r_data_core/commit/e94c0c416b94b0ca6eae677753c3137b14cc7fbf))
+
 ## [0.1.12](https://github.com/BentBr/r_data_core/compare/v0.1.11...v0.1.12) (2025-12-16)
 
 
