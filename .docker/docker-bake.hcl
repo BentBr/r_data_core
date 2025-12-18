@@ -35,16 +35,19 @@ target "r_data_core" {
   inherits = ["_common"]
   target   = "r_data_core"
   tags     = ["${REGISTRY}/${REPO_OWNER}/r-data-core:${TAG}"]
+  output   = ["type=image,push=true,annotation-index.org.opencontainers.image.description=r_data_core backend API service."]
 }
 
 target "r_data_core_worker" {
   inherits = ["_common"]
   target   = "r_data_core_worker"
   tags     = ["${REGISTRY}/${REPO_OWNER}/r-data-core-worker:${TAG}"]
+  output   = ["type=image,push=true,annotation-index.org.opencontainers.image.description=r_data_core background worker service."]
 }
 
 target "r_data_core_maintenance" {
   inherits = ["_common"]
   target   = "r_data_core_maintenance"
   tags     = ["${REGISTRY}/${REPO_OWNER}/r-data-core-maintenance:${TAG}"]
+  output   = ["type=image,push=true,annotation-index.org.opencontainers.image.description=r_data_core maintenance/ops image for administrative and one-off tasks."]
 }

@@ -85,7 +85,6 @@ jobs:
         with:
           files: .docker/docker-bake.hcl
           targets: backend
-          push: true
           provenance: true
           set: |
             *.cache-from=type=gha
@@ -102,7 +101,6 @@ jobs:
         with:
           files: .docker/docker-bake.hcl
           targets: backend
-          push: true
           provenance: true
           set: |
             *.cache-from=type=gha
@@ -222,7 +220,7 @@ jobs:
           file: ./.docker/fe/Dockerfile
           target: production
           platforms: linux/amd64,linux/arm64
-          push: true
+          outputs: type=image,push=true,annotation-index.org.opencontainers.image.description=Admin frontend for r_data_core, served by nginx.
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
