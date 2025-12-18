@@ -1,5 +1,12 @@
 # Stage 1: Build the frontend once on the build machine architecture.
 # The output assets are architecture-independent, so we don't need to run the Node build per target arch.
+#
+# OCI image metadata (used by GHCR package pages)
+# Can be overridden by CI via --build-arg.
+ARG OCI_SOURCE="https://github.com/bentbr/r_data_core"
+ARG OCI_REVISION=""
+ARG OCI_CREATED=""
+
 FROM --platform=$BUILDPLATFORM node:22-alpine AS builder
 
 # Install build dependencies for sharp
@@ -18,6 +25,12 @@ RUN npm run build
 
 # Stage 2: Serve with nginx
 FROM nginx:alpine AS production
+
+LABEL org.opencontainers.image.title="r-data-core-admin-fe" \
+      org.opencontainers.image.description="Admin frontend for r_data_core, served by nginx." \
+      org.opencontainers.image.source=$OCI_SOURCE \
+      org.opencontainers.image.revision=$OCI_REVISION \
+      org.opencontainers.image.created=$OCI_CREATED
 
 # Copy built assets and config with correct ownership
 COPY --from=builder --chown=nginx:nginx /app/dist /usr/share/nginx/html

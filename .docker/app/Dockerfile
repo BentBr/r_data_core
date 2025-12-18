@@ -14,6 +14,12 @@
 ARG RUST_VERSION=1.92.0
 ARG DEBIAN_VERSION=bookworm
 
+# OCI image metadata (used by GHCR package pages)
+# Can be overridden by CI via --build-arg.
+ARG OCI_SOURCE="https://github.com/bentbr/r_data_core"
+ARG OCI_REVISION=""
+ARG OCI_CREATED=""
+
 # ==============================================================================
 # Chef stage - compute recipe for dependency caching
 # ==============================================================================
@@ -54,6 +60,12 @@ FROM debian:${DEBIAN_VERSION}-slim AS runtime
 
 ARG BINARY=r_data_core
 
+LABEL org.opencontainers.image.title="r-data-core-runtime" \
+      org.opencontainers.image.description="Generic runtime image for a single r_data_core binary (set via BINARY build-arg)." \
+      org.opencontainers.image.source=$OCI_SOURCE \
+      org.opencontainers.image.revision=$OCI_REVISION \
+      org.opencontainers.image.created=$OCI_CREATED
+
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -79,6 +91,12 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Main app image - includes helper utilities
 # ==============================================================================
 FROM debian:${DEBIAN_VERSION}-slim AS r_data_core
+
+LABEL org.opencontainers.image.title="r-data-core" \
+      org.opencontainers.image.description="r_data_core backend API service." \
+      org.opencontainers.image.source=$OCI_SOURCE \
+      org.opencontainers.image.revision=$OCI_REVISION \
+      org.opencontainers.image.created=$OCI_CREATED
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -106,6 +124,12 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # ==============================================================================
 FROM debian:${DEBIAN_VERSION}-slim AS r_data_core_worker
 
+LABEL org.opencontainers.image.title="r-data-core-worker" \
+      org.opencontainers.image.description="r_data_core background worker service." \
+      org.opencontainers.image.source=$OCI_SOURCE \
+      org.opencontainers.image.revision=$OCI_REVISION \
+      org.opencontainers.image.created=$OCI_CREATED
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libssl3 \
@@ -126,6 +150,12 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Maintenance image
 # ==============================================================================
 FROM debian:${DEBIAN_VERSION}-slim AS r_data_core_maintenance
+
+LABEL org.opencontainers.image.title="r-data-core-maintenance" \
+      org.opencontainers.image.description="r_data_core maintenance/ops image for administrative and one-off tasks." \
+      org.opencontainers.image.source=$OCI_SOURCE \
+      org.opencontainers.image.revision=$OCI_REVISION \
+      org.opencontainers.image.created=$OCI_CREATED
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
