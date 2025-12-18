@@ -86,7 +86,7 @@ jobs:
           files: .docker/docker-bake.hcl
           targets: backend
           push: true
-          provenance: false
+          provenance: true
           set: |
             *.cache-from=type=gha
             *.cache-to=type=gha,mode=max
@@ -103,7 +103,7 @@ jobs:
           files: .docker/docker-bake.hcl
           targets: backend
           push: true
-          provenance: false
+          provenance: true
           set: |
             *.cache-from=type=gha
         env:
@@ -114,11 +114,11 @@ jobs:
       - name: Verify backend multi-arch manifests
         run: |
           echo "Verifying multi-arch manifests for backend images..."
-          
+
           for image in r-data-core r-data-core-worker r-data-core-maintenance; do
             echo "Checking $image:${{ steps.tag.outputs.tag }}..."
             docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/${image}:${{ steps.tag.outputs.tag }}
-            
+
             # Verify both architectures are present
             if docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/${image}:${{ steps.tag.outputs.tag }} | grep -q "linux/amd64" && \
                docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/${image}:${{ steps.tag.outputs.tag }} | grep -q "linux/arm64"; then
@@ -129,11 +129,28 @@ jobs:
             fi
           done
 
+      - name: Resolve backend manifest digest (r-data-core)
+        id: backend-digest
+        run: |
+          set -euo pipefail
+          IMAGE="${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core:${{ steps.tag.outputs.tag }}"
+          echo "Resolving digest for: $IMAGE"
+          DIGEST="$(docker buildx imagetools inspect "$IMAGE" | awk '/^Digest:/ {print $2; exit}')"
+          if [[ -z "${DIGEST}" ]]; then
+            echo "Failed to resolve digest for $IMAGE"
+            exit 1
+          fi
+          if ! [[ "${DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "Resolved digest is not in expected format sha256:<hex>: ${DIGEST}"
+            exit 1
+          fi
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+
       - name: Generate artifact attestation for r-data-core
         uses: actions/attest-build-provenance@v2
         with:
           subject-name: ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core
-          subject-digest: ${{ steps.tag.outputs.tag }}
+          subject-digest: ${{ steps.backend-digest.outputs.digest }}
           push-to-registry: true
         continue-on-error: true
 
@@ -201,17 +218,17 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          provenance: false
+          provenance: true
 
       - name: Verify frontend multi-arch manifest
         run: |
           echo "Verifying multi-arch manifest for frontend image..."
-          
+
           # Use the image digest to inspect
           IMAGE_REF="${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core-admin-fe@${{ steps.build-push.outputs.digest }}"
           echo "Inspecting: $IMAGE_REF"
           docker buildx imagetools inspect "$IMAGE_REF"
-          
+
           # Verify both architectures are present
           if docker buildx imagetools inspect "$IMAGE_REF" | grep -q "linux/amd64" && \
              docker buildx imagetools inspect "$IMAGE_REF" | grep -q "linux/arm64"; then
