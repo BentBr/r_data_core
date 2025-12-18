@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.17](https://github.com/BentBr/r_data_core/compare/v0.1.16...v0.1.17) (2025-12-18)
+
+
+### Bug Fixes
+
+* **ci:** adding provenance attestation again. Fixing broken sha diges… ([0cb98eb](https://github.com/BentBr/r_data_core/commit/0cb98ebdd030c4693c3ddbd6545b430434848388))
+* **ci:** adding provenance attestation again. Fixing broken sha digest backend ([ccc92ac](https://github.com/BentBr/r_data_core/commit/ccc92ac581e59dc6b9114d3cd0f716770c019199))
+
 ## [0.1.16](https://github.com/BentBr/r_data_core/compare/v0.1.15...v0.1.16) (2025-12-18)
 
 
