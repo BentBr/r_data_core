@@ -10,7 +10,7 @@ import { ValidationError } from '../http-client'
 export type ApiResponse<T> = {
     status: 'Success' | 'Error'
     message: string
-    data?: T
+    data?: T | null
     meta?: Meta | null // Backend may return null
 }
 

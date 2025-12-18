@@ -75,7 +75,9 @@ export const ApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
     z.object({
         status: z.enum(['Success', 'Error']),
         message: z.string(),
-        data: dataSchema.optional(),
+        // Backend sometimes returns `data: null` for "message-only" success responses.
+        // We accept it here and let `BaseTypedHttpClient.validateResponse()` handle the null case.
+        data: z.union([dataSchema, z.null()]).optional(),
         meta: MetaSchema.nullable().optional(), // Backend may return null
     })
 
