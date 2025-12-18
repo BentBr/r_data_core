@@ -1,5 +1,6 @@
-# Stage 1: Build the frontend
-FROM node:22-alpine AS builder
+# Stage 1: Build the frontend once on the build machine architecture.
+# The output assets are architecture-independent, so we don't need to run the Node build per target arch.
+FROM --platform=$BUILDPLATFORM node:22-alpine AS builder
 
 # Install build dependencies for sharp
 RUN apk add --no-cache \
