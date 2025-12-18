@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.18](https://github.com/BentBr/r_data_core/compare/v0.1.17...v0.1.18) (2025-12-18)
+
+
+### Bug Fixes
+
+* **ci:** changing digest calculation ([21a2af9](https://github.com/BentBr/r_data_core/commit/21a2af935a95accdbd2852627c96b0c877230468))
+* **ci:** changing digest calculation ([b4925b2](https://github.com/BentBr/r_data_core/commit/b4925b2d83e19df1b4fd6da5b2e23dcc842593eb))
+
 ## [0.1.17](https://github.com/BentBr/r_data_core/compare/v0.1.16...v0.1.17) (2025-12-18)
 
 
