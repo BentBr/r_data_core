@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.19](https://github.com/BentBr/r_data_core/compare/v0.1.18...v0.1.19) (2025-12-18)
+
+
+### Bug Fixes
+
+* **ci:** adding properly defined labels + removing manual push ([e0d671e](https://github.com/BentBr/r_data_core/commit/e0d671e315fcb67bc2ec45b90e73bb766ce82e7a))
+* **ci:** adding properly defined labels + removing manual push ([f84480c](https://github.com/BentBr/r_data_core/commit/f84480c81ed477d4144fa82543effaf5811b1d6d))
+
 ## [0.1.18](https://github.com/BentBr/r_data_core/compare/v0.1.17...v0.1.18) (2025-12-18)
 
 
