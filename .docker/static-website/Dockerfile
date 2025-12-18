@@ -7,6 +7,10 @@ ARG OCI_CREATED=""
 
 FROM node:22-slim
 
+ARG OCI_SOURCE
+ARG OCI_REVISION
+ARG OCI_CREATED
+
 LABEL org.opencontainers.image.title="r-data-core-static-website" \
       org.opencontainers.image.description="Static website dev image for r_data_core (runs the dev server at container start)." \
       org.opencontainers.image.source=$OCI_SOURCE \

@@ -26,6 +26,10 @@ RUN npm run build
 # Stage 2: Serve with nginx
 FROM nginx:alpine AS production
 
+ARG OCI_SOURCE
+ARG OCI_REVISION
+ARG OCI_CREATED
+
 LABEL org.opencontainers.image.title="r-data-core-admin-fe" \
       org.opencontainers.image.description="Admin frontend for r_data_core, served by nginx." \
       org.opencontainers.image.source=$OCI_SOURCE \

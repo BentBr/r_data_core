@@ -59,6 +59,9 @@ RUN cargo build --release --workspace
 FROM debian:${DEBIAN_VERSION}-slim AS runtime
 
 ARG BINARY=r_data_core
+ARG OCI_SOURCE
+ARG OCI_REVISION
+ARG OCI_CREATED
 
 LABEL org.opencontainers.image.title="r-data-core-runtime" \
       org.opencontainers.image.description="Generic runtime image for a single r_data_core binary (set via BINARY build-arg)." \
@@ -92,6 +95,10 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # ==============================================================================
 FROM debian:${DEBIAN_VERSION}-slim AS r_data_core
 
+ARG OCI_SOURCE
+ARG OCI_REVISION
+ARG OCI_CREATED
+
 LABEL org.opencontainers.image.title="r-data-core" \
       org.opencontainers.image.description="r_data_core backend API service." \
       org.opencontainers.image.source=$OCI_SOURCE \
@@ -124,6 +131,10 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # ==============================================================================
 FROM debian:${DEBIAN_VERSION}-slim AS r_data_core_worker
 
+ARG OCI_SOURCE
+ARG OCI_REVISION
+ARG OCI_CREATED
+
 LABEL org.opencontainers.image.title="r-data-core-worker" \
       org.opencontainers.image.description="r_data_core background worker service." \
       org.opencontainers.image.source=$OCI_SOURCE \
@@ -150,6 +161,10 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Maintenance image
 # ==============================================================================
 FROM debian:${DEBIAN_VERSION}-slim AS r_data_core_maintenance
+
+ARG OCI_SOURCE
+ARG OCI_REVISION
+ARG OCI_CREATED
 
 LABEL org.opencontainers.image.title="r-data-core-maintenance" \
       org.opencontainers.image.description="r_data_core maintenance/ops image for administrative and one-off tasks." \
