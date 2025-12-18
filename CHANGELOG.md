@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.16](https://github.com/BentBr/r_data_core/compare/v0.1.15...v0.1.16) (2025-12-18)
+
+
+### Bug Fixes
+
+* **chore:** adding labels for our images ([3cfbee5](https://github.com/BentBr/r_data_core/commit/3cfbee5a5fb3a88882df6bd85ed1b4b0437ae1f5))
+
 ## [0.1.15](https://github.com/BentBr/r_data_core/compare/v0.1.14...v0.1.15) (2025-12-18)
 
 
