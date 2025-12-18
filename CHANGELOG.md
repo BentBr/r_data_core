@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.15](https://github.com/BentBr/r_data_core/compare/v0.1.14...v0.1.15) (2025-12-18)
+
+
+### Bug Fixes
+
+* allowed null messages and meta objects from API ([419275a](https://github.com/BentBr/r_data_core/commit/419275a575a45d077dc2c75ee31e21c621f7092f))
+* allowed null messages and meta objects from API ([ec6295e](https://github.com/BentBr/r_data_core/commit/ec6295eeb5d2bcd25feef731594e5108553e9073))
+
 ## [0.1.14](https://github.com/BentBr/r_data_core/compare/v0.1.13...v0.1.14) (2025-12-17)
 
 
