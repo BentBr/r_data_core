@@ -117,17 +117,26 @@ fi
 UFW_STATUS=$(ufw status | head -n1 | awk '{print $2}')
 echo "Current UFW status: $UFW_STATUS"
 
-# Check for existing rules (use head -1 to get first match only, avoid multiline issues)
-EXISTING_SSH=$(ufw status numbered 2>/dev/null | grep -c "22/tcp" | head -1 || echo "0")
-EXISTING_HTTP=$(ufw status numbered 2>/dev/null | grep -c "80/tcp" | head -1 || echo "0")
-EXISTING_HTTPS=$(ufw status numbered 2>/dev/null | grep -c "443/tcp" | head -1 || echo "0")
-EXISTING_NYDUS=$(ufw status numbered 2>/dev/null | grep -c "2224/tcp" | head -1 || echo "0")
+# Check for existing rules
+# Use a more robust method that handles inactive UFW and multiline output
+# When UFW is inactive, grep might return multiple lines or newlines, so we need to clean it
+check_ufw_rule() {
+    local port=$1
+    local count=$(ufw status numbered 2>/dev/null | grep -c "$port/tcp" 2>/dev/null || echo "0")
+    # Remove all newlines, carriage returns, and spaces, then validate it's a number
+    count=$(echo "$count" | tr -d '\n\r\t ' | head -c 10)
+    # Validate it's a number, default to 0 if not
+    if [[ "$count" =~ ^[0-9]+$ ]]; then
+        echo "$count"
+    else
+        echo "0"
+    fi
+}
 
-# Convert to integer (handle any whitespace/newlines)
-EXISTING_SSH=$((EXISTING_SSH + 0))
-EXISTING_HTTP=$((EXISTING_HTTP + 0))
-EXISTING_HTTPS=$((EXISTING_HTTPS + 0))
-EXISTING_NYDUS=$((EXISTING_NYDUS + 0))
+EXISTING_SSH=$(check_ufw_rule "22")
+EXISTING_HTTP=$(check_ufw_rule "80")
+EXISTING_HTTPS=$(check_ufw_rule "443")
+EXISTING_NYDUS=$(check_ufw_rule "2224")
 
 # Only add rules if they don't exist
 if [ "$EXISTING_SSH" -eq 0 ]; then
