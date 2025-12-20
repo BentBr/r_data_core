@@ -1,0 +1,134 @@
+# ==============================================================================
+# Deploy Static Website to Demo Server
+# ==============================================================================
+# ⚠️  WARNING: This is a DEMO deployment workflow, NOT for production use.
+# True production deployments should use native Kubernetes (k8s).
+# ==============================================================================
+# This workflow deploys the static website to the demo server via SSH.
+# Note: Static website may need to be built on the server if no image is available.
+# ==============================================================================
+
+name: Deploy Static Website to Demo Server
+
+on:
+    workflow_dispatch:
+        inputs:
+            server_host:
+                description: 'Demo server hostname or IP'
+                required: true
+                type: string
+            server_user:
+                description: 'SSH user for demo server'
+                required: true
+                default: 'root'
+                type: string
+            compose_file_path:
+                description: 'Path to docker-compose.demo.yml on server'
+                required: true
+                default: '/opt/r-data-core-demo/docker-compose.demo.yml'
+                type: string
+            build_on_server:
+                description: 'Build image on server if not available'
+                required: false
+                default: true
+                type: boolean
+
+env:
+    REGISTRY: ghcr.io
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Set lowercase repo owner
+              id: repo
+              run: echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
+
+            - name: Deploy static website to demo server
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ inputs.server_host }}
+                  username: ${{ inputs.server_user }}
+                  key: ${{ secrets.DEMO_SERVER_SSH_KEY }}
+                  port: 22
+                  script: |
+                      set -euo pipefail
+                      
+                      echo "=============================================================================="
+                      echo "⚠️  DEMO STATIC WEBSITE DEPLOYMENT - NOT FOR PRODUCTION"
+                      echo "=============================================================================="
+                      echo ""
+                      
+                      COMPOSE_FILE="${{ inputs.compose_file_path }}"
+                      OWNER_LC="${{ steps.repo.outputs.owner_lc }}"
+                      BUILD_ON_SERVER="${{ inputs.build_on_server }}"
+                      
+                      # Check if compose file exists
+                      if [ ! -f "$COMPOSE_FILE" ]; then
+                          echo "❌ Error: Compose file not found at $COMPOSE_FILE"
+                          exit 1
+                      fi
+                      
+                      # Check if we need to build (GitHub Actions passes boolean as string)
+                      if [ "$BUILD_ON_SERVER" = "true" ] || [ "$BUILD_ON_SERVER" = "True" ]; then
+                          echo ""
+                          echo "🔨 Building static website image on server..."
+                          export GITHUB_REPO_OWNER="$OWNER_LC"
+                          
+                          # Get the directory containing the compose file
+                          COMPOSE_DIR=$(dirname "$COMPOSE_FILE")
+                          
+                          # Build the image
+                          docker compose -f "$COMPOSE_FILE" build static-website || {
+                              echo "❌ Error: Failed to build static-website image"
+                              exit 1
+                          }
+                      else
+                          echo ""
+                          echo "📥 Attempting to pull static website image..."
+                          echo "⚠️  Note: Static website image may not be available in registry."
+                          echo "   If pull fails, set 'build_on_server' to true."
+                          
+                          export GITHUB_REPO_OWNER="$OWNER_LC"
+                          docker compose -f "$COMPOSE_FILE" pull static-website || {
+                              echo "⚠️  Warning: Failed to pull image. You may need to build it."
+                              echo "   Set 'build_on_server' input to 'true' to build on server."
+                          }
+                      fi
+                      
+                      # Restart service
+                      echo ""
+                      echo "🔄 Restarting static website service..."
+                      export GITHUB_REPO_OWNER="$OWNER_LC"
+                      docker compose -f "$COMPOSE_FILE" up -d static-website
+                      
+                      # Wait for health check
+                      echo ""
+                      echo "⏳ Waiting for service to be healthy..."
+                      sleep 10
+                      
+                      # Check service status
+                      echo ""
+                      echo "📊 Service status:"
+                      docker compose -f "$COMPOSE_FILE" ps static-website
+                      
+                      # Test endpoint
+                      echo ""
+                      echo "🧪 Testing endpoint..."
+                      if curl -f -s http://localhost:8080/health > /dev/null 2>&1; then
+                          echo "✅ Health check passed"
+                      else
+                          echo "⚠️  Warning: Health check failed (service may still be starting)"
+                      fi
+                      
+                      echo ""
+                      echo "✅ Static website deployment complete!"
+                      echo ""
+                      echo "⚠️  Remember: This is a DEMO setup, not production!"
+

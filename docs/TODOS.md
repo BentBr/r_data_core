@@ -37,13 +37,10 @@ fixes:
 
 
 - Release
-  - Register domain rdatacore.eu
-    - emailing
   - setup subdomain: demo.rdatacore.eu
   - find a hoster -> deploy website (statically)
     - check sitemap + robots.txt for google
     - setup search console account
-  - find a hoster -> deploy RDataCore FE + Backend (demo)
 - communicate
   - LinkedIn groups
   - Stefano
