@@ -41,7 +41,7 @@ ARG VITE_R_DATA_CORE_DEMO_URL=https://demo.rdatacore.eu
 ARG VITE_API_DOCS_URL=https://api.rdatacore.eu/api/docs/
 ARG VITE_ADMIN_API_DOCS_URL=https://api.rdatacore.eu/admin/api/docs/
 ARG VITE_GITHUB_RELEASES_URL=https://github.com/bentbr/r_data_core/releases/latest
-ARG VITE_GITHUB_PACKAGES_URL=https://github.com/bentbr/r_data_core/pkgs/container/r-data-core
+ARG VITE_GITHUB_PACKAGES_URL=https://github.com/BentBr?tab=packages&repo_name=r_data_core
 
 # Set environment variables for build
 ENV VITE_BASE_URL=$VITE_BASE_URL
