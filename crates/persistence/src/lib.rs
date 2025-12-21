@@ -16,6 +16,7 @@ pub mod dynamic_entity_versioning;
 pub mod entity_definition_repository;
 pub mod entity_definition_versioning_repository;
 pub mod entity_definition_versioning_repository_trait;
+pub mod migration_service;
 pub mod refresh_token_repository;
 pub mod refresh_token_repository_trait;
 pub mod repository;
@@ -50,6 +51,7 @@ pub use entity_definition_versioning_repository::{
     EntityDefinitionVersioningRepository,
 };
 pub use entity_definition_versioning_repository_trait::EntityDefinitionVersioningRepositoryTrait;
+pub use migration_service::{AppliedMigration, MigrationService, MigrationStatus};
 pub use refresh_token_repository::RefreshTokenRepository;
 pub use refresh_token_repository_trait::RefreshTokenRepositoryTrait;
 pub use repository::{EntityRepository, PgPoolExtension};
