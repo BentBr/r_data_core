@@ -122,6 +122,36 @@ RDataCore consists of three main components:
 - **Workflow Worker** (`r_data_core_worker`) - Processes workflow jobs from Redis queue
 - **Maintenance Worker** (`r_data_core_maintenance`) - Runs scheduled maintenance tasks
 
+### Utility Binaries
+
+The main Docker image includes utility binaries for operations and maintenance:
+
+```bash
+# Run database migrations
+docker compose exec core /usr/local/bin/run_migrations
+
+# Check migration status
+docker compose exec core /usr/local/bin/run_migrations --status
+
+# Clear entire Redis cache
+docker compose exec core /usr/local/bin/clear_cache --all
+
+# Clear specific cache by prefix
+docker compose exec core /usr/local/bin/clear_cache --prefix "entity_definitions:"
+
+# Preview cache deletion (dry-run)
+docker compose exec core /usr/local/bin/clear_cache --prefix "api_keys:" --dry-run
+
+# Hash a password for admin users
+docker compose exec core /usr/local/bin/hash_password 'YourSecurePassword'
+```
+
+| Binary | Description |
+|--------|-------------|
+| `run_migrations` | Run SQLx database migrations (`--status` to check, `--help` for options) |
+| `clear_cache` | Clear Redis cache (`--all` or `--prefix <PREFIX>`, `--dry-run` to preview) |
+| `hash_password` | Generate Argon2 password hash with SQL update statement |
+
 ### Database Schema
 
 Key tables:

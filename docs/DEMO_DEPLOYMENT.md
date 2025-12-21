@@ -472,6 +472,69 @@ The workflow will SSH to your server and update the Docker containers.
 
 ## Maintenance
 
+### Database Migrations
+
+The core container includes the `run_migrations` utility for running database migrations:
+
+```bash
+# Run pending migrations
+docker compose -f /opt/r-data-core-demo/docker-compose.demo.yml exec core /usr/local/bin/run_migrations
+
+# Check migration status without running
+docker compose -f /opt/r-data-core-demo/docker-compose.demo.yml exec core /usr/local/bin/run_migrations --status
+
+# Show help
+docker compose -f /opt/r-data-core-demo/docker-compose.demo.yml exec core /usr/local/bin/run_migrations --help
+```
+
+**Note:** Migrations use the `DATABASE_URL` environment variable from the container.
+
+### Cache Management
+
+The core container includes the `clear_cache` utility for Redis cache management:
+
+```bash
+# Clear entire cache (use with caution!)
+docker compose -f /opt/r-data-core-demo/docker-compose.demo.yml exec core /usr/local/bin/clear_cache --all
+
+# Clear specific cache by prefix
+docker compose -f /opt/r-data-core-demo/docker-compose.demo.yml exec core /usr/local/bin/clear_cache --prefix "entity_definitions:"
+
+# Preview what would be deleted (dry-run)
+docker compose -f /opt/r-data-core-demo/docker-compose.demo.yml exec core /usr/local/bin/clear_cache --prefix "api_keys:" --dry-run
+
+# Show help
+docker compose -f /opt/r-data-core-demo/docker-compose.demo.yml exec core /usr/local/bin/clear_cache --help
+```
+
+**Common cache prefixes:**
+- `entity_definitions:` - Entity definition cache
+- `api_keys:` - API key cache
+- `entities:` - Entity data cache
+
+### Password Hashing
+
+The core container includes the `hash_password` utility for generating Argon2 password hashes:
+
+```bash
+# Hash a password (outputs the hash and SQL update statement)
+docker compose -f /opt/r-data-core-demo/docker-compose.demo.yml exec core /usr/local/bin/hash_password 'YourNewPassword123!'
+```
+
+**Output example:**
+```
+Password: YourNewPassword123!
+Hash: $argon2id$v=19$m=19456,t=2,p=1$...
+SQL:
+UPDATE admin_users SET password_hash = '$argon2id$v=19$...' WHERE username = '<USERNAME>';
+```
+
+**Warning:** Be careful when typing passwords in the shell - they may be saved in shell history. Consider using:
+```bash
+# Clear command from history
+history -d $(history 1 | awk '{print $1}')
+```
+
 ### View Logs
 
 ```bash
