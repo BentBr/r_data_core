@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.23](https://github.com/BentBr/r_data_core/compare/v0.1.22...v0.1.23) (2025-12-21)
+
+
+### Bug Fixes
+
+* **ci:** static website fixes due to added demo overlay ([3a13880](https://github.com/BentBr/r_data_core/commit/3a13880a33fefc2fee8aa7bafa419571fc0dfc3c))
+* **ci:** static website fixes due to added demo overlay ([6597b03](https://github.com/BentBr/r_data_core/commit/6597b03c3555d25df862ab4b8ea17e7bded3272d))
+* **ci:** trying to fix ci with adding image creation in it ([478d86b](https://github.com/BentBr/r_data_core/commit/478d86b476b4412f118101e3603b0e469c9c5718))
+* **ci:** trying to fix ci with adding image creation in it ([694e5ad](https://github.com/BentBr/r_data_core/commit/694e5ad9c614ddeafaeb167288f69180068ddef4))
+* **demo button:** making sure the demo button is invoked on every page ([97d1f1f](https://github.com/BentBr/r_data_core/commit/97d1f1f676062bf1c0c98e89d140bb1408af82ea))
+
 ## [0.1.22](https://github.com/BentBr/r_data_core/compare/v0.1.21...v0.1.22) (2025-12-21)
 
 
