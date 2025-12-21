@@ -110,23 +110,50 @@ ssh -i ~/.ssh/demo_server_key root@your-server-ip
 ssh -i ~/.ssh/demo_server_key root@your-server-ip
 ```
 
-### 1.3 Upload Setup Scripts
+### 1.3 Upload Setup Scripts and Repository
 
-Copy the setup scripts to your server:
+**Option A: Clone Repository on Server (Recommended)**
 
 ```bash
-# From your local machine
+# On the server
+cd /opt/r-data-core-demo
+git clone https://github.com/YOUR_USERNAME/r_data_core.git repo
+# Or if using SSH:
+# git clone git@github.com:YOUR_USERNAME/r_data_core.git repo
+```
+
+**Option B: Upload Files Manually**
+
+From your local machine:
+
+```bash
+# Upload setup scripts
 scp -r .docker/demo/scripts root@your-server-ip:/opt/r-data-core-demo/
 scp .docker/demo/docker-compose.demo.yml root@your-server-ip:/opt/r-data-core-demo/
 scp .docker/demo/nginx/nginx.conf root@your-server-ip:/opt/r-data-core-demo/nginx/
 scp .docker/demo/env.template root@your-server-ip:/opt/r-data-core-demo/
+
+# Upload static website source (needed for building static website)
+# Create directory structure on server
+ssh root@your-server-ip "mkdir -p /opt/r-data-core-demo/repo/static-website /opt/r-data-core-demo/repo/.docker/static-website"
+
+# Sync static website directory
+rsync -avz --delete static-website/ root@your-server-ip:/opt/r-data-core-demo/repo/static-website/
+
+# Sync Dockerfile and nginx config for static website
+rsync -avz .docker/static-website/ root@your-server-ip:/opt/r-data-core-demo/repo/.docker/static-website/
 ```
 
-**Note:** The `setup-ssh-keys.sh` helper script is included in the scripts directory if you need to add SSH keys later.
+**Note:** The static website will be built from the synced source. Use rsync for easier updates later.
 
-### 1.3 Run Server Setup Script
+### 1.4 Run Server Setup Script
 
-On the server, run the setup script to install all required software:
+**⚠️ CRITICAL:** Before running this script, ensure:
+1. You have SSH keys set up (Step 1.1)
+2. The user running the script has SSH keys in their `~/.ssh/authorized_keys`
+3. If running as root, add your SSH key to `/root/.ssh/authorized_keys` first
+
+On the server, run the setup script:
 
 ```bash
 cd /opt/r-data-core-demo/scripts
@@ -134,35 +161,21 @@ chmod +x setup-server.sh
 sudo ./setup-server.sh
 ```
 
-**⚠️ IMPORTANT SSH Key Warning:**
+**What the script does:**
+- Updates system packages
+**What the script installs:**
+- Docker and Docker Compose
+- nginx
+- certbot
+- Required system packages
 
-- The script will disable password authentication for SSH
-- **Make sure the user running the script has SSH keys in their authorized_keys**
-- If you run as `root` but keys are in `/home/username/.ssh/`, root will be locked out
-- **Best practice:** Run the script as the user who has your SSH keys, or add your key to root first:
-  ```bash
-  # If running as root, add your key first:
-  sudo mkdir -p /root/.ssh
-  sudo chmod 700 /root/.ssh
-  sudo cp ~/.ssh/authorized_keys /root/.ssh/authorized_keys
-  sudo chmod 600 /root/.ssh/authorized_keys
-  ```
+**What the script configures:**
+- Firewall (UFW) - opens ports 22, 80, 443, 2224
+- SSH security - disables password authentication (key-only)
+- IPv4 and IPv6 support
+- Creates deployment directories
 
-This script will:
-- Update system packages
-- Install Docker and Docker Compose
-- Install nginx
-- Install certbot
-- Configure firewall (ports 22, 80, 443, 2224) - **safely handles existing rules**
-- **Configure SSH for key-only authentication** - **disables password auth**
-- Enable IPv4 and IPv6 support
-- Create necessary directories
-
-**Important Notes:**
-
-- **SSH Security:** The script will configure SSH to only allow public key authentication and disable password authentication. **You MUST have SSH keys set up before running this script** (see Step 1.1). The script will check for authorized keys and prompt before making changes.
-
-- **Firewall (UFW):** The script checks for existing firewall rules and only adds new ones if they don't exist. If UFW is not active, you'll be prompted before enabling it to prevent locking yourself out. On Ubuntu 24.04, UFW may already be configured, so the script will preserve existing rules.
+**Important:** The script checks if your current user has SSH keys before disabling password auth and warns you if you'll be locked out.
 
 ## Step 2: Configure DNS
 
@@ -182,7 +195,7 @@ Configure DNS for all three domains:
 
 ### 2.2 Validate DNS Configuration
 
-Wait 5-60 minutes for DNS propagation, then validate:
+Wait 5-60 minutes for DNS propagation, then run the validation script:
 
 ```bash
 cd /opt/r-data-core-demo/scripts
@@ -190,12 +203,17 @@ chmod +x validate-domains.sh
 ./validate-domains.sh [YOUR_IPV4] [YOUR_IPV6]
 ```
 
-The script will check:
-- IPv4 A records for all domains
-- IPv6 AAAA records for all domains
+**What the script checks:**
+- IPv4 A records for all domains (uses external DNS servers: 8.8.8.8, 1.1.1.1)
+- IPv6 AAAA records for all domains (uses external DNS servers)
 - Connectivity to domains
 
-If validation fails, fix DNS and wait for propagation before continuing.
+**If validation fails:**
+1. Verify DNS records in your DNS provider's panel
+2. Wait 5-60 minutes for propagation
+3. Run the validation script again
+
+The script uses external DNS servers to avoid local DNS cache issues.
 
 ## Step 3: Obtain SSL Certificates
 
@@ -207,16 +225,17 @@ chmod +x setup-ssl.sh
 sudo ./setup-ssl.sh
 ```
 
-The script will:
-- Validate domain DNS configuration
-- Obtain Let's Encrypt certificates for all domains
-- Set up automatic renewal via systemd timer
-- Configure renewal hook to reload nginx after certificate updates
+**What the script does:**
+1. Validates domain DNS configuration (uses external DNS servers)
+2. Stops nginx temporarily (certbot needs port 80)
+3. Obtains Let's Encrypt certificates for all domains
+4. Sets up automatic renewal via systemd timer
+5. Configures renewal hook to reload nginx after certificate updates
 
-You'll be prompted for:
-- Email address for Let's Encrypt notifications
+**You'll be prompted for:**
+- Email address for Let's Encrypt notifications (required)
 
-**Systemd Timer:** The script creates a systemd timer (`certbot.timer`) that runs twice daily to check for certificate renewal. The timer is automatically enabled and started. See the "SSL Certificate Renewal" section below for more details.
+**Systemd Timer:** The script automatically creates and enables a systemd timer that runs twice daily (00:00 and 12:00 UTC) to renew certificates. See "SSL Certificate Renewal" section for details.
 
 ### 3.2 Verify Certificates
 
@@ -287,118 +306,103 @@ nginx -t
 systemctl reload nginx
 ```
 
-### 5.3 Configure Nginx to Connect to Docker Network
+### 5.3 Verify Nginx Configuration
 
-Nginx needs to resolve Docker container hostnames. We'll use Docker's host networking or configure nginx to use Docker's DNS.
+The nginx configuration is already set up to connect to Docker containers via localhost ports:
+- API container: `127.0.0.1:8081`
+- Admin FE container: `127.0.0.1:8082`
+- Static website container: `127.0.0.1:8083`
 
-**Option 1: Use Docker host network (recommended for demo)**
+The docker-compose.demo.yml file exposes these ports automatically. No additional configuration needed.
 
-Modify docker-compose.demo.yml to expose services on host network, or:
+## Step 6: Configure Docker Access
 
-**Option 2: Configure nginx with Docker DNS**
+### 6.1 Enable Docker Socket Access for Your User
 
-Add to `/etc/nginx/nginx.conf` in the `http` block:
-
-```nginx
-resolver 127.0.0.11 valid=30s;
-```
-
-And update upstream blocks to use variables:
-
-```nginx
-upstream r_data_core_api {
-    server core:8080 resolve;
-    keepalive 32;
-}
-```
-
-Actually, since nginx runs on the host, we need to either:
-1. Run nginx in Docker on the same network, or
-2. Expose container ports to host and use localhost
-
-For simplicity in demo, we'll expose ports to host. Update docker-compose.demo.yml to expose ports:
-
-```yaml
-core:
-    ports:
-        - "127.0.0.1:8081:8080"
-admin-fe:
-    ports:
-        - "127.0.0.1:8082:8080"
-static-website:
-    ports:
-        - "127.0.0.1:8083:8080"
-```
-
-And update nginx.conf upstreams:
-
-```nginx
-upstream r_data_core_api {
-    server 127.0.0.1:8081;
-}
-upstream r_data_core_admin_fe {
-    server 127.0.0.1:8082;
-}
-upstream r_data_core_static {
-    server 127.0.0.1:8083;
-}
-```
-
-Actually, let me update the docker-compose and nginx configs to handle this properly.
-
-## Step 6: Start Services
-
-### 6.1 Login to GitHub Container Registry
+**Required:** Add your user to the docker group to run Docker commands without sudo:
 
 ```bash
-# On the server
-echo $GITHUB_TOKEN | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+# Add your user to docker group
+sudo usermod -aG docker $USER
+
+# Apply the changes immediately (without logging out)
+newgrp docker
+
+# Verify Docker access works
+docker ps
 ```
 
-Or create a GitHub Personal Access Token with `read:packages` permission and use it.
+**If you get "permission denied" errors:**
+- Make sure you ran `newgrp docker` after adding your user to the group
+- Or log out and log back in to apply the group changes
+- Verify with: `groups` (should show 'docker' in the list)
 
 ### 6.2 Start All Services
 
+**Note:** Since this is a public repository, no authentication is needed to pull Docker images from GHCR.
+
 ```bash
 cd /opt/r-data-core-demo
-export GITHUB_REPO_OWNER=your-username
+
+# Start all services
 docker compose -f docker-compose.demo.yml up -d
 ```
+
+**Note:** Make sure you've synced the static-website directory to `/opt/r-data-core-demo/repo/` before starting services (see Step 1.3).
 
 ### 6.3 Check Service Status
 
 ```bash
+# View all services
 docker compose -f docker-compose.demo.yml ps
+
+# View logs (all services)
 docker compose -f docker-compose.demo.yml logs -f
+
+# View logs for specific service
+docker compose -f docker-compose.demo.yml logs -f core
 ```
 
-### 6.4 Verify Services
+### 6.4 Verify Services Are Running
 
 ```bash
-# Check API
-curl http://localhost:8081/health
+# Check API health endpoint
+curl http://localhost:8081/api/v1/health
 
-# Check admin FE
+# Check admin FE health endpoint
 curl http://localhost:8082/health
 
-# Check static website
+# Check static website health endpoint
 curl http://localhost:8083/health
 ```
 
-## Step 7: Start Nginx
+**Expected output:** All services should return HTTP 200 OK responses.
 
-### 7.1 Start Nginx
+## Step 7: Start Nginx (Optional: Static Website)
+
+**Note:** The static website service is commented out in docker-compose.demo.yml. If you want to deploy it:
+1. Build and publish the static website image to GHCR, or
+2. Uncomment the static-website service in docker-compose.demo.yml and build it locally
+
+For now, continue with the API and Admin FE services.
+
+### 7.1 Start Nginx Service
 
 ```bash
-systemctl start nginx
-systemctl enable nginx
-systemctl status nginx
+# Start nginx
+sudo systemctl start nginx
+
+# Enable nginx to start on boot
+sudo systemctl enable nginx
+
+# Check nginx status
+sudo systemctl status nginx
 ```
 
 ### 7.2 Test Endpoints
 
 ```bash
-# Test API (should redirect to HTTPS)
+# Test API (HTTP should redirect to HTTPS)
 curl -I http://api.rdatacore.eu
 curl -I https://api.rdatacore.eu
 
@@ -409,23 +413,19 @@ curl -I https://demo.rdatacore.eu
 curl -I https://rdatacore.eu
 ```
 
+**Expected:** All endpoints should return HTTP 200 or 301 (redirect) responses.
+
 ## Step 8: Configure GitHub Actions Deployment
 
-### 8.1 Add GitHub Secrets
+### 8.1 Generate SSH Key for GitHub Actions
 
-In your GitHub repository, go to Settings → Secrets and variables → Actions, and add:
-
-- `DEMO_SERVER_SSH_KEY`: Private SSH key for server access
-- `DEMO_SERVER_HOST`: Server hostname or IP (optional, can be set in workflow)
-- `DEMO_SERVER_USER`: SSH user (default: root)
-
-### 8.2 Generate SSH Key
-
-On your local machine:
+On your local machine, generate a dedicated SSH key:
 
 ```bash
 ssh-keygen -t ed25519 -C "github-actions-demo" -f ~/.ssh/demo_server_key
 ```
+
+### 8.2 Add SSH Key to Server
 
 Copy the public key to the server:
 
@@ -433,18 +433,42 @@ Copy the public key to the server:
 ssh-copy-id -i ~/.ssh/demo_server_key.pub root@your-server-ip
 ```
 
-Add the private key (`~/.ssh/demo_server_key`) to GitHub secrets as `DEMO_SERVER_SSH_KEY`.
+Or manually:
+```bash
+cat ~/.ssh/demo_server_key.pub | ssh root@your-server-ip "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+```
 
-### 8.3 Deploy via GitHub Actions
+### 8.3 Add GitHub Secrets
 
-1. Go to Actions tab in GitHub
-2. Select "Deploy Backend to Demo Server" (or Frontend/Static Website)
-3. Click "Run workflow"
-4. Fill in:
-   - Server host
-   - Server user (default: root)
-   - Compose file path (default: `/opt/r-data-core-demo/docker-compose.demo.yml`)
-5. Click "Run workflow"
+In your GitHub repository:
+1. Go to **Settings** → **Secrets and variables** → **Actions**
+2. Click **New repository secret**
+3. Add the following secrets:
+
+   - **Name:** `DEMO_SERVER_SSH_KEY`
+   - **Value:** Contents of `~/.ssh/demo_server_key` (the private key)
+   
+   ```bash
+   cat ~/.ssh/demo_server_key
+   ```
+   
+   Copy the entire output and paste it as the secret value.
+
+### 8.4 Deploy via GitHub Actions
+
+1. Go to **Actions** tab in your GitHub repository
+2. Select one of these workflows:
+   - "Deploy Backend to Demo Server"
+   - "Deploy Frontend to Demo Server"
+   - "Deploy Static Website to Demo Server"
+3. Click **Run workflow**
+4. Fill in the inputs:
+   - **Server host:** Your server IP or hostname
+   - **Server user:** `root` (or your SSH user)
+   - **Compose file path:** `/opt/r-data-core-demo/docker-compose.demo.yml`
+5. Click **Run workflow**
+
+The workflow will SSH to your server and update the Docker containers.
 
 ## Maintenance
 
@@ -470,13 +494,31 @@ docker compose -f /opt/r-data-core-demo/docker-compose.demo.yml restart core
 
 ### Update Services
 
-Use GitHub Actions workflows to deploy updates, or manually:
+**Option 1: Use GitHub Actions (Recommended)**
+
+Use the deployment workflows in GitHub Actions (see Step 8).
+
+**Option 2: Manual Update**
 
 ```bash
 cd /opt/r-data-core-demo
-export GITHUB_REPO_OWNER=your-username
+
+# Pull latest images
 docker compose -f docker-compose.demo.yml pull
+
+# Update static website source (if needed)
+# From your local machine:
+rsync -avz --delete static-website/ root@your-server-ip:/opt/r-data-core-demo/repo/static-website/
+rsync -avz .docker/static-website/ root@your-server-ip:/opt/r-data-core-demo/repo/.docker/static-website/
+
+# Rebuild static website if source changed
+docker compose -f docker-compose.demo.yml build static-website
+
+# Restart services with new images
 docker compose -f docker-compose.demo.yml up -d
+
+# Verify services are running
+docker compose -f docker-compose.demo.yml ps
 ```
 
 ### Backup Database
@@ -550,15 +592,24 @@ journalctl -u certbot.service --since "1 hour ago"
 ### Services Not Starting
 
 ```bash
-# Check logs
-docker compose -f /opt/r-data-core-demo/docker-compose.demo.yml logs
-
 # Check service status
 docker compose -f /opt/r-data-core-demo/docker-compose.demo.yml ps
+
+# Check logs for errors
+docker compose -f /opt/r-data-core-demo/docker-compose.demo.yml logs
+
+# Check specific service logs
+docker compose -f /opt/r-data-core-demo/docker-compose.demo.yml logs core
 
 # Check Docker network
 docker network ls
 docker network inspect rdata_demo_network
+
+# Verify Docker socket permissions
+docker ps
+# If permission denied, add user to docker group:
+sudo usermod -aG docker $USER
+newgrp docker
 ```
 
 ### Nginx Not Working
@@ -578,13 +629,17 @@ tail -f /var/log/nginx/access.log
 ### DNS Issues
 
 ```bash
-# Test DNS resolution
-dig api.rdatacore.eu
-dig AAAA api.rdatacore.eu
+# Test DNS resolution (uses external DNS servers)
+dig @8.8.8.8 api.rdatacore.eu
+dig @8.8.8.8 AAAA api.rdatacore.eu
 
 # Test connectivity
 ping api.rdatacore.eu
 ping6 api.rdatacore.eu
+
+# Run validation script
+cd /opt/r-data-core-demo/scripts
+./validate-domains.sh
 ```
 
 ### SSL Certificate Issues
@@ -718,10 +773,10 @@ journalctl -u ssh -f
 
 ### Demo Setup Security
 
-The setup script implements basic security measures:
+The setup script implements these security measures:
 
 1. **SSH Key-Only Authentication**: Password authentication is disabled
-2. **Firewall (UFW)**: Only necessary ports are open (22, 80, 443)
+2. **Firewall (UFW)**: Only necessary ports are open (22, 80, 443, 2224)
 3. **Root Login**: Restricted to key-only authentication
 4. **SSL/TLS**: All traffic encrypted with Let's Encrypt certificates
 
