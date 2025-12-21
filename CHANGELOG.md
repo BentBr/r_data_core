@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.25](https://github.com/BentBr/r_data_core/compare/v0.1.24...v0.1.25) (2025-12-21)
+
+
+### Bug Fixes
+
+* **ci:** making sure links are distinguished ([94c6551](https://github.com/BentBr/r_data_core/commit/94c6551535c7d4f8b51b82324acf0df749f5827d))
+* **ci:** making sure links are distinguished ([25c9688](https://github.com/BentBr/r_data_core/commit/25c968838c5c719ab814a052aa30c4b72cff3c68))
+
 ## [0.1.24](https://github.com/BentBr/r_data_core/compare/v0.1.23...v0.1.24) (2025-12-21)
 
 
