@@ -98,8 +98,8 @@
     const showDemoDialog = ref(false)
 
     useSEO({
-        title: t('roadmap.seo.title'),
-        description: t('roadmap.seo.description'),
+        title: () => t('roadmap.seo.title'),
+        description: () => t('roadmap.seo.description'),
     })
 
     // Array lengths for v-for loops

@@ -191,6 +191,8 @@ services:
                 VITE_R_DATA_CORE_DEMO_URL: ${VITE_R_DATA_CORE_DEMO_URL:-https://demo.rdatacore.eu}
                 VITE_API_DOCS_URL: ${VITE_API_DOCS_URL:-https://api.rdatacore.eu/api/docs/}
                 VITE_ADMIN_API_DOCS_URL: ${VITE_ADMIN_API_DOCS_URL:-https://api.rdatacore.eu/admin/api/docs/}
+                VITE_GITHUB_RELEASES_URL: ${VITE_GITHUB_RELEASES_URL:-https://github.com/bentbr/r_data_core/releases/latest}
+                VITE_GITHUB_PACKAGES_URL: ${VITE_GITHUB_PACKAGES_URL:-https://github.com/BentBr?tab=packages&repo_name=r_data_core}
         labels:
             - "com.r-data-core.environment=demo"
             - "com.r-data-core.purpose=demo-only"
