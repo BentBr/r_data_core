@@ -9,7 +9,7 @@ const baseUrl = process.env.VITE_BASE_URL || 'https://rdatacore.eu'
 const outputDir = path.join(__dirname, '../dist')
 
 // Only include indexable pages (excluding imprint, privacy)
-const pages = ['/', '/about', '/pricing']
+const pages = ['/', '/about', '/pricing', '/roadmap', '/use-cases']
 const languages = ['en', 'de']
 
 function generateSitemapIndex() {
