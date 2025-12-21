@@ -27,11 +27,6 @@ on:
                 required: true
                 default: '/opt/r-data-core-demo/docker-compose.demo.yml'
                 type: string
-            build_on_server:
-                description: 'Build image on server if not available'
-                required: false
-                default: true
-                type: boolean
 
 env:
     REGISTRY: ghcr.io
@@ -67,7 +62,6 @@ jobs:
                       
                       COMPOSE_FILE="${{ inputs.compose_file_path }}"
                       OWNER_LC="${{ steps.repo.outputs.owner_lc }}"
-                      BUILD_ON_SERVER="${{ inputs.build_on_server }}"
                       
                       # Check if compose file exists
                       if [ ! -f "$COMPOSE_FILE" ]; then
@@ -75,32 +69,15 @@ jobs:
                           exit 1
                       fi
                       
-                      # Check if we need to build (GitHub Actions passes boolean as string)
-                      if [ "$BUILD_ON_SERVER" = "true" ] || [ "$BUILD_ON_SERVER" = "True" ]; then
-                          echo ""
-                          echo "🔨 Building static website image on server..."
-                          export GITHUB_REPO_OWNER="$OWNER_LC"
-                          
-                          # Get the directory containing the compose file
-                          COMPOSE_DIR=$(dirname "$COMPOSE_FILE")
-                          
-                          # Build the image
-                          docker compose -f "$COMPOSE_FILE" build static-website || {
-                              echo "❌ Error: Failed to build static-website image"
-                              exit 1
-                          }
-                      else
-                          echo ""
-                          echo "📥 Attempting to pull static website image..."
-                          echo "⚠️  Note: Static website image may not be available in registry."
-                          echo "   If pull fails, set 'build_on_server' to true."
-                          
-                          export GITHUB_REPO_OWNER="$OWNER_LC"
-                          docker compose -f "$COMPOSE_FILE" pull static-website || {
-                              echo "⚠️  Warning: Failed to pull image. You may need to build it."
-                              echo "   Set 'build_on_server' input to 'true' to build on server."
-                          }
-                      fi
+                      echo ""
+                      echo "📥 Pulling static website image (public repo, no login needed)..."
+                      export GITHUB_REPO_OWNER="$OWNER_LC"
+                      docker compose -f "$COMPOSE_FILE" pull static-website || {
+                          echo "❌ Error: Failed to pull static-website image"
+                          echo "   The static website image may not be published yet."
+                          echo "   Build and publish the image first, or uncomment the build section in docker-compose.demo.yml"
+                          exit 1
+                      }
                       
                       # Restart service
                       echo ""

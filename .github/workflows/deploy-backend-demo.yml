@@ -69,11 +69,7 @@ jobs:
                           exit 1
                       fi
                       
-                      # Login to GHCR if needed
-                      echo "🔐 Logging in to GitHub Container Registry..."
-                      echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin || true
-                      
-                      # Pull latest images
+                      # Pull latest images (public repo, no login needed)
                       echo ""
                       echo "📥 Pulling latest backend images..."
                       export GITHUB_REPO_OWNER="$OWNER_LC"

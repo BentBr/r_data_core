@@ -56,12 +56,22 @@ for domain in "${DOMAINS[@]}"; do
     echo "Checking domain: $domain"
     echo "----------------------------------------"
     
-    # Check IPv4 A record
+    # Check IPv4 A record - use external DNS servers for reliability
     echo -n "  IPv4 (A record): "
-    IPV4_RECORD=$(dig +short A "$domain" | head -n1 || echo "")
+    # Try external DNS servers first (more reliable, avoids local cache issues)
+    IPV4_RECORD=$(dig @8.8.8.8 +short A "$domain" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || echo "")
+    if [ -z "$IPV4_RECORD" ]; then
+        IPV4_RECORD=$(dig @1.1.1.1 +short A "$domain" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || echo "")
+    fi
+    # Fallback to default resolver
+    if [ -z "$IPV4_RECORD" ]; then
+        IPV4_RECORD=$(dig +short A "$domain" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || echo "")
+    fi
+    
     if [ -z "$IPV4_RECORD" ]; then
         echo "❌ NOT FOUND"
         echo "     Error: No A record found for $domain"
+        echo "     Checked external DNS servers (8.8.8.8, 1.1.1.1) - record may not exist"
         ERRORS=$((ERRORS + 1))
     else
         echo "✓ Found: $IPV4_RECORD"
@@ -71,13 +81,23 @@ for domain in "${DOMAINS[@]}"; do
         fi
     fi
     
-    # Check IPv6 AAAA record
+    # Check IPv6 AAAA record - use external DNS servers for reliability
     echo -n "  IPv6 (AAAA record): "
-    IPV6_RECORD=$(dig +short AAAA "$domain" | head -n1 || echo "")
+    # Try external DNS servers first (more reliable, avoids local cache issues)
+    IPV6_RECORD=$(dig @8.8.8.8 +short AAAA "$domain" 2>/dev/null | grep -E '^[0-9a-fA-F:]+$' | head -n1 || echo "")
+    if [ -z "$IPV6_RECORD" ]; then
+        IPV6_RECORD=$(dig @1.1.1.1 +short AAAA "$domain" 2>/dev/null | grep -E '^[0-9a-fA-F:]+$' | head -n1 || echo "")
+    fi
+    # Fallback to default resolver
+    if [ -z "$IPV6_RECORD" ]; then
+        IPV6_RECORD=$(dig +short AAAA "$domain" 2>/dev/null | grep -E '^[0-9a-fA-F:]+$' | head -n1 || echo "")
+    fi
+    
     if [ -z "$IPV6_RECORD" ]; then
         echo "⚠️  NOT FOUND (optional but recommended)"
         if [ -n "$SERVER_IPV6" ]; then
             echo "     Warning: Server has IPv6 but domain does not have AAAA record"
+            echo "     Checked external DNS servers (8.8.8.8, 1.1.1.1) - record may not exist"
         fi
     else
         echo "✓ Found: $IPV6_RECORD"

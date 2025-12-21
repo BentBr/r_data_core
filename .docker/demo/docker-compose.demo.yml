@@ -50,7 +50,7 @@ services:
 
     core:
         container_name: rdata_demo_core
-        image: ghcr.io/${GITHUB_REPO_OWNER:-bentbr}/r-data-core:latest
+        image: ghcr.io/bentbr/r-data-core:latest
         labels:
             - "com.r-data-core.environment=demo"
             - "com.r-data-core.purpose=demo-only"
@@ -87,7 +87,7 @@ services:
 
     worker:
         container_name: rdata_demo_worker
-        image: ghcr.io/${GITHUB_REPO_OWNER:-bentbr}/r-data-core-worker:latest
+        image: ghcr.io/bentbr/r-data-core-worker:latest
         labels:
             - "com.r-data-core.environment=demo"
             - "com.r-data-core.purpose=demo-only"
@@ -122,7 +122,7 @@ services:
 
     maintenance:
         container_name: rdata_demo_maintenance
-        image: ghcr.io/${GITHUB_REPO_OWNER:-bentbr}/r-data-core-maintenance:latest
+        image: ghcr.io/bentbr/r-data-core-maintenance:latest
         labels:
             - "com.r-data-core.environment=demo"
             - "com.r-data-core.purpose=demo-only"
@@ -158,13 +158,13 @@ services:
 
     admin-fe:
         container_name: rdata_demo_admin_fe
-        image: ghcr.io/${GITHUB_REPO_OWNER:-bentbr}/r-data-core-admin-fe:latest
+        image: ghcr.io/bentbr/r-data-core-admin-fe:latest
         labels:
             - "com.r-data-core.environment=demo"
             - "com.r-data-core.purpose=demo-only"
             - "com.r-data-core.service=admin-frontend"
         environment:
-            APP_ENV: demo
+            APP_ENV: prod
         ports:
             - "127.0.0.1:8082:8080"
         networks:
@@ -180,11 +180,11 @@ services:
 
     static-website:
         container_name: rdata_demo_static_website
-        # Note: Static website image needs to be built or published separately
-        # For now, using build context. Update to use image when available.
+        # Build static website from synced source
+        # Source should be synced to /opt/r-data-core-demo/repo/ via rsync
         build:
-            context: ../..
-            dockerfile: .docker/static-website/Dockerfile.demo
+            context: /opt/r-data-core-demo/repo
+            dockerfile: /opt/r-data-core-demo/repo/.docker/static-website/Dockerfile.demo
             args:
                 VITE_BASE_URL: ${VITE_BASE_URL:-https://rdatacore.eu}
                 VITE_SITE_NAME: ${VITE_SITE_NAME:-RDataCore}
