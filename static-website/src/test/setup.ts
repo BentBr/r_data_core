@@ -10,10 +10,12 @@ import {
     VCol,
     VContainer,
     VDialog,
+    VDivider,
     VList,
     VListItem,
     VListItemTitle,
     VMenu,
+    VNavigationDrawer,
     VRow,
 } from 'vuetify/components'
 
@@ -29,10 +31,12 @@ const vuetify = createVuetify({
         VCol,
         VContainer,
         VDialog,
+        VDivider,
         VList,
         VListItem,
         VListItemTitle,
         VMenu,
+        VNavigationDrawer,
         VRow,
     },
 })

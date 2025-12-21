@@ -1,14 +1,28 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import UseCasesPage from './UseCasesPage.vue'
 
-const router = createRouter({
-    history: createMemoryHistory(),
-    routes: [{ path: '/use-cases', component: UseCasesPage }],
-})
+const createTestRouter = () => {
+    const router = createRouter({
+        history: createMemoryHistory(),
+        routes: [
+            { path: '/:lang(en|de)/use-cases', name: 'UseCases', component: UseCasesPage },
+            { path: '/', redirect: '/en' },
+        ],
+    })
+    // Initialize router to a valid route
+    router.push('/en/use-cases')
+    return router
+}
 
 describe('UseCasesPage', () => {
+    let router: ReturnType<typeof createTestRouter>
+
+    beforeEach(async () => {
+        router = createTestRouter()
+        await router.isReady()
+    })
     it('should render the component', () => {
         const wrapper = mount(UseCasesPage, {
             global: {
@@ -118,8 +132,8 @@ describe('UseCasesPage', () => {
         const buttons = wrapper.findAll('button')
 
         // Find the try demo button in CTA section
-        const tryDemoButton = buttons.find(btn =>
-            btn.text().includes('Try demo') || btn.text().includes('Try Demo')
+        const tryDemoButton = buttons.find(
+            btn => btn.text().includes('Try demo') || btn.text().includes('Try Demo')
         )
 
         if (tryDemoButton) {
@@ -131,5 +145,3 @@ describe('UseCasesPage', () => {
         }
     })
 })
-
-

@@ -1,18 +1,58 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import Footer from './Footer.vue'
 
-const router = createRouter({
-    history: createMemoryHistory(),
-    routes: [
-        { path: '/', name: 'Home', component: { template: '<div>Home</div>' } },
-        { path: '/about', name: 'About', component: { template: '<div>About</div>' } },
-        { path: '/pricing', name: 'Pricing', component: { template: '<div>Pricing</div>' } },
-    ],
-})
+const createTestRouter = () => {
+    const router = createRouter({
+        history: createMemoryHistory(),
+        routes: [
+            { path: '/:lang(en|de)', name: 'Home', component: { template: '<div>Home</div>' } },
+            {
+                path: '/:lang(en|de)/about',
+                name: 'About',
+                component: { template: '<div>About</div>' },
+            },
+            {
+                path: '/:lang(en|de)/pricing',
+                name: 'Pricing',
+                component: { template: '<div>Pricing</div>' },
+            },
+            {
+                path: '/:lang(en|de)/roadmap',
+                name: 'Roadmap',
+                component: { template: '<div>Roadmap</div>' },
+            },
+            {
+                path: '/:lang(en|de)/use-cases',
+                name: 'UseCases',
+                component: { template: '<div>UseCases</div>' },
+            },
+            {
+                path: '/:lang(en|de)/imprint',
+                name: 'Imprint',
+                component: { template: '<div>Imprint</div>' },
+            },
+            {
+                path: '/:lang(en|de)/privacy',
+                name: 'Privacy',
+                component: { template: '<div>Privacy</div>' },
+            },
+            { path: '/', redirect: '/en' },
+        ],
+    })
+    // Initialize router to a valid route
+    router.push('/en')
+    return router
+}
 
 describe('Footer', () => {
+    let router: ReturnType<typeof createTestRouter>
+
+    beforeEach(async () => {
+        router = createTestRouter()
+        await router.isReady()
+    })
     it('should render the component', () => {
         const wrapper = mount(Footer, {
             global: {

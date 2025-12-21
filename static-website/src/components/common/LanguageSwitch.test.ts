@@ -1,14 +1,28 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import LanguageSwitch from './LanguageSwitch.vue'
 
-const router = createRouter({
-    history: createMemoryHistory(),
-    routes: [{ path: '/:lang?', name: 'Home', component: { template: '<div>Home</div>' } }],
-})
+const createTestRouter = () => {
+    const router = createRouter({
+        history: createMemoryHistory(),
+        routes: [
+            { path: '/:lang(en|de)', name: 'Home', component: { template: '<div>Home</div>' } },
+            { path: '/', redirect: '/en' },
+        ],
+    })
+    // Initialize router to a valid route
+    router.push('/en')
+    return router
+}
 
 describe('LanguageSwitch', () => {
+    let router: ReturnType<typeof createTestRouter>
+
+    beforeEach(async () => {
+        router = createTestRouter()
+        await router.isReady()
+    })
     it('should render the component', () => {
         const wrapper = mount(LanguageSwitch, {
             global: {

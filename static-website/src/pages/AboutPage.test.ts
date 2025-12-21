@@ -1,14 +1,28 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import AboutPage from './AboutPage.vue'
 
-const router = createRouter({
-    history: createMemoryHistory(),
-    routes: [{ path: '/about', component: AboutPage }],
-})
+const createTestRouter = () => {
+    const router = createRouter({
+        history: createMemoryHistory(),
+        routes: [
+            { path: '/:lang(en|de)/about', name: 'About', component: AboutPage },
+            { path: '/', redirect: '/en' },
+        ],
+    })
+    // Initialize router to a valid route
+    router.push('/en/about')
+    return router
+}
 
 describe('AboutPage', () => {
+    let router: ReturnType<typeof createTestRouter>
+
+    beforeEach(async () => {
+        router = createTestRouter()
+        await router.isReady()
+    })
     it('should render the component', () => {
         const wrapper = mount(AboutPage, {
             global: {
@@ -71,5 +85,3 @@ describe('AboutPage', () => {
         expect(dialog.props('modelValue')).toBe(false)
     })
 })
-
-
