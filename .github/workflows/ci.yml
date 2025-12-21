@@ -533,10 +533,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-static-website-node-modules-
 
+      - name: Install system dependencies for sharp
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvips-dev
+
       - name: Install dependencies
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         working-directory: static-website
         run: npm ci
+
+      - name: Generate images
+        working-directory: static-website
+        run: npm run generate:images
 
       - name: Run tests
         working-directory: static-website
