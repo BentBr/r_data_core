@@ -40,6 +40,16 @@ if [ -n "$VITE_DEFAULT_PAGE_SIZE" ]; then
     echo "    VITE_DEFAULT_PAGE_SIZE: '${VITE_DEFAULT_PAGE_SIZE}'," >> "$CONFIG_FILE"
 fi
 
+# Add VITE_MAX_PAGE_SIZE (optional)
+if [ -n "$VITE_MAX_PAGE_SIZE" ]; then
+    echo "    VITE_MAX_PAGE_SIZE: '${VITE_MAX_PAGE_SIZE}'," >> "$CONFIG_FILE"
+fi
+
+# Add VITE_TOKEN_REFRESH_BUFFER (optional)
+if [ -n "$VITE_TOKEN_REFRESH_BUFFER" ]; then
+    echo "    VITE_TOKEN_REFRESH_BUFFER: '${VITE_TOKEN_REFRESH_BUFFER}'," >> "$CONFIG_FILE"
+fi
+
 # Close the config object
 echo "};" >> "$CONFIG_FILE"
 
