@@ -3,12 +3,26 @@ import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import RoadmapPage from './RoadmapPage.vue'
 
-const router = createRouter({
-    history: createMemoryHistory(),
-    routes: [{ path: '/roadmap', component: RoadmapPage }],
-})
+const createTestRouter = () => {
+    const router = createRouter({
+        history: createMemoryHistory(),
+        routes: [
+            { path: '/:lang(en|de)/roadmap', name: 'Roadmap', component: RoadmapPage },
+            { path: '/', redirect: '/en' },
+        ],
+    })
+    // Initialize router to a valid route
+    router.push('/en/roadmap')
+    return router
+}
 
 describe('RoadmapPage', () => {
+    let router: ReturnType<typeof createTestRouter>
+
+    beforeEach(async () => {
+        router = createTestRouter()
+        await router.isReady()
+    })
     it('should render the component', () => {
         const wrapper = mount(RoadmapPage, {
             global: {
@@ -49,9 +63,12 @@ describe('RoadmapPage', () => {
 })
 
 describe('RoadmapPage - Wish a Feature Section', () => {
+    let router: ReturnType<typeof createTestRouter>
     let windowOpenSpy: ReturnType<typeof vi.spyOn>
 
-    beforeEach(() => {
+    beforeEach(async () => {
+        router = createTestRouter()
+        await router.isReady()
         windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
     })
 
@@ -214,6 +231,13 @@ describe('RoadmapPage - Wish a Feature Section', () => {
 })
 
 describe('RoadmapPage - Demo Dialog', () => {
+    let router: ReturnType<typeof createTestRouter>
+
+    beforeEach(async () => {
+        router = createTestRouter()
+        await router.isReady()
+    })
+
     it('should have demo credentials dialog', () => {
         const wrapper = mount(RoadmapPage, {
             global: {

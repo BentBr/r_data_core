@@ -2,16 +2,19 @@ import { describe, it, expect } from 'vitest'
 import { createRouter, createMemoryHistory } from 'vue-router'
 
 describe('Router', () => {
-    it('should create router instance', () => {
+    it('should create router instance', async () => {
         const router = createRouter({
             history: createMemoryHistory(),
             routes: [{ path: '/', component: { template: '<div>Home</div>' } }],
         })
+        // Initialize router to a valid route
+        await router.push('/')
+        await router.isReady()
         expect(router).toBeDefined()
         expect(typeof router.push).toBe('function')
     })
 
-    it('should support language-based routes', () => {
+    it('should support language-based routes', async () => {
         const router = createRouter({
             history: createMemoryHistory(),
             routes: [
@@ -22,6 +25,9 @@ describe('Router', () => {
                 },
             ],
         })
+        // Initialize router to a valid route
+        await router.push('/')
+        await router.isReady()
         expect(router).toBeDefined()
     })
 

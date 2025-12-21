@@ -1,14 +1,28 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import PricingPage from './PricingPage.vue'
 
-const router = createRouter({
-    history: createMemoryHistory(),
-    routes: [{ path: '/pricing', component: PricingPage }],
-})
+const createTestRouter = () => {
+    const router = createRouter({
+        history: createMemoryHistory(),
+        routes: [
+            { path: '/:lang(en|de)/pricing', name: 'Pricing', component: PricingPage },
+            { path: '/', redirect: '/en' },
+        ],
+    })
+    // Initialize router to a valid route
+    router.push('/en/pricing')
+    return router
+}
 
 describe('PricingPage', () => {
+    let router: ReturnType<typeof createTestRouter>
+
+    beforeEach(async () => {
+        router = createTestRouter()
+        await router.isReady()
+    })
     it('should render the component', () => {
         const wrapper = mount(PricingPage, {
             global: {

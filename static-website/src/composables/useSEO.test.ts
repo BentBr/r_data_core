@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useSEO } from './useSEO'
 import { mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, ref } from 'vue'
 
 // Mock the env-check module
 vi.mock('@/env-check', () => ({
@@ -15,7 +15,7 @@ vi.mock('@/env-check', () => ({
 // Mock the translations composable
 vi.mock('./useTranslations', () => ({
     useTranslations: () => ({
-        currentLanguage: { value: 'en' },
+        currentLanguage: ref('en'),
     }),
 }))
 
