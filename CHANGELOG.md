@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.22](https://github.com/BentBr/r_data_core/compare/v0.1.21...v0.1.22) (2025-12-21)
+
+
+### Bug Fixes
+
+* **ci:** making sure the Labels do have proper info for dockerfiles (… ([f93baed](https://github.com/BentBr/r_data_core/commit/f93baed56c599d509d0045f39791d4c25ece3ed5))
+* **ci:** making sure the Labels do have proper info for dockerfiles (missing quotes) ([aca147d](https://github.com/BentBr/r_data_core/commit/aca147d214a72ef46aa6d37d10c52bb8a90e2268))
+
 ## [0.1.21](https://github.com/BentBr/r_data_core/compare/v0.1.20...v0.1.21) (2025-12-21)
 
 
