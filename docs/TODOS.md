@@ -46,3 +46,4 @@ fixes:
   - Stefano
   - Matthias
   - Jan B.
+- check manual ci deploy demo stuff
