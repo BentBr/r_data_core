@@ -84,15 +84,29 @@
                 </div>
             </div>
         </Section>
+
+        <DemoCredentialsDialog
+            :model-value="showDemoDialog"
+            :title="t('cta.demo_overlay.title')"
+            :hint="t('cta.demo_overlay.hint')"
+            :username-label="t('cta.demo_overlay.username')"
+            :password-label="t('cta.demo_overlay.password')"
+            :cancel-label="t('cta.demo_overlay.cancel')"
+            :open-demo-label="t('cta.demo_overlay.open')"
+            @update:model-value="showDemoDialog = $event"
+        />
     </div>
 </template>
 
 <script setup lang="ts">
+    import { ref, onMounted, onUnmounted } from 'vue'
     import Section from '@/components/Section.vue'
+    import DemoCredentialsDialog from '@/components/DemoCredentialsDialog.vue'
     import { useTranslations } from '@/composables/useTranslations'
     import { useSEO } from '@/composables/useSEO'
 
     const { t } = useTranslations()
+    const showDemoDialog = ref(false)
 
     useSEO({
         title: t('use_cases.seo.title'),
@@ -108,8 +122,21 @@
     ]
 
     const openDemo = () => {
-        window.dispatchEvent(new CustomEvent('open-demo'))
+        showDemoDialog.value = true
     }
+
+    // Listen for the open-demo event from Header
+    const handleOpenDemo = () => {
+        showDemoDialog.value = true
+    }
+
+    onMounted(() => {
+        window.addEventListener('open-demo', handleOpenDemo)
+    })
+
+    onUnmounted(() => {
+        window.removeEventListener('open-demo', handleOpenDemo)
+    })
 </script>
 
 <style scoped>
