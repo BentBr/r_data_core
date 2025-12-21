@@ -165,6 +165,9 @@ services:
             - "com.r-data-core.service=admin-frontend"
         environment:
             APP_ENV: prod
+            # Runtime configuration: These VITE_* variables are injected at container startup
+            # via docker-entrypoint.sh and loaded by the frontend as window.__APP_CONFIG__
+            # The API base URL must point to the API server (api.rdatacore.eu), not the FE domain
             VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://api.rdatacore.eu}
             VITE_ADMIN_BASE_URL: ${VITE_ADMIN_BASE_URL:-https://demo.rdatacore.eu}
             VITE_DEV_MODE: ${VITE_DEV_MODE:-false}

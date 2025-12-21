@@ -1,6 +1,42 @@
 // Environment Variables Check
 // This utility helps verify that Vite is properly reading environment variables
 
+// Type definition for runtime configuration injected by docker-entrypoint.sh
+declare global {
+    interface Window {
+        __APP_CONFIG__?: {
+            VITE_API_BASE_URL?: string
+            VITE_ADMIN_BASE_URL?: string
+            VITE_DEV_MODE?: string
+            VITE_ENABLE_API_LOGGING?: string
+            VITE_DEFAULT_PAGE_SIZE?: string
+            VITE_MAX_PAGE_SIZE?: string
+        }
+    }
+}
+
+/**
+ * Get a configuration value with fallback priority:
+ * 1. Runtime config (window.__APP_CONFIG__) - highest priority
+ * 2. Build-time config (import.meta.env) - for dev/build
+ * 3. Fallback value - if provided
+ */
+function getConfigValue(key: string, fallback?: string): string | undefined {
+    // Check runtime config first (injected at container startup)
+    if (typeof window !== 'undefined' && window.__APP_CONFIG__?.[key as keyof typeof window.__APP_CONFIG__]) {
+        return window.__APP_CONFIG__[key as keyof typeof window.__APP_CONFIG__]
+    }
+
+    // Fall back to build-time Vite env vars
+    const viteValue = import.meta.env[key as keyof typeof import.meta.env]
+    if (viteValue && typeof viteValue === 'string' && viteValue.trim() !== '') {
+        return viteValue
+    }
+
+    // Return fallback if provided
+    return fallback
+}
+
 export function checkEnvironmentVariables() {
     const envVars = {
         VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
@@ -24,15 +60,17 @@ export function checkEnvironmentVariables() {
 
 /**
  * Get the API base URL with proper fallback
- * In development, uses empty string for relative URLs (proxied by Vite)
- * In production, uses env var or falls back to window.location.origin
+ * Priority:
+ * 1. Runtime config (window.__APP_CONFIG__.VITE_API_BASE_URL) - from container env vars
+ * 2. Build-time config (import.meta.env.VITE_API_BASE_URL) - for dev/build
+ * 3. In development, use empty string for relative URLs (proxied by Vite)
+ * 4. In production, fall back to current origin (backwards compatibility)
  */
 function getApiBaseUrl(): string {
-    const envUrl = import.meta.env.VITE_API_BASE_URL
-
-    // If env var is explicitly set, use it
-    if (envUrl && envUrl.trim() !== '') {
-        return envUrl.trim()
+    // Check runtime config first (highest priority)
+    const runtimeUrl = getConfigValue('VITE_API_BASE_URL')
+    if (runtimeUrl && runtimeUrl.trim() !== '') {
+        return runtimeUrl.trim()
     }
 
     // In development, use empty string for relative URLs (Vite proxy handles it)
@@ -40,7 +78,8 @@ function getApiBaseUrl(): string {
         return ''
     }
 
-    // In production, fall back to current origin if env var not set
+    // In production, fall back to current origin if env var not set (backwards compatibility)
+    // Note: This is not ideal - VITE_API_BASE_URL should be set at runtime
     if (typeof window !== 'undefined') {
         return window.location.origin
     }
@@ -73,19 +112,45 @@ export const env = {
     get apiBaseUrl() {
         return getApiBaseUrl()
     },
-    adminBaseUrl: import.meta.env.VITE_ADMIN_BASE_URL,
-    devMode: import.meta.env.VITE_DEV_MODE === 'true',
-    enableApiLogging: import.meta.env.VITE_ENABLE_API_LOGGING === 'true',
-    defaultPageSize: parseInt(import.meta.env.VITE_DEFAULT_PAGE_SIZE ?? '100', 10),
-    maxPageSize: parseInt(import.meta.env.VITE_MAX_PAGE_SIZE ?? '100', 10),
-    tokenRefreshBuffer: parseInt(import.meta.env.VITE_TOKEN_REFRESH_BUFFER ?? '5', 10),
+    get adminBaseUrl() {
+        return getConfigValue('VITE_ADMIN_BASE_URL') ?? import.meta.env.VITE_ADMIN_BASE_URL
+    },
+    get devMode() {
+        const value = getConfigValue('VITE_DEV_MODE') ?? import.meta.env.VITE_DEV_MODE
+        return value === 'true'
+    },
+    get enableApiLogging() {
+        const value = getConfigValue('VITE_ENABLE_API_LOGGING') ?? import.meta.env.VITE_ENABLE_API_LOGGING
+        return value === 'true'
+    },
+    get defaultPageSize() {
+        const value = getConfigValue('VITE_DEFAULT_PAGE_SIZE') ?? import.meta.env.VITE_DEFAULT_PAGE_SIZE
+        return parseInt(value ?? '100', 10)
+    },
+    get maxPageSize() {
+        const value = getConfigValue('VITE_MAX_PAGE_SIZE') ?? import.meta.env.VITE_MAX_PAGE_SIZE
+        return parseInt(value ?? '100', 10)
+    },
+    get tokenRefreshBuffer() {
+        const value = getConfigValue('VITE_TOKEN_REFRESH_BUFFER') ?? import.meta.env.VITE_TOKEN_REFRESH_BUFFER
+        return parseInt(value ?? '5', 10)
+    },
     isProduction: import.meta.env.PROD,
     isDevelopment: import.meta.env.DEV,
 }
 
 // Feature flags
 export const features = {
-    apiKeyManagement: import.meta.env.VITE_ENABLE_API_KEY_MANAGEMENT !== 'false',
-    userManagement: import.meta.env.VITE_ENABLE_USER_MANAGEMENT !== 'false',
-    systemMetrics: import.meta.env.VITE_ENABLE_SYSTEM_METRICS !== 'false',
+    get apiKeyManagement() {
+        const value = getConfigValue('VITE_ENABLE_API_KEY_MANAGEMENT') ?? import.meta.env.VITE_ENABLE_API_KEY_MANAGEMENT
+        return value !== 'false'
+    },
+    get userManagement() {
+        const value = getConfigValue('VITE_ENABLE_USER_MANAGEMENT') ?? import.meta.env.VITE_ENABLE_USER_MANAGEMENT
+        return value !== 'false'
+    },
+    get systemMetrics() {
+        const value = getConfigValue('VITE_ENABLE_SYSTEM_METRICS') ?? import.meta.env.VITE_ENABLE_SYSTEM_METRICS
+        return value !== 'false'
+    },
 }
