@@ -11,6 +11,7 @@ declare global {
             VITE_ENABLE_API_LOGGING?: string
             VITE_DEFAULT_PAGE_SIZE?: string
             VITE_MAX_PAGE_SIZE?: string
+            VITE_TOKEN_REFRESH_BUFFER?: string
         }
     }
 }
@@ -23,12 +24,16 @@ declare global {
  */
 function getConfigValue(key: string, fallback?: string): string | undefined {
     // Check runtime config first (injected at container startup)
-    if (typeof window !== 'undefined' && window.__APP_CONFIG__?.[key as keyof typeof window.__APP_CONFIG__]) {
+    if (
+        typeof window !== 'undefined' &&
+        window.__APP_CONFIG__?.[key as keyof typeof window.__APP_CONFIG__]
+    ) {
         return window.__APP_CONFIG__[key as keyof typeof window.__APP_CONFIG__]
     }
 
     // Fall back to build-time Vite env vars
-    const viteValue = import.meta.env[key as keyof typeof import.meta.env]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const viteValue = (import.meta.env as any)[key]
     if (viteValue && typeof viteValue === 'string' && viteValue.trim() !== '') {
         return viteValue
     }
@@ -120,11 +125,13 @@ export const env = {
         return value === 'true'
     },
     get enableApiLogging() {
-        const value = getConfigValue('VITE_ENABLE_API_LOGGING') ?? import.meta.env.VITE_ENABLE_API_LOGGING
+        const value =
+            getConfigValue('VITE_ENABLE_API_LOGGING') ?? import.meta.env.VITE_ENABLE_API_LOGGING
         return value === 'true'
     },
     get defaultPageSize() {
-        const value = getConfigValue('VITE_DEFAULT_PAGE_SIZE') ?? import.meta.env.VITE_DEFAULT_PAGE_SIZE
+        const value =
+            getConfigValue('VITE_DEFAULT_PAGE_SIZE') ?? import.meta.env.VITE_DEFAULT_PAGE_SIZE
         return parseInt(value ?? '100', 10)
     },
     get maxPageSize() {
@@ -132,25 +139,10 @@ export const env = {
         return parseInt(value ?? '100', 10)
     },
     get tokenRefreshBuffer() {
-        const value = getConfigValue('VITE_TOKEN_REFRESH_BUFFER') ?? import.meta.env.VITE_TOKEN_REFRESH_BUFFER
+        const value =
+            getConfigValue('VITE_TOKEN_REFRESH_BUFFER') ?? import.meta.env.VITE_TOKEN_REFRESH_BUFFER
         return parseInt(value ?? '5', 10)
     },
     isProduction: import.meta.env.PROD,
     isDevelopment: import.meta.env.DEV,
-}
-
-// Feature flags
-export const features = {
-    get apiKeyManagement() {
-        const value = getConfigValue('VITE_ENABLE_API_KEY_MANAGEMENT') ?? import.meta.env.VITE_ENABLE_API_KEY_MANAGEMENT
-        return value !== 'false'
-    },
-    get userManagement() {
-        const value = getConfigValue('VITE_ENABLE_USER_MANAGEMENT') ?? import.meta.env.VITE_ENABLE_USER_MANAGEMENT
-        return value !== 'false'
-    },
-    get systemMetrics() {
-        const value = getConfigValue('VITE_ENABLE_SYSTEM_METRICS') ?? import.meta.env.VITE_ENABLE_SYSTEM_METRICS
-        return value !== 'false'
-    },
 }
