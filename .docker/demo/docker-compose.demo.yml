@@ -1,0 +1,226 @@
+# ==============================================================================
+# Demo Docker Compose Configuration
+# ==============================================================================
+# ⚠️  WARNING: This is a DEMO setup, NOT for production use.
+# True production deployments should use native Kubernetes (k8s).
+# ==============================================================================
+
+name: r-data-core-demo
+
+services:
+    postgres:
+        container_name: rdata_demo_postgres
+        image: postgres:18-alpine
+        labels:
+            - "com.r-data-core.environment=demo"
+            - "com.r-data-core.purpose=demo-only"
+        environment:
+            POSTGRES_USER: ${POSTGRES_USER:-postgres}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+            POSTGRES_DB: ${POSTGRES_DB:-rdata}
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: [ 'CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres}' ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
+        networks:
+            - rdata_demo_network
+        restart: unless-stopped
+
+    redis:
+        container_name: rdata_demo_redis
+        image: redis:8-alpine
+        labels:
+            - "com.r-data-core.environment=demo"
+            - "com.r-data-core.purpose=demo-only"
+        volumes:
+            - redis_data:/data
+        healthcheck:
+            test: [ "CMD", "redis-cli", "ping" ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 5s
+        networks:
+            - rdata_demo_network
+        restart: unless-stopped
+
+    core:
+        container_name: rdata_demo_core
+        image: ghcr.io/${GITHUB_REPO_OWNER:-bentbr}/r-data-core:latest
+        labels:
+            - "com.r-data-core.environment=demo"
+            - "com.r-data-core.purpose=demo-only"
+            - "com.r-data-core.service=api"
+        env_file:
+            - .env
+        environment:
+            APP_ENV: demo
+            DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-rdata}
+            REDIS_URL: redis://redis:6379
+            API_HOST: 0.0.0.0
+            API_PORT: 8080
+            RUST_LOG: ${RUST_LOG:-info}
+            LOG_LEVEL: ${LOG_LEVEL:-info}
+            API_ENABLE_DOCS: ${API_ENABLE_DOCS:-true}
+            CORS_ORIGINS: ${CORS_ORIGINS:-https://demo.rdatacore.eu,https://rdatacore.eu}
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        ports:
+            - "127.0.0.1:8081:8080"
+        networks:
+            - rdata_demo_network
+        restart: unless-stopped
+        healthcheck:
+            # Check if the API is responding (health endpoint)
+            test: [ "CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8080/api/v1/health || exit 1" ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
+
+    worker:
+        container_name: rdata_demo_worker
+        image: ghcr.io/${GITHUB_REPO_OWNER:-bentbr}/r-data-core-worker:latest
+        labels:
+            - "com.r-data-core.environment=demo"
+            - "com.r-data-core.purpose=demo-only"
+            - "com.r-data-core.service=worker"
+        env_file:
+            - .env
+        environment:
+            APP_ENV: demo
+            DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-rdata}
+            WORKER_DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-rdata}
+            REDIS_URL: redis://redis:6379
+            QUEUE_FETCH_KEY: ${QUEUE_FETCH_KEY:-queue:workflows:fetch}
+            QUEUE_PROCESS_KEY: ${QUEUE_PROCESS_KEY:-queue:workflows:process}
+            RUST_LOG: ${RUST_LOG:-info}
+            LOG_LEVEL: ${LOG_LEVEL:-info}
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        networks:
+            - rdata_demo_network
+        restart: unless-stopped
+        healthcheck:
+            # Worker is a background service without HTTP endpoint
+            # Check if process is running
+            test: [ "CMD-SHELL", "ps aux | grep -q '[r]_data_core_worker' || exit 1" ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
+
+    maintenance:
+        container_name: rdata_demo_maintenance
+        image: ghcr.io/${GITHUB_REPO_OWNER:-bentbr}/r-data-core-maintenance:latest
+        labels:
+            - "com.r-data-core.environment=demo"
+            - "com.r-data-core.purpose=demo-only"
+            - "com.r-data-core.service=maintenance"
+        env_file:
+            - .env
+        environment:
+            APP_ENV: demo
+            DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-rdata}
+            WORKER_DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-rdata}
+            MAINTENANCE_DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-rdata}
+            REDIS_URL: redis://redis:6379
+            RUST_LOG: ${RUST_LOG:-info}
+            LOG_LEVEL: ${LOG_LEVEL:-info}
+            VERSION_PURGER_CRON: ${VERSION_PURGER_CRON:-0 */5 * * * *}
+            REFRESH_TOKEN_CLEANUP_CRON: ${REFRESH_TOKEN_CLEANUP_CRON:-0 */5 * * * *}
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        networks:
+            - rdata_demo_network
+        restart: unless-stopped
+        healthcheck:
+            # Maintenance is a background service without HTTP endpoint
+            # Check if process is running
+            test: [ "CMD-SHELL", "ps aux | grep -q '[r]_data_core_maintenance' || exit 1" ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
+
+    admin-fe:
+        container_name: rdata_demo_admin_fe
+        image: ghcr.io/${GITHUB_REPO_OWNER:-bentbr}/r-data-core-admin-fe:latest
+        labels:
+            - "com.r-data-core.environment=demo"
+            - "com.r-data-core.purpose=demo-only"
+            - "com.r-data-core.service=admin-frontend"
+        environment:
+            APP_ENV: demo
+        ports:
+            - "127.0.0.1:8082:8080"
+        networks:
+            - rdata_demo_network
+        restart: unless-stopped
+        healthcheck:
+            # nginx:alpine has wget, but use sh fallback for compatibility
+            test: [ "CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1" ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
+
+    static-website:
+        container_name: rdata_demo_static_website
+        # Note: Static website image needs to be built or published separately
+        # For now, using build context. Update to use image when available.
+        build:
+            context: ../..
+            dockerfile: .docker/static-website/Dockerfile.demo
+            args:
+                VITE_BASE_URL: ${VITE_BASE_URL:-https://rdatacore.eu}
+                VITE_SITE_NAME: ${VITE_SITE_NAME:-RDataCore}
+                VITE_R_DATA_CORE_DEMO_URL: ${VITE_R_DATA_CORE_DEMO_URL:-https://demo.rdatacore.eu}
+                VITE_API_DOCS_URL: ${VITE_API_DOCS_URL:-https://api.rdatacore.eu/api/docs/}
+                VITE_ADMIN_API_DOCS_URL: ${VITE_ADMIN_API_DOCS_URL:-https://api.rdatacore.eu/admin/api/docs/}
+        labels:
+            - "com.r-data-core.environment=demo"
+            - "com.r-data-core.purpose=demo-only"
+            - "com.r-data-core.service=static-website"
+        environment:
+            APP_ENV: demo
+        ports:
+            - "127.0.0.1:8083:8080"
+        networks:
+            - rdata_demo_network
+        restart: unless-stopped
+        healthcheck:
+            # nginx:alpine has wget, but use sh fallback for compatibility
+            test: [ "CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1" ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
+
+volumes:
+    postgres_data:
+        labels:
+            - "com.r-data-core.environment=demo"
+    redis_data:
+        labels:
+            - "com.r-data-core.environment=demo"
+
+networks:
+    rdata_demo_network:
+        name: rdata_demo_network
+        labels:
+            - "com.r-data-core.environment=demo"
+

@@ -1,0 +1,113 @@
+# ==============================================================================
+# Deploy Frontend to Demo Server
+# ==============================================================================
+# ⚠️  WARNING: This is a DEMO deployment workflow, NOT for production use.
+# True production deployments should use native Kubernetes (k8s).
+# ==============================================================================
+# This workflow deploys the admin frontend to the demo server via SSH.
+# ==============================================================================
+
+name: Deploy Frontend to Demo Server
+
+on:
+    workflow_dispatch:
+        inputs:
+            server_host:
+                description: 'Demo server hostname or IP'
+                required: true
+                type: string
+            server_user:
+                description: 'SSH user for demo server'
+                required: true
+                default: 'root'
+                type: string
+            compose_file_path:
+                description: 'Path to docker-compose.demo.yml on server'
+                required: true
+                default: '/opt/r-data-core-demo/docker-compose.demo.yml'
+                type: string
+
+env:
+    REGISTRY: ghcr.io
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Set lowercase repo owner
+              id: repo
+              run: echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
+
+            - name: Deploy frontend to demo server
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ inputs.server_host }}
+                  username: ${{ inputs.server_user }}
+                  key: ${{ secrets.DEMO_SERVER_SSH_KEY }}
+                  port: 22
+                  script: |
+                      set -euo pipefail
+                      
+                      echo "=============================================================================="
+                      echo "⚠️  DEMO FRONTEND DEPLOYMENT - NOT FOR PRODUCTION"
+                      echo "=============================================================================="
+                      echo ""
+                      
+                      COMPOSE_FILE="${{ inputs.compose_file_path }}"
+                      OWNER_LC="${{ steps.repo.outputs.owner_lc }}"
+                      
+                      # Check if compose file exists
+                      if [ ! -f "$COMPOSE_FILE" ]; then
+                          echo "❌ Error: Compose file not found at $COMPOSE_FILE"
+                          exit 1
+                      fi
+                      
+                      # Login to GHCR if needed
+                      echo "🔐 Logging in to GitHub Container Registry..."
+                      echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin || true
+                      
+                      # Pull latest image
+                      echo ""
+                      echo "📥 Pulling latest admin frontend image..."
+                      export GITHUB_REPO_OWNER="$OWNER_LC"
+                      docker compose -f "$COMPOSE_FILE" pull admin-fe || {
+                          echo "❌ Error: Failed to pull admin-fe image"
+                          exit 1
+                      }
+                      
+                      # Restart service
+                      echo ""
+                      echo "🔄 Restarting admin frontend service..."
+                      export GITHUB_REPO_OWNER="$OWNER_LC"
+                      docker compose -f "$COMPOSE_FILE" up -d admin-fe
+                      
+                      # Wait for health check
+                      echo ""
+                      echo "⏳ Waiting for service to be healthy..."
+                      sleep 10
+                      
+                      # Check service status
+                      echo ""
+                      echo "📊 Service status:"
+                      docker compose -f "$COMPOSE_FILE" ps admin-fe
+                      
+                      # Test endpoint
+                      echo ""
+                      echo "🧪 Testing endpoint..."
+                      if curl -f -s http://localhost:8080/health > /dev/null 2>&1; then
+                          echo "✅ Health check passed"
+                      else
+                          echo "⚠️  Warning: Health check failed (service may still be starting)"
+                      fi
+                      
+                      echo ""
+                      echo "✅ Frontend deployment complete!"
+                      echo ""
+                      echo "⚠️  Remember: This is a DEMO setup, not production!"
+

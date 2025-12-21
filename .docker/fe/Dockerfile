@@ -36,12 +36,18 @@ LABEL org.opencontainers.image.title="r-data-core-admin-fe" \
       org.opencontainers.image.revision=$OCI_REVISION \
       org.opencontainers.image.created=$OCI_CREATED
 
+# Create nginx cache directories with proper permissions
+RUN mkdir -p /var/cache/nginx/client_temp \
+    /var/cache/nginx/proxy_temp \
+    /var/cache/nginx/fastcgi_temp \
+    /var/cache/nginx/uwsgi_temp \
+    /var/cache/nginx/scgi_temp \
+    && chown -R nginx:nginx /var/cache/nginx \
+    && chmod -R 755 /var/cache/nginx \
+
 # Copy built assets and config with correct ownership
 COPY --from=builder --chown=nginx:nginx /app/dist /usr/share/nginx/html
 COPY .docker/fe/nginx.conf /etc/nginx/conf.d/default.conf
-
-# Switch to non-root user
-USER nginx
 
 EXPOSE 8080
 
