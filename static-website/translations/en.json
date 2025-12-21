@@ -23,7 +23,8 @@
       "footnote": "Free for developers, educators & small teams. No credit card needed! 🎉",
       "api_docs": "📚 API Documentation",
       "admin_api_docs": "🔧 Admin API Docs",
-      "github_releases": "📦 Docker Images"
+      "github_releases": "📦 Docker Images",
+      "github_packages": "📦 Docker Images"
     },
     "built_different": {
       "self_hosted": {
