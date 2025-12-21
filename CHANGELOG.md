@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.20](https://github.com/BentBr/r_data_core/compare/v0.1.19...v0.1.20) (2025-12-21)
+
+
+### Bug Fixes
+
+* **ci:** making sure the Dockerfile has no not needed user directive + cache folders ([e00f0b6](https://github.com/BentBr/r_data_core/commit/e00f0b68940bdb8d21ce5b7de3b80f6bf74babda))
+* **ci:** proper ufw is disabled handling ([b2c8c58](https://github.com/BentBr/r_data_core/commit/b2c8c588118a22f9856ce998ded1bf00656dc7c1))
+
 ## [0.1.19](https://github.com/BentBr/r_data_core/compare/v0.1.18...v0.1.19) (2025-12-18)
 
 
