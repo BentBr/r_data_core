@@ -31,6 +31,7 @@ use std::env;
 use std::process::ExitCode;
 
 use dotenvy::dotenv;
+use r_data_core_persistence::MigrationService;
 use sqlx::postgres::PgPoolOptions;
 
 /// Main entry point for the migration runner
@@ -78,10 +79,16 @@ async fn main() -> ExitCode {
         }
     };
 
+    // Create migration service
+    let service = MigrationService::new(pool);
+
     if check_status {
         // Just check status, don't run migrations
-        match check_migration_status(&pool).await {
-            Ok(()) => ExitCode::SUCCESS,
+        match service.check_status().await {
+            Ok(status) => {
+                print_migration_status(&status);
+                ExitCode::SUCCESS
+            }
             Err(e) => {
                 eprintln!("Error checking migration status: {e}");
                 ExitCode::FAILURE
@@ -89,80 +96,47 @@ async fn main() -> ExitCode {
         }
     } else {
         // Run migrations
-        match run_migrations(&pool).await {
+        println!("Running migrations...");
+        match service.run_migrations().await {
             Ok(()) => {
                 println!("Migrations completed successfully.");
                 ExitCode::SUCCESS
             }
             Err(e) => {
-                eprintln!("Error running migrations: {e}");
-                ExitCode::FAILURE
+                let error_msg = e.to_string();
+                if error_msg.contains("already exist") {
+                    println!("Note: Some migration objects already exist (this is usually fine)");
+                    ExitCode::SUCCESS
+                } else {
+                    eprintln!("Error running migrations: {e}");
+                    ExitCode::FAILURE
+                }
             }
         }
     }
 }
 
-/// Run pending migrations
-async fn run_migrations(pool: &sqlx::PgPool) -> Result<(), String> {
-    println!("Running migrations...");
-
-    sqlx::migrate!("../../migrations")
-        .run(pool)
-        .await
-        .map_err(|e| {
-            if e.to_string().contains("already exists") {
-                // Some objects already exist, this is often fine
-                println!("Note: Some migration objects already exist (this is usually fine)");
-                return String::new();
-            }
-            format!("Migration failed: {e}")
-        })?;
-
-    Ok(())
-}
-
-/// Check migration status without running
-async fn check_migration_status(pool: &sqlx::PgPool) -> Result<(), String> {
+/// Print migration status to stdout
+fn print_migration_status(status: &r_data_core_persistence::MigrationStatus) {
     println!("Checking migration status...");
     println!();
 
-    // Check if _sqlx_migrations table exists
-    let table_exists: bool = sqlx::query_scalar(
-        r"SELECT EXISTS (
-            SELECT FROM information_schema.tables
-            WHERE table_schema = 'public'
-            AND table_name = '_sqlx_migrations'
-        )",
-    )
-    .fetch_one(pool)
-    .await
-    .map_err(|e| format!("Failed to check migrations table: {e}"))?;
-
-    if !table_exists {
+    if !status.table_exists {
         println!("No migrations have been run yet (migrations table does not exist).");
         println!("Run without --status to apply all pending migrations.");
-        return Ok(());
+        return;
     }
 
-    // Get applied migrations
-    let applied: Vec<(i64, String)> =
-        sqlx::query_as(r"SELECT version, description FROM _sqlx_migrations ORDER BY version")
-            .fetch_all(pool)
-            .await
-            .map_err(|e| format!("Failed to query migrations: {e}"))?;
-
-    if applied.is_empty() {
+    if status.applied_migrations.is_empty() {
         println!("No migrations have been applied yet.");
     } else {
         println!("Applied migrations:");
-        for (version, description) in &applied {
-            println!("  [{version}] {description}");
+        for migration in &status.applied_migrations {
+            println!("  [{}] {}", migration.version, migration.description);
         }
         println!();
-        println!("Total: {} migrations applied", applied.len());
+        println!("Total: {} migrations applied", status.applied_count());
     }
-
-    Ok(())
 }
 
 /// Mask the password in a database URL for safe display

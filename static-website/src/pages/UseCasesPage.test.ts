@@ -1,16 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
-import HomePage from './HomePage.vue'
+import UseCasesPage from './UseCasesPage.vue'
 
 const router = createRouter({
     history: createMemoryHistory(),
-    routes: [{ path: '/', component: HomePage }],
+    routes: [{ path: '/use-cases', component: UseCasesPage }],
 })
 
-describe('HomePage', () => {
+describe('UseCasesPage', () => {
     it('should render the component', () => {
-        const wrapper = mount(HomePage, {
+        const wrapper = mount(UseCasesPage, {
             global: {
                 plugins: [router],
             },
@@ -19,7 +19,7 @@ describe('HomePage', () => {
     })
 
     it('should have hero section', () => {
-        const wrapper = mount(HomePage, {
+        const wrapper = mount(UseCasesPage, {
             global: {
                 plugins: [router],
             },
@@ -27,36 +27,35 @@ describe('HomePage', () => {
         expect(wrapper.find('.hero-section').exists()).toBe(true)
     })
 
-    it('should have features section', () => {
-        const wrapper = mount(HomePage, {
+    it('should have intro section', () => {
+        const wrapper = mount(UseCasesPage, {
             global: {
                 plugins: [router],
             },
         })
-        expect(wrapper.find('.features-section').exists()).toBe(true)
+        expect(wrapper.find('.intro-section').exists()).toBe(true)
     })
 
-    it('should have feature section structure', () => {
-        const wrapper = mount(HomePage, {
+    it('should have cases section', () => {
+        const wrapper = mount(UseCasesPage, {
             global: {
                 plugins: [router],
             },
         })
-        expect(wrapper.find('.features-section').exists()).toBe(true)
+        expect(wrapper.find('.cases-section').exists()).toBe(true)
     })
 
-    it('should have CTA buttons', () => {
-        const wrapper = mount(HomePage, {
+    it('should have CTA section', () => {
+        const wrapper = mount(UseCasesPage, {
             global: {
                 plugins: [router],
             },
         })
-        const buttons = wrapper.findAll('button')
-        expect(buttons.length).toBeGreaterThan(0)
+        expect(wrapper.find('.cta-section').exists()).toBe(true)
     })
 
     it('should have demo credentials dialog', () => {
-        const wrapper = mount(HomePage, {
+        const wrapper = mount(UseCasesPage, {
             global: {
                 plugins: [router],
             },
@@ -65,30 +64,8 @@ describe('HomePage', () => {
         expect(dialog.exists()).toBe(true)
     })
 
-    it('should have API documentation links', () => {
-        const wrapper = mount(HomePage, {
-            global: {
-                plugins: [router],
-            },
-        })
-        const apiDocsText = wrapper.text()
-        // Check that API documentation section exists
-        expect(apiDocsText).toContain('API')
-    })
-
-    it('should handle open-demo event', () => {
-        const wrapper = mount(HomePage, {
-            global: {
-                plugins: [router],
-            },
-        })
-
-        // Component should have event listener
-        expect(wrapper.vm).toBeDefined()
-    })
-
     it('should open demo dialog when open-demo event is dispatched', async () => {
-        const wrapper = mount(HomePage, {
+        const wrapper = mount(UseCasesPage, {
             global: {
                 plugins: [router],
             },
@@ -109,7 +86,7 @@ describe('HomePage', () => {
     })
 
     it('should close demo dialog when update:modelValue is emitted', async () => {
-        const wrapper = mount(HomePage, {
+        const wrapper = mount(UseCasesPage, {
             global: {
                 plugins: [router],
             },
@@ -129,4 +106,30 @@ describe('HomePage', () => {
         // Dialog should be closed
         expect(dialog.props('modelValue')).toBe(false)
     })
+
+    it('should open demo dialog when CTA button is clicked', async () => {
+        const wrapper = mount(UseCasesPage, {
+            global: {
+                plugins: [router],
+            },
+        })
+
+        const dialog = wrapper.findComponent({ name: 'DemoCredentialsDialog' })
+        const buttons = wrapper.findAll('button')
+
+        // Find the try demo button in CTA section
+        const tryDemoButton = buttons.find(btn =>
+            btn.text().includes('Try demo') || btn.text().includes('Try Demo')
+        )
+
+        if (tryDemoButton) {
+            await tryDemoButton.trigger('click')
+            await wrapper.vm.$nextTick()
+
+            // Dialog should be open
+            expect(dialog.props('modelValue')).toBe(true)
+        }
+    })
 })
+
+

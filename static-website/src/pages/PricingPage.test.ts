@@ -97,4 +97,57 @@ describe('PricingPage', () => {
         })
         expect(wrapper.find('.corporate-cta-section').exists()).toBe(true)
     })
+
+    it('should have demo credentials dialog', () => {
+        const wrapper = mount(PricingPage, {
+            global: {
+                plugins: [router],
+            },
+        })
+        const dialog = wrapper.findComponent({ name: 'DemoCredentialsDialog' })
+        expect(dialog.exists()).toBe(true)
+    })
+
+    it('should open demo dialog when open-demo event is dispatched', async () => {
+        const wrapper = mount(PricingPage, {
+            global: {
+                plugins: [router],
+            },
+        })
+
+        const dialog = wrapper.findComponent({ name: 'DemoCredentialsDialog' })
+        expect(dialog.exists()).toBe(true)
+
+        // Initially dialog should be closed
+        expect(dialog.props('modelValue')).toBe(false)
+
+        // Dispatch the open-demo event
+        window.dispatchEvent(new CustomEvent('open-demo'))
+        await wrapper.vm.$nextTick()
+
+        // Dialog should now be open
+        expect(dialog.props('modelValue')).toBe(true)
+    })
+
+    it('should close demo dialog when update:modelValue is emitted', async () => {
+        const wrapper = mount(PricingPage, {
+            global: {
+                plugins: [router],
+            },
+        })
+
+        const dialog = wrapper.findComponent({ name: 'DemoCredentialsDialog' })
+
+        // Open the dialog first
+        window.dispatchEvent(new CustomEvent('open-demo'))
+        await wrapper.vm.$nextTick()
+        expect(dialog.props('modelValue')).toBe(true)
+
+        // Close the dialog
+        dialog.vm.$emit('update:modelValue', false)
+        await wrapper.vm.$nextTick()
+
+        // Dialog should be closed
+        expect(dialog.props('modelValue')).toBe(false)
+    })
 })
