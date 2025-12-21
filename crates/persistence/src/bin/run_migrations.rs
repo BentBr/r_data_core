@@ -145,12 +145,11 @@ async fn check_migration_status(pool: &sqlx::PgPool) -> Result<(), String> {
     }
 
     // Get applied migrations
-    let applied: Vec<(i64, String)> = sqlx::query_as(
-        r"SELECT version, description FROM _sqlx_migrations ORDER BY version",
-    )
-    .fetch_all(pool)
-    .await
-    .map_err(|e| format!("Failed to query migrations: {e}"))?;
+    let applied: Vec<(i64, String)> =
+        sqlx::query_as(r"SELECT version, description FROM _sqlx_migrations ORDER BY version")
+            .fetch_all(pool)
+            .await
+            .map_err(|e| format!("Failed to query migrations: {e}"))?;
 
     if applied.is_empty() {
         println!("No migrations have been applied yet.");
