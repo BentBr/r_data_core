@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.24](https://github.com/BentBr/r_data_core/compare/v0.1.23...v0.1.24) (2025-12-21)
+
+
+### Bug Fixes
+
+* **ci:** frontend building still fails. trying to quote properly ([2f5cdd6](https://github.com/BentBr/r_data_core/commit/2f5cdd63bf3d77282d3568818b8e58eef6f98cac))
+* **ci:** frontend building still fails. trying to quote properly ([2536ae0](https://github.com/BentBr/r_data_core/commit/2536ae09732a8953cf9af248db5ec2e30320cdff))
+
 ## [0.1.23](https://github.com/BentBr/r_data_core/compare/v0.1.22...v0.1.23) (2025-12-21)
 
 
