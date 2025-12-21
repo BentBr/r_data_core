@@ -119,14 +119,29 @@ impl EntityDefinitionService {
             .update_entity_view_for_entity_definition(definition)
             .await?;
 
-        // Cache the new definition with both keys
-        let type_key = Self::cache_key_by_entity_type(&definition.entity_type);
+        // Fetch the created definition from the database to get the correct UUID and all fields
+        let created_definition = self.repository.get_by_uuid(&uuid).await?.ok_or_else(|| {
+            r_data_core_core::error::Error::NotFound(format!(
+                "Entity definition with UUID {uuid} not found after creation"
+            ))
+        })?;
+
+        // Cache the new definition with both keys (using the fetched definition with correct UUID)
+        let type_key = Self::cache_key_by_entity_type(&created_definition.entity_type);
         let uuid_key = Self::cache_key_by_uuid(&uuid);
 
-        if let Err(e) = self.cache_manager.set(&type_key, definition, None).await {
+        if let Err(e) = self
+            .cache_manager
+            .set(&type_key, &created_definition, None)
+            .await
+        {
             log::warn!("Failed to cache new entity definition by type: {e}");
         }
-        if let Err(e) = self.cache_manager.set(&uuid_key, definition, None).await {
+        if let Err(e) = self
+            .cache_manager
+            .set(&uuid_key, &created_definition, None)
+            .await
+        {
             log::warn!("Failed to cache new entity definition by UUID: {e}");
         }
 
@@ -168,14 +183,29 @@ impl EntityDefinitionService {
             .update_entity_view_for_entity_definition(definition)
             .await?;
 
-        // Cache the updated definition with both keys
-        let type_key = Self::cache_key_by_entity_type(&definition.entity_type);
+        // Fetch the updated definition from the database to get the correct state
+        let updated_definition = self.repository.get_by_uuid(uuid).await?.ok_or_else(|| {
+            r_data_core_core::error::Error::NotFound(format!(
+                "Entity definition with UUID {uuid} not found after update"
+            ))
+        })?;
+
+        // Cache the updated definition with both keys (using the fetched definition)
+        let type_key = Self::cache_key_by_entity_type(&updated_definition.entity_type);
         let uuid_key = Self::cache_key_by_uuid(uuid);
 
-        if let Err(e) = self.cache_manager.set(&type_key, definition, None).await {
+        if let Err(e) = self
+            .cache_manager
+            .set(&type_key, &updated_definition, None)
+            .await
+        {
             log::warn!("Failed to cache updated entity definition by type: {e}");
         }
-        if let Err(e) = self.cache_manager.set(&uuid_key, definition, None).await {
+        if let Err(e) = self
+            .cache_manager
+            .set(&uuid_key, &updated_definition, None)
+            .await
+        {
             log::warn!("Failed to cache updated entity definition by UUID: {e}");
         }
 

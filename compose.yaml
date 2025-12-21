@@ -207,10 +207,8 @@ services:
 
     node-static:
         container_name: rdata_node_static
-        build:
-            context: .
-            dockerfile: ./.docker/static-website/Dockerfile
-        platform: linux/amd64
+        image: node:22-alpine
+        command: sh -c "cd /var/www/html/ && npm install && npm run dev && tail -f /dev/null" # preventing it from stopping again
         volumes:
             - ./static-website:/var/www/html
             - node_static_modules:/var/www/html/node_modules
