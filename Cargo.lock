@@ -2472,6 +2472,7 @@ dependencies = [
  "anyhow",
  "argon2",
  "async-trait",
+ "dotenvy",
  "log",
  "r_data_core_core",
  "r_data_core_workflow",

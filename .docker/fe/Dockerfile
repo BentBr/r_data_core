@@ -32,9 +32,9 @@ ARG OCI_CREATED
 
 LABEL org.opencontainers.image.title="r-data-core-admin-fe" \
       org.opencontainers.image.description="Admin frontend for r_data_core, served by nginx." \
-      org.opencontainers.image.source=$OCI_SOURCE \
-      org.opencontainers.image.revision=$OCI_REVISION \
-      org.opencontainers.image.created=$OCI_CREATED
+      org.opencontainers.image.source="${OCI_SOURCE}" \
+      org.opencontainers.image.revision="${OCI_REVISION}" \
+      org.opencontainers.image.created="${OCI_CREATED}"
 
 # Create nginx cache directories with proper permissions
 RUN mkdir -p /var/cache/nginx/client_temp \
