@@ -43,7 +43,7 @@ RUN mkdir -p /var/cache/nginx/client_temp \
     /var/cache/nginx/uwsgi_temp \
     /var/cache/nginx/scgi_temp \
     && chown -R nginx:nginx /var/cache/nginx \
-    && chmod -R 755 /var/cache/nginx \
+    && chmod -R 755 /var/cache/nginx
 
 # Copy built assets and config with correct ownership
 COPY --from=builder --chown=nginx:nginx /app/dist /usr/share/nginx/html
