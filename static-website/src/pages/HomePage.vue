@@ -60,13 +60,13 @@
                         {{ t('home.hero.admin_api_docs') }}
                     </a>
                     <a
-                        v-if="githubReleasesUrl"
-                        :href="githubReleasesUrl"
+                        v-if="githubPackagesUrl"
+                        :href="githubPackagesUrl"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="doc-link"
                     >
-                        {{ t('home.hero.github_releases') }}
+                        {{ t('home.hero.github_packages') }}
                     </a>
                 </div>
             </div>
@@ -455,10 +455,10 @@
 
     const featureItems = computed(() => get<Array<Record<string, string>>>('features.items') ?? [])
 
-    // API documentation and releases URLs from environment
+    // API documentation and packages URLs from environment
     const apiDocsUrl = env.apiDocsUrl
     const adminApiDocsUrl = env.adminApiDocsUrl
-    const githubReleasesUrl = env.githubReleasesUrl
+    const githubPackagesUrl = env.githubPackagesUrl
 
     const openDemo = () => {
         showDemoDialog.value = true
