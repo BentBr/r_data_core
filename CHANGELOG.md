@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.26](https://github.com/BentBr/r_data_core/compare/v0.1.25...v0.1.26) (2025-12-21)
+
+
+### Bug Fixes
+
+* **ci:** making sure our admin fe is working in ci ([dec7fdc](https://github.com/BentBr/r_data_core/commit/dec7fdcbbba3e99b09759339df147f6330007052))
+* **demo:** updated env for compose setup ([8f60dca](https://github.com/BentBr/r_data_core/commit/8f60dcaadf2aa896ce8fae8935a1ed98592d99be))
+* **static:** adding fallback if async translation in not yet returning string in time ([875477b](https://github.com/BentBr/r_data_core/commit/875477b2a396fbb0fef874b1a2393d3f27a4d686))
+
 ## [0.1.25](https://github.com/BentBr/r_data_core/compare/v0.1.24...v0.1.25) (2025-12-21)
 
 
