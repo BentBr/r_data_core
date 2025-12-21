@@ -103,10 +103,7 @@ async fn main() -> ExitCode {
         }
 
         println!("Clearing entire cache...");
-        match redis::cmd("FLUSHDB")
-            .query_async::<()>(&mut conn)
-            .await
-        {
+        match redis::cmd("FLUSHDB").query_async::<()>(&mut conn).await {
             Ok(()) => {
                 println!("Cache cleared successfully.");
                 ExitCode::SUCCESS
