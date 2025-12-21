@@ -77,8 +77,8 @@
     const { t } = useTranslations()
 
     useSEO({
-        title: t('privacy.seo.title'),
-        description: t('privacy.seo.description'),
+        title: () => t('privacy.seo.title'),
+        description: () => t('privacy.seo.description'),
     })
 </script>
 

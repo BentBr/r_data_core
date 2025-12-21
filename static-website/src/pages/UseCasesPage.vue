@@ -109,8 +109,8 @@
     const showDemoDialog = ref(false)
 
     useSEO({
-        title: t('use_cases.seo.title'),
-        description: t('use_cases.seo.description'),
+        title: () => t('use_cases.seo.title'),
+        description: () => t('use_cases.seo.description'),
     })
 
     const useCases = [

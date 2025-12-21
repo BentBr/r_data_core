@@ -165,6 +165,13 @@ services:
             - "com.r-data-core.service=admin-frontend"
         environment:
             APP_ENV: prod
+            # Runtime configuration: These VITE_* variables are injected at container startup
+            # via docker-entrypoint.sh and loaded by the frontend as window.__APP_CONFIG__
+            # The API base URL must point to the API server (api.rdatacore.eu), not the FE domain
+            VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://api.rdatacore.eu}
+            VITE_ADMIN_BASE_URL: ${VITE_ADMIN_BASE_URL:-https://demo.rdatacore.eu}
+            VITE_DEV_MODE: ${VITE_DEV_MODE:-false}
+            VITE_ENABLE_API_LOGGING: ${VITE_ENABLE_API_LOGGING:-false}
         ports:
             - "127.0.0.1:8082:8080"
         networks:
@@ -191,6 +198,8 @@ services:
                 VITE_R_DATA_CORE_DEMO_URL: ${VITE_R_DATA_CORE_DEMO_URL:-https://demo.rdatacore.eu}
                 VITE_API_DOCS_URL: ${VITE_API_DOCS_URL:-https://api.rdatacore.eu/api/docs/}
                 VITE_ADMIN_API_DOCS_URL: ${VITE_ADMIN_API_DOCS_URL:-https://api.rdatacore.eu/admin/api/docs/}
+                VITE_GITHUB_RELEASES_URL: ${VITE_GITHUB_RELEASES_URL:-https://github.com/bentbr/r_data_core/releases/latest}
+                VITE_GITHUB_PACKAGES_URL: ${VITE_GITHUB_PACKAGES_URL:-https://github.com/BentBr?tab=packages&repo_name=r_data_core}
         labels:
             - "com.r-data-core.environment=demo"
             - "com.r-data-core.purpose=demo-only"

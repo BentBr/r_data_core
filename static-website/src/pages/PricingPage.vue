@@ -712,8 +712,8 @@
     })
 
     useSEO({
-        title: t('seo.pricing.title'),
-        description: t('seo.pricing.description'),
+        title: () => t('seo.pricing.title'),
+        description: () => t('seo.pricing.description'),
     })
 </script>
 

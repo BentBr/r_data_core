@@ -49,6 +49,11 @@ RUN mkdir -p /var/cache/nginx/client_temp \
 COPY --from=builder --chown=nginx:nginx /app/dist /usr/share/nginx/html
 COPY .docker/fe/nginx.conf /etc/nginx/conf.d/default.conf
 
+# Copy and set up entrypoint script for runtime configuration
+COPY .docker/fe/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 EXPOSE 8080
 
-CMD ["nginx", "-g", "daemon off;"]
+# Use entrypoint script to generate runtime config and start nginx
+CMD ["/docker-entrypoint.sh"]

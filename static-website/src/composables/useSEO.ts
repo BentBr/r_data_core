@@ -4,11 +4,18 @@ import { env, getBaseUrl } from '@/env-check'
 import { useTranslations } from './useTranslations'
 
 type SeoOptions = {
-    title?: string
-    description?: string
+    title?: string | (() => string)
+    description?: string | (() => string)
     keywords?: string[]
     siteName?: string
     locale?: string
+}
+
+function resolveOption(option: string | (() => string) | undefined): string | undefined {
+    if (typeof option === 'function') {
+        return option()
+    }
+    return option
 }
 
 function setMetaTag(name: string, content: string) {
@@ -64,9 +71,12 @@ export function useSEO(options: SeoOptions) {
         // Call getBaseUrl() directly instead of using env.baseUrl getter to avoid reactive tracking
         const siteName = env.siteName ?? 'RDataCore'
         const baseUrl = getBaseUrl()
-        const baseTitle = options.title ?? siteName
+        // Resolve options at call time to support reactive translations
+        const resolvedTitle = resolveOption(options.title)
+        const resolvedDescription = resolveOption(options.description)
+        const baseTitle = resolvedTitle ?? siteName
         const fullTitle = `${baseTitle} · ${siteName}`
-        const description = options.description ?? siteName
+        const description = resolvedDescription ?? siteName
         const keywords = options.keywords?.join(', ') ?? 'data, rdatacore'
         // Use current language from composable instead of static options
         const locale = currentLanguage.value

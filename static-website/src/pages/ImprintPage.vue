@@ -60,8 +60,8 @@
     const { t } = useTranslations()
 
     useSEO({
-        title: t('imprint.seo.title'),
-        description: t('imprint.seo.description'),
+        title: () => t('imprint.seo.title'),
+        description: () => t('imprint.seo.description'),
     })
 </script>
 

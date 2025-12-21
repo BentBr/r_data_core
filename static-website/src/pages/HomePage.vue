@@ -487,8 +487,8 @@
     })
 
     useSEO({
-        title: t('seo.home.title'),
-        description: t('seo.home.description'),
+        title: () => t('seo.home.title'),
+        description: () => t('seo.home.description'),
     })
 </script>
 
