@@ -100,7 +100,7 @@ ARG OCI_REVISION
 ARG OCI_CREATED
 
 LABEL org.opencontainers.image.title="r-data-core" \
-      org.opencontainers.image.description="r_data_core backend API service." \
+      org.opencontainers.image.description="r_data_core backend API service with utility binaries." \
       org.opencontainers.image.source=$OCI_SOURCE \
       org.opencontainers.image.revision=$OCI_REVISION \
       org.opencontainers.image.created=$OCI_CREATED
@@ -118,6 +118,12 @@ WORKDIR /home/appuser
 
 # Copy main binary
 COPY --from=builder --chown=appuser:appuser /app/target/release/r_data_core /usr/local/bin/r_data_core
+
+# Copy utility binaries for operations/maintenance tasks
+# These can be run via: docker compose exec core /usr/local/bin/<binary>
+COPY --from=builder --chown=appuser:appuser /app/target/release/run_migrations /usr/local/bin/run_migrations
+COPY --from=builder --chown=appuser:appuser /app/target/release/clear_cache /usr/local/bin/clear_cache
+COPY --from=builder --chown=appuser:appuser /app/target/release/hash_password /usr/local/bin/hash_password
 
 ENTRYPOINT ["/usr/local/bin/r_data_core"]
 
@@ -168,9 +174,9 @@ ARG OCI_CREATED
 
 LABEL org.opencontainers.image.title="r-data-core-maintenance" \
       org.opencontainers.image.description="r_data_core maintenance/ops image for administrative and one-off tasks." \
-      org.opencontainers.image.source=$OCI_SOURCE \
-      org.opencontainers.image.revision=$OCI_REVISION \
-      org.opencontainers.image.created=$OCI_CREATED
+      org.opencontainers.image.source="${OCI_SOURCE}" \
+      org.opencontainers.image.revision="${OCI_REVISION}" \
+      org.opencontainers.image.created="${OCI_CREATED}"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
