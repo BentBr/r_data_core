@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.27](https://github.com/BentBr/r_data_core/compare/v0.1.26...v0.1.27) (2025-12-21)
+
+
+### Bug Fixes
+
+* fixing sitemaps - now all pages ([e85f7ff](https://github.com/BentBr/r_data_core/commit/e85f7ffbaf2818a86e732ffb2b9f68f89b439d3d))
+* making sure the nill uuid is not cached for new entity_definitions ([7f120f4](https://github.com/BentBr/r_data_core/commit/7f120f4bce86c138f0c1e3be46993b7ecfae3176))
+
 ## [0.1.26](https://github.com/BentBr/r_data_core/compare/v0.1.25...v0.1.26) (2025-12-21)
 
 
