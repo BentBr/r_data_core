@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.21](https://github.com/BentBr/r_data_core/compare/v0.1.20...v0.1.21) (2025-12-21)
+
+
+### Bug Fixes
+
+* removing mistakingly added "\" ([285e58a](https://github.com/BentBr/r_data_core/commit/285e58ad0886ed6c85a2a7666adfd73376350fcc))
+
 ## [0.1.20](https://github.com/BentBr/r_data_core/compare/v0.1.19...v0.1.20) (2025-12-21)
 
 
