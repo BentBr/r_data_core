@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.28](https://github.com/BentBr/r_data_core/compare/v0.1.27...v0.1.28) (2025-12-22)
+
+
+### Bug Fixes
+
+* **tests:** making sure ci is running again after uuid return for ent… ([7ed2aa7](https://github.com/BentBr/r_data_core/commit/7ed2aa74ba5215828e0837d780b263f0b101af03))
+* **tests:** making sure ci is running again after uuid return for entity_definitions ([3ce6a2a](https://github.com/BentBr/r_data_core/commit/3ce6a2a891a31fe8e8cb0fa2a105755d95ab50d8))
+
 ## [0.1.27](https://github.com/BentBr/r_data_core/compare/v0.1.26...v0.1.27) (2025-12-21)
 
 
