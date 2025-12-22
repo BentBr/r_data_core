@@ -166,6 +166,13 @@ async fn test_create_entity_definition_success() -> Result<()> {
         .with(predicate::always())
         .returning(|_| Ok(()));
 
+    // After create, get_by_uuid is called to fetch the complete definition for caching
+    let definition_clone = definition.clone();
+    mock_repo
+        .expect_get_by_uuid()
+        .with(eq(expected_uuid))
+        .returning(move |_| Ok(Some(definition_clone.clone())));
+
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
     let result = service.create_entity_definition(&definition).await?;
 
@@ -407,9 +414,11 @@ async fn test_update_entity_definition_success() -> Result<()> {
     let uuid = Uuid::now_v7();
     let definition = create_test_entity_definition();
 
+    // First call: get existing definition before update
     mock_repo
         .expect_get_by_uuid()
         .withf(move |id| id == &uuid)
+        .times(1)
         .returning(|_| {
             // Create a fresh definition for each call to avoid ownership issues
             let def = create_test_entity_definition();
@@ -424,6 +433,17 @@ async fn test_update_entity_definition_success() -> Result<()> {
     mock_repo
         .expect_update_entity_view_for_entity_definition()
         .returning(|_| Ok(()));
+
+    // Second call: get updated definition after update (for caching)
+    mock_repo
+        .expect_get_by_uuid()
+        .withf(move |id| id == &uuid)
+        .times(1)
+        .returning(|_| {
+            // Create a fresh definition for each call to avoid ownership issues
+            let def = create_test_entity_definition();
+            Ok(Some(def))
+        });
 
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
     let result = service.update_entity_definition(&uuid, &definition).await;

@@ -301,4 +301,182 @@ mod tests {
         clear_test_db(&pool).await?;
         Ok(())
     }
+
+    /// Test that entity definition UUID is correctly set after creation
+    ///
+    /// This test verifies that when creating an entity definition via the HTTP API,
+    /// the UUID is properly set in the database and can be retrieved correctly.
+    /// Previously, the cached version had a nil UUID instead of the actual UUID.
+    ///
+    /// # Errors
+    /// Returns an error if the test setup or API call fails
+    #[tokio::test]
+    #[serial]
+    async fn test_entity_definition_uuid_after_creation() -> Result<()> {
+        let pool = setup_test_db().await;
+        let user_uuid = create_test_admin_user(&pool).await?;
+
+        let entity_def_repo = Arc::new(r_data_core_persistence::EntityDefinitionRepository::new(
+            pool.pool.clone(),
+        ));
+
+        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
+        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
+
+        let cache_config = CacheConfig {
+            entity_definition_ttl: 3600, // Enable caching with TTL
+            api_key_ttl: 600,
+            enabled: true,
+            ttl: 3600,
+            max_size: 1000,
+        };
+
+        let cache_manager = Arc::new(CacheManager::new(cache_config));
+
+        let dashboard_stats_repository =
+            r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone());
+        let dashboard_stats_service =
+            r_data_core_services::DashboardStatsService::new(Arc::new(dashboard_stats_repository));
+
+        let api_state = ApiState {
+            db_pool: pool.pool.clone(),
+            api_config: r_data_core_core::config::ApiConfig {
+                host: "0.0.0.0".to_string(),
+                port: 8888,
+                use_tls: false,
+                jwt_secret: "test_secret".to_string(),
+                jwt_expiration: 3600,
+                enable_docs: true,
+                cors_origins: vec![],
+                check_default_admin_password: true,
+            },
+            role_service: r_data_core_services::RoleService::new(
+                pool.pool.clone(),
+                cache_manager.clone(),
+                Some(0),
+            ),
+            cache_manager: cache_manager.clone(),
+            api_key_service: ApiKeyService::from_repository(api_key_repo),
+            admin_user_service: AdminUserService::from_repository(admin_user_repo),
+            entity_definition_service: EntityDefinitionService::new(
+                entity_def_repo,
+                cache_manager.clone(),
+            ),
+            dynamic_entity_service: None,
+            workflow_service: r_data_core_services::WorkflowService::new(Arc::new(
+                r_data_core_services::WorkflowRepositoryAdapter::new(
+                    r_data_core_persistence::WorkflowRepository::new(pool.pool.clone()),
+                ),
+            )),
+            dashboard_stats_service,
+            queue: test_queue_client_async().await,
+        };
+
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(r_data_core_api::ApiStateWrapper::new(
+                    api_state,
+                )))
+                .service(web::scope("/admin/api/v1").service(
+                    web::scope("/entity-definitions").configure(
+                        r_data_core_api::admin::entity_definitions::routes::register_routes,
+                    ),
+                )),
+        )
+        .await;
+
+        // Create a JWT token for authentication
+        let token = create_test_jwt_token(&user_uuid, "test_secret");
+
+        // Create an entity definition via HTTP API
+        let entity_def_payload = serde_json::json!({
+            "entity_type": "customer",
+            "display_name": "Customer",
+            "description": "regular customer with default fields",
+            "group_name": "",
+            "allow_children": false,
+            "icon": "user",
+            "fields": [],
+            "published": true
+        });
+
+        let req = test::TestRequest::post()
+            .uri("/admin/api/v1/entity-definitions")
+            .insert_header((header::CONTENT_TYPE, "application/json"))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {token}")))
+            .set_json(&entity_def_payload)
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), StatusCode::CREATED);
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        assert_eq!(body["status"], "Success");
+
+        // Extract the UUID from the creation response
+        let created_uuid_str = body["data"]["uuid"]
+            .as_str()
+            .expect("UUID should be present in response");
+        let created_uuid = Uuid::parse_str(created_uuid_str).expect("UUID should be valid");
+
+        // Verify UUID is not nil
+        assert_ne!(created_uuid, Uuid::nil(), "Created UUID should not be nil");
+
+        // Retrieve the entity definition by UUID via HTTP API
+        let req = test::TestRequest::get()
+            .uri(&format!("/admin/api/v1/entity-definitions/{created_uuid}"))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {token}")))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        assert_eq!(body["status"], "Success");
+
+        // Verify the UUID in the retrieved response matches the created UUID
+        let retrieved_uuid_str = body["data"]["uuid"]
+            .as_str()
+            .expect("UUID should be present in response");
+        let retrieved_uuid = Uuid::parse_str(retrieved_uuid_str).expect("UUID should be valid");
+
+        assert_eq!(
+            retrieved_uuid, created_uuid,
+            "Retrieved UUID should match created UUID"
+        );
+        assert_ne!(
+            retrieved_uuid,
+            Uuid::nil(),
+            "Retrieved UUID should not be nil"
+        );
+
+        // Verify other fields are correct
+        assert_eq!(body["data"]["entity_type"], "customer");
+        assert_eq!(body["data"]["display_name"], "Customer");
+
+        // Test that retrieving by UUID works even after cache is populated
+        // (this tests that the cache has the correct UUID)
+        let req = test::TestRequest::get()
+            .uri(&format!("/admin/api/v1/entity-definitions/{created_uuid}"))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {token}")))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        let cached_uuid_str = body["data"]["uuid"]
+            .as_str()
+            .expect("UUID should be present in cached response");
+        let cached_uuid = Uuid::parse_str(cached_uuid_str).expect("UUID should be valid");
+
+        assert_eq!(
+            cached_uuid, created_uuid,
+            "Cached UUID should match created UUID"
+        );
+        assert_ne!(cached_uuid, Uuid::nil(), "Cached UUID should not be nil");
+
+        clear_test_db(&pool).await?;
+        Ok(())
+    }
 }

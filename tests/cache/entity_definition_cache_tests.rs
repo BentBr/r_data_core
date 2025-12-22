@@ -204,11 +204,13 @@ async fn test_cache_invalidation_on_update() -> Result<()> {
     updated_definition.display_name = "Updated Entity".to_string();
 
     let mut mock_repo2 = MockEntityDefinitionRepo::new();
+    let definition_clone_for_get = definition.clone();
+    // First call: get existing definition before update
     mock_repo2
         .expect_get_by_uuid()
         .withf(move |id| id == &uuid)
         .times(1)
-        .returning(move |_| Ok(Some(definition.clone())));
+        .returning(move |_| Ok(Some(definition_clone_for_get.clone())));
     mock_repo2
         .expect_update()
         .withf(move |id, _| id == &uuid)
@@ -218,6 +220,17 @@ async fn test_cache_invalidation_on_update() -> Result<()> {
         .expect_update_entity_view_for_entity_definition()
         .times(1)
         .returning(|_| Ok(()));
+    // Second call: get updated definition after update (for caching)
+    let updated_definition_clone = {
+        let mut def = definition.clone();
+        def.display_name = "Updated Entity".to_string();
+        def
+    };
+    mock_repo2
+        .expect_get_by_uuid()
+        .withf(move |id| id == &uuid)
+        .times(1)
+        .returning(move |_| Ok(Some(updated_definition_clone.clone())));
 
     let service2 = EntityDefinitionService::new(Arc::new(mock_repo2), cache_manager.clone());
     service2
@@ -327,6 +340,13 @@ async fn test_cache_on_create() -> Result<()> {
         .expect_update_entity_view_for_entity_definition()
         .times(1)
         .returning(|_| Ok(()));
+    // After create, get_by_uuid is called to fetch the complete definition for caching
+    let definition_clone_for_get = definition.clone();
+    mock_repo
+        .expect_get_by_uuid()
+        .withf(move |id| id == &definition_clone_for_get.uuid)
+        .times(1)
+        .returning(move |_| Ok(Some(definition_clone_for_get.clone())));
 
     let service = EntityDefinitionService::new(Arc::new(mock_repo), cache_manager.clone());
 

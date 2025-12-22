@@ -208,6 +208,13 @@ async fn test_create_entity_definition_success() -> Result<()> {
         .expect_update_entity_view_for_entity_definition()
         .return_once(|_| Ok(()));
 
+    // After create, get_by_uuid is called to fetch the complete definition for caching
+    let definition_clone = definition.clone();
+    mock_repo
+        .expect_get_by_uuid()
+        .with(eq(expected_uuid))
+        .return_once(move |_| Ok(Some(definition_clone)));
+
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
     // Act
@@ -317,11 +324,13 @@ async fn test_update_entity_definition_success() -> Result<()> {
     let test_uuid = definition.uuid;
     let definition_clone = definition.clone();
 
-    // Return the existing definition for validation
+    // Return the existing definition for validation (first call)
+    let definition_clone_for_validation = definition_clone.clone();
     mock_repo
         .expect_get_by_uuid()
         .with(eq(test_uuid))
-        .return_once(move |_| Ok(Some(definition_clone)));
+        .times(1)
+        .returning(move |_| Ok(Some(definition_clone_for_validation.clone())));
 
     // No other definition with the same entity type
     mock_repo
@@ -336,6 +345,14 @@ async fn test_update_entity_definition_success() -> Result<()> {
     mock_repo
         .expect_update_entity_view_for_entity_definition()
         .return_once(|_| Ok(()));
+
+    // After update, get_by_uuid is called again to fetch the complete definition for caching
+    let definition_clone_for_cache = definition_clone.clone();
+    mock_repo
+        .expect_get_by_uuid()
+        .with(eq(test_uuid))
+        .times(1)
+        .returning(move |_| Ok(Some(definition_clone_for_cache.clone())));
 
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
