@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vuetify from 'vite-plugin-vuetify'
 import { fileURLToPath, URL } from 'node:url'
+import { deferCssPlugin } from './vite-plugin-defer-css'
 
 export default defineConfig({
     plugins: [
@@ -9,6 +10,7 @@ export default defineConfig({
         vuetify({
             autoImport: false, // Disable auto-import for better tree-shaking
         }),
+        deferCssPlugin(),
     ],
     resolve: {
         alias: {

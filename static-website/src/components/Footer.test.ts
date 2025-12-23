@@ -100,4 +100,24 @@ describe('Footer', () => {
         expect(wrapper.text()).toContain('Rust')
         expect(wrapper.text()).toContain('Vue')
     })
+
+    it('should have roadmap link with correct localized path', () => {
+        const wrapper = mount(Footer, {
+            global: {
+                plugins: [router],
+            },
+        })
+        const roadmapLink = wrapper.find('a[href="/en/roadmap"]')
+        expect(roadmapLink.exists()).toBe(true)
+    })
+
+    it('should have use-cases link with correct localized path', () => {
+        const wrapper = mount(Footer, {
+            global: {
+                plugins: [router],
+            },
+        })
+        const useCasesLink = wrapper.find('a[href="/en/use-cases"]')
+        expect(useCasesLink.exists()).toBe(true)
+    })
 })

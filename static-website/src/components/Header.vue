@@ -203,6 +203,8 @@
         backdrop-filter: blur(12px) saturate(180%);
         -webkit-backdrop-filter: blur(12px) saturate(180%);
         border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+        height: 60px; /* Explicit height to prevent CLS */
+        contain: layout;
     }
 
     .header__inner {
@@ -251,6 +253,7 @@
         display: none;
         gap: 24px;
         margin-left: auto;
+        contain: layout;
     }
 
     .nav a {

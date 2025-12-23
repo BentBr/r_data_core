@@ -20,7 +20,7 @@
                         size="x-large"
                         rounded
                         elevation="2"
-                        @click="() => $router.push('/pricing')"
+                        @click="openGitHubRepo"
                     >
                         {{ t('home.hero.get_started') }}
                         <SmartIcon
@@ -408,7 +408,7 @@
                             size="x-large"
                             rounded
                             elevation="0"
-                            @click="() => $router.push('/pricing')"
+                            @click="() => $router.push(getLocalizedPath('/pricing'))"
                         >
                             {{ t('home.final_cta.view_pricing') }}
                         </v-btn>
@@ -442,6 +442,7 @@
 
 <script setup lang="ts">
     import { ref, computed, onMounted, onUnmounted } from 'vue'
+    import { useRoute } from 'vue-router'
     import Section from '@/components/Section.vue'
     import FeatureCard from '@/components/FeatureCard.vue'
     import DemoCredentialsDialog from '@/components/DemoCredentialsDialog.vue'
@@ -450,7 +451,8 @@
     import { useSEO } from '@/composables/useSEO'
     import { env } from '@/env-check'
 
-    const { t, get } = useTranslations()
+    const { t, get, currentLanguage } = useTranslations()
+    const route = useRoute()
     const showDemoDialog = ref(false)
 
     const featureItems = computed(() => get<Array<Record<string, string>>>('features.items') ?? [])
@@ -459,9 +461,22 @@
     const apiDocsUrl = env.apiDocsUrl
     const adminApiDocsUrl = env.adminApiDocsUrl
     const githubPackagesUrl = env.githubPackagesUrl
+    const githubRepoUrl = env.githubRepoUrl
+
+    const getLocalizedPath = (path: string) => {
+        // Get current language from route or default to currentLanguage
+        const lang = (route.params.lang as string) || currentLanguage.value
+        return `/${lang}${path === '/' ? '' : path}`
+    }
 
     const openDemo = () => {
         showDemoDialog.value = true
+    }
+
+    const openGitHubRepo = () => {
+        if (githubRepoUrl) {
+            window.open(githubRepoUrl, '_blank', 'noopener,noreferrer')
+        }
     }
 
     const openContact = () => {
@@ -511,6 +526,7 @@
             rgba(var(--v-theme-surface-variant), 0.3) 100%
         );
         padding: 80px 0;
+        contain: layout;
     }
 
     .hero-container {
@@ -564,6 +580,7 @@
         justify-content: center;
         flex-wrap: wrap;
         margin-bottom: 24px;
+        min-height: 56px; /* Reserve space for buttons to prevent CLS */
     }
 
     .hero-footnote {

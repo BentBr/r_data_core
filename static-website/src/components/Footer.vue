@@ -12,6 +12,10 @@
                 <router-link :to="getLocalizedPath('/')">{{ t('nav.home') }}</router-link>
                 <router-link :to="getLocalizedPath('/about')">{{ t('nav.about') }}</router-link>
                 <router-link :to="getLocalizedPath('/pricing')">{{ t('nav.pricing') }}</router-link>
+                <router-link :to="getLocalizedPath('/roadmap')">{{ t('nav.roadmap') }}</router-link>
+                <router-link :to="getLocalizedPath('/use-cases')">{{
+                    t('nav.use_cases')
+                }}</router-link>
                 <router-link :to="getLocalizedPath('/imprint')">{{
                     t('footer.imprint')
                 }}</router-link>
@@ -63,6 +67,8 @@
         background: rgb(var(--v-theme-surface-variant));
         color: rgb(var(--v-theme-on-surface));
         padding: 32px 16px;
+        min-height: 200px; /* Reserve space to prevent CLS */
+        contain: layout;
     }
 
     .footer__inner {

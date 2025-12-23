@@ -10,6 +10,8 @@ export function checkEnvironmentVariables() {
         VITE_ADMIN_API_DOCS_URL: import.meta.env.VITE_ADMIN_API_DOCS_URL,
         VITE_GITHUB_RELEASES_URL: import.meta.env.VITE_GITHUB_RELEASES_URL,
         VITE_GITHUB_PACKAGES_URL: import.meta.env.VITE_GITHUB_PACKAGES_URL,
+        VITE_GITHUB_REPO_URL: import.meta.env.VITE_GITHUB_REPO_URL,
+        VITE_CLOUD_EMAIL: import.meta.env.VITE_CLOUD_EMAIL,
         MODE: import.meta.env.MODE,
         DEV: import.meta.env.DEV,
         PROD: import.meta.env.PROD,
@@ -57,6 +59,8 @@ export const env = {
     adminApiDocsUrl: import.meta.env.VITE_ADMIN_API_DOCS_URL ?? '',
     githubReleasesUrl: import.meta.env.VITE_GITHUB_RELEASES_URL ?? '',
     githubPackagesUrl: import.meta.env.VITE_GITHUB_PACKAGES_URL ?? '',
+    githubRepoUrl: import.meta.env.VITE_GITHUB_REPO_URL ?? '',
+    cloudEmail: import.meta.env.VITE_CLOUD_EMAIL ?? '',
     isProduction: import.meta.env.PROD,
     isDevelopment: import.meta.env.DEV,
 }

@@ -86,6 +86,7 @@
                         <v-btn
                             variant="outlined"
                             rounded
+                            @click="openCloudNotify"
                         >
                             <SmartIcon
                                 icon="bell"
@@ -696,6 +697,15 @@
     const openContact = () => {
         const email = t('contact.email')
         window.open(`mailto:${email}`, '_blank', 'noopener,noreferrer')
+    }
+
+    const openCloudNotify = () => {
+        const email = env.cloudEmail ?? 'cloud@rdatacore.eu'
+        window.open(
+            `mailto:${email}?subject=Cloud Version Notification Request`,
+            '_blank',
+            'noopener,noreferrer'
+        )
     }
 
     // Listen for the open-demo event from Header
