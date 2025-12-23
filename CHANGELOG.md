@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.29](https://github.com/BentBr/r_data_core/compare/v0.1.28...v0.1.29) (2025-12-23)
+
+
+### Bug Fixes
+
+* CLS issues + some fe bugs with missing function for buttons ([60a6e8b](https://github.com/BentBr/r_data_core/commit/60a6e8beececa83d1ea57e2d0303c32399e9e8e4))
+
 ## [0.1.28](https://github.com/BentBr/r_data_core/compare/v0.1.27...v0.1.28) (2025-12-22)
 
 
