@@ -35,9 +35,5 @@ fixes:
 - getting all entity types with fields and validations
 - filter entities (by field and value) (validate against entity-definition)
 
-- communicate
-  - LinkedIn groups
-  - Stefano
-  - Matthias
-  - Jan B.
+
 - check manual ci deploy demo stuff

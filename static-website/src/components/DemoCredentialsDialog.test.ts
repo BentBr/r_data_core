@@ -98,4 +98,78 @@ describe('DemoCredentialsDialog', () => {
         expect(wrapper.props('cancelLabel')).toBe('Cancel')
         expect(wrapper.props('openDemoLabel')).toBe('Open Demo')
     })
+
+    describe('Mobile Warning', () => {
+        it('should show mobile warning when screen width is less than 1200px', async () => {
+            // Mock window.innerWidth before mounting
+            Object.defineProperty(window, 'innerWidth', {
+                writable: true,
+                configurable: true,
+                value: 800,
+            })
+
+            const wrapper = mount(DemoCredentialsDialog, {
+                props: defaultProps,
+            })
+
+            // Wait for component to mount and update
+            await wrapper.vm.$nextTick()
+            // Wait a bit more for onMounted to complete
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            // Check if alert exists - it should be rendered when isMobile is true
+            const alert = wrapper.findComponent({ name: 'VAlert' })
+            expect(alert.exists()).toBe(true)
+        })
+
+        it('should not show mobile warning when screen width is 1200px or greater', async () => {
+            // Mock window.innerWidth
+            Object.defineProperty(window, 'innerWidth', {
+                writable: true,
+                configurable: true,
+                value: 1200,
+            })
+
+            const wrapper = mount(DemoCredentialsDialog, {
+                props: defaultProps,
+            })
+
+            // Wait for next tick to allow reactive updates
+            await wrapper.vm.$nextTick()
+
+            const alert = wrapper.find('.v-alert')
+            expect(alert.exists()).toBe(false)
+        })
+
+        it('should update mobile warning visibility on window resize', async () => {
+            // Start with desktop size
+            Object.defineProperty(window, 'innerWidth', {
+                writable: true,
+                configurable: true,
+                value: 1400,
+            })
+
+            const wrapper = mount(DemoCredentialsDialog, {
+                props: defaultProps,
+            })
+
+            await wrapper.vm.$nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100))
+            expect(wrapper.findComponent({ name: 'VAlert' }).exists()).toBe(false)
+
+            // Resize to mobile
+            Object.defineProperty(window, 'innerWidth', {
+                writable: true,
+                configurable: true,
+                value: 800,
+            })
+
+            // Trigger resize event
+            window.dispatchEvent(new Event('resize'))
+            await wrapper.vm.$nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            expect(wrapper.findComponent({ name: 'VAlert' }).exists()).toBe(true)
+        })
+    })
 })

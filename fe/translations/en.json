@@ -22,7 +22,9 @@
       }
     },
     "default_password_warning": "Security Warning: The default admin password is still in use. Please change it immediately for security.",
-    "default_password_warning_dismiss": "Dismiss"
+    "default_password_warning_dismiss": "Dismiss",
+    "mobile_warning": "The admin interface of RDataCore is not meant to be used mobile!",
+    "mobile_warning_dismiss": "Dismiss"
   },
   "navigation": {
     "dashboard": "Dashboard",

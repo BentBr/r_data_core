@@ -21,9 +21,21 @@ export const useAuthStore = defineStore('auth', () => {
     const isSuperAdmin = ref(false)
     const allowedRoutes = ref<string[]>([])
     const usingDefaultPassword = ref(false)
+    const defaultPasswordBannerDismissed = ref(false)
+    const mobileWarningDismissed = ref(false)
 
-    // LocalStorage key for banner dismissal
+    // LocalStorage keys for banner dismissal
     const DISMISSED_BANNER_KEY = 'default_password_banner_dismissed'
+    const MOBILE_WARNING_DISMISSED_KEY = 'mobile_warning_banner_dismissed'
+
+    // Initialize dismissed states from localStorage
+    if (typeof window !== 'undefined') {
+        const defaultPasswordDismissed = localStorage.getItem(DISMISSED_BANNER_KEY)
+        defaultPasswordBannerDismissed.value = defaultPasswordDismissed === 'true'
+
+        const mobileDismissed = localStorage.getItem(MOBILE_WARNING_DISMISSED_KEY)
+        mobileWarningDismissed.value = mobileDismissed === 'true'
+    }
 
     // Getters
     const isAuthenticated = computed(() => !!access_token.value && !!user.value)
@@ -32,12 +44,9 @@ export const useAuthStore = defineStore('auth', () => {
         if (!usingDefaultPassword.value) {
             return false
         }
-        // Check if banner was dismissed
-        if (typeof window !== 'undefined') {
-            const dismissed = localStorage.getItem(DISMISSED_BANNER_KEY)
-            if (dismissed === 'true') {
-                return false
-            }
+        // Check if banner was dismissed (using reactive ref)
+        if (defaultPasswordBannerDismissed.value) {
+            return false
         }
         // Only return true if using default password and not dismissed
         return usingDefaultPassword.value
@@ -128,11 +137,25 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     const dismissDefaultPasswordBanner = (): void => {
+        defaultPasswordBannerDismissed.value = true
         if (typeof window !== 'undefined') {
             localStorage.setItem(DISMISSED_BANNER_KEY, 'true')
         }
         if (env.enableApiLogging) {
             console.log('[Auth] Default password banner dismissed')
+        }
+    }
+
+    // Mobile warning banner
+    const isMobileWarningDismissed = computed(() => mobileWarningDismissed.value)
+
+    const dismissMobileWarningBanner = (): void => {
+        mobileWarningDismissed.value = true
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(MOBILE_WARNING_DISMISSED_KEY, 'true')
+        }
+        if (env.enableApiLogging) {
+            console.log('[Auth] Mobile warning banner dismissed')
         }
     }
 
@@ -145,6 +168,7 @@ export const useAuthStore = defineStore('auth', () => {
         allowedRoutes.value = []
         error.value = null
         usingDefaultPassword.value = false
+        // Note: mobileWarningDismissed is not cleared on logout as it's a user preference
 
         // Clear refresh token from secure cookie
         deleteRefreshToken()
@@ -515,6 +539,7 @@ export const useAuthStore = defineStore('auth', () => {
         isAuthenticated,
         isTokenExpired,
         isDefaultPasswordInUse,
+        isMobileWarningDismissed,
 
         // Actions
         login,
@@ -527,5 +552,6 @@ export const useAuthStore = defineStore('auth', () => {
         hasPermission,
         loadUserPermissions,
         dismissDefaultPasswordBanner,
+        dismissMobileWarningBanner,
     }
 })

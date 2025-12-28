@@ -479,7 +479,8 @@
       "username": "Username",
       "password": "Password",
       "cancel": "Cancel",
-      "open": "Open demo"
+      "open": "Open demo",
+      "mobile_warning": "The admin interface of RDataCore is not meant to be used mobile!"
     }
   },
   "footer": {
