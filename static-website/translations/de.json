@@ -336,7 +336,7 @@
       "equality": "❤️ Gleiche Funktionen wie kostenlose Version • Gleiche Power • Gleiche Flexibilität",
       "company_i": {
         "title": "Unternehmen I",
-        "desc": "5M€ oder 10+ Mitarbeiter",
+        "desc": "5M€ Umsatz oder 10+ Mitarbeiter",
         "subdesc": "Faire Preise für wachsende Unternehmen",
         "price": "400€",
         "period": "/Monat",
@@ -354,7 +354,7 @@
       "company_ii": {
         "badge": "⭐ Am beliebtesten",
         "title": "Unternehmen II",
-        "desc": "15M€ oder 40+ Mitarbeiter",
+        "desc": "15M€ Umsatz oder 40+ Mitarbeiter",
         "subdesc": "Am häufigsten für mittelgroße Organisationen",
         "price": "900€",
         "period": "/Monat",
@@ -371,7 +371,7 @@
       },
       "company_iii": {
         "title": "Unternehmen III",
-        "desc": "150M€ oder 100+ Mitarbeiter",
+        "desc": "150M€ Umsatz oder 100+ Mitarbeiter",
         "subdesc": "Enterprise-Organisationen",
         "price": "3.000€",
         "period": "/Monat",

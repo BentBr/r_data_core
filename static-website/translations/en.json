@@ -336,7 +336,7 @@
       "equality": "❤️ Same features as free version • Same power • Same flexibility",
       "company_i": {
         "title": "Company I",
-        "desc": "5M€ or 10+ Employees",
+        "desc": "5M€ revenue or 10+ Employees",
         "subdesc": "Fair pricing for growing companies",
         "price": "400€",
         "period": "/month",
@@ -354,7 +354,7 @@
       "company_ii": {
         "badge": "⭐ Most Popular",
         "title": "Company II",
-        "desc": "15M€ or 40+ Employees",
+        "desc": "15M€ revenue or 40+ Employees",
         "subdesc": "Most common for mid-size organizations",
         "price": "900€",
         "period": "/month",
@@ -371,7 +371,7 @@
       },
       "company_iii": {
         "title": "Company III",
-        "desc": "150M€ or 100+ Employees",
+        "desc": "150M€ revenue or 100+ Employees",
         "subdesc": "Enterprise-scale organizations",
         "price": "3,000€",
         "period": "/month",

@@ -243,50 +243,45 @@
                             elevation="0"
                         >
                             <v-card-text>
-                                <h3>Company I</h3>
-                                <p class="tier-desc">5M€ or 10+ Employees</p>
-                                <p class="tier-subdesc">Fair pricing for growing companies</p>
+                                <h3>{{ t('pricing.company_licenses.company_i.title') }}</h3>
+                                <p class="tier-desc">
+                                    {{ t('pricing.company_licenses.company_i.desc') }}
+                                </p>
+                                <p class="tier-subdesc">
+                                    {{ t('pricing.company_licenses.company_i.subdesc') }}
+                                </p>
                                 <div class="price">
-                                    <span class="price-amount">400€</span>
-                                    <span class="price-period">/month</span>
+                                    <span class="price-amount">{{
+                                        t('pricing.company_licenses.company_i.price')
+                                    }}</span>
+                                    <span class="price-period">{{
+                                        t('pricing.company_licenses.company_i.period')
+                                    }}</span>
                                 </div>
                                 <div class="price-annual">
-                                    <span class="annual-amount">4,500€</span>
-                                    <span class="annual-period">/year</span>
-                                    <span class="annual-discount">6.25% off</span>
+                                    <span class="annual-amount">{{
+                                        t('pricing.company_licenses.company_i.annual')
+                                    }}</span>
+                                    <span class="annual-period">{{
+                                        t('pricing.company_licenses.company_i.annual_period')
+                                    }}</span>
+                                    <span class="annual-discount">{{
+                                        t('pricing.company_licenses.company_i.discount')
+                                    }}</span>
                                 </div>
                                 <ul class="tier-features">
-                                    <li>
+                                    <li
+                                        v-for="(feature, index) in get(
+                                            'pricing.company_licenses.company_i.features'
+                                        )"
+                                        :key="index"
+                                    >
                                         <SmartIcon
                                             icon="check"
                                             color="primary"
                                             size="sm"
                                         />
-                                        All 18 features included
-                                    </li>
-                                    <li>
-                                        <SmartIcon
-                                            icon="check"
-                                            color="primary"
-                                            size="sm"
-                                        />
-                                        Email & chat support
-                                    </li>
-                                    <li>
-                                        <SmartIcon
-                                            icon="check"
-                                            color="primary"
-                                            size="sm"
-                                        />
-                                        Regular updates & patches
-                                    </li>
-                                    <li>
-                                        <SmartIcon
-                                            icon="check"
-                                            color="primary"
-                                            size="sm"
-                                        />
-                                        Commercial license
+                                        {{ feature }}
                                     </li>
                                 </ul>
                                 <v-btn
@@ -296,7 +291,7 @@
                                     variant="outlined"
                                     @click="openContact"
                                 >
-                                    Get License
+                                    {{ t('pricing.company_licenses.company_i.button') }}
                                 </v-btn>
                             </v-card-text>
                         </v-card>
@@ -309,52 +304,49 @@
                             class="pricing-tier-card popular"
                             elevation="4"
                         >
-                            <div class="popular-badge">⭐ Most Popular</div>
+                            <div class="popular-badge">
+                                {{ t('pricing.company_licenses.company_ii.badge') }}
+                            </div>
                             <v-card-text>
-                                <h3>Company II</h3>
-                                <p class="tier-desc">15M€ or 40+ Employees</p>
-                                <p class="tier-subdesc">Most common for mid-size organizations</p>
+                                <h3>{{ t('pricing.company_licenses.company_ii.title') }}</h3>
+                                <p class="tier-desc">
+                                    {{ t('pricing.company_licenses.company_ii.desc') }}
+                                </p>
+                                <p class="tier-subdesc">
+                                    {{ t('pricing.company_licenses.company_ii.subdesc') }}
+                                </p>
                                 <div class="price">
-                                    <span class="price-amount">900€</span>
-                                    <span class="price-period">/month</span>
+                                    <span class="price-amount">{{
+                                        t('pricing.company_licenses.company_ii.price')
+                                    }}</span>
+                                    <span class="price-period">{{
+                                        t('pricing.company_licenses.company_ii.period')
+                                    }}</span>
                                 </div>
                                 <div class="price-annual">
-                                    <span class="annual-amount">10,000€</span>
-                                    <span class="annual-period">/year</span>
-                                    <span class="annual-discount">8.3% off</span>
+                                    <span class="annual-amount">{{
+                                        t('pricing.company_licenses.company_ii.annual')
+                                    }}</span>
+                                    <span class="annual-period">{{
+                                        t('pricing.company_licenses.company_ii.annual_period')
+                                    }}</span>
+                                    <span class="annual-discount">{{
+                                        t('pricing.company_licenses.company_ii.discount')
+                                    }}</span>
                                 </div>
                                 <ul class="tier-features">
-                                    <li>
+                                    <li
+                                        v-for="(feature, index) in get(
+                                            'pricing.company_licenses.company_ii.features'
+                                        )"
+                                        :key="index"
+                                    >
                                         <SmartIcon
                                             icon="check"
                                             color="primary"
                                             size="sm"
                                         />
-                                        All 18 features included
-                                    </li>
-                                    <li>
-                                        <SmartIcon
-                                            icon="check"
-                                            color="primary"
-                                            size="sm"
-                                        />
-                                        Email & chat support
-                                    </li>
-                                    <li>
-                                        <SmartIcon
-                                            icon="check"
-                                            color="primary"
-                                            size="sm"
-                                        />
-                                        Regular updates & patches
-                                    </li>
-                                    <li>
-                                        <SmartIcon
-                                            icon="check"
-                                            color="primary"
-                                            size="sm"
-                                        />
-                                        Commercial license
+                                        {{ feature }}
                                     </li>
                                 </ul>
                                 <v-btn
@@ -364,7 +356,7 @@
                                     color="primary"
                                     @click="openContact"
                                 >
-                                    Get License
+                                    {{ t('pricing.company_licenses.company_ii.button') }}
                                 </v-btn>
                             </v-card-text>
                         </v-card>
@@ -378,50 +370,45 @@
                             elevation="0"
                         >
                             <v-card-text>
-                                <h3>Company III</h3>
-                                <p class="tier-desc">150M€ or 100+ Employees</p>
-                                <p class="tier-subdesc">Enterprise-scale organizations</p>
+                                <h3>{{ t('pricing.company_licenses.company_iii.title') }}</h3>
+                                <p class="tier-desc">
+                                    {{ t('pricing.company_licenses.company_iii.desc') }}
+                                </p>
+                                <p class="tier-subdesc">
+                                    {{ t('pricing.company_licenses.company_iii.subdesc') }}
+                                </p>
                                 <div class="price">
-                                    <span class="price-amount">3,000€</span>
-                                    <span class="price-period">/month</span>
+                                    <span class="price-amount">{{
+                                        t('pricing.company_licenses.company_iii.price')
+                                    }}</span>
+                                    <span class="price-period">{{
+                                        t('pricing.company_licenses.company_iii.period')
+                                    }}</span>
                                 </div>
                                 <div class="price-annual">
-                                    <span class="annual-amount">30,000€</span>
-                                    <span class="annual-period">/year</span>
-                                    <span class="annual-discount">17% off</span>
+                                    <span class="annual-amount">{{
+                                        t('pricing.company_licenses.company_iii.annual')
+                                    }}</span>
+                                    <span class="annual-period">{{
+                                        t('pricing.company_licenses.company_iii.annual_period')
+                                    }}</span>
+                                    <span class="annual-discount">{{
+                                        t('pricing.company_licenses.company_iii.discount')
+                                    }}</span>
                                 </div>
                                 <ul class="tier-features">
-                                    <li>
+                                    <li
+                                        v-for="(feature, index) in get(
+                                            'pricing.company_licenses.company_iii.features'
+                                        )"
+                                        :key="index"
+                                    >
                                         <SmartIcon
                                             icon="check"
                                             color="primary"
                                             size="sm"
                                         />
-                                        All 18 features included
-                                    </li>
-                                    <li>
-                                        <SmartIcon
-                                            icon="check"
-                                            color="primary"
-                                            size="sm"
-                                        />
-                                        Email & chat support
-                                    </li>
-                                    <li>
-                                        <SmartIcon
-                                            icon="check"
-                                            color="primary"
-                                            size="sm"
-                                        />
-                                        Regular updates & patches
-                                    </li>
-                                    <li>
-                                        <SmartIcon
-                                            icon="check"
-                                            color="primary"
-                                            size="sm"
-                                        />
-                                        Commercial license
+                                        {{ feature }}
                                     </li>
                                 </ul>
                                 <v-btn
@@ -431,7 +418,7 @@
                                     variant="outlined"
                                     @click="openContact"
                                 >
-                                    Get License
+                                    {{ t('pricing.company_licenses.company_iii.button') }}
                                 </v-btn>
                             </v-card-text>
                         </v-card>
@@ -462,35 +449,42 @@
                             elevation="0"
                         >
                             <v-card-text>
-                                <h3>Society I</h3>
+                                <h3>{{ t('pricing.society_licenses.society_i.title') }}</h3>
                                 <p class="tier-desc">
-                                    10+ Employees (NGOs, Private schools, Private universities)
+                                    {{ t('pricing.society_licenses.society_i.desc') }}
                                 </p>
                                 <div class="price">
-                                    <span class="price-amount">200€</span>
-                                    <span class="price-period">/month</span>
+                                    <span class="price-amount">{{
+                                        t('pricing.society_licenses.society_i.price')
+                                    }}</span>
+                                    <span class="price-period">{{
+                                        t('pricing.society_licenses.society_i.period')
+                                    }}</span>
                                 </div>
                                 <div class="price-annual">
-                                    <span class="annual-amount">2,250€</span>
-                                    <span class="annual-period">/year</span>
-                                    <span class="annual-discount">6.7% off</span>
+                                    <span class="annual-amount">{{
+                                        t('pricing.society_licenses.society_i.annual')
+                                    }}</span>
+                                    <span class="annual-period">{{
+                                        t('pricing.society_licenses.society_i.annual_period')
+                                    }}</span>
+                                    <span class="annual-discount">{{
+                                        t('pricing.society_licenses.society_i.discount')
+                                    }}</span>
                                 </div>
                                 <ul class="tier-features">
-                                    <li>
+                                    <li
+                                        v-for="(feature, index) in get(
+                                            'pricing.society_licenses.society_i.features'
+                                        )"
+                                        :key="index"
+                                    >
                                         <SmartIcon
                                             icon="check"
                                             color="primary"
                                             size="sm"
                                         />
-                                        All features included
-                                    </li>
-                                    <li>
-                                        <SmartIcon
-                                            icon="check"
-                                            color="primary"
-                                            size="sm"
-                                        />
-                                        Email support
+                                        {{ feature }}
                                     </li>
                                 </ul>
                                 <v-btn
@@ -500,7 +494,7 @@
                                     variant="outlined"
                                     @click="openContact"
                                 >
-                                    Get License
+                                    {{ t('pricing.society_licenses.society_i.button') }}
                                 </v-btn>
                             </v-card-text>
                         </v-card>
@@ -514,33 +508,42 @@
                             elevation="0"
                         >
                             <v-card-text>
-                                <h3>Society II</h3>
-                                <p class="tier-desc">40+ Employees</p>
+                                <h3>{{ t('pricing.society_licenses.society_ii.title') }}</h3>
+                                <p class="tier-desc">
+                                    {{ t('pricing.society_licenses.society_ii.desc') }}
+                                </p>
                                 <div class="price">
-                                    <span class="price-amount">450€</span>
-                                    <span class="price-period">/month</span>
+                                    <span class="price-amount">{{
+                                        t('pricing.society_licenses.society_ii.price')
+                                    }}</span>
+                                    <span class="price-period">{{
+                                        t('pricing.society_licenses.society_ii.period')
+                                    }}</span>
                                 </div>
                                 <div class="price-annual">
-                                    <span class="annual-amount">5,000€</span>
-                                    <span class="annual-period">/year</span>
-                                    <span class="annual-discount">7.4% off</span>
+                                    <span class="annual-amount">{{
+                                        t('pricing.society_licenses.society_ii.annual')
+                                    }}</span>
+                                    <span class="annual-period">{{
+                                        t('pricing.society_licenses.society_ii.annual_period')
+                                    }}</span>
+                                    <span class="annual-discount">{{
+                                        t('pricing.society_licenses.society_ii.discount')
+                                    }}</span>
                                 </div>
                                 <ul class="tier-features">
-                                    <li>
+                                    <li
+                                        v-for="(feature, index) in get(
+                                            'pricing.society_licenses.society_ii.features'
+                                        )"
+                                        :key="index"
+                                    >
                                         <SmartIcon
                                             icon="check"
                                             color="primary"
                                             size="sm"
                                         />
-                                        All features included
-                                    </li>
-                                    <li>
-                                        <SmartIcon
-                                            icon="check"
-                                            color="primary"
-                                            size="sm"
-                                        />
-                                        Email support
+                                        {{ feature }}
                                     </li>
                                 </ul>
                                 <v-btn
@@ -550,7 +553,7 @@
                                     variant="outlined"
                                     @click="openContact"
                                 >
-                                    Get License
+                                    {{ t('pricing.society_licenses.society_ii.button') }}
                                 </v-btn>
                             </v-card-text>
                         </v-card>
@@ -564,33 +567,42 @@
                             elevation="0"
                         >
                             <v-card-text>
-                                <h3>Society III</h3>
-                                <p class="tier-desc">100+ Employees</p>
+                                <h3>{{ t('pricing.society_licenses.society_iii.title') }}</h3>
+                                <p class="tier-desc">
+                                    {{ t('pricing.society_licenses.society_iii.desc') }}
+                                </p>
                                 <div class="price">
-                                    <span class="price-amount">1,500€</span>
-                                    <span class="price-period">/month</span>
+                                    <span class="price-amount">{{
+                                        t('pricing.society_licenses.society_iii.price')
+                                    }}</span>
+                                    <span class="price-period">{{
+                                        t('pricing.society_licenses.society_iii.period')
+                                    }}</span>
                                 </div>
                                 <div class="price-annual">
-                                    <span class="annual-amount">15,000€</span>
-                                    <span class="annual-period">/year</span>
-                                    <span class="annual-discount">1.7% off</span>
+                                    <span class="annual-amount">{{
+                                        t('pricing.society_licenses.society_iii.annual')
+                                    }}</span>
+                                    <span class="annual-period">{{
+                                        t('pricing.society_licenses.society_iii.annual_period')
+                                    }}</span>
+                                    <span class="annual-discount">{{
+                                        t('pricing.society_licenses.society_iii.discount')
+                                    }}</span>
                                 </div>
                                 <ul class="tier-features">
-                                    <li>
+                                    <li
+                                        v-for="(feature, index) in get(
+                                            'pricing.society_licenses.society_iii.features'
+                                        )"
+                                        :key="index"
+                                    >
                                         <SmartIcon
                                             icon="check"
                                             color="primary"
                                             size="sm"
                                         />
-                                        All features included
-                                    </li>
-                                    <li>
-                                        <SmartIcon
-                                            icon="check"
-                                            color="primary"
-                                            size="sm"
-                                        />
-                                        Email support
+                                        {{ feature }}
                                     </li>
                                 </ul>
                                 <v-btn
@@ -600,7 +612,7 @@
                                     variant="outlined"
                                     @click="openContact"
                                 >
-                                    Get License
+                                    {{ t('pricing.society_licenses.society_iii.button') }}
                                 </v-btn>
                             </v-card-text>
                         </v-card>
