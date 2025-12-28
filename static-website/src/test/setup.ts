@@ -1,6 +1,7 @@
 import { config } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import {
+    VAlert,
     VApp,
     VBtn,
     VCard,
@@ -11,6 +12,7 @@ import {
     VContainer,
     VDialog,
     VDivider,
+    VIcon,
     VList,
     VListItem,
     VListItemTitle,
@@ -22,6 +24,7 @@ import {
 // Create a minimal Vuetify instance for tests
 const vuetify = createVuetify({
     components: {
+        VAlert,
         VApp,
         VBtn,
         VCard,
@@ -32,6 +35,7 @@ const vuetify = createVuetify({
         VContainer,
         VDialog,
         VDivider,
+        VIcon,
         VList,
         VListItem,
         VListItemTitle,

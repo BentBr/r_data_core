@@ -22,7 +22,9 @@
       }
     },
     "default_password_warning": "Sicherheitswarnung: Das Standard-Admin-Passwort wird noch verwendet. Bitte ändern Sie es sofort aus Sicherheitsgründen.",
-    "default_password_warning_dismiss": "Ausblenden"
+    "default_password_warning_dismiss": "Ausblenden",
+    "mobile_warning": "Die Admin-Oberfläche von RDataCore ist nicht für die mobile Nutzung gedacht!",
+    "mobile_warning_dismiss": "Ausblenden"
   },
   "navigation": {
     "dashboard": "Dashboard",

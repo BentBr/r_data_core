@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createVuetify } from 'vuetify'
 // Import only the components we use for tree-shaking
 import {
+    VAlert,
     VApp,
     VBtn,
     VCard,
@@ -12,6 +13,7 @@ import {
     VContainer,
     VDialog,
     VDivider,
+    VIcon,
     VList,
     VListItem,
     VListItemTitle,
@@ -68,6 +70,7 @@ const iconAliases: Partial<IconAliases> = {
 
 const vuetify = createVuetify({
     components: {
+        VAlert,
         VApp,
         VBtn,
         VCard,
@@ -78,6 +81,7 @@ const vuetify = createVuetify({
         VContainer,
         VDialog,
         VDivider,
+        VIcon,
         VList,
         VListItem,
         VListItemTitle,

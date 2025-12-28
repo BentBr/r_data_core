@@ -71,6 +71,7 @@
         <!-- Main Content -->
         <v-main>
             <DefaultPasswordBanner />
+            <MobileWarningBanner />
             <router-view v-slot="{ Component, route }">
                 <transition
                     name="fade"
@@ -96,6 +97,7 @@
     import UserProfileMenu from '@/components/common/UserProfileMenu.vue'
     import SmartIcon from '@/components/common/SmartIcon.vue'
     import DefaultPasswordBanner from '@/components/common/DefaultPasswordBanner.vue'
+    import MobileWarningBanner from '@/components/common/MobileWarningBanner.vue'
 
     const route = useRoute()
     const authStore = useAuthStore()

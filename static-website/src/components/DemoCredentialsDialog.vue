@@ -7,6 +7,18 @@
             <v-card-title>{{ title }}</v-card-title>
             <v-card-text>
                 <p class="hint">{{ hint }}</p>
+                <v-alert
+                    v-if="isMobile"
+                    type="info"
+                    variant="tonal"
+                    prominent
+                    class="mb-4 mobile-warning"
+                >
+                    <template #prepend>
+                        <v-icon>info</v-icon>
+                    </template>
+                    <div class="mobile-warning-text">{{ mobileWarning }}</div>
+                </v-alert>
                 <div class="credentials">
                     <div class="row">
                         <span>{{ usernameLabel }}</span>
@@ -35,8 +47,9 @@
 </template>
 
 <script setup lang="ts">
-    import { computed } from 'vue'
+    import { computed, ref, onMounted, onUnmounted } from 'vue'
     import { env } from '@/env-check'
+    import { useTranslations } from '@/composables/useTranslations'
 
     const props = defineProps<{
         modelValue: boolean
@@ -47,6 +60,24 @@
         cancelLabel: string
         openDemoLabel: string
     }>()
+
+    const { t } = useTranslations()
+    const isMobile = ref(false)
+
+    const mobileWarning = computed(() => t('cta.demo_overlay.mobile_warning'))
+
+    const updateIsMobile = () => {
+        isMobile.value = window.innerWidth < 1200
+    }
+
+    onMounted(() => {
+        updateIsMobile()
+        window.addEventListener('resize', updateIsMobile)
+    })
+
+    onUnmounted(() => {
+        window.removeEventListener('resize', updateIsMobile)
+    })
 
     const emit = defineEmits<{
         (e: 'update:modelValue', value: boolean): void
@@ -101,5 +132,15 @@
     .actions {
         justify-content: flex-end;
         gap: 8px;
+    }
+
+    .mobile-warning {
+        padding: 12px 16px;
+    }
+
+    .mobile-warning-text {
+        padding: 4px 0;
+        line-height: 1.5;
+        word-wrap: break-word;
     }
 </style>
