@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.29](https://github.com/BentBr/r_data_core/compare/v0.1.28...v0.1.29) (2025-12-28)
+
+
+### Features
+
+* Added dismisable hints for mobile usage (&lt;1200px) ([4fdec9e](https://github.com/BentBr/r_data_core/commit/4fdec9e87621e380ca68e22063bc2fedbc945573))
+* Added dismisable hints for mobile usage (&lt;1200px) ([f7d7034](https://github.com/BentBr/r_data_core/commit/f7d7034ad4e8354ff8193409543699e972086a7e))
+
+
+### Bug Fixes
+
+* CLS issues + some fe bugs with missing function for buttons ([60a6e8b](https://github.com/BentBr/r_data_core/commit/60a6e8beececa83d1ea57e2d0303c32399e9e8e4))
+
 ## [0.1.28](https://github.com/BentBr/r_data_core/compare/v0.1.27...v0.1.28) (2025-12-22)
 
 
