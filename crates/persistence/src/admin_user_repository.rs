@@ -285,9 +285,10 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
                 last_name = $4, 
                 is_active = $5, 
                 super_admin = $6,
-                updated_at = $7,
+                password_hash = $7,
+                updated_at = $8,
                 version = version + 1
-            WHERE uuid = $8",
+            WHERE uuid = $9",
         )
         .bind(&user.username)
         .bind(&user.email)
@@ -295,6 +296,7 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         .bind(&user.last_name)
         .bind(user.is_active)
         .bind(user.super_admin)
+        .bind(&user.password_hash)
         .bind(OffsetDateTime::now_utc())
         .bind(user.uuid)
         .execute(&*self.pool)

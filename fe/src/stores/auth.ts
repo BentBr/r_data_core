@@ -506,13 +506,35 @@ export const useAuthStore = defineStore('auth', () => {
         return allowedRoutes.value.includes(route)
     }
 
+    // Helper function to convert frontend namespace format to backend format
+    // Frontend: "Workflows", "EntityDefinitions", "ApiKeys"
+    // Backend: "workflows", "entity_definitions", "api_keys"
+    const convertNamespaceToBackendFormat = (namespace: string): string => {
+        // Convert PascalCase to snake_case and lowercase
+        // EntityDefinitions -> entity_definitions
+        // ApiKeys -> api_keys
+        // Workflows -> workflows
+        return namespace
+            .replace(/([A-Z])/g, '_$1')
+            .toLowerCase()
+            .replace(/^_/, '') // Remove leading underscore
+    }
+
     const hasPermission = (namespace: string, permissionType: string): boolean => {
-        // Super admin has all permissions
+        // Global admin: Super admin has all permissions for all namespaces
         if (isSuperAdmin.value) {
             return true
         }
-        // Check if user has the specific permission
-        const permissionString = `${namespace}:${permissionType.toLowerCase()}`
+        // Convert namespace to backend format (workflows, entity_definitions, api_keys, etc.)
+        const namespaceBackend = convertNamespaceToBackendFormat(namespace)
+        // Resource-level admin: Check if user has Admin permission for this namespace
+        // Admin permission grants all permission types for the namespace
+        const adminPermissionString = `${namespaceBackend}:admin`
+        if (permissions.value.includes(adminPermissionString)) {
+            return true
+        }
+        // Exact permission check: Check if user has the specific permission
+        const permissionString = `${namespaceBackend}:${permissionType.toLowerCase()}`
         return permissions.value.includes(permissionString)
     }
 

@@ -1,4 +1,4 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use r_data_core_workflow::data::adapters::auth::{create_auth_provider, AuthConfig};
 use r_data_core_workflow::data::adapters::source::uri::UriSource;

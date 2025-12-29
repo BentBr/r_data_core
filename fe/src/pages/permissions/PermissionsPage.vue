@@ -378,7 +378,11 @@
         if (authStore.isSuperAdmin) {
             return true
         }
-        return authStore.hasPermission('Roles', 'Admin')
+        // Check for Users:Create or Users:Admin permission
+        return (
+            authStore.hasPermission('Users', 'Create') ||
+            authStore.hasPermission('Users', 'Admin')
+        )
     })
 
     // Reactive state
@@ -445,6 +449,7 @@
         'EntityDefinitions',
         'ApiKeys',
         'Roles',
+        'Users',
         'System',
     ]
     const permissionTypes: PermissionType[] = [
@@ -455,7 +460,6 @@
         'Publish',
         'Admin',
         'Execute',
-        'Custom',
     ]
     const accessLevels: AccessLevel[] = ['None', 'Own', 'Group', 'All']
 

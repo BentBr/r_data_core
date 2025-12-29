@@ -8,6 +8,7 @@ export const ResourceNamespaceSchema = z.enum([
     'EntityDefinitions',
     'ApiKeys',
     'Roles',
+    'Users',
     'System',
 ])
 
@@ -19,7 +20,6 @@ export const PermissionTypeSchema = z.enum([
     'Publish',
     'Admin',
     'Execute',
-    'Custom',
 ])
 
 export const AccessLevelSchema = z.enum(['None', 'Own', 'Group', 'All'])

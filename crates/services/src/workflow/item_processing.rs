@@ -1,4 +1,4 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use crate::dynamic_entity::DynamicEntityService;
 use crate::workflow::output_handling::{handle_entity_output, handle_format_push_output};

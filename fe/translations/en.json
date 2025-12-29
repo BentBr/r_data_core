@@ -509,6 +509,15 @@
     }
   },
   "permissions": {
+    "types": {
+      "read": "Read",
+      "create": "Create",
+      "update": "Update",
+      "delete": "Delete",
+      "publish": "Publish",
+      "admin": "Admin",
+      "execute": "Execute"
+    },
     "dialog": {
       "create_title": "Create Role",
       "edit_title": "Edit Role",

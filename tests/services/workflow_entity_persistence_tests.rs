@@ -1,4 +1,4 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use r_data_core_services::workflow::entity_persistence::{
     ensure_audit_fields, EntityLookupResult, PersistenceContext,
