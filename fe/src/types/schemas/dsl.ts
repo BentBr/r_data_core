@@ -76,10 +76,16 @@ export const DslFromPreviousStepSchema = z.object({
     mapping: z.record(z.string(), z.string()),
 })
 
+export const DslFromTriggerSchema = z.object({
+    type: z.literal('trigger'),
+    mapping: z.record(z.string(), z.string()),
+})
+
 export const DslFromSchema = z.discriminatedUnion('type', [
     DslFromFormatSchema, // New format-based structure
     DslFromEntitySchema,
     DslFromPreviousStepSchema, // Step chaining support
+    DslFromTriggerSchema, // Webhook trigger support
 ])
 
 // Destination configuration
