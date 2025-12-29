@@ -153,6 +153,7 @@
                             {{ t('permissions.page.roles.title') || 'Roles' }}
                         </h3>
                         <v-btn
+                            v-if="canCreateRole"
                             color="primary"
                             @click="openCreateDialog"
                         >
@@ -373,14 +374,16 @@
 
     const authStore = useAuthStore()
 
-    // Permission checks
+    // Permission checks - hasPermission already handles isSuperAdmin internally
     const canCreateUser = computed(() => {
-        if (authStore.isSuperAdmin) {
-            return true
-        }
-        // Check for Users:Create or Users:Admin permission
         return (
             authStore.hasPermission('Users', 'Create') || authStore.hasPermission('Users', 'Admin')
+        )
+    })
+
+    const canCreateRole = computed(() => {
+        return (
+            authStore.hasPermission('Roles', 'Create') || authStore.hasPermission('Roles', 'Admin')
         )
     })
 
@@ -765,15 +768,25 @@
         void loadRoles(currentPage.value, itemsPerPage.value)
 
         // Check for query params
-        // Switch to users tab if requested
+        // Switch to appropriate tab if requested
         if (route.query.tab === 'users') {
             activeTab.value = 'users'
+        } else if (route.query.tab === 'roles') {
+            activeTab.value = 'roles'
         }
 
         // Open create user dialog if requested
         if (route.query.create === 'true' && route.query.tab === 'users') {
             await nextTick()
             openCreateUserDialog()
+            // Remove query params from URL
+            window.history.replaceState({}, '', '/permissions')
+        }
+
+        // Open create role dialog if requested
+        if (route.query.create === 'true' && route.query.tab === 'roles') {
+            await nextTick()
+            openCreateDialog()
             // Remove query params from URL
             window.history.replaceState({}, '', '/permissions')
         }

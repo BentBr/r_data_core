@@ -52,7 +52,8 @@
       "create_entity": "Create Entity",
       "generate_api_key": "Generate API Key",
       "create_workflow": "Create Workflow",
-      "users": "Users"
+      "create_user": "Create User",
+      "create_role": "Create Role"
     },
     "loading": "Loading dashboard statistics...",
     "error": "Failed to load dashboard statistics"
