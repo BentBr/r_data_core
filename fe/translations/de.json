@@ -58,7 +58,8 @@
       "generate_api_key": "API-Schlüssel generieren",
       "create_workflow": "Workflow erstellen",
       "create_user": "Benutzer erstellen",
-      "create_role": "Rolle erstellen"
+      "create_role": "Rolle erstellen",
+      "no_quick_create_permission_granted": "Keine Berechtigung zum schnellen Erstellen erteilt"
     },
     "loading": "Dashboard-Statistiken werden geladen...",
     "error": "Dashboard-Statistiken konnten nicht geladen werden"

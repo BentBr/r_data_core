@@ -17,6 +17,7 @@
                     {{ t('common.refresh') }}
                 </v-btn>
                 <v-btn
+                    v-if="canCreateEntity"
                     color="primary"
                     variant="flat"
                     @click="showCreateDialog = true"
@@ -117,6 +118,14 @@
     const { t } = useTranslations()
     const { currentSnackbar, showSuccess } = useSnackbar()
     const { handleError } = useErrorHandler()
+
+    // Permission check for create button
+    const canCreateEntity = computed(() => {
+        return (
+            authStore.hasPermission('Entities', 'Create') ||
+            authStore.hasPermission('Entities', 'Admin')
+        )
+    })
 
     // Reactive state
     const loading = ref(false)

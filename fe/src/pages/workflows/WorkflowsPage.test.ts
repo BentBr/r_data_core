@@ -40,6 +40,13 @@ vi.mock('@/composables/useSnackbar', () => ({
     }),
 }))
 
+const mockHasPermission = vi.fn()
+vi.mock('@/stores/auth', () => ({
+    useAuthStore: () => ({
+        hasPermission: mockHasPermission,
+    }),
+}))
+
 const router = createRouter({
     history: createWebHistory(),
     routes: [{ path: '/workflows', component: WorkflowsPage }],
@@ -59,6 +66,10 @@ describe('WorkflowsPage', () => {
                 },
             ],
             meta: { pagination: { total: 1, total_pages: 1, page: 1, per_page: 20 } },
+        })
+        // Default: user has create permission
+        mockHasPermission.mockImplementation((namespace: string, permission: string) => {
+            return namespace === 'Workflows' && (permission === 'Create' || permission === 'Admin')
         })
     })
 
@@ -106,5 +117,65 @@ describe('WorkflowsPage', () => {
         ;(wrapper.vm as any).uploadFile = null
         // Expression used in template: :disabled=\"uploadEnabled && !uploadFile\"
         expect((wrapper.vm as any).uploadEnabled && !(wrapper.vm as any).uploadFile).toBe(true)
+    })
+
+    it('shows create button when user has Workflows:Create permission', async () => {
+        mockHasPermission.mockImplementation((namespace: string, permission: string) => {
+            return namespace === 'Workflows' && permission === 'Create'
+        })
+
+        const wrapper = mount(WorkflowsPage, {
+            global: {
+                plugins: [router],
+            },
+        })
+
+        await vi.waitUntil(() => mockGetWorkflows.mock.calls.length > 0, { timeout: 1000 })
+        await wrapper.vm.$nextTick()
+
+        // Should show create button
+        const createButton = wrapper.find('button')
+        expect(createButton.exists()).toBe(true)
+        expect(wrapper.text()).toContain('button') // The button text from translation mock
+    })
+
+    it('shows create button when user has Workflows:Admin permission', async () => {
+        mockHasPermission.mockImplementation((namespace: string, permission: string) => {
+            return namespace === 'Workflows' && permission === 'Admin'
+        })
+
+        const wrapper = mount(WorkflowsPage, {
+            global: {
+                plugins: [router],
+            },
+        })
+
+        await vi.waitUntil(() => mockGetWorkflows.mock.calls.length > 0, { timeout: 1000 })
+        await wrapper.vm.$nextTick()
+
+        // Should show create button
+        const createButton = wrapper.find('button')
+        expect(createButton.exists()).toBe(true)
+    })
+
+    it('hides create button when user lacks create permissions', async () => {
+        mockHasPermission.mockImplementation(() => false)
+
+        const wrapper = mount(WorkflowsPage, {
+            global: {
+                plugins: [router],
+            },
+        })
+
+        await vi.waitUntil(() => mockGetWorkflows.mock.calls.length > 0, { timeout: 1000 })
+        await wrapper.vm.$nextTick()
+
+        // Check that canCreateWorkflow computed is false
+        expect((wrapper.vm as any).canCreateWorkflow).toBe(false)
+        // The button should not be rendered due to v-if="canCreateWorkflow"
+        const html = wrapper.html()
+        // Should not contain the create button text in the actions area
+        // The button is in template #actions, so we check the component doesn't render it
+        expect(html).not.toContain('workflows.create.button')
     })
 })

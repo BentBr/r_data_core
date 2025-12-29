@@ -3,6 +3,7 @@
         <PageLayout>
             <template #actions>
                 <v-btn
+                    v-if="canCreateEntityDefinition"
                     color="primary"
                     variant="flat"
                     @click="showCreateDialog = true"
@@ -108,6 +109,14 @@
     const { t } = useTranslations()
     const { currentSnackbar, showSuccess } = useSnackbar()
     const { handleError } = useErrorHandler()
+
+    // Permission check for create button
+    const canCreateEntityDefinition = computed(() => {
+        return (
+            authStore.hasPermission('EntityDefinitions', 'Create') ||
+            authStore.hasPermission('EntityDefinitions', 'Admin')
+        )
+    })
 
     // Reactive state
     const loading = ref(false)
