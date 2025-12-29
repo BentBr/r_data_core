@@ -6,13 +6,56 @@ import type { EntityVersioningSettings } from '@/api/clients/system'
 const mockGetEntityVersioningSettings = vi.fn()
 const mockUpdateEntityVersioningSettings = vi.fn()
 
-vi.mock('@/api/typed-client', () => ({
-    typedHttpClient: {
-        getEntityVersioningSettings: () => mockGetEntityVersioningSettings(),
-        updateEntityVersioningSettings: (data: EntityVersioningSettings) =>
-            mockUpdateEntityVersioningSettings(data),
-    },
-}))
+vi.mock('@/api/typed-client', () => {
+    // Define ValidationError class inline to avoid hoisting issues
+    class ValidationError extends Error {
+        violations: Array<{ field: string; message: string }>
+        constructor(message: string, violations: Array<{ field: string; message: string }>) {
+            super(message)
+            this.name = 'ValidationError'
+            this.violations = violations
+        }
+    }
+
+    return {
+        typedHttpClient: {
+            getEntityVersioningSettings: () => mockGetEntityVersioningSettings(),
+            updateEntityVersioningSettings: (data: unknown) =>
+                mockUpdateEntityVersioningSettings(data),
+        },
+        ValidationError,
+    }
+})
+
+vi.mock('@/api/errors', () => {
+    // Define HttpError class inline to avoid hoisting issues
+    class HttpError extends Error {
+        statusCode: number
+        namespace: string
+        action: string
+        originalMessage: string
+        constructor(
+            statusCode: number,
+            namespace: string,
+            action: string,
+            message: string,
+            originalMessage?: string
+        ) {
+            super(message)
+            this.name = 'HttpError'
+            this.statusCode = statusCode
+            this.namespace = namespace
+            this.action = action
+            this.originalMessage = originalMessage ?? message
+        }
+    }
+
+    return {
+        HttpError,
+        extractActionFromMethod: () => 'read',
+        extractNamespaceFromEndpoint: () => 'system',
+    }
+})
 
 const showSuccess = vi.fn()
 const showError = vi.fn()

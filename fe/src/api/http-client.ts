@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import { getRefreshToken } from '@/utils/cookies'
 import { ValidationErrorResponseSchema } from '@/types/schemas'
 import type { Meta } from '@/types/schemas'
+import { HttpError, extractNamespaceFromEndpoint, extractActionFromMethod } from './errors'
 
 // Custom error class for validation errors
 export class ValidationError extends Error {
@@ -131,23 +132,48 @@ export class HttpClient {
 
                     // Clear auth and redirect to login
                     await authStore.logout()
-                    throw new Error('Authentication required')
+                    const namespace = extractNamespaceFromEndpoint(endpoint)
+                    const action = extractActionFromMethod(options.method)
+                    throw new HttpError(
+                        401,
+                        namespace,
+                        action,
+                        'Authentication required',
+                        'Authentication required'
+                    )
                 }
 
                 // Try to extract error message from response
                 try {
                     const errorData = await response.json()
-                    if (this.enableLogging) {
+                    const statusCode = response.status
+
+                    // Determine if this is an expected/handled error (not a true error)
+                    const isExpectedError = [400, 409, 422].includes(statusCode)
+
+                    // Only log as error for unexpected status codes; expected ones are handled gracefully
+                    if (this.enableLogging && !isExpectedError) {
                         console.error('[API] HTTP Error Response:', {
-                            status: response.status,
+                            status: statusCode,
+                            statusText: response.statusText,
+                            errorData,
+                            endpoint,
+                        })
+                    } else if (this.enableLogging && this.devMode) {
+                        // In dev mode, log expected errors as info for debugging
+                        console.log('[API] Handled HTTP Response:', {
+                            status: statusCode,
                             statusText: response.statusText,
                             errorData,
                             endpoint,
                         })
                     }
 
-                    // Handle validation errors (422) with structured violations
-                    if (response.status === 422 && errorData.violations) {
+                    const namespace = extractNamespaceFromEndpoint(endpoint)
+                    const action = extractActionFromMethod(options.method)
+
+                    // Handle validation errors (422) and bad request errors (400) with structured violations
+                    if ((statusCode === 422 || statusCode === 400) && errorData.violations) {
                         try {
                             const validationError = ValidationErrorResponseSchema.parse(errorData)
                             throw new ValidationError(
@@ -163,42 +189,50 @@ export class HttpClient {
                             if (this.enableLogging) {
                                 console.error('[API] Failed to parse validation error:', parseError)
                             }
-                            throw new Error(
-                                errorData.message ??
-                                    `HTTP ${response.status}: ${response.statusText}`
-                            )
+                            const message = errorData.message ?? response.statusText
+                            throw new HttpError(statusCode, namespace, action, message, message)
                         }
                     }
 
                     // Handle backend API response format
                     if (errorData.status === 'Error' && errorData.message) {
-                        throw new Error(errorData.message)
+                        const message = errorData.message
+                        throw new HttpError(statusCode, namespace, action, message, message)
                     }
 
                     // Handle other error formats
-                    const errorMessage =
-                        errorData.message ??
-                        errorData.error ??
-                        `HTTP ${response.status}: ${response.statusText}`
-                    throw new Error(errorMessage)
+                    const message = errorData.message ?? errorData.error ?? response.statusText
+                    throw new HttpError(statusCode, namespace, action, message, message)
                 } catch (parseError) {
                     // Re-throw validation errors as-is silently
                     if (parseError instanceof ValidationError) {
+                        throw parseError
+                    }
+                    // Re-throw HttpError as-is
+                    if (parseError instanceof HttpError) {
                         throw parseError
                     }
                     // Only log non-validation errors
                     if (this.enableLogging) {
                         console.error('[API] Failed to parse error response:', parseError)
                     }
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+                    const namespace = extractNamespaceFromEndpoint(endpoint)
+                    const action = extractActionFromMethod(options.method)
+                    throw new HttpError(
+                        response.status,
+                        namespace,
+                        action,
+                        response.statusText,
+                        response.statusText
+                    )
                 }
             }
 
             const rawData = await response.json()
             return this.validateResponse(rawData, schema)
         } catch (error) {
-            // Don't log validation errors to console as they're expected behavior
-            if (!(error instanceof ValidationError)) {
+            // Don't log expected errors (ValidationError, HttpError) to console as they're handled behavior
+            if (!(error instanceof ValidationError) && !(error instanceof HttpError)) {
                 if (this.enableLogging) {
                     console.error('[API] Error:', {
                         error: error instanceof Error ? error.message : error,

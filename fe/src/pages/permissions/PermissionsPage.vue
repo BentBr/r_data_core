@@ -380,8 +380,7 @@
         }
         // Check for Users:Create or Users:Admin permission
         return (
-            authStore.hasPermission('Users', 'Create') ||
-            authStore.hasPermission('Users', 'Admin')
+            authStore.hasPermission('Users', 'Create') || authStore.hasPermission('Users', 'Admin')
         )
     })
 
@@ -705,19 +704,23 @@
 
     const handleSaveUser = async (data: CreateUserRequest | UpdateUserRequest) => {
         savingUser.value = true
+        const isEditing = !!editingUser.value
 
         try {
-            if (editingUser.value) {
-                await updateUser(editingUser.value.uuid, data as UpdateUserRequest)
+            if (isEditing) {
+                await updateUser(editingUser.value!.uuid, data as UpdateUserRequest)
             } else {
                 await createUser(data as CreateUserRequest)
             }
 
+            // Close dialog and reload list on success
             showUserDialog.value = false
             editingUser.value = null
             await loadUsers(usersCurrentPage.value, usersItemsPerPage.value)
         } catch {
-            // Error already handled in composable
+            // Error already handled in composable via global error handler
+            // Keep dialog open on error so user can fix and retry
+            // Dialog stays open, editingUser remains set
         } finally {
             savingUser.value = false
         }

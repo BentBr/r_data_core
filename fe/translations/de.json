@@ -434,6 +434,165 @@
     "no": "Nein",
     "empty": "Leer"
   },
+  "error": {
+    "generic": "Ein Fehler ist aufgetreten",
+    "400": "Ungültige Anfrage",
+    "401": "Authentifizierung erforderlich",
+    "403": "Berechtigung verweigert",
+    "404": "Ressource nicht gefunden",
+    "409": "Konflikt",
+    "422": "Validierung fehlgeschlagen",
+    "500": "Serverfehler",
+    "network": "Netzwerkfehler. Bitte versuchen Sie es erneut.",
+    "user": {
+      "create": {
+        "400": "Ungültige Anfragedaten",
+        "403": "Benutzer kann nicht erstellt werden",
+        "409": "Ein Benutzer mit diesem Benutzernamen oder dieser E-Mail-Adresse existiert bereits",
+        "422": "Ungültige Benutzerdaten"
+      },
+      "read": {
+        "403": "Benutzer kann nicht angezeigt werden",
+        "404": "Benutzer nicht gefunden"
+      },
+      "update": {
+        "400": "Ungültige Anfragedaten",
+        "403": "Benutzer kann nicht aktualisiert werden",
+        "404": "Benutzer nicht gefunden",
+        "409": "Ein Benutzer mit diesem Benutzernamen oder dieser E-Mail-Adresse existiert bereits",
+        "422": "Ungültige Benutzerdaten"
+      },
+      "delete": {
+        "403": "Benutzer kann nicht gelöscht werden",
+        "404": "Benutzer nicht gefunden"
+      }
+    },
+    "entity": {
+      "create": {
+        "400": "Ungültige Anfragedaten",
+        "403": "Entität kann nicht erstellt werden",
+        "409": "Eine Entität mit demselben Schlüssel existiert in diesem Pfad bereits",
+        "422": "Ungültige Entitätsdaten"
+      },
+      "read": {
+        "403": "Entität kann nicht angezeigt werden",
+        "404": "Entität nicht gefunden"
+      },
+      "update": {
+        "400": "Ungültige Anfragedaten",
+        "403": "Entität kann nicht aktualisiert werden",
+        "404": "Entität nicht gefunden",
+        "409": "Eine Entität mit demselben Schlüssel existiert in diesem Pfad bereits",
+        "422": "Ungültige Entitätsdaten"
+      },
+      "delete": {
+        "403": "Entität kann nicht gelöscht werden",
+        "404": "Entität nicht gefunden"
+      }
+    },
+    "role": {
+      "create": {
+        "400": "Ungültige Anfragedaten",
+        "403": "Rolle kann nicht erstellt werden",
+        "409": "Eine Rolle mit diesem Namen existiert bereits",
+        "422": "Ungültige Rollendaten"
+      },
+      "read": {
+        "403": "Rolle kann nicht angezeigt werden",
+        "404": "Rolle nicht gefunden"
+      },
+      "update": {
+        "400": "Ungültige Anfragedaten",
+        "403": "Rolle kann nicht aktualisiert werden",
+        "404": "Rolle nicht gefunden",
+        "409": "Eine Rolle mit diesem Namen existiert bereits",
+        "422": "Ungültige Rollendaten"
+      },
+      "delete": {
+        "403": "Rolle kann nicht gelöscht werden",
+        "404": "Rolle nicht gefunden"
+      }
+    },
+    "entity_definition": {
+      "create": {
+        "400": "Ungültige Anfragedaten",
+        "403": "Entitätsdefinition kann nicht erstellt werden",
+        "409": "Eine Entitätsdefinition mit diesem Typ existiert bereits",
+        "422": "Ungültige Entitätsdefinitionsdaten"
+      },
+      "read": {
+        "403": "Entitätsdefinition kann nicht angezeigt werden",
+        "404": "Entitätsdefinition nicht gefunden"
+      },
+      "update": {
+        "400": "Ungültige Anfragedaten",
+        "403": "Entitätsdefinition kann nicht aktualisiert werden",
+        "404": "Entitätsdefinition nicht gefunden",
+        "409": "Eine Entitätsdefinition mit diesem Typ existiert bereits",
+        "422": "Ungültige Entitätsdefinitionsdaten"
+      },
+      "delete": {
+        "403": "Entitätsdefinition kann nicht gelöscht werden",
+        "404": "Entitätsdefinition nicht gefunden"
+      }
+    },
+    "api_key": {
+      "create": {
+        "400": "Ungültige Anfragedaten",
+        "403": "API-Schlüssel kann nicht erstellt werden",
+        "409": "Ein API-Schlüssel mit diesem Namen existiert bereits",
+        "422": "Ungültige API-Schlüsseldaten"
+      },
+      "read": {
+        "403": "API-Schlüssel kann nicht angezeigt werden",
+        "404": "API-Schlüssel nicht gefunden"
+      },
+      "update": {
+        "400": "Ungültige Anfragedaten",
+        "403": "API-Schlüssel kann nicht aktualisiert werden",
+        "404": "API-Schlüssel nicht gefunden",
+        "409": "Ein API-Schlüssel mit diesem Namen existiert bereits",
+        "422": "Ungültige API-Schlüsseldaten"
+      },
+      "delete": {
+        "403": "API-Schlüssel kann nicht gelöscht werden",
+        "404": "API-Schlüssel nicht gefunden"
+      }
+    },
+    "workflow": {
+      "create": {
+        "400": "Ungültige Anfragedaten",
+        "403": "Workflow kann nicht erstellt werden",
+        "409": "Ein Workflow mit diesem Namen existiert bereits",
+        "422": "Ungültige Workflowdaten"
+      },
+      "read": {
+        "403": "Workflow kann nicht angezeigt werden",
+        "404": "Workflow nicht gefunden"
+      },
+      "update": {
+        "400": "Ungültige Anfragedaten",
+        "403": "Workflow kann nicht aktualisiert werden",
+        "404": "Workflow nicht gefunden",
+        "409": "Ein Workflow mit diesem Namen existiert bereits",
+        "422": "Ungültige Workflowdaten"
+      },
+      "delete": {
+        "403": "Workflow kann nicht gelöscht werden",
+        "404": "Workflow nicht gefunden"
+      }
+    },
+    "system": {
+      "read": {
+        "403": "Systemeinstellungen können nicht angezeigt werden"
+      },
+      "update": {
+        "400": "Ungültige Anfragedaten",
+        "403": "Systemeinstellungen können nicht aktualisiert werden",
+        "422": "Ungültige Systemeinstellungsdaten"
+      }
+    }
+  },
   "general": {
     "errors": {
       "unknown": "Ein unbekannter Fehler ist aufgetreten",
@@ -457,6 +616,38 @@
     }
   },
   "users": {
+    "load": {
+      "error": "Benutzer konnten nicht geladen werden"
+    },
+    "create": {
+      "success": "Benutzer erfolgreich erstellt",
+      "error": "Benutzer konnte nicht erstellt werden"
+    },
+    "update": {
+      "success": "Benutzer erfolgreich aktualisiert",
+      "error": "Benutzer konnte nicht aktualisiert werden"
+    },
+    "delete": {
+      "success": "Benutzer erfolgreich gelöscht",
+      "error": "Benutzer konnte nicht gelöscht werden"
+    },
+    "get": {
+      "error": "Benutzer konnte nicht geladen werden"
+    },
+    "roles": {
+      "get": {
+        "error": "Benutzerrollen konnten nicht geladen werden"
+      },
+      "assign": {
+        "success": "Rollen erfolgreich zugewiesen",
+        "error": "Rollen konnten nicht zugewiesen werden"
+      }
+    },
+    "errors": {
+      "username_exists": "Ein Benutzer mit diesem Benutzernamen existiert bereits",
+      "email_exists": "Ein Benutzer mit dieser E-Mail-Adresse existiert bereits",
+      "validation_failed": "Validierung fehlgeschlagen"
+    },
     "dialog": {
       "create_title": "Benutzer erstellen",
       "edit_title": "Benutzer bearbeiten",
@@ -493,6 +684,21 @@
     }
   },
   "roles": {
+    "load": {
+      "error": "Rollen konnten nicht geladen werden"
+    },
+    "create": {
+      "success": "Rolle erfolgreich erstellt",
+      "error": "Rolle konnte nicht erstellt werden"
+    },
+    "update": {
+      "success": "Rolle erfolgreich aktualisiert",
+      "error": "Rolle konnte nicht aktualisiert werden"
+    },
+    "delete": {
+      "success": "Rolle erfolgreich gelöscht",
+      "error": "Rolle konnte nicht gelöscht werden"
+    },
     "dialog": {
       "create_title": "Rolle erstellen",
       "edit_title": "Rolle bearbeiten",

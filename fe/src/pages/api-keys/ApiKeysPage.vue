@@ -207,6 +207,7 @@
     import { typedHttpClient } from '@/api/typed-client'
     import { useTranslations } from '@/composables/useTranslations'
     import { useSnackbar } from '@/composables/useSnackbar'
+    import { useErrorHandler } from '@/composables/useErrorHandler'
     import { usePagination } from '@/composables/usePagination'
     import type { ApiKey, CreateApiKeyRequest } from '@/types/schemas'
     import ApiKeyCreateDialog from '@/components/api-keys/ApiKeyCreateDialog.vue'
@@ -222,7 +223,8 @@
     const authStore = useAuthStore()
     const route = useRoute()
     const { t } = useTranslations()
-    const { currentSnackbar, showSuccess, showError } = useSnackbar()
+    const { currentSnackbar, showSuccess } = useSnackbar()
+    const { handleError } = useErrorHandler()
 
     // Reactive state
     const loading = ref(false)
@@ -385,16 +387,8 @@
             // Reload the list
             await loadApiKeys()
         } catch (err) {
-            // Handle specific error cases
-            if (err instanceof Error) {
-                if (err.message.includes('409') || err.message.includes('conflict')) {
-                    showError(t('api_keys.create.error_name_exists'))
-                } else {
-                    showError(err.message ?? t('api_keys.create.error'))
-                }
-            } else {
-                showError(t('api_keys.create.error'))
-            }
+            // Error message is handled by global error handler
+            handleError(err)
         } finally {
             creating.value = false
         }
@@ -428,7 +422,7 @@
             // Reload the list
             await loadApiKeys()
         } catch (err) {
-            showError(err instanceof Error ? err.message : t('api_keys.revoke.error'))
+            handleError(err)
         } finally {
             revoking.value = false
         }

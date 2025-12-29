@@ -1,10 +1,12 @@
 import { ref } from 'vue'
 import { typedHttpClient } from '@/api/typed-client'
-import { useSnackbar } from '@/composables/useSnackbar'
+import { useErrorHandler } from '@/composables/useErrorHandler'
+import { useTranslations } from '@/composables/useTranslations'
 import type { UserResponse, CreateUserRequest, UpdateUserRequest } from '@/types/schemas'
 
 export function useUsers() {
-    const { showSuccess, showError } = useSnackbar()
+    const { handleError, handleSuccess } = useErrorHandler()
+    const { t } = useTranslations()
 
     const loading = ref(false)
     const error = ref('')
@@ -27,7 +29,7 @@ export function useUsers() {
             console.error('Failed to load users:', err)
             const errorMessage = err instanceof Error ? err.message : 'Failed to load users'
             error.value = errorMessage
-            showError(errorMessage)
+            handleError(err)
             throw err
         } finally {
             loading.value = false
@@ -37,10 +39,9 @@ export function useUsers() {
     const createUser = async (data: CreateUserRequest) => {
         try {
             await typedHttpClient.createUser(data)
-            showSuccess('User created successfully')
+            handleSuccess(t('users.create.success'))
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to create user'
-            showError(message)
+            handleError(err)
             throw err
         }
     }
@@ -48,10 +49,9 @@ export function useUsers() {
     const updateUser = async (uuid: string, data: UpdateUserRequest) => {
         try {
             await typedHttpClient.updateUser(uuid, data)
-            showSuccess('User updated successfully')
+            handleSuccess(t('users.update.success'))
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to update user'
-            showError(message)
+            handleError(err)
             throw err
         }
     }
@@ -59,10 +59,9 @@ export function useUsers() {
     const deleteUser = async (uuid: string) => {
         try {
             await typedHttpClient.deleteUser(uuid)
-            showSuccess('User deleted successfully')
+            handleSuccess(t('users.delete.success'))
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to delete user'
-            showError(message)
+            handleError(err)
             throw err
         }
     }
@@ -77,7 +76,7 @@ export function useUsers() {
             console.error('Failed to load user:', err)
             const errorMessage = err instanceof Error ? err.message : 'Failed to load user'
             error.value = errorMessage
-            showError(errorMessage)
+            handleError(err)
             throw err
         } finally {
             loading.value = false
@@ -88,8 +87,7 @@ export function useUsers() {
         try {
             return await typedHttpClient.getUserRoles(uuid)
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to load user roles'
-            showError(message)
+            handleError(err)
             throw err
         }
     }
@@ -97,10 +95,9 @@ export function useUsers() {
     const assignRolesToUser = async (uuid: string, roleUuids: string[]) => {
         try {
             await typedHttpClient.assignRolesToUser(uuid, roleUuids)
-            showSuccess('Roles assigned successfully')
+            handleSuccess(t('users.roles.assign.success'))
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to assign roles'
-            showError(message)
+            handleError(err)
             throw err
         }
     }
