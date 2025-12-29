@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.33](https://github.com/BentBr/r_data_core/compare/v0.1.32...v0.1.33) (2025-12-29)
+
+
+### Features
+
+* Added new fromDef to allow webhooks ([9f60669](https://github.com/BentBr/r_data_core/commit/9f60669fa79c9481cae9234fb88e093fb4efe629))
+
+
+### Bug Fixes
+
+* making sure the route registration is correct for workflows ([a891893](https://github.com/BentBr/r_data_core/commit/a891893cdb0b8c50222e9966b198dc6278d319f2))
+* making sure to have the trigger as type and not format defined ([885a991](https://github.com/BentBr/r_data_core/commit/885a991521e3402acf0ff79b6ae2a9f79ead62df))
+
 ## [0.1.32](https://github.com/BentBr/r_data_core/compare/v0.1.31...v0.1.32) (2025-12-29)
 
 
