@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.31](https://github.com/BentBr/r_data_core/compare/v0.1.30...v0.1.31) (2025-12-29)
+
+
+### Bug Fixes
+
+* making sure all errors, validations etc. are shown properly. err… ([61e1507](https://github.com/BentBr/r_data_core/commit/61e15072ed20f5891e5ddf6d04efd48ccf8da6e3))
+* making sure all errors, validations etc. are shown properly. error + response handling rework in FE ([4524fd5](https://github.com/BentBr/r_data_core/commit/4524fd51c9e8a5f3e4c60b1330a0dc812ddd882e))
+
 ## [0.1.30](https://github.com/BentBr/r_data_core/compare/v0.1.29...v0.1.30) (2025-12-29)
 
 
