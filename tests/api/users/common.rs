@@ -5,9 +5,6 @@ use actix_web::{test, web, App};
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
 use r_data_core_core::error::Result;
-use r_data_core_core::permissions::role::{
-    AccessLevel, Permission, PermissionType, ResourceNamespace, Role,
-};
 use r_data_core_persistence::{
     AdminUserRepository, ApiKeyRepository, DashboardStatsRepository, WorkflowRepository,
 };
@@ -23,11 +20,10 @@ use uuid::Uuid;
 
 use r_data_core_api::{configure_app, ApiState, ApiStateWrapper};
 
-/// Setup a test application with all required services
+/// Setup a test application with database and services
 ///
 /// # Errors
-///
-/// Returns an error if database setup fails or if service initialization fails.
+/// Returns an error if database setup or service initialization fails
 pub async fn setup_test_app() -> Result<(
     impl actix_web::dev::Service<
         actix_http::Request,
@@ -38,9 +34,9 @@ pub async fn setup_test_app() -> Result<(
     Uuid, // user_uuid
 )> {
     let pool = setup_test_db().await;
-    clear_test_db(&pool.pool).await?;
+    clear_test_db(&pool).await?;
 
-    let user_uuid = create_test_admin_user(&pool.pool).await?;
+    let user_uuid = create_test_admin_user(&pool).await?;
 
     let cache_config = CacheConfig {
         entity_definition_ttl: 0,
@@ -101,28 +97,37 @@ pub async fn setup_test_app() -> Result<(
     Ok((app, pool, user_uuid))
 }
 
-/// Create a test role with default permissions
-#[must_use]
-pub fn create_test_role(name: &str) -> Role {
-    let mut role = Role::new(name.to_string());
-    role.description = Some("Test role".to_string());
+/// Get an authentication token for the test admin user
+///
+/// # Panics
+/// Panics if no super admin user exists in the database or if login fails
+pub async fn get_auth_token(
+    app: &impl actix_web::dev::Service<
+        actix_http::Request,
+        Response = actix_web::dev::ServiceResponse,
+        Error = actix_web::Error,
+    >,
+    pool: &r_data_core_test_support::TestDatabase,
+) -> String {
+    // Get the test admin user that was created (super_admin = true)
+    let username: String = sqlx::query_scalar(
+        "SELECT username FROM admin_users WHERE super_admin = true ORDER BY created_at DESC LIMIT 1"
+    )
+    .fetch_one(&pool.pool)
+    .await
+    .expect("Test admin user should exist");
 
-    role.permissions = vec![
-        Permission {
-            resource_type: ResourceNamespace::Workflows,
-            permission_type: PermissionType::Read,
-            access_level: AccessLevel::All,
-            resource_uuids: vec![],
-            constraints: None,
-        },
-        Permission {
-            resource_type: ResourceNamespace::Workflows,
-            permission_type: PermissionType::Create,
-            access_level: AccessLevel::All,
-            resource_uuids: vec![],
-            constraints: None,
-        },
-    ];
+    let login_req = test::TestRequest::post()
+        .uri("/admin/api/v1/auth/login")
+        .set_json(serde_json::json!({
+            "username": username,
+            "password": "adminadmin"
+        }))
+        .to_request();
 
-    role
+    let resp = test::call_service(app, login_req).await;
+    assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
+
+    let body: serde_json::Value = test::read_body_json(resp).await;
+    body["data"]["access_token"].as_str().unwrap().to_string()
 }

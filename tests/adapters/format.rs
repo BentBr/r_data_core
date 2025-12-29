@@ -1,4 +1,4 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler;
 use r_data_core_workflow::data::adapters::format::json::JsonFormatHandler;

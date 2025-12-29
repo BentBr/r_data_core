@@ -60,9 +60,9 @@ pub async fn list_users(
     auth: RequiredAuth,
     query: web::Query<StandardQuery>,
 ) -> impl Responder {
-    // Check permission - need Roles:Admin to manage users
+    // Check permission - need Users:Read to list users
     if let Err(resp) =
-        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Admin, None)
+        auth.require_permission(&ResourceNamespace::Users, &PermissionType::Read, None)
     {
         return resp;
     }
@@ -130,9 +130,9 @@ pub async fn get_user(
     auth: RequiredAuth,
     path: web::Path<Uuid>,
 ) -> impl Responder {
-    // Check permission
+    // Check permission - need Users:Read to get user
     if let Err(resp) =
-        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Admin, None)
+        auth.require_permission(&ResourceNamespace::Users, &PermissionType::Read, None)
     {
         return resp;
     }
@@ -178,9 +178,9 @@ pub async fn create_user(
     auth: RequiredAuth,
     req: web::Json<CreateUserRequest>,
 ) -> impl Responder {
-    // Check permission
+    // Check permission - need Users:Create to create users
     if let Err(resp) =
-        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Admin, None)
+        auth.require_permission(&ResourceNamespace::Users, &PermissionType::Create, None)
     {
         return resp;
     }
@@ -306,9 +306,9 @@ pub async fn update_user(
     path: web::Path<Uuid>,
     req: web::Json<UpdateUserRequest>,
 ) -> impl Responder {
-    // Check permission
+    // Check permission - need Users:Update to update users
     if let Err(resp) =
-        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Admin, None)
+        auth.require_permission(&ResourceNamespace::Users, &PermissionType::Update, None)
     {
         return resp;
     }
@@ -443,9 +443,9 @@ pub async fn delete_user(
     auth: RequiredAuth,
     path: web::Path<Uuid>,
 ) -> impl Responder {
-    // Check permission
+    // Check permission - need Users:Delete to delete users
     if let Err(resp) =
-        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Admin, None)
+        auth.require_permission(&ResourceNamespace::Users, &PermissionType::Delete, None)
     {
         return resp;
     }
@@ -500,9 +500,9 @@ pub async fn get_user_roles(
     auth: RequiredAuth,
     path: web::Path<Uuid>,
 ) -> impl Responder {
-    // Check permission
+    // Check permission - need Users:Read to get user roles
     if let Err(resp) =
-        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Admin, None)
+        auth.require_permission(&ResourceNamespace::Users, &PermissionType::Read, None)
     {
         return resp;
     }
@@ -552,9 +552,9 @@ pub async fn assign_roles_to_user(
     path: web::Path<Uuid>,
     req: web::Json<Vec<Uuid>>,
 ) -> impl Responder {
-    // Check permission
+    // Check permission - need Users:Update to assign roles to users
     if let Err(resp) =
-        auth.require_permission(&ResourceNamespace::Roles, &PermissionType::Admin, None)
+        auth.require_permission(&ResourceNamespace::Users, &PermissionType::Update, None)
     {
         return resp;
     }

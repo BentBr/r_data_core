@@ -1,4 +1,4 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 // Will contain API integration tests
 
 // API tests
@@ -13,6 +13,6 @@ pub mod provider_workflow_endpoints_tests;
 pub mod query_validation_integration_tests;
 pub mod refresh_token_integration_tests;
 pub mod roles;
-pub mod users_tests;
+pub mod users;
 pub mod workflows;
 pub mod workflows_routes_tests;

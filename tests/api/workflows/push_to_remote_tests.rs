@@ -1,4 +1,4 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 // Tests for pushing data to remote APIs via cron from entities
 // Use Case 3: Push data to remote API via cron from entities (CSV/JSON)

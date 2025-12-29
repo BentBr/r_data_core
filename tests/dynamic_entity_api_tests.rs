@@ -1,4 +1,4 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use log::warn;
 use r_data_core_core::entity_definition::definition::{EntityDefinition, EntityDefinitionParams};

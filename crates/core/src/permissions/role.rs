@@ -83,6 +83,9 @@ pub enum ResourceNamespace {
     /// Roles namespace
     Roles,
 
+    /// Users namespace
+    Users,
+
     /// System settings namespace
     System,
 
@@ -103,6 +106,7 @@ impl ResourceNamespace {
             Self::EntityDefinitions => "entity_definitions",
             Self::ApiKeys => "api_keys",
             Self::Roles => "roles",
+            Self::Users => "users",
             Self::System => "system",
             Self::DashboardStats => "dashboard_stats",
         }
@@ -123,6 +127,7 @@ impl ResourceNamespace {
             "entity_definitions" => Some(Self::EntityDefinitions),
             "api_keys" => Some(Self::ApiKeys),
             "roles" => Some(Self::Roles),
+            "users" => Some(Self::Users),
             "system" => Some(Self::System),
             "dashboard_stats" => Some(Self::DashboardStats),
             _ => None,

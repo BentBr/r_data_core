@@ -61,7 +61,7 @@ impl AuthService {
             ),
             (
                 "/permissions",
-                ResourceNamespace::Roles,
+                ResourceNamespace::Users,
                 PermissionType::Read,
             ),
             ("/system", ResourceNamespace::System, PermissionType::Read),

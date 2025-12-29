@@ -8,6 +8,7 @@ export const ResourceNamespaceSchema = z.enum([
     'EntityDefinitions',
     'ApiKeys',
     'Roles',
+    'Users',
     'System',
 ])
 
