@@ -55,7 +55,7 @@
                 />
             </div>
             <div
-                v-if="formatType === 'csv'"
+                v-if="formatType === 'csv' && sourceType !== 'trigger'"
                 class="mb-2"
             >
                 <div class="d-flex align-center ga-2 flex-wrap">
@@ -104,6 +104,15 @@
                 @click="addMapping"
                 >{{ t('workflows.dsl.add_mapping') }}</v-btn
             >
+        </template>
+        <template v-else-if="modelValue.type === 'trigger'">
+            <div
+                class="text-caption mb-2 pa-2"
+                style="background-color: rgba(var(--v-theme-primary), 0.1); border-radius: 4px"
+            >
+                <strong>{{ t('workflows.dsl.endpoint_info') }}:</strong> GET
+                {{ getTriggerEndpointUri() }}
+            </div>
         </template>
         <template v-else-if="modelValue.type === 'entity'">
             <v-select
@@ -378,10 +387,16 @@
         return buildApiUrl(`/api/v1/workflows/${uuid}`)
     }
 
+    function getTriggerEndpointUri(): string {
+        const uuid = props.workflowUuid ?? '{workflow-uuid}'
+        return buildApiUrl(`/api/v1/workflows/${uuid}/trigger`)
+    }
+
     const fromTypes = [
         { title: 'Format (CSV/JSON)', value: 'format' },
         { title: 'Entity', value: 'entity' },
         { title: 'Previous Step', value: 'previous_step' },
+        { title: 'Trigger', value: 'trigger' },
     ]
 
     function updateField(field: string, value: unknown) {
@@ -431,7 +446,12 @@
             source: {
                 ...props.modelValue.source,
                 source_type: newType,
-                config: newType === 'uri' ? { uri: '' } : newType === 'api' ? {} : {},
+                config:
+                    newType === 'uri'
+                        ? { uri: '' }
+                        : newType === 'api' || newType === 'trigger'
+                          ? {}
+                          : {},
             },
         }
         emit('update:modelValue', updated)
@@ -500,7 +520,7 @@
         emit('update:modelValue', updated)
     }
 
-    function onTypeChange(newType: 'format' | 'entity' | 'previous_step') {
+    function onTypeChange(newType: 'format' | 'entity' | 'previous_step' | 'trigger') {
         let newFrom: FromDef
         if (newType === 'format') {
             newFrom = {
@@ -521,6 +541,11 @@
                 type: 'entity',
                 entity_definition: '',
                 filter: { field: '', operator: '=', value: '' },
+                mapping: {},
+            }
+        } else if (newType === 'trigger') {
+            newFrom = {
+                type: 'trigger',
                 mapping: {},
             }
         } else {

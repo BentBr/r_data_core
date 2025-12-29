@@ -497,7 +497,7 @@ async fn test_provider_endpoint_stats() -> anyhow::Result<()> {
 #[actix_web::test]
 #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
-    let (app, pool, _token, _) = setup_app_with_entities().await?;
+    let (app, pool, token, _) = setup_app_with_entities().await?;
 
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
         .fetch_one(&pool.pool)
@@ -540,6 +540,7 @@ async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
     let csv_data: Vec<u8> = b"name,email\nJohn,john@example.com".to_vec();
     let req = test::TestRequest::post()
         .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .insert_header(("Content-Type", "text/csv"))
         .set_payload(csv_data)
         .to_request();
@@ -571,7 +572,7 @@ async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
 #[actix_web::test]
 #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
-    let (app, pool, _token, _) = setup_app_with_entities().await?;
+    let (app, pool, token, _) = setup_app_with_entities().await?;
 
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
         .fetch_one(&pool.pool)
@@ -625,6 +626,7 @@ async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
     let csv_data: Vec<u8> = b"name,email\nJohn,john@example.com".to_vec();
     let req = test::TestRequest::post()
         .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .insert_header(("Content-Type", "text/csv"))
         .set_payload(csv_data)
         .to_request();
@@ -719,7 +721,7 @@ async fn test_provider_endpoint_returns_404_for_consumer_workflow() -> anyhow::R
 #[actix_web::test]
 #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_consumer_endpoint_post_returns_405_for_provider_workflow() -> anyhow::Result<()> {
-    let (app, pool, _token, _) = setup_app_with_entities().await?;
+    let (app, pool, token, _) = setup_app_with_entities().await?;
 
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
         .fetch_one(&pool.pool)
@@ -762,6 +764,7 @@ async fn test_consumer_endpoint_post_returns_405_for_provider_workflow() -> anyh
     let payload: Vec<u8> = b"{}".to_vec();
     let req = test::TestRequest::post()
         .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .insert_header(("Content-Type", "application/json"))
         .set_payload(payload)
         .to_request();

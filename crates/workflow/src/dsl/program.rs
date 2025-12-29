@@ -96,6 +96,10 @@ impl DslProgram {
                     }
                     &step_outputs[step_idx - 1]
                 }
+                FromDef::Trigger { .. } => {
+                    // Trigger has no input data - use empty object
+                    &serde_json::json!({})
+                }
                 FromDef::Format { .. } | FromDef::Entity { .. } => {
                     // Read from original input
                     input
@@ -254,6 +258,10 @@ impl DslProgram {
                         bail!("Step 0 cannot use PreviousStep source");
                     }
                     &step_outputs[step_idx - 1]
+                }
+                FromDef::Trigger { .. } => {
+                    // Trigger has no input data - use empty object
+                    &serde_json::json!({})
                 }
                 FromDef::Format { .. } | FromDef::Entity { .. } => {
                     // Read from original input

@@ -77,6 +77,7 @@ async fn test_validate_valid_entity_mapping() {
         }
         FromDef::Format { .. } => panic!("Expected Entity FromDef"),
         FromDef::PreviousStep { .. } => panic!("Expected Entity FromDef, got PreviousStep"),
+        FromDef::Trigger { .. } => panic!("Expected Entity FromDef, got Trigger"),
     }
 }
 

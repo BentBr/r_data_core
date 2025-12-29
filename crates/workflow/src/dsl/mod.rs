@@ -231,6 +231,112 @@ mod tests {
     }
 
     #[test]
+    fn test_validate_from_trigger_in_first_step() {
+        // from.trigger should be valid in step 0 (first step)
+        let config = json!({
+            "steps": [{
+                "from": {
+                    "type": "trigger",
+                    "mapping": {}
+                },
+                "transform": { "type": "none" },
+                "to": {
+                    "type": "format",
+                    "output": { "mode": "api" },
+                    "format": {
+                        "format_type": "json",
+                        "options": {}
+                    },
+                    "mapping": {}
+                }
+            }]
+        });
+        let prog = DslProgram::from_config(&config).unwrap();
+        prog.validate().unwrap();
+    }
+
+    #[test]
+    fn test_validate_from_trigger_not_in_first_step_fails() {
+        // from.trigger should fail if not in step 0
+        let config = json!({
+            "steps": [
+                {
+                    "from": {
+                        "type": "format",
+                        "source": {
+                            "source_type": "uri",
+                            "config": { "uri": "http://example.com/data.json" },
+                            "auth": null
+                        },
+                        "format": {
+                            "format_type": "json",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    },
+                    "transform": { "type": "none" },
+                    "to": {
+                        "type": "next_step",
+                        "mapping": {}
+                    }
+                },
+                {
+                    "from": {
+                        "type": "trigger",
+                        "mapping": {}
+                    },
+                    "transform": { "type": "none" },
+                    "to": {
+                        "type": "format",
+                        "output": { "mode": "api" },
+                        "format": {
+                            "format_type": "json",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    }
+                }
+            ]
+        });
+        let prog = DslProgram::from_config(&config).unwrap();
+        let result = prog.validate();
+        assert!(
+            result.is_err(),
+            "Expected validation to fail for from.trigger not in first step"
+        );
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("can only be used in the first step"),
+            "Error message should mention trigger can only be used in first step"
+        );
+    }
+
+    #[test]
+    fn test_validate_from_trigger_with_minimal_config() {
+        // from.trigger with minimal config should be valid
+        let config = json!({
+            "steps": [{
+                "from": {
+                    "type": "trigger",
+                    "mapping": {}
+                },
+                "transform": { "type": "none" },
+                "to": {
+                    "type": "entity",
+                    "entity_definition": "test",
+                    "path": "/",
+                    "mode": "create",
+                    "mapping": {}
+                }
+            }]
+        });
+        let prog = DslProgram::from_config(&config).unwrap();
+        prog.validate().unwrap();
+    }
+
+    #[test]
     fn test_mapping_same_field_multiple_times() {
         // Test that the same normalized field can be mapped to multiple destination fields
         let config = json!({

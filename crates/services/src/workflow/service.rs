@@ -551,6 +551,7 @@ impl WorkflowService {
                     .await?;
                 total_staged += staged;
             }
+            // Skip trigger - it has no data to fetch (no-op, loop continues naturally)
         }
 
         Ok(total_staged)

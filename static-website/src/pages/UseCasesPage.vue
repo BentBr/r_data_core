@@ -119,6 +119,7 @@
         { icon: '🔌', tags: ['Public API', 'Partners'] },
         { icon: '🗄️', tags: ['MDM', 'Central Hub'] },
         { icon: '⚙️', tags: ['CSV', 'JSON', 'Transform'] },
+        { icon: '🔔', tags: ['Webhooks', 'API Integration', 'Automation'] },
     ]
 
     const openDemo = () => {
