@@ -1,7 +1,6 @@
 ## Todos
 - add options for custom tables (like bricks)
 - have easy-creation of children (entities)
-- test admin routes
 - custom field type (json with predefined content - like a preferences structure...)
 - key-value-store
 - relations 1:n + n:n
