@@ -19,6 +19,7 @@
                     @update:model-value="updateSourceType($event)"
                 />
                 <v-select
+                    v-if="sourceType !== 'trigger'"
                     :model-value="formatType"
                     :items="formatTypes"
                     :label="t('workflows.dsl.format_type')"
@@ -45,8 +46,18 @@
                     {{ getFullEndpointUri() }}
                 </div>
             </template>
+            <!-- from.trigger source type = Accept GET to trigger workflow (no data payload) -->
+            <template v-if="sourceType === 'trigger'">
+                <div
+                    class="text-caption mb-2 pa-2"
+                    style="background-color: rgba(var(--v-theme-primary), 0.1); border-radius: 4px"
+                >
+                    <strong>{{ t('workflows.dsl.endpoint_info') }}:</strong> GET
+                    {{ getFullEndpointUri() }}
+                </div>
+            </template>
             <div
-                v-if="formatType === 'csv'"
+                v-if="formatType === 'csv' && sourceType !== 'trigger'"
                 class="mb-2"
             >
                 <CsvOptionsEditor
@@ -55,7 +66,7 @@
                 />
             </div>
             <div
-                v-if="formatType === 'csv'"
+                v-if="formatType === 'csv' && sourceType !== 'trigger'"
                 class="mb-2"
             >
                 <div class="d-flex align-center ga-2 flex-wrap">
@@ -73,7 +84,10 @@
                     >
                 </div>
             </div>
-            <div class="mb-2">
+            <div
+                v-if="sourceType !== 'trigger'"
+                class="mb-2"
+            >
                 <v-expansion-panels variant="accordion">
                     <v-expansion-panel>
                         <v-expansion-panel-title>{{
@@ -88,10 +102,14 @@
                     </v-expansion-panel>
                 </v-expansion-panels>
             </div>
-            <div class="text-caption mb-1 mt-2">
+            <div
+                v-if="sourceType !== 'trigger'"
+                class="text-caption mb-1 mt-2"
+            >
                 {{ t('workflows.dsl.mapping_source_normalized') }}
             </div>
             <MappingEditor
+                v-if="sourceType !== 'trigger'"
                 ref="mappingEditorRef"
                 :model-value="modelValue.mapping"
                 :left-label="t('workflows.dsl.source')"
@@ -99,6 +117,7 @@
                 @update:model-value="updateField('mapping', $event)"
             />
             <v-btn
+                v-if="sourceType !== 'trigger'"
                 size="x-small"
                 variant="tonal"
                 @click="addMapping"
@@ -414,6 +433,7 @@
     const sourceTypes = [
         { title: 'URI', value: 'uri' },
         { title: 'API', value: 'api' },
+        { title: 'Trigger', value: 'trigger' },
         { title: 'File', value: 'file' },
     ]
 
@@ -431,7 +451,12 @@
             source: {
                 ...props.modelValue.source,
                 source_type: newType,
-                config: newType === 'uri' ? { uri: '' } : newType === 'api' ? {} : {},
+                config:
+                    newType === 'uri'
+                        ? { uri: '' }
+                        : newType === 'api' || newType === 'trigger'
+                          ? {}
+                          : {},
             },
         }
         emit('update:modelValue', updated)

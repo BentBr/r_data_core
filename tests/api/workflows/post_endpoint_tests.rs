@@ -21,7 +21,7 @@ use uuid::Uuid;
 
 #[actix_web::test]
 async fn test_post_endpoint_accepts_csv_into_entities() -> anyhow::Result<()> {
-    let (app, pool, _token, _) = setup_app_with_entities().await?;
+    let (app, pool, token, _) = setup_app_with_entities().await?;
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
         .fetch_one(&pool.pool)
         .await?;
@@ -71,6 +71,7 @@ async fn test_post_endpoint_accepts_csv_into_entities() -> anyhow::Result<()> {
         b"name,email\nJohn Doe,john@example.com\nJane Smith,jane@example.com".to_vec();
     let req = test::TestRequest::post()
         .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .insert_header(("Content-Type", "text/csv"))
         .set_payload(csv_data)
         .to_request();
@@ -90,7 +91,7 @@ async fn test_post_endpoint_accepts_csv_into_entities() -> anyhow::Result<()> {
 
 #[actix_web::test]
 async fn test_post_endpoint_accepts_json_into_entities() -> anyhow::Result<()> {
-    let (app, pool, _token, _) = setup_app_with_entities().await?;
+    let (app, pool, token, _) = setup_app_with_entities().await?;
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
         .fetch_one(&pool.pool)
         .await?;
@@ -110,6 +111,7 @@ async fn test_post_endpoint_accepts_json_into_entities() -> anyhow::Result<()> {
     let json_data = r#"[{"name":"John Doe","email":"john@example.com"},{"name":"Jane Smith","email":"jane@example.com"}]"#;
     let req = test::TestRequest::post()
         .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .insert_header(("Content-Type", "application/json"))
         .set_payload(json_data.as_bytes())
         .to_request();
@@ -186,11 +188,11 @@ async fn test_post_endpoint_csv_without_auth_currently_allowed() -> anyhow::Resu
 
     let resp = test::call_service(&app, req).await;
 
-    // Currently allowed (202) - when auth is implemented, should return 401
+    // Auth is now required - should return 401
     assert_eq!(
         resp.status().as_u16(),
-        202,
-        "Currently POST endpoints don't require auth. When auth is implemented, this should return 401"
+        401,
+        "POST endpoints now require auth and should return 401"
     );
 
     Ok(())
@@ -248,11 +250,11 @@ async fn test_post_endpoint_json_without_auth_currently_allowed() -> anyhow::Res
 
     let resp = test::call_service(&app, req).await;
 
-    // Currently allowed (202) - when auth is implemented, should return 401
+    // Auth is now required - should return 401
     assert_eq!(
         resp.status().as_u16(),
-        202,
-        "Currently POST endpoints don't require auth. When auth is implemented, this should return 401"
+        401,
+        "POST endpoints now require auth and should return 401"
     );
 
     Ok(())

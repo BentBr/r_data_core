@@ -163,8 +163,11 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
     );
 }
 
-/// Get workflow data (provider workflow)
-/// Returns data in the format specified by the workflow config (CSV or JSON)
+/// Get workflow data or trigger workflow execution
+/// For Provider workflows: Returns data in the format specified by the workflow config (CSV or JSON)
+/// For Consumer workflows with trigger source: Triggers workflow execution (enqueue and process)
+/// Supports sync and async modes via ?async=true query parameter
+/// Authentication is required (JWT, API key, or pre-shared key) for both Provider and Consumer workflows
 #[utoipa::path(
     get,
     path = "/api/v1/workflows/{uuid}",
@@ -175,7 +178,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
         ("run_uuid" = Option<Uuid>, Query, description = "Run UUID to poll when async=true")
     ),
     responses(
-        (status = 200, description = "Workflow data in configured format (CSV or JSON)", content_type = "text/csv,application/json"),
+        (status = 200, description = "Provider: Workflow data in configured format (CSV or JSON). Consumer with trigger: Workflow execution completed", content_type = "text/csv,application/json"),
         (status = 202, description = "Workflow execution queued (use /workflows/{uuid} again to check status)"),
         (status = 401, description = "Unauthorized - authentication required"),
         (status = 404, description = "Workflow not found"),
@@ -207,11 +210,8 @@ pub async fn get_workflow_data(
                 .json(json!({"error": "Internal server error"}));
         }
     };
-    if let Err(resp) = validate_and_authenticate_provider(&req, &workflow, &state).await {
-        return resp;
-    }
 
-    // Parse DSL program
+    // Parse DSL program early to check for trigger source
     let program = match DslProgram::from_config(&workflow.config) {
         Ok(p) => p,
         Err(e) => {
@@ -223,6 +223,158 @@ pub async fn get_workflow_data(
             }));
         }
     };
+
+    // Check for trigger source in Consumer workflows
+    let has_trigger_source = program.steps.iter().any(|step| {
+        if let r_data_core_workflow::dsl::FromDef::Format { source, .. } = &step.from {
+            source.source_type == "trigger"
+        } else {
+            false
+        }
+    });
+
+    // Handle Consumer workflows with trigger source
+    if workflow.kind == r_data_core_workflow::data::WorkflowKind::Consumer && has_trigger_source {
+        handle_trigger_consumer_workflow(uuid, &req, &workflow, &state, &query).await
+    } else if workflow.kind == r_data_core_workflow::data::WorkflowKind::Provider {
+        handle_provider_workflow(uuid, &req, &workflow, &program, &state, &query).await
+    } else {
+        // Consumer workflow without trigger source - not accessible via GET
+        HttpResponse::NotFound().json(json!({"error": "Workflow not found"}))
+    }
+}
+
+#[allow(clippy::future_not_send)]
+async fn handle_trigger_consumer_workflow(
+    uuid: Uuid,
+    req: &HttpRequest,
+    workflow: &r_data_core_workflow::data::Workflow,
+    state: &web::Data<ApiStateWrapper>,
+    query: &web::Query<WorkflowQuery>,
+) -> HttpResponse {
+    // Check if workflow is enabled
+    if !workflow.enabled {
+        return HttpResponse::ServiceUnavailable().json(json!({
+            "error": "Workflow is not enabled",
+            "message": "This workflow is currently disabled and cannot be triggered"
+        }));
+    }
+
+    // Validate authentication (required for all workflows)
+    if let Err(resp) = validate_and_authenticate_workflow(req, workflow, state).await {
+        return resp;
+    }
+
+    // Create a run
+    let run_uuid = match state.workflow_service().enqueue_run(uuid).await {
+        Ok(run_uuid) => run_uuid,
+        Err(e) => {
+            log::error!("Failed to enqueue run: {e}");
+            return HttpResponse::InternalServerError()
+                .json(json!({"error": "Failed to enqueue workflow run"}));
+        }
+    };
+    let _ = state.workflow_service().mark_run_running(run_uuid).await;
+
+    let async_mode = query.r#async.unwrap_or(false);
+    let run_uuid_param = query.run_uuid;
+
+    if async_mode {
+        if let Some(resp) = match handle_async_get(uuid, run_uuid_param, state).await {
+            Ok(resp_opt) => resp_opt,
+            Err(resp) => return resp,
+        } {
+            return resp;
+        }
+    }
+
+    // For trigger source, fetch and stage from config (will skip trigger source, fetch from uri/entity sources)
+    // If no items are staged, stage an empty item to trigger processing
+    let fetch_staged = match state
+        .workflow_service()
+        .fetch_and_stage_from_config(uuid, run_uuid)
+        .await
+    {
+        Ok(count) => count,
+        Err(e) => {
+            log::error!("Failed to fetch and stage from config: {e}");
+            let _ = state
+                .workflow_service()
+                .mark_run_failure(run_uuid, "Failed to fetch from config")
+                .await;
+            return HttpResponse::InternalServerError()
+                .json(json!({"error": "Failed to fetch workflow data"}));
+        }
+    };
+
+    // If no items were staged (e.g., only trigger source, no uri/entity sources), stage empty item to trigger processing
+    let staged = if fetch_staged == 0 {
+        match state
+            .workflow_service()
+            .stage_raw_items(uuid, run_uuid, vec![serde_json::json!({})])
+            .await
+        {
+            Ok(count) => count,
+            Err(e) => {
+                log::error!("Failed to stage trigger item: {e}");
+                let _ = state
+                    .workflow_service()
+                    .mark_run_failure(run_uuid, "Failed to stage trigger item")
+                    .await;
+                return HttpResponse::InternalServerError()
+                    .json(json!({"error": "Failed to stage workflow trigger"}));
+            }
+        }
+    } else {
+        0
+    };
+
+    // Process staged items
+    match state
+        .workflow_service()
+        .process_staged_items(uuid, run_uuid)
+        .await
+    {
+        Ok((processed, failed)) => {
+            let _ = state
+                .workflow_service()
+                .mark_run_success(run_uuid, processed, failed)
+                .await;
+            HttpResponse::Accepted().json(json!({
+                "run_uuid": run_uuid,
+                "staged_items": fetch_staged + staged,
+                "processed": processed,
+                "failed": failed,
+                "status": "completed"
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to process workflow: {e}");
+            let _ = state
+                .workflow_service()
+                .mark_run_failure(run_uuid, &format!("Processing failed: {e}"))
+                .await;
+            HttpResponse::InternalServerError().json(json!({
+                "error": "Failed to process workflow",
+                "run_uuid": run_uuid
+            }))
+        }
+    }
+}
+
+#[allow(clippy::future_not_send)]
+async fn handle_provider_workflow(
+    uuid: Uuid,
+    req: &HttpRequest,
+    workflow: &r_data_core_workflow::data::Workflow,
+    program: &DslProgram,
+    state: &web::Data<ApiStateWrapper>,
+    query: &web::Query<WorkflowQuery>,
+) -> HttpResponse {
+    // Existing Provider workflow behavior
+    if let Err(resp) = validate_and_authenticate_workflow(req, workflow, state).await {
+        return resp;
+    }
 
     // Create a run and mark running for logging/history
     let run_uuid = match state.workflow_service().enqueue_run(uuid).await {
@@ -239,7 +391,7 @@ pub async fn get_workflow_data(
     let run_uuid_param = query.run_uuid;
 
     if async_mode {
-        if let Some(resp) = match handle_async_get(uuid, run_uuid_param, &state).await {
+        if let Some(resp) = match handle_async_get(uuid, run_uuid_param, state).await {
             Ok(resp_opt) => resp_opt,
             Err(resp) => return resp,
         } {
@@ -248,7 +400,7 @@ pub async fn get_workflow_data(
     }
 
     // Collect input data from entity sources (sync execution path)
-    let input_data = match collect_entity_input_data(&program, &state).await {
+    let input_data = match collect_entity_input_data(program, state).await {
         Ok(data) => data,
         Err(resp) => {
             let _ = state
@@ -273,7 +425,7 @@ pub async fn get_workflow_data(
 
     // Execute workflow and collect format outputs
     let (format_outputs, format_config) =
-        match execute_workflow_and_collect_outputs(&program, input_data) {
+        match execute_workflow_and_collect_outputs(program, input_data) {
             Ok(result) => result,
             Err(resp) => {
                 let _ = state
@@ -297,7 +449,7 @@ pub async fn get_workflow_data(
     let all_data = format_outputs;
 
     // Serialize based on format
-    let response = serialize_api_output(format, &all_data, run_uuid, &state).await;
+    let response = serialize_api_output(format, &all_data, run_uuid, state).await;
 
     // Mark run success with counts (processed = entity_count)
     let _ = state
@@ -309,15 +461,12 @@ pub async fn get_workflow_data(
 }
 
 #[allow(clippy::future_not_send)]
-async fn validate_and_authenticate_provider(
+async fn validate_and_authenticate_workflow(
     req: &HttpRequest,
     workflow: &r_data_core_workflow::data::Workflow,
     state: &web::Data<ApiStateWrapper>,
 ) -> Result<(), HttpResponse> {
-    // Only provider workflows can be accessed via GET
-    if workflow.kind != r_data_core_workflow::data::WorkflowKind::Provider {
-        return Err(HttpResponse::NotFound().json(json!({"error": "Workflow not found"})));
-    }
+    // Authentication is required for all workflows (both Provider and Consumer)
 
     // Validate pre-shared key if configured (sets extension for CombinedRequiredAuth)
     if let Err(e) = validate_provider_auth(req, &workflow.config, &***state) {
@@ -577,6 +726,7 @@ pub async fn get_workflow_stats(
 
 /// POST endpoint for ingesting data (consumer workflow)
 /// Synchronously triggers workflow processing for consumer workflows with from.api source
+/// Authentication is required (JWT, API key, or pre-shared key)
 #[utoipa::path(
     post,
     path = "/api/v1/workflows/{uuid}",
@@ -592,15 +742,23 @@ pub async fn get_workflow_stats(
     responses(
         (status = 202, description = "Data accepted and processing started", body = serde_json::Value),
         (status = 400, description = "Bad request - workflow does not support API ingestion"),
+        (status = 401, description = "Unauthorized - authentication required"),
         (status = 404, description = "Workflow not found"),
         (status = 405, description = "Method not allowed - only consumer workflows accept POST"),
         (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt" = []),
+        ("apiKey" = []),
+        ("preSharedKey" = [])
     )
 )]
+#[allow(clippy::future_not_send)] // HttpRequest is not Send, but Actix Web handles this internally
 #[post("/{uuid}")]
 pub async fn post_workflow_ingest(
     path: web::Path<Uuid>,
     body: web::Bytes,
+    req: HttpRequest,
     state: web::Data<ApiStateWrapper>,
 ) -> impl Responder {
     let uuid = path.into_inner();
@@ -615,6 +773,11 @@ pub async fn post_workflow_ingest(
                 .json(json!({"error": "Internal server error"}));
         }
     };
+
+    // Validate authentication (required for all workflows)
+    if let Err(resp) = validate_and_authenticate_workflow(&req, &workflow, &state).await {
+        return resp;
+    }
 
     // Only consumer workflows can accept POST
     if workflow.kind != r_data_core_workflow::data::WorkflowKind::Consumer {

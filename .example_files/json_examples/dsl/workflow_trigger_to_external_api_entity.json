@@ -1,0 +1,62 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "format",
+        "source": {
+          "source_type": "trigger",
+          "config": {},
+          "auth": null
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {}
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "next_step",
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "format",
+        "source": {
+          "source_type": "uri",
+          "config": {
+            "uri": "https://api.example.com/data"
+          },
+          "auth": null
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {
+          "name": "name",
+          "email": "email",
+          "status": "status"
+        }
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "entity",
+        "entity_definition": "${ENTITY_TYPE}",
+        "path": "/",
+        "mode": "create",
+        "mapping": {
+          "name": "name",
+          "email": "email",
+          "status": "status"
+        }
+      }
+    }
+  ]
+}
+

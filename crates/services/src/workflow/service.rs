@@ -543,7 +543,7 @@ impl WorkflowService {
             }
 
             if let r_data_core_workflow::dsl::FromDef::Format { source, format, .. } = &step.from {
-                if source.source_type == "api" {
+                if source.source_type == "api" || source.source_type == "trigger" {
                     continue;
                 }
                 let staged = self

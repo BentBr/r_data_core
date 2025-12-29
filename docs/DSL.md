@@ -51,6 +51,11 @@ Read data from CSV, JSON, or other formats:
 }
 ```
 
+**Source Types:**
+- **API** (`source_type: "api"`): Accepts POST data via `/api/v1/workflows/{uuid}` endpoint. Used for webhook ingestion with data payload.
+- **Trigger** (`source_type: "trigger"`): Accepts GET requests at `/api/v1/workflows/{uuid}` endpoint to trigger workflow execution. No data payload - just triggers the workflow to run. Useful for cron-like external triggers. When using trigger source, no format/header/file/mapping fields are needed, and step 2 can use static `from.uri` endpoints (no need for PreviousStep since step 1 has no data).
+- **URI** (`source_type: "uri"`): Fetches data from external HTTP/HTTPS endpoints. Requires `config.uri` field with the full URL.
+
 ### Entity
 
 Read data from an entity definition:
@@ -399,6 +404,74 @@ Combine first and last name:
   ]
 }
 ```
+
+### Example 5: Trigger → External API → Entity Creation
+
+Trigger workflow via GET request, fetch data from external API, and create entities:
+
+```json
+{
+  "steps": [
+    {
+      "from": {
+        "type": "format",
+        "source": {
+          "source_type": "trigger",
+          "config": {},
+          "auth": null
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {}
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "next_step",
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "format",
+        "source": {
+          "source_type": "uri",
+          "config": {
+            "uri": "https://api.example.com/data"
+          },
+          "auth": null
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {
+          "name": "name",
+          "email": "email"
+        }
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "entity",
+        "entity_definition": "customer",
+        "path": "/",
+        "mode": "create",
+        "mapping": {
+          "name": "name",
+          "email": "email"
+        }
+      }
+    }
+  ]
+}
+```
+
+**Note**: When using `trigger` source type, step 2 doesn't need `PreviousStep` since step 1 has no data to pass. Step 2 can use static `from.uri` endpoints to pull from external APIs.
 
 ## Type Casting Rules
 
