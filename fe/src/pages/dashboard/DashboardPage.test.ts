@@ -26,6 +26,8 @@ vi.mock('@/composables/useTranslations', () => ({
                 'dashboard.quick_actions.generate_api_key': 'Generate API Key',
                 'dashboard.quick_actions.create_workflow': 'Create Workflow',
                 'dashboard.quick_actions.users': 'Users',
+                'dashboard.quick_actions.no_quick_create_permission_granted':
+                    'No quick create permission granted',
             }
             return translations[key] || key
         },
@@ -268,5 +270,96 @@ describe('DashboardPage', () => {
         expect(typedHttpClient.getDashboardStats).toHaveBeenCalled()
         // Should have permission check called with DashboardStats
         expect(mockAuthStore.hasPermission).toHaveBeenCalledWith('DashboardStats', 'read')
+    })
+
+    it('shows hint message when user has no create permissions', async () => {
+        const mockStats: DashboardStats = {
+            entity_definitions_count: 5,
+            entities: {
+                total: 10,
+                by_type: [],
+            },
+            workflows: {
+                total: 3,
+                workflows: [],
+            },
+            online_users_count: 2,
+        }
+
+        const mockAuthStore = {
+            canAccessRoute: vi.fn(() => true),
+            hasPermission: vi.fn((namespace: string, permission: string) => {
+                // Return true only for DashboardStats:read, false for all create permissions
+                if (namespace === 'DashboardStats' && permission === 'read') {
+                    return true
+                }
+                return false
+            }),
+        }
+        vi.mocked(useAuthStore).mockReturnValue(mockAuthStore as any)
+        vi.mocked(typedHttpClient.getDashboardStats).mockResolvedValue(mockStats)
+
+        const wrapper = mount(DashboardPage, {
+            global: {
+                plugins: [router],
+            },
+        })
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // Should show the hint message
+        expect(wrapper.text()).toContain('No quick create permission granted')
+        // Should not show any quick action buttons (check that buttons are not rendered)
+        const html = wrapper.html()
+        expect(html).not.toContain('New Entity Definition')
+        expect(html).not.toContain('Create Entity')
+        expect(html).not.toContain('Generate API Key')
+        expect(html).not.toContain('Create Workflow')
+    })
+
+    it('does not show hint message when user has create permissions', async () => {
+        const mockStats: DashboardStats = {
+            entity_definitions_count: 5,
+            entities: {
+                total: 10,
+                by_type: [],
+            },
+            workflows: {
+                total: 3,
+                workflows: [],
+            },
+            online_users_count: 2,
+        }
+
+        const mockAuthStore = {
+            canAccessRoute: vi.fn(() => true),
+            hasPermission: vi.fn((namespace: string, permission: string) => {
+                // Return true for DashboardStats:read and Workflows:Create
+                if (namespace === 'DashboardStats' && permission === 'read') {
+                    return true
+                }
+                if (namespace === 'Workflows' && permission === 'Create') {
+                    return true
+                }
+                return false
+            }),
+        }
+        vi.mocked(useAuthStore).mockReturnValue(mockAuthStore as any)
+        vi.mocked(typedHttpClient.getDashboardStats).mockResolvedValue(mockStats)
+
+        const wrapper = mount(DashboardPage, {
+            global: {
+                plugins: [router],
+            },
+        })
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // Should not show the hint message
+        expect(wrapper.text()).not.toContain('No quick create permission granted')
+        // Should show at least one quick action button
+        expect(wrapper.text()).toContain('Create Workflow')
     })
 })

@@ -15,6 +15,9 @@
     import { getDialogMaxWidth } from '@/design-system/components'
     import { useSnackbar } from '@/composables/useSnackbar'
     import { useErrorHandler } from '@/composables/useErrorHandler'
+    import { useAuthStore } from '@/stores/auth'
+
+    const authStore = useAuthStore()
 
     type WorkflowSummary = {
         uuid: string
@@ -86,6 +89,14 @@
         has_next: boolean
     } | null>(null)
     const isComponentMounted = ref(false)
+
+    // Permission check for create button
+    const canCreateWorkflow = computed(() => {
+        return (
+            authStore.hasPermission('Workflows', 'Create') ||
+            authStore.hasPermission('Workflows', 'Admin')
+        )
+    })
 
     const loadWorkflows = async (page = 1, perPage = 20) => {
         if (!isComponentMounted.value) {
@@ -302,6 +313,7 @@
         <PageLayout>
             <template #actions>
                 <v-btn
+                    v-if="canCreateWorkflow"
                     color="primary"
                     variant="flat"
                     @click="showCreate = true"

@@ -3,6 +3,7 @@
         <PageLayout>
             <template #actions>
                 <v-btn
+                    v-if="canCreateApiKey"
                     color="primary"
                     variant="flat"
                     @click="showCreateDialog = true"
@@ -225,6 +226,14 @@
     const { t } = useTranslations()
     const { currentSnackbar, showSuccess } = useSnackbar()
     const { handleError } = useErrorHandler()
+
+    // Permission check for create button
+    const canCreateApiKey = computed(() => {
+        return (
+            authStore.hasPermission('ApiKeys', 'Create') ||
+            authStore.hasPermission('ApiKeys', 'Admin')
+        )
+    })
 
     // Reactive state
     const loading = ref(false)

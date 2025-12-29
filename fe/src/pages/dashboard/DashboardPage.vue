@@ -286,6 +286,16 @@
                                     </v-btn>
                                 </v-col>
                             </v-row>
+                            <v-alert
+                                v-if="!hasAnyCreatePermission"
+                                type="info"
+                                variant="tonal"
+                                class="mt-4"
+                            >
+                                {{
+                                    t('dashboard.quick_actions.no_quick_create_permission_granted')
+                                }}
+                            </v-alert>
                         </v-card-text>
                     </v-card>
                 </v-col>
@@ -339,6 +349,18 @@
     const canCreateRole = computed(() => {
         return (
             authStore.hasPermission('Roles', 'Create') || authStore.hasPermission('Roles', 'Admin')
+        )
+    })
+
+    // Check if user has any create permissions
+    const hasAnyCreatePermission = computed(() => {
+        return (
+            canCreateEntityDefinition.value ||
+            canCreateEntity.value ||
+            canCreateApiKey.value ||
+            canCreateWorkflow.value ||
+            canCreateUser.value ||
+            canCreateRole.value
         )
     })
 

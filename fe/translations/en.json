@@ -58,7 +58,8 @@
       "generate_api_key": "Generate API Key",
       "create_workflow": "Create Workflow",
       "create_user": "Create User",
-      "create_role": "Create Role"
+      "create_role": "Create Role",
+      "no_quick_create_permission_granted": "No quick create permission granted"
     },
     "loading": "Loading dashboard statistics...",
     "error": "Failed to load dashboard statistics"
