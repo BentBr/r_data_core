@@ -5,6 +5,7 @@ const createMockAuthStore = (overrides = {}) => {
     const defaultStore = {
         isAuthenticated: true,
         isTokenExpired: false,
+        allowedRoutes: ['/dashboard'],
         canAccessRoute: vi.fn((route: string) => {
             // Default: only allow dashboard
             return route === '/dashboard'
@@ -132,22 +133,99 @@ describe('Router Permission Guards', () => {
         expect(mockAuthStore.canAccessRoute).toHaveBeenCalledWith('/workflows')
     })
 
-    it('should always allow access to dashboard if authenticated', async () => {
-        // Setup: User is authenticated
+    it('should redirect when user lacks dashboard permission', async () => {
+        // Setup: User is authenticated but doesn't have dashboard permission
         mockAuthStore.isAuthenticated = true
         mockAuthStore.isTokenExpired = false
+        mockAuthStore.allowedRoutes = ['/workflows']
         mockAuthStore.canAccessRoute = vi.fn((route: string) => {
-            // Only allow dashboard
+            // Only allow workflows, not dashboard
+            return route === '/workflows'
+        })
+
+        // Navigate from a different route first to ensure guard runs
+        await router.push('/login')
+        await router.isReady()
+
+        // Now navigate to dashboard
+        const navigationPromise = router.push('/dashboard')
+        await navigationPromise
+        await router.isReady()
+
+        // Should be redirected to first available route
+        expect(router.currentRoute.value.path).toBe('/workflows')
+        expect(mockAuthStore.canAccessRoute).toHaveBeenCalledWith('/dashboard')
+    })
+
+    it('should allow access when user has dashboard permission', async () => {
+        // Setup: User is authenticated and has dashboard permission
+        mockAuthStore.isAuthenticated = true
+        mockAuthStore.isTokenExpired = false
+        mockAuthStore.allowedRoutes = ['/dashboard']
+        mockAuthStore.canAccessRoute = vi.fn((route: string) => {
+            // Allow dashboard
             return route === '/dashboard'
         })
 
-        // Navigate to dashboard
-        await router.push('/dashboard')
+        // Navigate from a different route first to ensure guard runs
+        await router.push('/login')
+        await router.isReady()
+
+        // Now navigate to dashboard
+        const navigationPromise = router.push('/dashboard')
+        await navigationPromise
+        await router.isReady()
 
         // Should be able to access dashboard
         expect(router.currentRoute.value.name).toBe('Dashboard')
         expect(router.currentRoute.value.path).toBe('/dashboard')
-        // Note: canAccessRoute should not be called for dashboard (per router logic)
+        expect(mockAuthStore.canAccessRoute).toHaveBeenCalledWith('/dashboard')
+    })
+
+    it('should redirect to no-access when user has no permissions (empty routes)', async () => {
+        // Setup: User is authenticated but has no allowed routes
+        mockAuthStore.isAuthenticated = true
+        mockAuthStore.isTokenExpired = false
+        mockAuthStore.allowedRoutes = []
+        mockAuthStore.canAccessRoute = vi.fn(() => false)
+
+        // Navigate from a different route first to ensure guard runs
+        await router.push('/login')
+        await router.isReady()
+
+        // Now navigate to dashboard
+        const navigationPromise = router.push('/dashboard')
+        await navigationPromise
+        await router.isReady()
+
+        // Should redirect to no-access (not logout)
+        expect(router.currentRoute.value.name).toBe('NoAccess')
+        expect(router.currentRoute.value.path).toBe('/no-access')
+        expect(mockAuthStore.canAccessRoute).toHaveBeenCalledWith('/dashboard')
+        // User should stay authenticated (not logged out)
+        expect(mockAuthStore.isAuthenticated).toBe(true)
+    })
+
+    it('should allow access to /no-access route for authenticated users', async () => {
+        // Setup: User is authenticated but has no permissions
+        mockAuthStore.isAuthenticated = true
+        mockAuthStore.isTokenExpired = false
+        mockAuthStore.allowedRoutes = []
+        mockAuthStore.canAccessRoute = vi.fn(() => false)
+
+        // Navigate from a different route first
+        await router.push('/login')
+        await router.isReady()
+
+        // Navigate to no-access page
+        const navigationPromise = router.push('/no-access')
+        await navigationPromise
+        await router.isReady()
+
+        // Should be able to access no-access page
+        expect(router.currentRoute.value.name).toBe('NoAccess')
+        expect(router.currentRoute.value.path).toBe('/no-access')
+        // canAccessRoute should not be called for /no-access (it's allowed without permission check)
     })
 
     it('should redirect to dashboard when user lacks permission for /entities', async () => {

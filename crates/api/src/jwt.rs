@@ -194,6 +194,9 @@ fn generate_all_permissions() -> Vec<String> {
     permissions.extend(generate_standard_permissions(&ResourceNamespace::ApiKeys));
     permissions.extend(generate_standard_permissions(&ResourceNamespace::Roles));
     permissions.extend(generate_standard_permissions(&ResourceNamespace::System));
+    permissions.extend(generate_standard_permissions(
+        &ResourceNamespace::DashboardStats,
+    ));
     permissions
 }
 

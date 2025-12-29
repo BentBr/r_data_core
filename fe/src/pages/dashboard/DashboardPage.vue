@@ -376,7 +376,7 @@
     })
 
     // Check if user has permission to view dashboard stats
-    const canViewDashboardStats = computed(() => authStore.hasPermission('dashboard_stats', 'read'))
+    const canViewDashboardStats = computed(() => authStore.hasPermission('DashboardStats', 'read'))
 
     // Fetch dashboard stats
     const loadDashboardStats = async () => {

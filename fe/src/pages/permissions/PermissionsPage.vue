@@ -453,6 +453,7 @@
         'Roles',
         'Users',
         'System',
+        'DashboardStats',
     ]
     const permissionTypes: PermissionType[] = [
         'Read',
