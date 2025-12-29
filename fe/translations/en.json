@@ -36,6 +36,11 @@
     "system": "System",
     "logout": "Logout"
   },
+  "no_access": {
+    "title": "No Access",
+    "message": "You are logged in but don't have permission to access any features. Please contact your administrator.",
+    "logged_in_as": "Logged in as"
+  },
   "dashboard": {
     "title": "R Data Core Admin Dashboard",
     "tiles": {

@@ -10,6 +10,7 @@ export const ResourceNamespaceSchema = z.enum([
     'Roles',
     'Users',
     'System',
+    'DashboardStats',
 ])
 
 export const PermissionTypeSchema = z.enum([

@@ -209,4 +209,64 @@ describe('DashboardPage', () => {
         const progressCircular = wrapper.findComponent({ name: 'VProgressCircular' })
         expect(progressCircular.exists()).toBe(true)
     })
+
+    it('should not load dashboard stats when user lacks permission', async () => {
+        const mockAuthStore = {
+            canAccessRoute: vi.fn(() => true),
+            hasPermission: vi.fn(() => false), // No permission
+        }
+        vi.mocked(useAuthStore).mockReturnValue(mockAuthStore as any)
+
+        const wrapper = mount(DashboardPage, {
+            global: {
+                plugins: [router],
+            },
+        })
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // Should not call getDashboardStats
+        expect(typedHttpClient.getDashboardStats).not.toHaveBeenCalled()
+        // Loading should be false - check via the component's internal state
+        // Since loading is a ref, we check that stats haven't been loaded
+        const statsText = wrapper.text()
+        expect(statsText).toContain('0') // Default values should be 0
+    })
+
+    it('should load dashboard stats when user has permission', async () => {
+        const mockStats: DashboardStats = {
+            entity_definitions_count: 5,
+            entities: {
+                total: 10,
+                by_type: [],
+            },
+            workflows: {
+                total: 3,
+                workflows: [],
+            },
+            online_users_count: 2,
+        }
+
+        const mockAuthStore = {
+            canAccessRoute: vi.fn(() => true),
+            hasPermission: vi.fn(() => true), // Has permission
+        }
+        vi.mocked(useAuthStore).mockReturnValue(mockAuthStore as any)
+        vi.mocked(typedHttpClient.getDashboardStats).mockResolvedValue(mockStats)
+
+        const wrapper = mount(DashboardPage, {
+            global: {
+                plugins: [router],
+            },
+        })
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // Should call getDashboardStats
+        expect(typedHttpClient.getDashboardStats).toHaveBeenCalled()
+        // Should have permission check called with DashboardStats
+        expect(mockAuthStore.hasPermission).toHaveBeenCalledWith('DashboardStats', 'read')
+    })
 })

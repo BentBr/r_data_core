@@ -36,6 +36,11 @@
     "system": "System",
     "logout": "Abmelden"
   },
+  "no_access": {
+    "title": "Kein Zugriff",
+    "message": "Sie sind angemeldet, haben aber keine Berechtigung, auf Funktionen zuzugreifen. Bitte kontaktieren Sie Ihren Administrator.",
+    "logged_in_as": "Angemeldet als"
+  },
   "dashboard": {
     "title": "R Data Core Admin Dashboard",
     "tiles": {

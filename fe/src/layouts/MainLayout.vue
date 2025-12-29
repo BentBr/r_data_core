@@ -151,10 +151,6 @@
 
         // Filter items based on user permissions
         return items.filter(item => {
-            // Dashboard is always accessible if authenticated
-            if (item.path === '/dashboard') {
-                return true
-            }
             // Check if user can access the route
             return authStore.canAccessRoute(item.path)
         })
