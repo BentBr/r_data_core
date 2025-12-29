@@ -53,12 +53,14 @@
 <script setup lang="ts">
     import { onMounted, ref } from 'vue'
     import { useSnackbar } from '@/composables/useSnackbar'
+    import { useErrorHandler } from '@/composables/useErrorHandler'
     import { useTranslations } from '@/composables/useTranslations'
     import { typedHttpClient } from '@/api/typed-client'
     import PageLayout from '@/components/layouts/PageLayout.vue'
     import SnackbarManager from '@/components/common/SnackbarManager.vue'
 
-    const { currentSnackbar, showSuccess, showError } = useSnackbar()
+    const { currentSnackbar, showSuccess } = useSnackbar()
+    const { handleError } = useErrorHandler()
     const { t } = useTranslations()
 
     const form = ref<{
@@ -84,8 +86,8 @@
                     max_age_days: settings.max_age_days ?? null,
                 }
             }
-        } catch {
-            showError(t('system.versioning.load_failed'))
+        } catch (err) {
+            handleError(err)
         } finally {
             loading.value = false
         }
@@ -112,8 +114,8 @@
             }
             await typedHttpClient.updateEntityVersioningSettings(payload)
             showSuccess(t('system.versioning.save_success'))
-        } catch {
-            showError(t('system.versioning.save_failed'))
+        } catch (err) {
+            handleError(err)
         } finally {
             saving.value = false
         }

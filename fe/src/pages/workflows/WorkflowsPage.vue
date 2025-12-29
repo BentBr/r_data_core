@@ -14,6 +14,7 @@
     import Badge from '@/components/common/Badge.vue'
     import { getDialogMaxWidth } from '@/design-system/components'
     import { useSnackbar } from '@/composables/useSnackbar'
+    import { useErrorHandler } from '@/composables/useErrorHandler'
 
     type WorkflowSummary = {
         uuid: string
@@ -65,7 +66,8 @@
     const deleting = ref(false)
     const uploadEnabled = ref(false)
     const uploadFile = ref<File | null>(null)
-    const { currentSnackbar, showSuccess, showError } = useSnackbar()
+    const { currentSnackbar, showSuccess } = useSnackbar()
+    const { handleError } = useErrorHandler()
     const { t } = useTranslations()
     const route = useRoute()
 
@@ -143,7 +145,7 @@
             }
             showRunDialog.value = false
         } catch (e) {
-            showError(e instanceof Error ? e.message : 'Failed to enqueue run')
+            handleError(e)
         }
     }
 
@@ -177,7 +179,7 @@
             workflowToDelete.value = null
             await loadWorkflows(currentPage.value, itemsPerPage.value)
         } catch (e) {
-            showError(e instanceof Error ? e.message : t('workflows.delete.error'))
+            handleError(e)
         } finally {
             deleting.value = false
         }

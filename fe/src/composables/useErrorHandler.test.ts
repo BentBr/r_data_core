@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useErrorHandler } from './useErrorHandler'
 import { ValidationError } from '@/api/typed-client'
+import { HttpError } from '@/api/errors'
 
 // Mock dependencies
 const mockShowError = vi.fn()
@@ -25,6 +26,8 @@ vi.mock('./useTranslations', () => ({
 describe('useErrorHandler', () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        // Reset mockT to default implementation (some tests override it)
+        mockT.mockImplementation((key: string) => key)
     })
 
     describe('handleError', () => {
@@ -68,54 +71,169 @@ describe('useErrorHandler', () => {
             expect(mockShowError).toHaveBeenCalledWith('Validation failed: Invalid input')
         })
 
-        it('should handle 409 conflict error', () => {
+        it('should handle HttpError with 403 status code', () => {
             const { handleError } = useErrorHandler()
-            const error = new Error('409 Conflict')
+            const error = new HttpError(403, 'user', 'create', 'Forbidden', 'Cannot create user')
+            mockT.mockImplementation(key => {
+                if (key === 'error.user.create.403') return 'Cannot create user'
+                return key
+            })
 
             const result = handleError(error)
 
             expect(result.handled).toBe(true)
-            expect(mockShowError).toHaveBeenCalledWith('errors.conflict')
+            expect(mockShowError).toHaveBeenCalledWith('Cannot create user')
         })
 
-        it('should handle 401 authentication error', () => {
+        it('should handle HttpError with 404 status code', () => {
             const { handleError } = useErrorHandler()
-            const error = new Error('401 authentication required')
+            const error = new HttpError(404, 'user', 'read', 'Not Found', 'User not found')
+            mockT.mockImplementation(key => {
+                if (key === 'error.user.read.404') return 'User not found'
+                return key
+            })
 
             const result = handleError(error)
 
             expect(result.handled).toBe(true)
-            expect(mockShowError).toHaveBeenCalledWith('errors.authentication')
+            expect(mockShowError).toHaveBeenCalledWith('User not found')
         })
 
-        it('should handle 403 permission error', () => {
+        it('should handle HttpError with 409 status code', () => {
             const { handleError } = useErrorHandler()
-            const error = new Error('403 permission denied')
+            const error = new HttpError(
+                409,
+                'user',
+                'create',
+                'Conflict',
+                'A user with this username already exists'
+            )
+            mockT.mockImplementation(key => {
+                if (key === 'error.user.create.409')
+                    return 'A user with this username already exists'
+                return key
+            })
 
             const result = handleError(error)
 
             expect(result.handled).toBe(true)
-            expect(mockShowError).toHaveBeenCalledWith('errors.permission')
+            expect(mockShowError).toHaveBeenCalledWith('A user with this username already exists')
         })
 
-        it('should handle 404 not found error', () => {
+        it('should fallback to namespace-specific error when action-specific not found', () => {
+            const { handleError } = useErrorHandler()
+            const error = new HttpError(403, 'user', 'create', 'Forbidden', 'Permission denied')
+            mockT.mockImplementation(key => {
+                if (key === 'error.user.create.403') return 'error.user.create.403' // Not found
+                if (key === 'error.user.403') return 'Cannot perform user operation'
+                return key
+            })
+
+            const result = handleError(error)
+
+            expect(result.handled).toBe(true)
+            expect(mockShowError).toHaveBeenCalledWith('Cannot perform user operation')
+        })
+
+        it('should fallback to generic status code error when namespace-specific not found', () => {
+            const { handleError } = useErrorHandler()
+            const error = new HttpError(403, 'unknown', 'create', 'Forbidden', 'Permission denied')
+            mockT.mockImplementation(key => {
+                if (key === 'error.unknown.create.403') return 'error.unknown.create.403' // Not found
+                if (key === 'error.unknown.403') return 'error.unknown.403' // Not found
+                if (key === 'error.403') return 'Permission denied'
+                return key
+            })
+
+            const result = handleError(error)
+
+            expect(result.handled).toBe(true)
+            expect(mockShowError).toHaveBeenCalledWith('Permission denied')
+        })
+
+        it('should fallback to generic error when all translations not found', () => {
+            const { handleError } = useErrorHandler()
+            const error = new HttpError(
+                500,
+                'unknown',
+                'create',
+                'Server Error',
+                'Internal server error'
+            )
+            mockT.mockImplementation(key => {
+                if (key === 'error.generic') return 'An error occurred'
+                return key
+            })
+
+            const result = handleError(error)
+
+            expect(result.handled).toBe(true)
+            expect(mockShowError).toHaveBeenCalledWith('An error occurred')
+        })
+
+        it('should show Error message as-is for regular Error (no HTTP code parsing)', () => {
+            const { handleError } = useErrorHandler()
+            const error = new Error('HTTP 403: Forbidden')
+
+            const result = handleError(error)
+
+            expect(result.handled).toBe(true)
+            // Regular Error instances show their message as-is (no parsing)
+            expect(mockShowError).toHaveBeenCalledWith('HTTP 403: Forbidden')
+        })
+
+        it('should show Error message as-is for permission errors', () => {
+            const { handleError } = useErrorHandler()
+            const error = new Error('permission denied')
+
+            const result = handleError(error)
+
+            expect(result.handled).toBe(true)
+            // Regular Error instances show their message as-is
+            expect(mockShowError).toHaveBeenCalledWith('permission denied')
+        })
+
+        it('should show Error message as-is for custom 403 messages', () => {
+            const { handleError } = useErrorHandler()
+            const error = new Error('HTTP 403: Insufficient permissions to perform this action')
+
+            const result = handleError(error)
+
+            expect(result.handled).toBe(true)
+            expect(mockShowError).toHaveBeenCalledWith(
+                'HTTP 403: Insufficient permissions to perform this action'
+            )
+        })
+
+        it('should show Error message as-is for other error formats', () => {
+            const { handleError } = useErrorHandler()
+            const error = new Error('Access denied. Error code: 403')
+
+            const result = handleError(error)
+
+            expect(result.handled).toBe(true)
+            expect(mockShowError).toHaveBeenCalledWith('Access denied. Error code: 403')
+        })
+
+        it('should show Error message as-is for 404 errors', () => {
             const { handleError } = useErrorHandler()
             const error = new Error('404 not found')
 
             const result = handleError(error)
 
             expect(result.handled).toBe(true)
-            expect(mockShowError).toHaveBeenCalledWith('errors.not_found')
+            expect(mockShowError).toHaveBeenCalledWith('404 not found')
         })
 
-        it('should handle network error', () => {
+        it('should handle network error with translation', () => {
             const { handleError } = useErrorHandler()
             const error = new Error('network connection failed')
 
             const result = handleError(error)
 
             expect(result.handled).toBe(true)
-            expect(mockShowError).toHaveBeenCalledWith('errors.network')
+            // Network errors are detected by keywords and translated
+            expect(mockShowError).toHaveBeenCalledWith('error.network')
         })
 
         it('should handle generic Error', () => {
@@ -128,23 +246,25 @@ describe('useErrorHandler', () => {
             expect(mockShowError).toHaveBeenCalledWith('Something went wrong')
         })
 
-        it('should handle unknown error types', () => {
+        it('should handle unknown error types with generic message', () => {
             const { handleError } = useErrorHandler()
             const error = { someProperty: 'value' }
 
-            const result = handleError(error, 'Custom message')
+            const result = handleError(error)
 
             expect(result.handled).toBe(true)
-            expect(mockShowError).toHaveBeenCalledWith('Custom message')
+            // Unknown error types show generic error message
+            expect(mockShowError).toHaveBeenCalledWith('error.generic')
         })
 
-        it('should handle null/undefined errors', () => {
+        it('should handle null/undefined errors with generic message', () => {
             const { handleError } = useErrorHandler()
 
-            const result = handleError(null, 'Fallback message')
+            const result = handleError(null)
 
             expect(result.handled).toBe(true)
-            expect(mockShowError).toHaveBeenCalledWith('Fallback message')
+            // null/undefined errors show generic error message
+            expect(mockShowError).toHaveBeenCalledWith('error.generic')
         })
     })
 

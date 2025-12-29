@@ -1,10 +1,12 @@
 import { ref } from 'vue'
 import { typedHttpClient } from '@/api/typed-client'
-import { useSnackbar } from '@/composables/useSnackbar'
+import { useErrorHandler } from '@/composables/useErrorHandler'
+import { useTranslations } from '@/composables/useTranslations'
 import type { Role, CreateRoleRequest, UpdateRoleRequest } from '@/types/schemas'
 
 export function useRoles() {
-    const { showSuccess, showError } = useSnackbar()
+    const { handleError, handleSuccess } = useErrorHandler()
+    const { t } = useTranslations()
 
     const loading = ref(false)
     const error = ref('')
@@ -27,7 +29,7 @@ export function useRoles() {
             console.error('Failed to load roles:', err)
             const errorMessage = err instanceof Error ? err.message : 'Failed to load roles'
             error.value = errorMessage
-            showError(errorMessage)
+            handleError(err)
             throw err
         } finally {
             loading.value = false
@@ -37,10 +39,9 @@ export function useRoles() {
     const createRole = async (data: CreateRoleRequest) => {
         try {
             await typedHttpClient.createRole(data)
-            showSuccess('Role created successfully')
+            handleSuccess(t('roles.create.success'))
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to create role'
-            showError(message)
+            handleError(err)
             throw err
         }
     }
@@ -48,10 +49,9 @@ export function useRoles() {
     const updateRole = async (uuid: string, data: UpdateRoleRequest) => {
         try {
             await typedHttpClient.updateRole(uuid, data)
-            showSuccess('Role updated successfully')
+            handleSuccess(t('roles.update.success'))
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to update role'
-            showError(message)
+            handleError(err)
             throw err
         }
     }
@@ -59,10 +59,9 @@ export function useRoles() {
     const deleteRole = async (uuid: string) => {
         try {
             await typedHttpClient.deleteRole(uuid)
-            showSuccess('Role deleted successfully')
+            handleSuccess(t('roles.delete.success'))
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to delete role'
-            showError(message)
+            handleError(err)
             throw err
         }
     }

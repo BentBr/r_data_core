@@ -95,6 +95,7 @@
     import { typedHttpClient, ValidationError } from '@/api/typed-client'
     import { useTranslations } from '@/composables/useTranslations'
     import { useSnackbar } from '@/composables/useSnackbar'
+    import { useErrorHandler } from '@/composables/useErrorHandler'
     import type {
         DynamicEntity,
         EntityDefinition,
@@ -114,7 +115,8 @@
     const authStore = useAuthStore()
     const route = useRoute()
     const { t } = useTranslations()
-    const { currentSnackbar, showSuccess, showError } = useSnackbar()
+    const { currentSnackbar, showSuccess } = useSnackbar()
+    const { handleError } = useErrorHandler()
 
     // Reactive state
     const loading = ref(false)
@@ -237,7 +239,7 @@
                 selectedItems.value = [item.uuid]
             } catch (err) {
                 console.error('Failed to load entity details:', err)
-                showError(err instanceof Error ? err.message : t('general.errors.unknown'))
+                handleError(err)
             } finally {
                 loading.value = false
             }
@@ -280,7 +282,7 @@
 
             showSuccess('Entity created successfully')
         } catch (err) {
-            // Handle structured validation errors
+            // Handle structured validation errors - keep dialog open for field errors
             if (err instanceof ValidationError) {
                 // Convert violations to a field error map
                 const fieldErrors: Record<string, string> = {}
@@ -293,25 +295,11 @@
                     createDialogRef.value.setFieldErrors(fieldErrors)
                 }
 
-                // Show general error message
-                showError(err.message)
-            } else if (err instanceof Error) {
-                const errorMessage = err.message
-
-                // Check if it's a validation error from the backend
-                // Backend returns errors like "Validation error: field_name is required"
-                // or "Unknown fields found: fieldname"
-                if (
-                    errorMessage.includes('Validation') ||
-                    errorMessage.includes('Validation failed') ||
-                    errorMessage.includes('Unknown fields')
-                ) {
-                    showError(errorMessage)
-                } else {
-                    showError(errorMessage ?? t('entities.create.error'))
-                }
+                // Error message is handled by global error handler
+                handleError(err)
             } else {
-                showError(t('entities.create.error'))
+                // Error message is handled by global error handler
+                handleError(err)
             }
         } finally {
             creating.value = false
@@ -354,7 +342,7 @@
 
             showSuccess('Entity updated successfully')
         } catch (err) {
-            showError(err instanceof Error ? err.message : t('entities.edit.error'))
+            handleError(err)
         } finally {
             updating.value = false
         }
@@ -410,7 +398,7 @@
 
             showSuccess(t('entities.delete.success'))
         } catch (err) {
-            showError(err instanceof Error ? err.message : t('entities.delete.error'))
+            handleError(err)
         } finally {
             deleting.value = false
         }

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { BaseTypedHttpClient } from './base'
 import { ValidationError } from '../http-client'
+import { HttpError } from '../errors'
 import { z } from 'zod'
 
 // Mock dependencies
@@ -244,6 +245,279 @@ describe('BaseTypedHttpClient', () => {
             await expect(client.testRequest('/test', schema)).rejects.toThrow(
                 'Response validation failed'
             )
+        })
+
+        it('should throw HttpError with 403 status code and context', async () => {
+            const schema = z.object({
+                status: z.literal('Success'),
+                message: z.string(),
+                data: z.object({ id: z.number() }),
+            })
+
+            const errorResponse = {
+                status: 'Error',
+                message: 'Insufficient permissions',
+            }
+
+            fetchSpy.mockResolvedValueOnce({
+                ok: false,
+                status: 403,
+                statusText: 'Forbidden',
+                json: async () => errorResponse,
+            })
+
+            let caughtError: unknown
+            try {
+                await client.testRequest('/admin/api/v1/users', schema, { method: 'POST' })
+            } catch (error) {
+                caughtError = error
+            }
+
+            expect(caughtError).toBeInstanceOf(HttpError)
+            expect((caughtError as HttpError).statusCode).toBe(403)
+            expect((caughtError as HttpError).namespace).toBe('user')
+            expect((caughtError as HttpError).action).toBe('create')
+            expect((caughtError as HttpError).message).toBe('Insufficient permissions')
+        })
+
+        it('should throw HttpError with correct namespace extraction', async () => {
+            const schema = z.object({
+                status: z.literal('Success'),
+                message: z.string(),
+                data: z.object({ id: z.number() }),
+            })
+
+            const errorResponse = {
+                status: 'Error',
+                message: 'Permission denied',
+            }
+
+            fetchSpy.mockResolvedValueOnce({
+                ok: false,
+                status: 403,
+                statusText: 'Forbidden',
+                json: async () => errorResponse,
+            })
+
+            let caughtError: unknown
+            try {
+                await client.testRequest('/admin/api/v1/roles', schema, { method: 'GET' })
+            } catch (error) {
+                caughtError = error
+            }
+
+            expect(caughtError).toBeInstanceOf(HttpError)
+            expect((caughtError as HttpError).statusCode).toBe(403)
+            expect((caughtError as HttpError).namespace).toBe('role')
+            expect((caughtError as HttpError).action).toBe('read')
+        })
+
+        it('should throw HttpError with fallback message when error format is different', async () => {
+            const schema = z.object({
+                status: z.literal('Success'),
+                message: z.string(),
+                data: z.object({ id: z.number() }),
+            })
+
+            const errorResponse = {
+                error: 'Access denied',
+            }
+
+            fetchSpy.mockResolvedValueOnce({
+                ok: false,
+                status: 403,
+                statusText: 'Forbidden',
+                json: async () => errorResponse,
+            })
+
+            let caughtError: unknown
+            try {
+                await client.testRequest('/admin/api/v1/api-keys', schema, { method: 'PUT' })
+            } catch (error) {
+                caughtError = error
+            }
+
+            expect(caughtError).toBeInstanceOf(HttpError)
+            expect((caughtError as HttpError).statusCode).toBe(403)
+            expect((caughtError as HttpError).namespace).toBe('api_key')
+            expect((caughtError as HttpError).action).toBe('update')
+            expect((caughtError as HttpError).message).toBe('Access denied')
+        })
+
+        it('should throw HttpError when response parsing fails', async () => {
+            const schema = z.object({
+                status: z.literal('Success'),
+                message: z.string(),
+                data: z.object({ id: z.number() }),
+            })
+
+            fetchSpy.mockResolvedValueOnce({
+                ok: false,
+                status: 403,
+                statusText: 'Forbidden',
+                json: async () => {
+                    throw new Error('Invalid JSON')
+                },
+            })
+
+            let caughtError: unknown
+            try {
+                await client.testRequest('/admin/api/v1/workflows', schema, { method: 'DELETE' })
+            } catch (error) {
+                caughtError = error
+            }
+
+            expect(caughtError).toBeInstanceOf(HttpError)
+            expect((caughtError as HttpError).statusCode).toBe(403)
+            expect((caughtError as HttpError).namespace).toBe('workflow')
+            expect((caughtError as HttpError).action).toBe('delete')
+            expect((caughtError as HttpError).message).toBe('Forbidden')
+        })
+
+        it('should throw HttpError with 409 conflict status code and context', async () => {
+            const schema = z.object({
+                status: z.literal('Success'),
+                message: z.string(),
+                data: z.object({ id: z.number() }),
+            })
+
+            const errorResponse = {
+                status: 'Error',
+                message: 'A user with this username already exists',
+            }
+
+            fetchSpy.mockResolvedValueOnce({
+                ok: false,
+                status: 409,
+                statusText: 'Conflict',
+                json: async () => errorResponse,
+            })
+
+            let caughtError: unknown
+            try {
+                await client.testRequest('/admin/api/v1/users', schema, { method: 'POST' })
+            } catch (error) {
+                caughtError = error
+            }
+
+            expect(caughtError).toBeInstanceOf(HttpError)
+            expect((caughtError as HttpError).statusCode).toBe(409)
+            expect((caughtError as HttpError).namespace).toBe('user')
+            expect((caughtError as HttpError).action).toBe('create')
+            expect((caughtError as HttpError).message).toBe(
+                'A user with this username already exists'
+            )
+        })
+
+        it('should throw HttpError with 409 conflict for entity definitions', async () => {
+            const schema = z.object({
+                status: z.literal('Success'),
+                message: z.string(),
+                data: z.object({ id: z.number() }),
+            })
+
+            const errorResponse = {
+                status: 'Error',
+                message: 'An entity definition with this type already exists',
+            }
+
+            fetchSpy.mockResolvedValueOnce({
+                ok: false,
+                status: 409,
+                statusText: 'Conflict',
+                json: async () => errorResponse,
+            })
+
+            let caughtError: unknown
+            try {
+                await client.testRequest('/admin/api/v1/entity-definitions', schema, {
+                    method: 'POST',
+                })
+            } catch (error) {
+                caughtError = error
+            }
+
+            expect(caughtError).toBeInstanceOf(HttpError)
+            expect((caughtError as HttpError).statusCode).toBe(409)
+            expect((caughtError as HttpError).namespace).toBe('entity_definition')
+            expect((caughtError as HttpError).action).toBe('create')
+            expect((caughtError as HttpError).message).toBe(
+                'An entity definition with this type already exists'
+            )
+        })
+
+        it('should throw HttpError with 409 conflict for API keys', async () => {
+            const schema = z.object({
+                status: z.literal('Success'),
+                message: z.string(),
+                data: z.object({ id: z.number() }),
+            })
+
+            const errorResponse = {
+                status: 'Error',
+                message: 'An API key with this name already exists',
+            }
+
+            fetchSpy.mockResolvedValueOnce({
+                ok: false,
+                status: 409,
+                statusText: 'Conflict',
+                json: async () => errorResponse,
+            })
+
+            let caughtError: unknown
+            try {
+                await client.testRequest('/admin/api/v1/api-keys', schema, { method: 'POST' })
+            } catch (error) {
+                caughtError = error
+            }
+
+            expect(caughtError).toBeInstanceOf(HttpError)
+            expect((caughtError as HttpError).statusCode).toBe(409)
+            expect((caughtError as HttpError).namespace).toBe('api_key')
+            expect((caughtError as HttpError).action).toBe('create')
+            expect((caughtError as HttpError).message).toBe(
+                'An API key with this name already exists'
+            )
+        })
+
+        it('should not log 409 errors as console.error (only in devMode as console.log)', async () => {
+            const schema = z.object({
+                status: z.literal('Success'),
+                message: z.string(),
+                data: z.object({ id: z.number() }),
+            })
+
+            const errorResponse = {
+                status: 'Error',
+                message: 'Conflict',
+            }
+
+            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+            const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+            fetchSpy.mockResolvedValueOnce({
+                ok: false,
+                status: 409,
+                statusText: 'Conflict',
+                json: async () => errorResponse,
+            })
+
+            try {
+                await client.testRequest('/admin/api/v1/users', schema, { method: 'POST' })
+            } catch {
+                // Expected
+            }
+
+            // 409 is an expected error, should not be logged as console.error
+            // (unless in devMode where it would be logged as console.log)
+            expect(consoleErrorSpy).not.toHaveBeenCalledWith(
+                '[API] HTTP Error Response:',
+                expect.anything()
+            )
+
+            consoleErrorSpy.mockRestore()
+            consoleLogSpy.mockRestore()
         })
 
         it('should handle DSL validate endpoint with fast-path', async () => {

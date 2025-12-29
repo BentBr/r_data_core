@@ -168,7 +168,14 @@ export const useAuthStore = defineStore('auth', () => {
         allowedRoutes.value = []
         error.value = null
         usingDefaultPassword.value = false
-        // Note: mobileWarningDismissed is not cleared on logout as it's a user preference
+
+        // Reset dismissed banner states so they show again for next login
+        defaultPasswordBannerDismissed.value = false
+        mobileWarningDismissed.value = false
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem(DISMISSED_BANNER_KEY)
+            localStorage.removeItem(MOBILE_WARNING_DISMISSED_KEY)
+        }
 
         // Clear refresh token from secure cookie
         deleteRefreshToken()
@@ -216,6 +223,14 @@ export const useAuthStore = defineStore('auth', () => {
         allowedRoutes.value = []
         error.value = null
         usingDefaultPassword.value = false
+
+        // Reset dismissed banner states so they show again for next login
+        defaultPasswordBannerDismissed.value = false
+        mobileWarningDismissed.value = false
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem(DISMISSED_BANNER_KEY)
+            localStorage.removeItem(MOBILE_WARNING_DISMISSED_KEY)
+        }
 
         // Clear refresh token from secure cookie
         deleteRefreshToken()

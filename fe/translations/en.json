@@ -434,6 +434,165 @@
     "no": "No",
     "empty": "Empty"
   },
+  "error": {
+    "generic": "An error occurred",
+    "400": "Bad request",
+    "401": "Authentication required",
+    "403": "Permission denied",
+    "404": "Resource not found",
+    "409": "Conflict",
+    "422": "Validation failed",
+    "500": "Server error",
+    "network": "Network error. Please try again.",
+    "user": {
+      "create": {
+        "400": "Invalid request data",
+        "403": "Cannot create user",
+        "409": "A user with this username or email already exists",
+        "422": "Invalid user data"
+      },
+      "read": {
+        "403": "Cannot view user",
+        "404": "User not found"
+      },
+      "update": {
+        "400": "Invalid request data",
+        "403": "Cannot update user",
+        "404": "User not found",
+        "409": "A user with this username or email already exists",
+        "422": "Invalid user data"
+      },
+      "delete": {
+        "403": "Cannot delete user",
+        "404": "User not found"
+      }
+    },
+    "entity": {
+      "create": {
+        "400": "Invalid request data",
+        "403": "Cannot create entity",
+        "409": "An entity with the same key in this path already exists",
+        "422": "Invalid entity data"
+      },
+      "read": {
+        "403": "Cannot view entity",
+        "404": "Entity not found"
+      },
+      "update": {
+        "400": "Invalid request data",
+        "403": "Cannot update entity",
+        "404": "Entity not found",
+        "409": "An entity with the same key in this path already exists",
+        "422": "Invalid entity data"
+      },
+      "delete": {
+        "403": "Cannot delete entity",
+        "404": "Entity not found"
+      }
+    },
+    "role": {
+      "create": {
+        "400": "Invalid request data",
+        "403": "Cannot create role",
+        "409": "A role with this name already exists",
+        "422": "Invalid role data"
+      },
+      "read": {
+        "403": "Cannot view role",
+        "404": "Role not found"
+      },
+      "update": {
+        "400": "Invalid request data",
+        "403": "Cannot update role",
+        "404": "Role not found",
+        "409": "A role with this name already exists",
+        "422": "Invalid role data"
+      },
+      "delete": {
+        "403": "Cannot delete role",
+        "404": "Role not found"
+      }
+    },
+    "entity_definition": {
+      "create": {
+        "400": "Invalid request data",
+        "403": "Cannot create entity definition",
+        "409": "An entity definition with this type already exists",
+        "422": "Invalid entity definition data"
+      },
+      "read": {
+        "403": "Cannot view entity definition",
+        "404": "Entity definition not found"
+      },
+      "update": {
+        "400": "Invalid request data",
+        "403": "Cannot update entity definition",
+        "404": "Entity definition not found",
+        "409": "An entity definition with this type already exists",
+        "422": "Invalid entity definition data"
+      },
+      "delete": {
+        "403": "Cannot delete entity definition",
+        "404": "Entity definition not found"
+      }
+    },
+    "api_key": {
+      "create": {
+        "400": "Invalid request data",
+        "403": "Cannot create API key",
+        "409": "An API key with this name already exists",
+        "422": "Invalid API key data"
+      },
+      "read": {
+        "403": "Cannot view API key",
+        "404": "API key not found"
+      },
+      "update": {
+        "400": "Invalid request data",
+        "403": "Cannot update API key",
+        "404": "API key not found",
+        "409": "An API key with this name already exists",
+        "422": "Invalid API key data"
+      },
+      "delete": {
+        "403": "Cannot delete API key",
+        "404": "API key not found"
+      }
+    },
+    "workflow": {
+      "create": {
+        "400": "Invalid request data",
+        "403": "Cannot create workflow",
+        "409": "A workflow with this name already exists",
+        "422": "Invalid workflow data"
+      },
+      "read": {
+        "403": "Cannot view workflow",
+        "404": "Workflow not found"
+      },
+      "update": {
+        "400": "Invalid request data",
+        "403": "Cannot update workflow",
+        "404": "Workflow not found",
+        "409": "A workflow with this name already exists",
+        "422": "Invalid workflow data"
+      },
+      "delete": {
+        "403": "Cannot delete workflow",
+        "404": "Workflow not found"
+      }
+    },
+    "system": {
+      "read": {
+        "403": "Cannot view system settings"
+      },
+      "update": {
+        "400": "Invalid request data",
+        "403": "Cannot update system settings",
+        "422": "Invalid system settings data"
+      }
+    }
+  },
   "general": {
     "errors": {
       "unknown": "An unknown error occurred",
@@ -457,6 +616,38 @@
     }
   },
   "users": {
+    "load": {
+      "error": "Failed to load users"
+    },
+    "create": {
+      "success": "User created successfully",
+      "error": "Failed to create user"
+    },
+    "update": {
+      "success": "User updated successfully",
+      "error": "Failed to update user"
+    },
+    "delete": {
+      "success": "User deleted successfully",
+      "error": "Failed to delete user"
+    },
+    "get": {
+      "error": "Failed to load user"
+    },
+    "roles": {
+      "get": {
+        "error": "Failed to load user roles"
+      },
+      "assign": {
+        "success": "Roles assigned successfully",
+        "error": "Failed to assign roles"
+      }
+    },
+    "errors": {
+      "username_exists": "A user with this username already exists",
+      "email_exists": "A user with this email already exists",
+      "validation_failed": "Validation failed"
+    },
     "dialog": {
       "create_title": "Create User",
       "edit_title": "Edit User",
@@ -493,6 +684,21 @@
     }
   },
   "roles": {
+    "load": {
+      "error": "Failed to load roles"
+    },
+    "create": {
+      "success": "Role created successfully",
+      "error": "Failed to create role"
+    },
+    "update": {
+      "success": "Role updated successfully",
+      "error": "Failed to update role"
+    },
+    "delete": {
+      "success": "Role deleted successfully",
+      "error": "Failed to delete role"
+    },
     "dialog": {
       "create_title": "Create Role",
       "edit_title": "Edit Role",
