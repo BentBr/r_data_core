@@ -455,7 +455,6 @@
         'Publish',
         'Admin',
         'Execute',
-        'Custom',
     ]
     const accessLevels: AccessLevel[] = ['None', 'Own', 'Group', 'All']
 

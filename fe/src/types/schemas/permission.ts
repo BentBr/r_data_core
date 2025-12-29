@@ -19,7 +19,6 @@ export const PermissionTypeSchema = z.enum([
     'Publish',
     'Admin',
     'Execute',
-    'Custom',
 ])
 
 export const AccessLevelSchema = z.enum(['None', 'Own', 'Group', 'All'])

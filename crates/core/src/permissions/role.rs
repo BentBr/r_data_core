@@ -31,9 +31,6 @@ pub enum PermissionType {
 
     /// Execute a workflow
     Execute,
-
-    /// Custom permission
-    Custom(String),
 }
 
 impl Display for PermissionType {
@@ -46,7 +43,6 @@ impl Display for PermissionType {
             Self::Publish => write!(f, "Publish"),
             Self::Admin => write!(f, "Admin"),
             Self::Execute => write!(f, "Execute"),
-            Self::Custom(name) => write!(f, "Custom({name})"),
         }
     }
 }
@@ -207,9 +203,19 @@ impl Role {
     ///
     /// # Errors
     /// Returns an error if the role is system or permission already exists
+    /// Returns an error if Execute permission is used with non-Workflows namespace
     pub fn add_permission(&mut self, permission: Permission) -> Result<()> {
         if self.is_system {
             return Err(Error::Entity("Cannot modify a system role".to_string()));
+        }
+
+        // Validate Execute permission can only be used with Workflows namespace
+        if matches!(permission.permission_type, PermissionType::Execute)
+            && !matches!(permission.resource_type, ResourceNamespace::Workflows)
+        {
+            return Err(Error::Entity(
+                "Execute permission can only be used with Workflows namespace".to_string(),
+            ));
         }
 
         // Check if permission already exists
@@ -307,11 +313,42 @@ impl Role {
         permission_type: &PermissionType,
         path: Option<&str>,
     ) -> bool {
-        // Super admin roles have all permissions
+        // Global admin: Super admin roles have all permissions for all namespaces
         if self.super_admin {
             return true;
         }
 
+        // Resource-level admin: Check if role has Admin permission for this namespace
+        // Admin permission grants all permission types for the namespace
+        let has_admin_for_namespace = self.permissions.iter().any(|p| {
+            p.resource_type == *namespace && matches!(p.permission_type, PermissionType::Admin)
+        });
+
+        if has_admin_for_namespace {
+            // For entities namespace with Admin, still need to check path constraints if provided
+            if matches!(namespace, ResourceNamespace::Entities) {
+                if let Some(requested_path) = path {
+                    // Check if any Admin permission for this namespace allows the path
+                    return self.permissions.iter().any(|p| {
+                        p.resource_type == *namespace
+                            && matches!(p.permission_type, PermissionType::Admin)
+                            && Self::check_path_constraint(p.constraints.as_ref(), requested_path)
+                    });
+                }
+                // If no path provided but Admin permission has path constraint, deny access
+                // (Admin with path constraint only grants access when path matches)
+                if self.permissions.iter().any(|p| {
+                    p.resource_type == *namespace
+                        && matches!(p.permission_type, PermissionType::Admin)
+                        && p.constraints.is_some()
+                }) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Exact permission match
         self.permissions.iter().any(|p| {
             // Check namespace matches
             if p.resource_type != *namespace {
@@ -650,5 +687,185 @@ mod tests {
         assert!(role
             .remove_permission(&ResourceNamespace::Workflows, &PermissionType::Read)
             .is_err());
+    }
+
+    #[test]
+    fn test_admin_permission_grants_all_permissions_for_namespace() {
+        let mut role = Role::new("Admin Role".to_string());
+
+        // Add Admin permission for Workflows namespace
+        role.add_permission(Permission {
+            resource_type: ResourceNamespace::Workflows,
+            permission_type: PermissionType::Admin,
+            access_level: AccessLevel::All,
+            resource_uuids: vec![],
+            constraints: None,
+        })
+        .unwrap();
+
+        // Admin should grant all permission types for Workflows namespace
+        assert!(role.has_permission(&ResourceNamespace::Workflows, &PermissionType::Read, None));
+        assert!(role.has_permission(&ResourceNamespace::Workflows, &PermissionType::Create, None));
+        assert!(role.has_permission(&ResourceNamespace::Workflows, &PermissionType::Update, None));
+        assert!(role.has_permission(&ResourceNamespace::Workflows, &PermissionType::Delete, None));
+        assert!(role.has_permission(
+            &ResourceNamespace::Workflows,
+            &PermissionType::Publish,
+            None
+        ));
+        assert!(role.has_permission(
+            &ResourceNamespace::Workflows,
+            &PermissionType::Execute,
+            None
+        ));
+        assert!(role.has_permission(&ResourceNamespace::Workflows, &PermissionType::Admin, None));
+
+        // But Admin for Workflows should NOT grant permissions for other namespaces
+        assert!(!role.has_permission(&ResourceNamespace::Entities, &PermissionType::Read, None));
+        assert!(!role.has_permission(&ResourceNamespace::System, &PermissionType::Read, None));
+    }
+
+    #[test]
+    fn test_admin_permission_independent_per_namespace() {
+        let mut role = Role::new("Multi Admin Role".to_string());
+
+        // Add Admin permission for Workflows
+        role.add_permission(Permission {
+            resource_type: ResourceNamespace::Workflows,
+            permission_type: PermissionType::Admin,
+            access_level: AccessLevel::All,
+            resource_uuids: vec![],
+            constraints: None,
+        })
+        .unwrap();
+
+        // Add Admin permission for Entities
+        role.add_permission(Permission {
+            resource_type: ResourceNamespace::Entities,
+            permission_type: PermissionType::Admin,
+            access_level: AccessLevel::All,
+            resource_uuids: vec![],
+            constraints: None,
+        })
+        .unwrap();
+
+        // Should have all permissions for Workflows
+        assert!(role.has_permission(&ResourceNamespace::Workflows, &PermissionType::Read, None));
+        assert!(role.has_permission(&ResourceNamespace::Workflows, &PermissionType::Delete, None));
+
+        // Should have all permissions for Entities
+        assert!(role.has_permission(&ResourceNamespace::Entities, &PermissionType::Read, None));
+        assert!(role.has_permission(&ResourceNamespace::Entities, &PermissionType::Delete, None));
+
+        // But should NOT have permissions for System (no Admin for System)
+        assert!(!role.has_permission(&ResourceNamespace::System, &PermissionType::Read, None));
+    }
+
+    #[test]
+    fn test_admin_vs_super_admin_distinction() {
+        let mut role = Role::new("Admin Role".to_string());
+
+        // Add Admin permission for Workflows only
+        role.add_permission(Permission {
+            resource_type: ResourceNamespace::Workflows,
+            permission_type: PermissionType::Admin,
+            access_level: AccessLevel::All,
+            resource_uuids: vec![],
+            constraints: None,
+        })
+        .unwrap();
+
+        // Should have permissions for Workflows
+        assert!(role.has_permission(&ResourceNamespace::Workflows, &PermissionType::Read, None));
+
+        // Should NOT have permissions for System
+        assert!(!role.has_permission(&ResourceNamespace::System, &PermissionType::Read, None));
+
+        // Now make it super_admin
+        role.super_admin = true;
+
+        // Should now have permissions for ALL namespaces
+        assert!(role.has_permission(&ResourceNamespace::Workflows, &PermissionType::Read, None));
+        assert!(role.has_permission(&ResourceNamespace::System, &PermissionType::Read, None));
+        assert!(role.has_permission(
+            &ResourceNamespace::Entities,
+            &PermissionType::Delete,
+            Some("/any/path")
+        ));
+    }
+
+    #[test]
+    fn test_execute_permission_only_for_workflows() {
+        let mut role = Role::new("Test Role".to_string());
+
+        // Execute permission for Workflows should succeed
+        assert!(role
+            .add_permission(Permission {
+                resource_type: ResourceNamespace::Workflows,
+                permission_type: PermissionType::Execute,
+                access_level: AccessLevel::All,
+                resource_uuids: vec![],
+                constraints: None,
+            })
+            .is_ok());
+
+        // Execute permission for Entities should fail
+        assert!(role
+            .add_permission(Permission {
+                resource_type: ResourceNamespace::Entities,
+                permission_type: PermissionType::Execute,
+                access_level: AccessLevel::All,
+                resource_uuids: vec![],
+                constraints: None,
+            })
+            .is_err());
+
+        // Execute permission for System should fail
+        assert!(role
+            .add_permission(Permission {
+                resource_type: ResourceNamespace::System,
+                permission_type: PermissionType::Execute,
+                access_level: AccessLevel::All,
+                resource_uuids: vec![],
+                constraints: None,
+            })
+            .is_err());
+    }
+
+    #[test]
+    fn test_admin_permission_with_entities_path_constraint() {
+        let mut role = Role::new("Admin Role".to_string());
+
+        // Add Admin permission for Entities with path constraint
+        role.add_permission(Permission {
+            resource_type: ResourceNamespace::Entities,
+            permission_type: PermissionType::Admin,
+            access_level: AccessLevel::All,
+            resource_uuids: vec![],
+            constraints: Some(serde_json::json!({"path": "/projects"})),
+        })
+        .unwrap();
+
+        // Should have all permissions for Entities under /projects path
+        assert!(role.has_permission(
+            &ResourceNamespace::Entities,
+            &PermissionType::Read,
+            Some("/projects")
+        ));
+        assert!(role.has_permission(
+            &ResourceNamespace::Entities,
+            &PermissionType::Delete,
+            Some("/projects/sub")
+        ));
+
+        // Should NOT have permissions for Entities under other paths
+        assert!(!role.has_permission(
+            &ResourceNamespace::Entities,
+            &PermissionType::Read,
+            Some("/other")
+        ));
+
+        // Should NOT have permissions without path (when Admin has path constraint)
+        assert!(!role.has_permission(&ResourceNamespace::Entities, &PermissionType::Read, None));
     }
 }

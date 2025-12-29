@@ -509,6 +509,15 @@
     }
   },
   "permissions": {
+    "types": {
+      "read": "Lesen",
+      "create": "Erstellen",
+      "update": "Aktualisieren",
+      "delete": "Löschen",
+      "publish": "Veröffentlichen",
+      "admin": "Administrator",
+      "execute": "Ausführen"
+    },
     "dialog": {
       "create_title": "Rolle erstellen",
       "edit_title": "Rolle bearbeiten",
