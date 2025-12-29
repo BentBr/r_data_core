@@ -157,10 +157,13 @@ fn execute_workflow_and_collect_outputs(
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/workflows")
-            .service(get_workflow_data)
-            .service(trigger_workflow)
-            .service(get_workflow_stats)
-            .service(post_workflow_ingest),
+            // Register more specific routes FIRST to avoid route conflicts
+            // Routes with additional path segments must be registered before
+            // the catch-all /{uuid} route
+            .service(trigger_workflow) // /{uuid}/trigger
+            .service(get_workflow_stats) // /{uuid}/stats
+            .service(get_workflow_data) // /{uuid} (GET)
+            .service(post_workflow_ingest), // /{uuid} (POST)
     );
 }
 
@@ -172,6 +175,8 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
     get,
     path = "/api/v1/workflows/{uuid}",
     tag = "workflows",
+    summary = "Get workflow data",
+    description = "Get data from a Provider workflow. Returns data in the configured format (CSV or JSON). Supports sync and async execution modes.",
     params(
         ("uuid" = Uuid, Path, description = "Workflow UUID"),
         ("async" = Option<bool>, Query, description = "Execute async (202) or sync (200)"),
@@ -241,6 +246,8 @@ pub async fn get_workflow_data(
     get,
     path = "/api/v1/workflows/{uuid}/trigger",
     tag = "workflows",
+    summary = "Trigger workflow execution",
+    description = "Trigger a Consumer workflow with trigger type. Accepts GET requests with no data payload. Supports sync and async execution modes.",
     params(
         ("uuid" = Uuid, Path, description = "Workflow UUID"),
         ("async" = Option<bool>, Query, description = "Execute async (202) or sync (200)"),
@@ -511,7 +518,26 @@ async fn handle_provider_workflow(
             }
         };
 
-    if format_outputs.is_empty() || format_config.is_none() {
+    // Handle empty results - return 200 with empty data instead of error
+    if format_outputs.is_empty() {
+        let format = format_config.unwrap_or_else(|| r_data_core_workflow::dsl::FormatConfig {
+            format_type: "json".to_string(),
+            options: json!({}),
+        });
+
+        // Return empty response based on format
+        let response = serialize_api_output(format, &[], run_uuid, state).await;
+
+        // Mark run success with 0 processed
+        let _ = state
+            .workflow_service()
+            .mark_run_success(run_uuid, 0, 0)
+            .await;
+
+        return response;
+    }
+
+    if format_config.is_none() {
         let _ = state
             .workflow_service()
             .mark_run_failure(run_uuid, "No API output format found")
@@ -806,6 +832,8 @@ pub async fn get_workflow_stats(
     post,
     path = "/api/v1/workflows/{uuid}",
     tag = "workflows",
+    summary = "Ingest data into workflow",
+    description = "POST endpoint for ingesting data into a Consumer workflow with from.api source. Accepts CSV or JSON data payload.",
     params(
         ("uuid" = Uuid, Path, description = "Workflow UUID")
     ),

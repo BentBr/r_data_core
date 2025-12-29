@@ -301,6 +301,7 @@ impl Modify for JsonValueSchemaAddon {
         crate::public::dynamic_entities::routes::update_entity,
         crate::public::dynamic_entities::routes::delete_entity,
         crate::public::workflows::routes::get_workflow_data,
+        crate::public::workflows::routes::trigger_workflow,
         crate::public::workflows::routes::get_workflow_stats,
         crate::public::workflows::routes::post_workflow_ingest,
         crate::public::entities::routes::list_entity_versions,
