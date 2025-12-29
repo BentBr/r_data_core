@@ -19,7 +19,6 @@
                     @update:model-value="updateSourceType($event)"
                 />
                 <v-select
-                    v-if="sourceType !== 'trigger'"
                     :model-value="formatType"
                     :items="formatTypes"
                     :label="t('workflows.dsl.format_type')"
@@ -46,18 +45,8 @@
                     {{ getFullEndpointUri() }}
                 </div>
             </template>
-            <!-- from.trigger source type = Accept GET to trigger workflow (no data payload) -->
-            <template v-if="sourceType === 'trigger'">
-                <div
-                    class="text-caption mb-2 pa-2"
-                    style="background-color: rgba(var(--v-theme-primary), 0.1); border-radius: 4px"
-                >
-                    <strong>{{ t('workflows.dsl.endpoint_info') }}:</strong> GET
-                    {{ getFullEndpointUri() }}
-                </div>
-            </template>
             <div
-                v-if="formatType === 'csv' && sourceType !== 'trigger'"
+                v-if="formatType === 'csv'"
                 class="mb-2"
             >
                 <CsvOptionsEditor
@@ -84,10 +73,7 @@
                     >
                 </div>
             </div>
-            <div
-                v-if="sourceType !== 'trigger'"
-                class="mb-2"
-            >
+            <div class="mb-2">
                 <v-expansion-panels variant="accordion">
                     <v-expansion-panel>
                         <v-expansion-panel-title>{{
@@ -102,14 +88,10 @@
                     </v-expansion-panel>
                 </v-expansion-panels>
             </div>
-            <div
-                v-if="sourceType !== 'trigger'"
-                class="text-caption mb-1 mt-2"
-            >
+            <div class="text-caption mb-1 mt-2">
                 {{ t('workflows.dsl.mapping_source_normalized') }}
             </div>
             <MappingEditor
-                v-if="sourceType !== 'trigger'"
                 ref="mappingEditorRef"
                 :model-value="modelValue.mapping"
                 :left-label="t('workflows.dsl.source')"
@@ -117,12 +99,20 @@
                 @update:model-value="updateField('mapping', $event)"
             />
             <v-btn
-                v-if="sourceType !== 'trigger'"
                 size="x-small"
                 variant="tonal"
                 @click="addMapping"
                 >{{ t('workflows.dsl.add_mapping') }}</v-btn
             >
+        </template>
+        <template v-else-if="modelValue.type === 'trigger'">
+            <div
+                class="text-caption mb-2 pa-2"
+                style="background-color: rgba(var(--v-theme-primary), 0.1); border-radius: 4px"
+            >
+                <strong>{{ t('workflows.dsl.endpoint_info') }}:</strong> GET
+                {{ getTriggerEndpointUri() }}
+            </div>
         </template>
         <template v-else-if="modelValue.type === 'entity'">
             <v-select
@@ -397,10 +387,16 @@
         return buildApiUrl(`/api/v1/workflows/${uuid}`)
     }
 
+    function getTriggerEndpointUri(): string {
+        const uuid = props.workflowUuid ?? '{workflow-uuid}'
+        return buildApiUrl(`/api/v1/workflows/${uuid}/trigger`)
+    }
+
     const fromTypes = [
         { title: 'Format (CSV/JSON)', value: 'format' },
         { title: 'Entity', value: 'entity' },
         { title: 'Previous Step', value: 'previous_step' },
+        { title: 'Trigger', value: 'trigger' },
     ]
 
     function updateField(field: string, value: unknown) {
@@ -433,7 +429,6 @@
     const sourceTypes = [
         { title: 'URI', value: 'uri' },
         { title: 'API', value: 'api' },
-        { title: 'Trigger', value: 'trigger' },
         { title: 'File', value: 'file' },
     ]
 
@@ -525,7 +520,7 @@
         emit('update:modelValue', updated)
     }
 
-    function onTypeChange(newType: 'format' | 'entity' | 'previous_step') {
+    function onTypeChange(newType: 'format' | 'entity' | 'previous_step' | 'trigger') {
         let newFrom: FromDef
         if (newType === 'format') {
             newFrom = {
@@ -546,6 +541,11 @@
                 type: 'entity',
                 entity_definition: '',
                 filter: { field: '', operator: '=', value: '' },
+                mapping: {},
+            }
+        } else if (newType === 'trigger') {
+            newFrom = {
+                type: 'trigger',
                 mapping: {},
             }
         } else {

@@ -53,7 +53,6 @@ Read data from CSV, JSON, or other formats:
 
 **Source Types:**
 - **API** (`source_type: "api"`): Accepts POST data via `/api/v1/workflows/{uuid}` endpoint. Used for webhook ingestion with data payload.
-- **Trigger** (`source_type: "trigger"`): Accepts GET requests at `/api/v1/workflows/{uuid}` endpoint to trigger workflow execution. No data payload - just triggers the workflow to run. Useful for cron-like external triggers. When using trigger source, no format/header/file/mapping fields are needed, and step 2 can use static `from.uri` endpoints (no need for PreviousStep since step 1 has no data).
 - **URI** (`source_type: "uri"`): Fetches data from external HTTP/HTTPS endpoints. Requires `config.uri` field with the full URL.
 
 ### Entity
@@ -89,6 +88,19 @@ Read data from the previous step's output:
 ```
 
 **Note**: Cannot be used in step 0 (the first step).
+
+### Trigger
+
+Trigger-based input - accepts GET requests at `/api/v1/workflows/{uuid}/trigger` endpoint. No data payload - just triggers the workflow to run. Useful for cron-like external triggers or webhooks that only need to trigger execution.
+
+```json
+{
+  "type": "trigger",
+  "mapping": {}
+}
+```
+
+**Note**: Can only be used in step 0 (the first step). When using trigger, step 2 can use static `from.uri` endpoints to pull from external APIs (no need for PreviousStep since step 1 has no data).
 
 ## Transform Types
 
@@ -407,23 +419,14 @@ Combine first and last name:
 
 ### Example 5: Trigger → External API → Entity Creation
 
-Trigger workflow via GET request, fetch data from external API, and create entities:
+Trigger workflow via GET request at `/api/v1/workflows/{uuid}/trigger`, fetch data from external API, and create entities:
 
 ```json
 {
   "steps": [
     {
       "from": {
-        "type": "format",
-        "source": {
-          "source_type": "trigger",
-          "config": {},
-          "auth": null
-        },
-        "format": {
-          "format_type": "json",
-          "options": {}
-        },
+        "type": "trigger",
         "mapping": {}
       },
       "transform": {
@@ -471,7 +474,7 @@ Trigger workflow via GET request, fetch data from external API, and create entit
 }
 ```
 
-**Note**: When using `trigger` source type, step 2 doesn't need `PreviousStep` since step 1 has no data to pass. Step 2 can use static `from.uri` endpoints to pull from external APIs.
+**Note**: When using `trigger` type, step 2 doesn't need `PreviousStep` since step 1 has no data to pass. Step 2 can use static `from.uri` endpoints to pull from external APIs. The trigger endpoint is `GET /api/v1/workflows/{uuid}/trigger`, while Provider workflows use `GET /api/v1/workflows/{uuid}` to fetch data.
 
 ## Type Casting Rules
 

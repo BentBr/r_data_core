@@ -231,21 +231,12 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_from_trigger_without_endpoint() {
-        // from.trigger without endpoint field should be valid (accepts GET)
+    fn test_validate_from_trigger_in_first_step() {
+        // from.trigger should be valid in step 0 (first step)
         let config = json!({
             "steps": [{
                 "from": {
-                    "type": "format",
-                    "source": {
-                        "source_type": "trigger",
-                        "config": {},
-                        "auth": null
-                    },
-                    "format": {
-                        "format_type": "json",
-                        "options": {}
-                    },
+                    "type": "trigger",
                     "mapping": {}
                 },
                 "transform": { "type": "none" },
@@ -265,49 +256,60 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_from_trigger_with_endpoint_fails() {
-        // from.trigger with endpoint field should fail validation
+    fn test_validate_from_trigger_not_in_first_step_fails() {
+        // from.trigger should fail if not in step 0
         let config = json!({
-            "steps": [{
-                "from": {
-                    "type": "format",
-                    "source": {
-                        "source_type": "trigger",
-                        "config": {
-                            "endpoint": "/api/v1/workflows/test"
+            "steps": [
+                {
+                    "from": {
+                        "type": "format",
+                        "source": {
+                            "source_type": "uri",
+                            "config": { "uri": "http://example.com/data.json" },
+                            "auth": null
                         },
-                        "auth": null
+                        "format": {
+                            "format_type": "json",
+                            "options": {}
+                        },
+                        "mapping": {}
                     },
-                    "format": {
-                        "format_type": "json",
-                        "options": {}
-                    },
-                    "mapping": {}
+                    "transform": { "type": "none" },
+                    "to": {
+                        "type": "next_step",
+                        "mapping": {}
+                    }
                 },
-                "transform": { "type": "none" },
-                "to": {
-                    "type": "format",
-                    "output": { "mode": "api" },
-                    "format": {
-                        "format_type": "json",
-                        "options": {}
+                {
+                    "from": {
+                        "type": "trigger",
+                        "mapping": {}
                     },
-                    "mapping": {}
+                    "transform": { "type": "none" },
+                    "to": {
+                        "type": "format",
+                        "output": { "mode": "api" },
+                        "format": {
+                            "format_type": "json",
+                            "options": {}
+                        },
+                        "mapping": {}
+                    }
                 }
-            }]
+            ]
         });
         let prog = DslProgram::from_config(&config).unwrap();
         let result = prog.validate();
         assert!(
             result.is_err(),
-            "Expected validation to fail for from.trigger with endpoint field"
+            "Expected validation to fail for from.trigger not in first step"
         );
         assert!(
             result
                 .unwrap_err()
                 .to_string()
-                .contains("endpoint is not allowed"),
-            "Error message should mention endpoint is not allowed"
+                .contains("can only be used in the first step"),
+            "Error message should mention trigger can only be used in first step"
         );
     }
 
@@ -317,16 +319,7 @@ mod tests {
         let config = json!({
             "steps": [{
                 "from": {
-                    "type": "format",
-                    "source": {
-                        "source_type": "trigger",
-                        "config": {},
-                        "auth": null
-                    },
-                    "format": {
-                        "format_type": "json",
-                        "options": {}
-                    },
+                    "type": "trigger",
                     "mapping": {}
                 },
                 "transform": { "type": "none" },

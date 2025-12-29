@@ -158,16 +158,16 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/workflows")
             .service(get_workflow_data)
+            .service(trigger_workflow)
             .service(get_workflow_stats)
             .service(post_workflow_ingest),
     );
 }
 
-/// Get workflow data or trigger workflow execution
-/// For Provider workflows: Returns data in the format specified by the workflow config (CSV or JSON)
-/// For Consumer workflows with trigger source: Triggers workflow execution (enqueue and process)
+/// Get workflow data (Provider workflows only)
+/// Returns data in the format specified by the workflow config (CSV or JSON)
 /// Supports sync and async modes via ?async=true query parameter
-/// Authentication is required (JWT, API key, or pre-shared key) for both Provider and Consumer workflows
+/// Authentication is required (JWT, API key, or pre-shared key)
 #[utoipa::path(
     get,
     path = "/api/v1/workflows/{uuid}",
@@ -178,7 +178,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
         ("run_uuid" = Option<Uuid>, Query, description = "Run UUID to poll when async=true")
     ),
     responses(
-        (status = 200, description = "Provider: Workflow data in configured format (CSV or JSON). Consumer with trigger: Workflow execution completed", content_type = "text/csv,application/json"),
+        (status = 200, description = "Workflow data in configured format (CSV or JSON)", content_type = "text/csv,application/json"),
         (status = 202, description = "Workflow execution queued (use /workflows/{uuid} again to check status)"),
         (status = 401, description = "Unauthorized - authentication required"),
         (status = 404, description = "Workflow not found"),
@@ -211,7 +211,12 @@ pub async fn get_workflow_data(
         }
     };
 
-    // Parse DSL program early to check for trigger source
+    // Only Provider workflows can be accessed via GET /api/v1/workflows/{uuid}
+    if workflow.kind != r_data_core_workflow::data::WorkflowKind::Provider {
+        return HttpResponse::NotFound().json(json!({"error": "Workflow not found"}));
+    }
+
+    // Parse DSL program
     let program = match DslProgram::from_config(&workflow.config) {
         Ok(p) => p,
         Err(e) => {
@@ -224,24 +229,94 @@ pub async fn get_workflow_data(
         }
     };
 
-    // Check for trigger source in Consumer workflows
-    let has_trigger_source = program.steps.iter().any(|step| {
-        if let r_data_core_workflow::dsl::FromDef::Format { source, .. } = &step.from {
-            source.source_type == "trigger"
-        } else {
-            false
+    handle_provider_workflow(uuid, &req, &workflow, &program, &state, &query).await
+}
+
+/// Trigger workflow execution (Consumer workflows with trigger type only)
+/// Accepts GET requests to trigger workflow execution at /api/v1/workflows/{uuid}/trigger
+/// No data payload - just triggers the workflow to run
+/// Supports sync and async modes via ?async=true query parameter
+/// Authentication is required (JWT, API key, or pre-shared key)
+#[utoipa::path(
+    get,
+    path = "/api/v1/workflows/{uuid}/trigger",
+    tag = "workflows",
+    params(
+        ("uuid" = Uuid, Path, description = "Workflow UUID"),
+        ("async" = Option<bool>, Query, description = "Execute async (202) or sync (200)"),
+        ("run_uuid" = Option<Uuid>, Query, description = "Run UUID to poll when async=true")
+    ),
+    responses(
+        (status = 200, description = "Workflow execution completed", body = serde_json::Value),
+        (status = 202, description = "Workflow execution queued (use /workflows/{uuid}/trigger again to check status)"),
+        (status = 401, description = "Unauthorized - authentication required"),
+        (status = 404, description = "Workflow not found or not a Consumer workflow with trigger type"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(
+        ("jwt" = []),
+        ("apiKey" = []),
+        ("preSharedKey" = [])
+    )
+)]
+#[allow(clippy::future_not_send)] // HttpRequest is not Send, but Actix Web handles this internally
+#[get("/{uuid}/trigger")]
+pub async fn trigger_workflow(
+    path: web::Path<Uuid>,
+    req: HttpRequest,
+    state: web::Data<ApiStateWrapper>,
+    query: web::Query<WorkflowQuery>,
+) -> impl Responder {
+    let uuid = path.into_inner();
+
+    // Get workflow config and validate auth
+    let workflow = match state.workflow_service().get(uuid).await {
+        Ok(Some(wf)) => wf,
+        Ok(None) => return HttpResponse::NotFound().json(json!({"error": "Workflow not found"})),
+        Err(e) => {
+            log::error!("Failed to get workflow: {e}");
+            return HttpResponse::InternalServerError()
+                .json(json!({"error": "Internal server error"}));
         }
+    };
+
+    // Only Consumer workflows can be triggered
+    if workflow.kind != r_data_core_workflow::data::WorkflowKind::Consumer {
+        return HttpResponse::NotFound().json(json!({
+            "error": "Workflow not found",
+            "message": "Only Consumer workflows can be triggered via this endpoint"
+        }));
+    }
+
+    // Parse DSL program to check for trigger type
+    let program = match DslProgram::from_config(&workflow.config) {
+        Ok(p) => p,
+        Err(e) => {
+            log::error!("Failed to parse DSL for workflow {uuid}: {e}");
+            return HttpResponse::BadRequest().json(json!({
+                "error": "Invalid workflow configuration",
+                "details": format!("{e}"),
+                "message": "The workflow DSL configuration is invalid or uses an outdated format. Please update the workflow configuration."
+            }));
+        }
+    };
+
+    // Check for trigger type in first step
+    let has_trigger = program.steps.first().is_some_and(|step| {
+        matches!(
+            step.from,
+            r_data_core_workflow::dsl::FromDef::Trigger { .. }
+        )
     });
 
-    // Handle Consumer workflows with trigger source
-    if workflow.kind == r_data_core_workflow::data::WorkflowKind::Consumer && has_trigger_source {
-        handle_trigger_consumer_workflow(uuid, &req, &workflow, &state, &query).await
-    } else if workflow.kind == r_data_core_workflow::data::WorkflowKind::Provider {
-        handle_provider_workflow(uuid, &req, &workflow, &program, &state, &query).await
-    } else {
-        // Consumer workflow without trigger source - not accessible via GET
-        HttpResponse::NotFound().json(json!({"error": "Workflow not found"}))
+    if !has_trigger {
+        return HttpResponse::NotFound().json(json!({
+            "error": "Workflow not found",
+            "message": "This workflow does not have a trigger type in the first step"
+        }));
     }
+
+    handle_trigger_consumer_workflow(uuid, &req, &workflow, &state, &query).await
 }
 
 #[allow(clippy::future_not_send)]

@@ -1,6 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-// Tests for loading and executing example workflow JSON files with trigger source
+// Tests for loading and executing example workflow JSON files with trigger type
 
 use super::common::{
     create_consumer_workflow, create_test_entity_definition, generate_entity_type,
@@ -24,14 +24,10 @@ async fn test_load_trigger_to_external_api_entity_example() -> anyhow::Result<()
     let steps = config.get("steps").unwrap().as_array().unwrap();
     assert_eq!(steps.len(), 2);
 
-    // Step 1 should have trigger source
+    // Step 1 should have trigger type
     let step1 = &steps[0];
     let from1 = step1.get("from").unwrap();
-    let source1 = from1.get("source").unwrap();
-    assert_eq!(
-        source1.get("source_type").unwrap().as_str().unwrap(),
-        "trigger"
-    );
+    assert_eq!(from1.get("type").unwrap().as_str().unwrap(), "trigger");
 
     // Step 2 should have uri source
     let step2 = &steps[1];
@@ -55,14 +51,10 @@ async fn test_load_trigger_to_external_api_push_example() -> anyhow::Result<()> 
     let steps = config.get("steps").unwrap().as_array().unwrap();
     assert_eq!(steps.len(), 2);
 
-    // Step 1 should have trigger source
+    // Step 1 should have trigger type
     let step1 = &steps[0];
     let from1 = step1.get("from").unwrap();
-    let source1 = from1.get("source").unwrap();
-    assert_eq!(
-        source1.get("source_type").unwrap().as_str().unwrap(),
-        "trigger"
-    );
+    assert_eq!(from1.get("type").unwrap().as_str().unwrap(), "trigger");
 
     // Step 2 should have push output
     let step2 = &steps[1];
@@ -87,14 +79,10 @@ async fn test_load_trigger_multi_step_example() -> anyhow::Result<()> {
     let steps = config.get("steps").unwrap().as_array().unwrap();
     assert_eq!(steps.len(), 3);
 
-    // Step 1 should have trigger source
+    // Step 1 should have trigger type
     let step1 = &steps[0];
     let from1 = step1.get("from").unwrap();
-    let source1 = from1.get("source").unwrap();
-    assert_eq!(
-        source1.get("source_type").unwrap().as_str().unwrap(),
-        "trigger"
-    );
+    assert_eq!(from1.get("type").unwrap().as_str().unwrap(), "trigger");
 
     // Step 2 should have uri source and arithmetic transform
     let step2 = &steps[1];
@@ -143,9 +131,9 @@ async fn test_execute_trigger_to_external_api_entity_workflow() -> anyhow::Resul
     // Create workflow
     let wf_uuid = create_consumer_workflow(&pool, creator_uuid, config, true, None).await?;
 
-    // Trigger workflow via GET
+    // Trigger workflow via GET /trigger endpoint
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}/trigger"))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
@@ -176,9 +164,9 @@ async fn test_execute_trigger_to_external_api_push_workflow() -> anyhow::Result<
     // Create workflow
     let wf_uuid = create_consumer_workflow(&pool, creator_uuid, config, true, None).await?;
 
-    // Trigger workflow via GET
+    // Trigger workflow via GET /trigger endpoint
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}/trigger"))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 

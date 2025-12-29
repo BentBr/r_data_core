@@ -63,6 +63,13 @@ pub enum FromDef {
         /// Field mapping from previous step's fields to this step's normalized fields
         mapping: std::collections::HashMap<String, String>,
     },
+    /// Trigger-based input - accepts GET requests at /api/v1/workflows/{uuid}/trigger
+    /// No data payload, just triggers the workflow to run
+    /// Can only be used in step 0 (first step)
+    Trigger {
+        /// Field mapping (typically empty for trigger, as there's no input data)
+        mapping: std::collections::HashMap<String, String>,
+    },
 }
 
 pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> Result<()> {
@@ -78,6 +85,7 @@ pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> R
             mapping,
         } => validate_entity_from(idx, entity_definition, filter.as_ref(), mapping, safe_field),
         FromDef::PreviousStep { mapping } => validate_previous_step_from(idx, mapping, safe_field),
+        FromDef::Trigger { mapping } => validate_trigger_from(idx, mapping, safe_field),
     }
 }
 
@@ -139,7 +147,6 @@ fn validate_source_config(idx: usize, source: &SourceConfig) -> Result<()> {
             // File source is handled during manual runs
         }
         "api" => validate_api_source(idx, &source.config)?,
-        "trigger" => validate_trigger_source(idx, &source.config)?,
         _ => {
             // Other source types will be validated by their handlers
         }
@@ -173,14 +180,17 @@ fn validate_api_source(idx: usize, config: &Value) -> Result<()> {
     Ok(())
 }
 
-fn validate_trigger_source(idx: usize, config: &Value) -> Result<()> {
-    // from.trigger source type = Accept GET request to trigger workflow execution
-    // No endpoint field needed (always GET /api/v1/workflows/{this-workflow-uuid})
-    // No data payload, just triggers the workflow to run
-    // If endpoint field is present, it's invalid
-    if config.get("endpoint").is_some() {
-        bail!("DSL step {idx}: from.format.source.config.endpoint is not allowed for 'trigger' source type. The trigger endpoint is always GET /api/v1/workflows/{{this-workflow-uuid}}.");
+fn validate_trigger_from(
+    idx: usize,
+    mapping: &std::collections::HashMap<String, String>,
+    safe_field: &Regex,
+) -> Result<()> {
+    // Trigger can only be used in step 0 (first step)
+    if idx != 0 {
+        bail!("DSL step {idx}: from.trigger can only be used in the first step (step 0).");
     }
+    // Allow empty mappings (pass through all fields, though trigger has no input data)
+    validate_mapping(idx, mapping, safe_field)?;
     Ok(())
 }
 
@@ -289,6 +299,7 @@ pub(crate) fn mapping_of(from: &FromDef) -> &std::collections::HashMap<String, S
     match from {
         FromDef::Format { mapping, .. }
         | FromDef::Entity { mapping, .. }
-        | FromDef::PreviousStep { mapping } => mapping,
+        | FromDef::PreviousStep { mapping }
+        | FromDef::Trigger { mapping } => mapping,
     }
 }

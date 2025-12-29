@@ -80,18 +80,16 @@ export function sanitizeDslStep(step: unknown): DslStep {
             // Ensure source and format exist
             fromDef.source ??= { source_type: 'uri', config: {} }
             fromDef.format ??= { format_type: 'csv', options: {} }
-            // Remove endpoint field from api and trigger source types
-            // from.api accepts POST, from.trigger accepts GET - no endpoint needed
+            // Remove endpoint field from api source type
+            // from.api accepts POST - no endpoint needed
             const source = fromDef.source as Record<string, unknown> | undefined
-            if (
-                (source?.source_type === 'api' || source?.source_type === 'trigger') &&
-                source.config
-            ) {
+            if (source?.source_type === 'api' && source.config) {
                 const config = source.config as Record<string, unknown>
                 if (config.endpoint !== undefined) {
                     delete config.endpoint
                 }
             }
+            // Note: trigger is now a separate type, not a source type
         }
     }
 

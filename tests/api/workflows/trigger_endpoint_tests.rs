@@ -21,21 +21,12 @@ async fn test_get_trigger_consumer_workflow_enqueues_run() -> anyhow::Result<()>
         .fetch_one(&pool.pool)
         .await?;
 
-    // Create consumer workflow with from.trigger source
+    // Create consumer workflow with from.trigger type
     let config = serde_json::json!({
         "steps": [
             {
                 "from": {
-                    "type": "format",
-                    "source": {
-                        "source_type": "trigger",
-                        "config": {},
-                        "auth": null
-                    },
-                    "format": {
-                        "format_type": "json",
-                        "options": {}
-                    },
+                    "type": "trigger",
                     "mapping": {}
                 },
                 "transform": { "type": "none" },
@@ -54,9 +45,9 @@ async fn test_get_trigger_consumer_workflow_enqueues_run() -> anyhow::Result<()>
 
     let wf_uuid = create_consumer_workflow(&pool, creator_uuid, config, true, None).await?;
 
-    // Test GET endpoint with JWT
+    // Test GET /trigger endpoint with JWT
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}/trigger"))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
@@ -79,21 +70,12 @@ async fn test_get_trigger_consumer_workflow_async_mode() -> anyhow::Result<()> {
         .fetch_one(&pool.pool)
         .await?;
 
-    // Create consumer workflow with from.trigger source
+    // Create consumer workflow with from.trigger type
     let config = serde_json::json!({
         "steps": [
             {
                 "from": {
-                    "type": "format",
-                    "source": {
-                        "source_type": "trigger",
-                        "config": {},
-                        "auth": null
-                    },
-                    "format": {
-                        "format_type": "json",
-                        "options": {}
-                    },
+                    "type": "trigger",
                     "mapping": {}
                 },
                 "transform": { "type": "none" },
@@ -112,9 +94,9 @@ async fn test_get_trigger_consumer_workflow_async_mode() -> anyhow::Result<()> {
 
     let wf_uuid = create_consumer_workflow(&pool, creator_uuid, config, true, None).await?;
 
-    // Test GET endpoint with async=true
+    // Test GET /trigger endpoint with async=true
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{wf_uuid}?async=true"))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}/trigger?async=true"))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
@@ -138,21 +120,12 @@ async fn test_get_trigger_consumer_workflow_poll_status() -> anyhow::Result<()> 
         .fetch_one(&pool.pool)
         .await?;
 
-    // Create consumer workflow with from.trigger source
+    // Create consumer workflow with from.trigger type
     let config = serde_json::json!({
         "steps": [
             {
                 "from": {
-                    "type": "format",
-                    "source": {
-                        "source_type": "trigger",
-                        "config": {},
-                        "auth": null
-                    },
-                    "format": {
-                        "format_type": "json",
-                        "options": {}
-                    },
+                    "type": "trigger",
                     "mapping": {}
                 },
                 "transform": { "type": "none" },
@@ -173,7 +146,7 @@ async fn test_get_trigger_consumer_workflow_poll_status() -> anyhow::Result<()> 
 
     // First request: trigger async execution
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{wf_uuid}?async=true"))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}/trigger?async=true"))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
@@ -187,7 +160,7 @@ async fn test_get_trigger_consumer_workflow_poll_status() -> anyhow::Result<()> 
     // Poll status with run_uuid
     let req = test::TestRequest::get()
         .uri(&format!(
-            "/api/v1/workflows/{wf_uuid}?async=true&run_uuid={run_uuid}"
+            "/api/v1/workflows/{wf_uuid}/trigger?async=true&run_uuid={run_uuid}"
         ))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
@@ -219,16 +192,7 @@ async fn test_get_trigger_consumer_workflow_creates_entities() -> anyhow::Result
         "steps": [
             {
                 "from": {
-                    "type": "format",
-                    "source": {
-                        "source_type": "trigger",
-                        "config": {},
-                        "auth": null
-                    },
-                    "format": {
-                        "format_type": "json",
-                        "options": {}
-                    },
+                    "type": "trigger",
                     "mapping": {}
                 },
                 "transform": { "type": "none" },
@@ -275,7 +239,7 @@ async fn test_get_trigger_consumer_workflow_creates_entities() -> anyhow::Result
 
     // Test GET endpoint - should trigger workflow
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}/trigger"))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
@@ -335,7 +299,8 @@ async fn test_get_provider_workflow_returns_data() -> anyhow::Result<()> {
 
     let wf_uuid = create_provider_workflow(&pool.pool, creator_uuid, config).await?;
 
-    // Test GET endpoint - should return data (even if external URI fails)
+    // Test GET endpoint for Provider workflow - should return data (even if external URI fails)
+    // Provider workflows use /api/v1/workflows/{uuid}, not /trigger
     let req = test::TestRequest::get()
         .uri(&format!("/api/v1/workflows/{wf_uuid}"))
         .insert_header(("Authorization", format!("Bearer {token}")))
@@ -365,16 +330,7 @@ async fn test_get_trigger_with_jwt_auth() -> anyhow::Result<()> {
         "steps": [
             {
                 "from": {
-                    "type": "format",
-                    "source": {
-                        "source_type": "trigger",
-                        "config": {},
-                        "auth": null
-                    },
-                    "format": {
-                        "format_type": "json",
-                        "options": {}
-                    },
+                    "type": "trigger",
                     "mapping": {}
                 },
                 "transform": { "type": "none" },
@@ -395,7 +351,7 @@ async fn test_get_trigger_with_jwt_auth() -> anyhow::Result<()> {
 
     // Test GET endpoint with JWT
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}/trigger"))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
@@ -422,16 +378,7 @@ async fn test_get_trigger_with_api_key_auth() -> anyhow::Result<()> {
         "steps": [
             {
                 "from": {
-                    "type": "format",
-                    "source": {
-                        "source_type": "trigger",
-                        "config": {},
-                        "auth": null
-                    },
-                    "format": {
-                        "format_type": "json",
-                        "options": {}
-                    },
+                    "type": "trigger",
                     "mapping": {}
                 },
                 "transform": { "type": "none" },
@@ -452,7 +399,7 @@ async fn test_get_trigger_with_api_key_auth() -> anyhow::Result<()> {
 
     // Test GET endpoint with API key
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}/trigger"))
         .insert_header(("X-API-Key", api_key_value))
         .to_request();
 
@@ -479,16 +426,7 @@ async fn test_get_trigger_without_auth_fails() -> anyhow::Result<()> {
         "steps": [
             {
                 "from": {
-                    "type": "format",
-                    "source": {
-                        "source_type": "trigger",
-                        "config": {},
-                        "auth": null
-                    },
-                    "format": {
-                        "format_type": "json",
-                        "options": {}
-                    },
+                    "type": "trigger",
                     "mapping": {}
                 },
                 "transform": { "type": "none" },
@@ -509,7 +447,7 @@ async fn test_get_trigger_without_auth_fails() -> anyhow::Result<()> {
 
     // Test GET endpoint without auth
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}/trigger"))
         .to_request();
 
     let resp = test::call_service(&app, req).await;
@@ -565,7 +503,7 @@ async fn test_get_consumer_workflow_without_trigger_source_fails() -> anyhow::Re
 
     // Test GET endpoint - should return 404 (not a Provider workflow, and no trigger source)
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}/trigger"))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 
@@ -575,7 +513,7 @@ async fn test_get_consumer_workflow_without_trigger_source_fails() -> anyhow::Re
     assert_eq!(
         resp.status().as_u16(),
         404,
-        "Expected 404 for Consumer workflow without trigger source, got: {}",
+        "Expected 404 for Consumer workflow without trigger type, got: {}",
         resp.status()
     );
 
@@ -594,16 +532,7 @@ async fn test_get_trigger_disabled_workflow_fails() -> anyhow::Result<()> {
         "steps": [
             {
                 "from": {
-                    "type": "format",
-                    "source": {
-                        "source_type": "trigger",
-                        "config": {},
-                        "auth": null
-                    },
-                    "format": {
-                        "format_type": "json",
-                        "options": {}
-                    },
+                    "type": "trigger",
                     "mapping": {}
                 },
                 "transform": { "type": "none" },
@@ -624,7 +553,7 @@ async fn test_get_trigger_disabled_workflow_fails() -> anyhow::Result<()> {
 
     // Test GET endpoint - should return 503 Service Unavailable
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .uri(&format!("/api/v1/workflows/{wf_uuid}/trigger"))
         .insert_header(("Authorization", format!("Bearer {token}")))
         .to_request();
 

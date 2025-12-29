@@ -2,16 +2,7 @@
   "steps": [
     {
       "from": {
-        "type": "format",
-        "source": {
-          "source_type": "trigger",
-          "config": {},
-          "auth": null
-        },
-        "format": {
-          "format_type": "json",
-          "options": {}
-        },
+        "type": "trigger",
         "mapping": {}
       },
       "transform": {

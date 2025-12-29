@@ -96,16 +96,11 @@ impl DslProgram {
                     }
                     &step_outputs[step_idx - 1]
                 }
-                FromDef::Format { source, .. } => {
-                    // For trigger source type, use empty input (no data payload)
-                    if source.source_type == "trigger" {
-                        &serde_json::json!({})
-                    } else {
-                        // Read from original input
-                        input
-                    }
+                FromDef::Trigger { .. } => {
+                    // Trigger has no input data - use empty object
+                    &serde_json::json!({})
                 }
-                FromDef::Entity { .. } => {
+                FromDef::Format { .. } | FromDef::Entity { .. } => {
                     // Read from original input
                     input
                 }
@@ -264,16 +259,11 @@ impl DslProgram {
                     }
                     &step_outputs[step_idx - 1]
                 }
-                FromDef::Format { source, .. } => {
-                    // For trigger source type, use empty input (no data payload)
-                    if source.source_type == "trigger" {
-                        &serde_json::json!({})
-                    } else {
-                        // Read from original input
-                        input
-                    }
+                FromDef::Trigger { .. } => {
+                    // Trigger has no input data - use empty object
+                    &serde_json::json!({})
                 }
-                FromDef::Entity { .. } => {
+                FromDef::Format { .. } | FromDef::Entity { .. } => {
                     // Read from original input
                     input
                 }
