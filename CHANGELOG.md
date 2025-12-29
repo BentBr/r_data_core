@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.32](https://github.com/BentBr/r_data_core/compare/v0.1.31...v0.1.32) (2025-12-29)
+
+
+### Bug Fixes
+
+* Making sure create buttons only exist if users are allowed to do so ([b65679b](https://github.com/BentBr/r_data_core/commit/b65679b267b15569acdad5d1bb0c15007d05ac69))
+* Making sure create buttons only exist if users are allowed to do so ([d2653b1](https://github.com/BentBr/r_data_core/commit/d2653b149a3ef68b7849dd527658e1c479a3fc8e))
+
 ## [0.1.31](https://github.com/BentBr/r_data_core/compare/v0.1.30...v0.1.31) (2025-12-29)
 
 
