@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.1](https://github.com/BentBr/r_data_core/compare/v0.2.0...v0.2.1) (2025-12-29)
+
+
+### Features
+
+* added a no-access page in order to signal users can login but l… ([6fae703](https://github.com/BentBr/r_data_core/commit/6fae703ab66a14d2f3f1482937cc285670cd097a))
+* added a no-access page in order to signal users can login but lack appropriate right to open pages ([316e40e](https://github.com/BentBr/r_data_core/commit/316e40e82b987105fe3b9db42c70e1a2b45dd598))
+
+
+### Bug Fixes
+
+* making sure create buttons only exist for users who are permitte… ([e991ca5](https://github.com/BentBr/r_data_core/commit/e991ca526d94ffbaa3fdd467cc576808841f5f1e))
+* making sure create buttons only exist for users who are permitted. Added proper fallback info ([228e012](https://github.com/BentBr/r_data_core/commit/228e0128d81bbbc135c6edd1f2b3b4129f0fa414))
+
 ## [0.2.0](https://github.com/BentBr/r_data_core/compare/v0.1.32...v0.2.0) (2025-12-29)
 
 
