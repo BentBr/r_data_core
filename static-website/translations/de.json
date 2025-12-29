@@ -720,7 +720,7 @@
     },
     "cases": {
       "title": "Anwendungsfälle",
-      "subtitle": "Fünf leistungsstarke Möglichkeiten, RDataCore in deiner Organisation zu nutzen",
+      "subtitle": "Sechs leistungsstarke Möglichkeiten, RDataCore in deiner Organisation zu nutzen",
       "items": [
         {
           "title": "Single Source of Truth",
@@ -741,6 +741,10 @@
         {
           "title": "Datenformatierer & Rechner",
           "description": "Transformiere Daten on-the-fly von einem Format ins andere. Nimm CSV-Eingaben aus Legacy-Systemen und konvertiere diese in JSON für moderne APIs. Wende Berechnungen, Feldtransformationen und Datenanreicherung während des Konvertierungsprozesses an, ohne Zwischenergebnisse zu speichern."
+        },
+        {
+          "title": "Webhook-getriggerte Datenpipeline",
+          "description": "Empfange Webhook-Trigger von externen Systemen, nutze den Trigger, um dynamisch zusätzliche Informationen von Drittanbieter-APIs abzurufen, transformiere die kombinierten Daten und erstelle Entitäten oder pushe Ergebnisse an nachgelagerte Systeme. Perfekt für ereignisgesteuerte Architekturen und automatisierte Datensynchronisation."
         }
       ]
     },

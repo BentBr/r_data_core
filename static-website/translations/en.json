@@ -720,7 +720,7 @@
     },
     "cases": {
       "title": "Use Cases",
-      "subtitle": "Five powerful ways to leverage RDataCore in your organization",
+      "subtitle": "Six powerful ways to leverage RDataCore in your organization",
       "items": [
         {
           "title": "Single Source of Truth",
@@ -741,6 +741,10 @@
         {
           "title": "Data Formatter & Calculator",
           "description": "Transform data on-the-fly from one format to another. Take CSV input from legacy systems and convert it to JSON for modern APIs. Apply calculations, field transformations, and data enrichment during the conversion process without storing intermediate results."
+        },
+        {
+          "title": "Webhook-Triggered Data Pipeline",
+          "description": "Receive webhook triggers from external systems, use the trigger to dynamically fetch additional information from 3rd party APIs, transform the combined data, and create entities or push results to downstream systems. Perfect for event-driven architectures and automated data synchronization."
         }
       ]
     },
