@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.30](https://github.com/BentBr/r_data_core/compare/v0.1.29...v0.1.30) (2025-12-29)
+
+
+### Features
+
+* adding admin permission for resources ([d92d4b6](https://github.com/BentBr/r_data_core/commit/d92d4b69f2e8d642d93f8373ae71aee2fffec8ed))
+
+
+### Bug Fixes
+
+* updating role handling to have users and roles taken care of separately. updating repository to include warnings in clippy for tests ([112733f](https://github.com/BentBr/r_data_core/commit/112733fa4650c06b59d12e2eb86123764e99ff36))
+
 ## [0.1.29](https://github.com/BentBr/r_data_core/compare/v0.1.28...v0.1.29) (2025-12-28)
 
 
