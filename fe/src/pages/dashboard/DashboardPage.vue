@@ -160,7 +160,7 @@
                         <v-card-text>
                             <v-row>
                                 <v-col
-                                    v-if="canAccessEntityDefinitions"
+                                    v-if="canCreateEntityDefinition"
                                     cols="12"
                                     sm="6"
                                     md="auto"
@@ -181,7 +181,7 @@
                                     </v-btn>
                                 </v-col>
                                 <v-col
-                                    v-if="canAccessEntities"
+                                    v-if="canCreateEntity"
                                     cols="12"
                                     sm="6"
                                     md="auto"
@@ -202,7 +202,7 @@
                                     </v-btn>
                                 </v-col>
                                 <v-col
-                                    v-if="canAccessApiKeys"
+                                    v-if="canCreateApiKey"
                                     cols="12"
                                     sm="6"
                                     md="auto"
@@ -223,7 +223,7 @@
                                     </v-btn>
                                 </v-col>
                                 <v-col
-                                    v-if="canAccessWorkflows"
+                                    v-if="canCreateWorkflow"
                                     cols="12"
                                     sm="6"
                                     md="auto"
@@ -244,7 +244,7 @@
                                     </v-btn>
                                 </v-col>
                                 <v-col
-                                    v-if="canAccessUsers"
+                                    v-if="canCreateUser"
                                     cols="12"
                                     sm="6"
                                     md="auto"
@@ -261,7 +261,28 @@
                                                 size="sm"
                                             />
                                         </template>
-                                        {{ t('dashboard.quick_actions.users') }}
+                                        {{ t('dashboard.quick_actions.create_user') }}
+                                    </v-btn>
+                                </v-col>
+                                <v-col
+                                    v-if="canCreateRole"
+                                    cols="12"
+                                    sm="6"
+                                    md="auto"
+                                >
+                                    <v-btn
+                                        color="teal"
+                                        variant="outlined"
+                                        block
+                                        @click="$router.push('/permissions?tab=roles&create=true')"
+                                    >
+                                        <template #prepend>
+                                            <SmartIcon
+                                                icon="shield-plus"
+                                                size="sm"
+                                            />
+                                        </template>
+                                        {{ t('dashboard.quick_actions.create_role') }}
                                     </v-btn>
                                 </v-col>
                             </v-row>
@@ -285,14 +306,41 @@
     const authStore = useAuthStore()
     const { t } = useTranslations()
 
-    // Permission checks for quick action buttons
-    const canAccessEntityDefinitions = computed(() =>
-        authStore.canAccessRoute('/entity-definitions')
-    )
-    const canAccessEntities = computed(() => authStore.canAccessRoute('/entities'))
-    const canAccessApiKeys = computed(() => authStore.canAccessRoute('/api-keys'))
-    const canAccessWorkflows = computed(() => authStore.canAccessRoute('/workflows'))
-    const canAccessUsers = computed(() => authStore.canAccessRoute('/permissions'))
+    // Permission checks for quick action buttons - check create/admin permissions
+    const canCreateEntityDefinition = computed(() => {
+        return (
+            authStore.hasPermission('EntityDefinitions', 'Create') ||
+            authStore.hasPermission('EntityDefinitions', 'Admin')
+        )
+    })
+    const canCreateEntity = computed(() => {
+        return (
+            authStore.hasPermission('Entities', 'Create') ||
+            authStore.hasPermission('Entities', 'Admin')
+        )
+    })
+    const canCreateApiKey = computed(() => {
+        return (
+            authStore.hasPermission('ApiKeys', 'Create') ||
+            authStore.hasPermission('ApiKeys', 'Admin')
+        )
+    })
+    const canCreateWorkflow = computed(() => {
+        return (
+            authStore.hasPermission('Workflows', 'Create') ||
+            authStore.hasPermission('Workflows', 'Admin')
+        )
+    })
+    const canCreateUser = computed(() => {
+        return (
+            authStore.hasPermission('Users', 'Create') || authStore.hasPermission('Users', 'Admin')
+        )
+    })
+    const canCreateRole = computed(() => {
+        return (
+            authStore.hasPermission('Roles', 'Create') || authStore.hasPermission('Roles', 'Admin')
+        )
+    })
 
     // Dashboard stats
     const loading = ref(true)

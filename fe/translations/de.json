@@ -52,7 +52,8 @@
       "create_entity": "Entität erstellen",
       "generate_api_key": "API-Schlüssel generieren",
       "create_workflow": "Workflow erstellen",
-      "users": "Benutzer"
+      "create_user": "Benutzer erstellen",
+      "create_role": "Rolle erstellen"
     },
     "loading": "Dashboard-Statistiken werden geladen...",
     "error": "Dashboard-Statistiken konnten nicht geladen werden"
