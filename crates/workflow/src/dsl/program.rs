@@ -1,6 +1,5 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use anyhow::{bail, Context};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -25,19 +24,19 @@ impl DslProgram {
     ///
     /// # Errors
     /// Returns an error if the configuration is invalid
-    pub fn from_config(config: &Value) -> anyhow::Result<Self> {
+    pub fn from_config(config: &Value) -> r_data_core_core::error::Result<Self> {
         let steps_val = config
             .get("steps")
-            .ok_or_else(|| anyhow::anyhow!("Workflow config missing 'steps' array"))?;
+            .ok_or_else(|| r_data_core_core::error::Error::Validation("Workflow config missing 'steps' array".to_string()))?;
         let steps = steps_val
             .as_array()
-            .ok_or_else(|| anyhow::anyhow!("'steps' must be an array"))?;
+            .ok_or_else(|| r_data_core_core::error::Error::Validation("'steps' must be an array".to_string()))?;
 
         let parsed: Vec<DslStep> = steps
             .iter()
             .cloned()
-            .map(|v| serde_json::from_value::<DslStep>(v).context("Invalid DSL step"))
-            .collect::<Result<_, _>>()?;
+            .map(|v| serde_json::from_value::<DslStep>(v).map_err(|e| r_data_core_core::error::Error::Validation(format!("Invalid DSL step: {e}"))))
+            .collect::<r_data_core_core::error::Result<_>>()?;
         Ok(Self { steps: parsed })
     }
 
@@ -48,9 +47,9 @@ impl DslProgram {
     ///
     /// # Panics
     /// Panics if the regex pattern is invalid (should never happen).
-    pub fn validate(&self) -> anyhow::Result<()> {
+    pub fn validate(&self) -> r_data_core_core::error::Result<()> {
         if self.steps.is_empty() {
-            bail!("DSL must contain at least one step");
+            return Err(r_data_core_core::error::Error::Validation("DSL must contain at least one step".to_string()));
         }
         let safe_field = Regex::new(r"^[A-Za-z_][A-Za-z0-9_\.]*$").unwrap();
         let last_step_idx = self.steps.len() - 1;
@@ -61,9 +60,9 @@ impl DslProgram {
             // NextStep cannot be used in the last step
             if idx == last_step_idx {
                 if let super::to::ToDef::NextStep { .. } = &step.to {
-                    bail!(
+                    return Err(r_data_core_core::error::Error::Validation(format!(
                         "Step {idx} (last step) cannot use NextStep ToDef - there is no next step"
-                    );
+                    )));
                 }
             }
         }
@@ -79,7 +78,7 @@ impl DslProgram {
     /// # Errors
     /// Returns an error if execution fails
     #[allow(clippy::too_many_lines)] // Complex but cohesive function
-    pub fn execute(&self, input: &Value) -> anyhow::Result<Vec<(super::to::ToDef, Value)>> {
+    pub fn execute(&self, input: &Value) -> r_data_core_core::error::Result<Vec<(super::to::ToDef, Value)>> {
         use super::execution;
         use super::from::FromDef;
 
@@ -92,7 +91,7 @@ impl DslProgram {
                 FromDef::PreviousStep { .. } => {
                     // Read from previous step's normalized data
                     if step_idx == 0 {
-                        bail!("Step 0 cannot use PreviousStep source");
+                        return Err(r_data_core_core::error::Error::Validation("Step 0 cannot use PreviousStep source".to_string()));
                     }
                     &step_outputs[step_idx - 1]
                 }
@@ -142,10 +141,10 @@ impl DslProgram {
                                     #[allow(clippy::float_cmp)]
                                     // We explicitly want exact comparison for zero
                                     if right_val == 0.0 {
-                                        bail!(
+                                        return Err(r_data_core_core::error::Error::Validation(format!(
                                             "Step {step_idx}: Division by zero in target field '{}'",
                                             ar.target
-                                        );
+                                        )));
                                     }
                                     left_val / right_val
                                 }
@@ -157,11 +156,11 @@ impl DslProgram {
                             );
                         }
                         (Err(e), _) | (_, Err(e)) => {
-                            bail!(
+                            return Err(r_data_core_core::error::Error::Validation(format!(
                                 "Step {step_idx}: Arithmetic error in target field '{}': {}",
                                 ar.target,
                                 e
-                            );
+                            )));
                         }
                     }
                 }
@@ -180,11 +179,11 @@ impl DslProgram {
                             );
                         }
                         (Err(e), _) | (_, Err(e)) => {
-                            bail!(
+                            return Err(r_data_core_core::error::Error::Validation(format!(
                                 "Step {step_idx}: Concat error in target field '{}': {}",
                                 ct.target,
                                 e
-                            );
+                            )));
                         }
                     }
                 }
@@ -242,7 +241,7 @@ impl DslProgram {
     /// # Errors
     /// Returns an error if execution fails
     #[allow(clippy::too_many_lines)]
-    pub fn apply(&self, input: &Value) -> anyhow::Result<Value> {
+    pub fn apply(&self, input: &Value) -> r_data_core_core::error::Result<Value> {
         use super::execution;
         use super::from::FromDef;
 
@@ -255,7 +254,7 @@ impl DslProgram {
                 FromDef::PreviousStep { .. } => {
                     // Read from previous step's normalized data
                     if step_idx == 0 {
-                        bail!("Step 0 cannot use PreviousStep source");
+                        return Err(r_data_core_core::error::Error::Validation("Step 0 cannot use PreviousStep source".to_string()));
                     }
                     &step_outputs[step_idx - 1]
                 }
@@ -305,10 +304,10 @@ impl DslProgram {
                                     #[allow(clippy::float_cmp)]
                                     // We explicitly want exact comparison for zero
                                     if right_val == 0.0 {
-                                        bail!(
+                                        return Err(r_data_core_core::error::Error::Validation(format!(
                                             "Step {step_idx}: Division by zero in target field '{}'",
                                             ar.target
-                                        );
+                                        )));
                                     }
                                     left_val / right_val
                                 }
@@ -320,11 +319,11 @@ impl DslProgram {
                             );
                         }
                         (Err(e), _) | (_, Err(e)) => {
-                            bail!(
+                            return Err(r_data_core_core::error::Error::Validation(format!(
                                 "Step {step_idx}: Arithmetic error in target field '{}': {}",
                                 ar.target,
                                 e
-                            );
+                            )));
                         }
                     }
                 }
@@ -343,11 +342,11 @@ impl DslProgram {
                             );
                         }
                         (Err(e), _) | (_, Err(e)) => {
-                            bail!(
+                            return Err(r_data_core_core::error::Error::Validation(format!(
                                 "Step {step_idx}: Concat error in target field '{}': {}",
                                 ct.target,
                                 e
-                            );
+                            )));
                         }
                     }
                 }

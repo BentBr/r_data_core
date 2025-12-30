@@ -19,7 +19,7 @@ pub async fn handle_format_push_output(
     item_uuid: Uuid,
     run_uuid: Uuid,
     repo: &Arc<dyn WorkflowRepositoryTrait>,
-) -> anyhow::Result<bool> {
+) -> r_data_core_core::error::Result<bool> {
     if let ToDef::Format {
         output:
             r_data_core_workflow::dsl::OutputMode::Push {
@@ -53,7 +53,7 @@ async fn serialize_for_push(
     item_uuid: Uuid,
     run_uuid: Uuid,
     repo: &Arc<dyn WorkflowRepositoryTrait>,
-) -> anyhow::Result<Vec<u8>> {
+) -> r_data_core_core::error::Result<Vec<u8>> {
     let format_handler: Box<dyn r_data_core_workflow::data::adapters::format::FormatHandler> =
         match format.format_type.as_str() {
             "csv" => {
@@ -74,7 +74,9 @@ async fn serialize_for_push(
                 )
                 .await
                 .ok();
-                return Err(anyhow::anyhow!("Unsupported format for push"));
+                return Err(r_data_core_core::error::Error::Validation(
+                    "Unsupported format for push".to_string(),
+                ));
             }
         };
 
@@ -91,19 +93,24 @@ async fn serialize_for_push(
                     "error": e.to_string()
                 })),
             ));
-            anyhow::anyhow!("Failed to serialize: {e}")
+            r_data_core_core::error::Error::Unknown(format!("Failed to serialize: {e}"))
         })
 }
 
 fn create_destination_context(
     destination: &r_data_core_workflow::dsl::to::DestinationConfig,
     method: Option<r_data_core_workflow::data::adapters::destination::HttpMethod>,
-) -> anyhow::Result<r_data_core_workflow::data::adapters::destination::DestinationContext> {
+) -> r_data_core_core::error::Result<
+    r_data_core_workflow::data::adapters::destination::DestinationContext,
+> {
     let auth_provider = destination
         .auth
         .as_ref()
         .map(|auth_cfg| r_data_core_workflow::data::adapters::auth::create_auth_provider(auth_cfg))
-        .transpose()?;
+        .transpose()
+        .map_err(|e| {
+            r_data_core_core::error::Error::Config(format!("Failed to create auth provider: {e}"))
+        })?;
 
     Ok(
         r_data_core_workflow::data::adapters::destination::DestinationContext {
@@ -119,7 +126,9 @@ fn create_destination_adapter(
     item_uuid: Uuid,
     run_uuid: Uuid,
     repo: &Arc<dyn WorkflowRepositoryTrait>,
-) -> anyhow::Result<Box<dyn r_data_core_workflow::data::adapters::destination::DataDestination>> {
+) -> r_data_core_core::error::Result<
+    Box<dyn r_data_core_workflow::data::adapters::destination::DataDestination>,
+> {
     if destination.destination_type.as_str() == "uri" {
         Ok(Box::new(
             r_data_core_workflow::data::adapters::destination::uri::UriDestination::new(),
@@ -134,7 +143,9 @@ fn create_destination_adapter(
                 "destination_type": destination.destination_type
             })),
         ));
-        Err(anyhow::anyhow!("Unsupported destination type"))
+        Err(r_data_core_core::error::Error::Validation(
+            "Unsupported destination type".to_string(),
+        ))
     }
 }
 
@@ -146,7 +157,7 @@ async fn push_data(
     item_uuid: Uuid,
     run_uuid: Uuid,
     repo: &Arc<dyn WorkflowRepositoryTrait>,
-) -> anyhow::Result<()> {
+) -> r_data_core_core::error::Result<()> {
     use bytes::Bytes;
     dest_adapter
         .push(dest_ctx, Bytes::from(data_bytes))
@@ -162,7 +173,7 @@ async fn push_data(
                     "error": e.to_string()
                 })),
             ));
-            anyhow::anyhow!("Failed to push: {e}")
+            r_data_core_core::error::Error::Api(format!("Failed to push: {e}"))
         })
 }
 
@@ -184,7 +195,7 @@ pub struct EntityOutputParams<'a> {
 pub async fn handle_entity_output(
     to_def: &ToDef,
     params: EntityOutputParams<'_>,
-) -> anyhow::Result<bool> {
+) -> r_data_core_core::error::Result<bool> {
     if let ToDef::Entity {
         entity_definition,
         path,
@@ -275,7 +286,7 @@ struct EntityOperationParams<'a> {
 async fn execute_entity_operation(
     params: EntityOperationParams<'_>,
     dynamic_entity_service: &crate::dynamic_entity::DynamicEntityService,
-) -> anyhow::Result<()> {
+) -> r_data_core_core::error::Result<()> {
     match params.mode {
         r_data_core_workflow::dsl::EntityWriteMode::Create => {
             let create_ctx = PersistenceContext {
@@ -298,7 +309,7 @@ async fn execute_entity_operation(
 }
 
 fn handle_entity_result(
-    result: anyhow::Result<()>,
+    result: r_data_core_core::error::Result<()>,
     mode: &r_data_core_workflow::dsl::EntityWriteMode,
     entity_definition: &str,
     item_uuid: Uuid,

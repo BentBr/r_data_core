@@ -5,7 +5,7 @@ use log::error;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use super::utils::check_has_api_endpoint;
+use super::utils::{check_has_api_endpoint, handle_workflow_error};
 use crate::admin::query_helpers::to_list_query_params;
 use crate::admin::workflows::models::{WorkflowRunSummary, WorkflowSummary};
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
@@ -77,7 +77,7 @@ pub async fn list_all_workflow_runs(
                 target: "workflows",
                 "list_all_workflow_runs failed: {e:#?}"
             );
-            ApiResponse::<()>::internal_error(&format!("Failed to list runs: {e}"))
+            handle_workflow_error(e)
         }
     }
 }
@@ -152,11 +152,11 @@ pub async fn list_workflows(
         }
         Err(e) => {
             error!("Failed to list workflows: {e}");
-            let err_msg = e.to_string();
-            if err_msg.contains("validation") {
-                ApiResponse::<()>::bad_request(&err_msg)
-            } else {
-                ApiResponse::<()>::internal_error(&format!("Failed to list workflows: {e}"))
+            match e {
+                r_data_core_core::error::Error::Validation(msg) => {
+                    ApiResponse::<()>::bad_request(&msg)
+                }
+                _ => handle_workflow_error(e),
             }
         }
     }
@@ -223,7 +223,7 @@ pub async fn list_workflow_runs(
         }
         Err(e) => {
             error!(target: "workflows", "list_workflow_runs failed: {e:#?}");
-            ApiResponse::<()>::internal_error(&format!("Failed to list runs: {e}"))
+            handle_workflow_error(e)
         }
     }
 }

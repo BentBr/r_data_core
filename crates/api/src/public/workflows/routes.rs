@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::CombinedRequiredAuth;
+use r_data_core_core::error::Error;
 use r_data_core_workflow::data::adapters::auth::{AuthConfig, KeyLocation};
 use r_data_core_workflow::data::adapters::format::FormatHandler;
 use r_data_core_workflow::data::job_queue::JobQueue;
@@ -209,6 +210,9 @@ pub async fn get_workflow_data(
     let workflow = match state.workflow_service().get(uuid).await {
         Ok(Some(wf)) => wf,
         Ok(None) => return HttpResponse::NotFound().json(json!({"error": "Workflow not found"})),
+        Err(Error::NotFound(_)) => {
+            return HttpResponse::NotFound().json(json!({"error": "Workflow not found"}))
+        }
         Err(e) => {
             log::error!("Failed to get workflow: {e}");
             return HttpResponse::InternalServerError()
@@ -280,6 +284,9 @@ pub async fn trigger_workflow(
     let workflow = match state.workflow_service().get(uuid).await {
         Ok(Some(wf)) => wf,
         Ok(None) => return HttpResponse::NotFound().json(json!({"error": "Workflow not found"})),
+        Err(Error::NotFound(_)) => {
+            return HttpResponse::NotFound().json(json!({"error": "Workflow not found"}))
+        }
         Err(e) => {
             log::error!("Failed to get workflow: {e}");
             return HttpResponse::InternalServerError()
@@ -350,6 +357,10 @@ async fn handle_trigger_consumer_workflow(
     // Create a run
     let run_uuid = match state.workflow_service().enqueue_run(uuid).await {
         Ok(run_uuid) => run_uuid,
+        Err(Error::NotFound(msg)) => {
+            log::error!("Workflow not found: {msg}");
+            return HttpResponse::NotFound().json(json!({"error": "Workflow not found"}));
+        }
         Err(e) => {
             log::error!("Failed to enqueue run: {e}");
             return HttpResponse::InternalServerError()
@@ -461,6 +472,10 @@ async fn handle_provider_workflow(
     // Create a run and mark running for logging/history
     let run_uuid = match state.workflow_service().enqueue_run(uuid).await {
         Ok(run_uuid) => run_uuid,
+        Err(Error::NotFound(msg)) => {
+            log::error!("Workflow not found: {msg}");
+            return HttpResponse::NotFound().json(json!({"error": "Workflow not found"}));
+        }
         Err(e) => {
             log::error!("Failed to enqueue run: {e}");
             return HttpResponse::InternalServerError()

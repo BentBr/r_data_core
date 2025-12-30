@@ -20,7 +20,7 @@ pub async fn process_single_item(
     versioning_disabled: bool,
     dynamic_entity_service: Option<&DynamicEntityService>,
     repo: &Arc<dyn WorkflowRepositoryTrait>,
-) -> anyhow::Result<bool> {
+) -> r_data_core_core::error::Result<bool> {
     match program.execute(payload) {
         Ok(outputs) => {
             let mut entity_ops_ok = true;
@@ -115,21 +115,30 @@ pub async fn process_single_item(
     }
 }
 
-fn extract_sqlx_meta(e: &anyhow::Error) -> serde_json::Value {
+fn extract_sqlx_meta(e: &r_data_core_core::error::Error) -> serde_json::Value {
     // Walk the error chain and extract sqlx::Error::Database details if present
     // Fall back to debug formatting of the full chain
-    let mut code: Option<String> = None;
-    let mut message: Option<String> = None;
-
-    let mut cause: Option<&(dyn std::error::Error + 'static)> = Some(e.as_ref());
-    while let Some(err) = cause {
-        if let Some(sqlx::Error::Database(db_err)) = err.downcast_ref::<sqlx::Error>() {
-            code = db_err.code().map(|s| s.to_string());
-            message = Some(db_err.message().to_string());
-            break;
-        }
-        cause = err.source();
-    }
+    let (code, message) =
+        if let r_data_core_core::error::Error::Database(sqlx::Error::Database(db_err)) = e {
+            (
+                db_err.code().map(|s| s.to_string()),
+                Some(db_err.message().to_string()),
+            )
+        } else {
+            // Try to walk the error chain for Anyhow errors
+            let mut code: Option<String> = None;
+            let mut message: Option<String> = None;
+            let mut cause: Option<&(dyn std::error::Error + 'static)> = Some(e);
+            while let Some(err) = cause {
+                if let Some(sqlx::Error::Database(db_err)) = err.downcast_ref::<sqlx::Error>() {
+                    code = db_err.code().map(|s| s.to_string());
+                    message = Some(db_err.message().to_string());
+                    break;
+                }
+                cause = err.source();
+            }
+            (code, message)
+        };
 
     serde_json::json!({
         "code": code,

@@ -150,7 +150,9 @@ async fn create_provider_workflow(
         config,
         versioning_disabled: false,
     };
-    repo.create(&create_req, creator_uuid).await
+    repo.create(&create_req, creator_uuid)
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))
 }
 
 async fn create_consumer_workflow_with_api_source(
@@ -168,7 +170,9 @@ async fn create_consumer_workflow_with_api_source(
         config,
         versioning_disabled: false,
     };
-    repo.create(&create_req, creator_uuid).await
+    repo.create(&create_req, creator_uuid)
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))
 }
 
 #[actix_web::test]

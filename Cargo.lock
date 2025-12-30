@@ -2552,7 +2552,6 @@ name = "r_data_core_workflow"
 version = "0.2.0"
 dependencies = [
  "actix-web",
- "anyhow",
  "apalis",
  "apalis-redis",
  "async-trait",

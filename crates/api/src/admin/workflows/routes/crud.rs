@@ -7,11 +7,13 @@ use uuid::Uuid;
 use crate::admin::workflows::models::{
     CreateWorkflowRequest, CreateWorkflowResponse, UpdateWorkflowRequest, WorkflowDetail,
 };
+use crate::admin::workflows::routes::utils::handle_workflow_error;
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::auth::permission_check;
 use crate::response::ApiResponse;
 use crate::response::ValidationViolation;
+use r_data_core_core::error::Error;
 use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 use r_data_core_core::utils;
 
@@ -60,7 +62,11 @@ pub async fn get_workflow_details(
             ApiResponse::ok(detail)
         }
         Ok(None) => ApiResponse::<()>::not_found("Workflow not found"),
-        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to get workflow: {e}")),
+        Err(Error::NotFound(msg)) => ApiResponse::<()>::not_found(&msg),
+        Err(e) => {
+            error!("Failed to get workflow: {e}");
+            ApiResponse::<()>::internal_error("Failed to get workflow")
+        }
     }
 }
 
@@ -118,21 +124,7 @@ pub async fn create_workflow(
 
     match created {
         Ok(uuid) => ApiResponse::<CreateWorkflowResponse>::created(CreateWorkflowResponse { uuid }),
-        Err(e) => {
-            // Log the full error (captured by Actix logger middleware)
-            error!("Failed to create workflow: {e}");
-
-            // Map unique constraint violations to 409 Conflict
-            // See the db error code of 23505
-            if matches!(
-                e.downcast_ref::<sqlx::Error>(),
-                Some(sqlx::Error::Database(db_err)) if db_err.code().as_deref() == Some("23505")
-            ) {
-                return ApiResponse::<()>::conflict("Workflow name already exists");
-            }
-
-            ApiResponse::<()>::internal_error("Failed to create workflow")
-        }
+        Err(e) => handle_workflow_error(e),
     }
 }
 
@@ -190,7 +182,7 @@ pub async fn update_workflow(
 
     match res {
         Ok(()) => ApiResponse::<()>::message("Updated"),
-        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to update: {e}")),
+        Err(e) => handle_workflow_error(e),
     }
 }
 
@@ -225,6 +217,6 @@ pub async fn delete_workflow(
     let res = state.workflow_service().delete(uuid).await;
     match res {
         Ok(()) => ApiResponse::<()>::message("Deleted"),
-        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to delete: {e}")),
+        Err(e) => handle_workflow_error(e),
     }
 }

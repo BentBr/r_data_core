@@ -1,12 +1,12 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use anyhow::Context;
 use serde_json::Value;
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
 use super::workflow_repository_trait::WorkflowRepositoryTrait;
 use super::workflow_versioning_repository::WorkflowVersioningRepository;
+use r_data_core_core::error::Result;
 use r_data_core_workflow::data::requests::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use r_data_core_workflow::data::{Workflow, WorkflowKind};
 use std::str::FromStr;
@@ -25,7 +25,7 @@ impl WorkflowRepository {
     ///
     /// # Errors
     /// Returns an error if the database query fails
-    pub async fn get_workflow_uuid_for_run(&self, run_uuid: Uuid) -> anyhow::Result<Option<Uuid>> {
+    pub async fn get_workflow_uuid_for_run(&self, run_uuid: Uuid) -> Result<Option<Uuid>> {
         self.get_workflow_uuid_for_run_internal(run_uuid).await
     }
 
@@ -36,7 +36,7 @@ impl WorkflowRepository {
     ///
     /// # Panics
     /// Panics if database row data is invalid
-    pub async fn get_by_uuid(&self, uuid: Uuid) -> anyhow::Result<Option<Workflow>> {
+    pub async fn get_by_uuid(&self, uuid: Uuid) -> Result<Option<Workflow>> {
         let row = sqlx::query(
             "
             SELECT uuid, name, description, kind::text, enabled, schedule_cron, config, versioning_disabled
@@ -46,8 +46,7 @@ impl WorkflowRepository {
         )
         .bind(uuid)
         .fetch_optional(&self.pool)
-        .await
-        .context("get workflow by uuid")?;
+        .await?;
 
         row.map_or_else(
             || Ok(None),
@@ -79,11 +78,7 @@ impl WorkflowRepository {
     ///
     /// # Errors
     /// Returns an error if the database operation fails
-    pub async fn create(
-        &self,
-        req: &CreateWorkflowRequest,
-        created_by: Uuid,
-    ) -> anyhow::Result<Uuid> {
+    pub async fn create(&self, req: &CreateWorkflowRequest, created_by: Uuid) -> Result<Uuid> {
         let row = sqlx::query(
             "
             INSERT INTO workflows (name, description, kind, enabled, schedule_cron, config, versioning_disabled, created_by)
@@ -100,8 +95,7 @@ impl WorkflowRepository {
         .bind(req.versioning_disabled)
         .bind(created_by)
         .fetch_one(&self.pool)
-        .await
-        .context("insert workflows")?;
+        .await?;
 
         Ok(row.try_get("uuid")?)
     }
@@ -115,13 +109,17 @@ impl WorkflowRepository {
         uuid: Uuid,
         req: &UpdateWorkflowRequest,
         updated_by: Uuid,
-    ) -> anyhow::Result<()> {
+    ) -> Result<()> {
         // Pre-update snapshot of current workflow row
         let versioning_repo = WorkflowVersioningRepository::new(self.pool.clone());
         versioning_repo
             .snapshot_pre_update(uuid)
             .await
-            .map_err(|e| anyhow::anyhow!("Failed to snapshot workflow: {e}"))?;
+            .map_err(|e| {
+                r_data_core_core::error::Error::Unknown(format!(
+                    "Failed to snapshot workflow: {e}"
+                ))
+            })?;
 
         sqlx::query(
             "
@@ -141,8 +139,7 @@ impl WorkflowRepository {
         .bind(req.versioning_disabled)
         .bind(updated_by)
         .execute(&self.pool)
-        .await
-        .context("update workflows")?;
+        .await?;
         Ok(())
     }
 
@@ -150,12 +147,11 @@ impl WorkflowRepository {
     ///
     /// # Errors
     /// Returns an error if the database operation fails
-    pub async fn delete(&self, uuid: Uuid) -> anyhow::Result<()> {
+    pub async fn delete(&self, uuid: Uuid) -> r_data_core_core::error::Result<()> {
         sqlx::query("DELETE FROM workflows WHERE uuid = $1")
             .bind(uuid)
             .execute(&self.pool)
-            .await
-            .context("delete workflows")?;
+            .await?;
         Ok(())
     }
 
@@ -166,7 +162,7 @@ impl WorkflowRepository {
     ///
     /// # Panics
     /// Panics if database row data is invalid
-    pub async fn list_all(&self) -> anyhow::Result<Vec<Workflow>> {
+    pub async fn list_all(&self) -> r_data_core_core::error::Result<Vec<Workflow>> {
         let rows = sqlx::query(
             "
             SELECT uuid, name, description, kind::text, enabled, schedule_cron, config, versioning_disabled
@@ -176,7 +172,7 @@ impl WorkflowRepository {
         )
         .fetch_all(&self.pool)
         .await
-        .context("query workflows")?;
+        ?;
 
         let mut out = Vec::with_capacity(rows.len());
         for r in rows {
@@ -215,7 +211,7 @@ impl WorkflowRepository {
         offset: i64,
         sort_by: Option<String>,
         sort_order: Option<String>,
-    ) -> anyhow::Result<Vec<Workflow>> {
+    ) -> r_data_core_core::error::Result<Vec<Workflow>> {
         // Build ORDER BY clause - field is already validated and sanitized by route handler
         let order_by = sort_by.map_or_else(
             || "\"name\" ASC".to_string(),
@@ -256,10 +252,7 @@ impl WorkflowRepository {
             query_builder = query_builder.bind(limit).bind(offset);
         }
 
-        let rows = query_builder
-            .fetch_all(&self.pool)
-            .await
-            .context("query workflows paginated")?;
+        let rows = query_builder.fetch_all(&self.pool).await?;
 
         let mut out = Vec::with_capacity(rows.len());
         for r in rows {
@@ -289,11 +282,10 @@ impl WorkflowRepository {
     ///
     /// # Errors
     /// Returns an error if the database query fails
-    pub async fn count_all(&self) -> anyhow::Result<i64> {
+    pub async fn count_all(&self) -> r_data_core_core::error::Result<i64> {
         let row = sqlx::query("SELECT COUNT(*) AS cnt FROM workflows")
             .fetch_one(&self.pool)
-            .await
-            .context("count workflows")?;
+            .await?;
         Ok(row.try_get::<i64, _>("cnt")?)
     }
 
@@ -360,14 +352,16 @@ impl WorkflowRepository {
     ///
     /// # Panics
     /// Panics if database row data is invalid
-    pub async fn list_scheduled_consumers(&self) -> anyhow::Result<Vec<(Uuid, String)>> {
+    pub async fn list_scheduled_consumers(
+        &self,
+    ) -> r_data_core_core::error::Result<Vec<(Uuid, String)>> {
         // Fetch workflows with their config to check for from.api source type
         let rows = sqlx::query(
             "SELECT uuid, schedule_cron, config FROM workflows WHERE enabled = true AND kind = 'consumer'::workflow_kind AND schedule_cron IS NOT NULL",
         )
         .fetch_all(&self.pool)
         .await
-        .context("query scheduled consumers")?;
+        ?;
 
         let mut out = Vec::with_capacity(rows.len());
         for r in rows {
@@ -395,7 +389,7 @@ impl WorkflowRepository {
         &self,
         workflow_uuid: Uuid,
         trigger_id: Uuid,
-    ) -> anyhow::Result<Uuid> {
+    ) -> r_data_core_core::error::Result<Uuid> {
         let row = sqlx::query(
             "INSERT INTO workflow_runs (workflow_uuid, status, trigger_id) VALUES ($1, 'queued', $2) RETURNING uuid",
         )
@@ -403,7 +397,7 @@ impl WorkflowRepository {
         .bind(trigger_id)
         .fetch_one(&self.pool)
         .await
-        .context("insert workflow run queued")?;
+        ?;
         Ok(row.try_get("uuid")?)
     }
 
@@ -411,12 +405,12 @@ impl WorkflowRepository {
     ///
     /// # Errors
     /// Returns an error if the database query fails
-    pub async fn list_queued_runs(&self, limit: i64) -> anyhow::Result<Vec<Uuid>> {
+    pub async fn list_queued_runs(&self, limit: i64) -> r_data_core_core::error::Result<Vec<Uuid>> {
         let rows = sqlx::query("SELECT uuid FROM workflow_runs WHERE status = 'queued' ORDER BY queued_at ASC LIMIT $1")
             .bind(limit)
             .fetch_all(&self.pool)
             .await
-            .context("list queued runs")?;
+            ?;
         let mut out = Vec::with_capacity(rows.len());
         for r in rows {
             out.push(r.try_get::<Uuid, _>("uuid")?);
@@ -428,12 +422,12 @@ impl WorkflowRepository {
     ///
     /// # Errors
     /// Returns an error if the database operation fails
-    pub async fn mark_run_running(&self, run_uuid: Uuid) -> anyhow::Result<()> {
+    pub async fn mark_run_running(&self, run_uuid: Uuid) -> r_data_core_core::error::Result<()> {
         sqlx::query("UPDATE workflow_runs SET status = 'running', started_at = NOW() WHERE uuid = $1 AND status = 'queued'")
             .bind(run_uuid)
             .execute(&self.pool)
             .await
-            .context("mark run running")?;
+            ?;
         Ok(())
     }
 
@@ -446,14 +440,14 @@ impl WorkflowRepository {
         run_uuid: Uuid,
         processed: i64,
         failed: i64,
-    ) -> anyhow::Result<()> {
+    ) -> r_data_core_core::error::Result<()> {
         sqlx::query("UPDATE workflow_runs SET status = 'success', finished_at = NOW(), processed_items = $2, failed_items = $3 WHERE uuid = $1")
             .bind(run_uuid)
             .bind(processed)
             .bind(failed)
             .execute(&self.pool)
             .await
-            .context("mark run success")?;
+            ?;
         Ok(())
     }
 
@@ -461,13 +455,17 @@ impl WorkflowRepository {
     ///
     /// # Errors
     /// Returns an error if the database operation fails
-    pub async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
+    pub async fn mark_run_failure(
+        &self,
+        run_uuid: Uuid,
+        message: &str,
+    ) -> r_data_core_core::error::Result<()> {
         sqlx::query("UPDATE workflow_runs SET status = 'failed', finished_at = NOW(), error = $2 WHERE uuid = $1")
             .bind(run_uuid)
             .bind(message)
             .execute(&self.pool)
             .await
-            .context("mark run failure")?;
+            ?;
         Ok(())
     }
 
@@ -475,12 +473,14 @@ impl WorkflowRepository {
     ///
     /// # Errors
     /// Returns an error if query fails
-    pub async fn get_run_status(&self, run_uuid: Uuid) -> anyhow::Result<Option<String>> {
+    pub async fn get_run_status(
+        &self,
+        run_uuid: Uuid,
+    ) -> r_data_core_core::error::Result<Option<String>> {
         let row = sqlx::query("SELECT status::text FROM workflow_runs WHERE uuid = $1")
             .bind(run_uuid)
             .fetch_optional(&self.pool)
-            .await
-            .context("get run status")?;
+            .await?;
         Ok(row.and_then(|r| r.try_get::<String, _>("status").ok()))
     }
 
@@ -494,7 +494,7 @@ impl WorkflowRepository {
         level: &str,
         message: &str,
         meta: Option<serde_json::Value>,
-    ) -> anyhow::Result<()> {
+    ) -> r_data_core_core::error::Result<()> {
         sqlx::query("INSERT INTO workflow_run_logs (run_uuid, level, message, meta) VALUES ($1, $2, $3, $4)")
             .bind(run_uuid)
             .bind(level)
@@ -502,7 +502,7 @@ impl WorkflowRepository {
             .bind(meta)
             .execute(&self.pool)
             .await
-            .context("insert workflow run log")?;
+            ?;
         Ok(())
     }
 
@@ -515,7 +515,7 @@ impl WorkflowRepository {
         _workflow_uuid: Uuid,
         run_uuid: Uuid,
         payloads: Vec<serde_json::Value>,
-    ) -> anyhow::Result<i64> {
+    ) -> r_data_core_core::error::Result<i64> {
         // Determine next sequence number for this run
         let start_seq: i64 = sqlx::query_scalar(
             "SELECT COALESCE(MAX(seq_no), 0) FROM workflow_raw_items WHERE workflow_run_uuid = $1",
@@ -539,8 +539,7 @@ impl WorkflowRepository {
             .bind(seq_no)
             .bind(payload)
             .execute(&self.pool)
-            .await
-            .context("insert workflow raw item")?;
+            .await?;
             count += 1;
         }
         Ok(count)
@@ -550,14 +549,16 @@ impl WorkflowRepository {
     ///
     /// # Errors
     /// Returns an error if the database query fails
-    pub async fn count_raw_items_for_run(&self, run_uuid: Uuid) -> anyhow::Result<i64> {
+    pub async fn count_raw_items_for_run(
+        &self,
+        run_uuid: Uuid,
+    ) -> r_data_core_core::error::Result<i64> {
         let row = sqlx::query(
             "SELECT COUNT(*) AS cnt FROM workflow_raw_items WHERE workflow_run_uuid = $1",
         )
         .bind(run_uuid)
         .fetch_one(&self.pool)
-        .await
-        .context("count raw items for run")?;
+        .await?;
         Ok(row.try_get::<i64, _>("cnt")?)
     }
 
@@ -565,12 +566,15 @@ impl WorkflowRepository {
     ///
     /// # Errors
     /// Returns an error if the database operation fails
-    pub async fn mark_raw_items_processed(&self, run_uuid: Uuid) -> anyhow::Result<()> {
+    pub async fn mark_raw_items_processed(
+        &self,
+        run_uuid: Uuid,
+    ) -> r_data_core_core::error::Result<()> {
         sqlx::query("UPDATE workflow_raw_items SET status = 'processed' WHERE workflow_run_uuid = $1 AND status = 'queued'")
             .bind(run_uuid)
             .execute(&self.pool)
             .await
-            .context("mark raw items processed")?;
+            ?;
         Ok(())
     }
 
@@ -582,7 +586,7 @@ impl WorkflowRepository {
         &self,
         run_uuid: Uuid,
         limit: i64,
-    ) -> anyhow::Result<Vec<(Uuid, serde_json::Value)>> {
+    ) -> r_data_core_core::error::Result<Vec<(Uuid, serde_json::Value)>> {
         let rows = sqlx::query(
             "
             SELECT uuid, payload
@@ -595,8 +599,7 @@ impl WorkflowRepository {
         .bind(run_uuid)
         .bind(limit)
         .fetch_all(&self.pool)
-        .await
-        .context("fetch staged raw items")?;
+        .await?;
         let mut out = Vec::with_capacity(rows.len());
         for r in rows {
             let uuid: Uuid = r.try_get("uuid")?;
@@ -615,7 +618,7 @@ impl WorkflowRepository {
         item_uuid: Uuid,
         status: &str,
         error: Option<&str>,
-    ) -> anyhow::Result<()> {
+    ) -> r_data_core_core::error::Result<()> {
         sqlx::query(
             "
             UPDATE workflow_raw_items
@@ -627,8 +630,7 @@ impl WorkflowRepository {
         .bind(status)
         .bind(error)
         .execute(&self.pool)
-        .await
-        .context(format!("set raw item status : {status}"))?;
+        .await?;
         Ok(())
     }
 
@@ -639,19 +641,18 @@ impl WorkflowRepository {
     pub async fn get_workflow_uuid_for_run_internal(
         &self,
         run_uuid: Uuid,
-    ) -> anyhow::Result<Option<Uuid>> {
+    ) -> r_data_core_core::error::Result<Option<Uuid>> {
         let row = sqlx::query("SELECT workflow_uuid FROM workflow_runs WHERE uuid = $1")
             .bind(run_uuid)
             .fetch_optional(&self.pool)
-            .await
-            .context("get workflow_uuid for run")?;
+            .await?;
         Ok(row.and_then(|r| r.try_get::<Uuid, _>("workflow_uuid").ok()))
     }
 }
 
 #[async_trait::async_trait]
 impl WorkflowRepositoryTrait for WorkflowRepository {
-    async fn list_all(&self) -> anyhow::Result<Vec<Workflow>> {
+    async fn list_all(&self) -> r_data_core_core::error::Result<Vec<Workflow>> {
         self.list_all().await
     }
     async fn list_paginated(
@@ -660,17 +661,21 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         offset: i64,
         sort_by: Option<String>,
         sort_order: Option<String>,
-    ) -> anyhow::Result<Vec<Workflow>> {
+    ) -> r_data_core_core::error::Result<Vec<Workflow>> {
         self.list_paginated(limit, offset, sort_by, sort_order)
             .await
     }
-    async fn count_all(&self) -> anyhow::Result<i64> {
+    async fn count_all(&self) -> r_data_core_core::error::Result<i64> {
         self.count_all().await
     }
-    async fn get_by_uuid(&self, uuid: Uuid) -> anyhow::Result<Option<Workflow>> {
+    async fn get_by_uuid(&self, uuid: Uuid) -> r_data_core_core::error::Result<Option<Workflow>> {
         self.get_by_uuid(uuid).await
     }
-    async fn create(&self, req: &CreateWorkflowRequest, created_by: Uuid) -> anyhow::Result<Uuid> {
+    async fn create(
+        &self,
+        req: &CreateWorkflowRequest,
+        created_by: Uuid,
+    ) -> r_data_core_core::error::Result<Uuid> {
         self.create(req, created_by).await
     }
     async fn update(
@@ -678,24 +683,26 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         uuid: Uuid,
         req: &UpdateWorkflowRequest,
         updated_by: Uuid,
-    ) -> anyhow::Result<()> {
+    ) -> r_data_core_core::error::Result<()> {
         self.update(uuid, req, updated_by).await
     }
-    async fn delete(&self, uuid: Uuid) -> anyhow::Result<()> {
+    async fn delete(&self, uuid: Uuid) -> r_data_core_core::error::Result<()> {
         self.delete(uuid).await
     }
-    async fn list_scheduled_consumers(&self) -> anyhow::Result<Vec<(Uuid, String)>> {
+    async fn list_scheduled_consumers(
+        &self,
+    ) -> r_data_core_core::error::Result<Vec<(Uuid, String)>> {
         self.list_scheduled_consumers().await
     }
     async fn insert_run_queued(
         &self,
         workflow_uuid: Uuid,
         trigger_id: Uuid,
-    ) -> anyhow::Result<Uuid> {
+    ) -> r_data_core_core::error::Result<Uuid> {
         self.insert_run_queued(workflow_uuid, trigger_id).await
     }
 
-    async fn mark_run_running(&self, run_uuid: Uuid) -> anyhow::Result<()> {
+    async fn mark_run_running(&self, run_uuid: Uuid) -> r_data_core_core::error::Result<()> {
         self.mark_run_running(run_uuid).await
     }
 
@@ -704,15 +711,22 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         run_uuid: Uuid,
         processed: i64,
         failed: i64,
-    ) -> anyhow::Result<()> {
+    ) -> r_data_core_core::error::Result<()> {
         self.mark_run_success(run_uuid, processed, failed).await
     }
 
-    async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
+    async fn mark_run_failure(
+        &self,
+        run_uuid: Uuid,
+        message: &str,
+    ) -> r_data_core_core::error::Result<()> {
         self.mark_run_failure(run_uuid, message).await
     }
 
-    async fn get_run_status(&self, run_uuid: Uuid) -> anyhow::Result<Option<String>> {
+    async fn get_run_status(
+        &self,
+        run_uuid: Uuid,
+    ) -> r_data_core_core::error::Result<Option<String>> {
         self.get_run_status(run_uuid).await
     }
 
@@ -721,7 +735,7 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         workflow_uuid: Uuid,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(
+    ) -> r_data_core_core::error::Result<(
         Vec<(
             Uuid,
             String,
@@ -749,14 +763,13 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         .bind(offset)
         .fetch_all(&self.pool)
         .await
-        .context("list runs paginated")?;
+        ?;
 
         let total_row =
             sqlx::query("SELECT COUNT(*) AS cnt FROM workflow_runs WHERE workflow_uuid = $1")
                 .bind(workflow_uuid)
                 .fetch_one(&self.pool)
-                .await
-                .context("count runs")?;
+                .await?;
         let total: i64 = total_row.try_get("cnt")?;
 
         let mut out = Vec::with_capacity(runs.len());
@@ -778,7 +791,7 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         run_uuid: Uuid,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(
+    ) -> r_data_core_core::error::Result<(
         Vec<(Uuid, String, String, String, Option<serde_json::Value>)>,
         i64,
     )> {
@@ -795,15 +808,13 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         .bind(limit)
         .bind(offset)
         .fetch_all(&self.pool)
-        .await
-        .context("list run logs paginated")?;
+        .await?;
 
         let total_row =
             sqlx::query("SELECT COUNT(*) AS cnt FROM workflow_run_logs WHERE run_uuid = $1")
                 .bind(run_uuid)
                 .fetch_one(&self.pool)
-                .await
-                .context("count run logs")?;
+                .await?;
         let total: i64 = total_row.try_get("cnt")?;
 
         let mut out = Vec::with_capacity(rows.len());
@@ -819,12 +830,11 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         Ok((out, total))
     }
 
-    async fn run_exists(&self, run_uuid: Uuid) -> anyhow::Result<bool> {
+    async fn run_exists(&self, run_uuid: Uuid) -> r_data_core_core::error::Result<bool> {
         let row = sqlx::query("SELECT 1 FROM workflow_runs WHERE uuid = $1")
             .bind(run_uuid)
             .fetch_optional(&self.pool)
-            .await
-            .context("check run exists")?;
+            .await?;
         Ok(row.is_some())
     }
 
@@ -832,7 +842,7 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         &self,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(
+    ) -> r_data_core_core::error::Result<(
         Vec<(
             Uuid,
             String,
@@ -857,13 +867,11 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         .bind(limit)
         .bind(offset)
         .fetch_all(&self.pool)
-        .await
-        .context("list all runs paginated")?;
+        .await?;
 
         let total_row = sqlx::query("SELECT COUNT(*) AS cnt FROM workflow_runs")
             .fetch_one(&self.pool)
-            .await
-            .context("count all runs")?;
+            .await?;
         let total: i64 = total_row.try_get("cnt")?;
 
         let mut out = Vec::with_capacity(runs.len());
@@ -886,7 +894,7 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         level: &str,
         message: &str,
         meta: Option<serde_json::Value>,
-    ) -> anyhow::Result<()> {
+    ) -> r_data_core_core::error::Result<()> {
         self.insert_run_log(run_uuid, level, message, meta).await
     }
 
@@ -895,16 +903,22 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         workflow_uuid: Uuid,
         run_uuid: Uuid,
         payloads: Vec<serde_json::Value>,
-    ) -> anyhow::Result<i64> {
+    ) -> r_data_core_core::error::Result<i64> {
         self.insert_raw_items(workflow_uuid, run_uuid, payloads)
             .await
     }
 
-    async fn count_raw_items_for_run(&self, run_uuid: Uuid) -> anyhow::Result<i64> {
+    async fn count_raw_items_for_run(
+        &self,
+        run_uuid: Uuid,
+    ) -> r_data_core_core::error::Result<i64> {
         self.count_raw_items_for_run(run_uuid).await
     }
 
-    async fn mark_raw_items_processed(&self, run_uuid: Uuid) -> anyhow::Result<()> {
+    async fn mark_raw_items_processed(
+        &self,
+        run_uuid: Uuid,
+    ) -> r_data_core_core::error::Result<()> {
         self.mark_raw_items_processed(run_uuid).await
     }
 
@@ -912,7 +926,7 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         &self,
         run_uuid: Uuid,
         limit: i64,
-    ) -> anyhow::Result<Vec<(Uuid, serde_json::Value)>> {
+    ) -> r_data_core_core::error::Result<Vec<(Uuid, serde_json::Value)>> {
         self.fetch_staged_raw_items(run_uuid, limit).await
     }
 
@@ -921,11 +935,14 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
         item_uuid: Uuid,
         status: &str,
         error: Option<&str>,
-    ) -> anyhow::Result<()> {
+    ) -> r_data_core_core::error::Result<()> {
         self.set_raw_item_status(item_uuid, status, error).await
     }
 
-    async fn get_workflow_uuid_for_run(&self, run_uuid: Uuid) -> anyhow::Result<Option<Uuid>> {
+    async fn get_workflow_uuid_for_run(
+        &self,
+        run_uuid: Uuid,
+    ) -> r_data_core_core::error::Result<Option<Uuid>> {
         self.get_workflow_uuid_for_run_internal(run_uuid).await
     }
 }
@@ -938,14 +955,13 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
 pub async fn get_provider_config(
     pool: &PgPool,
     uuid: Uuid,
-) -> anyhow::Result<Option<serde_json::Value>> {
+) -> r_data_core_core::error::Result<Option<serde_json::Value>> {
     let row = sqlx::query(
         "SELECT config FROM workflows WHERE uuid = $1 AND kind = 'provider'::workflow_kind AND enabled = true",
     )
     .bind(uuid)
     .fetch_optional(pool)
-    .await
-    .context("select provider config")?;
+    .await?;
 
     let cfg = row.map(|r| r.get::<serde_json::Value, _>("config"));
     Ok(cfg)

@@ -7,15 +7,14 @@
 - admin swagger field definitions / constraints
 - load/performance test binary
 - typescript bindings
-- anyhow in the entire repo
 - run now file upload with different file types / formats
 - add unique constraint to entity_definitions (FE + BE)
-- role testing and creation
-    - entities: publish
-    - workflows: activate
-    - entity_definitions: publish
-    - versions -> are included in read permissions
-    - FE must react to those permissions
+- license handling and checking
+  - maintenance job to check
+  - hint in FE if invalid / not activated (no function block)
+  - license permission (read info on system page)
+  - license server (rdatacore instance)
+  - license auto register?
 - notification / message system
     - messages
     - update on successfully run workflows

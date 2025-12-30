@@ -1,7 +1,6 @@
 pub mod uri;
 
 use crate::data::adapters::auth::AuthProvider;
-use anyhow::Result;
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures::Stream;
@@ -25,13 +24,13 @@ pub trait DataSource: Send + Sync {
     async fn fetch(
         &self,
         ctx: &SourceContext,
-    ) -> Result<Box<dyn Stream<Item = Result<Bytes>> + Unpin + Send>>;
+    ) -> r_data_core_core::error::Result<Box<dyn Stream<Item = r_data_core_core::error::Result<Bytes>> + Unpin + Send>>;
 
     /// Validate source configuration
     ///
     /// # Errors
     /// Returns an error if the configuration is invalid.
-    fn validate(&self, config: &serde_json::Value) -> Result<()>;
+    fn validate(&self, config: &serde_json::Value) -> r_data_core_core::error::Result<()>;
 }
 
 /// Factory for creating source instances
@@ -39,5 +38,5 @@ pub trait SourceFactory: Send + Sync {
     fn source_type(&self) -> &'static str;
     /// # Errors
     /// Returns an error if the source cannot be created from the config.
-    fn create(&self, config: &serde_json::Value) -> Result<Box<dyn DataSource>>;
+    fn create(&self, config: &serde_json::Value) -> r_data_core_core::error::Result<Box<dyn DataSource>>;
 }

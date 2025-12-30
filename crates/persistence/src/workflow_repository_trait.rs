@@ -15,7 +15,7 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
     ///
     /// # Errors
     /// Returns an error if database query fails
-    async fn list_all(&self) -> anyhow::Result<Vec<Workflow>>;
+    async fn list_all(&self) -> r_data_core_core::error::Result<Vec<Workflow>>;
 
     /// List workflows with pagination and sorting
     ///
@@ -33,13 +33,13 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
         offset: i64,
         sort_by: Option<String>,
         sort_order: Option<String>,
-    ) -> anyhow::Result<Vec<Workflow>>;
+    ) -> r_data_core_core::error::Result<Vec<Workflow>>;
 
     /// Count all workflows
     ///
     /// # Errors
     /// Returns an error if database query fails
-    async fn count_all(&self) -> anyhow::Result<i64>;
+    async fn count_all(&self) -> r_data_core_core::error::Result<i64>;
 
     /// Get workflow by UUID
     ///
@@ -48,7 +48,7 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
     ///
     /// # Errors
     /// Returns an error if database query fails
-    async fn get_by_uuid(&self, uuid: Uuid) -> anyhow::Result<Option<Workflow>>;
+    async fn get_by_uuid(&self, uuid: Uuid) -> r_data_core_core::error::Result<Option<Workflow>>;
 
     /// Create a new workflow
     ///
@@ -58,7 +58,11 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
     ///
     /// # Errors
     /// Returns an error if creation fails
-    async fn create(&self, req: &CreateWorkflowRequest, created_by: Uuid) -> anyhow::Result<Uuid>;
+    async fn create(
+        &self,
+        req: &CreateWorkflowRequest,
+        created_by: Uuid,
+    ) -> r_data_core_core::error::Result<Uuid>;
 
     /// Update an existing workflow
     ///
@@ -74,7 +78,7 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
         uuid: Uuid,
         req: &UpdateWorkflowRequest,
         updated_by: Uuid,
-    ) -> anyhow::Result<()>;
+    ) -> r_data_core_core::error::Result<()>;
 
     /// Delete a workflow
     ///
@@ -83,16 +87,18 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
     ///
     /// # Errors
     /// Returns an error if deletion fails
-    async fn delete(&self, uuid: Uuid) -> anyhow::Result<()>;
+    async fn delete(&self, uuid: Uuid) -> r_data_core_core::error::Result<()>;
 
     /// List scheduled consumer workflows
     ///
     /// # Errors
     /// Returns an error if database query fails
-    async fn list_scheduled_consumers(&self) -> anyhow::Result<Vec<(Uuid, String)>>;
+    async fn list_scheduled_consumers(
+        &self,
+    ) -> r_data_core_core::error::Result<Vec<(Uuid, String)>>;
 
     /// Mark a run as running (transition queued -> running)
-    async fn mark_run_running(&self, run_uuid: Uuid) -> anyhow::Result<()>;
+    async fn mark_run_running(&self, run_uuid: Uuid) -> r_data_core_core::error::Result<()>;
 
     /// Mark a run as successful
     async fn mark_run_success(
@@ -100,13 +106,20 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
         run_uuid: Uuid,
         processed: i64,
         failed: i64,
-    ) -> anyhow::Result<()>;
+    ) -> r_data_core_core::error::Result<()>;
 
     /// Mark a run as failed
-    async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()>;
+    async fn mark_run_failure(
+        &self,
+        run_uuid: Uuid,
+        message: &str,
+    ) -> r_data_core_core::error::Result<()>;
 
     /// Get run status
-    async fn get_run_status(&self, run_uuid: Uuid) -> anyhow::Result<Option<String>>;
+    async fn get_run_status(
+        &self,
+        run_uuid: Uuid,
+    ) -> r_data_core_core::error::Result<Option<String>>;
 
     /// Insert a new workflow run in queued status
     ///
@@ -120,7 +133,7 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
         &self,
         workflow_uuid: Uuid,
         trigger_id: Uuid,
-    ) -> anyhow::Result<Uuid>;
+    ) -> r_data_core_core::error::Result<Uuid>;
 
     /// List workflow runs with pagination
     ///
@@ -136,7 +149,7 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
         workflow_uuid: Uuid,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(
+    ) -> r_data_core_core::error::Result<(
         Vec<(
             Uuid,
             String,
@@ -162,7 +175,7 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
         run_uuid: Uuid,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(
+    ) -> r_data_core_core::error::Result<(
         Vec<(Uuid, String, String, String, Option<serde_json::Value>)>,
         i64,
     )>;
@@ -174,7 +187,7 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
     ///
     /// # Errors
     /// Returns an error if database query fails
-    async fn run_exists(&self, run_uuid: Uuid) -> anyhow::Result<bool>;
+    async fn run_exists(&self, run_uuid: Uuid) -> r_data_core_core::error::Result<bool>;
 
     /// List all runs with pagination
     ///
@@ -188,7 +201,7 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
         &self,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(
+    ) -> r_data_core_core::error::Result<(
         Vec<(
             Uuid,
             String,
@@ -216,7 +229,7 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
         level: &str,
         message: &str,
         meta: Option<serde_json::Value>,
-    ) -> anyhow::Result<()>;
+    ) -> r_data_core_core::error::Result<()>;
 
     /// Insert raw items for a workflow run
     ///
@@ -232,7 +245,7 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
         workflow_uuid: Uuid,
         run_uuid: Uuid,
         payloads: Vec<serde_json::Value>,
-    ) -> anyhow::Result<i64>;
+    ) -> r_data_core_core::error::Result<i64>;
 
     /// Count raw items for a run
     ///
@@ -241,7 +254,8 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
     ///
     /// # Errors
     /// Returns an error if database query fails
-    async fn count_raw_items_for_run(&self, run_uuid: Uuid) -> anyhow::Result<i64>;
+    async fn count_raw_items_for_run(&self, run_uuid: Uuid)
+        -> r_data_core_core::error::Result<i64>;
 
     /// Mark raw items as processed
     ///
@@ -250,7 +264,8 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
     ///
     /// # Errors
     /// Returns an error if update fails
-    async fn mark_raw_items_processed(&self, run_uuid: Uuid) -> anyhow::Result<()>;
+    async fn mark_raw_items_processed(&self, run_uuid: Uuid)
+        -> r_data_core_core::error::Result<()>;
 
     /// Fetch staged raw items for processing
     ///
@@ -264,7 +279,7 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
         &self,
         run_uuid: Uuid,
         limit: i64,
-    ) -> anyhow::Result<Vec<(Uuid, serde_json::Value)>>;
+    ) -> r_data_core_core::error::Result<Vec<(Uuid, serde_json::Value)>>;
 
     /// Set raw item status
     ///
@@ -280,7 +295,7 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
         item_uuid: Uuid,
         status: &str,
         error: Option<&str>,
-    ) -> anyhow::Result<()>;
+    ) -> r_data_core_core::error::Result<()>;
 
     /// Get workflow UUID for a run
     ///
@@ -289,5 +304,8 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
     ///
     /// # Errors
     /// Returns an error if database query fails
-    async fn get_workflow_uuid_for_run(&self, run_uuid: Uuid) -> anyhow::Result<Option<Uuid>>;
+    async fn get_workflow_uuid_for_run(
+        &self,
+        run_uuid: Uuid,
+    ) -> r_data_core_core::error::Result<Option<Uuid>>;
 }

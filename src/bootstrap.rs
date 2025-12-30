@@ -10,6 +10,8 @@ use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use std::sync::Arc;
 
+use anyhow::Context;
+
 use r_data_core_api::ApiState;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::AppConfig;
@@ -41,19 +43,20 @@ pub fn init_logger(log_level: &str) {
 ///
 /// # Errors
 /// Returns an error if the database connection fails
-pub async fn create_db_pool(config: &AppConfig) -> Result<PgPool, sqlx::Error> {
+pub async fn create_db_pool(config: &AppConfig) -> anyhow::Result<PgPool> {
     info!("Connecting to database...");
     PgPoolOptions::new()
         .max_connections(config.database.max_connections)
         .connect(&config.database.connection_string)
         .await
+        .context("Failed to create database connection pool")
 }
 
 /// Initialize the cache manager with Redis backend
 ///
 /// # Errors
 /// Returns an error if Redis URL is empty or if Redis connection fails
-pub async fn create_cache_manager(config: &AppConfig) -> Result<Arc<CacheManager>, anyhow::Error> {
+pub async fn create_cache_manager(config: &AppConfig) -> anyhow::Result<Arc<CacheManager>> {
     let redis_url = &config.queue.redis_url;
 
     if redis_url.is_empty() {
@@ -63,7 +66,7 @@ pub async fn create_cache_manager(config: &AppConfig) -> Result<Arc<CacheManager
     let manager = CacheManager::new(config.cache.clone())
         .with_redis(redis_url)
         .await
-        .map_err(|e| anyhow::anyhow!("Failed to initialize Redis cache: {e}"))?;
+        .context("Failed to initialize Redis cache")?;
 
     info!("Cache manager initialized with Redis");
     Ok(Arc::new(manager))
@@ -73,16 +76,15 @@ pub async fn create_cache_manager(config: &AppConfig) -> Result<Arc<CacheManager
 ///
 /// # Errors
 /// Returns an error if the Redis queue connection fails
-pub async fn create_queue_client(
-    config: &AppConfig,
-) -> Result<Arc<ApalisRedisQueue>, anyhow::Error> {
+pub async fn create_queue_client(config: &AppConfig) -> anyhow::Result<Arc<ApalisRedisQueue>> {
     info!("Initializing Redis queue client...");
     let queue = ApalisRedisQueue::from_parts(
         &config.queue.redis_url,
         &config.queue.fetch_key,
         &config.queue.process_key,
     )
-    .await?;
+    .await
+    .context("Failed to initialize Redis queue client")?;
 
     Ok(Arc::new(queue))
 }

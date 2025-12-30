@@ -1,5 +1,4 @@
 use super::{DataDestination, DestinationContext, HttpMethod};
-use anyhow::{Context, Result};
 use async_trait::async_trait;
 use bytes::Bytes;
 
@@ -20,12 +19,12 @@ impl DataDestination for UriDestination {
         "uri"
     }
 
-    async fn push(&self, ctx: &DestinationContext, data: Bytes) -> Result<()> {
+    async fn push(&self, ctx: &DestinationContext, data: Bytes) -> r_data_core_core::error::Result<()> {
         let uri = ctx
             .config
             .get("uri")
             .and_then(|v| v.as_str())
-            .context("URI destination requires 'uri' in config")?;
+            .ok_or_else(|| r_data_core_core::error::Error::Config("URI destination requires 'uri' in config".to_string()))?;
 
         let method = ctx.method.unwrap_or(HttpMethod::Post);
         let client = reqwest::Client::new();
@@ -42,7 +41,8 @@ impl DataDestination for UriDestination {
 
         // Apply authentication if provided
         if let Some(auth) = &ctx.auth {
-            request = auth.apply_to_request(request)?;
+            request = auth.apply_to_request(request)
+                .map_err(|e| r_data_core_core::error::Error::Api(e.to_string()))?;
         }
 
         // Add body for methods that require it
@@ -50,23 +50,27 @@ impl DataDestination for UriDestination {
             request = request.body(data);
         }
 
-        let response = request.send().await?.error_for_status()?;
-        let _body = response.bytes().await?;
+        let response = request.send().await
+            .map_err(|e| r_data_core_core::error::Error::Api(format!("Failed to send request: {e}")))?;
+        let response = response.error_for_status()
+            .map_err(|e| r_data_core_core::error::Error::Api(format!("HTTP error: {e}")))?;
+        let _body = response.bytes().await
+            .map_err(|e| r_data_core_core::error::Error::Api(format!("Failed to read response body: {e}")))?;
 
         Ok(())
     }
 
     /// # Errors
     /// Returns an error if the configuration is invalid.
-    fn validate(&self, config: &serde_json::Value) -> Result<()> {
+    fn validate(&self, config: &serde_json::Value) -> r_data_core_core::error::Result<()> {
         let uri = config
             .get("uri")
             .and_then(|v| v.as_str())
-            .context("URI destination requires 'uri' in config")?;
+            .ok_or_else(|| r_data_core_core::error::Error::Config("URI destination requires 'uri' in config".to_string()))?;
 
         // Basic URI validation
         if !uri.starts_with("http://") && !uri.starts_with("https://") {
-            anyhow::bail!("URI must start with http:// or https://");
+            return Err(r_data_core_core::error::Error::Validation("URI must start with http:// or https://".to_string()));
         }
 
         Ok(())
