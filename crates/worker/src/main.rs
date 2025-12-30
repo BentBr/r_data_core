@@ -46,7 +46,9 @@ async fn main() -> r_data_core_core::error::Result<()> {
         config.database.max_connections,
     )
     .await
-    .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to initialize database pool: {e}")))?;
+    .map_err(|e| {
+        r_data_core_core::error::Error::Config(format!("Failed to initialize database pool: {e}"))
+    })?;
 
     // Initialize cache manager (shares Redis with queue if available)
     let cache_manager =
@@ -61,9 +63,9 @@ async fn main() -> r_data_core_core::error::Result<()> {
     .await?;
 
     // Scheduler: scan workflows with cron and schedule tasks
-    let scheduler = JobScheduler::new()
-        .await
-        .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to create job scheduler: {e}")))?;
+    let scheduler = JobScheduler::new().await.map_err(|e| {
+        r_data_core_core::error::Error::Config(format!("Failed to create job scheduler: {e}"))
+    })?;
 
     let repo = WorkflowRepository::new(pool.clone());
     let scheduled_workflows: Arc<Mutex<HashMap<Uuid, (Uuid, String)>>> =
@@ -139,9 +141,11 @@ async fn main() -> r_data_core_core::error::Result<()> {
                 })
             })
             .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to create job: {e}")))?;
-            let job_id = scheduler.add(job)
-                .await
-                .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to add job to scheduler: {e}")))?;
+            let job_id = scheduler.add(job).await.map_err(|e| {
+                r_data_core_core::error::Error::Config(format!(
+                    "Failed to add job to scheduler: {e}"
+                ))
+            })?;
             Ok(job_id)
         })
     };
@@ -165,9 +169,9 @@ async fn main() -> r_data_core_core::error::Result<()> {
         }
     }
 
-    scheduler.start()
-        .await
-        .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to start scheduler: {e}")))?;
+    scheduler.start().await.map_err(|e| {
+        r_data_core_core::error::Error::Config(format!("Failed to start scheduler: {e}"))
+    })?;
     info!("Worker scheduler started");
 
     // Reconcile scheduler with DB periodically (detect enabled/disabled/cron changes)
@@ -229,13 +233,21 @@ async fn main() -> r_data_core_core::error::Result<()> {
         let queue_cfg = queue_cfg.clone();
         let cache_manager_for_consumer = cache_manager.clone();
         tokio::spawn(async move {
-            let queue = ApalisRedisQueue::from_parts(
+            let queue = match ApalisRedisQueue::from_parts(
                 &queue_cfg.redis_url,
                 &queue_cfg.fetch_key,
                 &queue_cfg.process_key,
             )
             .await
-            .expect("failed to init redis queue");
+            {
+                Ok(q) => q,
+                Err(e) => {
+                    error!(
+                        "Failed to initialize Redis queue: {e}. Worker consumer will not start."
+                    );
+                    return;
+                }
+            };
             loop {
                 match queue.blocking_pop_fetch().await {
                     Ok(job) => {

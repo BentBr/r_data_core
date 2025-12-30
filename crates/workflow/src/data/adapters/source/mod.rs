@@ -24,7 +24,9 @@ pub trait DataSource: Send + Sync {
     async fn fetch(
         &self,
         ctx: &SourceContext,
-    ) -> r_data_core_core::error::Result<Box<dyn Stream<Item = r_data_core_core::error::Result<Bytes>> + Unpin + Send>>;
+    ) -> r_data_core_core::error::Result<
+        Box<dyn Stream<Item = r_data_core_core::error::Result<Bytes>> + Unpin + Send>,
+    >;
 
     /// Validate source configuration
     ///
@@ -38,5 +40,8 @@ pub trait SourceFactory: Send + Sync {
     fn source_type(&self) -> &'static str;
     /// # Errors
     /// Returns an error if the source cannot be created from the config.
-    fn create(&self, config: &serde_json::Value) -> r_data_core_core::error::Result<Box<dyn DataSource>>;
+    fn create(
+        &self,
+        config: &serde_json::Value,
+    ) -> r_data_core_core::error::Result<Box<dyn DataSource>>;
 }

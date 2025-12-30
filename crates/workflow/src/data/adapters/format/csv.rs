@@ -51,16 +51,24 @@ impl FormatHandler for CsvFormatHandler {
 
         let mut rdr = builder.from_reader(data);
         let headers = if has_header {
-            Some(rdr.headers()
-                .map_err(|e| r_data_core_core::error::Error::Deserialization(format!("CSV header error: {e}")))?
-                .clone())
+            Some(
+                rdr.headers()
+                    .map_err(|e| {
+                        r_data_core_core::error::Error::Deserialization(format!(
+                            "CSV header error: {e}"
+                        ))
+                    })?
+                    .clone(),
+            )
         } else {
             None
         };
 
         let mut rows: Vec<r_data_core_core::error::Result<Value>> = Vec::new();
         for result in rdr.records() {
-            let rec = result.map_err(|e| r_data_core_core::error::Error::Deserialization(format!("CSV record error: {e}")))?;
+            let rec = result.map_err(|e| {
+                r_data_core_core::error::Error::Deserialization(format!("CSV record error: {e}"))
+            })?;
             let mut obj = serde_json::Map::new();
             match &headers {
                 Some(h) => {
@@ -126,8 +134,11 @@ impl FormatHandler for CsvFormatHandler {
         if has_header && !data.is_empty() {
             if let Some(obj) = data[0].as_object() {
                 let headers: Vec<String> = obj.keys().cloned().collect();
-                writer.write_record(&headers)
-                    .map_err(|e| r_data_core_core::error::Error::Deserialization(format!("CSV write record error: {e}")))?;
+                writer.write_record(&headers).map_err(|e| {
+                    r_data_core_core::error::Error::Deserialization(format!(
+                        "CSV write record error: {e}"
+                    ))
+                })?;
             }
         }
 
@@ -141,15 +152,20 @@ impl FormatHandler for CsvFormatHandler {
                         _ => v.to_string(),
                     })
                     .collect();
-                writer.write_record(&row)
-                    .map_err(|e| r_data_core_core::error::Error::Deserialization(format!("CSV write record error: {e}")))?;
+                writer.write_record(&row).map_err(|e| {
+                    r_data_core_core::error::Error::Deserialization(format!(
+                        "CSV write record error: {e}"
+                    ))
+                })?;
             }
         }
 
-        writer.flush()
-            .map_err(|e| r_data_core_core::error::Error::Deserialization(format!("CSV flush error: {e}")))?;
-        let bytes = writer.into_inner()
-            .map_err(|e| r_data_core_core::error::Error::Deserialization(format!("CSV into_inner error: {e}")))?;
+        writer.flush().map_err(|e| {
+            r_data_core_core::error::Error::Deserialization(format!("CSV flush error: {e}"))
+        })?;
+        let bytes = writer.into_inner().map_err(|e| {
+            r_data_core_core::error::Error::Deserialization(format!("CSV into_inner error: {e}"))
+        })?;
         Ok(Bytes::from(bytes))
     }
 
@@ -158,17 +174,23 @@ impl FormatHandler for CsvFormatHandler {
     fn validate_options(&self, options: &Value) -> r_data_core_core::error::Result<()> {
         if let Some(delimiter) = options.get("delimiter").and_then(|v| v.as_str()) {
             if delimiter.len() != 1 {
-                return Err(r_data_core_core::error::Error::Validation("CSV delimiter must be a single character".to_string()));
+                return Err(r_data_core_core::error::Error::Validation(
+                    "CSV delimiter must be a single character".to_string(),
+                ));
             }
         }
         if let Some(quote) = options.get("quote").and_then(|v| v.as_str()) {
             if !quote.is_empty() && quote.len() != 1 {
-                return Err(r_data_core_core::error::Error::Validation("CSV quote must be a single character when set".to_string()));
+                return Err(r_data_core_core::error::Error::Validation(
+                    "CSV quote must be a single character when set".to_string(),
+                ));
             }
         }
         if let Some(escape) = options.get("escape").and_then(|v| v.as_str()) {
             if !escape.is_empty() && escape.len() != 1 {
-                return Err(r_data_core_core::error::Error::Validation("CSV escape must be a single character when set".to_string()));
+                return Err(r_data_core_core::error::Error::Validation(
+                    "CSV escape must be a single character when set".to_string(),
+                ));
             }
         }
         Ok(())

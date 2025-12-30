@@ -79,7 +79,11 @@ pub enum ToDef {
     },
 }
 
-pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> r_data_core_core::error::Result<()> {
+pub(crate) fn validate_to(
+    idx: usize,
+    to: &ToDef,
+    safe_field: &Regex,
+) -> r_data_core_core::error::Result<()> {
     match to {
         ToDef::Format {
             output,
@@ -87,11 +91,14 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> r_data_
             mapping,
         } => {
             if format.format_type.trim().is_empty() {
-                return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: to.format.format.format_type must not be empty")));
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: to.format.format.format_type must not be empty"
+                )));
             }
             // Validate format-specific options
             if format.format_type.as_str() == "csv" {
-                if let Some(serde_json::Value::String(delimiter)) = format.options.get("delimiter") {
+                if let Some(serde_json::Value::String(delimiter)) = format.options.get("delimiter")
+                {
                     if delimiter.len() != 1 {
                         return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: to.format.format.options.delimiter must be a single character")));
                     }
@@ -172,10 +179,14 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> r_data_
             mapping,
         } => {
             if entity_definition.trim().is_empty() {
-                return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: to.entity.entity_definition must not be empty")));
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: to.entity.entity_definition must not be empty"
+                )));
             }
             if path.trim().is_empty() {
-                return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: to.entity.path must not be empty")));
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: to.entity.path must not be empty"
+                )));
             }
             // Allow empty mappings
             validate_mapping(idx, mapping, safe_field)?;
@@ -189,25 +200,37 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> r_data_
 }
 
 /// Validate authentication configuration
-fn validate_auth_config(idx: usize, auth: &AuthConfig, context: &str) -> r_data_core_core::error::Result<()> {
+fn validate_auth_config(
+    idx: usize,
+    auth: &AuthConfig,
+    context: &str,
+) -> r_data_core_core::error::Result<()> {
     match auth {
         AuthConfig::None => {
             // No validation needed
         }
         AuthConfig::ApiKey { key, header_name } => {
             if key.trim().is_empty() {
-                return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: {context}.auth.api_key.key must not be empty")));
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.api_key.key must not be empty"
+                )));
             }
             if header_name.trim().is_empty() {
-                return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: {context}.auth.api_key.header_name must not be empty")));
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.api_key.header_name must not be empty"
+                )));
             }
         }
         AuthConfig::BasicAuth { username, password } => {
             if username.trim().is_empty() {
-                return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: {context}.auth.basic_auth.username must not be empty")));
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.basic_auth.username must not be empty"
+                )));
             }
             if password.trim().is_empty() {
-                return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: {context}.auth.basic_auth.password must not be empty")));
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.basic_auth.password must not be empty"
+                )));
             }
         }
         AuthConfig::PreSharedKey {
@@ -216,10 +239,14 @@ fn validate_auth_config(idx: usize, auth: &AuthConfig, context: &str) -> r_data_
             field_name,
         } => {
             if key.trim().is_empty() {
-                return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: {context}.auth.pre_shared_key.key must not be empty")));
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.pre_shared_key.key must not be empty"
+                )));
             }
             if field_name.trim().is_empty() {
-                return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: {context}.auth.pre_shared_key.field_name must not be empty")));
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.pre_shared_key.field_name must not be empty"
+                )));
             }
         }
     }

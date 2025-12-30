@@ -55,7 +55,15 @@ pub async fn list_api_keys(
     auth: RequiredAuth,
     query: web::Query<StandardQuery>,
 ) -> impl Responder {
-    // Check permission
+    // Parse UUID first - if invalid, return 401 (authentication error)
+    let user_uuid = match Uuid::parse_str(&auth.0.sub) {
+        Ok(uuid) => uuid,
+        Err(e) => {
+            return ApiResponse::<()>::unauthorized(&format!("Invalid UUID in auth token: {e}"));
+        }
+    };
+
+    // Check permission after UUID is validated
     if !permission_check::has_permission(
         &auth.0,
         &ResourceNamespace::ApiKeys,
@@ -64,8 +72,6 @@ pub async fn list_api_keys(
     ) {
         return ApiResponse::<()>::forbidden("Insufficient permissions to list API keys");
     }
-
-    let user_uuid = Uuid::parse_str(&auth.0.sub).expect("Invalid UUID in auth token");
 
     // Create field validator
     let pool = Arc::new(state.db_pool().clone());
@@ -242,7 +248,15 @@ pub async fn revoke_api_key(
     path: web::Path<Uuid>,
     auth: RequiredAuth,
 ) -> impl Responder {
-    // Check permission
+    // Parse UUID first - if invalid, return 401 (authentication error)
+    let user_uuid = match Uuid::parse_str(&auth.0.sub) {
+        Ok(uuid) => uuid,
+        Err(e) => {
+            return ApiResponse::<()>::unauthorized(&format!("Invalid UUID in auth token: {e}"));
+        }
+    };
+
+    // Check permission after UUID is validated
     if !permission_check::has_permission(
         &auth.0,
         &ResourceNamespace::ApiKeys,
@@ -253,7 +267,6 @@ pub async fn revoke_api_key(
     }
 
     let pool = Arc::new(state.db_pool().clone());
-    let user_uuid = Uuid::parse_str(&auth.0.sub).expect("Invalid UUID in auth token");
     let api_key_uuid = path.into_inner();
 
     let repo = ApiKeyRepository::new(pool);

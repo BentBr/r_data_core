@@ -47,24 +47,34 @@ pub async fn create_db_pool(config: &AppConfig) -> r_data_core_core::error::Resu
         .max_connections(config.database.max_connections)
         .connect(&config.database.connection_string)
         .await
-        .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to create database connection pool: {e}")))
+        .map_err(|e| {
+            r_data_core_core::error::Error::Config(format!(
+                "Failed to create database connection pool: {e}"
+            ))
+        })
 }
 
 /// Initialize the cache manager with Redis backend
 ///
 /// # Errors
 /// Returns an error if Redis URL is empty or if Redis connection fails
-pub async fn create_cache_manager(config: &AppConfig) -> r_data_core_core::error::Result<Arc<CacheManager>> {
+pub async fn create_cache_manager(
+    config: &AppConfig,
+) -> r_data_core_core::error::Result<Arc<CacheManager>> {
     let redis_url = &config.queue.redis_url;
 
     if redis_url.is_empty() {
-        return Err(r_data_core_core::error::Error::Config("Redis URL is required but was empty".to_string()));
+        return Err(r_data_core_core::error::Error::Config(
+            "Redis URL is required but was empty".to_string(),
+        ));
     }
 
     let manager = CacheManager::new(config.cache.clone())
         .with_redis(redis_url)
         .await
-        .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to initialize Redis cache: {e}")))?;
+        .map_err(|e| {
+            r_data_core_core::error::Error::Config(format!("Failed to initialize Redis cache: {e}"))
+        })?;
 
     info!("Cache manager initialized with Redis");
     Ok(Arc::new(manager))
@@ -74,7 +84,9 @@ pub async fn create_cache_manager(config: &AppConfig) -> r_data_core_core::error
 ///
 /// # Errors
 /// Returns an error if the Redis queue connection fails
-pub async fn create_queue_client(config: &AppConfig) -> r_data_core_core::error::Result<Arc<ApalisRedisQueue>> {
+pub async fn create_queue_client(
+    config: &AppConfig,
+) -> r_data_core_core::error::Result<Arc<ApalisRedisQueue>> {
     info!("Initializing Redis queue client...");
     let queue = ApalisRedisQueue::from_parts(
         &config.queue.redis_url,
@@ -82,7 +94,11 @@ pub async fn create_queue_client(config: &AppConfig) -> r_data_core_core::error:
         &config.queue.process_key,
     )
     .await
-    .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to initialize Redis queue client: {e}")))?;
+    .map_err(|e| {
+        r_data_core_core::error::Error::Config(format!(
+            "Failed to initialize Redis queue client: {e}"
+        ))
+    })?;
 
     Ok(Arc::new(queue))
 }

@@ -552,16 +552,14 @@ async fn handle_provider_workflow(
         return response;
     }
 
-    if format_config.is_none() {
+    let Some(format) = format_config else {
         let _ = state
             .workflow_service()
             .mark_run_failure(run_uuid, "No API output format found")
             .await;
         return HttpResponse::InternalServerError()
             .json(json!({"error": "No API output format found"}));
-    }
-
-    let format = format_config.unwrap();
+    };
     let all_data = format_outputs;
 
     // Serialize based on format
@@ -707,17 +705,14 @@ async fn handle_async_get(
     state: &web::Data<ApiStateWrapper>,
 ) -> Result<Option<HttpResponse>, HttpResponse> {
     // If no run_uuid provided, enqueue and return queued
-    if run_uuid_param.is_none() {
+    let Some(run_uuid) = run_uuid_param else {
         let run_uuid = enqueue_run_for_api(workflow_uuid, state).await?;
         return Ok(Some(HttpResponse::Accepted().json(json!({
             "status": "queued",
             "run_uuid": run_uuid,
             "message": "Workflow run enqueued"
         }))));
-    }
-
-    // Poll existing run_uuid
-    let run_uuid = run_uuid_param.unwrap();
+    };
     match state.workflow_service().get_run_status(run_uuid).await {
         Ok(Some(status)) => {
             if status == "queued" || status == "running" {

@@ -17,8 +17,11 @@ async fn default_404_handler() -> impl actix_web::Responder {
 #[actix_web::main]
 async fn main() -> r_data_core_core::error::Result<()> {
     // Load configuration
-    let config = load_app_config()
-        .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to load application configuration: {e}")))?;
+    let config = load_app_config().map_err(|e| {
+        r_data_core_core::error::Error::Config(format!(
+            "Failed to load application configuration: {e}"
+        ))
+    })?;
     debug!("Loaded conf: {config:?}");
 
     // Initialize logger
@@ -30,21 +33,27 @@ async fn main() -> r_data_core_core::error::Result<()> {
     info!("API docs enabled: {}", config.api.enable_docs);
 
     // Create database pool
-    let pool = create_db_pool(&config)
-        .await
-        .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to create database connection pool: {e}")))?;
+    let pool = create_db_pool(&config).await.map_err(|e| {
+        r_data_core_core::error::Error::Config(format!(
+            "Failed to create database connection pool: {e}"
+        ))
+    })?;
 
     info!("Using SQLx migrations (run with 'cargo sqlx migrate run')");
 
     // Initialize cache manager
-    let cache_manager = create_cache_manager(&config)
-        .await
-        .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to initialize cache manager with Redis: {e}")))?;
+    let cache_manager = create_cache_manager(&config).await.map_err(|e| {
+        r_data_core_core::error::Error::Config(format!(
+            "Failed to initialize cache manager with Redis: {e}"
+        ))
+    })?;
 
     // Build API state with all services
     let api_state = build_api_state(&config, pool, cache_manager)
         .await
-        .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to initialize API state: {e}")))?;
+        .map_err(|e| {
+            r_data_core_core::error::Error::Config(format!("Failed to initialize API state: {e}"))
+        })?;
 
     let app_state = web::Data::new(ApiStateWrapper::new(api_state));
 
@@ -77,7 +86,11 @@ async fn main() -> r_data_core_core::error::Result<()> {
             .default_service(web::route().to(default_404_handler))
     })
     .bind(&bind_address)
-    .map_err(|e| r_data_core_core::error::Error::Api(format!("Failed to bind to address {bind_address_clone}: {e}")))?
+    .map_err(|e| {
+        r_data_core_core::error::Error::Api(format!(
+            "Failed to bind to address {bind_address_clone}: {e}"
+        ))
+    })?
     .run()
     .await
     .map_err(|e| r_data_core_core::error::Error::Api(format!("HTTP server error: {e}")))

@@ -25,17 +25,23 @@ impl DslProgram {
     /// # Errors
     /// Returns an error if the configuration is invalid
     pub fn from_config(config: &Value) -> r_data_core_core::error::Result<Self> {
-        let steps_val = config
-            .get("steps")
-            .ok_or_else(|| r_data_core_core::error::Error::Validation("Workflow config missing 'steps' array".to_string()))?;
-        let steps = steps_val
-            .as_array()
-            .ok_or_else(|| r_data_core_core::error::Error::Validation("'steps' must be an array".to_string()))?;
+        let steps_val = config.get("steps").ok_or_else(|| {
+            r_data_core_core::error::Error::Validation(
+                "Workflow config missing 'steps' array".to_string(),
+            )
+        })?;
+        let steps = steps_val.as_array().ok_or_else(|| {
+            r_data_core_core::error::Error::Validation("'steps' must be an array".to_string())
+        })?;
 
         let parsed: Vec<DslStep> = steps
             .iter()
             .cloned()
-            .map(|v| serde_json::from_value::<DslStep>(v).map_err(|e| r_data_core_core::error::Error::Validation(format!("Invalid DSL step: {e}"))))
+            .map(|v| {
+                serde_json::from_value::<DslStep>(v).map_err(|e| {
+                    r_data_core_core::error::Error::Validation(format!("Invalid DSL step: {e}"))
+                })
+            })
             .collect::<r_data_core_core::error::Result<_>>()?;
         Ok(Self { steps: parsed })
     }
@@ -45,13 +51,17 @@ impl DslProgram {
     /// # Errors
     /// Returns an error if validation fails
     ///
-    /// # Panics
-    /// Panics if the regex pattern is invalid (should never happen).
     pub fn validate(&self) -> r_data_core_core::error::Result<()> {
         if self.steps.is_empty() {
-            return Err(r_data_core_core::error::Error::Validation("DSL must contain at least one step".to_string()));
+            return Err(r_data_core_core::error::Error::Validation(
+                "DSL must contain at least one step".to_string(),
+            ));
         }
-        let safe_field = Regex::new(r"^[A-Za-z_][A-Za-z0-9_\.]*$").unwrap();
+        let safe_field = Regex::new(r"^[A-Za-z_][A-Za-z0-9_\.]*$").map_err(|e| {
+            r_data_core_core::error::Error::Config(format!(
+                "Failed to compile field validation regex: {e}"
+            ))
+        })?;
         let last_step_idx = self.steps.len() - 1;
         for (idx, step) in self.steps.iter().enumerate() {
             from::validate_from(idx, &step.from, &safe_field)?;
@@ -78,7 +88,10 @@ impl DslProgram {
     /// # Errors
     /// Returns an error if execution fails
     #[allow(clippy::too_many_lines)] // Complex but cohesive function
-    pub fn execute(&self, input: &Value) -> r_data_core_core::error::Result<Vec<(super::to::ToDef, Value)>> {
+    pub fn execute(
+        &self,
+        input: &Value,
+    ) -> r_data_core_core::error::Result<Vec<(super::to::ToDef, Value)>> {
         use super::execution;
         use super::from::FromDef;
 
@@ -91,7 +104,9 @@ impl DslProgram {
                 FromDef::PreviousStep { .. } => {
                     // Read from previous step's normalized data
                     if step_idx == 0 {
-                        return Err(r_data_core_core::error::Error::Validation("Step 0 cannot use PreviousStep source".to_string()));
+                        return Err(r_data_core_core::error::Error::Validation(
+                            "Step 0 cannot use PreviousStep source".to_string(),
+                        ));
                     }
                     &step_outputs[step_idx - 1]
                 }
@@ -158,8 +173,7 @@ impl DslProgram {
                         (Err(e), _) | (_, Err(e)) => {
                             return Err(r_data_core_core::error::Error::Validation(format!(
                                 "Step {step_idx}: Arithmetic error in target field '{}': {}",
-                                ar.target,
-                                e
+                                ar.target, e
                             )));
                         }
                     }
@@ -181,8 +195,7 @@ impl DslProgram {
                         (Err(e), _) | (_, Err(e)) => {
                             return Err(r_data_core_core::error::Error::Validation(format!(
                                 "Step {step_idx}: Concat error in target field '{}': {}",
-                                ct.target,
-                                e
+                                ct.target, e
                             )));
                         }
                     }
@@ -254,7 +267,9 @@ impl DslProgram {
                 FromDef::PreviousStep { .. } => {
                     // Read from previous step's normalized data
                     if step_idx == 0 {
-                        return Err(r_data_core_core::error::Error::Validation("Step 0 cannot use PreviousStep source".to_string()));
+                        return Err(r_data_core_core::error::Error::Validation(
+                            "Step 0 cannot use PreviousStep source".to_string(),
+                        ));
                     }
                     &step_outputs[step_idx - 1]
                 }
@@ -321,8 +336,7 @@ impl DslProgram {
                         (Err(e), _) | (_, Err(e)) => {
                             return Err(r_data_core_core::error::Error::Validation(format!(
                                 "Step {step_idx}: Arithmetic error in target field '{}': {}",
-                                ar.target,
-                                e
+                                ar.target, e
                             )));
                         }
                     }
@@ -344,8 +358,7 @@ impl DslProgram {
                         (Err(e), _) | (_, Err(e)) => {
                             return Err(r_data_core_core::error::Error::Validation(format!(
                                 "Step {step_idx}: Concat error in target field '{}': {}",
-                                ct.target,
-                                e
+                                ct.target, e
                             )));
                         }
                     }

@@ -78,15 +78,17 @@ impl WorkflowService {
             })?;
         }
         // Strict DSL: parse and validate
-        let program = r_data_core_workflow::dsl::DslProgram::from_config(&req.config)
-            .map_err(|e| {
-                r_data_core_core::error::Error::Validation(format!("Invalid workflow DSL configuration: {e}"))
+        let program =
+            r_data_core_workflow::dsl::DslProgram::from_config(&req.config).map_err(|e| {
+                r_data_core_core::error::Error::Validation(format!(
+                    "Invalid workflow DSL configuration: {e}"
+                ))
             })?;
-        program
-            .validate()
-            .map_err(|e| {
-                r_data_core_core::error::Error::Validation(format!("Workflow DSL validation failed: {e}"))
-            })?;
+        program.validate().map_err(|e| {
+            r_data_core_core::error::Error::Validation(format!(
+                "Workflow DSL validation failed: {e}"
+            ))
+        })?;
         self.repo.create(req, created_by).await
     }
 
@@ -106,15 +108,17 @@ impl WorkflowService {
             })?;
         }
         // Strict DSL: parse and validate
-        let program = r_data_core_workflow::dsl::DslProgram::from_config(&req.config)
-            .map_err(|e| {
-                r_data_core_core::error::Error::Validation(format!("Invalid workflow DSL configuration: {e}"))
+        let program =
+            r_data_core_workflow::dsl::DslProgram::from_config(&req.config).map_err(|e| {
+                r_data_core_core::error::Error::Validation(format!(
+                    "Invalid workflow DSL configuration: {e}"
+                ))
             })?;
-        program
-            .validate()
-            .map_err(|e| {
-                r_data_core_core::error::Error::Validation(format!("Workflow DSL validation failed: {e}"))
-            })?;
+        program.validate().map_err(|e| {
+            r_data_core_core::error::Error::Validation(format!(
+                "Workflow DSL validation failed: {e}"
+            ))
+        })?;
         self.repo.update(uuid, req, updated_by).await
     }
 
@@ -390,7 +394,9 @@ impl WorkflowService {
                 r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new()
                     .parse(inline.as_bytes(), &format_cfg)
                     .map_err(|e| {
-                        r_data_core_core::error::Error::Validation(format!("Failed to parse CSV data: {e}"))
+                        r_data_core_core::error::Error::Validation(format!(
+                            "Failed to parse CSV data: {e}"
+                        ))
                     })?
             }
             "ndjson" => inline
@@ -446,9 +452,11 @@ impl WorkflowService {
         })?;
 
         // Try to infer format from DSL
-        let program = r_data_core_workflow::dsl::DslProgram::from_config(&wf.config)
-            .map_err(|e| {
-                r_data_core_core::error::Error::Validation(format!("Invalid workflow DSL configuration: {e}"))
+        let program =
+            r_data_core_workflow::dsl::DslProgram::from_config(&wf.config).map_err(|e| {
+                r_data_core_core::error::Error::Validation(format!(
+                    "Invalid workflow DSL configuration: {e}"
+                ))
             })?;
         let format_type = program
             .steps
@@ -482,7 +490,9 @@ impl WorkflowService {
                     r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new()
                         .parse(bytes, &format_cfg)
                         .map_err(|e| {
-                            r_data_core_core::error::Error::Validation(format!("Failed to parse CSV data: {e}"))
+                            r_data_core_core::error::Error::Validation(format!(
+                                "Failed to parse CSV data: {e}"
+                            ))
                         })?
                 }
             }
@@ -505,7 +515,9 @@ impl WorkflowService {
                     r_data_core_workflow::data::adapters::format::json::JsonFormatHandler::new()
                         .parse(bytes, &format_cfg)
                         .map_err(|e| {
-                            r_data_core_core::error::Error::Validation(format!("Failed to parse JSON data: {e}"))
+                            r_data_core_core::error::Error::Validation(format!(
+                                "Failed to parse JSON data: {e}"
+                            ))
                         })?
                 }
             }
@@ -628,9 +640,7 @@ impl WorkflowService {
             )
             .await
             .map_err(|e| {
-                r_data_core_core::error::Error::Entity(format!(
-                    "Failed to fetch entities: {e}"
-                ))
+                r_data_core_core::error::Error::Entity(format!("Failed to fetch entities: {e}"))
             })?;
 
         #[allow(clippy::cast_possible_wrap)]
@@ -681,7 +691,9 @@ impl WorkflowService {
             })
             .transpose()
             .map_err(|e| {
-                r_data_core_core::error::Error::Config(format!("Failed to create auth provider: {e}"))
+                r_data_core_core::error::Error::Config(format!(
+                    "Failed to create auth provider: {e}"
+                ))
             })?;
 
         let source_ctx = r_data_core_workflow::data::adapters::source::SourceContext {
@@ -702,16 +714,14 @@ impl WorkflowService {
                 }
             };
 
-        let mut stream = source_adapter.fetch(&source_ctx).await
-            .map_err(|e| {
-                r_data_core_core::error::Error::Api(format!("Failed to fetch data from source: {e}"))
-            })?;
+        let mut stream = source_adapter.fetch(&source_ctx).await.map_err(|e| {
+            r_data_core_core::error::Error::Api(format!("Failed to fetch data from source: {e}"))
+        })?;
         let mut all_data = Vec::new();
         while let Some(chunk_result) = stream.next().await {
-            let chunk = chunk_result
-                .map_err(|e| {
-                    r_data_core_core::error::Error::Api(format!("Failed to read data chunk: {e}"))
-                })?;
+            let chunk = chunk_result.map_err(|e| {
+                r_data_core_core::error::Error::Api(format!("Failed to read data chunk: {e}"))
+            })?;
             all_data.extend_from_slice(&chunk);
         }
 
@@ -731,9 +741,12 @@ impl WorkflowService {
                 }
             };
 
-        let payloads = format_handler.parse(&all_data, &format.options)
+        let payloads = format_handler
+            .parse(&all_data, &format.options)
             .map_err(|e| {
-                r_data_core_core::error::Error::Validation(format!("Failed to parse data format: {e}"))
+                r_data_core_core::error::Error::Validation(format!(
+                    "Failed to parse data format: {e}"
+                ))
             })?;
         let staged = self
             .stage_raw_items(workflow_uuid, run_uuid, payloads)

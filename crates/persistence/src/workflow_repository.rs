@@ -51,23 +51,35 @@ impl WorkflowRepository {
         row.map_or_else(
             || Ok(None),
             |r| {
+                let uuid: Uuid = r
+                    .try_get(0)
+                    .map_err(r_data_core_core::error::Error::Database)?;
+                let name: String = r
+                    .try_get(1)
+                    .map_err(r_data_core_core::error::Error::Database)?;
+                let description: Option<String> = r.try_get(2).ok();
                 let kind_str: String = r.try_get(3).unwrap_or_else(|_| "consumer".to_string());
                 let kind = WorkflowKind::from_str(&kind_str).unwrap_or(WorkflowKind::Consumer);
+                let enabled: bool = r
+                    .try_get::<Option<bool>, _>(4)
+                    .unwrap_or(Some(true))
+                    .unwrap_or(true);
+                let schedule_cron: Option<String> = r.try_get(5).ok();
+                let config: serde_json::Value =
+                    r.try_get(6).unwrap_or_else(|_| serde_json::json!({}));
+                let versioning_disabled: bool = r
+                    .try_get::<Option<bool>, _>(7)
+                    .unwrap_or(Some(true))
+                    .unwrap_or(true);
                 let wf = Workflow {
-                    uuid: r.try_get(0).unwrap(),
-                    name: r.try_get(1).unwrap(),
-                    description: r.try_get(2).ok(),
+                    uuid,
+                    name,
+                    description,
                     kind,
-                    enabled: r
-                        .try_get::<Option<bool>, _>(4)
-                        .unwrap_or(Some(true))
-                        .unwrap_or(true),
-                    schedule_cron: r.try_get(5).ok(),
-                    config: r.try_get(6).unwrap_or_else(|_| serde_json::json!({})),
-                    versioning_disabled: r
-                        .try_get::<Option<bool>, _>(7)
-                        .unwrap_or(Some(true))
-                        .unwrap_or(true),
+                    enabled,
+                    schedule_cron,
+                    config,
+                    versioning_disabled,
                 };
                 Ok(Some(wf))
             },
@@ -116,9 +128,7 @@ impl WorkflowRepository {
             .snapshot_pre_update(uuid)
             .await
             .map_err(|e| {
-                r_data_core_core::error::Error::Unknown(format!(
-                    "Failed to snapshot workflow: {e}"
-                ))
+                r_data_core_core::error::Error::Unknown(format!("Failed to snapshot workflow: {e}"))
             })?;
 
         sqlx::query(
@@ -179,8 +189,12 @@ impl WorkflowRepository {
             let kind_str: String = r.try_get(3).unwrap_or_else(|_| "consumer".to_string());
             let kind = WorkflowKind::from_str(&kind_str).unwrap_or(WorkflowKind::Consumer);
             out.push(Workflow {
-                uuid: r.try_get(0).unwrap(),
-                name: r.try_get(1).unwrap(),
+                uuid: r
+                    .try_get(0)
+                    .map_err(r_data_core_core::error::Error::Database)?,
+                name: r
+                    .try_get(1)
+                    .map_err(r_data_core_core::error::Error::Database)?,
                 description: r.try_get(2).ok(),
                 kind,
                 enabled: r
@@ -256,23 +270,34 @@ impl WorkflowRepository {
 
         let mut out = Vec::with_capacity(rows.len());
         for r in rows {
+            let uuid: Uuid = r
+                .try_get(0)
+                .map_err(r_data_core_core::error::Error::Database)?;
+            let name: String = r
+                .try_get(1)
+                .map_err(r_data_core_core::error::Error::Database)?;
+            let description: Option<String> = r.try_get(2).ok();
             let kind_str: String = r.try_get(3).unwrap_or_else(|_| "consumer".to_string());
             let kind = WorkflowKind::from_str(&kind_str).unwrap_or(WorkflowKind::Consumer);
+            let enabled: bool = r
+                .try_get::<Option<bool>, _>(4)
+                .unwrap_or(Some(true))
+                .unwrap_or(true);
+            let schedule_cron: Option<String> = r.try_get(5).ok();
+            let config: serde_json::Value = r.try_get(6).unwrap_or_else(|_| serde_json::json!({}));
+            let versioning_disabled: bool = r
+                .try_get::<Option<bool>, _>(7)
+                .unwrap_or(Some(false))
+                .unwrap_or(false);
             out.push(Workflow {
-                uuid: r.try_get(0).unwrap(),
-                name: r.try_get(1).unwrap(),
-                description: r.try_get(2).ok(),
+                uuid,
+                name,
+                description,
                 kind,
-                enabled: r
-                    .try_get::<Option<bool>, _>(4)
-                    .unwrap_or(Some(true))
-                    .unwrap_or(true),
-                schedule_cron: r.try_get(5).ok(),
-                config: r.try_get(6).unwrap_or_else(|_| serde_json::json!({})),
-                versioning_disabled: r
-                    .try_get::<Option<bool>, _>(7)
-                    .unwrap_or(Some(false))
-                    .unwrap_or(false),
+                enabled,
+                schedule_cron,
+                config,
+                versioning_disabled,
             });
         }
         Ok(out)
@@ -365,7 +390,9 @@ impl WorkflowRepository {
 
         let mut out = Vec::with_capacity(rows.len());
         for r in rows {
-            let uuid: Uuid = r.try_get(0).unwrap();
+            let uuid: Uuid = r
+                .try_get(0)
+                .map_err(r_data_core_core::error::Error::Database)?;
             let cron: String = r
                 .try_get::<Option<String>, _>(1)
                 .ok()
