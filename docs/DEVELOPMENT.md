@@ -71,7 +71,7 @@ git commit -m "refactor(persistence): simplify query builder"
 This repository is organized as a Cargo workspace:
 
 - `crates/api` - Actix Web API (admin/public), middleware
-- `crates/core` - Domain models, versioning, permissions, prelude
+- `crates/core` - Domain models, versioning, permissions, prelude, error types
 - `crates/persistence` - SQLx repositories and DB utilities
 - `crates/services` - Business logic and data handling
 - `crates/workflow` - Workflow engine and DSL
@@ -294,6 +294,52 @@ If you encounter compilation errors about missing tables:
 **Optional:**
 - `MAINTENANCE_CRON` - Cron expression for scheduler (default: "*/5 * * * *")
 - `MAINTENANCE_DATABASE_MAX_CONNECTIONS` - Maximum database connections (default: 10)
+
+## Error Handling
+
+This project uses a consistent error handling approach across crates:
+
+### Core Error Type
+
+All application code uses `r_data_core_core::error::Result<T>` and `r_data_core_core::error::Error` for error handling. The error type is defined in `crates/core/src/error.rs` and provides:
+
+- **Structured error variants**: Database, IO, Auth, Config, API, Cache, Serialization, Validation, etc.
+- **Automatic conversions**: From common error types (sqlx::Error, std::io::Error, serde_json::Error, etc.)
+- **Type alias**: `r_data_core_core::error::Result<T>` for convenience
+
+**Note**: The `anyhow` crate is **not** used in library code. It is only available as a dev-dependency for integration tests in the `tests/` directory.
+
+### Workflow Crate
+
+The `crates/workflow` crate uses `r_data_core_core::error::Result<T>`:
+
+- **No `anyhow` dependency**: The workflow crate has been migrated away from `anyhow`
+- **All functions return**: `r_data_core_core::error::Result<T>` or `r_data_core_core::error::Result<()>`
+- **Error conversion**: External errors (CSV parsing, HTTP requests, etc.) are converted to `r_data_core_core::error::Error` using appropriate variants
+- **Examples**:
+  - `validate_mapping()` returns `r_data_core_core::error::Result<()>`
+  - `DslProgram::from_config()` returns `r_data_core_core::error::Result<Self>`
+  - All adapter traits (DataSource, FormatHandler, DataDestination) use `r_data_core_core::error::Result<T>`
+
+### Worker Crate
+
+The `crates/worker` crate uses `r_data_core_core::error::Result<T>`:
+
+- **No `anyhow` dependency**: The worker crate has been migrated away from `anyhow`
+- **All functions return**: `r_data_core_core::error::Result<T>` or `r_data_core_core::error::Result<()>`
+- **Error conversion**: External errors (JobScheduler errors, database pool initialization, etc.) are converted to `r_data_core_core::error::Error` using appropriate variants
+- **Entry points**: Both `main.rs` and `maintenance.rs` use `r_data_core_core::error::Result<()>`
+- **Examples**:
+  - `main()` returns `r_data_core_core::error::Result<()>`
+  - `schedule_job` closure returns `r_data_core_core::error::Result<Uuid>`
+
+### Error Handling Best Practices
+
+1. **Use `r_data_core_core::error::Result<T>`** in library code (workflow, services, persistence, api, core)
+2. **Use appropriate error variants**: `Error::Validation()` for validation errors, `Error::Config()` for configuration issues, etc.
+3. **Convert external errors**: Use `.map_err()` to convert third-party errors to `r_data_core_core::error::Error`
+4. **Preserve context**: Include relevant information in error messages (step indices, field names, etc.)
+5. **Do not use `anyhow`** in library code - it is only available in integration tests (`tests/` directory)
 
 ## Architecture Details
 

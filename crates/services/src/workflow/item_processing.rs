@@ -125,7 +125,7 @@ fn extract_sqlx_meta(e: &r_data_core_core::error::Error) -> serde_json::Value {
                 Some(db_err.message().to_string()),
             )
         } else {
-            // Try to walk the error chain for Anyhow errors
+            // Try to walk the error chain
             let mut code: Option<String> = None;
             let mut message: Option<String> = None;
             let mut cause: Option<&(dyn std::error::Error + 'static)> = Some(e);

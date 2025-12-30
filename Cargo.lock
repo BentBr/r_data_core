@@ -2406,7 +2406,6 @@ dependencies = [
  "actix-cors",
  "actix-multipart",
  "actix-web",
- "anyhow",
  "apalis",
  "apalis-redis",
  "argon2",
@@ -2441,7 +2440,6 @@ dependencies = [
 name = "r_data_core_core"
 version = "0.2.0"
 dependencies = [
- "anyhow",
  "argon2",
  "async-trait",
  "base64",
@@ -2469,7 +2467,6 @@ dependencies = [
 name = "r_data_core_persistence"
 version = "0.2.0"
 dependencies = [
- "anyhow",
  "argon2",
  "async-trait",
  "dotenvy",
@@ -2489,7 +2486,6 @@ dependencies = [
 name = "r_data_core_services"
 version = "0.2.0"
 dependencies = [
- "anyhow",
  "async-trait",
  "bytes",
  "cron",
