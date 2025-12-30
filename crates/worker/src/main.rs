@@ -23,7 +23,7 @@ use r_data_core_workflow::data::jobs::FetchAndStageJob;
 
 #[tokio::main]
 #[allow(clippy::too_many_lines)] // Main function orchestrates many components
-async fn main() -> anyhow::Result<()> {
+async fn main() -> r_data_core_core::error::Result<()> {
     // Basic logger init
     init_logger_with_default("info");
 
@@ -45,7 +45,8 @@ async fn main() -> anyhow::Result<()> {
         &config.database.connection_string,
         config.database.max_connections,
     )
-    .await?;
+    .await
+    .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to initialize database pool: {e}")))?;
 
     // Initialize cache manager (shares Redis with queue if available)
     let cache_manager =
@@ -60,7 +61,9 @@ async fn main() -> anyhow::Result<()> {
     .await?;
 
     // Scheduler: scan workflows with cron and schedule tasks
-    let scheduler = JobScheduler::new().await?;
+    let scheduler = JobScheduler::new()
+        .await
+        .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to create job scheduler: {e}")))?;
 
     let repo = WorkflowRepository::new(pool.clone());
     let scheduled_workflows: Arc<Mutex<HashMap<Uuid, (Uuid, String)>>> =
@@ -73,7 +76,7 @@ async fn main() -> anyhow::Result<()> {
                         pool: sqlx::Pool<sqlx::Postgres>,
                         queue_cfg: Arc<r_data_core_core::config::QueueConfig>|
      -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = anyhow::Result<Uuid>> + Send>,
+        Box<dyn std::future::Future<Output = r_data_core_core::error::Result<Uuid>> + Send>,
     > {
         Box::pin(async move {
             let pool_clone = pool.clone();
@@ -134,8 +137,11 @@ async fn main() -> anyhow::Result<()> {
                             .await;
                     }
                 })
-            })?;
-            let job_id = scheduler.add(job).await?;
+            })
+            .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to create job: {e}")))?;
+            let job_id = scheduler.add(job)
+                .await
+                .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to add job to scheduler: {e}")))?;
             Ok(job_id)
         })
     };
@@ -159,7 +165,9 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    scheduler.start().await?;
+    scheduler.start()
+        .await
+        .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to start scheduler: {e}")))?;
     info!("Worker scheduler started");
 
     // Reconcile scheduler with DB periodically (detect enabled/disabled/cron changes)

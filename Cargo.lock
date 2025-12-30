@@ -2532,7 +2532,6 @@ dependencies = [
 name = "r_data_core_worker"
 version = "0.2.0"
 dependencies = [
- "anyhow",
  "async-trait",
  "futures",
  "log",
