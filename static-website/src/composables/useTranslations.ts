@@ -1,48 +1,57 @@
 import { ref, computed, reactive } from 'vue'
+// Import translations synchronously to ensure they're available for SSR/SEO
+import enTranslations from '../../translations/en.json'
+import deTranslations from '../../translations/de.json'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TranslationValue = string | string[] | Record<string, any>[] | TranslationData
 interface TranslationData {
-    [key: string]: string | TranslationData
+    [key: string]: TranslationValue
 }
 
 const AVAILABLE_LANGUAGES = ['en', 'de'] as const
 type Language = (typeof AVAILABLE_LANGUAGES)[number]
 
 const currentLanguage = ref<Language>(
-    (localStorage.getItem('preferred-language') as Language) || 'en'
+    (typeof localStorage !== 'undefined'
+        ? (localStorage.getItem('preferred-language') as Language)
+        : null) ?? 'en'
 )
+
+// Initialize translations synchronously - they're bundled with the app
 const translations = reactive<Record<Language, TranslationData>>({
-    en: {},
-    de: {},
+    en: enTranslations as TranslationData,
+    de: deTranslations as TranslationData,
 })
 
 function getNestedProperty(obj: TranslationData, path: string): string | undefined {
-    return path.split('.').reduce(
+    const result = path.split('.').reduce<TranslationValue | undefined>(
         (current, key) => {
-            if (current && typeof current === 'object' && key in current) {
-                const value = current[key]
-                return typeof value === 'string' ? value : value
+            if (
+                current &&
+                typeof current === 'object' &&
+                !Array.isArray(current) &&
+                key in current
+            ) {
+                return (current as TranslationData)[key]
             }
             return undefined
         },
-        obj as TranslationData | string | undefined
-    ) as string | undefined
+        obj as TranslationValue | undefined
+    )
+    return typeof result === 'string' ? result : undefined
 }
 
-async function loadTranslation(language: Language): Promise<void> {
-    try {
-        const translationModule = await import(`../../translations/${language}.json`)
-        translations[language] = translationModule.default
-    } catch (error) {
-        console.warn(`Failed to load translation for language: ${language}`, error)
-        translations[language] = {}
-    }
+// Translations are loaded synchronously at module initialization
+// This function is kept for API compatibility but is now a no-op
+function setTranslationLanguage(_language: Language): void {
+    // No-op: translations are already loaded synchronously
 }
 
 export function useTranslations() {
-    const initTranslations = async () => {
-        if (Object.keys(translations.en).length === 0) {
-            await Promise.all(AVAILABLE_LANGUAGES.map(lang => loadTranslation(lang)))
-        }
+    // Kept for API compatibility - translations are loaded synchronously at import
+    const initTranslations = () => {
+        // No-op: translations are bundled and available immediately
     }
 
     const currentTranslations = computed(() => {
@@ -99,10 +108,12 @@ export function useTranslations() {
         return undefined
     }
 
-    const setLanguage = async (language: Language) => {
+    const setLanguage = (language: Language) => {
         currentLanguage.value = language
-        localStorage.setItem('preferred-language', language)
-        await loadTranslation(language)
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('preferred-language', language)
+        }
+        setTranslationLanguage(language)
     }
 
     const availableLanguages = computed(() => AVAILABLE_LANGUAGES)
@@ -117,6 +128,5 @@ export function useTranslations() {
     }
 }
 
-// Initialize translations on module load
-const translationInstance = useTranslations()
-void translationInstance.initTranslations()
+// Translations are now loaded synchronously at import time
+// No need for async initialization

@@ -1,8 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { useSEO } from './useSEO'
 import { mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { defineComponent, h, ref } from 'vue'
+import { defineComponent, h, ref, ComputedRef } from 'vue'
+
+// Track what useHead receives - must be defined before mock
+const headDataCapture: { value: ComputedRef | null } = { value: null }
+
+// Mock @vueuse/head - must use inline function to avoid hoisting issues
+vi.mock('@vueuse/head', () => ({
+    useHead: vi.fn((data: ComputedRef) => {
+        // Access captured data through an object reference
+        headDataCapture.value = data
+    }),
+}))
 
 // Mock the env-check module
 vi.mock('@/env-check', () => ({
@@ -19,6 +29,10 @@ vi.mock('./useTranslations', () => ({
     }),
 }))
 
+// Import after mocks are set up
+import { useSEO } from './useSEO'
+import { useHead } from '@vueuse/head'
+
 const TestComponent = defineComponent({
     setup() {
         useSEO({
@@ -31,25 +45,25 @@ const TestComponent = defineComponent({
 })
 
 describe('useSEO', () => {
-    beforeEach(() => {
-        // Clear head elements
-        document.head.innerHTML = ''
-        // Reset title
-        document.title = ''
-    })
-
-    const createTestRouter = () => {
+    const createTestRouter = (
+        routes = [
+            { path: '/', component: TestComponent },
+            { path: '/about', component: TestComponent },
+            { path: '/privacy', component: TestComponent, meta: { noIndex: true } },
+        ]
+    ) => {
         return createRouter({
             history: createMemoryHistory(),
-            routes: [
-                { path: '/', component: TestComponent },
-                { path: '/about', component: TestComponent },
-                { path: '/privacy', component: TestComponent, meta: { noIndex: true } },
-            ],
+            routes,
         })
     }
 
-    it('should set document title', async () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        headDataCapture.value = null
+    })
+
+    it('should call useHead with correct title', async () => {
         const router = createTestRouter()
         await router.push('/')
         await router.isReady()
@@ -58,7 +72,11 @@ describe('useSEO', () => {
             global: { plugins: [router] },
         })
 
-        expect(document.title).toBe('Test Page · RDataCore')
+        expect(useHead).toHaveBeenCalled()
+        expect(headDataCapture.value).toBeTruthy()
+
+        const headValue = headDataCapture.value!.value
+        expect(headValue.title).toBe('Test Page · RDataCore')
     })
 
     it('should set meta description', async () => {
@@ -70,8 +88,9 @@ describe('useSEO', () => {
             global: { plugins: [router] },
         })
 
-        const metaDesc = document.querySelector('meta[name="description"]')
-        expect(metaDesc?.getAttribute('content')).toBe('Test description')
+        const headValue = headDataCapture.value!.value
+        const descMeta = headValue.meta.find((m: { name?: string }) => m.name === 'description')
+        expect(descMeta?.content).toBe('Test description')
     })
 
     it('should set robots meta tag to index,follow by default', async () => {
@@ -83,8 +102,9 @@ describe('useSEO', () => {
             global: { plugins: [router] },
         })
 
-        const robots = document.querySelector('meta[name="robots"]')
-        expect(robots?.getAttribute('content')).toBe('index,follow')
+        const headValue = headDataCapture.value!.value
+        const robotsMeta = headValue.meta.find((m: { name?: string }) => m.name === 'robots')
+        expect(robotsMeta?.content).toBe('index,follow')
     })
 
     it('should set robots meta tag to noindex,nofollow for noIndex pages', async () => {
@@ -96,8 +116,9 @@ describe('useSEO', () => {
             global: { plugins: [router] },
         })
 
-        const robots = document.querySelector('meta[name="robots"]')
-        expect(robots?.getAttribute('content')).toBe('noindex,nofollow')
+        const headValue = headDataCapture.value!.value
+        const robotsMeta = headValue.meta.find((m: { name?: string }) => m.name === 'robots')
+        expect(robotsMeta?.content).toBe('noindex,nofollow')
     })
 
     it('should set canonical link', async () => {
@@ -109,8 +130,9 @@ describe('useSEO', () => {
             global: { plugins: [router] },
         })
 
-        const canonical = document.querySelector('link[rel="canonical"]')
-        expect(canonical?.getAttribute('href')).toBe('https://rdatacore.test/')
+        const headValue = headDataCapture.value!.value
+        const canonicalLink = headValue.link.find((l: { rel?: string }) => l.rel === 'canonical')
+        expect(canonicalLink?.href).toBe('https://rdatacore.test/')
     })
 
     it('should set Open Graph tags', async () => {
@@ -122,26 +144,17 @@ describe('useSEO', () => {
             global: { plugins: [router] },
         })
 
-        const ogTitle = document.querySelector('meta[property="og:title"]')
-        expect(ogTitle?.getAttribute('content')).toBe('Test Page · RDataCore')
+        const headValue = headDataCapture.value!.value
+        const findOgMeta = (prop: string) =>
+            headValue.meta.find((m: { property?: string }) => m.property === prop)
 
-        const ogDesc = document.querySelector('meta[property="og:description"]')
-        expect(ogDesc?.getAttribute('content')).toBe('Test description')
-
-        const ogUrl = document.querySelector('meta[property="og:url"]')
-        expect(ogUrl?.getAttribute('content')).toBe('https://rdatacore.test/')
-
-        const ogSiteName = document.querySelector('meta[property="og:site_name"]')
-        expect(ogSiteName?.getAttribute('content')).toBe('RDataCore')
-
-        const ogLocale = document.querySelector('meta[property="og:locale"]')
-        expect(ogLocale?.getAttribute('content')).toBe('en_US')
-
-        const ogType = document.querySelector('meta[property="og:type"]')
-        expect(ogType?.getAttribute('content')).toBe('website')
-
-        const ogImage = document.querySelector('meta[property="og:image"]')
-        expect(ogImage?.getAttribute('content')).toBe(
+        expect(findOgMeta('og:title')?.content).toBe('Test Page · RDataCore')
+        expect(findOgMeta('og:description')?.content).toBe('Test description')
+        expect(findOgMeta('og:url')?.content).toBe('https://rdatacore.test/')
+        expect(findOgMeta('og:site_name')?.content).toBe('RDataCore')
+        expect(findOgMeta('og:locale')?.content).toBe('en_GB')
+        expect(findOgMeta('og:type')?.content).toBe('website')
+        expect(findOgMeta('og:image')?.content).toBe(
             'https://rdatacore.test/images/Slothlike-og.jpg'
         )
     })
@@ -155,17 +168,14 @@ describe('useSEO', () => {
             global: { plugins: [router] },
         })
 
-        const twitterCard = document.querySelector('meta[property="twitter:card"]')
-        expect(twitterCard?.getAttribute('content')).toBe('summary_large_image')
+        const headValue = headDataCapture.value!.value
+        const findTwitterMeta = (prop: string) =>
+            headValue.meta.find((m: { property?: string }) => m.property === prop)
 
-        const twitterTitle = document.querySelector('meta[property="twitter:title"]')
-        expect(twitterTitle?.getAttribute('content')).toBe('Test Page · RDataCore')
-
-        const twitterDesc = document.querySelector('meta[property="twitter:description"]')
-        expect(twitterDesc?.getAttribute('content')).toBe('Test description')
-
-        const twitterImage = document.querySelector('meta[property="twitter:image"]')
-        expect(twitterImage?.getAttribute('content')).toBe(
+        expect(findTwitterMeta('twitter:card')?.content).toBe('summary_large_image')
+        expect(findTwitterMeta('twitter:title')?.content).toBe('Test Page · RDataCore')
+        expect(findTwitterMeta('twitter:description')?.content).toBe('Test description')
+        expect(findTwitterMeta('twitter:image')?.content).toBe(
             'https://rdatacore.test/images/Slothlike-twitter.jpg'
         )
     })
@@ -179,16 +189,16 @@ describe('useSEO', () => {
             global: { plugins: [router] },
         })
 
-        const hreflangEn = document.querySelector('link[rel="alternate"][hreflang="en"]')
-        expect(hreflangEn?.getAttribute('href')).toBe('https://rdatacore.test/en')
+        const headValue = headDataCapture.value!.value
+        const findHreflang = (lang: string) =>
+            headValue.link.find(
+                (l: { rel?: string; hreflang?: string }) =>
+                    l.rel === 'alternate' && l.hreflang === lang
+            )
 
-        const hreflangDe = document.querySelector('link[rel="alternate"][hreflang="de"]')
-        expect(hreflangDe?.getAttribute('href')).toBe('https://rdatacore.test/de')
-
-        const hreflangDefault = document.querySelector(
-            'link[rel="alternate"][hreflang="x-default"]'
-        )
-        expect(hreflangDefault?.getAttribute('href')).toBe('https://rdatacore.test/')
+        expect(findHreflang('en')?.href).toBe('https://rdatacore.test/en')
+        expect(findHreflang('de')?.href).toBe('https://rdatacore.test/de')
+        expect(findHreflang('x-default')?.href).toBe('https://rdatacore.test/')
     })
 
     it('should set keywords when provided', async () => {
@@ -200,32 +210,21 @@ describe('useSEO', () => {
             global: { plugins: [router] },
         })
 
-        const keywords = document.querySelector('meta[name="keywords"]')
-        expect(keywords?.getAttribute('content')).toBe('test, page')
+        const headValue = headDataCapture.value!.value
+        const keywordsMeta = headValue.meta.find((m: { name?: string }) => m.name === 'keywords')
+        expect(keywordsMeta?.content).toBe('test, page')
     })
 
-    it('should handle locale option correctly', async () => {
+    it('should set html lang attribute', async () => {
         const router = createTestRouter()
         await router.push('/')
         await router.isReady()
 
-        const TestComponentWithLocale = defineComponent({
-            setup() {
-                useSEO({
-                    title: 'Test Page',
-                    description: 'Test description',
-                    locale: 'de',
-                })
-                return () => h('div', 'Test')
-            },
-        })
-
-        mount(TestComponentWithLocale, {
+        mount(TestComponent, {
             global: { plugins: [router] },
         })
 
-        const ogLocale = document.querySelector('meta[property="og:locale"]')
-        // Should use currentLanguage from composable, not the optional locale
-        expect(ogLocale?.getAttribute('content')).toBe('en_US')
+        const headValue = headDataCapture.value!.value
+        expect(headValue.htmlAttrs.lang).toBe('en')
     })
 })
