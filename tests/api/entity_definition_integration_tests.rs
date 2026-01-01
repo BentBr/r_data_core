@@ -75,6 +75,8 @@ fn create_test_jwt_token(user_uuid: &Uuid, secret: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use r_data_core_core::config::LicenseConfig;
+    use r_data_core_services::LicenseService;
     use r_data_core_test_support::{
         clear_test_db, create_test_admin_user, setup_test_db, test_queue_client_async,
     };
@@ -136,6 +138,9 @@ mod tests {
         let dashboard_stats_service =
             r_data_core_services::DashboardStatsService::new(Arc::new(dashboard_stats_repository));
 
+        let license_config = LicenseConfig::default();
+        let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
+
         let api_state = ApiState {
             db_pool: pool.pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
@@ -165,6 +170,7 @@ mod tests {
             )),
             dashboard_stats_service,
             queue: test_queue_client_async().await,
+            license_service,
         };
 
         let app = test::init_service(
@@ -338,6 +344,9 @@ mod tests {
         let dashboard_stats_service =
             r_data_core_services::DashboardStatsService::new(Arc::new(dashboard_stats_repository));
 
+        let license_config = LicenseConfig::default();
+        let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
+
         let api_state = ApiState {
             db_pool: pool.pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
@@ -370,6 +379,7 @@ mod tests {
             )),
             dashboard_stats_service,
             queue: test_queue_client_async().await,
+            license_service,
         };
 
         let app = test::init_service(

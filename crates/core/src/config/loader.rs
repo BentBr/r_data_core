@@ -4,8 +4,8 @@ use dotenvy::dotenv;
 use std::env;
 
 use crate::config::{
-    ApiConfig, AppConfig, CacheConfig, DatabaseConfig, LogConfig, MaintenanceConfig, QueueConfig,
-    WorkerConfig, WorkflowConfig,
+    ApiConfig, AppConfig, CacheConfig, DatabaseConfig, LicenseConfig, LogConfig, MaintenanceConfig,
+    QueueConfig, WorkerConfig, WorkflowConfig,
 };
 use crate::error::Result;
 use crate::utils;
@@ -73,6 +73,7 @@ pub fn load_app_config() -> Result<AppConfig> {
 
     let cache = get_cache_config();
     let queue = get_queue_config()?;
+    let license = get_license_config();
 
     Ok(AppConfig {
         environment,
@@ -81,6 +82,7 @@ pub fn load_app_config() -> Result<AppConfig> {
         cache,
         log,
         queue,
+        license,
     })
 }
 
@@ -136,6 +138,7 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
 
     let queue = get_queue_config()?;
     let cache = get_cache_config();
+    let license = get_license_config();
 
     Ok(WorkerConfig {
         job_queue_update_interval_secs,
@@ -143,6 +146,7 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
         workflow,
         queue,
         cache,
+        license,
     })
 }
 
@@ -194,6 +198,41 @@ pub fn load_maintenance_config() -> Result<MaintenanceConfig> {
     let cache = get_cache_config();
     let redis_url = env::var("REDIS_URL")
         .map_err(|_| crate::error::Error::Config("REDIS_URL not set".to_string()))?;
+    let license = get_license_config();
+
+    let api = ApiConfig {
+        host: env::var("API_HOST")
+            .map_err(|_| crate::error::Error::Config("API_HOST not set".to_string()))?,
+        port: env::var("API_PORT")
+            .map_err(|_| crate::error::Error::Config("API_PORT not set".to_string()))?
+            .parse()
+            .map_err(|_| {
+                crate::error::Error::Config("API_PORT must be a valid number".to_string())
+            })?,
+        use_tls: env::var("API_USE_TLS")
+            .unwrap_or_else(|_| "false".to_string())
+            .parse()
+            .unwrap_or(false),
+        jwt_secret: env::var("JWT_SECRET")
+            .map_err(|_| crate::error::Error::Config("JWT_SECRET not set".to_string()))?,
+        jwt_expiration: env::var("JWT_EXPIRATION")
+            .unwrap_or_else(|_| "86400".to_string())
+            .parse()
+            .unwrap_or(86400),
+        enable_docs: env::var("API_ENABLE_DOCS")
+            .unwrap_or_else(|_| "true".to_string())
+            .parse()
+            .unwrap_or(true),
+        cors_origins: env::var("CORS_ORIGINS")
+            .map_err(|_| crate::error::Error::Config("CORS_ORIGINS not set".to_string()))?
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .collect(),
+        check_default_admin_password: env::var("CHECK_DEFAULT_ADMIN_PASSWORD")
+            .unwrap_or_else(|_| "true".to_string())
+            .parse()
+            .unwrap_or(true),
+    };
 
     Ok(MaintenanceConfig {
         version_purger_cron,
@@ -201,6 +240,8 @@ pub fn load_maintenance_config() -> Result<MaintenanceConfig> {
         database,
         cache,
         redis_url,
+        license,
+        api,
     })
 }
 
@@ -240,4 +281,13 @@ fn get_queue_config() -> Result<QueueConfig> {
     };
 
     Ok(config)
+}
+
+fn get_license_config() -> LicenseConfig {
+    LicenseConfig {
+        license_key: env::var("LICENSE_KEY").ok(),
+        private_key: env::var("LICENSE_PRIVATE_KEY").ok(),
+        verification_url: LicenseConfig::default().verification_url,
+        statistics_url: LicenseConfig::default().statistics_url,
+    }
 }

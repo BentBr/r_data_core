@@ -3,13 +3,13 @@
 use actix_web::{test, web, App};
 use r_data_core_api::{configure_app, ApiState};
 use r_data_core_core::cache::CacheManager;
-use r_data_core_core::config::CacheConfig;
+use r_data_core_core::config::{CacheConfig, LicenseConfig};
 use r_data_core_core::error::Result;
 use r_data_core_persistence::DynamicEntityRepository;
 use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
 use r_data_core_services::{
-    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
+    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, LicenseService,
 };
 use std::sync::Arc;
 
@@ -46,6 +46,9 @@ mod dynamic_entity_api_tests {
             max_size: 10000,
         };
         let cache_manager = Arc::new(CacheManager::new(cache_config));
+
+        let license_config = LicenseConfig::default();
+        let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
 
         // Create user entity definition
         let _ = create_test_entity_definition(&pool, "user").await?;
@@ -137,6 +140,7 @@ mod dynamic_entity_api_tests {
             workflow_service: make_workflow_service(&pool),
             dashboard_stats_service,
             queue: test_queue_client_async().await,
+            license_service,
         };
 
         let app_data = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));

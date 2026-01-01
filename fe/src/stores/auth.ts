@@ -4,6 +4,7 @@ import { typedHttpClient } from '@/api/typed-client'
 import { env } from '@/env-check'
 import { useTranslations } from '@/composables/useTranslations'
 import { getRefreshToken, setRefreshToken, deleteRefreshToken } from '@/utils/cookies'
+import { useLicenseStore } from './license'
 import type { LoginRequest, User } from '@/types/schemas'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -110,6 +111,12 @@ export const useAuthStore = defineStore('auth', () => {
 
             // Store default password check result
             usingDefaultPassword.value = response.using_default_password
+
+            // Load license status after login
+            const licenseStore = useLicenseStore()
+            void licenseStore.loadLicenseStatus()
+            // Reset banner dismissal on new login
+            licenseStore.resetBannerDismissal()
 
             if (env.enableApiLogging) {
                 console.log('[Auth] Login successful:', {

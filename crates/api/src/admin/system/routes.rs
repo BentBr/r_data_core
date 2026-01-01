@@ -2,7 +2,9 @@
 
 use actix_web::{get, put, web, Responder};
 
-use crate::admin::system::models::{EntityVersioningSettingsDto, UpdateSettingsBody};
+use crate::admin::system::models::{
+    EntityVersioningSettingsDto, LicenseStatusDto, UpdateSettingsBody,
+};
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::auth::permission_check;
@@ -14,6 +16,7 @@ use r_data_core_services::SettingsService;
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(get_entity_versioning_settings);
     cfg.service(update_entity_versioning_settings);
+    cfg.service(get_license_status);
 }
 
 #[utoipa::path(
@@ -114,6 +117,45 @@ pub async fn update_entity_versioning_settings(
         Err(e) => {
             log::error!("Failed to update settings: {e}");
             ApiResponse::<()>::internal_error("Failed to update settings")
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/admin/api/v1/system/license",
+    tag = "system",
+    responses(
+        (status = 200, description = "Get license status (returns cached result)", body = LicenseStatusDto),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden"),
+        (status = 500, description = "Server error")
+    ),
+    security(("jwt" = []))
+)]
+#[get("/license")]
+pub async fn get_license_status(
+    data: web::Data<ApiStateWrapper>,
+    auth: RequiredAuth,
+) -> impl Responder {
+    // Check permission
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::System,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to view license status");
+    }
+
+    // Use license service from API state
+    let license_service = data.license_service();
+
+    match license_service.verify_license().await {
+        Ok(result) => ApiResponse::ok(LicenseStatusDto::from(result)),
+        Err(e) => {
+            log::error!("Failed to retrieve license status: {e}");
+            ApiResponse::<()>::internal_error("Failed to retrieve license status")
         }
     }
 }

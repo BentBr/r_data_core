@@ -24,6 +24,8 @@ pub mod role_repository;
 pub mod role_repository_trait;
 pub mod settings_repository;
 pub mod settings_repository_trait;
+pub mod statistics_repository;
+pub mod statistics_repository_trait;
 pub mod version_repository;
 pub mod version_repository_trait;
 pub mod workflow_repository;
@@ -59,6 +61,10 @@ pub use role_repository::RoleRepository;
 pub use role_repository_trait::RoleRepositoryTrait;
 pub use settings_repository::SystemSettingsRepository;
 pub use settings_repository_trait::SettingsRepositoryTrait;
+pub use statistics_repository::StatisticsRepository;
+pub use statistics_repository_trait::{
+    EntityCount, EntityDefinitionsStats, StatisticsRepositoryTrait,
+};
 pub use version_repository::{EntityVersionMeta, EntityVersionPayload, VersionRepository};
 pub use version_repository_trait::VersionRepositoryTrait;
 pub use workflow_repository::{get_provider_config, WorkflowRepository};

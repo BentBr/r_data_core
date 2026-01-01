@@ -49,6 +49,7 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         crate::admin::dsl::routes::list_transform_options,
         crate::admin::system::routes::get_entity_versioning_settings,
         crate::admin::system::routes::update_entity_versioning_settings,
+        crate::admin::system::routes::get_license_status,
         crate::admin::permissions::routes::list_roles,
         crate::admin::permissions::routes::get_role,
         crate::admin::permissions::routes::create_role,

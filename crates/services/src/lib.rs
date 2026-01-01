@@ -9,9 +9,11 @@ pub mod cache;
 pub mod dashboard_stats;
 pub mod dynamic_entity;
 pub mod entity_definition;
+pub mod license;
 pub mod query_validation;
 pub mod role;
 pub mod settings;
+pub mod statistics;
 pub mod version;
 pub mod worker;
 pub mod workflow;
@@ -29,11 +31,13 @@ pub use cache::CacheService;
 pub use dashboard_stats::DashboardStatsService;
 pub use dynamic_entity::DynamicEntityService;
 pub use entity_definition::{EntityDefinitionService, ServiceEntityFieldInfo};
+pub use license::LicenseService;
 pub use query_validation::{
     validate_list_query, FieldValidator, ListQueryParams, ValidatedListQuery,
 };
 pub use role::RoleService;
 pub use settings::SettingsService;
+pub use statistics::StatisticsService;
 pub use version::{VersionMetaWithName, VersionService};
 pub use worker::compute_reconcile_actions;
 pub use workflow::{WorkflowRepositoryAdapter, WorkflowService};

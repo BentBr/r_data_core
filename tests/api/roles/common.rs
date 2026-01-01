@@ -3,7 +3,7 @@
 
 use actix_web::{test, web, App};
 use r_data_core_core::cache::CacheManager;
-use r_data_core_core::config::CacheConfig;
+use r_data_core_core::config::{CacheConfig, LicenseConfig};
 use r_data_core_core::error::Result;
 use r_data_core_core::permissions::role::{
     AccessLevel, Permission, PermissionType, ResourceNamespace, Role,
@@ -12,7 +12,8 @@ use r_data_core_persistence::{
     AdminUserRepository, ApiKeyRepository, DashboardStatsRepository, WorkflowRepository,
 };
 use r_data_core_services::{
-    AdminUserService, ApiKeyService, DashboardStatsService, EntityDefinitionService, RoleService,
+    AdminUserService, ApiKeyService, DashboardStatsService, EntityDefinitionService,
+    LicenseService, RoleService,
 };
 use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_test_support::{
@@ -50,6 +51,9 @@ pub async fn setup_test_app() -> Result<(
         max_size: 10000,
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
+
+    let license_config = LicenseConfig::default();
+    let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
 
     let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.pool.clone())));
     let api_key_service = ApiKeyService::new(api_key_repository);
@@ -89,6 +93,7 @@ pub async fn setup_test_app() -> Result<(
         workflow_service,
         dashboard_stats_service,
         queue: test_queue_client_async().await,
+        license_service,
     };
 
     let app = test::init_service(

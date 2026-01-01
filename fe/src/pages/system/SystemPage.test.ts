@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import SystemPage from './SystemPage.vue'
 import type { EntityVersioningSettings } from '@/api/clients/system'
 
 const mockGetEntityVersioningSettings = vi.fn()
 const mockUpdateEntityVersioningSettings = vi.fn()
+const mockGetLicenseStatus = vi.fn()
 
 vi.mock('@/api/typed-client', () => {
     // Define ValidationError class inline to avoid hoisting issues
@@ -22,10 +24,18 @@ vi.mock('@/api/typed-client', () => {
             getEntityVersioningSettings: () => mockGetEntityVersioningSettings(),
             updateEntityVersioningSettings: (data: unknown) =>
                 mockUpdateEntityVersioningSettings(data),
+            getLicenseStatus: () => mockGetLicenseStatus(),
         },
         ValidationError,
     }
 })
+
+vi.mock('@/stores/license', () => ({
+    useLicenseStore: () => ({
+        licenseStatus: { value: null },
+        loadLicenseStatus: vi.fn(),
+    }),
+}))
 
 vi.mock('@/api/errors', () => {
     // Define HttpError class inline to avoid hoisting issues
@@ -72,8 +82,16 @@ vi.mock('@/composables/useTranslations', () => ({
     }),
 }))
 
+vi.mock('@/stores/license', () => ({
+    useLicenseStore: () => ({
+        licenseStatus: { value: null },
+        loadLicenseStatus: vi.fn(),
+    }),
+}))
+
 describe('SystemPage', () => {
     beforeEach(() => {
+        setActivePinia(createPinia())
         vi.clearAllMocks()
     })
 
@@ -204,5 +222,109 @@ describe('SystemPage', () => {
 
         // Verify error was shown
         expect(showError).toHaveBeenCalled()
+    })
+
+    it('should display license information when available', async () => {
+        const settings: EntityVersioningSettings = {
+            enabled: true,
+            max_versions: 10,
+            max_age_days: 180,
+        }
+        mockGetEntityVersioningSettings.mockResolvedValue(settings)
+
+        const licenseStatus = {
+            state: 'valid',
+            company: 'Test Company',
+            license_type: 'Enterprise',
+            license_id: 'test-license-id',
+            issued_at: '2024-01-01T00:00:00Z',
+            version: 'v1',
+            verified_at: '2024-01-02T00:00:00Z',
+            error_message: null,
+        }
+        mockGetLicenseStatus.mockResolvedValue(licenseStatus)
+
+        const wrapper = mount(SystemPage)
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // Verify license section is displayed
+        expect(wrapper.text()).toContain('License Information')
+        expect(wrapper.text()).toContain('Test Company')
+        expect(wrapper.text()).toContain('Enterprise')
+    })
+
+    it('should display license error message when state is error', async () => {
+        // Unmock the license store for this test
+        vi.unmock('@/stores/license')
+
+        const settings: EntityVersioningSettings = {
+            enabled: true,
+            max_versions: 10,
+            max_age_days: 180,
+        }
+        mockGetEntityVersioningSettings.mockResolvedValue(settings)
+
+        const licenseStatus = {
+            state: 'error' as const,
+            company: 'Test Company',
+            license_type: 'Enterprise',
+            license_id: 'test-license-id',
+            issued_at: '2024-01-01T00:00:00Z',
+            version: 'v1',
+            verified_at: '2024-01-02T00:00:00Z',
+            error_message: 'Network error',
+        }
+        mockGetLicenseStatus.mockResolvedValue(licenseStatus)
+
+        // Create a real Pinia instance and set up the store properly
+        const pinia = createPinia()
+        setActivePinia(pinia)
+        const { useLicenseStore } = await import('@/stores/license')
+        const store = useLicenseStore()
+        store.licenseStatus = licenseStatus
+
+        const wrapper = mount(SystemPage, {
+            global: {
+                plugins: [pinia],
+            },
+        })
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 200))
+
+        // Verify error message is displayed
+        expect(wrapper.text()).toContain('Network error')
+
+        // Re-mock for other tests
+        vi.mock('@/stores/license', () => ({
+            useLicenseStore: () => ({
+                licenseStatus: { value: null },
+                loadLicenseStatus: vi.fn(),
+            }),
+        }))
+    })
+
+    it('should handle license status loading failure gracefully', async () => {
+        const settings: EntityVersioningSettings = {
+            enabled: true,
+            max_versions: 10,
+            max_age_days: 180,
+        }
+        mockGetEntityVersioningSettings.mockResolvedValue(settings)
+        mockGetLicenseStatus.mockRejectedValue(new Error('Failed to load license status'))
+
+        const wrapper = mount(SystemPage, {
+            global: {
+                plugins: [createPinia()],
+            },
+        })
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // Should not crash, just not show license info
+        expect(wrapper.exists()).toBe(true)
     })
 })

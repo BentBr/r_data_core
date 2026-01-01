@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                entity_type,\n                COUNT(*) as count\n            FROM entities_registry\n            GROUP BY entity_type\n            ORDER BY entity_type\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "entity_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "f7d774961c0db8c434b66f8854c595c9ef09b1ebbefde413e1fa8ab77b6cc1dd"
+}

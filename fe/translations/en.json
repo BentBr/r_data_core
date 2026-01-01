@@ -811,6 +811,27 @@
       "save_success": "Settings saved",
       "load_failed": "Failed to load settings",
       "save_failed": "Failed to save settings"
+    },
+    "license": {
+      "section_title": "License Information",
+      "state": "State",
+      "company": "Company",
+      "license_type": "License Type",
+      "license_id": "License ID",
+      "issued_at": "Issued At",
+      "version": "Version",
+      "state_valid": "Valid",
+      "state_invalid": "Invalid",
+      "state_error": "Error",
+      "state_none": "None"
+    }
+  },
+  "license": {
+    "banner": {
+      "no_license": "Warning: No license key configured. Please configure a license key.",
+      "invalid_license": "Error: License key is invalid. Please contact support.",
+      "error_license": "Error: License verification failed. Please check your network connection.",
+      "dismiss": "Dismiss"
     }
   }
 }

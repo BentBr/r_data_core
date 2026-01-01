@@ -14,6 +14,7 @@ use r_data_core_services::adapters::{
 };
 use r_data_core_services::bootstrap::{init_cache_manager, init_logger_with_default, init_pg_pool};
 use r_data_core_services::compute_reconcile_actions;
+use r_data_core_services::LicenseService;
 use r_data_core_services::{
     DynamicEntityService, EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService,
 };
@@ -53,6 +54,10 @@ async fn main() -> r_data_core_core::error::Result<()> {
     // Initialize cache manager (shares Redis with queue if available)
     let cache_manager =
         init_cache_manager(config.cache.clone(), Some(&config.queue.redis_url)).await;
+
+    // Verify license on startup
+    let license_service = LicenseService::new(config.license.clone(), cache_manager.clone());
+    license_service.verify_license_on_startup("worker").await;
 
     let queue_cfg = Arc::new(config.queue.clone());
     let _queue = ApalisRedisQueue::from_parts(

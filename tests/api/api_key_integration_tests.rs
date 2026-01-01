@@ -10,11 +10,13 @@ use r_data_core_api::{
     ApiState,
 };
 use r_data_core_core::cache::CacheManager;
-use r_data_core_core::config::CacheConfig;
+use r_data_core_core::config::{CacheConfig, LicenseConfig};
 use r_data_core_core::error::Result;
 use r_data_core_persistence::ApiKeyRepositoryTrait;
 use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
-use r_data_core_services::{AdminUserService, ApiKeyService, EntityDefinitionService};
+use r_data_core_services::{
+    AdminUserService, ApiKeyService, EntityDefinitionService, LicenseService,
+};
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -118,6 +120,9 @@ mod tests {
 
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
+        let license_config = LicenseConfig::default();
+        let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
+
         // Clone the UUIDs to move into the closure
         let key1_uuid_clone = key1_uuid;
         let key2_uuid_clone = key2_uuid;
@@ -149,6 +154,7 @@ mod tests {
                 r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone()),
             )),
             queue: test_queue_client_async().await,
+            license_service,
         };
 
         let app = test::init_service(
@@ -232,6 +238,9 @@ mod tests {
 
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
+        let license_config = LicenseConfig::default();
+        let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
+
         // Wrap the repo in Arc for sharing
         let repo_arc = Arc::new(repo);
         let repo_for_handler = repo_arc.clone();
@@ -263,6 +272,7 @@ mod tests {
                 r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone()),
             )),
             queue: test_queue_client_async().await,
+            license_service,
         };
 
         let app = test::init_service(
@@ -367,6 +377,9 @@ mod tests {
 
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
+        let license_config = LicenseConfig::default();
+        let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
+
         let api_state = ApiState {
             db_pool: pool.pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
@@ -394,6 +407,7 @@ mod tests {
                 r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone()),
             )),
             queue: test_queue_client_async().await,
+            license_service,
         };
 
         let app =
@@ -478,6 +492,9 @@ mod tests {
 
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
+        let license_config = LicenseConfig::default();
+        let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
+
         let api_state = ApiState {
             db_pool: pool.pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
@@ -505,6 +522,7 @@ mod tests {
                 r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone()),
             )),
             queue: test_queue_client_async().await,
+            license_service,
         };
 
         let app =
@@ -596,6 +614,9 @@ mod tests {
 
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
+        let license_config = LicenseConfig::default();
+        let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
+
         let api_state = ApiState {
             db_pool: pool.pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
@@ -623,6 +644,7 @@ mod tests {
                 r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone()),
             )),
             queue: test_queue_client_async().await,
+            license_service,
         };
 
         let app =
@@ -768,6 +790,9 @@ mod tests {
 
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
+        let license_config = LicenseConfig::default();
+        let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
+
         let api_state = ApiState {
             db_pool: pool.pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
@@ -795,6 +820,7 @@ mod tests {
                 r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone()),
             )),
             queue: test_queue_client_async().await,
+            license_service,
         };
 
         let app =
@@ -940,6 +966,9 @@ mod tests {
 
         let cache_manager = Arc::new(CacheManager::new(cache_config));
 
+        let license_config = LicenseConfig::default();
+        let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
+
         let api_state = ApiState {
             db_pool: pool.pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
@@ -967,6 +996,7 @@ mod tests {
                 r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone()),
             )),
             queue: test_queue_client_async().await,
+            license_service,
         };
 
         let app = test::init_service(

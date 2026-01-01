@@ -1,0 +1,194 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
+use async_trait::async_trait;
+use chrono::{DateTime, Timelike, Utc};
+use log::{error, info, warn};
+use sha2::{Digest, Sha256};
+use std::sync::Arc;
+
+use r_data_core_core::cache::CacheManager;
+use r_data_core_core::config::LicenseConfig;
+use r_data_core_core::maintenance::task::TaskContext;
+use r_data_core_core::maintenance::MaintenanceTask;
+use r_data_core_services::LicenseService;
+
+/// Maintenance task that verifies license key daily with randomized timing
+pub struct LicenseVerificationTask {
+    cron: String,
+    config: LicenseConfig,
+}
+
+impl LicenseVerificationTask {
+    /// Create a new `LicenseVerificationTask` with the given cron expression
+    ///
+    /// # Arguments
+    /// * `cron` - Cron expression for scheduling this task
+    /// * `config` - License configuration
+    #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // String is not const-constructible
+    pub fn new(cron: String, config: LicenseConfig) -> Self {
+        Self { cron, config }
+    }
+
+    /// Calculate deterministic hour based on license key ID
+    fn calculate_hour(&self) -> Option<u8> {
+        let license_key = self.config.license_key.as_ref()?;
+
+        // Try to extract license_id from JWT
+        let license_id = match self.extract_license_id(license_key) {
+            Ok(id) => id,
+            Err(_) => {
+                // Fallback: use license key itself as identifier
+                license_key.to_string()
+            }
+        };
+
+        // Hash license_id using SHA256
+        let mut hasher = Sha256::new();
+        hasher.update(license_id.as_bytes());
+        let hash = hasher.finalize();
+
+        // Take first byte and calculate hour (0-23)
+        let hour = (hash[0] % 24) as u8;
+        Some(hour)
+    }
+
+    /// Extract license_id from JWT token
+    fn extract_license_id(
+        &self,
+        license_key: &str,
+    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+        use base64::Engine;
+
+        let parts: Vec<&str> = license_key.split('.').collect();
+        if parts.len() != 3 {
+            return Err("Invalid JWT format".into());
+        }
+
+        let payload = parts[1];
+        let decoded = URL_SAFE_NO_PAD.decode(payload)?;
+        let claims: serde_json::Value = serde_json::from_slice(&decoded)?;
+
+        claims
+            .get("license_id")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| "Missing license_id in JWT claims".into())
+    }
+
+    /// Check if task should run (not run within last hour)
+    async fn should_run(&self, cache: &CacheManager) -> bool {
+        let cache_key = "task:license_verification:last_run";
+
+        if let Ok(Some(last_run_timestamp)) = cache.get::<i64>(cache_key).await {
+            if let Some(last_run) = DateTime::from_timestamp(last_run_timestamp, 0) {
+                let now = Utc::now();
+                let hours_since_last_run = (now - last_run).num_hours();
+
+                if hours_since_last_run < 1 {
+                    info!(
+                        "[license_verification] Skipping - last run was {} minutes ago",
+                        (now - last_run).num_minutes()
+                    );
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
+
+    /// Update last run timestamp in cache
+    async fn update_last_run(&self, cache: &CacheManager) {
+        let cache_key = "task:license_verification:last_run";
+        let now = Utc::now().timestamp();
+        let ttl = Some(7200_u64); // 2 hours TTL to cover hour boundaries
+
+        if let Err(e) = cache.set(cache_key, &now, ttl).await {
+            warn!("[license_verification] Failed to update last run timestamp: {e}");
+        }
+    }
+}
+
+#[async_trait]
+impl MaintenanceTask for LicenseVerificationTask {
+    fn name(&self) -> &'static str {
+        "license_verification"
+    }
+
+    fn cron(&self) -> &str {
+        &self.cron
+    }
+
+    async fn execute(
+        &self,
+        context: &dyn TaskContext,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        info!("[license_verification] Starting license verification task");
+
+        // Get cache manager
+        let cache_manager: Arc<CacheManager> = context.cache_manager().ok_or_else(|| {
+            Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Cache manager not available",
+            )) as Box<dyn std::error::Error + Send + Sync>
+        })?;
+
+        // Determine if we should run based on deterministic hour and random minute
+        let current_hour = Utc::now().hour() as u8;
+        let target_hour = self.calculate_hour().unwrap_or_else(|| {
+            // Fallback to a random hour if license_id cannot be determined
+            (rand::random::<u32>() % 24) as u8
+        });
+
+        if current_hour != target_hour {
+            info!(
+                "[license_verification] Skipping - current hour {current_hour} != target hour {target_hour}"
+            );
+            return Ok(());
+        }
+
+        // Check if we should run (prevent multiple runs in same hour)
+        if !self.should_run(&cache_manager).await {
+            return Ok(());
+        }
+
+        // Create license service
+        let license_service = LicenseService::new(self.config.clone(), cache_manager.clone());
+
+        // Verify license
+        match license_service.verify_license().await {
+            Ok(result) => match result.state {
+                r_data_core_services::license::service::LicenseState::Valid => {
+                    info!("[license_verification] License verified successfully");
+                }
+                r_data_core_services::license::service::LicenseState::Invalid => {
+                    warn!(
+                        "[license_verification] License is invalid: {:?}",
+                        result.error_message
+                    );
+                }
+                r_data_core_services::license::service::LicenseState::Error => {
+                    error!(
+                        "[license_verification] License verification error: {:?}",
+                        result.error_message
+                    );
+                }
+                r_data_core_services::license::service::LicenseState::None => {
+                    warn!("[license_verification] No license key configured");
+                }
+            },
+            Err(e) => {
+                error!("[license_verification] Failed to verify license: {e}");
+                return Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>);
+            }
+        }
+
+        // Update last run timestamp
+        self.update_last_run(&cache_manager).await;
+
+        info!("[license_verification] License verification task completed");
+        Ok(())
+    }
+}

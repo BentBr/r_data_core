@@ -87,6 +87,7 @@ docker pull ghcr.io/bentbr/r-data-core-maintenance:latest
 | `DATABASE_URL` | PostgreSQL connection string |
 | `JWT_SECRET` | Secret key for JWT token signing |
 | `REDIS_URL` | Redis connection URL |
+| `LICENSE_KEY` | JWT-based license key for this instance |
 
 ### Optional Environment Variables
 
@@ -101,6 +102,7 @@ docker pull ghcr.io/bentbr/r-data-core-maintenance:latest
 | `CACHE_ENABLED` | true        | Enable caching                        |
 | `CACHE_TTL` | 300         | Default cache TTL (seconds)           |
 | `CHECK_DEFAULT_ADMIN_PASSWORD` | true        | Defines if the warning in FE is shown |
+| `LICENSE_PRIVATE_KEY` | -           | RSA private key for creating license keys (used by `license_tool` binary) |
 
 ### Maintenance Worker Environment Variables
 
@@ -144,6 +146,22 @@ docker compose exec core /usr/local/bin/clear_cache --prefix "api_keys:" --dry-r
 
 # Hash a password for admin users
 docker compose exec core /usr/local/bin/hash_password 'YourSecurePassword'
+
+# Generate RSA keypair for license keys (one-time setup)
+openssl genrsa -out license_private.key 2048
+openssl rsa -in license_private.key -pubout -out license_public.key
+
+# Create a new license key
+docker compose exec core /usr/local/bin/license_tool create \
+  --company "Your Company Name" \
+  --license-type Enterprise \
+  --private-key-path /path/to/license_private.key \
+  --expires-days 365
+
+# Verify an existing license key
+docker compose exec core /usr/local/bin/license_tool verify \
+  --license-key "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  --public-key-path /path/to/license_public.key
 ```
 
 | Binary | Description |
@@ -151,6 +169,7 @@ docker compose exec core /usr/local/bin/hash_password 'YourSecurePassword'
 | `run_migrations` | Run SQLx database migrations (`--status` to check, `--help` for options) |
 | `clear_cache` | Clear Redis cache (`--all` or `--prefix <PREFIX>`, `--dry-run` to preview) |
 | `hash_password` | Generate Argon2 password hash with SQL update statement |
+| `license_tool` | Create and verify JWT-based license keys (`create` or `verify` subcommands) |
 
 ### Database Schema
 
