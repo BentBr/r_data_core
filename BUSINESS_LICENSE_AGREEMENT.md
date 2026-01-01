@@ -2,7 +2,7 @@
 
 **Effective Date:** 30.12.2025
 
-This Business License Agreement ("Agreement") is entered into between **Slothlike** ("Licensor," "we," "us," or "our"), a company organized under the laws of Germany, and the entity or individual accepting this Agreement ("Licensee," "you," or "your").
+This Business License Agreement ("Agreement") is entered into between **Slothlike** ("Licensor," "we," "us," or "our"), and the entity or individual accepting this Agreement ("Licensee," "you," or "your").
 
 By downloading, installing, accessing, or using RDataCore software ("Software"), you agree to be bound by the terms and conditions of this Agreement. If you do not agree to these terms, do not use the Software.
 
@@ -37,15 +37,15 @@ By downloading, installing, accessing, or using RDataCore software ("Software"),
 #### 3.1.1. Community Edition
 - **Eligibility:** Freelancers, developers, startups, and small-to-medium businesses (SMBs)
 - **Price:** Free forever
-- **Features:** All 18 core features included
-- **Support:** Community support (forums, GitHub issues)
+- **Features:** All core features included
+- **Support:** GitHub issues support
 - **Term:** Perpetual, subject to termination as provided in Section 9
 
 #### 3.1.2. Education Edition
 - **Eligibility:** Public schools and universities
 - **Price:** Free forever
-- **Features:** All 18 core features included
-- **Support:** Priority support via email
+- **Features:** All core features included
+- **Support:** GitHub issues support
 - **Term:** Perpetual, subject to termination as provided in Section 9
 
 ### 3.2. Commercial Licenses
@@ -55,25 +55,25 @@ By downloading, installing, accessing, or using RDataCore software ("Software"),
 **Company I License:**
 - **Eligibility:** Organizations with 5M€ annual revenue or 10+ employees
 - **Price:** 400€ per month or 4,500€ per year (6.25% discount for annual payment)
-- **Features:** All 18 core features included
-- **Support:** Email and chat support
-- **Updates:** Regular updates and patches included
+- **Features:** All core features included
+- **Support:** Email and GitHub issues support; bugfixes included
+- **Updates:** Updates always included (Licensee can checkout newer versions)
 - **Term:** Monthly or annual subscription, automatically renewing unless terminated
 
 **Company II License:**
 - **Eligibility:** Organizations with 15M€ annual revenue or 40+ employees
 - **Price:** 900€ per month or 10,000€ per year (8.3% discount for annual payment)
-- **Features:** All 18 core features included
-- **Support:** Email and chat support
-- **Updates:** Regular updates and patches included
+- **Features:** All core features included
+- **Support:** Email and GitHub issues support; bugfixes included
+- **Updates:** Updates always included (Licensee can checkout newer versions)
 - **Term:** Monthly or annual subscription, automatically renewing unless terminated
 
 **Company III License:**
 - **Eligibility:** Organizations with 150M€ annual revenue or 100+ employees
 - **Price:** 3,000€ per month or 30,000€ per year (17% discount for annual payment)
-- **Features:** All 18 core features included
-- **Support:** Email and chat support
-- **Updates:** Regular updates and patches included
+- **Features:** All core features included
+- **Support:** Email and GitHub issues support; bugfixes included
+- **Updates:** Updates always included (Licensee can checkout newer versions)
 - **Term:** Monthly or annual subscription, automatically renewing unless terminated
 
 #### 3.2.2. Society Licenses
@@ -81,29 +81,33 @@ By downloading, installing, accessing, or using RDataCore software ("Software"),
 **Society I License:**
 - **Eligibility:** NGOs, private schools, and private universities with 10+ employees
 - **Price:** 200€ per month or 2,250€ per year (6.7% discount for annual payment)
-- **Features:** All 18 core features included
-- **Support:** Email support
+- **Features:** All core features included
+- **Support:** Email and GitHub issues support; bugfixes included
+- **Updates:** Updates always included (Licensee can checkout newer versions)
 - **Term:** Monthly or annual subscription, automatically renewing unless terminated
 
 **Society II License:**
 - **Eligibility:** NGOs, private schools, and private universities with 40+ employees
 - **Price:** 450€ per month or 5,000€ per year (7.4% discount for annual payment)
-- **Features:** All 18 core features included
-- **Support:** Email support
+- **Features:** All core features included
+- **Support:** Email and GitHub issues support; bugfixes included
+- **Updates:** Updates always included (Licensee can checkout newer versions)
 - **Term:** Monthly or annual subscription, automatically renewing unless terminated
 
 **Society III License:**
 - **Eligibility:** NGOs, private schools, and private universities with 100+ employees
 - **Price:** 1,500€ per month or 15,000€ per year (1.7% discount for annual payment)
-- **Features:** All 18 core features included
-- **Support:** Email support
+- **Features:** All core features included
+- **Support:** Email and GitHub issues support; bugfixes included
+- **Updates:** Updates always included (Licensee can checkout newer versions)
 - **Term:** Monthly or annual subscription, automatically renewing unless terminated
 
 #### 3.2.3. Corporate Edition
 - **Eligibility:** Organizations with 500+ employees
 - **Price:** Custom pricing based on organization size and requirements
-- **Features:** All 18 core features included
-- **Support:** Custom support arrangements
+- **Features:** All core features included
+- **Support:** Email and GitHub issues support; bugfixes included; custom support arrangements available
+- **Updates:** Updates always included (Licensee can checkout newer versions)
 - **Term:** As specified in a separate written agreement
 
 ### 3.3. License Tier Selection and Changes
@@ -126,6 +130,14 @@ By downloading, installing, accessing, or using RDataCore software ("Software"),
 
 4.2. **Resale Restrictions.** Licensee may not resell, redistribute, or otherwise commercialize the Software or any component thereof, except as expressly permitted by this Agreement or a separate written agreement with Licensor.
 
+4.3. **Agency Licensing for Clients.** Software integrator agencies, web development agencies, and similar service providers ("Agencies") may obtain licenses for the Software on behalf of their clients. When an Agency licenses the Software for a client:
+   - The License Tier shall be determined based on the **client's** organization size, revenue, employee count, and use-case, not the Agency's size or characteristics;
+   - The Agency may install, configure, and maintain the Software for the client as part of their professional services;
+   - The client's use of the Software must comply with this Agreement;
+   - The Agency is responsible for ensuring the client understands and complies with the terms of this Agreement;
+   - Each client deployment requires a separate license based on the client's qualifying criteria;
+   - Agencies may not use a single license to serve multiple clients unless all clients would individually qualify for the same License Tier and the deployment is shared infrastructure.
+
 ## 5. Payment Terms (Commercial Licenses Only)
 
 5.1. **Fees.** For commercial licenses (Company, Society, and Corporate), Licensee agrees to pay the fees specified for the selected License Tier.
@@ -145,27 +157,28 @@ By downloading, installing, accessing, or using RDataCore software ("Software"),
 
 ## 6. Support and Maintenance
 
-6.1. **Support Services.** Support services vary by License Tier as specified in Section 3. Support may include:
-   - Email support
-   - Chat support (for Company licenses)
-   - Community support (for free licenses)
-   - Priority support (for Education and Corporate licenses)
+6.1. **Support Services.** The Software license itself does not include dedicated support. All licensees have access to:
+   - GitHub issues support for bug reports, feature requests, and general questions
+   - For paid licenses: Email support in addition to GitHub issues support
+   - Bugfixes are included for all paid licenses
 
-6.2. **Support Scope.** Support includes assistance with:
-   - Installation and configuration
+6.2. **Support Packages (SLA).** Separate Service Level Agreement (SLA) packages with dedicated support, guaranteed response times, and priority handling may be agreed upon separately between Licensor and Licensee. Such support packages are not included in the base license fee and require a separate written agreement.
+
+6.3. **Professional Services.** Installation, setup, configuration, maintenance tasks, custom development, consulting services, and training are not included in the license and may be ordered separately by Licensee. These services are subject to separate agreements and fees.
+
+6.4. **Support Scope.** When support is provided (via GitHub issues, email, or under an SLA), it includes assistance with:
    - Troubleshooting and bug reports
    - General usage questions
    - Documentation clarification
 
-6.3. **Support Exclusions.** Support does not include:
-   - Custom development or consulting services
+6.5. **Support Exclusions.** Support does not include:
+   - Custom development or consulting services (unless separately agreed)
    - Training services (unless separately agreed)
+   - Installation, setup, or maintenance services (unless separately ordered)
    - Support for modified versions of the Software
    - Support for third-party integrations not officially supported by Licensor
 
-6.4. **Updates and Patches.** Licensor will provide Updates and patches for the Software as they become available. Licensee is responsible for installing Updates. Licensor is not obligated to provide Updates for versions of the Software that are more than two major versions old.
-
-6.5. **Support Availability.** Support availability and response times vary by License Tier and are subject to Licensor's business hours and operational capacity.
+6.6. **Updates and Patches.** Updates are always included with all licenses. Licensee can checkout newer versions of the Software from the source repository. Licensor makes Updates available as they become available, and Licensee is responsible for installing and deploying Updates to their infrastructure.
 
 ## 7. Intellectual Property
 
@@ -255,7 +268,7 @@ By downloading, installing, accessing, or using RDataCore software ("Software"),
 
 13.1. **Governing Law.** This Agreement shall be governed by and construed in accordance with the laws of the Federal Republic of Germany, without regard to its conflict of law principles.
 
-13.2. **Jurisdiction.** Any disputes arising out of or in connection with this Agreement shall be subject to the exclusive jurisdiction of the courts of Berlin, Germany.
+13.2. **Jurisdiction.** Any disputes arising out of or in connection with this Agreement shall be subject to the exclusive jurisdiction of the courts of Hamburg, Germany.
 
 13.3. **Alternative Dispute Resolution.** Before initiating formal legal proceedings, the parties agree to attempt to resolve any dispute through good faith negotiations. If such negotiations are unsuccessful, the parties may agree to mediation or other alternative dispute resolution methods.
 

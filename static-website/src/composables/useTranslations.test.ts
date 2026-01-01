@@ -66,4 +66,38 @@ describe('useTranslations', () => {
         // Verify language was actually changed
         expect(currentLanguage.value).toBe('de')
     })
+
+    describe('array access', () => {
+        it('should access array elements with numeric indices', () => {
+            const { t } = useTranslations()
+            // roadmap.done.features is an array of objects with title/desc
+            const title = t('roadmap.done.features.0.title')
+            expect(title).toBe('Users & Roles')
+        })
+
+        it('should access nested properties within array elements', () => {
+            const { t } = useTranslations()
+            const desc = t('roadmap.done.features.1.desc')
+            expect(desc).toContain('workflow')
+        })
+
+        it('should access simple string arrays', () => {
+            const { t } = useTranslations()
+            // use_cases.intro.capabilities is an array of strings
+            const capability = t('use_cases.intro.capabilities.0')
+            expect(capability).toBe('Import/Export CSV & JSON')
+        })
+
+        it('should return key for out-of-bounds array index', () => {
+            const { t } = useTranslations()
+            const outOfBounds = t('roadmap.done.features.999.title')
+            expect(outOfBounds).toBe('roadmap.done.features.999.title')
+        })
+
+        it('should return key for invalid array index', () => {
+            const { t } = useTranslations()
+            const invalid = t('roadmap.done.features.notanumber.title')
+            expect(invalid).toBe('roadmap.done.features.notanumber.title')
+        })
+    })
 })

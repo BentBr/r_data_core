@@ -27,13 +27,19 @@ const translations = reactive<Record<Language, TranslationData>>({
 function getNestedProperty(obj: TranslationData, path: string): string | undefined {
     const result = path.split('.').reduce<TranslationValue | undefined>(
         (current, key) => {
-            if (
-                current &&
-                typeof current === 'object' &&
-                !Array.isArray(current) &&
-                key in current
-            ) {
-                return (current as TranslationData)[key]
+            if (current && typeof current === 'object') {
+                // Handle array access with numeric index
+                if (Array.isArray(current)) {
+                    const index = parseInt(key, 10)
+                    if (!isNaN(index) && index >= 0 && index < current.length) {
+                        return current[index] as TranslationValue
+                    }
+                    return undefined
+                }
+                // Handle object access
+                if (key in current) {
+                    return (current as TranslationData)[key]
+                }
             }
             return undefined
         },

@@ -91,9 +91,8 @@ export default defineConfig(({ isSsrBuild }) => ({
             console.log(`Pre-rendered: ${route}`)
             return html
         },
-        // Critical CSS extraction
-        beastiesOptions: {
-            preload: 'swap',
-        },
+        // Critical CSS extraction - disabled for now to ensure full CSS loads
+        // The 'swap' preload wasn't adding the CSS link properly
+        beastiesOptions: false,
     },
 }))
