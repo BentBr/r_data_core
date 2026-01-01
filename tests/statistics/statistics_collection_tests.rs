@@ -11,7 +11,7 @@ use std::sync::Arc;
 #[serial_test::serial]
 async fn test_statistics_collection() {
     let test_db = setup_test_db().await;
-    let pool = test_db.pool;
+    let pool = test_db.pool.clone();
 
     let mock_server = MockServer::start();
     let mock = mock_server.mock(|when, then| {
@@ -46,7 +46,7 @@ async fn test_statistics_collection() {
 #[serial_test::serial]
 async fn test_statistics_collection_silent_failure() {
     let test_db = setup_test_db().await;
-    let pool = test_db.pool;
+    let pool = test_db.pool.clone();
 
     // Mock server that returns error
     let mock_server = MockServer::start();

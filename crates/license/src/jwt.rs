@@ -80,7 +80,8 @@ pub fn verify_license_key(
     let decoding_key = DecodingKey::from_rsa_pem(public_key.as_bytes())
         .map_err(|e| Error::KeyFormat(format!("Invalid public key format: {e}")))?;
 
-    let validation = Validation::new(jsonwebtoken::Algorithm::RS256);
+    let mut validation = Validation::new(jsonwebtoken::Algorithm::RS256);
+    validation.required_spec_claims.remove("exp");
     let token_data = decode::<LicenseClaims>(license_key, &decoding_key, &validation)
         .map_err(|e| Error::JwtDecode(format!("Failed to decode/verify JWT: {e}")))?;
 

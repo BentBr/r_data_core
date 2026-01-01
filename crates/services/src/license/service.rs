@@ -159,7 +159,7 @@ impl LicenseService {
         };
 
         // Try to decode license key locally first to get license_id
-        let license_id = match self.decode_license_key(license_key) {
+        let license_id = match Self::decode_license_key(license_key) {
             Ok(claims) => Some(claims.license_id),
             Err(_) => None,
         };
@@ -218,7 +218,7 @@ impl LicenseService {
         };
 
         // Try to decode license key to get license_id
-        let license_id = match self.decode_license_key(license_key) {
+        let license_id = match Self::decode_license_key(license_key) {
             Ok(claims) => claims.license_id,
             Err(_) => {
                 // Can't decode - return None state
@@ -243,7 +243,7 @@ impl LicenseService {
     }
 
     /// Decode license key without verification (to extract `license_id`)
-    fn decode_license_key(&self, license_key: &str) -> Result<LicenseClaims> {
+    fn decode_license_key(license_key: &str) -> Result<LicenseClaims> {
         // Try to decode JWT without verification to get claims
         // This is just to extract the license_id for caching
         use serde_json::Value;
@@ -286,7 +286,7 @@ impl LicenseService {
     /// Call the license verification API
     async fn call_verification_api(&self, license_key: &str) -> LicenseVerificationResult {
         // First, try to decode the license key locally to get claims
-        let claims = match self.decode_license_key(license_key) {
+        let claims = match Self::decode_license_key(license_key) {
             Ok(c) => c,
             Err(e) => {
                 return LicenseVerificationResult {

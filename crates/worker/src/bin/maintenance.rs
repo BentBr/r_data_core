@@ -1,4 +1,5 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+#![allow(clippy::too_many_lines)] // Maintenance binary needs to register multiple tasks
 
 use log::{error, info};
 use r_data_core_core::config::load_maintenance_config;

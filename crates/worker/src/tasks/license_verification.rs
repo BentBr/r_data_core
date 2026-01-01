@@ -35,13 +35,8 @@ impl LicenseVerificationTask {
         let license_key = self.config.license_key.as_ref()?;
 
         // Try to extract license_id from JWT
-        let license_id = match self.extract_license_id(license_key) {
-            Ok(id) => id,
-            Err(_) => {
-                // Fallback: use license key itself as identifier
-                license_key.to_string()
-            }
-        };
+        let license_id =
+            Self::extract_license_id(license_key).unwrap_or_else(|_| license_key.clone());
 
         // Hash license_id using SHA256
         let mut hasher = Sha256::new();
@@ -49,13 +44,12 @@ impl LicenseVerificationTask {
         let hash = hasher.finalize();
 
         // Take first byte and calculate hour (0-23)
-        let hour = (hash[0] % 24) as u8;
+        let hour = hash[0] % 24;
         Some(hour)
     }
 
-    /// Extract license_id from JWT token
+    /// Extract `license_id` from JWT token
     fn extract_license_id(
-        &self,
         license_key: &str,
     ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -73,7 +67,7 @@ impl LicenseVerificationTask {
         claims
             .get("license_id")
             .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
+            .map(str::to_string)
             .ok_or_else(|| "Missing license_id in JWT claims".into())
     }
 
@@ -129,14 +123,12 @@ impl MaintenanceTask for LicenseVerificationTask {
 
         // Get cache manager
         let cache_manager: Arc<CacheManager> = context.cache_manager().ok_or_else(|| {
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Cache manager not available",
-            )) as Box<dyn std::error::Error + Send + Sync>
+            Box::new(std::io::Error::other("Cache manager not available"))
+                as Box<dyn std::error::Error + Send + Sync>
         })?;
 
         // Determine if we should run based on deterministic hour and random minute
-        let current_hour = Utc::now().hour() as u8;
+        let current_hour = u8::try_from(Utc::now().hour()).unwrap_or(0); // Hours are 0-23, so this should never fail
         let target_hour = self.calculate_hour().unwrap_or_else(|| {
             // Fallback to a random hour if license_id cannot be determined
             (rand::random::<u32>() % 24) as u8

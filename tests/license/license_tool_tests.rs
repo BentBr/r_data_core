@@ -185,10 +185,11 @@ fn test_license_tool_verify() {
         .expect("Failed to execute license_tool verify");
 
     // Check that the command succeeded
-    assert!(
-        verify_result.status.success(),
-        "Binary should exit successfully"
-    );
+    if !verify_result.status.success() {
+        let stderr = String::from_utf8_lossy(&verify_result.stderr);
+        let stdout = String::from_utf8_lossy(&verify_result.stdout);
+        panic!("Binary should exit successfully. Stderr: {stderr}, Stdout: {stdout}");
+    }
 
     // Get the output as string
     let output_str =

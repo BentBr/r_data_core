@@ -29,7 +29,7 @@ async fn test_statistics_collection_task_name_and_cron() {
 #[serial]
 async fn test_statistics_collection_task_executes() {
     let test_db = setup_test_db().await;
-    let pool = test_db.pool;
+    let pool = test_db.pool.clone();
 
     let mock_server = MockServer::start();
     let _mock = mock_server.mock(|when, then| {
@@ -60,7 +60,7 @@ async fn test_statistics_collection_task_executes() {
         "http://localhost:8080".to_string(),
         vec!["http://localhost:3000".to_string()],
     );
-    let context = TaskContext::with_cache(pool.pool.clone(), cache_manager);
+    let context = TaskContext::with_cache(pool.clone(), cache_manager);
 
     // Should succeed (silent failure on API errors)
     let result = task.execute(&context).await;
@@ -71,7 +71,7 @@ async fn test_statistics_collection_task_executes() {
 #[serial]
 async fn test_statistics_collection_task_prevents_multiple_runs() {
     let test_db = setup_test_db().await;
-    let pool = test_db.pool;
+    let pool = test_db.pool.clone();
 
     let config = LicenseConfig {
         license_key: None,
@@ -95,7 +95,7 @@ async fn test_statistics_collection_task_prevents_multiple_runs() {
         "http://localhost:8080".to_string(),
         vec!["http://localhost:3000".to_string()],
     );
-    let context = TaskContext::with_cache(pool.pool.clone(), cache_manager.clone());
+    let context = TaskContext::with_cache(pool.clone(), cache_manager.clone());
 
     // First execution
     let result1 = task.execute(&context).await;
@@ -108,7 +108,7 @@ async fn test_statistics_collection_task_prevents_multiple_runs() {
         "http://localhost:8080".to_string(),
         vec!["http://localhost:3000".to_string()],
     );
-    let context2 = TaskContext::with_cache(pool.pool.clone(), cache_manager);
+    let context2 = TaskContext::with_cache(pool.clone(), cache_manager);
     let result2 = task2.execute(&context2).await;
     assert!(
         result2.is_ok(),
