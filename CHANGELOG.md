@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/BentBr/r_data_core/compare/v0.3.0...v0.3.1) (2026-01-02)
+
+
+### Features
+
+* making sure the license shows expiry ([2092742](https://github.com/BentBr/r_data_core/commit/20927429ca0b9c89576386ea47ac3b78e5e58543))
+
 ## [0.3.0](https://github.com/BentBr/r_data_core/compare/v0.2.1...v0.3.0) (2026-01-02)
 
 
