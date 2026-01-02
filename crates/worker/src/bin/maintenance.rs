@@ -10,7 +10,7 @@ use r_data_core_worker::tasks::version_purger::VersionPurgerTask;
 use tokio_cron_scheduler::JobScheduler;
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> r_data_core_core::error::Result<()> {
     // Basic logger init
     init_logger_with_default("info");
 
@@ -23,7 +23,9 @@ async fn main() -> anyhow::Result<()> {
         }
         Err(e) => {
             error!("Failed to load configuration: {e}");
-            return Err(anyhow::anyhow!("Failed to load configuration: {e}"));
+            return Err(r_data_core_core::error::Error::Config(format!(
+                "Failed to load configuration: {e}"
+            )));
         }
     };
 
@@ -31,13 +33,18 @@ async fn main() -> anyhow::Result<()> {
         &config.database.connection_string,
         config.database.max_connections,
     )
-    .await?;
+    .await
+    .map_err(|e| {
+        r_data_core_core::error::Error::Config(format!("Failed to initialize database pool: {e}"))
+    })?;
 
     // Initialize cache manager
     let cache_manager = init_cache_manager(config.cache.clone(), Some(&config.redis_url)).await;
 
     // Create scheduler
-    let scheduler = JobScheduler::new().await?;
+    let scheduler = JobScheduler::new().await.map_err(|e| {
+        r_data_core_core::error::Error::Config(format!("Failed to create job scheduler: {e}"))
+    })?;
 
     // Register version purger task
     let version_purger_cron = config.version_purger_cron.clone();
@@ -57,8 +64,11 @@ async fn main() -> anyhow::Result<()> {
                 }
             })
         },
-    )?;
-    scheduler.add(job).await?;
+    )
+    .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to create job: {e}")))?;
+    scheduler.add(job).await.map_err(|e| {
+        r_data_core_core::error::Error::Config(format!("Failed to add job to scheduler: {e}"))
+    })?;
 
     // Register refresh token cleanup task
     let refresh_token_cleanup_cron = config.refresh_token_cleanup_cron.clone();
@@ -78,11 +88,16 @@ async fn main() -> anyhow::Result<()> {
                 }
             })
         },
-    )?;
-    scheduler.add(job2).await?;
+    )
+    .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to create job: {e}")))?;
+    scheduler.add(job2).await.map_err(|e| {
+        r_data_core_core::error::Error::Config(format!("Failed to add job to scheduler: {e}"))
+    })?;
 
     info!("Maintenance scheduler started");
-    scheduler.start().await?;
+    scheduler.start().await.map_err(|e| {
+        r_data_core_core::error::Error::Config(format!("Failed to start scheduler: {e}"))
+    })?;
 
     // Park forever
     futures::future::pending::<()>().await;

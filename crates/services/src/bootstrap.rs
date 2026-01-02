@@ -25,7 +25,7 @@ pub fn init_logger_with_default(default_level: &str) {
 pub async fn init_pg_pool(
     connection_string: &str,
     max_connections: u32,
-) -> anyhow::Result<sqlx::Pool<sqlx::Postgres>> {
+) -> r_data_core_core::error::Result<sqlx::Pool<sqlx::Postgres>> {
     let pool = PgPoolOptions::new()
         .max_connections(max_connections)
         .connect(connection_string)

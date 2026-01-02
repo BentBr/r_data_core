@@ -1,6 +1,5 @@
 use super::JobQueue;
 use crate::data::jobs::{FetchAndStageJob, ProcessRawItemJob};
-use anyhow::Context;
 use async_trait::async_trait;
 use r_data_core_core::cache::test_redis_connection;
 use redis::{aio::MultiplexedConnection, Client};
@@ -21,17 +20,29 @@ impl ApalisRedisQueue {
     ///
     /// # Errors
     /// Returns an error if the Redis connection cannot be established or the URL is invalid.
-    pub async fn from_parts(url: &str, fetch_key: &str, process_key: &str) -> anyhow::Result<Self> {
-        let client = Client::open(url).with_context(|| format!("invalid redis url: {url}"))?;
+    pub async fn from_parts(
+        url: &str,
+        fetch_key: &str,
+        process_key: &str,
+    ) -> r_data_core_core::error::Result<Self> {
+        let client = Client::open(url).map_err(|e| {
+            r_data_core_core::error::Error::Config(format!("invalid redis url: {url}: {e}"))
+        })?;
 
         // Test connection immediately
         let mut test_conn = client
             .get_multiplexed_async_connection()
             .await
-            .context("failed to get initial Redis connection for testing")?;
-        test_redis_connection(&mut test_conn)
-            .await
-            .map_err(|e| anyhow::anyhow!("failed to ping Redis - connection test failed: {e}"))?;
+            .map_err(|e| {
+                r_data_core_core::error::Error::Cache(format!(
+                    "failed to get initial Redis connection for testing: {e}"
+                ))
+            })?;
+        test_redis_connection(&mut test_conn).await.map_err(|e| {
+            r_data_core_core::error::Error::Cache(format!(
+                "failed to ping Redis - connection test failed: {e}"
+            ))
+        })?;
 
         log::info!(
             "Redis queue initialized: url={url}, fetch_key={fetch_key}, process_key={process_key}"
@@ -44,21 +55,32 @@ impl ApalisRedisQueue {
         })
     }
 
-    async fn get_conn(&self) -> anyhow::Result<MultiplexedConnection> {
-        let client = self
-            .client
-            .as_ref()
-            .context("Redis queue not configured (missing REDIS_URL)?")?;
+    async fn get_conn(&self) -> r_data_core_core::error::Result<MultiplexedConnection> {
+        let client = self.client.as_ref().ok_or_else(|| {
+            r_data_core_core::error::Error::Config(
+                "Redis queue not configured (missing REDIS_URL)?".to_string(),
+            )
+        })?;
         client
             .get_multiplexed_async_connection()
             .await
-            .context("failed to get redis connection")
+            .map_err(|e| {
+                r_data_core_core::error::Error::Cache(format!(
+                    "failed to get redis connection: {e}"
+                ))
+            })
     }
 
     #[allow(clippy::future_not_send)] // MultiplexedConnection is Send, this is a false positive
-    async fn push_json<T: serde::Serialize>(&self, key: &str, job: &T) -> anyhow::Result<()> {
+    async fn push_json<T: serde::Serialize>(
+        &self,
+        key: &str,
+        job: &T,
+    ) -> r_data_core_core::error::Result<()> {
         let mut conn = self.get_conn().await?;
-        let payload = serde_json::to_string(job).context("failed to serialize job")?;
+        let payload = serde_json::to_string(job).map_err(|e| {
+            r_data_core_core::error::Error::Deserialization(format!("failed to serialize job: {e}"))
+        })?;
         log::info!("Enqueueing job to Redis key '{key}': {payload}");
         // RPUSH for queue semantics (append to tail)
         let result: i64 = redis::cmd("RPUSH")
@@ -66,7 +88,11 @@ impl ApalisRedisQueue {
             .arg(&payload)
             .query_async(&mut conn)
             .await
-            .with_context(|| format!("failed to RPUSH job to Redis key '{key}'"))?;
+            .map_err(|e| {
+                r_data_core_core::error::Error::Cache(format!(
+                    "failed to RPUSH job to Redis key '{key}': {e}"
+                ))
+            })?;
         log::info!("Successfully enqueued job: RPUSH returned length {result} for key '{key}'");
         Ok(())
     }
@@ -75,7 +101,7 @@ impl ApalisRedisQueue {
     ///
     /// # Errors
     /// Returns an error if the Redis connection fails or the job cannot be deserialized.
-    pub async fn blocking_pop_fetch(&self) -> anyhow::Result<FetchAndStageJob> {
+    pub async fn blocking_pop_fetch(&self) -> r_data_core_core::error::Result<FetchAndStageJob> {
         let mut conn = self.get_conn().await?;
         // BLPOP key 0 => block indefinitely
         // Returns VecBulkString [key, value]
@@ -84,25 +110,34 @@ impl ApalisRedisQueue {
             .arg(0)
             .query_async(&mut conn)
             .await
-            .context("failed to BLPOP fetch queue from redis")?;
+            .map_err(|e| {
+                r_data_core_core::error::Error::Cache(format!(
+                    "failed to BLPOP fetch queue from redis: {e}"
+                ))
+            })?;
         if let Some((_key, value)) = result {
-            let job: FetchAndStageJob =
-                serde_json::from_str(&value).context("failed to deserialize fetch job")?;
+            let job: FetchAndStageJob = serde_json::from_str(&value).map_err(|e| {
+                r_data_core_core::error::Error::Deserialization(format!(
+                    "failed to deserialize fetch job: {e}"
+                ))
+            })?;
             Ok(job)
         } else {
             // Should not happen with BLPOP 0, but handle defensively
-            Err(anyhow::anyhow!("no job returned from BLPOP"))
+            Err(r_data_core_core::error::Error::Cache(
+                "no job returned from BLPOP".to_string(),
+            ))
         }
     }
 }
 
 #[async_trait]
 impl JobQueue for ApalisRedisQueue {
-    async fn enqueue_fetch(&self, job: FetchAndStageJob) -> anyhow::Result<()> {
+    async fn enqueue_fetch(&self, job: FetchAndStageJob) -> r_data_core_core::error::Result<()> {
         self.push_json(&self.fetch_queue_key, &job).await
     }
 
-    async fn enqueue_process(&self, job: ProcessRawItemJob) -> anyhow::Result<()> {
+    async fn enqueue_process(&self, job: ProcessRawItemJob) -> r_data_core_core::error::Result<()> {
         self.push_json(&self.process_queue_key, &job).await
     }
 }

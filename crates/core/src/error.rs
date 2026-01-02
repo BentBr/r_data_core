@@ -209,4 +209,72 @@ mod tests {
             "Authorization error: denied"
         );
     }
+
+    #[test]
+    fn test_error_from_uuid_error() {
+        // Test that UUID parsing errors are converted to Conversion error
+        let invalid_uuid = "not-a-valid-uuid";
+        let uuid_err = uuid::Uuid::parse_str(invalid_uuid).unwrap_err();
+        let err: Error = uuid_err.into();
+        assert!(matches!(err, Error::Conversion(_)));
+        assert!(err.to_string().contains("Conversion error"));
+    }
+
+    #[test]
+    fn test_error_from_redis_error() {
+        // Test that Redis errors are converted to Cache error
+        use redis::RedisError;
+        let redis_err = RedisError::from((redis::ErrorKind::IoError, "Connection failed"));
+        let err: Error = redis_err.into();
+        assert!(matches!(err, Error::Cache(_)));
+        assert!(err.to_string().contains("Cache error"));
+    }
+
+    #[test]
+    fn test_error_from_serde_json_error() {
+        // Test that serde_json errors are converted to Serialization error
+        let invalid_json = "not valid json {";
+        let json_err = serde_json::from_str::<serde_json::Value>(invalid_json).unwrap_err();
+        let err: Error = json_err.into();
+        assert!(matches!(err, Error::Serialization(_)));
+        assert!(err.to_string().contains("Serialization error"));
+    }
+
+    #[test]
+    fn test_all_error_variants() {
+        // Test that all error variants can be created and displayed
+        let errors = vec![
+            Error::Database(sqlx::Error::PoolClosed),
+            Error::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "file not found",
+            )),
+            Error::Auth("authentication failed".to_string()),
+            Error::AuthError(AuthErrorKind::InvalidCredentials),
+            Error::Forbidden("access denied".to_string()),
+            Error::Entity("entity error".to_string()),
+            Error::Config("config error".to_string()),
+            Error::Api("api error".to_string()),
+            Error::Cache("cache error".to_string()),
+            Error::Deserialization("deserialization error".to_string()),
+            Error::NotFound("not found".to_string()),
+            Error::Validation("validation error".to_string()),
+            Error::FieldNotFound("field not found".to_string()),
+            Error::FieldAlreadyExists("field exists".to_string()),
+            Error::ClassAlreadyExists("class exists".to_string()),
+            Error::ValidationFailed("validation failed".to_string()),
+            Error::FieldConversion("field".to_string(), "conversion error".to_string()),
+            Error::Conversion("conversion error".to_string()),
+            Error::ReadOnlyField("readonly field".to_string()),
+            Error::PasswordHash("password hash error".to_string()),
+            Error::Unknown("unknown error".to_string()),
+            Error::InvalidSchema("invalid schema".to_string()),
+            Error::InvalidFieldType("invalid field type".to_string()),
+        ];
+
+        // Verify all errors can be converted to string
+        for err in errors {
+            let _ = err.to_string();
+        }
+    }
 }

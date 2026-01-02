@@ -16,7 +16,6 @@ async-trait = "0.1"
 time = { version = "0.3", features = ["serde", "formatting", "parsing", "macros"] }
 r_data_core_core = { path = "../core" }
 r_data_core_workflow = { path = "../workflow" }
-anyhow = "1.0"
 argon2 = "0.5"
 dotenvy = "0.15"
 

@@ -11,7 +11,6 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }
 uuid = { version = "1.6", features = ["v4", "v7", "serde"] }
-anyhow = "1.0"
 regex = "1.10"
 utoipa = { version = "5.4.0", features = ["time", "uuid"] }
 time = { version = "0.3", features = ["serde", "formatting", "parsing"] }

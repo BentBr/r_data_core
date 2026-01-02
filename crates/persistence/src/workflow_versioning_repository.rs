@@ -119,8 +119,8 @@ impl WorkflowVersioningRepository {
         let mut out = Vec::with_capacity(rows.len());
         for r in rows {
             out.push(WorkflowVersionMeta {
-                version_number: r.try_get("version_number").unwrap(),
-                created_at: r.try_get("created_at").unwrap(),
+                version_number: r.try_get("version_number").map_err(Error::Database)?,
+                created_at: r.try_get("created_at").map_err(Error::Database)?,
                 created_by: r.try_get("created_by").ok(),
                 created_by_name: r.try_get("created_by_name").ok(),
             });
@@ -157,12 +157,15 @@ impl WorkflowVersioningRepository {
         .await
         .map_err(Error::Database)?;
 
-        Ok(row.map(|r| WorkflowVersionPayload {
-            version_number: r.try_get("version_number").unwrap(),
-            created_at: r.try_get("created_at").unwrap(),
-            created_by: r.try_get("created_by").ok(),
-            data: r.try_get("data").unwrap(),
-        }))
+        row.map(|r| -> Result<WorkflowVersionPayload> {
+            Ok(WorkflowVersionPayload {
+                version_number: r.try_get("version_number").map_err(Error::Database)?,
+                created_at: r.try_get("created_at").map_err(Error::Database)?,
+                created_by: r.try_get("created_by").ok(),
+                data: r.try_get("data").map_err(Error::Database)?,
+            })
+        })
+        .transpose()
     }
 
     /// Get current workflow metadata
@@ -202,13 +205,17 @@ impl WorkflowVersioningRepository {
         .await
         .map_err(Error::Database)?;
 
-        Ok(row.map(|r| {
-            let version: i32 = r.try_get("version").unwrap();
-            let updated_at: time::OffsetDateTime = r.try_get("updated_at").unwrap();
-            let updated_by: Option<Uuid> = r.try_get("updated_by").ok();
-            let updated_by_name: Option<String> = r.try_get("updated_by_name").ok();
-            (version, updated_at, updated_by, updated_by_name)
-        }))
+        row.map(
+            |r| -> Result<(i32, time::OffsetDateTime, Option<Uuid>, Option<String>)> {
+                let version: i32 = r.try_get("version").map_err(Error::Database)?;
+                let updated_at: time::OffsetDateTime =
+                    r.try_get("updated_at").map_err(Error::Database)?;
+                let updated_by: Option<Uuid> = r.try_get("updated_by").ok();
+                let updated_by_name: Option<String> = r.try_get("updated_by_name").ok();
+                Ok((version, updated_at, updated_by, updated_by_name))
+            },
+        )
+        .transpose()
     }
 
     /// Prune workflow versions older than the specified number of days

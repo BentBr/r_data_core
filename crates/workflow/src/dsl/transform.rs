@@ -1,4 +1,3 @@
-use anyhow::{bail, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -71,23 +70,33 @@ pub enum StringOperand {
     ConstString { value: String },
 }
 
-pub(crate) fn validate_transform(idx: usize, t: &Transform, safe_field: &Regex) -> Result<()> {
+pub(crate) fn validate_transform(
+    idx: usize,
+    t: &Transform,
+    safe_field: &Regex,
+) -> r_data_core_core::error::Result<()> {
     match t {
         Transform::Arithmetic(ar) => {
             if !safe_field.is_match(&ar.target) {
-                bail!("DSL step {idx}: transform.arithmetic.target must be a safe identifier");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: transform.arithmetic.target must be a safe identifier"
+                )));
             }
             validate_operand(idx, "left", &ar.left, safe_field)?;
-            validate_operand(idx, "right", &ar.right, safe_field)?;
+            validate_operand(idx, "rightformat!(", &ar.right, safe_field)?;
         }
         Transform::Concat(ct) => {
             if !safe_field.is_match(&ct.target) {
-                bail!("DSL step {idx}: transform.concat.target must be a safe identifier");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: transform.concat.target must be a safe identifier"
+                )));
             }
             match &ct.left {
                 StringOperand::Field { field } => {
                     if !safe_field.is_match(field) {
-                        bail!("DSL step {idx}: transform.concat.left field path must be safe");
+                        return Err(r_data_core_core::error::Error::Validation(format!(
+                            "DSL step {idx}: transform.concat.left field path must be safe"
+                        )));
                     }
                 }
                 StringOperand::ConstString { .. } => {}
@@ -95,7 +104,9 @@ pub(crate) fn validate_transform(idx: usize, t: &Transform, safe_field: &Regex) 
             match &ct.right {
                 StringOperand::Field { field } => {
                     if !safe_field.is_match(field) {
-                        bail!("DSL step {idx}: transform.concat.right field path must be safe");
+                        return Err(r_data_core_core::error::Error::Validation(format!(
+                            "DSL step {idx}: transform.concat.right field path must be safe"
+                        )));
                     }
                 }
                 StringOperand::ConstString { .. } => {}
@@ -106,11 +117,18 @@ pub(crate) fn validate_transform(idx: usize, t: &Transform, safe_field: &Regex) 
     Ok(())
 }
 
-fn validate_operand(idx: usize, side: &str, op: &Operand, safe_field: &Regex) -> Result<()> {
+fn validate_operand(
+    idx: usize,
+    side: &str,
+    op: &Operand,
+    safe_field: &Regex,
+) -> r_data_core_core::error::Result<()> {
     match op {
         Operand::Field { field } => {
             if !safe_field.is_match(field) {
-                bail!("DSL step {idx}: transform.arithmetic.{side} field path must be safe");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: transform.arithmetic.{side} field path must be safe"
+                )));
             }
         }
         Operand::Const { .. } => {}
@@ -120,15 +138,15 @@ fn validate_operand(idx: usize, side: &str, op: &Operand, safe_field: &Regex) ->
             field,
         } => {
             if entity_definition.trim().is_empty() {
-                bail!("DSL step {idx}: transform.arithmetic.{side} external entity_definition required");
+                return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: transform.arithmetic.{side} external entity_definition required")));
             }
             if filter.field.trim().is_empty() || filter.value.trim().is_empty() {
-                bail!("DSL step {idx}: transform.arithmetic.{side} external filter requires field and value");
+                return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: transform.arithmetic.{side} external filter requires field and value")));
             }
             if !safe_field.is_match(field) {
-                bail!(
+                return Err(r_data_core_core::error::Error::Validation(format!(
                     "DSL step {idx}: transform.arithmetic.{side} external field path must be safe"
-                );
+                )));
             }
         }
     }

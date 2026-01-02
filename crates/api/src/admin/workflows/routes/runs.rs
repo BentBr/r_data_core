@@ -8,11 +8,13 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::admin::workflows::models::WorkflowRunLogDto;
+use crate::admin::workflows::routes::utils::handle_workflow_error;
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::auth::permission_check;
 use crate::query::PaginationQuery;
 use crate::response::ApiResponse;
+use r_data_core_core::error::Error;
 use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::FetchAndStageJob;
@@ -100,10 +102,10 @@ pub async fn run_workflow_now(
                     }
                 }
             }
-            Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to enqueue run: {e}")),
+            Err(e) => handle_workflow_error(e),
         },
         Ok(None) => ApiResponse::<()>::not_found("Workflow"),
-        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to fetch workflow: {e}")),
+        Err(e) => handle_workflow_error(e),
     }
 }
 
@@ -148,9 +150,7 @@ pub async fn run_workflow_now_upload(
     match state.workflow_service().get(workflow_uuid).await {
         Ok(Some(_)) => {}
         Ok(None) => return ApiResponse::<()>::not_found("Workflow"),
-        Err(e) => {
-            return ApiResponse::<()>::internal_error(&format!("Failed to fetch workflow: {e}"))
-        }
+        Err(e) => return handle_workflow_error(e),
     }
 
     // Extract file from multipart before any Send-requiring operations
@@ -196,15 +196,10 @@ pub async fn run_workflow_now_upload(
                 }
             }
         }
+        Err(Error::Validation(msg)) => ApiResponse::<()>::unprocessable_entity(&msg),
         Err(e) => {
             error!(target: "workflows", "run_workflow_now_upload failed: {e:#?}");
-            // Treat CSV parse issues as 422 to surface validation to the UI
-            let msg = e.to_string();
-            if msg.contains("CSV") || msg.contains("Failed to read") {
-                ApiResponse::<()>::unprocessable_entity(&msg)
-            } else {
-                ApiResponse::<()>::internal_error(&format!("Failed to process upload: {msg}"))
-            }
+            handle_workflow_error(e)
         }
     }
 }
@@ -247,7 +242,7 @@ pub async fn list_workflow_run_logs(
     // Return 404 if run does not exist
     match state.workflow_service().run_exists(run_uuid).await {
         Ok(false) => return ApiResponse::<()>::not_found("Workflow run not found"),
-        Err(e) => return ApiResponse::<()>::internal_error(&format!("Failed to check run: {e}")),
+        Err(e) => return handle_workflow_error(e),
         Ok(true) => {}
     }
 
@@ -271,7 +266,7 @@ pub async fn list_workflow_run_logs(
         }
         Err(e) => {
             error!(target: "workflows", "list_workflow_run_logs failed: {e:#?}");
-            ApiResponse::<()>::internal_error(&format!("Failed to list run logs: {e}"))
+            handle_workflow_error(e)
         }
     }
 }

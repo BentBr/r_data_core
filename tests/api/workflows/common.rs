@@ -164,7 +164,9 @@ pub async fn create_consumer_workflow(
         config,
         versioning_disabled: false,
     };
-    repo.create(&create_req, creator_uuid).await
+    repo.create(&create_req, creator_uuid)
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))
 }
 
 /// Create a provider workflow for testing
@@ -186,7 +188,9 @@ pub async fn create_provider_workflow(
         config,
         versioning_disabled: false,
     };
-    repo.create(&create_req, creator_uuid).await
+    repo.create(&create_req, creator_uuid)
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))
 }
 
 /// Generate a valid entity type name (starts with letter, contains only letters, numbers, underscores)

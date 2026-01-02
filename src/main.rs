@@ -3,7 +3,7 @@
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
-use log::{debug, error, info};
+use log::{debug, info};
 
 use r_data_core::bootstrap::{build_api_state, create_cache_manager, create_db_pool, init_logger};
 use r_data_core_api::{ApiResponse, ApiStateWrapper};
@@ -15,18 +15,14 @@ async fn default_404_handler() -> impl actix_web::Responder {
 }
 
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> r_data_core_core::error::Result<()> {
     // Load configuration
-    let config = match load_app_config() {
-        Ok(cfg) => {
-            debug!("Loaded conf: {cfg:?}");
-            cfg
-        }
-        Err(e) => {
-            error!("Failed to load configuration: {e}");
-            panic!("Failed to load configuration: {e}");
-        }
-    };
+    let config = load_app_config().map_err(|e| {
+        r_data_core_core::error::Error::Config(format!(
+            "Failed to load application configuration: {e}"
+        ))
+    })?;
+    debug!("Loaded conf: {config:?}");
 
     // Initialize logger
     init_logger(&config.log.level);
@@ -37,25 +33,32 @@ async fn main() -> std::io::Result<()> {
     info!("API docs enabled: {}", config.api.enable_docs);
 
     // Create database pool
-    let pool = create_db_pool(&config)
-        .await
-        .expect("Failed to create database connection pool");
+    let pool = create_db_pool(&config).await.map_err(|e| {
+        r_data_core_core::error::Error::Config(format!(
+            "Failed to create database connection pool: {e}"
+        ))
+    })?;
 
     info!("Using SQLx migrations (run with 'cargo sqlx migrate run')");
 
     // Initialize cache manager
-    let cache_manager = create_cache_manager(&config)
-        .await
-        .expect("Failed to initialize cache manager with Redis");
+    let cache_manager = create_cache_manager(&config).await.map_err(|e| {
+        r_data_core_core::error::Error::Config(format!(
+            "Failed to initialize cache manager with Redis: {e}"
+        ))
+    })?;
 
     // Build API state with all services
     let api_state = build_api_state(&config, pool, cache_manager)
         .await
-        .expect("Failed to initialize API state");
+        .map_err(|e| {
+            r_data_core_core::error::Error::Config(format!("Failed to initialize API state: {e}"))
+        })?;
 
     let app_state = web::Data::new(ApiStateWrapper::new(api_state));
 
     let bind_address = format!("{}:{}", config.api.host, config.api.port);
+    let bind_address_clone = bind_address.clone();
     info!("Starting HTTP server at http://{bind_address}");
 
     // Start HTTP server
@@ -82,7 +85,13 @@ async fn main() -> std::io::Result<()> {
             .configure(move |cfg| r_data_core_api::configure_app_with_options(cfg, &api_config))
             .default_service(web::route().to(default_404_handler))
     })
-    .bind(bind_address)?
+    .bind(&bind_address)
+    .map_err(|e| {
+        r_data_core_core::error::Error::Api(format!(
+            "Failed to bind to address {bind_address_clone}: {e}"
+        ))
+    })?
     .run()
     .await
+    .map_err(|e| r_data_core_core::error::Error::Api(format!("HTTP server error: {e}")))
 }

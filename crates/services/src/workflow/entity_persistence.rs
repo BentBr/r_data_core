@@ -37,7 +37,7 @@ pub async fn find_existing_entity<S: std::hash::BuildHasher>(
     original_field_data: &HashMap<String, Value, S>,
     produced: &Value,
     update_key: Option<&String>,
-) -> anyhow::Result<EntityLookupResult> {
+) -> r_data_core_core::error::Result<EntityLookupResult> {
     // First, try to find by UUID if present
     if let Some(Value::String(uuid_str)) = normalized_field_data.get("uuid") {
         if let Ok(uuid) = Uuid::parse_str(uuid_str) {
@@ -104,7 +104,7 @@ pub async fn find_existing_entity<S: std::hash::BuildHasher>(
 pub async fn prepare_field_data(
     de_service: &DynamicEntityService,
     ctx: &PersistenceContext,
-) -> anyhow::Result<(HashMap<String, Value>, EntityDefinition)> {
+) -> r_data_core_core::error::Result<(HashMap<String, Value>, EntityDefinition)> {
     // Build field_data as a flat object from produced
     let mut field_data = HashMap::new();
     if let Some(obj) = ctx.produced.as_object() {
@@ -179,7 +179,7 @@ pub async fn ensure_entity_key<S: std::hash::BuildHasher>(
 pub async fn create_entity(
     de_service: &DynamicEntityService,
     ctx: &PersistenceContext,
-) -> anyhow::Result<()> {
+) -> r_data_core_core::error::Result<()> {
     let (field_data, def) = prepare_field_data(de_service, ctx).await?;
 
     let normalized_field_data = build_final_field_data(field_data, &def);
@@ -225,7 +225,7 @@ pub async fn create_entity(
 pub async fn update_entity(
     de_service: &DynamicEntityService,
     ctx: &PersistenceContext,
-) -> anyhow::Result<()> {
+) -> r_data_core_core::error::Result<()> {
     let (field_data, def) = prepare_field_data(de_service, ctx).await?;
     let original_field_data = field_data.clone();
     let normalized_field_data = build_final_field_data(field_data, &def);
@@ -244,8 +244,8 @@ pub async fn update_entity(
     let mut entity = match lookup_result {
         EntityLookupResult::Found(e) => e,
         EntityLookupResult::NotFound => {
-            return Err(anyhow::anyhow!(
-                "Entity not found for update. Provide uuid or entity_key in the data."
+            return Err(r_data_core_core::error::Error::NotFound(
+                "Entity not found for update. Provide uuid or entity_key in the data.".to_string(),
             ));
         }
     };
@@ -266,7 +266,9 @@ pub async fn update_entity(
 
     // Ensure uuid is set (should already be present from existing entity)
     if !entity.field_data.contains_key("uuid") {
-        return Err(anyhow::anyhow!("Cannot update entity: missing uuid"));
+        return Err(r_data_core_core::error::Error::Entity(
+            "Cannot update entity: missing uuid".to_string(),
+        ));
     }
 
     de_service
@@ -282,7 +284,7 @@ pub async fn update_entity(
 pub async fn create_or_update_entity(
     de_service: &DynamicEntityService,
     ctx: &PersistenceContext,
-) -> anyhow::Result<()> {
+) -> r_data_core_core::error::Result<()> {
     let (field_data, def) = prepare_field_data(de_service, ctx).await?;
     let original_field_data = field_data.clone();
     let normalized_field_data = build_final_field_data(field_data, &def);

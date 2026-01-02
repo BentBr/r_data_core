@@ -1,6 +1,5 @@
 use crate::data::adapters::auth::AuthConfig;
 use crate::dsl::validate_mapping;
-use anyhow::{bail, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -72,7 +71,11 @@ pub enum FromDef {
     },
 }
 
-pub(crate) fn validate_from(idx: usize, from: &FromDef, safe_field: &Regex) -> Result<()> {
+pub(crate) fn validate_from(
+    idx: usize,
+    from: &FromDef,
+    safe_field: &Regex,
+) -> r_data_core_core::error::Result<()> {
     match from {
         FromDef::Format {
             source,
@@ -95,12 +98,16 @@ fn validate_format_from(
     format: &FormatConfig,
     mapping: &std::collections::HashMap<String, String>,
     safe_field: &Regex,
-) -> Result<()> {
+) -> r_data_core_core::error::Result<()> {
     if source.source_type.trim().is_empty() {
-        bail!("DSL step {idx}: from.format.source.source_type must not be empty");
+        return Err(r_data_core_core::error::Error::Validation(format!(
+            "DSL step {idx}: from.format.source.source_type must not be empty"
+        )));
     }
     if format.format_type.trim().is_empty() {
-        bail!("DSL step {idx}: from.format.format.format_type must not be empty");
+        return Err(r_data_core_core::error::Error::Validation(format!(
+            "DSL step {idx}: from.format.format.format_type must not be empty"
+        )));
     }
 
     validate_format_options(idx, format)?;
@@ -116,21 +123,24 @@ fn validate_format_from(
     Ok(())
 }
 
-fn validate_format_options(idx: usize, format: &FormatConfig) -> Result<()> {
+fn validate_format_options(
+    idx: usize,
+    format: &FormatConfig,
+) -> r_data_core_core::error::Result<()> {
     if format.format_type.as_str() == "csv" {
         if let Some(delimiter) = format.options.get("delimiter").and_then(|v| v.as_str()) {
             if delimiter.len() != 1 {
-                bail!("DSL step {idx}: from.format.format.options.delimiter must be a single character");
+                return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: from.format.format.options.delimiter must be a single character")));
             }
         }
         if let Some(escape) = format.options.get("escape").and_then(|v| v.as_str()) {
             if !escape.is_empty() && escape.len() != 1 {
-                bail!("DSL step {idx}: from.format.format.options.escape must be a single character when set");
+                return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: from.format.format.options.escape must be a single character when set")));
             }
         }
         if let Some(quote) = format.options.get("quote").and_then(|v| v.as_str()) {
             if !quote.is_empty() && quote.len() != 1 {
-                bail!("DSL step {idx}: from.format.format.options.quote must be a single character when set");
+                return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: from.format.format.options.quote must be a single character when set")));
             }
         }
     }
@@ -139,7 +149,10 @@ fn validate_format_options(idx: usize, format: &FormatConfig) -> Result<()> {
     Ok(())
 }
 
-fn validate_source_config(idx: usize, source: &SourceConfig) -> Result<()> {
+fn validate_source_config(
+    idx: usize,
+    source: &SourceConfig,
+) -> r_data_core_core::error::Result<()> {
     #[allow(clippy::match_same_arms)] // "file" and "_" have different semantic meanings
     match source.source_type.as_str() {
         "uri" => validate_uri_source(idx, &source.config)?,
@@ -154,28 +167,32 @@ fn validate_source_config(idx: usize, source: &SourceConfig) -> Result<()> {
     Ok(())
 }
 
-fn validate_uri_source(idx: usize, config: &Value) -> Result<()> {
+fn validate_uri_source(idx: usize, config: &Value) -> r_data_core_core::error::Result<()> {
     if let Some(uri) = config.get("uri").and_then(|v| v.as_str()) {
         if uri.trim().is_empty() {
-            bail!("DSL step {idx}: from.format.source.config.uri must not be empty");
+            return Err(r_data_core_core::error::Error::Validation(format!(
+                "DSL step {idx}: from.format.source.config.uri must not be empty"
+            )));
         }
         if !uri.starts_with("http://") && !uri.starts_with("https://") {
-            bail!(
+            return Err(r_data_core_core::error::Error::Validation(format!(
                 "DSL step {idx}: from.format.source.config.uri must start with http:// or https://"
-            );
+            )));
         }
     } else {
-        bail!("DSL step {idx}: from.format.source.config.uri is required for uri source");
+        return Err(r_data_core_core::error::Error::Validation(format!(
+            "DSL step {idx}: from.format.source.config.uri is required for uri source"
+        )));
     }
     Ok(())
 }
 
-fn validate_api_source(idx: usize, config: &Value) -> Result<()> {
+fn validate_api_source(idx: usize, config: &Value) -> r_data_core_core::error::Result<()> {
     // from.api source type = Accept data via POST to this workflow
     // No endpoint field needed (always /api/v1/workflows/{this-workflow-uuid})
     // If endpoint field is present, it's invalid (use from.uri instead to pull from provider workflows)
     if config.get("endpoint").is_some() {
-        bail!("DSL step {idx}: from.format.source.config.endpoint is not allowed for 'api' source type. Use 'uri' source type to pull from provider workflows.");
+        return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: from.format.source.config.endpoint is not allowed for 'api' source type. Use 'uri' source type to pull from provider workflows.")));
     }
     Ok(())
 }
@@ -184,10 +201,12 @@ fn validate_trigger_from(
     idx: usize,
     mapping: &std::collections::HashMap<String, String>,
     safe_field: &Regex,
-) -> Result<()> {
+) -> r_data_core_core::error::Result<()> {
     // Trigger can only be used in step 0 (first step)
     if idx != 0 {
-        bail!("DSL step {idx}: from.trigger can only be used in the first step (step 0).");
+        return Err(r_data_core_core::error::Error::Validation(format!(
+            "DSL step {idx}: from.trigger can only be used in the first step (step 0)."
+        )));
     }
     // Allow empty mappings (pass through all fields, though trigger has no input data)
     validate_mapping(idx, mapping, safe_field)?;
@@ -200,9 +219,11 @@ fn validate_entity_from(
     filter: Option<&EntityFilter>,
     mapping: &std::collections::HashMap<String, String>,
     safe_field: &Regex,
-) -> Result<()> {
+) -> r_data_core_core::error::Result<()> {
     if entity_definition.trim().is_empty() {
-        bail!("DSL step {idx}: from.entity.entity_definition must not be empty");
+        return Err(r_data_core_core::error::Error::Validation(format!(
+            "DSL step {idx}: from.entity.entity_definition must not be empty"
+        )));
     }
 
     if let Some(filter) = filter {
@@ -214,28 +235,32 @@ fn validate_entity_from(
     Ok(())
 }
 
-fn validate_entity_filter(idx: usize, filter: &EntityFilter, safe_field: &Regex) -> Result<()> {
+fn validate_entity_filter(
+    idx: usize,
+    filter: &EntityFilter,
+    safe_field: &Regex,
+) -> r_data_core_core::error::Result<()> {
     if filter.field.trim().is_empty()
         || filter.value.trim().is_empty()
         || filter.operator.trim().is_empty()
     {
-        bail!("DSL step {idx}: from.entity.filter requires field, operator, and value");
+        return Err(r_data_core_core::error::Error::Validation(format!(
+            "DSL step {idx}: from.entity.filter requires field, operator, and value"
+        )));
     }
 
     // Validate filter field name is safe (prevents SQL injection)
     if !safe_field.is_match(&filter.field) {
-        bail!(
+        return Err(r_data_core_core::error::Error::Validation(format!(
             "DSL step {idx}: from.entity.filter.field must be a safe identifier (got: '{}')",
             filter.field
-        );
+        )));
     }
 
     // Validate operator is one of the allowed values
     let allowed_operators = ["=", ">", "<", "<=", ">=", "IN", "NOT IN"];
     if !allowed_operators.contains(&filter.operator.as_str()) {
-        bail!(
-            "DSL step {idx}: from.entity.filter.operator must be one of: =, >, <, <=, >=, IN, NOT IN"
-        );
+        return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: from.entity.filter.operator must be one of: =, >, <, <=, >=, IN, NOT IN")));
     }
 
     Ok(())
@@ -245,10 +270,10 @@ fn validate_previous_step_from(
     idx: usize,
     mapping: &std::collections::HashMap<String, String>,
     safe_field: &Regex,
-) -> Result<()> {
+) -> r_data_core_core::error::Result<()> {
     // PreviousStep can only be used in steps after step 0
     if idx == 0 {
-        bail!("DSL step {idx}: from.previous_step cannot be used in the first step (step 0). The first step must read from a Format or Entity source.");
+        return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: from.previous_step cannot be used in the first step (step 0). The first step must read from a Format or Entity source.")));
     }
 
     // Allow empty mappings (pass through all fields from previous step)
@@ -257,25 +282,37 @@ fn validate_previous_step_from(
 }
 
 /// Validate authentication configuration
-fn validate_auth_config(idx: usize, auth: &AuthConfig, context: &str) -> Result<()> {
+fn validate_auth_config(
+    idx: usize,
+    auth: &AuthConfig,
+    context: &str,
+) -> r_data_core_core::error::Result<()> {
     match auth {
         AuthConfig::None => {
             // No validation needed
         }
         AuthConfig::ApiKey { key, header_name } => {
             if key.trim().is_empty() {
-                bail!("DSL step {idx}: {context}.auth.api_key.key must not be empty");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.api_key.key must not be empty"
+                )));
             }
             if header_name.trim().is_empty() {
-                bail!("DSL step {idx}: {context}.auth.api_key.header_name must not be empty");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.api_key.header_name must not be empty"
+                )));
             }
         }
         AuthConfig::BasicAuth { username, password } => {
             if username.trim().is_empty() {
-                bail!("DSL step {idx}: {context}.auth.basic_auth.username must not be empty");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.basic_auth.username must not be empty"
+                )));
             }
             if password.trim().is_empty() {
-                bail!("DSL step {idx}: {context}.auth.basic_auth.password must not be empty");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.basic_auth.password must not be empty"
+                )));
             }
         }
         AuthConfig::PreSharedKey {
@@ -284,10 +321,14 @@ fn validate_auth_config(idx: usize, auth: &AuthConfig, context: &str) -> Result<
             field_name,
         } => {
             if key.trim().is_empty() {
-                bail!("DSL step {idx}: {context}.auth.pre_shared_key.key must not be empty");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.pre_shared_key.key must not be empty"
+                )));
             }
             if field_name.trim().is_empty() {
-                bail!("DSL step {idx}: {context}.auth.pre_shared_key.field_name must not be empty");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.pre_shared_key.field_name must not be empty"
+                )));
             }
         }
     }

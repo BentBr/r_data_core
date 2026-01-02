@@ -20,7 +20,9 @@ impl WorkflowRepositoryAdapter {
 
 #[async_trait]
 impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
-    async fn list_all(&self) -> anyhow::Result<Vec<r_data_core_workflow::data::Workflow>> {
+    async fn list_all(
+        &self,
+    ) -> r_data_core_core::error::Result<Vec<r_data_core_workflow::data::Workflow>> {
         self.inner.list_all().await
     }
 
@@ -30,24 +32,28 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         offset: i64,
         sort_by: Option<String>,
         sort_order: Option<String>,
-    ) -> anyhow::Result<Vec<r_data_core_workflow::data::Workflow>> {
+    ) -> r_data_core_core::error::Result<Vec<r_data_core_workflow::data::Workflow>> {
         self.inner
             .list_paginated(limit, offset, sort_by, sort_order)
             .await
     }
 
-    async fn count_all(&self) -> anyhow::Result<i64> {
+    async fn count_all(&self) -> r_data_core_core::error::Result<i64> {
         self.inner.count_all().await
     }
 
     async fn get_by_uuid(
         &self,
         uuid: Uuid,
-    ) -> anyhow::Result<Option<r_data_core_workflow::data::Workflow>> {
+    ) -> r_data_core_core::error::Result<Option<r_data_core_workflow::data::Workflow>> {
         self.inner.get_by_uuid(uuid).await
     }
 
-    async fn create(&self, req: &CreateWorkflowRequest, created_by: Uuid) -> anyhow::Result<Uuid> {
+    async fn create(
+        &self,
+        req: &CreateWorkflowRequest,
+        created_by: Uuid,
+    ) -> r_data_core_core::error::Result<Uuid> {
         self.inner.create(req, created_by).await
     }
 
@@ -56,15 +62,17 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         uuid: Uuid,
         req: &UpdateWorkflowRequest,
         updated_by: Uuid,
-    ) -> anyhow::Result<()> {
+    ) -> r_data_core_core::error::Result<()> {
         self.inner.update(uuid, req, updated_by).await
     }
 
-    async fn delete(&self, uuid: Uuid) -> anyhow::Result<()> {
+    async fn delete(&self, uuid: Uuid) -> r_data_core_core::error::Result<()> {
         self.inner.delete(uuid).await
     }
 
-    async fn list_scheduled_consumers(&self) -> anyhow::Result<Vec<(Uuid, String)>> {
+    async fn list_scheduled_consumers(
+        &self,
+    ) -> r_data_core_core::error::Result<Vec<(Uuid, String)>> {
         self.inner.list_scheduled_consumers().await
     }
 
@@ -72,13 +80,13 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         &self,
         workflow_uuid: Uuid,
         trigger_id: Uuid,
-    ) -> anyhow::Result<Uuid> {
+    ) -> r_data_core_core::error::Result<Uuid> {
         self.inner
             .insert_run_queued(workflow_uuid, trigger_id)
             .await
     }
 
-    async fn mark_run_running(&self, run_uuid: Uuid) -> anyhow::Result<()> {
+    async fn mark_run_running(&self, run_uuid: Uuid) -> r_data_core_core::error::Result<()> {
         self.inner.mark_run_running(run_uuid).await
     }
 
@@ -87,7 +95,7 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         workflow_uuid: Uuid,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(
+    ) -> r_data_core_core::error::Result<(
         Vec<(
             Uuid,
             String,
@@ -108,7 +116,7 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         run_uuid: Uuid,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(
+    ) -> r_data_core_core::error::Result<(
         Vec<(Uuid, String, String, String, Option<serde_json::Value>)>,
         i64,
     )> {
@@ -117,7 +125,7 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
             .await
     }
 
-    async fn run_exists(&self, run_uuid: Uuid) -> anyhow::Result<bool> {
+    async fn run_exists(&self, run_uuid: Uuid) -> r_data_core_core::error::Result<bool> {
         self.inner.run_exists(run_uuid).await
     }
 
@@ -125,7 +133,7 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         &self,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(
+    ) -> r_data_core_core::error::Result<(
         Vec<(
             Uuid,
             String,
@@ -145,7 +153,7 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         level: &str,
         message: &str,
         meta: Option<serde_json::Value>,
-    ) -> anyhow::Result<()> {
+    ) -> r_data_core_core::error::Result<()> {
         self.inner
             .insert_run_log(run_uuid, level, message, meta)
             .await
@@ -156,17 +164,23 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         workflow_uuid: Uuid,
         run_uuid: Uuid,
         payloads: Vec<serde_json::Value>,
-    ) -> anyhow::Result<i64> {
+    ) -> r_data_core_core::error::Result<i64> {
         self.inner
             .insert_raw_items(workflow_uuid, run_uuid, payloads)
             .await
     }
 
-    async fn count_raw_items_for_run(&self, run_uuid: Uuid) -> anyhow::Result<i64> {
+    async fn count_raw_items_for_run(
+        &self,
+        run_uuid: Uuid,
+    ) -> r_data_core_core::error::Result<i64> {
         self.inner.count_raw_items_for_run(run_uuid).await
     }
 
-    async fn mark_raw_items_processed(&self, run_uuid: Uuid) -> anyhow::Result<()> {
+    async fn mark_raw_items_processed(
+        &self,
+        run_uuid: Uuid,
+    ) -> r_data_core_core::error::Result<()> {
         self.inner.mark_raw_items_processed(run_uuid).await
     }
 
@@ -174,7 +188,7 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         &self,
         run_uuid: Uuid,
         limit: i64,
-    ) -> anyhow::Result<Vec<(Uuid, serde_json::Value)>> {
+    ) -> r_data_core_core::error::Result<Vec<(Uuid, serde_json::Value)>> {
         self.inner.fetch_staged_raw_items(run_uuid, limit).await
     }
 
@@ -183,7 +197,7 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         item_uuid: Uuid,
         status: &str,
         error: Option<&str>,
-    ) -> anyhow::Result<()> {
+    ) -> r_data_core_core::error::Result<()> {
         self.inner
             .set_raw_item_status(item_uuid, status, error)
             .await
@@ -194,21 +208,31 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
         run_uuid: Uuid,
         processed: i64,
         failed: i64,
-    ) -> anyhow::Result<()> {
+    ) -> r_data_core_core::error::Result<()> {
         self.inner
             .mark_run_success(run_uuid, processed, failed)
             .await
     }
 
-    async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
+    async fn mark_run_failure(
+        &self,
+        run_uuid: Uuid,
+        message: &str,
+    ) -> r_data_core_core::error::Result<()> {
         self.inner.mark_run_failure(run_uuid, message).await
     }
 
-    async fn get_run_status(&self, run_uuid: Uuid) -> anyhow::Result<Option<String>> {
+    async fn get_run_status(
+        &self,
+        run_uuid: Uuid,
+    ) -> r_data_core_core::error::Result<Option<String>> {
         self.inner.get_run_status(run_uuid).await
     }
 
-    async fn get_workflow_uuid_for_run(&self, run_uuid: Uuid) -> anyhow::Result<Option<Uuid>> {
+    async fn get_workflow_uuid_for_run(
+        &self,
+        run_uuid: Uuid,
+    ) -> r_data_core_core::error::Result<Option<Uuid>> {
         self.inner
             .get_workflow_uuid_for_run_internal(run_uuid)
             .await
