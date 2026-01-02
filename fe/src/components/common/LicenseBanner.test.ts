@@ -3,15 +3,30 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import LicenseBanner from './LicenseBanner.vue'
 import { useLicenseStore } from '@/stores/license'
+import { typedHttpClient } from '@/api/typed-client'
+import type { LicenseStatus } from '@/api/clients/system'
+
+vi.mock('@/api/typed-client', () => ({
+    typedHttpClient: {
+        getLicenseStatus: vi.fn(),
+    },
+}))
+
+vi.mock('@/composables/useTranslations', () => ({
+    useTranslations: () => ({
+        t: (key: string) => key.split('.').pop() || key,
+    }),
+}))
 
 describe('LicenseBanner', () => {
     beforeEach(() => {
         setActivePinia(createPinia())
+        vi.clearAllMocks()
+        localStorage.clear()
     })
 
-    it('should not show banner when license is valid', () => {
-        const store = useLicenseStore()
-        store.licenseStatus = {
+    it('should not show banner when license is valid', async () => {
+        const mockStatus: LicenseStatus = {
             state: 'valid',
             company: 'Test Company',
             license_type: 'Enterprise',
@@ -22,14 +37,17 @@ describe('LicenseBanner', () => {
             error_message: null,
         }
 
+        vi.mocked(typedHttpClient.getLicenseStatus).mockResolvedValue(mockStatus)
+
+        const store = useLicenseStore()
+        await store.loadLicenseStatus()
+
         const wrapper = mount(LicenseBanner)
         expect(wrapper.find('.dismissable-banner').exists()).toBe(false)
     })
 
-    it('should show banner when license state is none', () => {
-        const store = useLicenseStore()
-        // @ts-expect-error - accessing private state for testing
-        store.licenseStatus.value = {
+    it('should show banner when license state is none', async () => {
+        const mockStatus: LicenseStatus = {
             state: 'none',
             company: null,
             license_type: null,
@@ -40,15 +58,19 @@ describe('LicenseBanner', () => {
             error_message: null,
         }
 
+        vi.mocked(typedHttpClient.getLicenseStatus).mockResolvedValue(mockStatus)
+
+        const store = useLicenseStore()
+        await store.loadLicenseStatus()
+
         const wrapper = mount(LicenseBanner)
         expect(wrapper.find('.dismissable-banner').exists()).toBe(true)
-        expect(wrapper.text()).toContain('No license key configured')
+        // Translation mock returns last part of key: 'license.banner.no_license' -> 'no_license'
+        expect(wrapper.text()).toContain('no_license')
     })
 
-    it('should show banner when license state is invalid', () => {
-        const store = useLicenseStore()
-        // @ts-expect-error - accessing private state for testing
-        store.licenseStatus.value = {
+    it('should show banner when license state is invalid', async () => {
+        const mockStatus: LicenseStatus = {
             state: 'invalid',
             company: 'Test Company',
             license_type: 'Enterprise',
@@ -59,15 +81,19 @@ describe('LicenseBanner', () => {
             error_message: 'Invalid license key',
         }
 
+        vi.mocked(typedHttpClient.getLicenseStatus).mockResolvedValue(mockStatus)
+
+        const store = useLicenseStore()
+        await store.loadLicenseStatus()
+
         const wrapper = mount(LicenseBanner)
         expect(wrapper.find('.dismissable-banner').exists()).toBe(true)
-        expect(wrapper.text()).toContain('License key is invalid')
+        // Translation mock returns last part of key: 'license.banner.invalid_license' -> 'invalid_license'
+        expect(wrapper.text()).toContain('invalid_license')
     })
 
-    it('should show banner when license state is error', () => {
-        const store = useLicenseStore()
-        // @ts-expect-error - accessing private state for testing
-        store.licenseStatus.value = {
+    it('should show banner when license state is error', async () => {
+        const mockStatus: LicenseStatus = {
             state: 'error',
             company: 'Test Company',
             license_type: 'Enterprise',
@@ -78,15 +104,19 @@ describe('LicenseBanner', () => {
             error_message: 'Network error',
         }
 
+        vi.mocked(typedHttpClient.getLicenseStatus).mockResolvedValue(mockStatus)
+
+        const store = useLicenseStore()
+        await store.loadLicenseStatus()
+
         const wrapper = mount(LicenseBanner)
         expect(wrapper.find('.dismissable-banner').exists()).toBe(true)
-        expect(wrapper.text()).toContain('License verification failed')
+        // Translation mock returns last part of key: 'license.banner.error_license' -> 'error_license'
+        expect(wrapper.text()).toContain('error_license')
     })
 
-    it('should not show banner when dismissed', () => {
-        const store = useLicenseStore()
-        // @ts-expect-error - accessing private state for testing
-        store.licenseStatus.value = {
+    it('should not show banner when dismissed', async () => {
+        const mockStatus: LicenseStatus = {
             state: 'none',
             company: null,
             license_type: null,
@@ -96,6 +126,11 @@ describe('LicenseBanner', () => {
             verified_at: '2024-01-02T00:00:00Z',
             error_message: null,
         }
+
+        vi.mocked(typedHttpClient.getLicenseStatus).mockResolvedValue(mockStatus)
+
+        const store = useLicenseStore()
+        await store.loadLicenseStatus()
         store.dismissLicenseBanner()
 
         const wrapper = mount(LicenseBanner)
@@ -103,9 +138,7 @@ describe('LicenseBanner', () => {
     })
 
     it('should call dismissLicenseBanner when dismiss button is clicked', async () => {
-        const store = useLicenseStore()
-        // @ts-expect-error - accessing private state for testing
-        store.licenseStatus.value = {
+        const mockStatus: LicenseStatus = {
             state: 'none',
             company: null,
             license_type: null,
@@ -115,6 +148,11 @@ describe('LicenseBanner', () => {
             verified_at: '2024-01-02T00:00:00Z',
             error_message: null,
         }
+
+        vi.mocked(typedHttpClient.getLicenseStatus).mockResolvedValue(mockStatus)
+
+        const store = useLicenseStore()
+        await store.loadLicenseStatus()
 
         const wrapper = mount(LicenseBanner)
         const dismissSpy = vi.spyOn(store, 'dismissLicenseBanner')

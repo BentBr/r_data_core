@@ -3,6 +3,7 @@
 use std::fs;
 use std::path::Path;
 
+use crate::api::call_verification_api;
 use crate::jwt::{create_license_key, verify_license_key};
 use crate::models::{LicenseClaims, LicenseType};
 
@@ -23,6 +24,40 @@ pub struct LicenseCreationResult {
     pub version: String,
     /// Expiration date (if any)
     pub expires: Option<time::OffsetDateTime>,
+}
+
+/// License check state (matches `LicenseState` from service)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LicenseCheckState {
+    /// No license key provided
+    None,
+    /// License key is invalid (API returned valid=false)
+    Invalid,
+    /// Network/technical error during verification
+    Error,
+    /// License key is valid
+    Valid,
+}
+
+/// Result of license API check (matches `LicenseVerificationResult` format from service)
+#[derive(Debug, Clone)]
+pub struct LicenseCheckResult {
+    /// License state
+    pub state: LicenseCheckState,
+    /// Company name (if license is present)
+    pub company: Option<String>,
+    /// License type (if license is present)
+    pub license_type: Option<String>,
+    /// License ID (if license is present)
+    pub license_id: Option<String>,
+    /// Issue date (if license is present)
+    pub issued_at: Option<time::OffsetDateTime>,
+    /// License version
+    pub version: Option<String>,
+    /// Verification timestamp
+    pub verified_at: time::OffsetDateTime,
+    /// Error message (only present if state is "error" or "invalid")
+    pub error_message: Option<String>,
 }
 
 /// Result of license verification
@@ -67,11 +102,14 @@ impl LicenseToolService {
         expires_days: Option<u64>,
     ) -> Result<LicenseCreationResult, Box<dyn std::error::Error + Send + Sync>> {
         // Parse license type
-        let license_type_enum = license_type
-            .parse::<LicenseType>()
-            .map_err(|e| format!("Invalid license type: {e}"))?;
+        let license_type_enum = license_type.parse::<LicenseType>().map_err(|e| {
+            format!(
+                "Invalid license type: {e}. Available types: {}",
+                LicenseType::all_variants().join(", ")
+            )
+        })?;
 
-        // Create license key
+        // Create the license key
         let token = create_license_key(company, license_type_enum, private_key_file, expires_days)
             .map_err(|e| format!("Failed to create license key: {e}"))?;
 
@@ -166,6 +204,47 @@ impl LicenseToolService {
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         fs::write(output_path, token)?;
         Ok(())
+    }
+
+    /// Check license key against the verification API using the same logic as the service
+    ///
+    /// This function uses the same API call logic as the maintenance task's `LicenseService`.
+    /// It returns a result that matches the service's `LicenseVerificationResult` format.
+    ///
+    /// # Arguments
+    /// * `license_key` - License key JWT token
+    /// * `verification_url` - URL of the license verification API (from config)
+    ///
+    /// # Errors
+    /// Returns an error if the API call fails
+    pub async fn check_license(
+        license_key: &str,
+        verification_url: &str,
+    ) -> Result<LicenseCheckResult, Box<dyn std::error::Error + Send + Sync>> {
+        // Call the same API function that the service uses
+        let api_result = call_verification_api(license_key, verification_url).await?;
+
+        // Parse issued_at (same as service does)
+        let issued_at = time::OffsetDateTime::parse(
+            &api_result.claims.issued_at,
+            &time::format_description::well_known::Rfc3339,
+        )
+        .map_err(|e| format!("Failed to parse issued_at: {e}"))?;
+
+        Ok(LicenseCheckResult {
+            state: if api_result.is_valid {
+                LicenseCheckState::Valid
+            } else {
+                LicenseCheckState::Invalid
+            },
+            company: Some(api_result.claims.company),
+            license_type: Some(api_result.claims.license_type.to_string()),
+            license_id: Some(api_result.claims.license_id),
+            issued_at: Some(issued_at),
+            version: Some(api_result.claims.version),
+            verified_at: time::OffsetDateTime::now_utc(),
+            error_message: api_result.error_message,
+        })
     }
 
     /// Decode license claims from JWT without verification (for display purposes)

@@ -1,7 +1,8 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use clap::{Parser, Subcommand};
-use r_data_core_license::LicenseToolService;
+use r_data_core_core::config::load_license_config;
+use r_data_core_license::{LicenseCheckState, LicenseToolService};
 use std::io::{self, Read};
 use std::path::Path;
 
@@ -45,6 +46,8 @@ enum Commands {
         #[arg(long, required = true)]
         public_key_file: String,
     },
+    /// Check license key against the verification API (uses `LICENSE_KEY` from environment)
+    Check,
 }
 
 fn handle_create(
@@ -165,6 +168,81 @@ fn handle_verify(license_key: Option<&str>, license_key_file: Option<&str>, publ
     }
 }
 
+fn handle_check() {
+    // Load license config from environment (uses global config loader)
+    let config = load_license_config().unwrap_or_else(|e| {
+        eprintln!("Error: Failed to load license configuration: {e}");
+        std::process::exit(1);
+    });
+
+    // Check if license key is provided
+    let license_key = match &config.license_key {
+        Some(key) if !key.is_empty() => key,
+        _ => {
+            eprintln!("Error: LICENSE_KEY environment variable is not set or empty");
+            std::process::exit(1);
+        }
+    };
+
+    // Run async check using the same API call logic as maintenance task
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap_or_else(|e| {
+            eprintln!("Error: Failed to create async runtime: {e}");
+            std::process::exit(1);
+        });
+
+    let result = rt
+        .block_on(LicenseToolService::check_license(
+            license_key,
+            &config.verification_url,
+        ))
+        .unwrap_or_else(|e| {
+            eprintln!("Error: Failed to check license: {e}");
+            std::process::exit(1);
+        });
+
+    // Display results (same format as maintenance task would log)
+    println!("License API Check:");
+    println!("Status: {:?}", result.state);
+    if let Some(company) = &result.company {
+        println!("Company: {company}");
+    }
+    if let Some(license_type) = &result.license_type {
+        println!("Type: {license_type}");
+    }
+    if let Some(license_id) = &result.license_id {
+        println!("License ID: {license_id}");
+    }
+    if let Some(issued_at) = &result.issued_at {
+        println!(
+            "Issued: {}",
+            issued_at
+                .format(&time::format_description::well_known::Rfc3339)
+                .unwrap_or_else(|_| "Invalid date".to_string())
+        );
+    }
+    if let Some(version) = &result.version {
+        println!("Version: {version}");
+    }
+    println!(
+        "Verified at: {}",
+        result
+            .verified_at
+            .format(&time::format_description::well_known::Rfc3339)
+            .unwrap_or_else(|_| "Invalid date".to_string())
+    );
+    if let Some(error_message) = &result.error_message {
+        println!("Error: {error_message}");
+    }
+
+    // Exit with error code if license is not valid
+    if result.state != LicenseCheckState::Valid {
+        std::process::exit(1);
+    }
+}
+
 fn main() {
     let cli = Cli::parse();
 
@@ -191,5 +269,6 @@ fn main() {
             license_key_file.as_deref(),
             &public_key_file,
         ),
+        Commands::Check => handle_check(),
     }
 }

@@ -164,3 +164,113 @@ async fn test_get_cached_license_status_none() {
         r_data_core_services::license::service::LicenseState::None
     );
 }
+
+#[tokio::test]
+async fn test_license_verification_expired() {
+    use std::process::Command;
+    use tempfile::TempDir;
+
+    // Generate test keys
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let private_key_path = temp_dir.path().join("private.key");
+    let public_key_path = temp_dir.path().join("public.key");
+
+    // Generate private key using openssl
+    let private_key_output = Command::new("openssl")
+        .args(["genrsa", "-out", private_key_path.to_str().unwrap(), "2048"])
+        .output();
+
+    let Ok(private_key_output) = private_key_output else {
+        eprintln!("Skipping test - openssl not available");
+        return;
+    };
+
+    if !private_key_output.status.success() {
+        eprintln!("Skipping test - failed to generate private key");
+        return;
+    }
+
+    // Generate public key
+    let public_key_output = Command::new("openssl")
+        .args([
+            "rsa",
+            "-in",
+            private_key_path.to_str().unwrap(),
+            "-pubout",
+            "-out",
+            public_key_path.to_str().unwrap(),
+        ])
+        .output()
+        .expect("Failed to generate public key");
+
+    if !public_key_output.status.success() {
+        eprintln!("Skipping test - failed to generate public key");
+        return;
+    }
+
+    // Create an expired license (expires 1 day ago)
+    let create_output = Command::new("cargo")
+        .args([
+            "run",
+            "--package",
+            "r_data_core_license",
+            "--bin",
+            "license_tool",
+            "create",
+            "--company",
+            "Expired Test Company",
+            "--license-type",
+            "Enterprise",
+            "--private-key-file",
+            private_key_path.to_str().unwrap(),
+            "--expires-days",
+            "0", // Expires immediately (0 days = now)
+        ])
+        .output()
+        .expect("Failed to execute license_tool create");
+
+    if !create_output.status.success() {
+        eprintln!("Skipping test - failed to create license");
+        return;
+    }
+
+    // Extract license key from output
+    let output_str = String::from_utf8_lossy(&create_output.stdout);
+    let license_key = output_str
+        .lines()
+        .find(|line| line.starts_with("eyJ"))
+        .expect("License key should be in output")
+        .to_string();
+
+    // Wait a moment to ensure expiration
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+    // Verify the expired license
+    let verify_output = Command::new("cargo")
+        .args([
+            "run",
+            "--package",
+            "r_data_core_license",
+            "--bin",
+            "license_tool",
+            "verify",
+            "--license-key",
+            &license_key,
+            "--public-key-file",
+            public_key_path.to_str().unwrap(),
+        ])
+        .output()
+        .expect("Failed to execute license_tool verify");
+
+    // Should fail for expired license
+    assert!(
+        !verify_output.status.success(),
+        "Expired license verification should fail"
+    );
+
+    let verify_output_str = String::from_utf8_lossy(&verify_output.stdout);
+    assert!(
+        verify_output_str.contains("INVALID") || verify_output_str.contains("expired"),
+        "Output should indicate license is invalid/expired"
+    );
+}

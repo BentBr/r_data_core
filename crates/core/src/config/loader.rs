@@ -291,3 +291,17 @@ fn get_license_config() -> LicenseConfig {
         statistics_url: LicenseConfig::default().statistics_url,
     }
 }
+
+/// Load license configuration from environment variables
+///
+/// This function loads the license configuration using the same logic as the main config loader.
+/// It handles .env file loading and reads `LICENSE_KEY`, `LICENSE_PRIVATE_KEY`, and uses default URLs.
+///
+/// # Errors
+/// Returns an error if .env file loading fails (though this is usually non-fatal)
+pub fn load_license_config() -> Result<LicenseConfig> {
+    // Load .env file if present (same as other config loaders)
+    dotenv().ok();
+
+    Ok(get_license_config())
+}

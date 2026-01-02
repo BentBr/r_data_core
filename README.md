@@ -162,6 +162,9 @@ docker compose exec core /usr/local/bin/license_tool create \
 docker compose exec core /usr/local/bin/license_tool verify \
   --license-key "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..." \
   --public-key-path /path/to/license_public.key
+
+# Check license key against verification API (uses LICENSE_KEY from environment)
+docker compose exec core /usr/local/bin/license_tool check
 ```
 
 | Binary | Description |
@@ -169,7 +172,7 @@ docker compose exec core /usr/local/bin/license_tool verify \
 | `run_migrations` | Run SQLx database migrations (`--status` to check, `--help` for options) |
 | `clear_cache` | Clear Redis cache (`--all` or `--prefix <PREFIX>`, `--dry-run` to preview) |
 | `hash_password` | Generate Argon2 password hash with SQL update statement |
-| `license_tool` | Create and verify JWT-based license keys (`create` or `verify` subcommands) |
+| `license_tool` | Create, verify, and check JWT-based license keys (`create`, `verify`, or `check` subcommands) |
 
 ### Database Schema
 
@@ -261,7 +264,7 @@ For development setup, testing, and contribution guidelines, see [docs/DEVELOPME
 
 ## License
 
-See [Pricing](https://rdatacore.eu/pricing) for license information.
+See [Pricing](https://rdatacore.eu/en/pricing) for license information.
 
 - **Free** for developers, educators, and small teams
 - **Commercial licenses** available for organizations

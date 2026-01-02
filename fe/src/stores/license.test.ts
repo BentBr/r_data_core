@@ -45,10 +45,8 @@ describe('LicenseStore', () => {
         expect(store.shouldShowBanner).toBe(false)
     })
 
-    it('should show banner for none state', () => {
-        const store = useLicenseStore()
-        // @ts-expect-error - accessing private state for testing
-        store.licenseStatus.value = {
+    it('should show banner for none state', async () => {
+        const mockStatus: LicenseStatus = {
             state: 'none',
             company: null,
             license_type: null,
@@ -59,13 +57,16 @@ describe('LicenseStore', () => {
             error_message: null,
         }
 
+        vi.mocked(typedHttpClient.getLicenseStatus).mockResolvedValue(mockStatus)
+
+        const store = useLicenseStore()
+        await store.loadLicenseStatus()
+
         expect(store.shouldShowBanner).toBe(true)
     })
 
-    it('should show banner for invalid state', () => {
-        const store = useLicenseStore()
-        // @ts-expect-error - accessing private state for testing
-        store.licenseStatus.value = {
+    it('should show banner for invalid state', async () => {
+        const mockStatus: LicenseStatus = {
             state: 'invalid',
             company: 'Test Company',
             license_type: 'Enterprise',
@@ -76,13 +77,16 @@ describe('LicenseStore', () => {
             error_message: 'Invalid license',
         }
 
+        vi.mocked(typedHttpClient.getLicenseStatus).mockResolvedValue(mockStatus)
+
+        const store = useLicenseStore()
+        await store.loadLicenseStatus()
+
         expect(store.shouldShowBanner).toBe(true)
     })
 
-    it('should show banner for error state', () => {
-        const store = useLicenseStore()
-        // @ts-expect-error - accessing private state for testing
-        store.licenseStatus.value = {
+    it('should show banner for error state', async () => {
+        const mockStatus: LicenseStatus = {
             state: 'error',
             company: 'Test Company',
             license_type: 'Enterprise',
@@ -93,13 +97,16 @@ describe('LicenseStore', () => {
             error_message: 'Network error',
         }
 
+        vi.mocked(typedHttpClient.getLicenseStatus).mockResolvedValue(mockStatus)
+
+        const store = useLicenseStore()
+        await store.loadLicenseStatus()
+
         expect(store.shouldShowBanner).toBe(true)
     })
 
-    it('should not show banner for valid state', () => {
-        const store = useLicenseStore()
-        // @ts-expect-error - accessing private state for testing
-        store.licenseStatus.value = {
+    it('should not show banner for valid state', async () => {
+        const mockStatus: LicenseStatus = {
             state: 'valid',
             company: 'Test Company',
             license_type: 'Enterprise',
@@ -110,13 +117,16 @@ describe('LicenseStore', () => {
             error_message: null,
         }
 
+        vi.mocked(typedHttpClient.getLicenseStatus).mockResolvedValue(mockStatus)
+
+        const store = useLicenseStore()
+        await store.loadLicenseStatus()
+
         expect(store.shouldShowBanner).toBe(false)
     })
 
-    it('should not show banner when dismissed', () => {
-        const store = useLicenseStore()
-        // @ts-expect-error - accessing private state for testing
-        store.licenseStatus.value = {
+    it('should not show banner when dismissed', async () => {
+        const mockStatus: LicenseStatus = {
             state: 'none',
             company: null,
             license_type: null,
@@ -126,6 +136,11 @@ describe('LicenseStore', () => {
             verified_at: '2024-01-02T00:00:00Z',
             error_message: null,
         }
+
+        vi.mocked(typedHttpClient.getLicenseStatus).mockResolvedValue(mockStatus)
+
+        const store = useLicenseStore()
+        await store.loadLicenseStatus()
         store.dismissLicenseBanner()
 
         expect(store.shouldShowBanner).toBe(false)

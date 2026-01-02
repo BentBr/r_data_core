@@ -30,12 +30,7 @@ vi.mock('@/api/typed-client', () => {
     }
 })
 
-vi.mock('@/stores/license', () => ({
-    useLicenseStore: () => ({
-        licenseStatus: { value: null },
-        loadLicenseStatus: vi.fn(),
-    }),
-}))
+// Don't mock the store - use the real store and mock the API instead
 
 vi.mock('@/api/errors', () => {
     // Define HttpError class inline to avoid hoisting issues
@@ -79,13 +74,6 @@ vi.mock('@/composables/useSnackbar', () => ({
 vi.mock('@/composables/useTranslations', () => ({
     useTranslations: () => ({
         t: (key: string) => key.split('.').pop(),
-    }),
-}))
-
-vi.mock('@/stores/license', () => ({
-    useLicenseStore: () => ({
-        licenseStatus: { value: null },
-        loadLicenseStatus: vi.fn(),
     }),
 }))
 
@@ -246,19 +234,21 @@ describe('SystemPage', () => {
 
         const wrapper = mount(SystemPage)
 
+        // Wait for component to mount and API calls to complete
         await wrapper.vm.$nextTick()
-        await new Promise(resolve => setTimeout(resolve, 100))
+        await wrapper.vm.$nextTick()
+        // Wait for async operations (loadLicenseStatus)
+        await new Promise(resolve => setTimeout(resolve, 200))
+        await wrapper.vm.$nextTick()
 
         // Verify license section is displayed
-        expect(wrapper.text()).toContain('License Information')
+        // Translation mock returns last part of key, so "system.license.section_title" -> "section_title"
+        expect(wrapper.text()).toContain('section_title')
         expect(wrapper.text()).toContain('Test Company')
         expect(wrapper.text()).toContain('Enterprise')
     })
 
     it('should display license error message when state is error', async () => {
-        // Unmock the license store for this test
-        vi.unmock('@/stores/license')
-
         const settings: EntityVersioningSettings = {
             enabled: true,
             max_versions: 10,
@@ -278,32 +268,18 @@ describe('SystemPage', () => {
         }
         mockGetLicenseStatus.mockResolvedValue(licenseStatus)
 
-        // Create a real Pinia instance and set up the store properly
-        const pinia = createPinia()
-        setActivePinia(pinia)
-        const { useLicenseStore } = await import('@/stores/license')
-        const store = useLicenseStore()
-        store.licenseStatus = licenseStatus
+        const wrapper = mount(SystemPage)
 
-        const wrapper = mount(SystemPage, {
-            global: {
-                plugins: [pinia],
-            },
-        })
-
+        // Wait for component to mount and API calls to complete
         await wrapper.vm.$nextTick()
+        await wrapper.vm.$nextTick()
+        // Wait for async operations (loadLicenseStatus)
         await new Promise(resolve => setTimeout(resolve, 200))
+        await wrapper.vm.$nextTick()
 
-        // Verify error message is displayed
-        expect(wrapper.text()).toContain('Network error')
-
-        // Re-mock for other tests
-        vi.mock('@/stores/license', () => ({
-            useLicenseStore: () => ({
-                licenseStatus: { value: null },
-                loadLicenseStatus: vi.fn(),
-            }),
-        }))
+        // Verify error message is displayed - check the full text content
+        const text = wrapper.text()
+        expect(text).toContain('Network error')
     })
 
     it('should handle license status loading failure gracefully', async () => {

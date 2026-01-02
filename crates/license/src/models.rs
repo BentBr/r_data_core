@@ -36,6 +36,23 @@ pub enum LicenseType {
     SocietyIII,
 }
 
+impl LicenseType {
+    #[must_use]
+    pub const fn all_variants() -> &'static [&'static str] {
+        &[
+            "community",
+            "education",
+            "company I",
+            "company II",
+            "company III",
+            "Enterprise",
+            "society I",
+            "society II",
+            "society III",
+        ]
+    }
+}
+
 impl fmt::Display for LicenseType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -66,7 +83,10 @@ impl std::str::FromStr for LicenseType {
             "society I" => Ok(Self::SocietyI),
             "society II" => Ok(Self::SocietyII),
             "society III" => Ok(Self::SocietyIII),
-            _ => Err(format!("Invalid license type: {s}")),
+            _ => Err(format!(
+                "Invalid license type: {}",
+                Self::all_variants().join(", ")
+            )),
         }
     }
 }
