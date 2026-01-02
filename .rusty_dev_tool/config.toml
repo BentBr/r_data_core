@@ -15,10 +15,6 @@ no_docker_compose = true
         "alias" = "test-fe"
         "execution" = "docker compose exec node npm run test"
         "description" = "Runs vitest for FE testing"
-    [commands.test-fe-static]
-        "alias" = "test-fe-static"
-        "execution" = "docker compose exec node-static npm run test"
-        "description" = "Runs vitest for FE testing"
     [commands.clippy]
         "alias" = "clippy"
         "execution" = "cargo clippy --workspace --all-targets --all-features -- -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery"
@@ -26,10 +22,6 @@ no_docker_compose = true
     [commands.lint]
         "alias" = "lint"
         "execution" = "docker compose exec node npm run lint"
-        "description" = "Runs ESLint (with prettier) and fixes it's findings"
-    [commands.lint-static]
-        "alias" = "lint-static"
-        "execution" = "docker compose exec node-static npm run lint"
         "description" = "Runs ESLint (with prettier) and fixes it's findings"
 # Mandatory node
 [environments]

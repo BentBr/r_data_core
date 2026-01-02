@@ -205,33 +205,7 @@ services:
             - VITE_ENABLE_API_LOGGING=true
             - VITE_ENABLE_PRODUCTION_SOURCEMAPS=false
 
-    node-static:
-        container_name: rdata_node_static
-        image: node:22-alpine
-        command: sh -c "cd /var/www/html/ && npm install && npm run dev && tail -f /dev/null" # preventing it from stopping again
-        volumes:
-            - ./static-website:/var/www/html
-            - node_static_modules:/var/www/html/node_modules
-        working_dir: /var/www/html/
-        ports:
-            - '80'
-        networks:
-            default:
-                aliases:
-                    - website.rdatacore.docker
-        environment:
-            - VIRTUAL_HOST=.website.rdatacore.docker
-            # Frontend Environment Variables
-            - VITE_BASE_URL=http://website.rdatacore.docker
-            - VITE_SITE_NAME=RDataCore
-            - VITE_R_DATA_CORE_DEMO_URL=http://admin.rdatacore.docker
-            - VITE_API_DOCS_URL=http://rdatacore.docker/api/docs/
-            - VITE_ADMIN_API_DOCS_URL=http://rdatacore.docker/admin/api/docs/
-            - VITE_GITHUB_RELEASES_URL=https://github.com/BentBr/r_data_core/releases/latest
-            - VITE_GITHUB_PACKAGES_URL=https://github.com/BentBr?tab=packages&repo_name=r_data_core
-
 volumes:
     postgres_data:
     postgres_test_data:
     redis_data:
-    node_static_modules:
