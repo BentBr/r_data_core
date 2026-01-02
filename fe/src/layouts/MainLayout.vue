@@ -71,6 +71,7 @@
         <!-- Main Content -->
         <v-main>
             <DefaultPasswordBanner />
+            <LicenseBanner />
             <MobileWarningBanner />
             <router-view v-slot="{ Component, route }">
                 <transition
@@ -97,6 +98,7 @@
     import UserProfileMenu from '@/components/common/UserProfileMenu.vue'
     import SmartIcon from '@/components/common/SmartIcon.vue'
     import DefaultPasswordBanner from '@/components/common/DefaultPasswordBanner.vue'
+    import LicenseBanner from '@/components/common/LicenseBanner.vue'
     import MobileWarningBanner from '@/components/common/MobileWarningBanner.vue'
 
     const route = useRoute()

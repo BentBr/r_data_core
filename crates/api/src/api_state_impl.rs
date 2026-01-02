@@ -7,7 +7,7 @@ use crate::api_state::ApiStateTrait;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_services::{
     AdminUserService, ApiKeyService, DashboardStatsService, DynamicEntityService,
-    EntityDefinitionService, RoleService, WorkflowService,
+    EntityDefinitionService, LicenseService, RoleService, WorkflowService,
 };
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
@@ -45,6 +45,9 @@ pub struct ApiState {
 
     /// Dashboard stats service
     pub dashboard_stats_service: DashboardStatsService,
+
+    /// License service
+    pub license_service: Arc<LicenseService>,
 
     /// Queue client for producing jobs
     pub queue: Arc<ApalisRedisQueue>,
@@ -104,5 +107,9 @@ impl ApiStateTrait for ApiState {
 
     fn dashboard_stats_service_ref(&self) -> &dyn std::any::Any {
         &self.dashboard_stats_service
+    }
+
+    fn license_service_ref(&self) -> &dyn std::any::Any {
+        &self.license_service
     }
 }

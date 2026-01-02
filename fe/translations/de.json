@@ -811,6 +811,27 @@
       "save_success": "Einstellungen gespeichert",
       "load_failed": "Einstellungen konnten nicht geladen werden",
       "save_failed": "Einstellungen konnten nicht gespeichert werden"
+    },
+    "license": {
+      "section_title": "Lizenzinformationen",
+      "state": "Status",
+      "company": "Unternehmen",
+      "license_type": "Lizenztyp",
+      "license_id": "Lizenz-ID",
+      "issued_at": "Ausgestellt am",
+      "version": "Version",
+      "state_valid": "Gültig",
+      "state_invalid": "Ungültig",
+      "state_error": "Fehler",
+      "state_none": "Keine"
+    }
+  },
+  "license": {
+    "banner": {
+      "no_license": "Warnung: Kein Lizenzschlüssel konfiguriert. Bitte konfigurieren Sie einen Lizenzschlüssel.",
+      "invalid_license": "Fehler: Der Lizenzschlüssel ist ungültig. Bitte kontaktieren Sie den Support.",
+      "error_license": "Fehler: Die Lizenzüberprüfung ist fehlgeschlagen. Bitte überprüfen Sie Ihre Netzwerkverbindung.",
+      "dismiss": "Ausblenden"
     }
   }
 }

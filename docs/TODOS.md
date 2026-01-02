@@ -10,11 +10,11 @@
 - run now file upload with different file types / formats
 - add unique constraint to entity_definitions (FE + BE)
 - license handling and checking
-  - maintenance job to check
-  - hint in FE if invalid / not activated (no function block)
-  - license permission (read info on system page)
-  - license server (rdatacore instance)
   - license auto register?
+  - license + statistics server + statistics endpoint (workflow with cname).
+    use of our workflows (StatisticsSubmission entity)
+  - registry entity as parent for all statistics
+  - verify endpoint
 - notification / message system
     - messages
     - update on successfully run workflows

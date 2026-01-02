@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import SystemPage from './SystemPage.vue'
 import type { EntityVersioningSettings } from '@/api/clients/system'
 
 const mockGetEntityVersioningSettings = vi.fn()
 const mockUpdateEntityVersioningSettings = vi.fn()
+const mockGetLicenseStatus = vi.fn()
 
 vi.mock('@/api/typed-client', () => {
     // Define ValidationError class inline to avoid hoisting issues
@@ -22,10 +24,13 @@ vi.mock('@/api/typed-client', () => {
             getEntityVersioningSettings: () => mockGetEntityVersioningSettings(),
             updateEntityVersioningSettings: (data: unknown) =>
                 mockUpdateEntityVersioningSettings(data),
+            getLicenseStatus: () => mockGetLicenseStatus(),
         },
         ValidationError,
     }
 })
+
+// Don't mock the store - use the real store and mock the API instead
 
 vi.mock('@/api/errors', () => {
     // Define HttpError class inline to avoid hoisting issues
@@ -74,6 +79,7 @@ vi.mock('@/composables/useTranslations', () => ({
 
 describe('SystemPage', () => {
     beforeEach(() => {
+        setActivePinia(createPinia())
         vi.clearAllMocks()
     })
 
@@ -204,5 +210,97 @@ describe('SystemPage', () => {
 
         // Verify error was shown
         expect(showError).toHaveBeenCalled()
+    })
+
+    it('should display license information when available', async () => {
+        const settings: EntityVersioningSettings = {
+            enabled: true,
+            max_versions: 10,
+            max_age_days: 180,
+        }
+        mockGetEntityVersioningSettings.mockResolvedValue(settings)
+
+        const licenseStatus = {
+            state: 'valid',
+            company: 'Test Company',
+            license_type: 'Enterprise',
+            license_id: 'test-license-id',
+            issued_at: '2024-01-01T00:00:00Z',
+            version: 'v1',
+            verified_at: '2024-01-02T00:00:00Z',
+            error_message: null,
+        }
+        mockGetLicenseStatus.mockResolvedValue(licenseStatus)
+
+        const wrapper = mount(SystemPage)
+
+        // Wait for component to mount and API calls to complete
+        await wrapper.vm.$nextTick()
+        await wrapper.vm.$nextTick()
+        // Wait for async operations (loadLicenseStatus)
+        await new Promise(resolve => setTimeout(resolve, 200))
+        await wrapper.vm.$nextTick()
+
+        // Verify license section is displayed
+        // Translation mock returns last part of key, so "system.license.section_title" -> "section_title"
+        expect(wrapper.text()).toContain('section_title')
+        expect(wrapper.text()).toContain('Test Company')
+        expect(wrapper.text()).toContain('Enterprise')
+    })
+
+    it('should display license error message when state is error', async () => {
+        const settings: EntityVersioningSettings = {
+            enabled: true,
+            max_versions: 10,
+            max_age_days: 180,
+        }
+        mockGetEntityVersioningSettings.mockResolvedValue(settings)
+
+        const licenseStatus = {
+            state: 'error' as const,
+            company: 'Test Company',
+            license_type: 'Enterprise',
+            license_id: 'test-license-id',
+            issued_at: '2024-01-01T00:00:00Z',
+            version: 'v1',
+            verified_at: '2024-01-02T00:00:00Z',
+            error_message: 'Network error',
+        }
+        mockGetLicenseStatus.mockResolvedValue(licenseStatus)
+
+        const wrapper = mount(SystemPage)
+
+        // Wait for component to mount and API calls to complete
+        await wrapper.vm.$nextTick()
+        await wrapper.vm.$nextTick()
+        // Wait for async operations (loadLicenseStatus)
+        await new Promise(resolve => setTimeout(resolve, 200))
+        await wrapper.vm.$nextTick()
+
+        // Verify error message is displayed - check the full text content
+        const text = wrapper.text()
+        expect(text).toContain('Network error')
+    })
+
+    it('should handle license status loading failure gracefully', async () => {
+        const settings: EntityVersioningSettings = {
+            enabled: true,
+            max_versions: 10,
+            max_age_days: 180,
+        }
+        mockGetEntityVersioningSettings.mockResolvedValue(settings)
+        mockGetLicenseStatus.mockRejectedValue(new Error('Failed to load license status'))
+
+        const wrapper = mount(SystemPage, {
+            global: {
+                plugins: [createPinia()],
+            },
+        })
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // Should not crash, just not show license info
+        expect(wrapper.exists()).toBe(true)
     })
 })

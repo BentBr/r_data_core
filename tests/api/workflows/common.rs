@@ -6,13 +6,13 @@ use actix_web::{test, web, App};
 use r_data_core_api::{configure_app, ApiState, ApiStateWrapper};
 use r_data_core_core::admin_user::AdminUser;
 use r_data_core_core::cache::CacheManager;
-use r_data_core_core::config::CacheConfig;
+use r_data_core_core::config::{CacheConfig, LicenseConfig};
 use r_data_core_core::field::FieldDefinition;
 use r_data_core_persistence::{
     AdminUserRepository, ApiKeyRepository, ApiKeyRepositoryTrait, WorkflowRepository,
 };
 use r_data_core_services::{
-    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
+    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, LicenseService,
     WorkflowRepositoryAdapter,
 };
 use r_data_core_test_support::{create_test_admin_user, setup_test_db, test_queue_client_async};
@@ -48,6 +48,9 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
         max_size: 10000,
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
+
+    let license_config = LicenseConfig::default();
+    let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
 
     let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.pool.clone())));
     let api_key_service = ApiKeyService::new(api_key_repository);
@@ -105,6 +108,7 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
         workflow_service,
         dashboard_stats_service,
         queue: test_queue_client_async().await,
+        license_service,
     };
 
     let app_data = web::Data::new(ApiStateWrapper::new(api_state));

@@ -7,7 +7,7 @@ use actix_web::{
 use jsonwebtoken::{encode, EncodingKey, Header};
 use r_data_core_api::{configure_app, ApiState, ApiStateWrapper};
 use r_data_core_core::cache::CacheManager;
-use r_data_core_core::config::CacheConfig;
+use r_data_core_core::config::{CacheConfig, LicenseConfig};
 use r_data_core_core::error::Result;
 use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository, WorkflowRepository};
 use r_data_core_services::{
@@ -57,6 +57,10 @@ async fn test_invalid_uuid_in_jwt_token_returns_401() -> Result<()> {
     let dashboard_stats_service =
         r_data_core_services::DashboardStatsService::new(Arc::new(dashboard_stats_repository));
 
+    let license_config = LicenseConfig::default();
+    let license_service =
+        r_data_core_services::LicenseService::new(license_config, cache_manager.clone());
+
     let jwt_secret = "test_secret".to_string();
     let api_state = ApiState {
         db_pool: pool.pool.clone(),
@@ -83,6 +87,7 @@ async fn test_invalid_uuid_in_jwt_token_returns_401() -> Result<()> {
         workflow_service,
         dashboard_stats_service,
         queue: test_queue_client_async().await,
+        license_service: Arc::new(license_service),
     };
 
     // Create a JWT token with an invalid UUID in the 'sub' field

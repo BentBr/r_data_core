@@ -49,3 +49,96 @@ pub struct UpdateSettingsBody {
     /// Maximum age in days
     pub max_age_days: Option<i32>,
 }
+
+/// License state enumeration
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum LicenseStateDto {
+    /// No license key provided
+    None,
+    /// License key is invalid
+    Invalid,
+    /// Network/technical error during verification
+    Error,
+    /// License key is valid
+    Valid,
+}
+
+/// DTO for license status
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct LicenseStatusDto {
+    /// License state
+    pub state: LicenseStateDto,
+    /// Company name (if license is present)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub company: Option<String>,
+    /// License type (if license is present)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub license_type: Option<String>,
+    /// License ID (if license is present)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub license_id: Option<String>,
+    /// Issue date (if license is present)
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        with = "time::serde::rfc3339::option"
+    )]
+    pub issued_at: Option<time::OffsetDateTime>,
+    /// Expiration date (if license is present and has expiration)
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        with = "time::serde::rfc3339::option"
+    )]
+    pub expires_at: Option<time::OffsetDateTime>,
+    /// License version
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    /// Verification timestamp
+    #[serde(with = "time::serde::rfc3339")]
+    pub verified_at: time::OffsetDateTime,
+    /// Error message (only present if state is "error" or "invalid")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_message: Option<String>,
+}
+
+impl From<r_data_core_services::license::service::LicenseVerificationResult> for LicenseStatusDto {
+    fn from(result: r_data_core_services::license::service::LicenseVerificationResult) -> Self {
+        let state = match result.state {
+            r_data_core_services::license::service::LicenseState::None => LicenseStateDto::None,
+            r_data_core_services::license::service::LicenseState::Invalid => {
+                LicenseStateDto::Invalid
+            }
+            r_data_core_services::license::service::LicenseState::Error => LicenseStateDto::Error,
+            r_data_core_services::license::service::LicenseState::Valid => LicenseStateDto::Valid,
+        };
+
+        Self {
+            state,
+            company: result.company,
+            license_type: result.license_type,
+            license_id: result.license_id,
+            issued_at: result.issued_at,
+            expires_at: result.expires_at,
+            version: result.version,
+            verified_at: result.verified_at,
+            error_message: result.error_message,
+        }
+    }
+}
+
+/// Request body for license verification (internal API)
+#[derive(Debug, Deserialize)]
+pub struct LicenseVerificationRequest {
+    /// License key to verify
+    pub license_key: String,
+}
+
+/// Response for license verification (internal API)
+#[derive(Debug, Serialize)]
+pub struct LicenseVerificationResponse {
+    /// Whether the license is valid
+    pub valid: bool,
+    /// Optional message
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}

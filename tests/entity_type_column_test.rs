@@ -3,7 +3,7 @@
 use actix_web::{test, web, App};
 use r_data_core_api::{configure_app, ApiState};
 use r_data_core_core::cache::CacheManager;
-use r_data_core_core::config::CacheConfig;
+use r_data_core_core::config::{CacheConfig, LicenseConfig};
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::error::Result;
 use r_data_core_core::field::options::FieldValidation;
@@ -17,7 +17,7 @@ use r_data_core_persistence::WorkflowRepository;
 use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
 use r_data_core_services::WorkflowService;
 use r_data_core_services::{
-    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
+    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, LicenseService,
 };
 use r_data_core_test_support::create_test_admin_user;
 use serde_json::json;
@@ -254,6 +254,9 @@ async fn create_test_app_with_api_key_repo(
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
 
+    let license_config = LicenseConfig::default();
+    let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
+
     // Create repositories and services
     // Use from_repository to match the pattern in authentication_tests.rs
     // Note: We don't use cache for API keys in tests to avoid cache-related issues
@@ -306,6 +309,7 @@ async fn create_test_app_with_api_key_repo(
         workflow_service,
         dashboard_stats_service,
         queue: r_data_core_test_support::test_queue_client_async().await,
+        license_service,
     };
 
     let app_data = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));

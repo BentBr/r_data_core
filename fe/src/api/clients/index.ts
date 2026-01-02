@@ -221,6 +221,9 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     ) {
         return this.systemClient.updateEntityVersioningSettings(...args)
     }
+    async getLicenseStatus(...args: Parameters<SystemClient['getLicenseStatus']>) {
+        return this.systemClient.getLicenseStatus(...args)
+    }
 
     // Roles
     async getRoles(...args: Parameters<RolesClient['getRoles']>) {

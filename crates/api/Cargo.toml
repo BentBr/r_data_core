@@ -7,7 +7,6 @@ license = "MIT"
 [dependencies]
 # Web framework
 actix-web = "4.5"
-actix-cors = "0.7"
 actix-multipart = "0.6"
 
 # Core dependencies
@@ -15,8 +14,7 @@ r_data_core_core = { path = "../core" }
 r_data_core_workflow = { path = "../workflow" }
 r_data_core_persistence = { path = "../persistence" }
 r_data_core_services = { path = "../services" }
-# Note: Cannot depend on r_data_core due to circular dependency
-# Entities/services will be migrated to core/persistence crates
+r_data_core_license = { path = "../license" }
 
 # Database
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }
@@ -24,9 +22,6 @@ sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uui
 # Authentication
 jsonwebtoken = "9.2"
 argon2 = "0.5"
-sha2 = "0.10.8"
-base64 = "0.22"
-hex = "0.4"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -35,7 +30,6 @@ serde_json = "1.0"
 # Async
 futures = "0.3"
 futures-util = "0.3"
-async-trait = "0.1"
 tokio = { version = "1", features = ["macros"] }
 
 # Unique IDs
@@ -44,9 +38,6 @@ uuid = { version = "1.6", features = ["v7", "serde"] }
 # Time handling
 time = { version = "0.3", features = ["serde", "formatting", "parsing", "macros"] }
 
-# Error handling
-thiserror = "1.0"
-
 # Logging
 log = "0.4"
 
@@ -54,16 +45,5 @@ log = "0.4"
 utoipa = { version = "5.4.0", features = ["actix_extras", "time", "uuid"] }
 utoipa-swagger-ui = { version = "9.0.2", features = ["actix-web", "debug-embed"] }
 
-# Jobs & scheduling
-apalis = { version = "0.7.3", default-features = false, features = ["retry"] }
-apalis-redis = "1.0.0-beta.1"
-
-# CSV/bytes
-csv = "1.3"
-bytes = "1.6"
-
 # Validation
 validator = { version = "0.20.0", features = ["derive"] }
-regex = "1.10"
-
-

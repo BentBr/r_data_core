@@ -23,7 +23,8 @@ use r_data_core_services::adapters::{
 };
 use r_data_core_services::{
     AdminUserService, ApiKeyService, DashboardStatsService, DynamicEntityService,
-    EntityDefinitionService, RoleService, WorkflowRepositoryAdapter, WorkflowService,
+    EntityDefinitionService, LicenseService, RoleService, WorkflowRepositoryAdapter,
+    WorkflowService,
 };
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
@@ -78,6 +79,14 @@ pub async fn create_cache_manager(
 
     info!("Cache manager initialized with Redis");
     Ok(Arc::new(manager))
+}
+
+/// Verify license on startup
+///
+/// This function verifies the license and logs the result without blocking startup.
+pub async fn verify_license_on_startup(config: &AppConfig, cache_manager: Arc<CacheManager>) {
+    let license_service = LicenseService::new(config.license.clone(), cache_manager);
+    license_service.verify_license_on_startup("core").await;
 }
 
 /// Initialize the Redis queue client for workflows
@@ -159,6 +168,9 @@ pub async fn build_api_state(
     let dashboard_stats_repository = DashboardStatsRepository::new(pool.clone());
     let dashboard_stats_service = DashboardStatsService::new(Arc::new(dashboard_stats_repository));
 
+    // Initialize license service
+    let license_service = LicenseService::new(config.license.clone(), cache_manager.clone());
+
     // Initialize queue client
     let queue_client = create_queue_client(config).await?;
 
@@ -173,6 +185,7 @@ pub async fn build_api_state(
         workflow_service,
         role_service,
         dashboard_stats_service,
+        license_service: Arc::new(license_service),
         queue: queue_client,
     })
 }

@@ -5,7 +5,9 @@ use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use log::{debug, info};
 
-use r_data_core::bootstrap::{build_api_state, create_cache_manager, create_db_pool, init_logger};
+use r_data_core::bootstrap::{
+    build_api_state, create_cache_manager, create_db_pool, init_logger, verify_license_on_startup,
+};
 use r_data_core_api::{ApiResponse, ApiStateWrapper};
 use r_data_core_core::config::load_app_config;
 
@@ -47,6 +49,9 @@ async fn main() -> r_data_core_core::error::Result<()> {
             "Failed to initialize cache manager with Redis: {e}"
         ))
     })?;
+
+    // Verify license on startup
+    verify_license_on_startup(&config, cache_manager.clone()).await;
 
     // Build API state with all services
     let api_state = build_api_state(&config, pool, cache_manager)

@@ -23,9 +23,10 @@ actix-http = "3.4"
 httpmock = "0.8.2"
 serial_test = { version = "2.0", features = ["async"] }
 tokio = { version = "1.35", features = ["full", "macros", "rt-multi-thread"] }
-lazy_static = "1.4"
 r_data_core_worker = { path = "crates/worker" }
+r_data_core_license = { path = "crates/license" }
 anyhow = "1.0"
+tempfile = "3.10"
 
 # The rest of the dependencies
 [dependencies]
@@ -61,15 +62,9 @@ uuid = { version = "1.6", features = ["v7", "serde"] }
 # Time handling
 time = { version = "0.3", features = ["serde", "formatting", "parsing", "macros"] }
 
-# Error handling
-thiserror = "1.0"
-
 # Logging
 log = "0.4"
 env_logger = "0.11"
-
-# Configuration
-dotenvy = "0.15"
 
 # CSV/bytes
 bytes = "1.6"
@@ -86,5 +81,6 @@ members = [
   "crates/workflow",
   "crates/worker",
   "crates/test-support",
+  "crates/license",
 ]
 resolver = "2"

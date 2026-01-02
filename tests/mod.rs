@@ -2,8 +2,10 @@
 pub mod adapters;
 pub mod api;
 pub mod cache;
+pub mod license;
 pub mod repositories;
 pub mod services;
+pub mod statistics;
 pub mod utils;
 pub mod worker;
 

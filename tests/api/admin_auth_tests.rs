@@ -8,14 +8,14 @@ mod tests {
     use actix_web::{http::StatusCode, test, web, App};
     use r_data_core_api::{configure_app, ApiState, ApiStateWrapper};
     use r_data_core_core::cache::CacheManager;
-    use r_data_core_core::config::CacheConfig;
+    use r_data_core_core::config::{CacheConfig, LicenseConfig};
     use r_data_core_persistence::{
         AdminUserRepository, AdminUserRepositoryTrait, ApiKeyRepository, CreateAdminUserParams,
         DashboardStatsRepository, EntityDefinitionRepository,
     };
     use r_data_core_services::{
         AdminUserService, ApiKeyService, DashboardStatsService, EntityDefinitionService,
-        RoleService,
+        LicenseService, RoleService,
     };
     use r_data_core_test_support::{
         clear_test_db, create_test_admin_user, make_workflow_service, setup_test_db,
@@ -109,6 +109,9 @@ mod tests {
         let admin_user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
         let entity_def_repo = Arc::new(EntityDefinitionRepository::new(pool.pool.clone()));
 
+        let license_config = LicenseConfig::default();
+        let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
+
         let api_state = ApiState {
             db_pool: pool.pool.clone(),
             api_config: r_data_core_core::config::ApiConfig {
@@ -132,6 +135,7 @@ mod tests {
                 DashboardStatsRepository::new(pool.pool.clone()),
             )),
             queue: test_queue_client_async().await,
+            license_service,
         };
 
         let app = test::init_service(
