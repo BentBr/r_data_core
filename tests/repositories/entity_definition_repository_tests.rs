@@ -474,13 +474,10 @@ async fn test_create_entity_definition_from_json_examples() {
             .get_by_uuid(&uuid)
             .await
             .unwrap_or_else(|e| {
-                panic!("Failed to retrieve {} entity definition: {}", name, e);
+                panic!("Failed to retrieve {name} entity definition: {e}");
             })
             .unwrap_or_else(|| {
-                panic!(
-                    "{} entity definition not found after creation (UUID: {})",
-                    name, uuid
-                );
+                panic!("{name} entity definition not found after creation (UUID: {uuid})");
             });
         assert_eq!(retrieved.entity_type, definition.entity_type);
         assert_eq!(retrieved.fields.len(), definition.fields.len());
