@@ -32,7 +32,12 @@ enum Commands {
         /// Output file path (optional, defaults to stdout)
         #[arg(long)]
         output: Option<String>,
-        /// Expiration date in RFC3339 format (optional, e.g., "2025-12-31T23:59:59Z", defaults to no expiration)
+        /// Expiration date in RFC3339 format (optional, e.g., "2025-12-31T23:59:59Z")
+        ///
+        /// If not provided, the license will never expire.
+        /// Examples:
+        ///   --expires-at "2025-12-31T23:59:59Z"
+        ///   --expires-at "2026-01-01T00:00:00+00:00"
         #[arg(long)]
         expires_at: Option<String>,
     },
