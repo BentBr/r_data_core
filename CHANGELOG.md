@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.3](https://github.com/BentBr/r_data_core/compare/v0.3.2...v0.3.3) (2026-01-02)
+
+
+### Bug Fixes
+
+* enhancement of cache binary ([493611d](https://github.com/BentBr/r_data_core/commit/493611d5473b9642c1795e00296c60e0996d0610))
+* enhancement of cache binary ([88040c3](https://github.com/BentBr/r_data_core/commit/88040c3452adfeb694006a2d53bf9d82169a81a4))
+
 ## [0.3.2](https://github.com/BentBr/r_data_core/compare/v0.3.1...v0.3.2) (2026-01-02)
 
 
