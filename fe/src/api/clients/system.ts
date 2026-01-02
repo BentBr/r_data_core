@@ -18,6 +18,7 @@ export const LicenseStatusSchema = z.object({
     license_type: z.string().nullable().optional(),
     license_id: z.string().nullable().optional(),
     issued_at: z.string().nullable().optional(),
+    expires_at: z.string().nullable().optional(),
     version: z.string().nullable().optional(),
     verified_at: z.string(),
     error_message: z.string().nullable().optional(),

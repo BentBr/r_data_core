@@ -96,7 +96,7 @@ impl LicenseToolService {
     /// * `company` - Company name
     /// * `license_type` - License type string
     /// * `private_key_file` - Path to private key file
-    /// * `expires_days` - Optional expiration in days
+    /// * `expires_at` - Optional expiration date (if None, license never expires)
     ///
     /// # Errors
     /// Returns an error if license creation fails
@@ -104,7 +104,7 @@ impl LicenseToolService {
         company: &str,
         license_type: &str,
         private_key_file: &str,
-        expires_days: Option<u64>,
+        expires_at: Option<time::OffsetDateTime>,
     ) -> Result<LicenseCreationResult, Box<dyn std::error::Error + Send + Sync>> {
         // Parse license type
         let license_type_enum = license_type.parse::<LicenseType>().map_err(|e| {
@@ -115,7 +115,7 @@ impl LicenseToolService {
         })?;
 
         // Create the license key
-        let token = create_license_key(company, license_type_enum, private_key_file, expires_days)
+        let token = create_license_key(company, license_type_enum, private_key_file, expires_at)
             .map_err(|e| format!("Failed to create license key: {e}"))?;
 
         // Try to verify to get claims for display

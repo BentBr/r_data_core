@@ -106,7 +106,7 @@ async fn test_license_verification_api_returns_invalid() {
         "Test Company",
         LicenseType::Community,
         private_key_path.to_str().unwrap(),
-        Some(365),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
     )
     .expect("Failed to create license key");
 
@@ -193,7 +193,7 @@ async fn test_license_verification_api_returns_valid() {
         "Valid Company",
         LicenseType::Enterprise,
         private_key_path.to_str().unwrap(),
-        Some(365),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
     )
     .expect("Failed to create license key");
 
@@ -278,7 +278,7 @@ async fn test_license_verification_network_error() {
         "Test Company",
         LicenseType::Enterprise,
         private_key_path.to_str().unwrap(),
-        Some(365),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
     )
     .expect("Failed to create license key");
 

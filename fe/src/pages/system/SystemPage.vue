@@ -65,6 +65,22 @@
                                         {{ licenseStore.licenseStatus.version }}
                                     </v-col>
                                 </v-row>
+                                <v-row v-if="licenseStore.licenseStatus.expires_at">
+                                    <v-col cols="6">
+                                        <strong>{{ t('system.license.expires_at') }}:</strong>
+                                    </v-col>
+                                    <v-col cols="6">
+                                        {{ formatDate(licenseStore.licenseStatus.expires_at) }}
+                                    </v-col>
+                                </v-row>
+                                <v-row v-else-if="licenseStore.licenseStatus.state === 'valid'">
+                                    <v-col cols="6">
+                                        <strong>{{ t('system.license.expires_at') }}:</strong>
+                                    </v-col>
+                                    <v-col cols="6">
+                                        {{ t('system.license.never') }}
+                                    </v-col>
+                                </v-row>
                                 <v-row v-if="licenseStore.licenseStatus.error_message">
                                     <v-col cols="12">
                                         <v-alert
