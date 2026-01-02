@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.2](https://github.com/BentBr/r_data_core/compare/v0.3.1...v0.3.2) (2026-01-02)
+
+
+### Bug Fixes
+
+* making sure the api response for licenses accepts correct standa… ([01157fd](https://github.com/BentBr/r_data_core/commit/01157fd92f6cf4e81eb0f3744d9ae93324ab19bf))
+* making sure the api response for licenses accepts correct standard wrapper ([4d2dc21](https://github.com/BentBr/r_data_core/commit/4d2dc21347dc43e5a61d2e444e1ca6e91bb9be16))
+
 ## [0.3.1](https://github.com/BentBr/r_data_core/compare/v0.3.0...v0.3.1) (2026-01-02)
 
 
