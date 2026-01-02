@@ -107,7 +107,7 @@ async fn handle_resolve_entity_path(
     match result {
         Some((path, parent_uuid)) => {
             set_nested(normalized, &rep.target_path, Value::String(path));
-            set_parent_uuid_if_needed(normalized, &rep.target_parent_uuid, parent_uuid);
+            set_parent_uuid_if_needed(normalized, rep.target_parent_uuid.clone(), parent_uuid);
         }
         None => {
             // Entity not found and no fallback path configured - fail the workflow
@@ -149,7 +149,7 @@ async fn handle_get_or_create_entity(
 
     // Set results in normalized data
     set_nested(normalized, &goc.target_path, Value::String(path_result));
-    set_parent_uuid_if_needed(normalized, &goc.target_parent_uuid, parent_uuid);
+    set_parent_uuid_if_needed(normalized, goc.target_parent_uuid.clone(), parent_uuid);
     if let Some(target_uuid) = &goc.target_entity_uuid {
         set_nested(
             normalized,
@@ -204,18 +204,18 @@ fn prepare_create_field_data(
 
 fn set_parent_uuid_if_needed(
     normalized: &mut Value,
-    target_parent: &Option<String>,
-    parent_uuid: Option<uuid::Uuid>,
+    target_parent: Option<String>,
+    parent_uuid: Option<Uuid>,
 ) {
     if let Some(target_parent) = target_parent {
         if let Some(parent_uuid_val) = parent_uuid {
             set_nested(
                 normalized,
-                target_parent,
+                &target_parent,
                 Value::String(parent_uuid_val.to_string()),
             );
         } else {
-            set_nested(normalized, target_parent, Value::Null);
+            set_nested(normalized, &target_parent, Value::Null);
         }
     }
 }
