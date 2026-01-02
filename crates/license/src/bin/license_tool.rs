@@ -32,9 +32,9 @@ enum Commands {
         /// Output file path (optional, defaults to stdout)
         #[arg(long)]
         output: Option<String>,
-        /// Expiration in days (optional, defaults to no expiration)
+        /// Expiration date in RFC3339 format (optional, e.g., "2025-12-31T23:59:59Z", defaults to no expiration)
         #[arg(long)]
-        expires_days: Option<u64>,
+        expires_at: Option<String>,
     },
     /// Verify a license key
     Verify {
@@ -57,14 +57,29 @@ fn handle_create(
     license_type: &str,
     private_key_file: &str,
     output: Option<&str>,
-    expires_days: Option<u64>,
+    expires_at: Option<&str>,
 ) {
-    let result =
-        LicenseToolService::create_license(company, license_type, private_key_file, expires_days)
-            .unwrap_or_else(|e| {
-                eprintln!("Error: {e}");
+    // Parse expiration date if provided
+    let expires_at_parsed = expires_at.and_then(|date_str| {
+        time::OffsetDateTime::parse(date_str, &time::format_description::well_known::Rfc3339)
+            .map_err(|e| {
+                eprintln!("Error: Failed to parse expiration date '{date_str}': {e}");
+                eprintln!("Expected format: RFC3339 (e.g., '2025-12-31T23:59:59Z')");
                 std::process::exit(1);
-            });
+            })
+            .ok()
+    });
+
+    let result = LicenseToolService::create_license(
+        company,
+        license_type,
+        private_key_file,
+        expires_at_parsed,
+    )
+    .unwrap_or_else(|e| {
+        eprintln!("Error: {e}");
+        std::process::exit(1);
+    });
 
     // Output license details
     println!("License Key Created:");
@@ -282,13 +297,13 @@ fn main() {
             license_type,
             private_key_file,
             output,
-            expires_days,
+            expires_at,
         } => handle_create(
             &company,
             &license_type,
             &private_key_file,
             output.as_deref(),
-            expires_days,
+            expires_at.as_deref(),
         ),
         Commands::Verify {
             license_key,

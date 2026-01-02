@@ -11,7 +11,7 @@ use crate::models::{LicenseClaims, LicenseType};
 /// * `company` - Company name
 /// * `license_type` - License type
 /// * `private_key_path` - Path to private key file (RSA PEM format)
-/// * `expires_days` - Optional expiration in days
+/// * `expires_at` - Optional expiration date (if None, license never expires)
 ///
 /// # Errors
 /// Returns an error if key file cannot be read or JWT encoding fails
@@ -19,7 +19,7 @@ pub fn create_license_key(
     company: &str,
     license_type: LicenseType,
     private_key_path: &str,
-    expires_days: Option<u64>,
+    expires_at: Option<time::OffsetDateTime>,
 ) -> Result<String, Error> {
     // Read private key
     let private_key = fs::read_to_string(private_key_path)
@@ -28,14 +28,8 @@ pub fn create_license_key(
     // Generate license ID (UUID v7)
     let license_id = uuid::Uuid::now_v7().to_string();
 
-    // Calculate expiration if provided
-    let exp = expires_days.map(|days| {
-        let now = time::OffsetDateTime::now_utc();
-        // Safe to cast: days will never exceed i64::MAX
-        #[allow(clippy::cast_possible_wrap)]
-        let expires = now + time::Duration::days(days as i64);
-        expires.unix_timestamp()
-    });
+    // Convert expiration date to Unix timestamp if provided
+    let exp = expires_at.map(time::OffsetDateTime::unix_timestamp);
 
     // Create claims
     let claims = LicenseClaims {
