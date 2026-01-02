@@ -470,7 +470,18 @@ async fn test_create_entity_definition_from_json_examples() {
         created_uuids.push(uuid);
 
         // Verify it was created correctly
-        let retrieved = repository.get_by_uuid(&uuid).await.unwrap().unwrap();
+        let retrieved = repository
+            .get_by_uuid(&uuid)
+            .await
+            .unwrap_or_else(|e| {
+                panic!("Failed to retrieve {} entity definition: {}", name, e);
+            })
+            .unwrap_or_else(|| {
+                panic!(
+                    "{} entity definition not found after creation (UUID: {})",
+                    name, uuid
+                );
+            });
         assert_eq!(retrieved.entity_type, definition.entity_type);
         assert_eq!(retrieved.fields.len(), definition.fields.len());
 

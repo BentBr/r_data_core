@@ -4,7 +4,7 @@ use httpmock::MockServer;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::{CacheConfig, LicenseConfig};
 use r_data_core_license::LicenseToolService;
-use r_data_core_license::{create_license_key, LicenseType};
+use r_data_core_license::{call_verification_api, create_license_key, LicenseType};
 use r_data_core_services::license::service::{LicenseService, LicenseState};
 use serial_test::serial;
 use std::sync::Arc;
@@ -409,4 +409,214 @@ async fn test_license_check_cache_invalidation_with_new_timestamp() {
         cached_result.verified_at > first_verified_at,
         "Cached timestamp should be newer than the original"
     );
+}
+
+#[tokio::test]
+#[serial]
+async fn test_call_verification_api_wrapped_format() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let (private_key, _) = generate_test_keys(&temp_dir);
+
+    if private_key.is_empty() {
+        eprintln!("Skipping test - openssl not available");
+        return;
+    }
+
+    let private_key_path = temp_dir.path().join("private.key");
+    std::fs::write(&private_key_path, private_key).expect("Failed to write private key");
+
+    // Create a valid license key
+    let license_key = create_license_key(
+        "Wrapped Format Test",
+        LicenseType::Enterprise,
+        private_key_path.to_str().unwrap(),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
+    )
+    .expect("Failed to create license key");
+
+    let mock_server = MockServer::start();
+    let mock = mock_server.mock(|when, then| {
+        when.method(httpmock::Method::POST)
+            .path("/verify")
+            .json_body(serde_json::json!({ "license_key": license_key }));
+        // Return wrapped ApiResponse format (internal endpoint format)
+        then.status(200).json_body(serde_json::json!({
+            "status": "Success",
+            "message": "Operation completed successfully",
+            "data": {
+                "valid": true,
+                "message": null
+            }
+        }));
+    });
+
+    let verification_url = format!("http://{}/verify", mock_server.address());
+
+    // Test that call_verification_api can parse wrapped format
+    let result = call_verification_api(&license_key, &verification_url)
+        .await
+        .expect("Should not fail");
+
+    assert!(result.is_valid);
+    assert_eq!(result.claims.company, "Wrapped Format Test");
+    assert_eq!(result.claims.license_type, LicenseType::Enterprise);
+    assert!(result.error_message.is_none());
+
+    mock.assert();
+}
+
+#[tokio::test]
+#[serial]
+async fn test_call_verification_api_unwrapped_format() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let (private_key, _) = generate_test_keys(&temp_dir);
+
+    if private_key.is_empty() {
+        eprintln!("Skipping test - openssl not available");
+        return;
+    }
+
+    let private_key_path = temp_dir.path().join("private.key");
+    std::fs::write(&private_key_path, private_key).expect("Failed to write private key");
+
+    // Create a valid license key
+    let license_key = create_license_key(
+        "Unwrapped Format Test",
+        LicenseType::Community,
+        private_key_path.to_str().unwrap(),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
+    )
+    .expect("Failed to create license key");
+
+    let mock_server = MockServer::start();
+    let mock = mock_server.mock(|when, then| {
+        when.method(httpmock::Method::POST)
+            .path("/verify")
+            .json_body(serde_json::json!({ "license_key": license_key }));
+        // Return unwrapped format (external API format)
+        then.status(200).json_body(serde_json::json!({
+            "valid": true,
+            "message": null
+        }));
+    });
+
+    let verification_url = format!("http://{}/verify", mock_server.address());
+
+    // Test that call_verification_api can parse unwrapped format
+    let result = call_verification_api(&license_key, &verification_url)
+        .await
+        .expect("Should not fail");
+
+    assert!(result.is_valid);
+    assert_eq!(result.claims.company, "Unwrapped Format Test");
+    assert_eq!(result.claims.license_type, LicenseType::Community);
+    assert!(result.error_message.is_none());
+
+    mock.assert();
+}
+
+#[tokio::test]
+#[serial]
+async fn test_call_verification_api_wrapped_format_invalid() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let (private_key, _) = generate_test_keys(&temp_dir);
+
+    if private_key.is_empty() {
+        eprintln!("Skipping test - openssl not available");
+        return;
+    }
+
+    let private_key_path = temp_dir.path().join("private.key");
+    std::fs::write(&private_key_path, private_key).expect("Failed to write private key");
+
+    // Create a valid license key
+    let license_key = create_license_key(
+        "Invalid Wrapped Test",
+        LicenseType::Enterprise,
+        private_key_path.to_str().unwrap(),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
+    )
+    .expect("Failed to create license key");
+
+    let mock_server = MockServer::start();
+    let mock = mock_server.mock(|when, then| {
+        when.method(httpmock::Method::POST)
+            .path("/verify")
+            .json_body(serde_json::json!({ "license_key": license_key }));
+        // Return wrapped ApiResponse format with invalid license
+        then.status(200).json_body(serde_json::json!({
+            "status": "Success",
+            "message": "Operation completed successfully",
+            "data": {
+                "valid": false,
+                "message": "License has been revoked"
+            }
+        }));
+    });
+
+    let verification_url = format!("http://{}/verify", mock_server.address());
+
+    // Test that call_verification_api can parse wrapped format with invalid result
+    let result = call_verification_api(&license_key, &verification_url)
+        .await
+        .expect("Should not fail");
+
+    assert!(!result.is_valid);
+    assert_eq!(result.claims.company, "Invalid Wrapped Test");
+    assert!(result.error_message.is_some());
+    let error_msg = result.error_message.unwrap();
+    assert!(error_msg.contains("revoked") || error_msg.contains("License"));
+
+    mock.assert();
+}
+
+#[tokio::test]
+#[serial]
+async fn test_call_verification_api_unwrapped_format_invalid() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let (private_key, _) = generate_test_keys(&temp_dir);
+
+    if private_key.is_empty() {
+        eprintln!("Skipping test - openssl not available");
+        return;
+    }
+
+    let private_key_path = temp_dir.path().join("private.key");
+    std::fs::write(&private_key_path, private_key).expect("Failed to write private key");
+
+    // Create a valid license key
+    let license_key = create_license_key(
+        "Invalid Unwrapped Test",
+        LicenseType::Education,
+        private_key_path.to_str().unwrap(),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
+    )
+    .expect("Failed to create license key");
+
+    let mock_server = MockServer::start();
+    let mock = mock_server.mock(|when, then| {
+        when.method(httpmock::Method::POST)
+            .path("/verify")
+            .json_body(serde_json::json!({ "license_key": license_key }));
+        // Return unwrapped format with invalid license
+        then.status(200).json_body(serde_json::json!({
+            "valid": false,
+            "message": "License expired"
+        }));
+    });
+
+    let verification_url = format!("http://{}/verify", mock_server.address());
+
+    // Test that call_verification_api can parse unwrapped format with invalid result
+    let result = call_verification_api(&license_key, &verification_url)
+        .await
+        .expect("Should not fail");
+
+    assert!(!result.is_valid);
+    assert_eq!(result.claims.company, "Invalid Unwrapped Test");
+    assert!(result.error_message.is_some());
+    let error_msg = result.error_message.unwrap();
+    assert!(error_msg.contains("expired") || error_msg.contains("License"));
+
+    mock.assert();
 }
