@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.0](https://github.com/BentBr/r_data_core/compare/v0.2.1...v0.3.0) (2026-01-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* license key creation and check via cronjobs
+
+### Features
+
+* adding ssg vite for our static website, setting a proper business license ([d38244b](https://github.com/BentBr/r_data_core/commit/d38244bc4edf70851d8046949e9ec3a38ac046b4))
+* license key creation and check via cronjobs ([d3392b9](https://github.com/BentBr/r_data_core/commit/d3392b9042795463f6daf463fc124b8baddd8d0b))
+
+
+### Bug Fixes
+
+* tests + linting ([21882a3](https://github.com/BentBr/r_data_core/commit/21882a3b2bdf83c53ce94eeb36d7ad3588d0e378))
+
 ## [0.2.1](https://github.com/BentBr/r_data_core/compare/v0.2.0...v0.2.1) (2025-12-29)
 
 
