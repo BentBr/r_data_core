@@ -10,7 +10,7 @@ pub mod log;
 pub mod queue;
 pub mod workflow;
 
-pub use loader::load_license_config;
+pub use loader::{load_cache_config, load_license_config};
 
 pub use api::ApiConfig;
 pub use app::{AppConfig, MaintenanceConfig, WorkerConfig};

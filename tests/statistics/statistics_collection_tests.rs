@@ -23,6 +23,7 @@ async fn test_statistics_collection() {
     let config = LicenseConfig {
         license_key: None,
         private_key: None,
+        public_key: None,
         verification_url: format!("http://{}/verify", mock_server.address()),
         statistics_url: format!("http://{}/submit", mock_server.address()),
     };
@@ -58,6 +59,7 @@ async fn test_statistics_collection_silent_failure() {
     let config = LicenseConfig {
         license_key: None,
         private_key: None,
+        public_key: None,
         verification_url: format!("http://{}/verify", mock_server.address()),
         statistics_url: format!("http://{}/submit", mock_server.address()),
     };

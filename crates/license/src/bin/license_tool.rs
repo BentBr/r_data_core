@@ -1,10 +1,12 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use clap::{Parser, Subcommand};
-use r_data_core_core::config::load_license_config;
+use r_data_core_core::cache::CacheManager;
+use r_data_core_core::config::{load_cache_config, load_license_config};
 use r_data_core_license::{LicenseCheckState, LicenseToolService};
 use std::io::{self, Read};
 use std::path::Path;
+use std::sync::Arc;
 
 #[derive(Parser)]
 #[command(name = "license_tool")]
@@ -106,13 +108,24 @@ fn read_license_key(license_key: Option<&str>, license_key_file: Option<&str>) -
         || {
             license_key_file.map_or_else(
                 || {
-                    // Read from stdin
+                    // Check if stdin is a TTY - if so, don't wait for input
+                    if atty::is(atty::Stream::Stdin) {
+                        eprintln!("Error: No license key provided. Use --license-key <KEY> or --license-key-file <FILE>");
+                        eprintln!("Alternatively, pipe the license key to stdin: echo 'KEY' | license_tool verify --public-key-file <FILE>");
+                        std::process::exit(1);
+                    }
+                    // Read from stdin (non-TTY, piped input)
                     let mut buffer = String::new();
                     io::stdin().read_to_string(&mut buffer).unwrap_or_else(|e| {
                         eprintln!("Error: Failed to read from stdin: {e}");
                         std::process::exit(1);
                     });
-                    buffer.trim().to_string()
+                    let trimmed = buffer.trim();
+                    if trimmed.is_empty() {
+                        eprintln!("Error: Empty license key from stdin");
+                        std::process::exit(1);
+                    }
+                    trimmed.to_string()
                 },
                 |key_file| {
                     std::fs::read_to_string(key_file).unwrap_or_else(|e| {
@@ -175,16 +188,20 @@ fn handle_check() {
         std::process::exit(1);
     });
 
-    // Check if license key is provided
-    let license_key = match &config.license_key {
-        Some(key) if !key.is_empty() => key,
-        _ => {
-            eprintln!("Error: LICENSE_KEY environment variable is not set or empty");
-            std::process::exit(1);
-        }
-    };
+    // Check if license key is provided (config is passed to check_license, no need to extract here)
+    if config.license_key.is_none() || config.license_key.as_ref().unwrap().is_empty() {
+        eprintln!("Error: LICENSE_KEY environment variable is not set or empty");
+        std::process::exit(1);
+    }
 
-    // Run async check using the same API call logic as maintenance task
+    // Load cache config and Redis URL (same as maintenance worker) - REQUIRED
+    let (cache_config, redis_url) = load_cache_config().unwrap_or_else(|e| {
+        eprintln!("Error: Failed to load cache configuration: {e}");
+        eprintln!("Cache configuration is required for license check.");
+        std::process::exit(1);
+    });
+
+    // Initialize cache manager with Redis (same logic as maintenance worker)
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -193,11 +210,24 @@ fn handle_check() {
             std::process::exit(1);
         });
 
+    let cache_manager = rt.block_on(async {
+        let manager = CacheManager::new(cache_config.clone());
+        match manager.with_redis(&redis_url).await {
+            Ok(m) => {
+                println!("Cache manager initialized with Redis");
+                Arc::new(m)
+            }
+            Err(e) => {
+                eprintln!("Error: Failed to connect to Redis: {e}");
+                eprintln!("Redis connection is required for license check.");
+                std::process::exit(1);
+            }
+        }
+    });
+
+    // Run async check using the same service code path as maintenance task
     let result = rt
-        .block_on(LicenseToolService::check_license(
-            license_key,
-            &config.verification_url,
-        ))
+        .block_on(LicenseToolService::check_license(config, cache_manager))
         .unwrap_or_else(|e| {
             eprintln!("Error: Failed to check license: {e}");
             std::process::exit(1);

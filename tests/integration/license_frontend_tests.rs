@@ -58,6 +58,7 @@ async fn setup_test_app_with_license_config(
     let license_config = LicenseConfig {
         license_key,
         private_key: None,
+               public_key: None,
         verification_url: format!("http://{}/verify", mock_server.address()),
         statistics_url: format!("http://{}/submit", mock_server.address()),
     };

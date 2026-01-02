@@ -78,7 +78,7 @@ pub async fn call_verification_api(
 }
 
 /// Decode license claims from JWT without verification (for display purposes)
-fn decode_license_claims(
+pub(crate) fn decode_license_claims(
     license_key: &str,
 ) -> Result<LicenseClaims, Box<dyn std::error::Error + Send + Sync>> {
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;

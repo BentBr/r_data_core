@@ -28,6 +28,7 @@ async fn test_license_verification_task_none_state() {
     let config = LicenseConfig {
         license_key: None,
         private_key: None,
+        public_key: None,
         verification_url: "http://localhost:9999/verify".to_string(), // Mock URL (won't be called in these tests)
         statistics_url: "http://localhost:9999/submit".to_string(), // Mock URL (won't be called in these tests)
     };
@@ -58,6 +59,7 @@ async fn test_license_verification_task_prevents_multiple_runs() {
     let config = LicenseConfig {
         license_key: None,
         private_key: None,
+        public_key: None,
         verification_url: "http://localhost:9999/verify".to_string(), // Mock URL (won't be called in these tests)
         statistics_url: "http://localhost:9999/submit".to_string(), // Mock URL (won't be called in these tests)
     };

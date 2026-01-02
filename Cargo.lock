@@ -341,73 +341,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 
 [[package]]
-name = "apalis"
-version = "0.7.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "504d52557a16b7b202941660f339c9182910d498cac40f93d15f6b31e6bef290"
-dependencies = [
- "apalis-core 0.7.4",
- "futures",
- "pin-project-lite",
- "serde",
- "thiserror 2.0.17",
- "tower",
-]
-
-[[package]]
-name = "apalis-core"
-version = "0.7.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3948d2051795c769e6a44a46549879af39d5e8e4fb113e0011cf99f7cd21b657"
-dependencies = [
- "futures",
- "pin-project-lite",
- "serde",
- "thiserror 2.0.17",
- "tower",
- "ulid",
-]
-
-[[package]]
-name = "apalis-core"
-version = "1.0.0-beta.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49039d4eb476cc05e196210153dbb34be180de9a0ef8b7a666fde0f80c5c357d"
-dependencies = [
- "futures-channel",
- "futures-core",
- "futures-sink",
- "futures-timer",
- "futures-util",
- "pin-project",
- "serde",
- "serde_json",
- "thiserror 2.0.17",
- "tower-layer",
- "tower-service",
-]
-
-[[package]]
-name = "apalis-redis"
-version = "1.0.0-beta.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d5a34d5cc430e18608a2921447273bef60d224a038f5e2ab7296e2ee46245cb"
-dependencies = [
- "apalis-core 1.0.0-beta.2",
- "chrono",
- "event-listener",
- "futures",
- "log",
- "redis",
- "serde",
- "serde_json",
- "thiserror 2.0.17",
- "tokio",
- "tower",
- "ulid",
-]
-
-[[package]]
 name = "arbitrary"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -490,6 +423,17 @@ name = "atomic-waker"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
+
+[[package]]
+name = "atty"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
+dependencies = [
+ "hermit-abi",
+ "libc",
+ "winapi",
+]
 
 [[package]]
 name = "autocfg"
@@ -629,7 +573,6 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
- "serde",
  "wasm-bindgen",
  "windows-link",
 ]
@@ -1374,6 +1317,15 @@ name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
+
+[[package]]
+name = "hermit-abi"
+version = "0.1.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "hex"
@@ -2178,26 +2130,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
-name = "pin-project"
-version = "1.1.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "677f1add503faace112b9f1373e43e9e054bfdd22ff1a63c1bc485eaec6a6a8a"
-dependencies = [
- "pin-project-internal",
-]
-
-[[package]]
-name = "pin-project-internal"
-version = "1.1.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e918e4ff8c4549eb882f14b3a4bc8c8bc93de829416eacf579f1207a8fbf861"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.111",
-]
-
-[[package]]
 name = "pin-project-lite"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2412,16 +2344,15 @@ dependencies = [
  "anyhow",
  "async-trait",
  "bytes",
- "dotenvy",
  "env_logger",
  "futures",
  "httpmock",
  "jsonwebtoken",
- "lazy_static",
  "log",
  "mockall",
  "r_data_core_api",
  "r_data_core_core",
+ "r_data_core_license",
  "r_data_core_persistence",
  "r_data_core_services",
  "r_data_core_test_support",
@@ -2434,7 +2365,6 @@ dependencies = [
  "sha2",
  "sqlx",
  "tempfile",
- "thiserror 1.0.69",
  "time",
  "tokio",
  "uuid",
@@ -2444,31 +2374,21 @@ dependencies = [
 name = "r_data_core_api"
 version = "0.2.0"
 dependencies = [
- "actix-cors",
  "actix-multipart",
  "actix-web",
- "apalis",
- "apalis-redis",
  "argon2",
- "async-trait",
- "base64",
- "bytes",
- "csv",
  "futures",
  "futures-util",
- "hex",
  "jsonwebtoken",
  "log",
  "r_data_core_core",
+ "r_data_core_license",
  "r_data_core_persistence",
  "r_data_core_services",
  "r_data_core_workflow",
- "regex",
  "serde",
  "serde_json",
- "sha2",
  "sqlx",
- "thiserror 1.0.69",
  "time",
  "tokio",
  "utoipa",
@@ -2508,6 +2428,7 @@ dependencies = [
 name = "r_data_core_license"
 version = "0.2.0"
 dependencies = [
+ "atty",
  "base64",
  "clap",
  "jsonwebtoken",
@@ -2534,7 +2455,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
- "thiserror 1.0.69",
  "time",
  "tokio",
  "uuid",
@@ -2550,7 +2470,6 @@ dependencies = [
  "cron",
  "env_logger",
  "futures",
- "jsonwebtoken",
  "log",
  "mockall",
  "r_data_core_core",
@@ -2572,13 +2491,11 @@ name = "r_data_core_test_support"
 version = "0.2.0"
 dependencies = [
  "dotenvy",
- "lazy_static",
  "log",
  "r_data_core_core",
  "r_data_core_persistence",
  "r_data_core_services",
  "r_data_core_workflow",
- "serde",
  "serde_json",
  "sqlx",
  "time",
@@ -2613,8 +2530,6 @@ name = "r_data_core_workflow"
 version = "0.2.0"
 dependencies = [
  "actix-web",
- "apalis",
- "apalis-redis",
  "async-trait",
  "bytes",
  "csv",
@@ -2627,7 +2542,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
- "time",
  "utoipa",
  "uuid",
 ]
@@ -3758,17 +3672,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "562d481066bde0658276a35467c4af00bdc6ee726305698a55b86e61d7ad82bb"
 
 [[package]]
-name = "ulid"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "470dbf6591da1b39d43c14523b2b469c86879a53e8b758c8e090a470fe7b1fbe"
-dependencies = [
- "rand 0.9.2",
- "serde",
- "web-time",
-]
-
-[[package]]
 name = "unicase"
 version = "2.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4093,6 +3996,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "winapi"
+version = "0.3.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c839a674fcd7a98952e593242ea400abe93992746761e38641405d28b00f419"
+dependencies = [
+ "winapi-i686-pc-windows-gnu",
+ "winapi-x86_64-pc-windows-gnu",
+]
+
+[[package]]
+name = "winapi-i686-pc-windows-gnu"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
+
+[[package]]
 name = "winapi-util"
 version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4100,6 +4019,12 @@ checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
  "windows-sys 0.61.2",
 ]
+
+[[package]]
+name = "winapi-x86_64-pc-windows-gnu"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "windows-core"

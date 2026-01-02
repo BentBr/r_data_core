@@ -84,6 +84,12 @@ pub struct LicenseStatusDto {
         with = "time::serde::rfc3339::option"
     )]
     pub issued_at: Option<time::OffsetDateTime>,
+    /// Expiration date (if license is present and has expiration)
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        with = "time::serde::rfc3339::option"
+    )]
+    pub expires_at: Option<time::OffsetDateTime>,
     /// License version
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
@@ -112,9 +118,27 @@ impl From<r_data_core_services::license::service::LicenseVerificationResult> for
             license_type: result.license_type,
             license_id: result.license_id,
             issued_at: result.issued_at,
+            expires_at: result.expires_at,
             version: result.version,
             verified_at: result.verified_at,
             error_message: result.error_message,
         }
     }
+}
+
+/// Request body for license verification (internal API)
+#[derive(Debug, Deserialize)]
+pub struct LicenseVerificationRequest {
+    /// License key to verify
+    pub license_key: String,
+}
+
+/// Response for license verification (internal API)
+#[derive(Debug, Serialize)]
+pub struct LicenseVerificationResponse {
+    /// Whether the license is valid
+    pub valid: bool,
+    /// Optional message
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
 }

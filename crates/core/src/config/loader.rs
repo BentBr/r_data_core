@@ -287,6 +287,7 @@ fn get_license_config() -> LicenseConfig {
     LicenseConfig {
         license_key: env::var("LICENSE_KEY").ok(),
         private_key: env::var("LICENSE_PRIVATE_KEY").ok(),
+        public_key: env::var("LICENSE_PUBLIC_KEY").ok(),
         verification_url: LicenseConfig::default().verification_url,
         statistics_url: LicenseConfig::default().statistics_url,
     }
@@ -295,7 +296,7 @@ fn get_license_config() -> LicenseConfig {
 /// Load license configuration from environment variables
 ///
 /// This function loads the license configuration using the same logic as the main config loader.
-/// It handles .env file loading and reads `LICENSE_KEY`, `LICENSE_PRIVATE_KEY`, and uses default URLs.
+/// It handles .env file loading and reads `LICENSE_KEY`, `LICENSE_PRIVATE_KEY`, `LICENSE_PUBLIC_KEY`, and uses default URLs.
 ///
 /// # Errors
 /// Returns an error if .env file loading fails (though this is usually non-fatal)
@@ -304,4 +305,22 @@ pub fn load_license_config() -> Result<LicenseConfig> {
     dotenv().ok();
 
     Ok(get_license_config())
+}
+
+/// Load cache configuration and Redis URL from environment variables
+///
+/// This function loads the cache configuration using the same logic as the maintenance config loader.
+/// It handles .env file loading and reads cache settings and `REDIS_URL`.
+///
+/// # Errors
+/// Returns an error if required environment variables are missing
+pub fn load_cache_config() -> Result<(CacheConfig, String)> {
+    // Load .env file if present (same as other config loaders)
+    dotenv().ok();
+
+    let cache = get_cache_config();
+    let redis_url = env::var("REDIS_URL")
+        .map_err(|_| crate::error::Error::Config("REDIS_URL not set".to_string()))?;
+
+    Ok((cache, redis_url))
 }

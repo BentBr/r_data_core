@@ -102,7 +102,6 @@ docker pull ghcr.io/bentbr/r-data-core-maintenance:latest
 | `CACHE_ENABLED` | true        | Enable caching                        |
 | `CACHE_TTL` | 300         | Default cache TTL (seconds)           |
 | `CHECK_DEFAULT_ADMIN_PASSWORD` | true        | Defines if the warning in FE is shown |
-| `LICENSE_PRIVATE_KEY` | -           | RSA private key for creating license keys (used by `license_tool` binary) |
 
 ### Maintenance Worker Environment Variables
 

@@ -9,6 +9,8 @@ pub struct LicenseConfig {
     pub license_key: Option<String>,
     /// Private key for signing license keys (used by `license_tool` binary)
     pub private_key: Option<String>,
+    /// Public key for verifying license keys (used by internal verification endpoint)
+    pub public_key: Option<String>,
     /// License verification API URL
     #[serde(default = "default_license_verification_url")]
     pub verification_url: String,
@@ -30,6 +32,7 @@ impl Default for LicenseConfig {
         Self {
             license_key: None,
             private_key: None,
+            public_key: None,
             verification_url: default_license_verification_url(),
             statistics_url: default_statistics_url(),
         }

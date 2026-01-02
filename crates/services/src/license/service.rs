@@ -46,6 +46,13 @@ pub struct LicenseVerificationResult {
         with = "time::serde::rfc3339::option"
     )]
     pub issued_at: Option<time::OffsetDateTime>,
+    /// Expiration date (if license is present and has expiration)
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "time::serde::rfc3339::option"
+    )]
+    pub expires_at: Option<time::OffsetDateTime>,
     /// License version
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
@@ -70,7 +77,7 @@ struct LicenseVerificationResponse {
 /// Service for license verification with caching
 pub struct LicenseService {
     /// License configuration
-    config: LicenseConfig,
+    pub config: LicenseConfig,
     /// HTTP client for API calls
     client: Client,
     /// Cache manager
@@ -81,6 +88,11 @@ impl LicenseService {
     /// Parse `issued_at` string to `OffsetDateTime`
     fn parse_issued_at(issued_at: &str) -> Option<time::OffsetDateTime> {
         time::OffsetDateTime::parse(issued_at, &time::format_description::well_known::Rfc3339).ok()
+    }
+
+    /// Parse expiration from JWT claims `exp` field (Unix timestamp)
+    fn parse_expiration(exp: Option<i64>) -> Option<time::OffsetDateTime> {
+        exp.and_then(|timestamp| time::OffsetDateTime::from_unix_timestamp(timestamp).ok())
     }
 
     /// Create a new license service
@@ -151,6 +163,7 @@ impl LicenseService {
                     license_type: None,
                     license_id: None,
                     issued_at: None,
+                    expires_at: None,
                     version: None,
                     verified_at: time::OffsetDateTime::now_utc(),
                     error_message: None,
@@ -210,6 +223,7 @@ impl LicenseService {
                     license_type: None,
                     license_id: None,
                     issued_at: None,
+                    expires_at: None,
                     version: None,
                     verified_at: time::OffsetDateTime::now_utc(),
                     error_message: None,
@@ -228,6 +242,7 @@ impl LicenseService {
                     license_type: None,
                     license_id: None,
                     issued_at: None,
+                    expires_at: None,
                     version: None,
                     verified_at: time::OffsetDateTime::now_utc(),
                     error_message: None,
@@ -295,6 +310,7 @@ impl LicenseService {
                     license_type: None,
                     license_id: None,
                     issued_at: None,
+                    expires_at: None,
                     version: None,
                     verified_at: time::OffsetDateTime::now_utc(),
                     error_message: Some(format!("Failed to decode license key: {e}")),
@@ -319,6 +335,7 @@ impl LicenseService {
                     license_type: Some(claims.license_type.to_string()),
                     license_id: Some(claims.license_id),
                     issued_at: Self::parse_issued_at(&claims.issued_at),
+                    expires_at: Self::parse_expiration(claims.exp),
                     version: Some(claims.version),
                     verified_at: time::OffsetDateTime::now_utc(),
                     error_message: Some(format!("Network error: {e}")),
@@ -337,6 +354,7 @@ impl LicenseService {
                     license_type: Some(claims.license_type.to_string()),
                     license_id: Some(claims.license_id),
                     issued_at: Self::parse_issued_at(&claims.issued_at),
+                    expires_at: Self::parse_expiration(claims.exp),
                     version: Some(claims.version),
                     verified_at: time::OffsetDateTime::now_utc(),
                     error_message: Some(format!("Failed to parse API response: {e}")),
@@ -358,6 +376,7 @@ impl LicenseService {
             license_type: Some(claims.license_type.to_string()),
             license_id: Some(claims.license_id),
             issued_at: Self::parse_issued_at(&claims.issued_at),
+            expires_at: Self::parse_expiration(claims.exp),
             version: Some(claims.version),
             verified_at: time::OffsetDateTime::now_utc(),
             error_message: if is_valid { None } else { api_result.message },

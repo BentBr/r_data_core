@@ -41,6 +41,7 @@ async fn test_statistics_collection_task_executes() {
     let config = LicenseConfig {
         license_key: None,
         private_key: None,
+        public_key: None,
         verification_url: "https://license.rdatacore.eu/verify".to_string(),
         statistics_url: format!("http://{}/submit", mock_server.address()),
     };
@@ -76,6 +77,7 @@ async fn test_statistics_collection_task_prevents_multiple_runs() {
     let config = LicenseConfig {
         license_key: None,
         private_key: None,
+        public_key: None,
         verification_url: "http://localhost:9999/verify".to_string(), // Mock URL (won't be called in these tests)
         statistics_url: "http://localhost:9999/submit".to_string(), // Mock URL (won't be called in these tests)
     };

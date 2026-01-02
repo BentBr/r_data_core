@@ -15,9 +15,9 @@ base64 = "0.22"
 clap = { version = "4.5", features = ["derive"] }
 tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+atty = "0.2"
 r_data_core_core = { path = "../core" }
 
 [[bin]]
 name = "license_tool"
 path = "src/bin/license_tool.rs"
-
