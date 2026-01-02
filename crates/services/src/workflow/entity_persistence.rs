@@ -372,19 +372,22 @@ pub async fn resolve_entity_path(
     let transformed_filters = {
         let mut result = HashMap::new();
         for (k, v) in filters {
-            let transformed_value = value_transforms
-                .and_then(|vt| vt.get(k))
-                .map_or_else(|| v.clone(), |transform_type| {
-                    r_data_core_workflow::dsl::path_resolution::apply_value_transform(v, transform_type)
-                });
+            let transformed_value = value_transforms.and_then(|vt| vt.get(k)).map_or_else(
+                || v.clone(),
+                |transform_type| {
+                    r_data_core_workflow::dsl::path_resolution::apply_value_transform(
+                        v,
+                        transform_type,
+                    )
+                },
+            );
             result.insert(k.clone(), transformed_value);
         }
         result
     };
 
     // Try to find entity using filter_entities
-    let mut filter_map: HashMap<String, Value> =
-        HashMap::new();
+    let mut filter_map: HashMap<String, Value> = HashMap::new();
     for (k, v) in &transformed_filters {
         filter_map.insert(k.clone(), v.clone());
     }
@@ -466,12 +469,8 @@ pub async fn get_or_create_entity_by_path(
     }
 
     // Try to find entity by path using filter with path
-    let mut path_filter: HashMap<String, Value> =
-        HashMap::new();
-    path_filter.insert(
-        "path".to_string(),
-        Value::String(normalized_path.clone()),
-    );
+    let mut path_filter: HashMap<String, Value> = HashMap::new();
+    path_filter.insert("path".to_string(), Value::String(normalized_path.clone()));
     let entities = de_service
         .filter_entities(entity_type, 1, 0, Some(path_filter), None, None, None)
         .await?;
@@ -499,12 +498,8 @@ pub async fn get_or_create_entity_by_path(
     // Entity doesn't exist, create it
     // Determine parent_uuid if parent path exists
     let parent_uuid = if let Some(parent_path) = parent_path_opt {
-        let mut path_filter: HashMap<String, Value> =
-            HashMap::new();
-        path_filter.insert(
-            "path".to_string(),
-            Value::String(parent_path.clone()),
-        );
+        let mut path_filter: HashMap<String, Value> = HashMap::new();
+        path_filter.insert("path".to_string(), Value::String(parent_path.clone()));
         let parent_entities = de_service
             .filter_entities(entity_type, 1, 0, Some(path_filter), None, None, None)
             .await?;
@@ -586,8 +581,7 @@ pub async fn resolve_dynamic_path(
         Ok(path) => Ok(path),
         Err(e) => {
             // If path building fails, use fallback
-            fallback_path
-                .map_or_else(|| Err(e), |fallback| Ok(fallback.to_string()))
+            fallback_path.map_or_else(|| Err(e), |fallback| Ok(fallback.to_string()))
         }
     }
 }

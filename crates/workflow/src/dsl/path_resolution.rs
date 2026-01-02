@@ -214,13 +214,16 @@ pub fn build_path_from_fields<S: std::hash::BuildHasher>(
     }
 
     // Normalize path (remove double separators, ensure starts with /)
-    let normalized = if result.starts_with(sep) {
+    // Paths must always start with / regardless of separator used between segments
+    let normalized = if result.starts_with('/') {
         result
     } else {
-        format!("{sep}{result}")
+        format!("/{result}")
     };
 
-    Ok(normalized.replace(&format!("{sep}{sep}"), sep))
+    // Remove double separators (but keep the leading /)
+    let cleaned = normalized.replace("//", "/");
+    Ok(cleaned)
 }
 
 /// Parse path to extract entity key and parent path

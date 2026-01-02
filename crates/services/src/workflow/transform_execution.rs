@@ -151,7 +151,11 @@ async fn handle_get_or_create_entity(
     set_nested(normalized, &goc.target_path, Value::String(path_result));
     set_parent_uuid_if_needed(normalized, &goc.target_parent_uuid, parent_uuid);
     if let Some(target_uuid) = &goc.target_entity_uuid {
-        set_nested(normalized, target_uuid, Value::String(entity_uuid.to_string()));
+        set_nested(
+            normalized,
+            target_uuid,
+            Value::String(entity_uuid.to_string()),
+        );
     }
     Ok(())
 }
@@ -163,13 +167,12 @@ fn evaluate_filter_operands(
     let mut result = std::collections::HashMap::new();
     for (field, operand) in filters {
         let filter_value = match operand {
-            StringOperand::Field { field: field_path } => {
-                get_nested(normalized, field_path).ok_or_else(|| {
+            StringOperand::Field { field: field_path } => get_nested(normalized, field_path)
+                .ok_or_else(|| {
                     r_data_core_core::error::Error::Validation(format!(
                         "Field '{field_path}' not found for filter '{field}'"
                     ))
-                })?
-            }
+                })?,
             StringOperand::ConstString { value } => Value::String(value.clone()),
         };
         result.insert(field.clone(), filter_value);
@@ -185,13 +188,12 @@ fn prepare_create_field_data(
         let mut field_data = std::collections::HashMap::new();
         for (field, operand) in create_data {
             let field_value = match operand {
-                StringOperand::Field { field: field_path } => {
-                    get_nested(normalized, field_path).ok_or_else(|| {
+                StringOperand::Field { field: field_path } => get_nested(normalized, field_path)
+                    .ok_or_else(|| {
                         r_data_core_core::error::Error::Validation(format!(
                             "Field '{field_path}' not found for create_field_data '{field}'"
                         ))
-                    })?
-                }
+                    })?,
                 StringOperand::ConstString { value } => Value::String(value.clone()),
             };
             field_data.insert(field.clone(), field_value);
@@ -207,7 +209,11 @@ fn set_parent_uuid_if_needed(
 ) {
     if let Some(target_parent) = target_parent {
         if let Some(parent_uuid_val) = parent_uuid {
-            set_nested(normalized, target_parent, Value::String(parent_uuid_val.to_string()));
+            set_nested(
+                normalized,
+                target_parent,
+                Value::String(parent_uuid_val.to_string()),
+            );
         } else {
             set_nested(normalized, target_parent, Value::Null);
         }

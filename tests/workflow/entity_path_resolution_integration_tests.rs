@@ -32,19 +32,7 @@ async fn create_test_entity_definition(
         allow_children: true,
         icon: None,
         fields: vec![
-            FieldDefinition {
-                name: "entity_key".to_string(),
-                display_name: "Entity Key".to_string(),
-                description: None,
-                field_type: FieldType::String,
-                required: true,
-                indexed: true,
-                filterable: true,
-                default_value: None,
-                validation: r_data_core_core::field::FieldValidation::default(),
-                ui_settings: r_data_core_core::field::ui::UiSettings::default(),
-                constraints: HashMap::new(),
-            },
+            // Note: entity_key is a system field in entities_registry, don't add it as a custom field
             FieldDefinition {
                 name: "license_key_id".to_string(),
                 display_name: "License Key ID".to_string(),
@@ -103,8 +91,12 @@ fn create_test_entity(
     use std::sync::Arc;
 
     let mut field_data = HashMap::new();
-    field_data.insert("entity_key".to_string(), json!(Uuid::now_v7().to_string()));
+    // entity_key is a system field, will be set automatically
     field_data.insert("path".to_string(), json!(path));
+    // entity_key is required - generate one if not provided
+    field_data
+        .entry("entity_key".to_string())
+        .or_insert_with(|| json!(Uuid::now_v7().to_string()));
     if let Some(license_id) = license_key_id {
         field_data.insert("license_key_id".to_string(), json!(license_id));
     }

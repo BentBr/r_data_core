@@ -33,19 +33,7 @@ async fn create_test_entity_definition(
         allow_children: true,
         icon: None,
         fields: vec![
-            FieldDefinition {
-                name: "entity_key".to_string(),
-                display_name: "Entity Key".to_string(),
-                description: None,
-                field_type: FieldType::String,
-                required: true,
-                indexed: true,
-                filterable: true,
-                default_value: None,
-                validation: r_data_core_core::field::FieldValidation::default(),
-                ui_settings: r_data_core_core::field::ui::UiSettings::default(),
-                constraints: HashMap::new(),
-            },
+            // Note: entity_key is a system field in entities_registry, don't add it as a custom field
             FieldDefinition {
                 name: "license_key_id".to_string(),
                 display_name: "License Key ID".to_string(),
