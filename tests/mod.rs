@@ -8,6 +8,7 @@ pub mod services;
 pub mod statistics;
 pub mod utils;
 pub mod worker;
+pub mod workflow;
 
 // Top level integration test modules
 mod dsl_integration_tests;

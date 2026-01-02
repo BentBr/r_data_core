@@ -200,8 +200,32 @@ impl DslProgram {
                         }
                     }
                 }
-                Transform::None => {
-                    // no-op
+                Transform::BuildPath(bp) => {
+                    use super::path_resolution::build_path_from_fields;
+                    match build_path_from_fields::<std::collections::hash_map::RandomState>(
+                        &bp.template,
+                        &normalized,
+                        bp.separator.as_deref(),
+                        bp.field_transforms.as_ref(),
+                    ) {
+                        Ok(path) => {
+                            execution::set_nested(&mut normalized, &bp.target, Value::String(path));
+                        }
+                        Err(e) => {
+                            return Err(r_data_core_core::error::Error::Validation(format!(
+                                "Step {step_idx}: BuildPath error in target field '{}': {}",
+                                bp.target, e
+                            )));
+                        }
+                    }
+                }
+                Transform::ResolveEntityPath(_)
+                | Transform::GetOrCreateEntity(_)
+                | Transform::None => {
+                    // ResolveEntityPath and GetOrCreateEntity require async database access
+                    // and are handled in the services layer during workflow execution.
+                    // They are validated here but execution happens in services.
+                    // Transform::None is a no-op.
                 }
             }
 
@@ -363,8 +387,32 @@ impl DslProgram {
                         }
                     }
                 }
-                Transform::None => {
-                    // no-op
+                Transform::BuildPath(bp) => {
+                    use super::path_resolution::build_path_from_fields;
+                    match build_path_from_fields::<std::collections::hash_map::RandomState>(
+                        &bp.template,
+                        &normalized,
+                        bp.separator.as_deref(),
+                        bp.field_transforms.as_ref(),
+                    ) {
+                        Ok(path) => {
+                            execution::set_nested(&mut normalized, &bp.target, Value::String(path));
+                        }
+                        Err(e) => {
+                            return Err(r_data_core_core::error::Error::Validation(format!(
+                                "Step {step_idx}: BuildPath error in target field '{}': {}",
+                                bp.target, e
+                            )));
+                        }
+                    }
+                }
+                Transform::ResolveEntityPath(_)
+                | Transform::GetOrCreateEntity(_)
+                | Transform::None => {
+                    // ResolveEntityPath and GetOrCreateEntity require async database access
+                    // and are handled in the services layer during workflow execution.
+                    // They are validated here but execution happens in services.
+                    // Transform::None is a no-op.
                 }
             }
 

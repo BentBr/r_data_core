@@ -315,6 +315,32 @@ pub async fn get_all_by_type_impl(
     Ok(entities)
 }
 
+/// Find a single entity by filters
+///
+/// # Arguments
+/// * `repo` - Repository instance
+/// * `entity_type` - Type of entity to find
+/// * `filters` - Map of field names to values for filtering
+///
+/// # Errors
+/// Returns an error if the database query fails
+pub async fn find_one_by_filters_impl(
+    repo: &DynamicEntityRepository,
+    entity_type: &str,
+    filters: &std::collections::HashMap<String, serde_json::Value>,
+) -> Result<Option<DynamicEntity>> {
+    use crate::dynamic_entity_repository_trait::FilterEntitiesParams;
+
+    // Use filter_entities with limit 1 to get first match
+    let params = FilterEntitiesParams::new(1, 0).with_filters(Some(filters.clone()));
+
+    let entities =
+        crate::dynamic_entity_repository::filter::filter_entities_impl(repo, entity_type, &params)
+            .await?;
+
+    Ok(entities.first().cloned())
+}
+
 /// Delete an entity by type and UUID
 ///
 /// # Errors
