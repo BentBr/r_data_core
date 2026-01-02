@@ -8,7 +8,7 @@ use serde_json::json;
 
 use crate::models::LicenseClaims;
 
-/// License verification API response
+/// License verification API response (unwrapped format from external API)
 #[derive(Debug, Deserialize)]
 struct LicenseVerificationResponse {
     /// Whether the license is valid
@@ -16,6 +16,18 @@ struct LicenseVerificationResponse {
     /// Optional message
     #[serde(default)]
     message: Option<String>,
+}
+
+/// `ApiResponse` wrapper (used by internal verification endpoint)
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)] // Struct is used in generic type parameter for parsing
+struct ApiResponseWrapper<T> {
+    /// Response status
+    status: String,
+    /// Response message
+    message: String,
+    /// Response data
+    data: Option<T>,
 }
 
 /// Result of license verification API call
@@ -60,11 +72,26 @@ pub async fn call_verification_api(
         .await
         .map_err(|e| format!("Network error: {e}"))?;
 
-    // Parse response
-    let api_result: LicenseVerificationResponse = response
-        .json()
+    // Parse response - handle both wrapped (ApiResponse) and unwrapped formats
+    let verification_result = response
+        .json::<serde_json::Value>()
         .await
         .map_err(|e| format!("Failed to parse API response: {e}"))?;
+
+    // Try to parse as ApiResponse wrapper first (internal endpoint format)
+    let api_result = if let Ok(wrapped) = serde_json::from_value::<
+        ApiResponseWrapper<LicenseVerificationResponse>,
+    >(verification_result.clone())
+    {
+        // Extract data from wrapped response
+        wrapped
+            .data
+            .ok_or_else(|| "ApiResponse data field is missing".to_string())?
+    } else {
+        // Fall back to unwrapped format (external API format)
+        serde_json::from_value::<LicenseVerificationResponse>(verification_result)
+            .map_err(|e| format!("Failed to parse verification response: {e}"))?
+    };
 
     Ok(LicenseVerificationApiResult {
         is_valid: api_result.valid,
