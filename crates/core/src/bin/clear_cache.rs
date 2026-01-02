@@ -12,10 +12,10 @@
 //! clear_cache --all
 //!
 //! # Clear cache keys matching a prefix
-//! clear_cache --prefix "entity_definitions:"
+//! clear_cache --prefix "entity_def:"
 //!
 //! # List keys matching a pattern (dry-run)
-//! clear_cache --prefix "entity:" --dry-run
+//! clear_cache --prefix "api_key:" --dry-run
 //! ```
 //!
 //! # Environment Variables
@@ -190,16 +190,22 @@ fn print_help() {
     println!("    REDIS_URL=redis://localhost:6379 clear_cache --all");
     println!();
     println!("    # Clear entity definition cache");
-    println!("    clear_cache --prefix \"entity_definitions:\"");
+    println!("    clear_cache --prefix \"entity_def:\"");
     println!();
     println!("    # Preview what would be deleted");
-    println!("    clear_cache --prefix \"api_keys:\" --dry-run");
+    println!("    clear_cache --prefix \"api_key:\" --dry-run");
     println!();
     println!("    # In Docker Compose environment");
     println!("    docker compose exec core /usr/local/bin/clear_cache --all");
     println!();
     println!("COMMON CACHE PREFIXES:");
-    println!("    entity_definitions:    Entity definition cache");
-    println!("    api_keys:              API key cache");
-    println!("    entities:              Entity data cache");
+    println!("    entity_def:            Entity definition cache (by type and UUID)");
+    println!("    api_key:               API key validation cache");
+    println!("    role:                  Individual role cache");
+    println!("    user_roles:            User roles mapping cache");
+    println!("    api_key_roles:         API key roles mapping cache");
+    println!("    user_permissions:     Merged user permissions cache");
+    println!("    api_key_permissions:   Merged API key permissions cache");
+    println!("    settings:              System settings cache");
+    println!("    task:                  Task tracking cache (statistics, license verification)");
 }
