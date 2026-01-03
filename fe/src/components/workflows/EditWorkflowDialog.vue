@@ -173,6 +173,17 @@
         })
     })
 
+    const loadVersions = async () => {
+        if (!props.workflowUuid) {
+            return
+        }
+        try {
+            versions.value = await typedHttpClient.listWorkflowVersions(props.workflowUuid)
+        } catch (e) {
+            console.error('Failed to load versions:', e)
+        }
+    }
+
     watch(
         () => props.modelValue,
         open => {
@@ -192,17 +203,6 @@
         },
         { immediate: true }
     )
-
-    const loadVersions = async () => {
-        if (!props.workflowUuid) {
-            return
-        }
-        try {
-            versions.value = await typedHttpClient.listWorkflowVersions(props.workflowUuid)
-        } catch (e) {
-            console.error('Failed to load versions:', e)
-        }
-    }
 
     const handleVersionCompare = async (versionA: number, versionB: number) => {
         if (!props.workflowUuid) {
@@ -440,6 +440,15 @@
             }
         }
     )
+
+    // Expose for tests
+    defineExpose({
+        submit,
+        steps,
+        configJson,
+        configError,
+        form,
+    })
 </script>
 
 <style scoped></style>
