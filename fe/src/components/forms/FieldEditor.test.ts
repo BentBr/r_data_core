@@ -398,4 +398,151 @@ describe('FieldEditor', () => {
         const savedField = saveEvents![0][0] as FieldDefinition
         expect(savedField.default_value).toBe(25) // Should be number, not string
     })
+
+    it('formats default value correctly when saving Json field', async () => {
+        const wrapper = mount(FieldEditor, {
+            props: {
+                modelValue: true,
+                field: undefined,
+            },
+            global: {
+                plugins: [vuetify],
+                stubs: {
+                    teleport: false,
+                },
+            },
+            attachTo: document.body,
+        })
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        wrapper.vm.form = {
+            name: 'metadata',
+            display_name: 'Metadata',
+            field_type: 'Json',
+            description: '',
+            required: false,
+            indexed: false,
+            filterable: false,
+            default_value: '{"count":10,"names":["Customer"]}', // JSON string that should be parsed
+            constraints: {},
+            ui_settings: {},
+        }
+
+        await wrapper.vm.$nextTick()
+
+        // Validate the form
+        await wrapper.vm.formRef?.validate()
+        await wrapper.vm.$nextTick()
+
+        wrapper.vm.saveField()
+        await wrapper.vm.$nextTick()
+
+        const saveEvents = wrapper.emitted('save')
+        expect(saveEvents).toBeDefined()
+        expect(saveEvents).toHaveLength(1)
+        const savedField = saveEvents![0][0] as FieldDefinition
+        expect(savedField.default_value).toEqual({ count: 10, names: ['Customer'] }) // Should be parsed object
+    })
+
+    it('formats default value correctly when saving Json field with already parsed object', async () => {
+        const wrapper = mount(FieldEditor, {
+            props: {
+                modelValue: true,
+                field: undefined,
+            },
+            global: {
+                plugins: [vuetify],
+                stubs: {
+                    teleport: false,
+                },
+            },
+            attachTo: document.body,
+        })
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        const jsonObject = { count: 10, names: ['Customer', 'Order'] }
+
+        wrapper.vm.form = {
+            name: 'entity_definitions',
+            display_name: 'Entity Definitions',
+            field_type: 'Json',
+            description: '',
+            required: false,
+            indexed: false,
+            filterable: false,
+            default_value: jsonObject, // Already parsed object
+            constraints: {},
+            ui_settings: {},
+        }
+
+        await wrapper.vm.$nextTick()
+
+        // Validate the form
+        await wrapper.vm.formRef?.validate()
+        await wrapper.vm.$nextTick()
+
+        wrapper.vm.saveField()
+        await wrapper.vm.$nextTick()
+
+        const saveEvents = wrapper.emitted('save')
+        expect(saveEvents).toBeDefined()
+        expect(saveEvents).toHaveLength(1)
+        const savedField = saveEvents![0][0] as FieldDefinition
+        expect(savedField.default_value).toEqual(jsonObject) // Should remain as object
+    })
+
+    it('handles invalid JSON string for Json field default value', async () => {
+        const wrapper = mount(FieldEditor, {
+            props: {
+                modelValue: true,
+                field: undefined,
+            },
+            global: {
+                plugins: [vuetify],
+                stubs: {
+                    teleport: false,
+                },
+            },
+            attachTo: document.body,
+        })
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        wrapper.vm.form = {
+            name: 'metadata',
+            display_name: 'Metadata',
+            field_type: 'Json',
+            description: '',
+            required: false,
+            indexed: false,
+            filterable: false,
+            default_value: 'invalid json string', // Invalid JSON
+            constraints: {},
+            ui_settings: {},
+        }
+
+        await wrapper.vm.$nextTick()
+
+        // Validate the form first
+        await wrapper.vm.formRef?.validate()
+        await wrapper.vm.$nextTick()
+
+        // Set form as valid to allow save even with invalid JSON (formatDefaultValue will handle it)
+        wrapper.vm.formValid = true
+
+        wrapper.vm.saveField()
+        await wrapper.vm.$nextTick()
+
+        const saveEvents = wrapper.emitted('save')
+        expect(saveEvents).toBeDefined()
+        expect(saveEvents).toHaveLength(1)
+        const savedField = saveEvents![0][0] as FieldDefinition
+        // Invalid JSON should result in undefined default_value (as per formatDefaultValue logic)
+        expect(savedField.default_value).toBeUndefined()
+    })
 })

@@ -178,7 +178,20 @@
       "mapping_normalized_next_step": "Mapping (normalized -> next step field)",
       "next_step_field": "next step field",
       "available_fields": "Available fields",
-      "select_field": "Select field"
+      "select_field": "Select field",
+      "path_template": "Path Template",
+      "path_template_hint": "Use {field_name} placeholders, e.g., /statistics_instance/{license_key_id}",
+      "field_transforms": "Field Transforms",
+      "target_path": "Target Path Field",
+      "target_parent_uuid": "Target Parent UUID Field",
+      "target_entity_uuid": "Target Entity UUID Field",
+      "entity_type": "Entity Type",
+      "filters": "Filters",
+      "add_filter": "Add Filter",
+      "value_kind": "Value Kind",
+      "value": "Value",
+      "fallback_path": "Fallback Path",
+      "path_separator": "Path Separator"
     },
     "create": {
       "button": "Create Workflow",

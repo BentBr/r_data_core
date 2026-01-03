@@ -1,0 +1,43 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "format",
+        "source": {
+          "source_type": "api",
+          "config": {},
+          "auth": null
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {}
+      },
+      "transform": {
+        "type": "resolve_entity_path",
+        "target_path": "instance_path",
+        "entity_type": "statistics_instance",
+        "filters": {
+          "license_key_id": {
+            "kind": "field",
+            "field": "license_key_id"
+          }
+        },
+        "fallback_path": "/statistics_instance/unlicensed"
+      },
+      "to": {
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {}
+      }
+    }
+  ]
+}
+

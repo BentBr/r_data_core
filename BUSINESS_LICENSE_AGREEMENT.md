@@ -12,7 +12,7 @@ By downloading, installing, accessing, or using RDataCore software ("Software"),
 
 1.2. **"License"** means the rights granted to Licensee under this Agreement to use the Software.
 
-1.3. **"License Tier"** means the specific license category (Community, Education, Company I/II/III, Society I/II/III, or Corporate) as determined by Licensee's organization size, revenue, or other qualifying criteria.
+1.3. **"License Tier"** means the specific license category (Community, Education, Company I/II/III, Society I/II/III, or Enterprise) as determined by Licensee's organization size, revenue, or other qualifying criteria.
 
 1.4. **"Documentation"** means all technical documentation, user guides, API documentation, and other materials provided with or for the Software.
 
@@ -102,7 +102,7 @@ By downloading, installing, accessing, or using RDataCore software ("Software"),
 - **Updates:** Updates always included (Licensee can checkout newer versions)
 - **Term:** Monthly or annual subscription, automatically renewing unless terminated
 
-#### 3.2.3. Corporate Edition
+#### 3.2.3. Enterprise Edition
 - **Eligibility:** Organizations with 500+ employees
 - **Price:** Custom pricing based on organization size and requirements
 - **Features:** All core features included
@@ -114,7 +114,7 @@ By downloading, installing, accessing, or using RDataCore software ("Software"),
 
 3.3.1. Licensee is responsible for selecting the appropriate License Tier based on their organization's size, revenue, and employee count.
 
-3.3.2. Licensee may upgrade or downgrade their License Tier at any time by contacting Licensor. License changes will be effective upon payment of any applicable fees and will be prorated as appropriate.
+3.3.2. Licensees may upgrade or downgrade their License Tier at any time by contacting Licensor. License changes will be effective upon payment of any applicable fees and will be prorated as appropriate.
 
 3.3.3. Licensor reserves the right to audit Licensee's use of the Software to verify compliance with the selected License Tier. If an audit reveals that Licensee is using a License Tier that does not match their organization's size or revenue, Licensor may require Licensee to upgrade to the appropriate tier.
 
@@ -140,18 +140,18 @@ By downloading, installing, accessing, or using RDataCore software ("Software"),
 
 ## 5. Payment Terms (Commercial Licenses Only)
 
-5.1. **Fees.** For commercial licenses (Company, Society, and Corporate), Licensee agrees to pay the fees specified for the selected License Tier.
+5.1. **Fees.** For commercial licenses (Company, Society, and Enterprise), Licensee agrees to pay the fees specified for the selected License Tier.
 
 5.2. **Payment Schedule.** 
-   - Monthly licenses: Fees are due in advance on a monthly basis
-   - Annual licenses: Fees are due in advance on an annual basis
-   - Corporate licenses: Payment terms as specified in the separate written agreement
+   - Monthly licenses: Fees are due in advance monthly
+   - Annual licenses: Fees are due in advance annually
+   - Enterprise licenses: Payment terms as specified in the separate written agreement
 
 5.3. **Payment Methods.** Licensor will accept payment via methods specified at the time of purchase, which may include credit card, bank transfer, or other mutually agreed-upon methods.
 
 5.4. **Taxes.** All fees are exclusive of applicable taxes, duties, and government charges. Licensee is responsible for paying all such taxes, duties, and charges.
 
-5.5. **Late Payment.** If Licensee fails to pay any fees when due, Licensor may suspend or terminate the License upon written notice. Interest may accrue on overdue amounts at the rate permitted by applicable law.
+5.5. **Late Payment.** If Licensee fails to pay any fees when due, Licensor may suspend or terminate the License upon written notice. Interest may grow on overdue amounts at the rate permitted by applicable law.
 
 5.6. **Refunds.** Fees paid for commercial licenses are non-refundable except as required by applicable law or as otherwise agreed in writing.
 
@@ -178,7 +178,7 @@ By downloading, installing, accessing, or using RDataCore software ("Software"),
    - Support for modified versions of the Software
    - Support for third-party integrations not officially supported by Licensor
 
-6.6. **Updates and Patches.** Updates are always included with all licenses. Licensee can checkout newer versions of the Software from the source repository. Licensor makes Updates available as they become available, and Licensee is responsible for installing and deploying Updates to their infrastructure.
+6.6. **Updates and Patches.** Updates are always included with all licenses. Licensees can checkout newer versions of the Software from the source repository. The licensor makes Updates available as they become available, and Licensee is responsible for installing and deploying Updates to their infrastructure.
 
 ## 7. Intellectual Property
 
@@ -216,14 +216,14 @@ By downloading, installing, accessing, or using RDataCore software ("Software"),
 10.1. **Term.** 
    - Free licenses: Perpetual, subject to termination as provided in this Section
    - Commercial licenses: For the subscription period selected (monthly or annual), automatically renewing unless terminated
-   - Corporate licenses: As specified in the separate written agreement
+   - Enterprise licenses: As specified in the separate written agreement
 
 10.2. **Termination by Licensee.** Licensee may terminate this Agreement at any time by:
    - For commercial licenses: Providing written notice to Licensor at least thirty (30) days before the end of the current subscription period
    - For free licenses: Ceasing use of the Software and deleting all copies
 
 10.3. **Termination by Licensor.** Licensor may terminate this Agreement immediately upon written notice if:
-   - Licensee breaches any material term of this Agreement and fails to cure such breach within thirty (30) days after written notice
+   - Licensee breaches any material term of this Agreement and fails to cure such breach within thirty (30) days after the written notice
    - Licensee fails to pay any fees when due and fails to cure such failure within fourteen (14) days after written notice
    - Licensee uses the Software in violation of applicable laws or regulations
    - Licensee becomes insolvent, files for bankruptcy, or ceases to conduct business

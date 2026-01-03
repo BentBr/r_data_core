@@ -189,10 +189,39 @@ export const DslTransformConcatSchema = z.object({
     separator: z.string().optional(),
     right: DslStringOperandSchema,
 })
+export const DslTransformResolveEntityPathSchema = z.object({
+    type: z.literal('resolve_entity_path'),
+    target_path: z.string(),
+    target_parent_uuid: z.string().optional(),
+    entity_type: z.string(),
+    filters: z.record(z.string(), DslStringOperandSchema),
+    value_transforms: z.record(z.string(), z.string()).optional(),
+    fallback_path: z.string().optional(),
+})
+export const DslTransformBuildPathSchema = z.object({
+    type: z.literal('build_path'),
+    target: z.string(),
+    template: z.string(),
+    separator: z.string().optional(),
+    field_transforms: z.record(z.string(), z.string()).optional(),
+})
+export const DslTransformGetOrCreateEntitySchema = z.object({
+    type: z.literal('get_or_create_entity'),
+    target_path: z.string(),
+    target_parent_uuid: z.string().optional(),
+    target_entity_uuid: z.string().optional(),
+    entity_type: z.string(),
+    path_template: z.string(),
+    create_field_data: z.record(z.string(), DslStringOperandSchema).optional(),
+    path_separator: z.string().optional(),
+})
 export const DslTransformSchema = z.discriminatedUnion('type', [
     DslTransformNoneSchema,
     DslTransformArithmeticSchema,
     DslTransformConcatSchema,
+    DslTransformResolveEntityPathSchema,
+    DslTransformBuildPathSchema,
+    DslTransformGetOrCreateEntitySchema,
 ])
 
 export const DslStepSchema = z.object({

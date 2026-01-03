@@ -146,22 +146,6 @@ docker compose exec core /usr/local/bin/clear_cache --prefix "api_keys:" --dry-r
 # Hash a password for admin users
 docker compose exec core /usr/local/bin/hash_password 'YourSecurePassword'
 
-# Generate RSA keypair for license keys (one-time setup)
-openssl genrsa -out license_private.key 2048
-openssl rsa -in license_private.key -pubout -out license_public.key
-
-# Create a new license key
-docker compose exec core /usr/local/bin/license_tool create \
-  --company "Your Company Name" \
-  --license-type Enterprise \
-  --private-key-path /path/to/license_private.key \
-  --expires-days 365
-
-# Verify an existing license key
-docker compose exec core /usr/local/bin/license_tool verify \
-  --license-key "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..." \
-  --public-key-path /path/to/license_public.key
-
 # Check license key against verification API (uses LICENSE_KEY from environment)
 docker compose exec core /usr/local/bin/license_tool check
 ```

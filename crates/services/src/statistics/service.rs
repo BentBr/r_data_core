@@ -11,10 +11,13 @@ use r_data_core_license::LicenseClaims;
 use r_data_core_persistence::{
     EntityCount, EntityDefinitionsStats, StatisticsRepository, StatisticsRepositoryTrait,
 };
+use uuid::Uuid;
 
 /// Statistics payload to send to the API
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatisticsPayload {
+    /// Unique submission ID (UUID v7 timestamp-based)
+    pub submission_id: Uuid,
     /// Entity definitions count and names
     pub entity_definitions: EntityDefinitionsStats,
     /// Entities count per definition
@@ -35,6 +38,8 @@ pub struct StatisticsPayload {
     pub cors_origins: Vec<String>,
     /// License key ID
     pub license_key_id: Option<String>,
+    /// Submission timestamp (ISO 8601)
+    pub submitted_at: String,
 }
 
 /// Service for collecting and sending statistics
@@ -94,6 +99,17 @@ impl StatisticsService {
         admin_uri: &str,
         cors_origins: &[String],
     ) -> Result<StatisticsPayload, Box<dyn std::error::Error + Send + Sync>> {
+        use time::OffsetDateTime;
+        use uuid::Uuid;
+
+        // Generate unique submission ID (UUID v7 for timestamp ordering)
+        let submission_id = Uuid::now_v7();
+
+        // Get current timestamp (ISO 8601)
+        let submitted_at = OffsetDateTime::now_utc()
+            .format(&time::format_description::well_known::Rfc3339)
+            .map_err(|e| format!("Failed to format timestamp: {e}"))?;
+
         // Get license key ID
         let license_key_id = self.get_license_key_id().ok();
 
@@ -119,6 +135,7 @@ impl StatisticsService {
         let workflow_logs_count = self.repository.get_workflow_logs_count().await?;
 
         Ok(StatisticsPayload {
+            submission_id,
             entity_definitions,
             entities_per_definition,
             users_count,
@@ -129,6 +146,7 @@ impl StatisticsService {
             admin_uri: admin_uri.to_string(),
             cors_origins: cors_origins.to_vec(),
             license_key_id,
+            submitted_at,
         })
     }
 

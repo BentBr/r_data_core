@@ -178,7 +178,20 @@
       "mapping_normalized_next_step": "Mapping (normalisiert -> nächster Schritt Feld)",
       "next_step_field": "nächstes Schritt Feld",
       "available_fields": "Verfügbare Felder",
-      "select_field": "Feld auswählen"
+      "select_field": "Feld auswählen",
+      "path_template": "Pfad-Vorlage",
+      "path_template_hint": "Verwenden Sie {feldname} Platzhalter, z.B. /statistics_instance/{license_key_id}",
+      "field_transforms": "Feld-Transformationen",
+      "target_path": "Ziel-Pfad-Feld",
+      "target_parent_uuid": "Ziel-Übergeordnete-UUID-Feld",
+      "target_entity_uuid": "Ziel-Entitäts-UUID-Feld",
+      "entity_type": "Entitätstyp",
+      "filters": "Filter",
+      "add_filter": "Filter hinzufügen",
+      "value_kind": "Wert-Art",
+      "value": "Wert",
+      "fallback_path": "Fallback-Pfad",
+      "path_separator": "Pfad-Trennzeichen"
     },
     "create": {
       "button": "Workflow erstellen",

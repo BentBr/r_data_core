@@ -14,6 +14,7 @@ export type FieldType =
     | 'Object'
     | 'Array'
     | 'Uuid'
+    | 'Json'
     | 'ManyToOne'
     | 'ManyToMany'
     | 'Select'
@@ -71,6 +72,7 @@ export function formatValueToType(value: unknown, fieldType: FieldType): unknown
 
         case 'Object':
         case 'Array':
+        case 'Json':
             // If already an object/array, return as-is
             if (typeof value === 'object') {
                 return value

@@ -1,0 +1,37 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "format",
+        "source": {
+          "source_type": "api",
+          "config": {},
+          "auth": null
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {}
+      },
+      "transform": {
+        "type": "get_or_create_entity",
+        "target_path": "instance_path",
+        "entity_type": "statistics_instance",
+        "path_template": "/statistics_instance/{license_key_id}"
+      },
+      "to": {
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {}
+      }
+    }
+  ]
+}
+
