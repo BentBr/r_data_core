@@ -234,6 +234,9 @@ async fn main() -> r_data_core_core::error::Result<()> {
 
     // Redis-backed consumer loop: block on queue and process runs.
     {
+        const MAX_BACKOFF_MS: u64 = 30_000; // Max 30 seconds
+        const BACKOFF_MULTIPLIER: u64 = 2;
+
         let pool_for_consumer = pool.clone();
         let queue_cfg = queue_cfg.clone();
         let cache_manager_for_consumer = cache_manager.clone();
@@ -253,9 +256,32 @@ async fn main() -> r_data_core_core::error::Result<()> {
                     return;
                 }
             };
+            info!(
+                "Worker consumer loop started, waiting for jobs from queue '{}'...",
+                queue_cfg.fetch_key
+            );
+
+            let mut iteration_count: u64 = 0;
+            let mut retry_backoff_ms: u64 = 250; // Start with 250ms backoff
+
             loop {
+                iteration_count = iteration_count.wrapping_add(1);
+                // Log health check every 100 iterations (roughly every few minutes if no jobs)
+                if iteration_count.is_multiple_of(100) {
+                    info!(
+                        "Consumer loop alive, waiting for jobs from queue '{}' (iteration {})",
+                        queue_cfg.fetch_key, iteration_count
+                    );
+                }
+
                 match queue.blocking_pop_fetch().await {
                     Ok(job) => {
+                        // Reset backoff on successful pop
+                        retry_backoff_ms = 250;
+                        info!(
+                            "Popped fetch job from queue: workflow_id={}, run_uuid={:?}",
+                            job.workflow_id, job.trigger_id
+                        );
                         let repo = WorkflowRepository::new(pool_for_consumer.clone());
                         // Determine or create the run UUID
                         let run_uuid = if let Some(run) = job.trigger_id {
@@ -361,9 +387,16 @@ async fn main() -> r_data_core_core::error::Result<()> {
                         }
                     }
                     Err(e) => {
-                        error!("Queue pop failed: {e}");
-                        // brief backoff before retrying to avoid hot loop
-                        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+                        error!(
+                            "Queue pop failed from '{}': {e}. Retrying after {}ms backoff...",
+                            queue_cfg.fetch_key, retry_backoff_ms
+                        );
+                        // Exponential backoff with max cap to avoid hot loop and reduce Redis load
+                        tokio::time::sleep(std::time::Duration::from_millis(retry_backoff_ms))
+                            .await;
+                        // Increase backoff for next retry, but cap at MAX_BACKOFF_MS
+                        retry_backoff_ms =
+                            (retry_backoff_ms * BACKOFF_MULTIPLIER).min(MAX_BACKOFF_MS);
                     }
                 }
             }
