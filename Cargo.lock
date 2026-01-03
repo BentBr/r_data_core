@@ -2510,6 +2510,7 @@ dependencies = [
  "async-trait",
  "base64",
  "chrono",
+ "dotenvy",
  "futures",
  "log",
  "r_data_core_core",
