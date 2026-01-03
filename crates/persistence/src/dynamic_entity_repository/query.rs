@@ -1,4 +1,5 @@
 use log::{debug, error, warn};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::dynamic_entity_mapper;
@@ -7,6 +8,109 @@ use r_data_core_core::error::Result;
 use r_data_core_core::DynamicEntity;
 
 use super::DynamicEntityRepository;
+
+/// Check if an error is the "cached plan must not change result type" error
+/// This occurs when cached plan types change (aka an entity definition changes) and not every connection has gotten the updated cache yet
+fn is_cached_plan_error(err: &sqlx::Error) -> bool {
+    if let sqlx::Error::Database(db_err) = err {
+        // PostgreSQL error code 0A000 = feature_not_supported
+        // This specific message occurs when cached plan types change
+        db_err.code().is_some_and(|c| c == "0A000")
+            && db_err
+                .message()
+                .contains("cached plan must not change result type")
+    } else {
+        false
+    }
+}
+
+/// Execute a query with retry logic for cached plan errors.
+/// On the first "cached plan must not change result type" error,
+/// we run DISCARD PLANS to clear the statement cache and retry once.
+async fn fetch_all_with_retry<'q>(
+    pool: &PgPool,
+    query: &'q str,
+    binds: Vec<QueryBind<'q>>,
+) -> std::result::Result<Vec<sqlx::postgres::PgRow>, sqlx::Error> {
+    let result = execute_query(pool, query, &binds).await;
+
+    match result {
+        Err(ref e) if is_cached_plan_error(e) => {
+            warn!("Cached plan error detected, discarding plans and retrying query");
+
+            // Clear cached plans on this connection
+            sqlx::query("DISCARD PLANS").execute(pool).await?;
+
+            // Retry the query
+            execute_query(pool, query, &binds).await
+        }
+        other => other,
+    }
+}
+
+/// Execute a query with retry logic for cached plan errors (single row).
+async fn fetch_optional_with_retry<'q>(
+    pool: &PgPool,
+    query: &'q str,
+    binds: Vec<QueryBind<'q>>,
+) -> std::result::Result<Option<sqlx::postgres::PgRow>, sqlx::Error> {
+    let result = execute_query_optional(pool, query, &binds).await;
+
+    match result {
+        Err(ref e) if is_cached_plan_error(e) => {
+            warn!("Cached plan error detected, discarding plans and retrying query");
+
+            // Clear cached plans on this connection
+            sqlx::query("DISCARD PLANS").execute(pool).await?;
+
+            // Retry the query
+            execute_query_optional(pool, query, &binds).await
+        }
+        other => other,
+    }
+}
+
+/// Query bind value types we support
+#[derive(Clone)]
+enum QueryBind<'a> {
+    Uuid(Uuid),
+    I64(i64),
+    String(&'a str),
+}
+
+/// Execute a query with binds
+async fn execute_query<'q>(
+    pool: &PgPool,
+    query: &'q str,
+    binds: &[QueryBind<'q>],
+) -> std::result::Result<Vec<sqlx::postgres::PgRow>, sqlx::Error> {
+    let mut q = sqlx::query(query);
+    for bind in binds {
+        q = match bind {
+            QueryBind::Uuid(v) => q.bind(*v),
+            QueryBind::I64(v) => q.bind(*v),
+            QueryBind::String(v) => q.bind(*v),
+        };
+    }
+    q.fetch_all(pool).await
+}
+
+/// Execute a query with binds (optional result)
+async fn execute_query_optional<'q>(
+    pool: &PgPool,
+    query: &'q str,
+    binds: &[QueryBind<'q>],
+) -> std::result::Result<Option<sqlx::postgres::PgRow>, sqlx::Error> {
+    let mut q = sqlx::query(query);
+    for bind in binds {
+        q = match bind {
+            QueryBind::Uuid(v) => q.bind(*v),
+            QueryBind::I64(v) => q.bind(*v),
+            QueryBind::String(v) => q.bind(*v),
+        };
+    }
+    q.fetch_optional(pool).await
+}
 
 /// Count entities of a specific type
 ///
@@ -79,16 +183,20 @@ pub async fn query_by_parent_impl(
 
     debug!("Query by parent: {query}");
 
-    let rows = sqlx::query(&query)
-        .bind(parent_uuid)
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&repo.pool)
-        .await
-        .map_err(|e| {
-            error!("Error querying entities by parent: {e:?}");
-            r_data_core_core::error::Error::Database(e)
-        })?;
+    let rows = fetch_all_with_retry(
+        &repo.pool,
+        &query,
+        vec![
+            QueryBind::Uuid(parent_uuid),
+            QueryBind::I64(limit),
+            QueryBind::I64(offset),
+        ],
+    )
+    .await
+    .map_err(|e| {
+        error!("Error querying entities by parent: {e:?}");
+        r_data_core_core::error::Error::Database(e)
+    })?;
 
     // Convert rows to DynamicEntity objects
     let entities = rows
@@ -128,17 +236,21 @@ pub async fn query_by_path_impl(
 
     debug!("Query by path: {query}");
 
-    let rows = sqlx::query(&query)
-        .bind(entity_type)
-        .bind(path)
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&repo.pool)
-        .await
-        .map_err(|e| {
-            error!("Error querying entities by path: {e:?}");
-            r_data_core_core::error::Error::Database(e)
-        })?;
+    let rows = fetch_all_with_retry(
+        &repo.pool,
+        &query,
+        vec![
+            QueryBind::String(entity_type),
+            QueryBind::String(path),
+            QueryBind::I64(limit),
+            QueryBind::I64(offset),
+        ],
+    )
+    .await
+    .map_err(|e| {
+        error!("Error querying entities by path: {e:?}");
+        r_data_core_core::error::Error::Database(e)
+    })?;
 
     // Convert rows to DynamicEntity objects
     let entities = rows
@@ -220,9 +332,7 @@ pub async fn get_by_type_impl(
 
     debug!("Query: {query}");
 
-    let row = sqlx::query(&query)
-        .bind(uuid)
-        .fetch_optional(&repo.pool)
+    let row = fetch_optional_with_retry(&repo.pool, &query, vec![QueryBind::Uuid(*uuid)])
         .await
         .map_err(|e| {
             error!("Error fetching entity: {e:?}");
@@ -295,16 +405,17 @@ pub async fn get_all_by_type_impl(
 
     debug!("Query: {query}");
 
-    // Query all entities
-    let rows = sqlx::query(&query)
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&repo.pool)
-        .await
-        .map_err(|e| {
-            error!("Error fetching entities: {e:?}");
-            r_data_core_core::error::Error::Database(e)
-        })?;
+    // Query all entities with retry logic for schema changes
+    let rows = fetch_all_with_retry(
+        &repo.pool,
+        &query,
+        vec![QueryBind::I64(limit), QueryBind::I64(offset)],
+    )
+    .await
+    .map_err(|e| {
+        error!("Error fetching entities: {e:?}");
+        r_data_core_core::error::Error::Database(e)
+    })?;
 
     // Convert rows to DynamicEntity objects
     let entities = rows
@@ -380,4 +491,37 @@ pub async fn delete_by_type_impl(
     tx.commit().await?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_cached_plan_error_returns_false_for_non_database_errors() {
+        // Protocol error - not a database error
+        let err = sqlx::Error::Protocol("some protocol error".to_string());
+        assert!(!is_cached_plan_error(&err));
+
+        // Row not found error
+        let err = sqlx::Error::RowNotFound;
+        assert!(!is_cached_plan_error(&err));
+
+        // Configuration error
+        let err = sqlx::Error::Configuration("bad config".into());
+        assert!(!is_cached_plan_error(&err));
+    }
+
+    #[test]
+    fn query_bind_enum_is_clone() {
+        // Verify QueryBind implements Clone (required for retry logic)
+        let uuid_bind = QueryBind::Uuid(uuid::Uuid::nil());
+        let _cloned = uuid_bind.clone();
+
+        let i64_bind = QueryBind::I64(42);
+        let _cloned = i64_bind.clone();
+
+        let str_bind = QueryBind::String("test");
+        let _cloned = str_bind.clone();
+    }
 }

@@ -1,4 +1,4 @@
-use log::{debug, error};
+use log::{debug, error, warn};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
@@ -9,6 +9,18 @@ use r_data_core_core::error::Result;
 use r_data_core_core::DynamicEntity;
 
 use super::DynamicEntityRepository;
+
+/// Check if an error is the "cached plan must not change result type" error
+fn is_cached_plan_error(err: &r_data_core_core::error::Error) -> bool {
+    if let r_data_core_core::error::Error::Database(sqlx::Error::Database(db_err)) = err {
+        db_err.code().is_some_and(|c| c == "0A000")
+            && db_err
+                .message()
+                .contains("cached plan must not change result type")
+    } else {
+        false
+    }
+}
 
 /// Filter entities by field values with advanced options
 pub async fn filter_entities_impl(
@@ -288,8 +300,39 @@ fn add_sort_and_pagination(
     }
 }
 
-/// Execute the filter query with proper parameter binding
+/// Execute the filter query with proper parameter binding and retry logic for schema changes
 async fn execute_filter_query(
+    query: &str,
+    pool: &sqlx::PgPool,
+    filters: Option<&std::collections::HashMap<String, JsonValue>>,
+    filter_operators: Option<&std::collections::HashMap<String, String>>,
+    search: Option<&(String, Vec<String>)>,
+    entity_def: &r_data_core_core::entity_definition::definition::EntityDefinition,
+) -> Result<Vec<sqlx::postgres::PgRow>> {
+    // First attempt
+    let result =
+        execute_filter_query_inner(query, pool, filters, filter_operators, search, entity_def)
+            .await;
+
+    match result {
+        Err(ref e) if is_cached_plan_error(e) => {
+            warn!("Cached plan error in filter query, discarding plans and retrying");
+
+            // Clear cached plans and retry
+            sqlx::query("DISCARD PLANS")
+                .execute(pool)
+                .await
+                .map_err(r_data_core_core::error::Error::Database)?;
+
+            execute_filter_query_inner(query, pool, filters, filter_operators, search, entity_def)
+                .await
+        }
+        other => other,
+    }
+}
+
+/// Inner implementation of filter query execution
+async fn execute_filter_query_inner(
     query: &str,
     pool: &sqlx::PgPool,
     filters: Option<&std::collections::HashMap<String, JsonValue>>,
@@ -445,4 +488,37 @@ fn convert_value_to_type(
             _ => value.clone(),
         },
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_cached_plan_error_returns_false_for_non_database_errors() {
+        // Auth error - not a database error
+        let err = r_data_core_core::error::Error::Auth("auth failed".to_string());
+        assert!(!is_cached_plan_error(&err));
+
+        // Config error
+        let err = r_data_core_core::error::Error::Config("bad config".to_string());
+        assert!(!is_cached_plan_error(&err));
+
+        // Entity error
+        let err = r_data_core_core::error::Error::Entity("entity error".to_string());
+        assert!(!is_cached_plan_error(&err));
+    }
+
+    #[test]
+    fn is_cached_plan_error_returns_false_for_non_cached_plan_database_errors() {
+        // Database error but not a PgDatabaseError (e.g., protocol error wrapped)
+        let sqlx_err = sqlx::Error::Protocol("protocol error".to_string());
+        let err = r_data_core_core::error::Error::Database(sqlx_err);
+        assert!(!is_cached_plan_error(&err));
+
+        // RowNotFound wrapped in Database error
+        let sqlx_err = sqlx::Error::RowNotFound;
+        let err = r_data_core_core::error::Error::Database(sqlx_err);
+        assert!(!is_cached_plan_error(&err));
+    }
 }
