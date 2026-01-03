@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.4](https://github.com/BentBr/r_data_core/compare/v0.3.3...v0.3.4) (2026-01-03)
+
+
+### Features
+
+* adding uuid to statistics submission ([a85e36d](https://github.com/BentBr/r_data_core/commit/a85e36d40c4dd08e46e9163856bdc4a307264344))
+* Fixed fe to support json (be already did it) ([cd1d29b](https://github.com/BentBr/r_data_core/commit/cd1d29b91241eec5b1139051b77cb4ca5c6a0198))
+* making sure adding/changing steps json is working as well ([72a0a65](https://github.com/BentBr/r_data_core/commit/72a0a65e330e47099a807e8747ae92474f378253))
+* making sure adding/changing steps json is working as well ([122b37c](https://github.com/BentBr/r_data_core/commit/122b37c3975a9cd25717af02acc82dc5abba8f2c))
+
+
+### Bug Fixes
+
+* making sure caching of entity definitions does not fail on other connections to PG ([5f3020f](https://github.com/BentBr/r_data_core/commit/5f3020f6d0ed62f6a98d264a3ff99444f9131167))
+
 ## [0.3.3](https://github.com/BentBr/r_data_core/compare/v0.3.2...v0.3.3) (2026-01-02)
 
 
