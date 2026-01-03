@@ -100,6 +100,7 @@
     import { useTranslations } from '@/composables/useTranslations'
     import { computeDiffRows } from '@/utils/versionDiff'
     import type { DslStep } from './dsl/dsl-utils'
+    import { sanitizeDslSteps, ensureCsvOptions, ensureEntityFilter } from './dsl/dsl-utils'
     import type { WorkflowConfig } from '@/types/schemas/workflow'
 
     const props = defineProps<{ modelValue: boolean; workflowUuid: string | null }>()
@@ -303,14 +304,8 @@
         }
         configError.value = null
         cronError.value = null
-        // Sync steps to config JSON before validation
-        if (steps.value && steps.value.length > 0) {
-            isSyncingSteps = true
-            configJson.value = JSON.stringify({ steps: steps.value }, null, 2)
-            setTimeout(() => {
-                isSyncingSteps = false
-            }, 0)
-        }
+        // Use whatever is in configJson (could be manually edited or synced from steps)
+        // No need to sync steps to JSON here - the watch handles that automatically
         const parsedConfig = parseJson(configJson.value)
         if (parsedConfig === null) {
             configError.value = 'Invalid JSON'
@@ -384,26 +379,66 @@
         }
     }
 
-    // Sync config JSON when steps change, but only on explicit updates (not during prop sync)
-    // We use a flag to prevent recursive updates
+    // Bidirectional sync between steps and JSON
+    // We use flags to prevent recursive updates
     let isSyncingSteps = false
+    let isSyncingJson = false
+
+    // Sync config JSON when steps change (fields → JSON)
     watch(
         () => steps.value,
         v => {
-            if (isSyncingSteps) {
+            if (isSyncingSteps || isSyncingJson) {
                 return
             }
             try {
                 const newJson = JSON.stringify({ steps: v }, null, 2)
                 // Only update if different to prevent loops
                 if (configJson.value !== newJson) {
+                    isSyncingJson = true
                     configJson.value = newJson
+                    // Reset flag after next tick
+                    setTimeout(() => {
+                        isSyncingJson = false
+                    }, 0)
                 }
             } catch {
                 // ignore
             }
         },
         { deep: false } // Shallow watch to prevent deep reactivity issues
+    )
+
+    // Sync steps when JSON changes manually (JSON → fields)
+    watch(
+        () => configJson.value,
+        jsonStr => {
+            if (isSyncingSteps || isSyncingJson) {
+                return
+            }
+            try {
+                const parsed = parseJson(jsonStr)
+                if (parsed && typeof parsed === 'object' && parsed !== null) {
+                    const config = parsed as { steps?: unknown[] }
+                    if (Array.isArray(config.steps)) {
+                        isSyncingSteps = true
+                        // Sanitize steps when loading from JSON
+                        const sanitized = sanitizeDslSteps(config.steps)
+                        sanitized.forEach(s => {
+                            ensureCsvOptions(s)
+                            ensureEntityFilter(s)
+                        })
+                        steps.value = sanitized
+                        // Reset flag after next tick
+                        setTimeout(() => {
+                            isSyncingSteps = false
+                        }, 0)
+                    }
+                }
+            } catch {
+                // ignore parse errors - user might be typing
+            }
+        }
     )
 </script>
 
