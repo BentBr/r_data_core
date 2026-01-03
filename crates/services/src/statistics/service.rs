@@ -99,12 +99,12 @@ impl StatisticsService {
         admin_uri: &str,
         cors_origins: &[String],
     ) -> Result<StatisticsPayload, Box<dyn std::error::Error + Send + Sync>> {
-        use uuid::Uuid;
         use time::OffsetDateTime;
+        use uuid::Uuid;
 
         // Generate unique submission ID (UUID v7 for timestamp ordering)
         let submission_id = Uuid::now_v7();
-        
+
         // Get current timestamp (ISO 8601)
         let submitted_at = OffsetDateTime::now_utc()
             .format(&time::format_description::well_known::Rfc3339)
