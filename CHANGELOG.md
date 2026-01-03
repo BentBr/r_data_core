@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.5](https://github.com/BentBr/r_data_core/compare/v0.3.4...v0.3.5) (2026-01-03)
+
+
+### Bug Fixes
+
+* making sure the loop actually works and picks up new job ([8f890e9](https://github.com/BentBr/r_data_core/commit/8f890e97581cd9d3629439870a0a8b8d36b2e4af))
+* making sure the loop actually works and picks up new job ([d3f994b](https://github.com/BentBr/r_data_core/commit/d3f994be2d4f14bc55a99acbc7e7c3ab098d4964))
+
 ## [0.3.4](https://github.com/BentBr/r_data_core/compare/v0.3.3...v0.3.4) (2026-01-03)
 
 
