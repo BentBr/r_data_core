@@ -102,7 +102,13 @@ impl ApalisRedisQueue {
     /// # Errors
     /// Returns an error if the Redis connection fails or the job cannot be deserialized.
     pub async fn blocking_pop_fetch(&self) -> r_data_core_core::error::Result<FetchAndStageJob> {
-        let mut conn = self.get_conn().await?;
+        let mut conn = self.get_conn().await.map_err(|e| {
+            log::error!(
+                "Failed to get Redis connection for BLPOP on queue '{}': {e}",
+                self.fetch_queue_key
+            );
+            e
+        })?;
         // BLPOP key 0 => block indefinitely
         // Returns VecBulkString [key, value]
         let result: Option<(String, String)> = redis::cmd("BLPOP")
@@ -111,22 +117,39 @@ impl ApalisRedisQueue {
             .query_async(&mut conn)
             .await
             .map_err(|e| {
+                log::error!("BLPOP failed on queue '{}': {e}", self.fetch_queue_key);
                 r_data_core_core::error::Error::Cache(format!(
-                    "failed to BLPOP fetch queue from redis: {e}"
+                    "failed to BLPOP fetch queue '{}' from redis: {e}",
+                    self.fetch_queue_key
                 ))
             })?;
         if let Some((_key, value)) = result {
             let job: FetchAndStageJob = serde_json::from_str(&value).map_err(|e| {
+                log::error!(
+                    "Failed to deserialize job from queue '{}': {e}. Raw value: {}",
+                    self.fetch_queue_key,
+                    if value.len() > 200 {
+                        format!("{}... (truncated)", &value[..200])
+                    } else {
+                        value.clone()
+                    }
+                );
                 r_data_core_core::error::Error::Deserialization(format!(
-                    "failed to deserialize fetch job: {e}"
+                    "failed to deserialize fetch job from queue '{}': {e}",
+                    self.fetch_queue_key
                 ))
             })?;
             Ok(job)
         } else {
             // Should not happen with BLPOP 0, but handle defensively
-            Err(r_data_core_core::error::Error::Cache(
-                "no job returned from BLPOP".to_string(),
-            ))
+            log::warn!(
+                "BLPOP returned None for queue '{}' (unexpected with timeout 0)",
+                self.fetch_queue_key
+            );
+            Err(r_data_core_core::error::Error::Cache(format!(
+                "no job returned from BLPOP on queue '{}'",
+                self.fetch_queue_key
+            )))
         }
     }
 }

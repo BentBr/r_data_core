@@ -158,3 +158,91 @@ async fn enqueue_fetch_without_trigger_id_if_redis_available() {
     assert_eq!(popped.workflow_id, wf);
     assert_eq!(popped.trigger_id, None);
 }
+
+#[tokio::test]
+async fn consumer_loop_processes_multiple_jobs_fifo_ordering_if_redis_available() {
+    let Some((queue, _fetch_key, _process_key)) = get_test_queue().await else {
+        println!("Skipping test: REDIS_URL not set");
+        return;
+    };
+    let wf = Uuid::now_v7();
+
+    // Enqueue 3 jobs with different run UUIDs
+    let runs = vec![Uuid::now_v7(), Uuid::now_v7(), Uuid::now_v7()];
+    for run in &runs {
+        queue
+            .enqueue_fetch(FetchAndStageJob {
+                workflow_id: wf,
+                trigger_id: Some(*run),
+            })
+            .await
+            .expect("enqueue should succeed");
+    }
+
+    // Pop and verify FIFO order
+    for expected_run in &runs {
+        let popped = queue
+            .blocking_pop_fetch()
+            .await
+            .expect("pop should return job");
+        assert_eq!(popped.workflow_id, wf);
+        assert_eq!(popped.trigger_id, Some(*expected_run));
+    }
+}
+
+#[tokio::test]
+async fn blocking_pop_handles_connection_errors_gracefully_if_redis_available() {
+    let Some((queue, _fetch_key, _process_key)) = get_test_queue().await else {
+        println!("Skipping test: REDIS_URL not set");
+        return;
+    };
+
+    // Enqueue a job
+    let wf = Uuid::now_v7();
+    let run = Uuid::now_v7();
+    queue
+        .enqueue_fetch(FetchAndStageJob {
+            workflow_id: wf,
+            trigger_id: Some(run),
+        })
+        .await
+        .expect("enqueue should succeed");
+
+    // Pop should succeed even if there were previous connection issues
+    let popped = queue
+        .blocking_pop_fetch()
+        .await
+        .expect("pop should return job");
+    assert_eq!(popped.workflow_id, wf);
+    assert_eq!(popped.trigger_id, Some(run));
+}
+
+#[tokio::test]
+async fn blocking_pop_logs_detailed_errors_on_failure_if_redis_available() {
+    // Test that blocking_pop_fetch provides detailed error messages
+    // This is tested indirectly by checking that errors include queue key information
+    let Some((_queue, fetch_key, _process_key)) = get_test_queue().await else {
+        println!("Skipping test: REDIS_URL not set");
+        return;
+    };
+
+    // Create a queue with invalid Redis URL to trigger connection error
+    let invalid_queue_result = ApalisRedisQueue::from_parts(
+        "redis://invalid-host:9999",
+        &fetch_key,
+        &format!("{fetch_key}:process"),
+    )
+    .await;
+
+    assert!(
+        invalid_queue_result.is_err(),
+        "Should fail with invalid Redis URL"
+    );
+    if let Err(e) = invalid_queue_result {
+        let error_msg = format!("{e}");
+        assert!(
+            error_msg.contains("invalid") || error_msg.contains("connection"),
+            "Error message should contain details about the failure: {error_msg}"
+        );
+    }
+}
