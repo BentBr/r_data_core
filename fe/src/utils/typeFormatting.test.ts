@@ -204,6 +204,64 @@ describe('typeFormatting', () => {
             })
         })
 
+        describe('Json type', () => {
+            it('should return object for object input', () => {
+                const obj = { key: 'value', nested: { data: 123 } }
+                expect(formatValueToType(obj, 'Json')).toEqual(obj)
+            })
+
+            it('should return array for array input', () => {
+                const arr = [1, 2, 3]
+                expect(formatValueToType(arr, 'Json')).toEqual(arr)
+            })
+
+            it('should parse JSON string to object', () => {
+                const jsonString = '{"key":"value","count":42}'
+                expect(formatValueToType(jsonString, 'Json')).toEqual({ key: 'value', count: 42 })
+            })
+
+            it('should parse JSON string to array', () => {
+                const jsonString = '[1,2,3]'
+                expect(formatValueToType(jsonString, 'Json')).toEqual([1, 2, 3])
+            })
+
+            it('should parse complex JSON string', () => {
+                const jsonString =
+                    '{"count":10,"names":["Customer","Order"],"metadata":{"version":1}}'
+                const expected = {
+                    count: 10,
+                    names: ['Customer', 'Order'],
+                    metadata: { version: 1 },
+                }
+                expect(formatValueToType(jsonString, 'Json')).toEqual(expected)
+            })
+
+            it('should return null for invalid JSON string', () => {
+                expect(formatValueToType('invalid json', 'Json')).toBe(null)
+            })
+
+            it('should return null for malformed JSON string', () => {
+                expect(formatValueToType('{"key":}', 'Json')).toBe(null)
+            })
+
+            it('should return null for null input', () => {
+                expect(formatValueToType(null, 'Json')).toBe(null)
+            })
+
+            it('should return null for undefined input', () => {
+                expect(formatValueToType(undefined, 'Json')).toBe(null)
+            })
+
+            it('should return null for empty string', () => {
+                expect(formatValueToType('', 'Json')).toBe(null)
+            })
+
+            it('should return null for non-object, non-string input', () => {
+                expect(formatValueToType(123, 'Json')).toBe(null)
+                expect(formatValueToType(true, 'Json')).toBe(null)
+            })
+        })
+
         describe('String type', () => {
             it('should return string for string input', () => {
                 expect(formatValueToType('test', 'String')).toBe('test')
@@ -293,6 +351,43 @@ describe('typeFormatting', () => {
 
             expect(formatted.metadata).toEqual({ key: 'value' })
             expect(formatted.tags).toEqual([1, 2, 3])
+        })
+
+        it('should format Json field type correctly', () => {
+            const fieldData = {
+                entity_definitions: '{"count":10,"names":["Customer","Order"]}',
+                entities_per_definition: '[{"entity_type":"Customer","count":100}]',
+                cors_origins: '["https://example.com","https://test.com"]',
+            }
+
+            const fieldDefinitions = [
+                { name: 'entity_definitions', field_type: 'Json' as FieldType },
+                { name: 'entities_per_definition', field_type: 'Json' as FieldType },
+                { name: 'cors_origins', field_type: 'Json' as FieldType },
+            ]
+
+            const formatted = formatFieldData(fieldData, fieldDefinitions)
+
+            expect(formatted.entity_definitions).toEqual({
+                count: 10,
+                names: ['Customer', 'Order'],
+            })
+            expect(formatted.entities_per_definition).toEqual([
+                { entity_type: 'Customer', count: 100 },
+            ])
+            expect(formatted.cors_origins).toEqual(['https://example.com', 'https://test.com'])
+        })
+
+        it('should handle Json field with already parsed object', () => {
+            const fieldData = {
+                metadata: { key: 'value', count: 42 },
+            }
+
+            const fieldDefinitions = [{ name: 'metadata', field_type: 'Json' as FieldType }]
+
+            const formatted = formatFieldData(fieldData, fieldDefinitions)
+
+            expect(formatted.metadata).toEqual({ key: 'value', count: 42 })
         })
     })
 })
