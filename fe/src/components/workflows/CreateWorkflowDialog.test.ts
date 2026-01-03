@@ -398,4 +398,470 @@ describe('CreateWorkflowDialog', () => {
         // Check that hasApiOutput is false
         expect(vm.hasApiOutput).toBe(false)
     })
+
+    describe('Bidirectional sync between steps and JSON', () => {
+        it('syncs steps to JSON when steps change (fields → JSON)', async () => {
+            const wrapper = mount(CreateWorkflowDialog, {
+                props: { modelValue: true },
+            })
+
+            const vm = wrapper.vm as {
+                steps: DslStep[]
+                configJson: string
+            }
+
+            const initialJson = vm.configJson
+
+            // Set steps via DSL editor
+            const newSteps = [
+                {
+                    from: {
+                        type: 'format',
+                        source: {
+                            source_type: 'uri',
+                            config: { uri: 'http://example.com/data.csv' },
+                        },
+                        format: {
+                            format_type: 'csv',
+                            options: { has_header: true },
+                        },
+                        mapping: {},
+                    },
+                    transform: { type: 'none' },
+                    to: {
+                        type: 'format',
+                        output: { mode: 'api' },
+                        format: { format_type: 'json' },
+                        mapping: {},
+                    },
+                },
+            ] as unknown as DslStep[]
+
+            vm.steps = newSteps
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100)) // Wait for watch to execute
+
+            // JSON should be updated
+            const updatedJson = vm.configJson
+            expect(updatedJson).not.toBe(initialJson)
+            expect(updatedJson).toContain('"steps"')
+            const parsed = JSON.parse(updatedJson)
+            expect(parsed.steps).toHaveLength(1)
+            const firstStep = parsed.steps[0]
+            if (firstStep.from?.type === 'format' && firstStep.from.source) {
+                expect(firstStep.from.source.source_type).toBe('uri')
+            }
+        })
+
+        it('syncs JSON to steps when JSON changes manually (JSON → fields)', async () => {
+            const wrapper = mount(CreateWorkflowDialog, {
+                props: { modelValue: true },
+            })
+
+            const vm = wrapper.vm as {
+                steps: DslStep[]
+                configJson: string
+            }
+
+            const initialStepsLength = vm.steps.length
+
+            // Manually edit JSON
+            const newJson = JSON.stringify(
+                {
+                    steps: [
+                        {
+                            from: {
+                                type: 'format',
+                                source: {
+                                    source_type: 'api',
+                                    config: {},
+                                },
+                                format: {
+                                    format_type: 'json',
+                                    options: {},
+                                },
+                                mapping: {},
+                            },
+                            transform: { type: 'none' },
+                            to: {
+                                type: 'format',
+                                output: { mode: 'api' },
+                                format: { format_type: 'json' },
+                                mapping: {},
+                            },
+                        },
+                    ],
+                },
+                null,
+                2
+            )
+
+            vm.configJson = newJson
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100)) // Wait for watch to execute
+
+            // Steps should be updated
+            expect(vm.steps.length).not.toBe(initialStepsLength)
+            expect(vm.steps.length).toBe(1)
+            const step = vm.steps[0]
+            if (
+                step.from &&
+                'type' in step.from &&
+                step.from.type === 'format' &&
+                'source' in step.from
+            ) {
+                const formatFrom = step.from as { type: 'format'; source: { source_type: string } }
+                expect(formatFrom.source.source_type).toBe('api')
+            }
+        })
+
+        it('prevents circular updates when syncing steps → JSON → steps', async () => {
+            const wrapper = mount(CreateWorkflowDialog, {
+                props: { modelValue: true },
+            })
+
+            const vm = wrapper.vm as {
+                steps: DslStep[]
+                configJson: string
+            }
+
+            const step = {
+                from: {
+                    type: 'format',
+                    source: {
+                        source_type: 'uri',
+                        config: { uri: 'http://example.com/data.csv' },
+                    },
+                    format: {
+                        format_type: 'csv',
+                        options: { has_header: true },
+                    },
+                    mapping: {},
+                },
+                transform: { type: 'none' },
+                to: {
+                    type: 'format',
+                    output: { mode: 'api' },
+                    format: { format_type: 'json' },
+                    mapping: {},
+                },
+            } as unknown as DslStep
+
+            // Set steps
+            vm.steps = [step]
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            const jsonAfterSteps = vm.configJson
+            const stepsAfterJson = [...vm.steps]
+
+            // Manually update JSON to same value (should NOT trigger JSON → steps due to circular prevention)
+            vm.configJson = jsonAfterSteps
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            // Steps should not change (circular update prevented)
+            expect(vm.steps).toEqual(stepsAfterJson)
+        })
+
+        it('handles invalid JSON gracefully without breaking steps', async () => {
+            const wrapper = mount(CreateWorkflowDialog, {
+                props: { modelValue: true },
+            })
+
+            const vm = wrapper.vm as {
+                steps: DslStep[]
+                configJson: string
+            }
+
+            const validSteps = [
+                {
+                    from: {
+                        type: 'format',
+                        source: {
+                            source_type: 'uri',
+                            config: { uri: 'http://example.com/data.csv' },
+                        },
+                        format: {
+                            format_type: 'csv',
+                            options: {},
+                        },
+                        mapping: {},
+                    },
+                    transform: { type: 'none' },
+                    to: {
+                        type: 'format',
+                        output: { mode: 'api' },
+                        format: { format_type: 'json' },
+                        mapping: {},
+                    },
+                },
+            ] as unknown as DslStep[]
+
+            vm.steps = validSteps
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            const stepsBeforeInvalidJson = [...vm.steps]
+
+            // Set invalid JSON
+            vm.configJson = '{"steps": [invalid json}'
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            // Steps should remain unchanged (invalid JSON is ignored)
+            expect(vm.steps).toEqual(stepsBeforeInvalidJson)
+        })
+
+        it('handles empty JSON without breaking', async () => {
+            const wrapper = mount(CreateWorkflowDialog, {
+                props: { modelValue: true },
+            })
+
+            const vm = wrapper.vm as {
+                steps: DslStep[]
+                configJson: string
+            }
+
+            // Set empty JSON
+            vm.configJson = ''
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            // Should not throw error, steps should remain as they were
+            expect(vm.steps).toBeDefined()
+        })
+
+        it('handles JSON with missing steps array', async () => {
+            const wrapper = mount(CreateWorkflowDialog, {
+                props: { modelValue: true },
+            })
+
+            const vm = wrapper.vm as {
+                steps: DslStep[]
+                configJson: string
+            }
+
+            const initialSteps = [...vm.steps]
+
+            // Set JSON without steps
+            vm.configJson = '{"other": "data"}'
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            // Steps should remain unchanged
+            expect(vm.steps).toEqual(initialSteps)
+        })
+
+        it('sanitizes steps when loading from JSON', async () => {
+            const wrapper = mount(CreateWorkflowDialog, {
+                props: { modelValue: true },
+            })
+
+            const vm = wrapper.vm as {
+                steps: DslStep[]
+                configJson: string
+            }
+
+            // Set JSON with potentially unsanitized steps
+            const jsonWithUnsanitizedSteps = JSON.stringify(
+                {
+                    steps: [
+                        {
+                            from: {
+                                type: 'format',
+                                source: {
+                                    source_type: 'uri',
+                                    config: { uri: 'http://example.com/data.csv' },
+                                },
+                                format: {
+                                    format_type: 'csv',
+                                    // Missing options - should be added by sanitization
+                                },
+                                mapping: {},
+                            },
+                            transform: { type: 'none' },
+                            to: {
+                                type: 'format',
+                                output: { mode: 'api' },
+                                format: { format_type: 'json' },
+                                mapping: {},
+                            },
+                        },
+                    ],
+                },
+                null,
+                2
+            )
+
+            vm.configJson = jsonWithUnsanitizedSteps
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            // Steps should be sanitized (options should be added)
+            expect(vm.steps.length).toBe(1)
+            const step = vm.steps[0]
+            if (step.from && 'type' in step.from && step.from.type === 'format') {
+                const formatFrom = step.from as {
+                    type: 'format'
+                    format: { format_type: string; options?: unknown }
+                }
+                if (formatFrom.format?.format_type === 'csv') {
+                    // CSV options should be ensured by sanitization
+                    expect(formatFrom.format.options).toBeDefined()
+                }
+            }
+        })
+
+        it('preserves manual JSON edits on save', async () => {
+            const wrapper = mount(CreateWorkflowDialog, {
+                props: { modelValue: true },
+            })
+
+            const vm = wrapper.vm as {
+                steps: DslStep[]
+                configJson: string
+                submit: () => Promise<void>
+            }
+
+            // Set initial steps
+            vm.steps = [
+                {
+                    from: {
+                        type: 'format',
+                        source: {
+                            source_type: 'uri',
+                            config: { uri: 'http://example.com/data.csv' },
+                        },
+                        format: {
+                            format_type: 'csv',
+                            options: {},
+                        },
+                        mapping: {},
+                    },
+                    transform: { type: 'none' },
+                    to: {
+                        type: 'format',
+                        output: { mode: 'api' },
+                        format: { format_type: 'json' },
+                        mapping: {},
+                    },
+                },
+            ] as unknown as DslStep[]
+
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            const jsonFromSteps = vm.configJson
+
+            // Manually edit JSON (add a comment-like field or modify structure)
+            const manuallyEditedJson = jsonFromSteps.replace(
+                '"uri": "http://example.com/data.csv"',
+                '"uri": "http://manually-edited.com/data.csv"'
+            )
+
+            vm.configJson = manuallyEditedJson
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            // Submit should use the manually edited JSON, not overwrite it
+            await vm.submit()
+
+            // Verify that createWorkflow was called with the manually edited JSON
+            const { typedHttpClient } = await import('@/api/typed-client')
+            expect(typedHttpClient.createWorkflow).toHaveBeenCalled()
+            const callArgs = (typedHttpClient.createWorkflow as ReturnType<typeof vi.fn>).mock
+                .calls[0][0]
+            expect(JSON.stringify(callArgs.config)).toContain('manually-edited.com')
+        })
+
+        it('handles rapid changes without causing infinite loops', async () => {
+            const wrapper = mount(CreateWorkflowDialog, {
+                props: { modelValue: true },
+            })
+
+            const vm = wrapper.vm as {
+                steps: DslStep[]
+                configJson: string
+            }
+
+            // Rapidly change steps multiple times
+            for (let i = 0; i < 5; i++) {
+                vm.steps = [
+                    {
+                        from: {
+                            type: 'format',
+                            source: {
+                                source_type: 'uri',
+                                config: { uri: `http://example${i}.com/data.csv` },
+                            },
+                            format: {
+                                format_type: 'csv',
+                                options: {},
+                            },
+                            mapping: {},
+                        },
+                        transform: { type: 'none' },
+                        to: {
+                            type: 'format',
+                            output: { mode: 'api' },
+                            format: { format_type: 'json' },
+                            mapping: {},
+                        },
+                    },
+                ] as unknown as DslStep[]
+
+                await nextTick()
+                await new Promise(resolve => setTimeout(resolve, 50))
+            }
+
+            // Should not cause infinite loop - final state should be consistent
+            const finalJson = vm.configJson
+            const parsed = JSON.parse(finalJson)
+            expect(parsed.steps).toHaveLength(1)
+            expect(parsed.steps[0].from.source.config.uri).toContain('example')
+        })
+
+        it('handles JSON with non-array steps gracefully', async () => {
+            const wrapper = mount(CreateWorkflowDialog, {
+                props: { modelValue: true },
+            })
+
+            const vm = wrapper.vm as {
+                steps: DslStep[]
+                configJson: string
+            }
+
+            const initialSteps = [...vm.steps]
+
+            // Set JSON with steps as object instead of array
+            vm.configJson = '{"steps": {"not": "an array"}}'
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            // Steps should remain unchanged
+            expect(vm.steps).toEqual(initialSteps)
+        })
+
+        it('handles JSON with null steps', async () => {
+            const wrapper = mount(CreateWorkflowDialog, {
+                props: { modelValue: true },
+            })
+
+            const vm = wrapper.vm as {
+                steps: DslStep[]
+                configJson: string
+            }
+
+            const initialSteps = [...vm.steps]
+
+            // Set JSON with null steps
+            vm.configJson = '{"steps": null}'
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            // Steps should remain unchanged
+            expect(vm.steps).toEqual(initialSteps)
+        })
+    })
 })

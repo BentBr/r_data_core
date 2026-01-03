@@ -302,36 +302,33 @@
     )
 
     // Sync steps when JSON changes manually (JSON → fields)
-    watch(
-        configJson,
-        jsonStr => {
-            if (isSyncingSteps || isSyncingJson) {
-                return
-            }
-            try {
-                const { parsed } = parseJson(jsonStr)
-                if (parsed && typeof parsed === 'object' && parsed !== null) {
-                    const config = parsed as { steps?: unknown[] }
-                    if (Array.isArray(config.steps)) {
-                        isSyncingSteps = true
-                        // Sanitize steps when loading from JSON
-                        const sanitized = sanitizeDslSteps(config.steps)
-                        sanitized.forEach(s => {
-                            ensureCsvOptions(s)
-                            ensureEntityFilter(s)
-                        })
-                        steps.value = sanitized
-                        // Reset flag after next tick
-                        setTimeout(() => {
-                            isSyncingSteps = false
-                        }, 0)
-                    }
-                }
-            } catch {
-                // ignore parse errors - user might be typing
-            }
+    watch(configJson, jsonStr => {
+        if (isSyncingSteps || isSyncingJson) {
+            return
         }
-    )
+        try {
+            const { parsed } = parseJson(jsonStr)
+            if (parsed && typeof parsed === 'object' && parsed !== null) {
+                const config = parsed as { steps?: unknown[] }
+                if (Array.isArray(config.steps)) {
+                    isSyncingSteps = true
+                    // Sanitize steps when loading from JSON
+                    const sanitized = sanitizeDslSteps(config.steps)
+                    sanitized.forEach(s => {
+                        ensureCsvOptions(s)
+                        ensureEntityFilter(s)
+                    })
+                    steps.value = sanitized
+                    // Reset flag after next tick
+                    setTimeout(() => {
+                        isSyncingSteps = false
+                    }, 0)
+                }
+            }
+        } catch {
+            // ignore parse errors - user might be typing
+        }
+    })
 
     // Expose for tests
     defineExpose({
