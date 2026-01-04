@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.8](https://github.com/BentBr/r_data_core/compare/v0.3.7...v0.3.8) (2026-01-04)
+
+
+### Bug Fixes
+
+* making sure our DSL is executed such as transforms are respected ([84186e9](https://github.com/BentBr/r_data_core/commit/84186e91809f950418b9dc85388dbf6d3b297747))
+* making sure our DSL is executed such as transforms are respected ([c77588b](https://github.com/BentBr/r_data_core/commit/c77588bd1808b344022071284250956eecf834f2))
+
 ## [0.3.7](https://github.com/BentBr/r_data_core/compare/v0.3.6...v0.3.7) (2026-01-04)
 
 
