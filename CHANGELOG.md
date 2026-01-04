@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.3.5](https://github.com/BentBr/r_data_core/compare/v0.3.4...v0.3.5) (2026-01-03)
+
+
+### Bug Fixes
+
+* making sure the loop actually works and picks up new job ([8f890e9](https://github.com/BentBr/r_data_core/commit/8f890e97581cd9d3629439870a0a8b8d36b2e4af))
+* making sure the loop actually works and picks up new job ([d3f994b](https://github.com/BentBr/r_data_core/commit/d3f994be2d4f14bc55a99acbc7e7c3ab098d4964))
+
+## [0.3.4](https://github.com/BentBr/r_data_core/compare/v0.3.3...v0.3.4) (2026-01-03)
+
+
+### Features
+
+* adding uuid to statistics submission ([a85e36d](https://github.com/BentBr/r_data_core/commit/a85e36d40c4dd08e46e9163856bdc4a307264344))
+* Fixed fe to support json (be already did it) ([cd1d29b](https://github.com/BentBr/r_data_core/commit/cd1d29b91241eec5b1139051b77cb4ca5c6a0198))
+* making sure adding/changing steps json is working as well ([72a0a65](https://github.com/BentBr/r_data_core/commit/72a0a65e330e47099a807e8747ae92474f378253))
+* making sure adding/changing steps json is working as well ([122b37c](https://github.com/BentBr/r_data_core/commit/122b37c3975a9cd25717af02acc82dc5abba8f2c))
+
+
+### Bug Fixes
+
+* making sure caching of entity definitions does not fail on other connections to PG ([5f3020f](https://github.com/BentBr/r_data_core/commit/5f3020f6d0ed62f6a98d264a3ff99444f9131167))
+
+## [0.3.3](https://github.com/BentBr/r_data_core/compare/v0.3.2...v0.3.3) (2026-01-02)
+
+
+### Bug Fixes
+
+* enhancement of cache binary ([493611d](https://github.com/BentBr/r_data_core/commit/493611d5473b9642c1795e00296c60e0996d0610))
+* enhancement of cache binary ([88040c3](https://github.com/BentBr/r_data_core/commit/88040c3452adfeb694006a2d53bf9d82169a81a4))
+
 ## [0.3.2](https://github.com/BentBr/r_data_core/compare/v0.3.1...v0.3.2) (2026-01-02)
 
 
