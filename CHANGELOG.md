@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.7](https://github.com/BentBr/r_data_core/compare/v0.3.6...v0.3.7) (2026-01-04)
+
+
+### Bug Fixes
+
+* **ci:** making sure fe/be run independently ([3a54fa4](https://github.com/BentBr/r_data_core/commit/3a54fa4514a26e910d4ee72936038e6cd171a099))
+* **ci:** making sure fe/be run independently ([62c522f](https://github.com/BentBr/r_data_core/commit/62c522f6a520de79f39fd50a80f99662af811182))
+
 ## [0.3.6](https://github.com/BentBr/r_data_core/compare/v0.3.5...v0.3.6) (2026-01-04)
 
 
