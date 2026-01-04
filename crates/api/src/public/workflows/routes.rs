@@ -933,22 +933,45 @@ pub async fn post_workflow_ingest(
             .json(json!({"error": "Workflow does not support API ingestion", "message": "This workflow must have a 'from.api' source type (without endpoint field) to accept POST data"}));
     }
 
-    // Create a run and process synchronously
-    match state
+    // Create a run and stage items
+    let (run_uuid, staged_count) = match state
         .workflow_service()
         .run_now_upload_bytes(uuid, &body)
         .await
     {
-        Ok((run_uuid, staged_count)) => HttpResponse::Accepted().json(json!({
+        Ok(result) => result,
+        Err(e) => {
+            log::error!("Failed to stage workflow data: {e}");
+            return HttpResponse::InternalServerError()
+                .json(json!({"error": "Failed to process workflow"}));
+        }
+    };
+
+    // Enqueue the job to Redis for worker processing
+    if let Err(e) = state
+        .queue()
+        .enqueue_fetch(FetchAndStageJob {
+            workflow_id: uuid,
+            trigger_id: Some(run_uuid),
+        })
+        .await
+    {
+        log::error!("Failed to enqueue fetch job for workflow {uuid} (run: {run_uuid}): {e}");
+        // Return warning but don't fail - items are staged
+        return HttpResponse::Accepted().json(json!({
             "run_uuid": run_uuid,
             "staged_items": staged_count,
-            "status": "processing"
-        })),
-        Err(e) => {
-            log::error!("Failed to process workflow: {e}");
-            HttpResponse::InternalServerError().json(json!({"error": "Failed to process workflow"}))
-        }
+            "status": "queued",
+            "warning": "Items staged but job enqueue failed - processing may be delayed"
+        }));
     }
+
+    log::info!("Successfully enqueued workflow {uuid} (run: {run_uuid}, staged: {staged_count})");
+    HttpResponse::Accepted().json(json!({
+        "run_uuid": run_uuid,
+        "staged_items": staged_count,
+        "status": "queued"
+    }))
 }
 
 /// Validate provider authentication (JWT, API key, or pre-shared key)
