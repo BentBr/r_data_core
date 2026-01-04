@@ -8,7 +8,51 @@ on:
   workflow_call:
 
 jobs:
+  # Detect which parts of the codebase changed
+  # For workflow_call (release-please), run all checks since we can't detect changes
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend || steps.default.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend || steps.default.outputs.frontend }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Fetch enough history for paths-filter to work
+          fetch-depth: 0
+
+      - name: Detect changes (PR only)
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'crates/**'
+              - 'migrations/**'
+              - 'tests/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.sqlx/**'
+              - 'src/**'
+            frontend:
+              - 'fe/**'
+
+      # For workflow_call (release-please PRs), run all checks
+      - name: Default to all checks (workflow_call)
+        if: ${{ github.event_name != 'pull_request' }}
+        id: default
+        run: |
+          echo "backend=true" >> $GITHUB_OUTPUT
+          echo "frontend=true" >> $GITHUB_OUTPUT
+
+  # ============================================================================
+  # Backend Jobs - Only run when backend files change
+  # ============================================================================
   backend-prepare:
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -50,7 +94,8 @@ jobs:
           fi
 
   backend-clippy:
-    needs: backend-prepare
+    needs: [changes, backend-prepare]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -83,7 +128,8 @@ jobs:
             -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery
 
   backend-format:
-    needs: backend-prepare
+    needs: [changes, backend-prepare]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -106,7 +152,8 @@ jobs:
         run: cargo fmt --check --all
 
   backend-audit:
-    needs: backend-prepare
+    needs: [changes, backend-prepare]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -141,7 +188,8 @@ jobs:
         run: cargo audit
 
   backend-tests:
-    needs: backend-prepare
+    needs: [changes, backend-prepare]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     # Note: Using docker run instead of services: block to support workflow_call (reusable workflows)
     steps:
@@ -213,7 +261,8 @@ jobs:
         run: RUST_LOG=error cargo test --workspace
 
   backend-build:
-    needs: backend-prepare
+    needs: [changes, backend-prepare]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -235,7 +284,12 @@ jobs:
           SQLX_OFFLINE: true
         run: cargo build --workspace --all-features
 
+  # ============================================================================
+  # Frontend Jobs - Only run when frontend files change
+  # ============================================================================
   frontend-prepare:
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -261,7 +315,8 @@ jobs:
         run: npm ci
 
   frontend-lint:
-    needs: frontend-prepare
+    needs: [changes, frontend-prepare]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -293,7 +348,8 @@ jobs:
         run: npm run lint
 
   frontend-tests:
-    needs: frontend-prepare
+    needs: [changes, frontend-prepare]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -325,7 +381,8 @@ jobs:
         run: npm run test
 
   frontend-audit:
-    needs: frontend-prepare
+    needs: [changes, frontend-prepare]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -357,7 +414,8 @@ jobs:
         run: npm audit --audit-level=moderate
 
   frontend-build:
-    needs: frontend-prepare
+    needs: [changes, frontend-prepare]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -401,8 +459,12 @@ jobs:
           path: fe/dist
           retention-days: 7
 
+  # ============================================================================
+  # CI Gate - Passes when all applicable checks pass
+  # ============================================================================
   ci-gate:
     needs:
+      - changes
       - backend-clippy
       - backend-format
       - backend-audit
@@ -412,7 +474,38 @@ jobs:
       - frontend-tests
       - frontend-audit
       - frontend-build
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
-      - name: All checks passed
-        run: echo "All CI checks have passed successfully"
+      - name: Check backend results
+        if: ${{ needs.changes.outputs.backend == 'true' }}
+        run: |
+          if [[ "${{ needs.backend-clippy.result }}" != "success" ]] || \
+             [[ "${{ needs.backend-format.result }}" != "success" ]] || \
+             [[ "${{ needs.backend-audit.result }}" != "success" ]] || \
+             [[ "${{ needs.backend-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.backend-build.result }}" != "success" ]]; then
+            echo "Backend checks failed"
+            exit 1
+          fi
+          echo "All backend checks passed"
+
+      - name: Check frontend results
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
+        run: |
+          if [[ "${{ needs.frontend-lint.result }}" != "success" ]] || \
+             [[ "${{ needs.frontend-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.frontend-audit.result }}" != "success" ]] || \
+             [[ "${{ needs.frontend-build.result }}" != "success" ]]; then
+            echo "Frontend checks failed"
+            exit 1
+          fi
+          echo "All frontend checks passed"
+
+      - name: Verify at least one component was checked
+        run: |
+          if [[ "${{ needs.changes.outputs.backend }}" != "true" ]] && \
+             [[ "${{ needs.changes.outputs.frontend }}" != "true" ]]; then
+            echo "No backend or frontend changes detected - nothing to check"
+          fi
+          echo "CI gate passed"
