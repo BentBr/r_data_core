@@ -502,3 +502,205 @@ async fn consumer_loop_processes_staged_items() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+/// Test that POST to workflow endpoint with from.api source enqueues job to Redis
+///
+/// This is a regression test for the bug where `post_workflow_ingest` created runs
+/// and staged items but never called `enqueue_fetch` to push jobs to Redis.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn post_to_workflow_endpoint_enqueues_fetch_job() -> anyhow::Result<()> {
+    use actix_web::{test as actix_test, web, App};
+    use r_data_core_api::{configure_app, ApiState, ApiStateWrapper};
+    use r_data_core_core::admin_user::AdminUser;
+    use r_data_core_core::cache::CacheManager;
+    use r_data_core_core::config::{ApiConfig, CacheConfig, LicenseConfig};
+    use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository};
+    use r_data_core_services::{AdminUserService, ApiKeyService, LicenseService, RoleService};
+
+    // Skip test if REDIS_URL not present
+    let Ok(redis_url) = std::env::var("REDIS_URL") else {
+        eprintln!("Skipping e2e test: REDIS_URL not set");
+        return Ok(());
+    };
+
+    // Use unique keys per test to avoid cross-test interference
+    let fetch_key = format!("test:e2e:post:fetch:{}", Uuid::now_v7().simple());
+    let process_key = format!("test:e2e:post:process:{}", Uuid::now_v7().simple());
+    let queue = Arc::new(
+        ApalisRedisQueue::from_parts(&redis_url, &fetch_key, &process_key)
+            .await
+            .expect("Failed to create Redis queue for e2e test"),
+    );
+
+    // DB setup
+    let pool = setup_test_db().await;
+
+    // Create entity definition for the workflow target
+    let entity_type = unique_entity_type("e2e_post_entity");
+    let _entity_def_uuid = create_test_entity_definition(&pool, &entity_type).await?;
+
+    // Create admin user for auth
+    let admin_uuid = create_test_admin_user(&pool).await?;
+
+    // Build all required services
+    let cache_config = CacheConfig {
+        entity_definition_ttl: 0,
+        api_key_ttl: 600,
+        enabled: true,
+        ttl: 300,
+        max_size: 10000,
+    };
+    let cache_manager = Arc::new(CacheManager::new(cache_config));
+
+    let license_config = LicenseConfig::default();
+    let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
+
+    let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.pool.clone())));
+    let api_key_service = ApiKeyService::new(api_key_repository);
+
+    let admin_user_repository = Arc::new(AdminUserRepository::new(Arc::new(pool.pool.clone())));
+    let admin_user_service = AdminUserService::new(admin_user_repository);
+
+    let entity_definition_service = EntityDefinitionService::new_without_cache(Arc::new(
+        r_data_core_persistence::EntityDefinitionRepository::new(pool.pool.clone()),
+    ));
+
+    let de_repo = r_data_core_persistence::DynamicEntityRepository::new(pool.pool.clone());
+    let de_adapter = DynamicEntityRepositoryAdapter::new(de_repo);
+    let dynamic_entity_service = Arc::new(DynamicEntityService::new(
+        Arc::new(de_adapter),
+        Arc::new(entity_definition_service.clone()),
+    ));
+
+    let wf_repo = WorkflowRepository::new(pool.pool.clone());
+    let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
+    let workflow_service =
+        WorkflowService::new_with_entities(Arc::new(wf_adapter), dynamic_entity_service.clone());
+
+    let dashboard_stats_repository =
+        r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone());
+    let dashboard_stats_service =
+        r_data_core_services::DashboardStatsService::new(Arc::new(dashboard_stats_repository));
+
+    let jwt_secret = "test_secret".to_string();
+    let api_config = ApiConfig {
+        host: "0.0.0.0".to_string(),
+        port: 8888,
+        use_tls: false,
+        jwt_secret: jwt_secret.clone(),
+        jwt_expiration: 3600,
+        enable_docs: true,
+        cors_origins: vec![],
+        check_default_admin_password: true,
+    };
+
+    let api_state = ApiState {
+        db_pool: pool.pool.clone(),
+        api_config: api_config.clone(),
+        role_service: RoleService::new(pool.pool.clone(), cache_manager.clone(), Some(0)),
+        cache_manager,
+        api_key_service,
+        admin_user_service,
+        entity_definition_service,
+        dynamic_entity_service: Some(dynamic_entity_service),
+        workflow_service,
+        dashboard_stats_service,
+        queue: queue.clone(), // Use our custom queue with unique keys
+        license_service,
+    };
+
+    let app_data = web::Data::new(ApiStateWrapper::new(api_state));
+
+    let app = actix_test::init_service(
+        App::new()
+            .app_data(app_data.clone())
+            .configure(configure_app),
+    )
+    .await;
+
+    // Generate JWT token for auth
+    let user: AdminUser = sqlx::query_as("SELECT * FROM admin_users WHERE uuid = $1")
+        .bind(admin_uuid)
+        .fetch_one(&pool.pool)
+        .await?;
+    let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, &[])?;
+
+    // Create workflow with from.api source (accepts POST data)
+    // Uses example file from .example_files/json_examples/dsl/
+    let config = api::workflows::common::load_workflow_example(
+        "workflow_api_source_json_to_entity.json",
+        &entity_type,
+    )?;
+
+    let repo = WorkflowRepository::new(pool.pool.clone());
+    let create_req = r_data_core_api::admin::workflows::models::CreateWorkflowRequest {
+        name: format!("e2e-post-wf-{}", Uuid::now_v7().simple()),
+        description: Some("e2e POST endpoint test".to_string()),
+        kind: WorkflowKind::Consumer.to_string(),
+        enabled: true,
+        schedule_cron: None,
+        config,
+        versioning_disabled: false,
+    };
+    let wf_uuid = repo.create(&create_req, admin_uuid).await?;
+
+    // POST JSON data to the workflow endpoint
+    let json_data = r#"[{"name":"Test User","email":"test@example.com"}]"#;
+    let req = actix_test::TestRequest::post()
+        .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
+        .insert_header(("Content-Type", "application/json"))
+        .set_payload(json_data.as_bytes())
+        .to_request();
+
+    let resp = actix_test::call_service(&app, req).await;
+
+    // Verify response is 202 Accepted
+    assert_eq!(
+        resp.status().as_u16(),
+        202,
+        "Expected 202 Accepted, got: {}",
+        resp.status()
+    );
+
+    // Parse response to get run_uuid
+    let body = actix_test::read_body(resp).await;
+    let response: serde_json::Value = serde_json::from_slice(&body)?;
+    let run_uuid_str = response["run_uuid"]
+        .as_str()
+        .expect("Response should contain run_uuid");
+    let run_uuid: Uuid = run_uuid_str.parse()?;
+
+    // CRITICAL: Verify the job was actually enqueued to Redis
+    // Use a timeout to avoid hanging if the queue is empty
+    let pop_result = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        queue.blocking_pop_fetch(),
+    )
+    .await;
+
+    match pop_result {
+        Ok(Ok(job)) => {
+            assert_eq!(
+                job.workflow_id, wf_uuid,
+                "Popped job should have correct workflow_id"
+            );
+            assert_eq!(
+                job.trigger_id,
+                Some(run_uuid),
+                "Popped job should have correct trigger_id (run_uuid)"
+            );
+        }
+        Ok(Err(e)) => {
+            panic!("Failed to pop job from queue: {e}. The enqueue_fetch call may be missing!");
+        }
+        Err(elapsed) => {
+            panic!(
+                "Timeout ({elapsed}) waiting for job from queue. Job was not enqueued to Redis!"
+            );
+        }
+    }
+
+    Ok(())
+}
