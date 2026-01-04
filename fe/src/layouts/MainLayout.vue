@@ -45,6 +45,22 @@
                     </template>
                 </v-list-item>
             </v-list>
+
+            <v-spacer />
+
+            <!-- Version Info -->
+            <div class="version-info pa-3">
+                <div class="text-caption text-medium-emphasis">
+                    <div>FE: v{{ versionStore.feVersion }}</div>
+                    <div v-if="versionStore.coreVersion">Core: v{{ versionStore.coreVersion }}</div>
+                    <div v-if="versionStore.workerVersion">
+                        Worker: v{{ versionStore.workerVersion.version }}
+                    </div>
+                    <div v-if="versionStore.maintenanceVersion">
+                        Maint: v{{ versionStore.maintenanceVersion.version }}
+                    </div>
+                </div>
+            </div>
         </v-navigation-drawer>
 
         <!-- App Bar -->
@@ -93,6 +109,7 @@
     import { ref, computed, onMounted, onUnmounted } from 'vue'
     import { useRoute } from 'vue-router'
     import { useAuthStore } from '@/stores/auth'
+    import { useVersionStore } from '@/stores/versions'
     import { useTranslations } from '@/composables/useTranslations'
     import LanguageSwitch from '@/components/common/LanguageSwitch.vue'
     import UserProfileMenu from '@/components/common/UserProfileMenu.vue'
@@ -103,6 +120,7 @@
 
     const route = useRoute()
     const authStore = useAuthStore()
+    const versionStore = useVersionStore()
     const { t } = useTranslations()
 
     // State
@@ -198,6 +216,15 @@
 
     .v-navigation-drawer {
         transition: width 0.3s ease;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .version-info {
+        border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+        font-family: monospace;
+        font-size: 0.7rem;
+        line-height: 1.4;
     }
 </style>
 

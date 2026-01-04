@@ -99,14 +99,14 @@ async fn main() -> ExitCode {
 
     // Create license config
     let license_config = LicenseConfig {
-        license_key: Some(license_key),
+        license_key: Some(license_key.clone()),
         private_key: None,
         public_key: None,
         verification_url: String::new(), // Not needed for statistics
-        statistics_url,
+        statistics_url: statistics_url.clone(),
     };
 
-    // Create statistics service
+    // Create the statistics service
     let repository = Arc::new(StatisticsRepository::new(pool));
     let service = StatisticsService::new(license_config, repository);
 
@@ -114,6 +114,8 @@ async fn main() -> ExitCode {
         println!("[DRY-RUN] Would send statistics to the configured endpoint");
         println!("[DRY-RUN] Admin URI: {admin_uri}");
         println!("[DRY-RUN] CORS Origins: {cors_origins:?}");
+        println!("[DRY-RUN] Statistics endpoint: {statistics_url}");
+        println!("[DRY-RUN] License key: {license_key}");
         println!("[DRY-RUN] Run without --dry-run to actually send statistics");
         return ExitCode::SUCCESS;
     }

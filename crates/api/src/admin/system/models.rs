@@ -142,3 +142,28 @@ pub struct LicenseVerificationResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
 }
+
+/// Component version information
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ComponentVersionDto {
+    /// Name of the component
+    pub name: String,
+    /// Version string
+    pub version: String,
+    /// Last time this component was seen (ISO 8601)
+    #[serde(with = "time::serde::rfc3339")]
+    pub last_seen_at: time::OffsetDateTime,
+}
+
+/// System versions response
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct SystemVersionsDto {
+    /// Core/API server version
+    pub core: String,
+    /// Worker component version (if available)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub worker: Option<ComponentVersionDto>,
+    /// Maintenance component version (if available)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maintenance: Option<ComponentVersionDto>,
+}

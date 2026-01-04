@@ -5,6 +5,7 @@ import { env } from '@/env-check'
 import { useTranslations } from '@/composables/useTranslations'
 import { getRefreshToken, setRefreshToken, deleteRefreshToken } from '@/utils/cookies'
 import { useLicenseStore } from './license'
+import { useVersionStore } from './versions'
 import type { LoginRequest, User } from '@/types/schemas'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -118,6 +119,10 @@ export const useAuthStore = defineStore('auth', () => {
             // Reset banner dismissal on new login
             licenseStore.resetBannerDismissal()
 
+            // Load system versions after login
+            const versionStore = useVersionStore()
+            void versionStore.loadVersions()
+
             if (env.enableApiLogging) {
                 console.log('[Auth] Login successful:', {
                     username: response.username,
@@ -192,6 +197,10 @@ export const useAuthStore = defineStore('auth', () => {
             clearTimeout(refreshTimer.value)
             refreshTimer.value = null
         }
+
+        // Clear version info
+        const versionStore = useVersionStore()
+        versionStore.clearVersions()
 
         if (env.enableApiLogging) {
             console.log('[Auth] Auth state cleared immediately')

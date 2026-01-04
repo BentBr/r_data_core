@@ -1,6 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -8,7 +8,10 @@ use tokio_cron_scheduler::{Job, JobScheduler};
 use uuid::Uuid;
 
 use r_data_core_core::config::load_worker_config;
-use r_data_core_persistence::WorkflowRepository;
+use r_data_core_persistence::{ComponentVersionRepository, WorkflowRepository};
+
+/// Current version from Cargo.toml
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 use r_data_core_services::adapters::{
     DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter,
 };
@@ -58,6 +61,14 @@ async fn main() -> r_data_core_core::error::Result<()> {
     // Verify license on startup
     let license_service = LicenseService::new(config.license.clone(), cache_manager.clone());
     license_service.verify_license_on_startup("worker").await;
+
+    // Report worker version to database
+    let version_repo = ComponentVersionRepository::new(pool.clone());
+    if let Err(e) = version_repo.upsert("worker", VERSION).await {
+        warn!("Failed to report worker version: {e}");
+    } else {
+        info!("Worker version {VERSION} registered");
+    }
 
     let queue_cfg = Arc::new(config.queue.clone());
     let _queue = ApalisRedisQueue::from_parts(
