@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.6](https://github.com/BentBr/r_data_core/compare/v0.3.5...v0.3.6) (2026-01-04)
+
+
+### Features
+
+* Adding version report to FE + setting FE release independently ([b71020f](https://github.com/BentBr/r_data_core/commit/b71020fc642360bd7a1e97b92b9e09c865cfc7ad))
+* Adding version report to FE + setting FE release independently ([89f1666](https://github.com/BentBr/r_data_core/commit/89f1666c932c41588c6238fc1cd2524fff442633))
+
+
+### Bug Fixes
+
+* github runner interpreting variables as bash commands ([922fcfe](https://github.com/BentBr/r_data_core/commit/922fcfee99d55efcc7a3b3de6bff884895be1687))
+* making sure our endpoint is enqueing the task properly ([0e631dd](https://github.com/BentBr/r_data_core/commit/0e631dd07185bf7a055cc5914154e598d4372c00))
+* making sure our endpoint is enqueing the task properly ([286f890](https://github.com/BentBr/r_data_core/commit/286f890b4238f5a34be3d6285897ea2ea52dc2f3))
+
 ## [0.3.5](https://github.com/BentBr/r_data_core/compare/v0.3.4...v0.3.5) (2026-01-03)
 
 

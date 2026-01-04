@@ -43,13 +43,20 @@ jobs:
           manifest-file: .release-please-manifest.json
 
       - name: Debug outputs
+        env:
+          CORE_RELEASE_CREATED: ${{ steps.release.outputs['.--release_created'] }}
+          CORE_VERSION: ${{ steps.release.outputs['.--version'] }}
+          FE_RELEASE_CREATED: ${{ steps.release.outputs['fe--release_created'] }}
+          FE_VERSION: ${{ steps.release.outputs['fe--version'] }}
+          PRS_CREATED: ${{ steps.release.outputs.prs_created }}
+          PRS_JSON: ${{ steps.release.outputs.prs }}
         run: |
-          echo "Core release created: ${{ steps.release.outputs['.--release_created'] }}"
-          echo "Core version: ${{ steps.release.outputs['.--version'] }}"
-          echo "FE release created: ${{ steps.release.outputs['fe--release_created'] }}"
-          echo "FE version: ${{ steps.release.outputs['fe--version'] }}"
-          echo "PRs created: ${{ steps.release.outputs.prs_created }}"
-          echo "PRs: ${{ steps.release.outputs.prs }}"
+          echo "Core release created: $CORE_RELEASE_CREATED"
+          echo "Core version: $CORE_VERSION"
+          echo "FE release created: $FE_RELEASE_CREATED"
+          echo "FE version: $FE_VERSION"
+          echo "PRs created: $PRS_CREATED"
+          echo "PRs: $PRS_JSON"
 
       - name: Get PR head SHA
         id: get-pr-sha
