@@ -1,8 +1,8 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use crate::admin::system::models::{
-    EntityVersioningSettingsDto, LicenseStatusDto, LicenseVerificationRequest,
-    LicenseVerificationResponse, UpdateSettingsBody,
+    ComponentVersionDto, EntityVersioningSettingsDto, LicenseStatusDto, LicenseVerificationRequest,
+    LicenseVerificationResponse, SystemVersionsDto, UpdateSettingsBody,
 };
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
@@ -10,13 +10,18 @@ use crate::auth::permission_check;
 use crate::response::ApiResponse;
 use actix_web::{get, post, put, web, Responder};
 use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
+use r_data_core_persistence::ComponentVersionRepository;
 use r_data_core_services::SettingsService;
+
+/// Core version from Cargo.toml
+const CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Register system routes
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(get_entity_versioning_settings);
     cfg.service(update_entity_versioning_settings);
     cfg.service(get_license_status);
+    cfg.service(get_system_versions);
     // Internal endpoint (not in Swagger)
     cfg.service(verify_license_internal);
 }
@@ -160,6 +165,69 @@ pub async fn get_license_status(
             ApiResponse::<()>::internal_error("Failed to retrieve license status")
         }
     }
+}
+
+#[utoipa::path(
+    get,
+    path = "/admin/api/v1/system/versions",
+    tag = "system",
+    responses(
+        (status = 200, description = "Get system component versions", body = SystemVersionsDto),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Server error")
+    ),
+    security(("jwt" = []))
+)]
+#[get("/versions")]
+pub async fn get_system_versions(
+    data: web::Data<ApiStateWrapper>,
+    auth: RequiredAuth,
+) -> impl Responder {
+    // Check permission - any authenticated user can view versions
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::System,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to view system versions");
+    }
+
+    let repo = ComponentVersionRepository::new(data.db_pool().clone());
+
+    // Fetch component versions from database
+    let components = match repo.get_all().await {
+        Ok(c) => c,
+        Err(e) => {
+            log::error!("Failed to fetch component versions: {e}");
+            return ApiResponse::<()>::internal_error("Failed to fetch component versions");
+        }
+    };
+
+    // Build response
+    let worker = components
+        .iter()
+        .find(|c| c.component_name == "worker")
+        .map(|c| ComponentVersionDto {
+            name: c.component_name.clone(),
+            version: c.version.clone(),
+            last_seen_at: c.last_seen_at,
+        });
+
+    let maintenance = components
+        .iter()
+        .find(|c| c.component_name == "maintenance")
+        .map(|c| ComponentVersionDto {
+            name: c.component_name.clone(),
+            version: c.version.clone(),
+            last_seen_at: c.last_seen_at,
+        });
+
+    ApiResponse::ok(SystemVersionsDto {
+        core: CORE_VERSION.to_string(),
+        worker,
+        maintenance,
+    })
 }
 
 /// Internal license verification endpoint (not documented in Swagger)

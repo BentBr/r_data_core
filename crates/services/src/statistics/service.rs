@@ -1,10 +1,9 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use std::sync::Arc;
-use std::time::Duration;
-
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use std::time::Duration;
 
 use r_data_core_core::config::LicenseConfig;
 use r_data_core_license::LicenseClaims;

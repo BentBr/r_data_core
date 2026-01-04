@@ -1,7 +1,8 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use log::{error, info};
+use log::{error, info, warn};
 use r_data_core_core::config::load_maintenance_config;
+use r_data_core_persistence::ComponentVersionRepository;
 use r_data_core_services::bootstrap::{init_cache_manager, init_logger_with_default, init_pg_pool};
 use r_data_core_services::LicenseService;
 use sqlx::PgPool;
@@ -14,6 +15,9 @@ use r_data_core_worker::registrars::{
     LicenseVerificationRegistrar, RefreshTokenCleanupRegistrar, StatisticsCollectionRegistrar,
     TaskRegistrar, VersionPurgerRegistrar,
 };
+
+/// Current version from Cargo.toml
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Initialize the maintenance scheduler with all registered tasks
 ///
@@ -92,11 +96,25 @@ async fn verify_license_on_startup(config: &MaintenanceConfig, cache_manager: Ar
         .await;
 }
 
+/// Report component version to the database
+///
+/// # Arguments
+/// * `pool` - Database connection pool
+async fn report_version(pool: &PgPool) {
+    let repo = ComponentVersionRepository::new(pool.clone());
+    if let Err(e) = repo.upsert("maintenance", VERSION).await {
+        warn!("Failed to report maintenance version: {e}");
+    } else {
+        info!("Maintenance version {VERSION} registered");
+    }
+}
+
 #[tokio::main]
 async fn main() -> r_data_core_core::error::Result<()> {
     let (config, pool, cache_manager) = init_application().await?;
 
     verify_license_on_startup(&config, cache_manager.clone()).await;
+    report_version(&pool).await;
 
     let scheduler = init_scheduler(&config, pool, cache_manager).await?;
 

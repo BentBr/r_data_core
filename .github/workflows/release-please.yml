@@ -17,10 +17,21 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-      version: ${{ steps.release.outputs.version }}
-      pr: ${{ steps.release.outputs.pr }}
+      # Core (backend) release outputs
+      core_release_created: ${{ steps.release.outputs['.--release_created'] }}
+      core_tag_name: ${{ steps.release.outputs['.--tag_name'] }}
+      core_version: ${{ steps.release.outputs['.--version'] }}
+      # FE release outputs
+      fe_release_created: ${{ steps.release.outputs['fe--release_created'] }}
+      fe_tag_name: ${{ steps.release.outputs['fe--tag_name'] }}
+      fe_version: ${{ steps.release.outputs['fe--version'] }}
+      # Legacy outputs for backwards compatibility
+      release_created: ${{ steps.release.outputs['.--release_created'] }}
+      tag_name: ${{ steps.release.outputs['.--tag_name'] }}
+      version: ${{ steps.release.outputs['.--version'] }}
+      # PR tracking
+      prs_created: ${{ steps.release.outputs.prs_created }}
+      prs: ${{ steps.release.outputs.prs }}
       pr_head_sha: ${{ steps.get-pr-sha.outputs.sha }}
     steps:
       - name: Release Please
@@ -31,37 +42,47 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+      - name: Debug outputs
+        run: |
+          echo "Core release created: ${{ steps.release.outputs['.--release_created'] }}"
+          echo "Core version: ${{ steps.release.outputs['.--version'] }}"
+          echo "FE release created: ${{ steps.release.outputs['fe--release_created'] }}"
+          echo "FE version: ${{ steps.release.outputs['fe--version'] }}"
+          echo "PRs created: ${{ steps.release.outputs.prs_created }}"
+          echo "PRs: ${{ steps.release.outputs.prs }}"
+
       - name: Get PR head SHA
         id: get-pr-sha
-        if: ${{ steps.release.outputs.prs_created == 'true' || steps.release.outputs.pr != '' }}
+        if: ${{ steps.release.outputs.prs_created == 'true' }}
         uses: actions/github-script@v7
         env:
-          PR_OUTPUT: ${{ steps.release.outputs.pr }}
+          PRS_OUTPUT: ${{ steps.release.outputs.prs }}
         with:
           script: |
-            const prOutput = process.env.PR_OUTPUT;
-            console.log('PR output:', prOutput);
+            const prsOutput = process.env.PRS_OUTPUT;
+            console.log('PRs output:', prsOutput);
 
-            if (!prOutput) {
-              console.log('No PR output available');
+            if (!prsOutput) {
+              console.log('No PRs output available');
               return;
             }
 
-            // PR output might be just a number or a JSON object
-            let prNumber;
+            // PRs output is a JSON array of PR objects
+            let prs;
             try {
-              const parsed = JSON.parse(prOutput);
-              prNumber = parsed.number || parsed;
+              prs = JSON.parse(prsOutput);
             } catch (e) {
-              // If not JSON, assume it's the PR number directly
-              prNumber = parseInt(prOutput, 10);
-            }
-
-            if (!prNumber || isNaN(prNumber)) {
-              console.log('Could not determine PR number from:', prOutput);
+              console.log('Could not parse PRs output:', e);
               return;
             }
 
+            if (!Array.isArray(prs) || prs.length === 0) {
+              console.log('No PRs found in output');
+              return;
+            }
+
+            // Get the first PR's SHA (we'll run CI for all PRs)
+            const prNumber = prs[0].number;
             console.log(`Fetching PR #${prNumber}`);
             const { data: pr } = await github.rest.pulls.get({
               owner: context.repo.owner,
@@ -74,13 +95,13 @@ jobs:
   # Run CI for release-please PRs (GITHUB_TOKEN events don't trigger other workflows)
   ci-for-release-pr:
     needs: release-please
-    if: ${{ needs.release-please.outputs.pr_head_sha != '' && needs.release-please.outputs.release_created != 'true' }}
+    if: ${{ needs.release-please.outputs.pr_head_sha != '' && needs.release-please.outputs.core_release_created != 'true' && needs.release-please.outputs.fe_release_created != 'true' }}
     uses: ./.github/workflows/ci.yml
 
   # Report CI status to the PR (called workflows don't create status checks)
   report-ci-status:
     needs: [release-please, ci-for-release-pr]
-    if: ${{ always() && needs.release-please.outputs.pr_head_sha != '' && needs.release-please.outputs.release_created != 'true' }}
+    if: ${{ always() && needs.release-please.outputs.pr_head_sha != '' && needs.release-please.outputs.core_release_created != 'true' && needs.release-please.outputs.fe_release_created != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Report CI status to PR
@@ -115,12 +136,24 @@ jobs:
 
             console.log(`Set commit status for ${sha}: ${state}`);
 
-  # Build and publish Docker images when a release is created
+  # Build and publish Docker images when a core (backend) release is created
+  # This builds all images including FE using the core version tag
   docker-publish:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    if: ${{ needs.release-please.outputs.core_release_created == 'true' }}
     uses: ./.github/workflows/docker-publish.yml
     with:
-      version: ${{ needs.release-please.outputs.version }}
-      tag_name: ${{ needs.release-please.outputs.tag_name }}
+      version: ${{ needs.release-please.outputs.core_version }}
+      tag_name: ${{ needs.release-please.outputs.core_tag_name }}
+    secrets: inherit
+
+  # Build and publish FE Docker image when FE-only release is created
+  # This only runs if FE is released but core is not (independent FE release)
+  docker-publish-fe:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.fe_release_created == 'true' && needs.release-please.outputs.core_release_created != 'true' }}
+    uses: ./.github/workflows/docker-publish.yml
+    with:
+      version: ${{ needs.release-please.outputs.fe_version }}
+      tag_name: ${{ needs.release-please.outputs.fe_tag_name }}
     secrets: inherit

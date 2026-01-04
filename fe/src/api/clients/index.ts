@@ -224,6 +224,9 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     async getLicenseStatus(...args: Parameters<SystemClient['getLicenseStatus']>) {
         return this.systemClient.getLicenseStatus(...args)
     }
+    async getSystemVersions(...args: Parameters<SystemClient['getSystemVersions']>) {
+        return this.systemClient.getSystemVersions(...args)
+    }
 
     // Roles
     async getRoles(...args: Parameters<RolesClient['getRoles']>) {

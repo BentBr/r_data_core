@@ -25,6 +25,20 @@ export const LicenseStatusSchema = z.object({
 })
 export type LicenseStatus = z.infer<typeof LicenseStatusSchema>
 
+export const ComponentVersionSchema = z.object({
+    name: z.string(),
+    version: z.string(),
+    last_seen_at: z.string(),
+})
+export type ComponentVersion = z.infer<typeof ComponentVersionSchema>
+
+export const SystemVersionsSchema = z.object({
+    core: z.string(),
+    worker: ComponentVersionSchema.nullable().optional(),
+    maintenance: ComponentVersionSchema.nullable().optional(),
+})
+export type SystemVersions = z.infer<typeof SystemVersionsSchema>
+
 export class SystemClient extends BaseTypedHttpClient {
     async getEntityVersioningSettings(): Promise<EntityVersioningSettings> {
         return this.request(
@@ -48,5 +62,12 @@ export class SystemClient extends BaseTypedHttpClient {
 
     async getLicenseStatus(): Promise<LicenseStatus> {
         return this.request('/admin/api/v1/system/license', ApiResponseSchema(LicenseStatusSchema))
+    }
+
+    async getSystemVersions(): Promise<SystemVersions> {
+        return this.request(
+            '/admin/api/v1/system/versions',
+            ApiResponseSchema(SystemVersionsSchema)
+        )
     }
 }
