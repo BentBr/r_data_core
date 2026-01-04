@@ -11,6 +11,9 @@ use uuid::Uuid;
 
 /// Process a single item through the workflow DSL
 ///
+/// Uses step-by-step execution to properly interleave async transforms (like `ResolveEntityPath`)
+/// with sync transforms (like `BuildPath`) that may depend on their results.
+///
 /// # Errors
 /// Returns an error if processing fails
 pub async fn process_single_item(
@@ -22,20 +25,19 @@ pub async fn process_single_item(
     dynamic_entity_service: Option<&DynamicEntityService>,
     repo: &Arc<dyn WorkflowRepositoryTrait>,
 ) -> r_data_core_core::error::Result<bool> {
-    match program.execute(payload) {
+    match execute_steps_with_async_transforms(
+        program,
+        payload,
+        item_uuid,
+        run_uuid,
+        dynamic_entity_service,
+        repo,
+    )
+    .await
+    {
         Ok(outputs) => {
-            let processed_outputs = apply_async_transforms(
-                program,
-                outputs,
-                dynamic_entity_service,
-                run_uuid,
-                item_uuid,
-                repo,
-            )
-            .await;
-
             process_outputs(
-                processed_outputs,
+                outputs,
                 payload,
                 item_uuid,
                 run_uuid,
@@ -49,56 +51,70 @@ pub async fn process_single_item(
     }
 }
 
-async fn apply_async_transforms(
+/// Execute workflow steps one at a time, running async transforms between steps.
+///
+/// This ensures that async transforms (like `ResolveEntityPath`) complete and inject
+/// their results into the data context before subsequent steps that depend on them
+/// (like `BuildPath`) execute.
+async fn execute_steps_with_async_transforms(
     program: &DslProgram,
-    outputs: Vec<(ToDef, JsonValue)>,
-    dynamic_entity_service: Option<&DynamicEntityService>,
-    run_uuid: Uuid,
+    payload: &JsonValue,
     item_uuid: Uuid,
+    run_uuid: Uuid,
+    dynamic_entity_service: Option<&DynamicEntityService>,
     repo: &Arc<dyn WorkflowRepositoryTrait>,
-) -> Vec<(ToDef, JsonValue)> {
-    let mut processed_outputs = Vec::new();
-    for (output_idx, (to_def, produced)) in outputs.iter().enumerate() {
-        let mut processed_produced = produced.clone();
+) -> r_data_core_core::error::Result<Vec<(ToDef, JsonValue)>> {
+    let mut results: Vec<(ToDef, JsonValue)> = Vec::new();
+    let mut previous_step_output: Option<JsonValue> = None;
 
-        // Find corresponding step and execute async transforms
-        if output_idx < program.steps.len() {
-            let step = &program.steps[output_idx];
-            if matches!(
-                &step.transform,
-                Transform::ResolveEntityPath(_) | Transform::GetOrCreateEntity(_)
-            ) {
-                if let Some(de_service) = dynamic_entity_service {
-                    if let Err(e) = execute_async_transform(
-                        &step.transform,
-                        &mut processed_produced,
-                        de_service,
-                        run_uuid,
-                    )
-                    .await
-                    {
-                        // Log error but continue (zero-impact resilience)
-                        let _ = repo
-                            .insert_run_log(
-                                run_uuid,
-                                "warning",
-                                "Async transform execution failed, using original data",
-                                Some(serde_json::json!({
-                                    "item_uuid": item_uuid,
-                                    "step_idx": output_idx,
-                                    "error": e.to_string()
-                                })),
-                            )
-                            .await;
-                        // Use original produced data on error
-                    }
+    for step_idx in 0..program.steps.len() {
+        // Step 1: Prepare the step (normalize input, apply sync transforms except BuildPath)
+        let (mut normalized, transform) =
+            program.prepare_step(step_idx, payload, previous_step_output.as_ref())?;
+
+        // Step 2: Execute async transforms if needed (ResolveEntityPath, GetOrCreateEntity)
+        if matches!(
+            transform,
+            Transform::ResolveEntityPath(_) | Transform::GetOrCreateEntity(_)
+        ) {
+            if let Some(de_service) = dynamic_entity_service {
+                if let Err(e) =
+                    execute_async_transform(transform, &mut normalized, de_service, run_uuid).await
+                {
+                    // Log error but continue with zero-impact resilience
+                    let _ = repo
+                        .insert_run_log(
+                            run_uuid,
+                            "warning",
+                            "Async transform execution failed",
+                            Some(serde_json::json!({
+                                "item_uuid": item_uuid,
+                                "step_idx": step_idx,
+                                "error": e.to_string()
+                            })),
+                        )
+                        .await;
+                    // Continue without the async transform results
                 }
             }
         }
 
-        processed_outputs.push((to_def.clone(), processed_produced));
+        // Step 3: Apply BuildPath transform (now has access to async transform results)
+        if matches!(transform, Transform::BuildPath(_)) {
+            DslProgram::apply_build_path(step_idx, transform, &mut normalized)?;
+        }
+
+        // Step 4: Finalize the step (apply output mapping)
+        let (to_def, produced) = program.finalize_step(step_idx, &normalized)?;
+
+        // Step 5: Determine what to pass to the next step
+        previous_step_output =
+            Some(program.get_next_step_input(step_idx, &normalized, &produced)?);
+
+        results.push((to_def, produced));
     }
-    processed_outputs
+
+    Ok(results)
 }
 
 async fn process_outputs(
