@@ -26,6 +26,16 @@ on:
         description: 'Tag name from release-please'
         required: true
         type: string
+      build_backend:
+        description: 'Whether to build backend images'
+        required: false
+        type: boolean
+        default: true
+      build_frontend:
+        description: 'Whether to build frontend images'
+        required: false
+        type: boolean
+        default: true
 
 env:
   REGISTRY: ghcr.io
@@ -33,6 +43,8 @@ env:
 jobs:
   # Build all backend images in a single job to share the compiled Rust artifacts
   build-backend:
+    # Only build backend when: not a workflow_call, OR build_backend input is true
+    if: ${{ github.event_name != 'workflow_call' || inputs.build_backend != false }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -163,6 +175,8 @@ jobs:
 
   # Build frontend image separately (fast, doesn't need shared cache with backend)
   build-frontend:
+    # Only build frontend when: not a workflow_call, OR build_frontend input is true
+    if: ${{ github.event_name != 'workflow_call' || inputs.build_frontend != false }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -253,13 +267,16 @@ jobs:
           push-to-registry: true
         continue-on-error: true
 
-  # Summary job that runs after all images are built
+  # Summary job that runs after images are built
   publish-summary:
     needs: [build-backend, build-frontend]
     runs-on: ubuntu-latest
-    if: always()
+    if: always() && (needs.build-backend.result == 'success' || needs.build-frontend.result == 'success')
     steps:
       - name: Summary
+        env:
+          BACKEND_RESULT: ${{ needs.build-backend.result }}
+          FRONTEND_RESULT: ${{ needs.build-frontend.result }}
         run: |
           OWNER_LC="${GITHUB_REPOSITORY_OWNER,,}"
           echo "## Docker Images Published" >> $GITHUB_STEP_SUMMARY
@@ -275,27 +292,44 @@ jobs:
             TAG="${{ inputs.tag }}"
           fi
 
-          echo "| Image | Tag |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|-----|" >> $GITHUB_STEP_SUMMARY
-          echo "| \`ghcr.io/${OWNER_LC}/r-data-core\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| \`ghcr.io/${OWNER_LC}/r-data-core-worker\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| \`ghcr.io/${OWNER_LC}/r-data-core-maintenance\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| \`ghcr.io/${OWNER_LC}/r-data-core-admin-fe\` | \`${TAG}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | Tag | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-----|--------|" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$BACKEND_RESULT" == "success" ]; then
+            echo "| \`ghcr.io/${OWNER_LC}/r-data-core\` | \`${TAG}\` | ✅ |" >> $GITHUB_STEP_SUMMARY
+            echo "| \`ghcr.io/${OWNER_LC}/r-data-core-worker\` | \`${TAG}\` | ✅ |" >> $GITHUB_STEP_SUMMARY
+            echo "| \`ghcr.io/${OWNER_LC}/r-data-core-maintenance\` | \`${TAG}\` | ✅ |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$BACKEND_RESULT" == "skipped" ]; then
+            echo "| \`ghcr.io/${OWNER_LC}/r-data-core\` | - | ⏭️ skipped |" >> $GITHUB_STEP_SUMMARY
+            echo "| \`ghcr.io/${OWNER_LC}/r-data-core-worker\` | - | ⏭️ skipped |" >> $GITHUB_STEP_SUMMARY
+            echo "| \`ghcr.io/${OWNER_LC}/r-data-core-maintenance\` | - | ⏭️ skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$FRONTEND_RESULT" == "success" ]; then
+            echo "| \`ghcr.io/${OWNER_LC}/r-data-core-admin-fe\` | \`${TAG}\` | ✅ |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$FRONTEND_RESULT" == "skipped" ]; then
+            echo "| \`ghcr.io/${OWNER_LC}/r-data-core-admin-fe\` | - | ⏭️ skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Usage" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "# Backend" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ghcr.io/${OWNER_LC}/r-data-core:${TAG}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "# Admin Frontend (nginx)" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ghcr.io/${OWNER_LC}/r-data-core-admin-fe:${TAG}" >> $GITHUB_STEP_SUMMARY
+          if [ "$BACKEND_RESULT" == "success" ]; then
+            echo "# Backend" >> $GITHUB_STEP_SUMMARY
+            echo "docker pull ghcr.io/${OWNER_LC}/r-data-core:${TAG}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "$FRONTEND_RESULT" == "success" ]; then
+            echo "# Admin Frontend (nginx)" >> $GITHUB_STEP_SUMMARY
+            echo "docker pull ghcr.io/${OWNER_LC}/r-data-core-admin-fe:${TAG}" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
   # Build and upload frontend ZIP to release
   upload-frontend-zip:
     runs-on: ubuntu-latest
-    # Only run for releases (not develop builds)
-    if: ${{ inputs.version != '' || github.event_name == 'release' }}
+    # Only run for releases when frontend is being built
+    if: ${{ (inputs.version != '' || github.event_name == 'release') && (github.event_name != 'workflow_call' || inputs.build_frontend != false) }}
     permissions:
       contents: write
     steps:
