@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.10](https://github.com/BentBr/r_data_core/compare/v0.3.9...v0.3.10) (2026-01-05)
+
+
+### Bug Fixes
+
+* **ci:** separate running fe / be ([734400e](https://github.com/BentBr/r_data_core/commit/734400ee3202d309ef62e30be9b774939530ea32))
+* **ci:** separate running fe / be ([bc50a56](https://github.com/BentBr/r_data_core/commit/bc50a56ea567ceff1461b96d2a349f2b89735fb4))
+
 ## [0.3.9](https://github.com/BentBr/r_data_core/compare/v0.3.8...v0.3.9) (2026-01-05)
 
 
