@@ -12,6 +12,7 @@ vi.mock('@/api/typed-client', () => {
     // Define ValidationError class inline to avoid hoisting issues
     class ValidationError extends Error {
         violations: Array<{ field: string; message: string }>
+
         constructor(message: string, violations: Array<{ field: string; message: string }>) {
             super(message)
             this.name = 'ValidationError'
@@ -39,6 +40,7 @@ vi.mock('@/api/errors', () => {
         namespace: string
         action: string
         originalMessage: string
+
         constructor(
             statusCode: number,
             namespace: string,

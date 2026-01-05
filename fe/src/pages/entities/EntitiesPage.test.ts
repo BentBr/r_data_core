@@ -21,6 +21,7 @@ vi.mock('@/api/typed-client', () => ({
     },
     ValidationError: class ValidationError extends Error {
         violations: Array<{ field: string; message: string }>
+
         constructor(violations: Array<{ field: string; message: string }>) {
             super('validation')
             this.violations = violations

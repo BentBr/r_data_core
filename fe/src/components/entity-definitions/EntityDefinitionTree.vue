@@ -54,7 +54,9 @@
 
     interface Emits {
         (e: 'update:expandedGroups', groups: string[]): void
+
         (e: 'item-click', item: TreeNode): void
+
         (e: 'selection-change', items: string[]): void
     }
 

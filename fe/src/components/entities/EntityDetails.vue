@@ -74,12 +74,12 @@
                                             />
                                         </div>
                                     </template>
-                                    <v-list-item-title>{{
-                                        t('entities.details.uuid')
-                                    }}</v-list-item-title>
-                                    <v-list-item-subtitle>{{
-                                        entity.field_data?.uuid ?? ''
-                                    }}</v-list-item-subtitle>
+                                    <v-list-item-title
+                                        >{{ t('entities.details.uuid') }}
+                                    </v-list-item-title>
+                                    <v-list-item-subtitle
+                                        >{{ entity.field_data?.uuid ?? '' }}
+                                    </v-list-item-subtitle>
                                 </v-list-item>
                                 <v-list-item>
                                     <template #prepend>
@@ -90,12 +90,12 @@
                                             />
                                         </div>
                                     </template>
-                                    <v-list-item-title>{{
-                                        t('entities.details.entity_type')
-                                    }}</v-list-item-title>
-                                    <v-list-item-subtitle>{{
-                                        entity.entity_type
-                                    }}</v-list-item-subtitle>
+                                    <v-list-item-title
+                                        >{{ t('entities.details.entity_type') }}
+                                    </v-list-item-title>
+                                    <v-list-item-subtitle
+                                        >{{ entity.entity_type }}
+                                    </v-list-item-subtitle>
                                 </v-list-item>
                                 <v-list-item>
                                     <template #prepend>
@@ -106,12 +106,16 @@
                                             />
                                         </div>
                                     </template>
-                                    <v-list-item-title>{{
-                                        t('entities.details.created_at')
-                                    }}</v-list-item-title>
-                                    <v-list-item-subtitle>{{
-                                        formatDate((entity.field_data?.created_at as string) ?? '')
-                                    }}</v-list-item-subtitle>
+                                    <v-list-item-title
+                                        >{{ t('entities.details.created_at') }}
+                                    </v-list-item-title>
+                                    <v-list-item-subtitle
+                                        >{{
+                                            formatDate(
+                                                (entity.field_data?.created_at as string) ?? ''
+                                            )
+                                        }}
+                                    </v-list-item-subtitle>
                                 </v-list-item>
                                 <v-list-item>
                                     <template #prepend>
@@ -122,12 +126,16 @@
                                             />
                                         </div>
                                     </template>
-                                    <v-list-item-title>{{
-                                        t('entities.details.updated_at')
-                                    }}</v-list-item-title>
-                                    <v-list-item-subtitle>{{
-                                        formatDate((entity.field_data?.updated_at as string) ?? '')
-                                    }}</v-list-item-subtitle>
+                                    <v-list-item-title
+                                        >{{ t('entities.details.updated_at') }}
+                                    </v-list-item-title>
+                                    <v-list-item-subtitle
+                                        >{{
+                                            formatDate(
+                                                (entity.field_data?.updated_at as string) ?? ''
+                                            )
+                                        }}
+                                    </v-list-item-subtitle>
                                 </v-list-item>
                                 <v-list-item v-if="entity.field_data?.path">
                                     <template #prepend>
@@ -138,12 +146,12 @@
                                             />
                                         </div>
                                     </template>
-                                    <v-list-item-title>{{
-                                        t('entities.details.path')
-                                    }}</v-list-item-title>
-                                    <v-list-item-subtitle>{{
-                                        entity.field_data?.path
-                                    }}</v-list-item-subtitle>
+                                    <v-list-item-title
+                                        >{{ t('entities.details.path') }}
+                                    </v-list-item-title>
+                                    <v-list-item-subtitle
+                                        >{{ entity.field_data?.path }}
+                                    </v-list-item-subtitle>
                                 </v-list-item>
                             </v-list>
                         </v-card-text>
@@ -166,9 +174,9 @@
                                             />
                                         </div>
                                     </template>
-                                    <v-list-item-title>{{
-                                        t('entities.details.parent')
-                                    }}</v-list-item-title>
+                                    <v-list-item-title
+                                        >{{ t('entities.details.parent') }}
+                                    </v-list-item-title>
                                     <v-list-item-subtitle>
                                         {{
                                             entity.field_data?.parent_uuid ||
@@ -185,9 +193,9 @@
                                             />
                                         </div>
                                     </template>
-                                    <v-list-item-title>{{
-                                        t('entities.details.children')
-                                    }}</v-list-item-title>
+                                    <v-list-item-title
+                                        >{{ t('entities.details.children') }}
+                                    </v-list-item-title>
                                     <v-list-item-subtitle>
                                         0
                                         {{ t('entities.details.child_count') }}
@@ -230,9 +238,9 @@
                                                 />
                                             </div>
                                         </template>
-                                        <v-list-item-title>{{
-                                            field.display_name
-                                        }}</v-list-item-title>
+                                        <v-list-item-title
+                                            >{{ field.display_name }}
+                                        </v-list-item-title>
                                         <v-list-item-subtitle>
                                             {{
                                                 formatFieldValue(
@@ -294,6 +302,7 @@
 
     interface Emits {
         (e: 'edit'): void
+
         (e: 'delete'): void
     }
 

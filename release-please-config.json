@@ -12,6 +12,7 @@
       "prerelease": false,
       "include-component-in-tag": false,
       "include-v-in-tag": true,
+      "exclude-paths": ["fe"],
       "extra-files": [
         "crates/api/Cargo.toml",
         "crates/core/Cargo.toml",

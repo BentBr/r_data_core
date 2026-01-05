@@ -38,9 +38,9 @@
                                 class="mt-2"
                             >
                                 <v-expansion-panel>
-                                    <v-expansion-panel-title>{{
-                                        t('workflows.create.config_label')
-                                    }}</v-expansion-panel-title>
+                                    <v-expansion-panel-title
+                                        >{{ t('workflows.create.config_label') }}
+                                    </v-expansion-panel-title>
                                     <v-expansion-panel-text>
                                         <div class="mb-4">
                                             <DslConfigurator
@@ -75,15 +75,15 @@
                     variant="text"
                     color="mutedForeground"
                     @click="cancel"
-                    >Cancel</v-btn
-                >
+                    >Cancel
+                </v-btn>
                 <v-btn
                     color="primary"
                     variant="flat"
                     :loading="loading"
                     @click="submit"
-                    >Save</v-btn
-                >
+                    >Save
+                </v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>

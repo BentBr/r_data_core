@@ -30,9 +30,9 @@
                         class="mt-2"
                     >
                         <v-expansion-panel>
-                            <v-expansion-panel-title>{{
-                                t('workflows.create.config_label')
-                            }}</v-expansion-panel-title>
+                            <v-expansion-panel-title
+                                >{{ t('workflows.create.config_label') }}
+                            </v-expansion-panel-title>
                             <v-expansion-panel-text>
                                 <div class="mb-4">
                                     <DslConfigurator
@@ -57,15 +57,15 @@
                     variant="text"
                     color="mutedForeground"
                     @click="cancel"
-                    >{{ t('common.cancel') }}</v-btn
-                >
+                    >{{ t('common.cancel') }}
+                </v-btn>
                 <v-btn
                     color="primary"
                     variant="flat"
                     :loading="loading"
                     @click="submit"
-                    >{{ t('workflows.create.create_button') }}</v-btn
-                >
+                    >{{ t('workflows.create.create_button') }}
+                </v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
@@ -271,6 +271,7 @@
             loading.value = false
         }
     }
+
     // Bidirectional sync between steps and JSON
     // We use flags to prevent recursive updates
     let isSyncingSteps = false

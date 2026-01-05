@@ -55,9 +55,9 @@
                 <div class="mb-2">
                     <v-expansion-panels variant="accordion">
                         <v-expansion-panel>
-                            <v-expansion-panel-title>{{
-                                t('workflows.dsl.auth_type')
-                            }}</v-expansion-panel-title>
+                            <v-expansion-panel-title
+                                >{{ t('workflows.dsl.auth_type') }}
+                            </v-expansion-panel-title>
                             <v-expansion-panel-text>
                                 <AuthConfigEditor
                                     :model-value="outputDestinationAuth"
@@ -100,8 +100,8 @@
                 size="x-small"
                 variant="tonal"
                 @click="addMapping"
-                >{{ t('workflows.dsl.add_mapping') }}</v-btn
-            >
+                >{{ t('workflows.dsl.add_mapping') }}
+            </v-btn>
         </template>
         <template v-else-if="modelValue.type === 'entity'">
             <v-select
@@ -149,8 +149,8 @@
                 size="x-small"
                 variant="tonal"
                 @click="addMapping"
-                >{{ t('workflows.dsl.add_mapping') }}</v-btn
-            >
+                >{{ t('workflows.dsl.add_mapping') }}
+            </v-btn>
         </template>
         <template v-else-if="modelValue.type === 'next_step'">
             <!-- Info banner -->
@@ -170,8 +170,8 @@
                 <v-icon
                     size="small"
                     class="mr-1"
-                    >mdi-arrow-down-circle</v-icon
-                >
+                    >mdi-arrow-down-circle
+                </v-icon>
                 {{ t('workflows.dsl.next_step_info') }}
             </div>
             <div class="text-caption mb-1 mt-2">
@@ -188,8 +188,8 @@
                 size="x-small"
                 variant="tonal"
                 @click="addMapping"
-                >{{ t('workflows.dsl.add_mapping') }}</v-btn
-            >
+                >{{ t('workflows.dsl.add_mapping') }}
+            </v-btn>
         </template>
     </div>
 </template>

@@ -198,6 +198,7 @@
 
     interface Emits {
         (e: 'update:modelValue', value: boolean): void
+
         (e: 'save', field: FieldDefinition): void
     }
 
