@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.1](https://github.com/BentBr/r_data_core/compare/fe-v0.2.0...fe-v0.2.1) (2026-01-05)
+
+
+### Bug Fixes
+
+* adding fe bump only (2) ([0e038e6](https://github.com/BentBr/r_data_core/commit/0e038e6081a74e6eb3b141757432f8c4e3639a06))
+* adding fe bump only (2) ([515144f](https://github.com/BentBr/r_data_core/commit/515144f31415a3e78c1c97046e66333f3e60c3d9))
+* getting some version fe + be ([34498bf](https://github.com/BentBr/r_data_core/commit/34498bf81896b57ec6c3877468b4fa86fc344f88))
+* getting some version fe + be ([e84bc93](https://github.com/BentBr/r_data_core/commit/e84bc93324c75c63e14c3314ea2a6f40b2c35555))
+* trying to bumb fe version ([5e7a4fd](https://github.com/BentBr/r_data_core/commit/5e7a4fdf50be339f9145acd41668621dff55ad5a))
+* trying to bumb fe version ([2506243](https://github.com/BentBr/r_data_core/commit/2506243eb05980d88928dd6334ae7620f7417744))
+
 ## [0.2.0](https://github.com/BentBr/r_data_core/compare/fe-v0.1.0...fe-v0.2.0) (2026-01-04)
 
 ### ⚠ BREAKING CHANGES
