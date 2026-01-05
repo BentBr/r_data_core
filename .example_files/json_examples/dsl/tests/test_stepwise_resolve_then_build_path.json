@@ -1,0 +1,40 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "format",
+        "source": { "source_type": "api", "config": {}, "auth": null },
+        "format": { "format_type": "json", "options": {} },
+        "mapping": {}
+      },
+      "transform": {
+        "type": "resolve_entity_path",
+        "target_path": "instance_path",
+        "target_parent_uuid": "instance_parent_uuid",
+        "entity_type": "${ENTITY_TYPE}",
+        "filters": {
+          "license_key_id": { "kind": "field", "field": "license_key_id" }
+        },
+        "value_transforms": null,
+        "fallback_path": "/fallback"
+      },
+      "to": { "type": "next_step", "mapping": {} }
+    },
+    {
+      "from": { "type": "previous_step", "mapping": {} },
+      "transform": {
+        "type": "build_path",
+        "target": "submission_path",
+        "template": "{instance_path}/submission",
+        "separator": "/",
+        "field_transforms": null
+      },
+      "to": {
+        "type": "format",
+        "output": { "mode": "api" },
+        "format": { "format_type": "json", "options": {} },
+        "mapping": {}
+      }
+    }
+  ]
+}
