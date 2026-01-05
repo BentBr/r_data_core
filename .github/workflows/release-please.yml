@@ -168,7 +168,7 @@ jobs:
             console.log(`Set commit status for ${sha}: ${state}`);
 
   # Build and publish Docker images when a core (backend) release is created
-  # This builds all images including FE using the core version tag
+  # Only builds backend images - FE gets its own version tags
   docker-publish:
     needs: release-please
     if: ${{ needs.release-please.outputs.core_release_created == 'true' }}
@@ -176,15 +176,19 @@ jobs:
     with:
       version: ${{ needs.release-please.outputs.core_version }}
       tag_name: ${{ needs.release-please.outputs.core_tag_name }}
+      build_backend: true
+      build_frontend: false
     secrets: inherit
 
-  # Build and publish FE Docker image when FE-only release is created
-  # This only runs if FE is released but core is not (independent FE release)
+  # Build and publish FE Docker image when FE release is created
+  # This runs whenever FE is released (with or without core)
   docker-publish-fe:
     needs: release-please
-    if: ${{ needs.release-please.outputs.fe_release_created == 'true' && needs.release-please.outputs.core_release_created != 'true' }}
+    if: ${{ needs.release-please.outputs.fe_release_created == 'true' }}
     uses: ./.github/workflows/docker-publish.yml
     with:
       version: ${{ needs.release-please.outputs.fe_version }}
       tag_name: ${{ needs.release-please.outputs.fe_tag_name }}
+      build_backend: false
+      build_frontend: true
     secrets: inherit
