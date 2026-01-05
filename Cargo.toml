@@ -2,9 +2,9 @@
 name = "r_data_core"
 version = "0.3.10"
 edition = "2021"
-description = "A Digital Asset Management backend providing efficient data handling and distribution"
+description = "A Master Data Managebent backend providing efficient data handling and distribution with custom entities and workflows"
 authors = ["Bent Brüggemann <mail@bent-brueggemann.de>"]
-license = "MIT"
+license = "Business"
 
 # Force single-threaded test execution
 [lib]
