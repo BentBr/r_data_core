@@ -30,9 +30,9 @@
                                     />
                                 </div>
                             </template>
-                            <v-list-item-title>{{
-                                t('api_keys.view.description')
-                            }}</v-list-item-title>
+                            <v-list-item-title
+                                >{{ t('api_keys.view.description') }}
+                            </v-list-item-title>
                             <v-list-item-subtitle>{{ apiKey.description }}</v-list-item-subtitle>
                         </v-list-item>
                         <v-list-item>
@@ -45,9 +45,9 @@
                                 </div>
                             </template>
                             <v-list-item-title>{{ t('api_keys.view.created') }}</v-list-item-title>
-                            <v-list-item-subtitle>{{
-                                formatDate(apiKey.created_at)
-                            }}</v-list-item-subtitle>
+                            <v-list-item-subtitle
+                                >{{ formatDate(apiKey.created_at) }}
+                            </v-list-item-subtitle>
                         </v-list-item>
                         <v-list-item v-if="apiKey.expires_at">
                             <template #prepend>
@@ -59,9 +59,9 @@
                                 </div>
                             </template>
                             <v-list-item-title>{{ t('api_keys.view.expires') }}</v-list-item-title>
-                            <v-list-item-subtitle>{{
-                                formatDate(apiKey.expires_at)
-                            }}</v-list-item-subtitle>
+                            <v-list-item-subtitle
+                                >{{ formatDate(apiKey.expires_at) }}
+                            </v-list-item-subtitle>
                         </v-list-item>
                         <v-list-item v-if="apiKey.last_used_at">
                             <template #prepend>
@@ -72,12 +72,12 @@
                                     />
                                 </div>
                             </template>
-                            <v-list-item-title>{{
-                                t('api_keys.view.last_used')
-                            }}</v-list-item-title>
-                            <v-list-item-subtitle>{{
-                                formatDate(apiKey.last_used_at)
-                            }}</v-list-item-subtitle>
+                            <v-list-item-title
+                                >{{ t('api_keys.view.last_used') }}
+                            </v-list-item-title>
+                            <v-list-item-subtitle
+                                >{{ formatDate(apiKey.last_used_at) }}
+                            </v-list-item-subtitle>
                         </v-list-item>
                     </v-list>
                 </div>

@@ -124,6 +124,7 @@
 
     interface Emits {
         (e: 'update:modelValue', value: boolean): void
+
         (e: 'update', data: UpdateEntityRequest): void
     }
 

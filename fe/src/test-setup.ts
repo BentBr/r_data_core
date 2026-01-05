@@ -18,6 +18,7 @@ config.global.stubs = {
 }
 
 import { mount } from '@vue/test-utils'
+
 export const mountX = (component: unknown, options: ComponentMountingOptions<unknown> = {}) =>
     mount(component, {
         ...options,
@@ -35,7 +36,9 @@ Object.defineProperty(globalThis, 'import', {
 // ResizeObserver shim for Vuetify
 class ResizeObserver {
     observe() {}
+
     unobserve() {}
+
     disconnect() {}
 }
 ;(global as typeof globalThis & { ResizeObserver: typeof ResizeObserver }).ResizeObserver =

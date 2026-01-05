@@ -594,8 +594,8 @@
                         <v-btn
                             variant="text"
                             @click="showLogs = false"
-                            >{{ t('common.close') }}</v-btn
-                        >
+                            >{{ t('common.close') }}
+                        </v-btn>
                     </v-card-actions>
                 </v-card>
             </v-dialog>
@@ -636,14 +636,14 @@
                         <v-btn
                             variant="text"
                             @click="showRunDialog = false"
-                            >{{ t('common.cancel') }}</v-btn
-                        >
+                            >{{ t('common.cancel') }}
+                        </v-btn>
                         <v-btn
                             color="primary"
                             :disabled="uploadEnabled && !uploadFile"
                             @click="confirmRunNow"
-                            >{{ t('workflows.run.run_button') }}</v-btn
-                        >
+                            >{{ t('workflows.run.run_button') }}
+                        </v-btn>
                     </v-card-actions>
                 </v-card>
             </v-dialog>

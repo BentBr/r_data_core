@@ -52,6 +52,7 @@
 
     interface Emits {
         (e: 'update:modelValue', value: boolean): void
+
         (e: 'confirm'): void
     }
 

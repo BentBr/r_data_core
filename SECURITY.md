@@ -4,10 +4,10 @@
 
 Security updates are provided for the following versions:
 
-| Version | Supported          |
-| ------- | ------------------ |
-| latest  | ✅ |
-| < 1.0   | ✅                |
+| Version | Supported |
+|---------|-----------|
+| latest  | ✅         |
+| < 1.0   | ✅         |
 
 We recommend always running the latest version of RDataCore.
 

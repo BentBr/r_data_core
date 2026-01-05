@@ -7,16 +7,16 @@
                 variant="outlined"
                 color="primary"
                 @click="addStep"
-                >{{ t('workflows.dsl.add_step') }}</v-btn
-            >
+                >{{ t('workflows.dsl.add_step') }}
+            </v-btn>
         </div>
         <v-alert
             v-if="loadError"
             type="error"
             density="compact"
             class="mb-2"
-            >{{ loadError }}</v-alert
-        >
+            >{{ loadError }}
+        </v-alert>
         <v-skeleton-loader
             v-if="loading"
             type="list-item-two-line"

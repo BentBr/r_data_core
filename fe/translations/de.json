@@ -1,852 +1,863 @@
 {
-  "auth": {
-    "login": {
-      "title": "Anmelden",
-      "username": "Benutzername",
-      "password": "Passwort",
-      "submit": "Anmelden",
-      "forgot_password": "Passwort vergessen?",
-      "forgot_password_message": "Die Passwort-Reset-Funktion ist noch nicht implementiert.",
-      "loading": "Anmeldung läuft...",
-      "success": "Anmeldung erfolgreich",
-      "errors": {
-        "invalid_credentials": "Ungültiger Benutzername oder Passwort",
-        "username_required": "Benutzername ist erforderlich",
-        "password_required": "Passwort ist erforderlich",
-        "username_too_short": "Benutzername muss mindestens 3 Zeichen lang sein",
-        "password_too_short": "Passwort muss mindestens 8 Zeichen lang sein",
-        "validation_failed": "Anmeldung aufgrund eines Validierungsfehlers fehlgeschlagen",
-        "network_error": "Netzwerkfehler, bitte versuchen Sie es erneut",
-        "server_error": "Serverfehler, bitte versuchen Sie es später erneut",
-        "authentication_required": "Authentifizierung erforderlich"
-      }
+    "auth": {
+        "login": {
+            "title": "Anmelden",
+            "username": "Benutzername",
+            "password": "Passwort",
+            "submit": "Anmelden",
+            "forgot_password": "Passwort vergessen?",
+            "forgot_password_message": "Die Passwort-Reset-Funktion ist noch nicht implementiert.",
+            "loading": "Anmeldung läuft...",
+            "success": "Anmeldung erfolgreich",
+            "errors": {
+                "invalid_credentials": "Ungültiger Benutzername oder Passwort",
+                "username_required": "Benutzername ist erforderlich",
+                "password_required": "Passwort ist erforderlich",
+                "username_too_short": "Benutzername muss mindestens 3 Zeichen lang sein",
+                "password_too_short": "Passwort muss mindestens 8 Zeichen lang sein",
+                "validation_failed": "Anmeldung aufgrund eines Validierungsfehlers fehlgeschlagen",
+                "network_error": "Netzwerkfehler, bitte versuchen Sie es erneut",
+                "server_error": "Serverfehler, bitte versuchen Sie es später erneut",
+                "authentication_required": "Authentifizierung erforderlich"
+            }
+        },
+        "default_password_warning": "Sicherheitswarnung: Das Standard-Admin-Passwort wird noch verwendet. Bitte ändern Sie es sofort aus Sicherheitsgründen.",
+        "default_password_warning_dismiss": "Ausblenden",
+        "mobile_warning": "Die Admin-Oberfläche von RDataCore ist nicht für die mobile Nutzung gedacht!",
+        "mobile_warning_dismiss": "Ausblenden"
     },
-    "default_password_warning": "Sicherheitswarnung: Das Standard-Admin-Passwort wird noch verwendet. Bitte ändern Sie es sofort aus Sicherheitsgründen.",
-    "default_password_warning_dismiss": "Ausblenden",
-    "mobile_warning": "Die Admin-Oberfläche von RDataCore ist nicht für die mobile Nutzung gedacht!",
-    "mobile_warning_dismiss": "Ausblenden"
-  },
-  "navigation": {
-    "dashboard": "Dashboard",
-    "entity_definitions": "Entitätsdefinitionen",
-    "entities": "Entitäten",
-    "api_keys": "API-Schlüssel",
-    "workflows": "Workflows",
-    "permissions": "Berechtigungen",
-    "system": "System",
-    "logout": "Abmelden"
-  },
-  "no_access": {
-    "title": "Kein Zugriff",
-    "message": "Sie sind angemeldet, haben aber keine Berechtigung, auf Funktionen zuzugreifen. Bitte kontaktieren Sie Ihren Administrator.",
-    "logged_in_as": "Angemeldet als"
-  },
-  "dashboard": {
-    "title": "R Data Core Admin Dashboard",
-    "tiles": {
-      "entity_definitions": "Entitätsdefinitionen",
-      "entities": "Entitäten",
-      "workflows": "Workflows",
-      "online_users": "Online-Benutzer",
-      "top_entity_type": "Top: {type} ({count})",
-      "latest_workflow_states": "Neueste: {states}"
+    "navigation": {
+        "dashboard": "Dashboard",
+        "entity_definitions": "Entitätsdefinitionen",
+        "entities": "Entitäten",
+        "api_keys": "API-Schlüssel",
+        "workflows": "Workflows",
+        "permissions": "Berechtigungen",
+        "system": "System",
+        "logout": "Abmelden"
     },
-    "quick_actions": {
-      "title": "Schnellaktionen",
-      "new_entity_definition": "Neue Entitätsdefinition",
-      "create_entity": "Entität erstellen",
-      "generate_api_key": "API-Schlüssel generieren",
-      "create_workflow": "Workflow erstellen",
-      "create_user": "Benutzer erstellen",
-      "create_role": "Rolle erstellen",
-      "no_quick_create_permission_granted": "Keine Berechtigung zum schnellen Erstellen erteilt"
+    "no_access": {
+        "title": "Kein Zugriff",
+        "message": "Sie sind angemeldet, haben aber keine Berechtigung, auf Funktionen zuzugreifen. Bitte kontaktieren Sie Ihren Administrator.",
+        "logged_in_as": "Angemeldet als"
     },
-    "loading": "Dashboard-Statistiken werden geladen...",
-    "error": "Dashboard-Statistiken konnten nicht geladen werden"
-  },
-  "workflows": {
+    "dashboard": {
+        "title": "R Data Core Admin Dashboard",
+        "tiles": {
+            "entity_definitions": "Entitätsdefinitionen",
+            "entities": "Entitäten",
+            "workflows": "Workflows",
+            "online_users": "Online-Benutzer",
+            "top_entity_type": "Top: {type} ({count})",
+            "latest_workflow_states": "Neueste: {states}"
+        },
+        "quick_actions": {
+            "title": "Schnellaktionen",
+            "new_entity_definition": "Neue Entitätsdefinition",
+            "create_entity": "Entität erstellen",
+            "generate_api_key": "API-Schlüssel generieren",
+            "create_workflow": "Workflow erstellen",
+            "create_user": "Benutzer erstellen",
+            "create_role": "Rolle erstellen",
+            "no_quick_create_permission_granted": "Keine Berechtigung zum schnellen Erstellen erteilt"
+        },
+        "loading": "Dashboard-Statistiken werden geladen...",
+        "error": "Dashboard-Statistiken konnten nicht geladen werden"
+    },
+    "workflows": {
+        "table": {
+            "name": "Name",
+            "kind": "Typ",
+            "enabled": "Aktiv",
+            "cron": "Cron",
+            "cron_disabled_endpoint": "Deaktiviert (API)",
+            "actions": "Aktionen"
+        },
+        "history": {
+            "tab": "Historie",
+            "all": "Alle",
+            "select": "Workflow",
+            "status": "Status",
+            "queued": "Wartend",
+            "finished": "Beendet",
+            "processed": "Verarbeitet",
+            "failed": "Fehlgeschlagen",
+            "logs": "Logs"
+        },
+        "logs": {
+            "time": "Zeit",
+            "level": "Level",
+            "message": "Nachricht",
+            "meta": "Meta"
+        },
+        "actions": {
+            "run_now": "Jetzt ausführen",
+            "history": "Historie",
+            "delete": "Löschen"
+        },
+        "delete": {
+            "title": "Löschen bestätigen",
+            "button": "Löschen",
+            "confirm_message": "Sind Sie sicher, dass Sie diesen Workflow löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+            "success": "Workflow erfolgreich gelöscht",
+            "error": "Workflow konnte nicht gelöscht werden"
+        },
+        "run": {
+            "confirm_title": "Workflow jetzt ausführen",
+            "confirm_message_simple": "Bestätigen Sie, dass Sie diesen Workflow jetzt ausführen möchten. Optional können Sie eine CSV-Datei hochladen, die sofort verarbeitet wird.",
+            "upload_csv_toggle": "CSV für diesen Lauf hochladen",
+            "selected_file": "Ausgewählt",
+            "run_button": "Ausführen",
+            "enqueue_success": "Workflow-Lauf eingereiht",
+            "upload_success": "Hochgeladen und eingereiht (staged {staged_items})",
+            "enqueue_failed": "Einreihen fehlgeschlagen"
+        },
+        "dsl": {
+            "steps_title": "DSL Schritte",
+            "add_step": "Schritt hinzufügen",
+            "from": "Von",
+            "from_type": "Von Typ",
+            "uri": "URI",
+            "csv_header": "Kopfzeile",
+            "csv_delimiter": "Trennzeichen",
+            "csv_escape": "Escape",
+            "csv_quote": "Anführungszeichen",
+            "auto_map_from_uri": "Automatisch von URI zuordnen",
+            "mapping_source_normalized": "Zuordnung (Quelle -> normalisiert)",
+            "mapping_normalized_destination": "Zuordnung (Ziel <- normalisiert)",
+            "source": "quelle",
+            "normalized": "normalisiert",
+            "add_mapping": "Zuordnung hinzufügen",
+            "transform": "Transformieren",
+            "transform_type": "Transformationsart",
+            "target": "Ziel",
+            "separator": "Separator",
+            "left_kind": "Links Art",
+            "left_field": "Linkes Feld",
+            "left_value": "Linker Wert",
+            "right_kind": "Rechts Art",
+            "right_field": "Rechtes Feld",
+            "right_value": "Rechter Wert",
+            "op": "Operation",
+            "op_add": "addieren",
+            "op_sub": "subtrahieren",
+            "op_mul": "multiplizieren",
+            "op_div": "dividieren",
+            "to": "Nach",
+            "to_type": "Nach Typ",
+            "output": "Ausgabe",
+            "entity_definition": "Entitätsdefinition",
+            "path": "Pfad",
+            "mode": "Modus",
+            "update_key": "Aktualisierungsschlüssel",
+            "destination": "ziel",
+            "entity_field": "Entitätsfeld",
+            "normalized_field": "Normalisiertes Feld",
+            "step_label": "Schritt {n}",
+            "source_type": "Quelltyp",
+            "format_type": "Formattyp",
+            "destination_type": "Zieltyp",
+            "auth_type": "Authentifizierung",
+            "auth_none": "Keine",
+            "auth_api_key": "API-Schlüssel",
+            "auth_basic": "Basis-Authentifizierung",
+            "auth_pre_shared_key": "Vorab geteilter Schlüssel",
+            "api_key": "API-Schlüssel",
+            "header_name": "Header-Name",
+            "username": "Benutzername",
+            "password": "Passwort",
+            "pre_shared_key": "Vorab geteilter Schlüssel",
+            "key_location": "Schlüsselposition",
+            "key_location_header": "Header",
+            "key_location_body": "Body",
+            "field_name": "Feldname",
+            "http_method": "HTTP-Methode",
+            "endpoint": "Endpunkt",
+            "endpoint_info": "Ihr Endpunkt ist erreichbar unter",
+            "filter_operator": "Filter-Operator",
+            "filter_field": "Filterfeld",
+            "filter_value": "Filterwert",
+            "apply_filter": "Filter anwenden",
+            "previous_step_info": "Dieser Schritt verwendet die Ausgabe des vorherigen Schritts",
+            "previous_step_error_first_step": "Kann 'Vorheriger Schritt' nicht als Eingabe für den ersten Schritt (Schritt 0) verwenden",
+            "mapping_previous_normalized": "Mapping (vorheriger Schritt -> normalisiert)",
+            "previous_field": "vorheriges Feld",
+            "next_step_info": "Die Ausgabe dieses Schritts wird an den nächsten Schritt weitergegeben",
+            "next_step_error_last_step": "Kann 'Nächster Schritt' nicht als Ausgabe für den letzten Schritt verwenden - es gibt keinen nächsten Schritt",
+            "mapping_normalized_next_step": "Mapping (normalisiert -> nächster Schritt Feld)",
+            "next_step_field": "nächstes Schritt Feld",
+            "available_fields": "Verfügbare Felder",
+            "select_field": "Feld auswählen",
+            "path_template": "Pfad-Vorlage",
+            "path_template_hint": "Verwenden Sie {feldname} Platzhalter, z.B. /statistics_instance/{license_key_id}",
+            "field_transforms": "Feld-Transformationen",
+            "target_path": "Ziel-Pfad-Feld",
+            "target_parent_uuid": "Ziel-Übergeordnete-UUID-Feld",
+            "target_entity_uuid": "Ziel-Entitäts-UUID-Feld",
+            "entity_type": "Entitätstyp",
+            "filters": "Filter",
+            "add_filter": "Filter hinzufügen",
+            "value_kind": "Wert-Art",
+            "value": "Wert",
+            "fallback_path": "Fallback-Pfad",
+            "path_separator": "Pfad-Trennzeichen"
+        },
+        "create": {
+            "button": "Workflow erstellen",
+            "title": "Workflow erstellen",
+            "name": "Name",
+            "description": "Beschreibung",
+            "kind": "Typ",
+            "enabled": "Aktiv",
+            "cron": "Zeitplan (Cron)",
+            "cron_disabled_for_api_source": "Cron ist für Workflows deaktiviert, die POST-Daten akzeptieren (from.api Quelltyp)",
+            "cron_disabled_for_api_output": "Cron ist für Workflows deaktiviert, die über die API exportieren (to.format.output.mode = api)",
+            "consumer_config": "Consumer-Konfiguration (JSON)",
+            "provider_config": "Provider-Konfiguration (JSON)",
+            "create_button": "Erstellen",
+            "json_invalid": "Ungültiges JSON",
+            "config_label": "Workflow Konfiguration",
+            "versioning_disabled": "Versionierung für diesen Workflow deaktivieren"
+        }
+    },
+    "validation": {
+        "required": "Dieses Feld ist erforderlich"
+    },
+    "api_keys": {
+        "create": {
+            "button": "Neuen Schlüssel erstellen",
+            "title": "Neuen API-Schlüssel erstellen",
+            "name_label": "Schlüsselname",
+            "name_required": "Name ist erforderlich",
+            "description_label": "Beschreibung (Optional)",
+            "expires_label": "Ablauf in Tagen (Optional)",
+            "expires_hint": "Leer lassen für kein Ablaufdatum",
+            "error": "API-Schlüssel konnte nicht erstellt werden",
+            "error_name_exists": "Ein API-Schlüssel mit diesem Namen existiert bereits"
+        },
+        "created": {
+            "title": "API-Schlüssel erstellt",
+            "warning": "Sie können diesen Schlüssel später nicht mehr abrufen. Bitte kopieren Sie ihn jetzt!",
+            "key_label": "API-Schlüssel",
+            "description": "Bewahren Sie diesen Schlüssel sicher auf. Er wird nicht mehr angezeigt.",
+            "copied": "API-Schlüssel in Zwischenablage kopiert!",
+            "copy_failed": "API-Schlüssel konnte nicht in Zwischenablage kopiert werden."
+        },
+        "view": {
+            "title": "API-Schlüssel Details",
+            "name": "Name",
+            "description": "Beschreibung",
+            "created": "Erstellt",
+            "expires": "Ablauf",
+            "last_used": "Zuletzt verwendet"
+        },
+        "revoke": {
+            "title": "Widerruf bestätigen",
+            "message": "Sind Sie sicher, dass Sie den API-Schlüssel \"{name}\" widerrufen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+            "button": "Widerrufen",
+            "success": "API-Schlüssel erfolgreich widerrufen",
+            "error": "API-Schlüssel konnte nicht widerrufen werden"
+        },
+        "table": {
+            "name": "Name",
+            "description": "Beschreibung",
+            "status": "Status",
+            "created": "Erstellt",
+            "expires": "Ablauf",
+            "last_used": "Zuletzt verwendet",
+            "user_id": "Benutzer-ID",
+            "created_by": "Erstellt von",
+            "actions": "Aktionen"
+        }
+    },
+    "entities": {
+        "create": {
+            "key_label": "Schlüssel",
+            "key_required": "Schlüssel ist erforderlich",
+            "path_label": "Pfad",
+            "published_label": "Veröffentlicht",
+            "published_hint": "Diese Entität öffentlich verfügbar machen",
+            "button": "Neue Entität erstellen",
+            "title": "Neue Entität erstellen",
+            "entity_type_label": "Entitätstyp",
+            "entity_type_required": "Entitätstyp ist erforderlich",
+            "data_label": "Entitätsdaten",
+            "data_required": "Entitätsdaten sind erforderlich",
+            "parent_label": "Übergeordnete Entität (Optional)",
+            "error": "Entität konnte nicht erstellt werden",
+            "create_button": "Erstellen"
+        },
+        "edit": {
+            "title": "Entität bearbeiten",
+            "error": "Entität konnte nicht aktualisiert werden"
+        },
+        "delete": {
+            "title": "Löschen bestätigen",
+            "message": "Sind Sie sicher, dass Sie diese Entität löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+            "button": "Löschen",
+            "success": "Entität erfolgreich gelöscht",
+            "error": "Entität konnte nicht gelöscht werden"
+        },
+        "details": {
+            "title": "Entitätsdetails",
+            "select_entity": "Wählen Sie eine Entität aus, um Details anzuzeigen",
+            "basic_info": "Grundinformationen",
+            "relationships": "Beziehungen",
+            "uuid": "UUID",
+            "entity_type": "Entitätstyp",
+            "created_at": "Erstellt am",
+            "updated_at": "Aktualisiert am",
+            "path": "Pfad",
+            "parent": "Übergeordnet",
+            "children": "Kinder",
+            "data": "Daten",
+            "raw_data": "Rohe Daten",
+            "formatted_data": "Formatierte Daten",
+            "history": "Historie",
+            "select_versions": "Wählen Sie zwei Versionen zum Vergleichen:",
+            "differences": "Unterschiede",
+            "version_a": "Version A",
+            "version_b": "Version B",
+            "compare": "Vergleichen",
+            "diff_field": "Feld",
+            "diff_a": "A",
+            "diff_b": "B",
+            "no_diff": "Keine Unterschiede",
+            "no_versions": "Keine Versionen verfügbar",
+            "no_children": "Keine Kinder",
+            "no_parent": "Kein übergeordnetes Element",
+            "child_count": "Kinder"
+        },
+        "tree": {
+            "title": "Entitätsbaum",
+            "loading": "Entitäten werden geladen...",
+            "no_entities": "Keine Entitäten gefunden",
+            "expand_all": "Alle erweitern",
+            "collapse_all": "Alle reduzieren"
+        },
+        "table": {
+            "uuid": "UUID",
+            "entity_type": "Entitätstyp",
+            "created_at": "Erstellt am",
+            "updated_at": "Aktualisiert am",
+            "path": "Pfad",
+            "actions": "Aktionen"
+        }
+    },
+    "entity_definitions": {
+        "create": {
+            "button": "Neue Definition erstellen",
+            "title": "Neue Entitätsdefinition erstellen",
+            "entity_type_label": "Entitätstyp",
+            "entity_type_required": "Entitätstyp ist erforderlich",
+            "entity_type_hint": "Muss eindeutig sein, alphanumerisch mit Unterstrichen, keine Leerzeichen",
+            "display_name_label": "Anzeigename",
+            "display_name_required": "Anzeigename ist erforderlich",
+            "description_label": "Beschreibung (Optional)",
+            "group_name_label": "Gruppenname (Optional)",
+            "allow_children_label": "Kinder erlauben",
+            "icon_label": "Symbol",
+            "icon_hint": "Wählen Sie ein Symbol für diese Entitätsdefinition",
+            "published_label": "Veröffentlicht",
+            "error": "Entitätsdefinition konnte nicht erstellt werden",
+            "create_button": "Erstellen"
+        },
+        "edit": {
+            "title": "Entitätsdefinition bearbeiten",
+            "save": "Änderungen speichern",
+            "cancel": "Abbrechen",
+            "error": "Entitätsdefinition konnte nicht aktualisiert werden"
+        },
+        "delete": {
+            "title": "Löschen bestätigen",
+            "message": "Sind Sie sicher, dass Sie die Entitätsdefinition \"{name}\" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+            "button": "Löschen",
+            "success": "Entitätsdefinition erfolgreich gelöscht",
+            "error": "Entitätsdefinition konnte nicht gelöscht werden"
+        },
+        "meta_info": {
+            "entity_type": "Entitätstyp",
+            "display_name": "Anzeigename",
+            "description": "Beschreibung",
+            "group": "Gruppe",
+            "created": "Erstellt",
+            "updated": "Aktualisiert",
+            "version": "Version",
+            "status": "Status",
+            "published": "Veröffentlicht",
+            "draft": "Entwurf"
+        },
+        "fields": {
+            "title": "Felder",
+            "add_field": "Feld hinzufügen",
+            "edit_field": "Feld bearbeiten",
+            "field_name": "Feldname",
+            "display_name": "Anzeigename",
+            "field_type": "Feldtyp",
+            "required": "Erforderlich",
+            "indexed": "Indiziert",
+            "filterable": "Filterbar",
+            "description": "Beschreibung",
+            "default_value": "Standardwert",
+            "constraints": "Einschränkungen",
+            "ui_settings": "UI-Einstellungen",
+            "remove_field": "Feld entfernen",
+            "field_name_required": "Feldname ist erforderlich",
+            "field_name_invalid": "Feldname muss alphanumerisch mit Unterstrichen sein",
+            "display_name_required": "Anzeigename ist erforderlich",
+            "field_type_required": "Feldtyp ist erforderlich",
+            "update": "Aktualisieren",
+            "add": "Hinzufügen"
+        },
+        "table": {
+            "entity_type": "Entitätstyp",
+            "display_name": "Anzeigename",
+            "description": "Beschreibung",
+            "group_name": "Gruppe",
+            "fields_count": "Felder",
+            "published": "Veröffentlicht",
+            "created": "Erstellt",
+            "updated": "Aktualisiert",
+            "version": "Version",
+            "actions": "Aktionen"
+        },
+        "details": {
+            "title": "Entitätsdefinition Details",
+            "meta_info": "Meta-Informationen",
+            "fields": "Felder",
+            "apply_schema": "Schema anwenden",
+            "schema_applied": "Schema erfolgreich angewendet",
+            "schema_error": "Schema konnte nicht angewendet werden",
+            "apply_changes": "Änderungen anwenden",
+            "changes_saved": "Änderungen erfolgreich gespeichert",
+            "save_error": "Änderungen konnten nicht gespeichert werden",
+            "select_entity": "Wählen Sie eine Entitätsdefinition aus, um Details anzuzeigen",
+            "select_entity_description": "Wählen Sie eine Entitätsdefinition aus der Baumansicht, um ihre Eigenschaften und Felder zu sehen."
+        },
+        "errors": {
+            "validation_failed": "Validierung fehlgeschlagen",
+            "invalid_characters": "Ungültige Zeichen im Feldnamen verwendet",
+            "field_name_exists": "Ein Feld mit diesem Namen existiert bereits",
+            "entity_type_exists": "Eine Entitätsdefinition mit diesem Typ existiert bereits"
+        }
+    },
     "table": {
-      "name": "Name",
-      "kind": "Typ",
-      "enabled": "Aktiv",
-      "cron": "Cron",
-      "cron_disabled_endpoint": "Deaktiviert (API)",
-      "actions": "Aktionen"
+        "list": "Liste",
+        "total": "Summe",
+        "items_per_page": "Einträge pro Seite",
+        "next": "Weiter",
+        "previous": "Zurück",
+        "first": "Erste",
+        "last": "Letzte",
+        "page": "Seite",
+        "of": "von",
+        "no_data": "Keine Daten verfügbar",
+        "loading": "Lädt..."
     },
-    "history": {
-      "tab": "Historie",
-      "all": "Alle",
-      "select": "Workflow",
-      "status": "Status",
-      "queued": "Wartend",
-      "finished": "Beendet",
-      "processed": "Verarbeitet",
-      "failed": "Fehlgeschlagen",
-      "logs": "Logs"
+    "common": {
+        "cancel": "Abbrechen",
+        "close": "Schließen",
+        "save": "Speichern",
+        "refresh": "Aktualisieren",
+        "edit": "Bearbeiten",
+        "delete": "Löschen",
+        "yes": "Ja",
+        "no": "Nein",
+        "empty": "Leer"
     },
-    "logs": { "time": "Zeit", "level": "Level", "message": "Nachricht", "meta": "Meta" },
-    "actions": { "run_now": "Jetzt ausführen", "history": "Historie", "delete": "Löschen" },
-    "delete": {
-      "title": "Löschen bestätigen",
-      "button": "Löschen",
-      "confirm_message": "Sind Sie sicher, dass Sie diesen Workflow löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
-      "success": "Workflow erfolgreich gelöscht",
-      "error": "Workflow konnte nicht gelöscht werden"
+    "error": {
+        "generic": "Ein Fehler ist aufgetreten",
+        "400": "Ungültige Anfrage",
+        "401": "Authentifizierung erforderlich",
+        "403": "Berechtigung verweigert",
+        "404": "Ressource nicht gefunden",
+        "409": "Konflikt",
+        "422": "Validierung fehlgeschlagen",
+        "500": "Serverfehler",
+        "network": "Netzwerkfehler. Bitte versuchen Sie es erneut.",
+        "user": {
+            "create": {
+                "400": "Ungültige Anfragedaten",
+                "403": "Benutzer kann nicht erstellt werden",
+                "409": "Ein Benutzer mit diesem Benutzernamen oder dieser E-Mail-Adresse existiert bereits",
+                "422": "Ungültige Benutzerdaten"
+            },
+            "read": {
+                "403": "Benutzer kann nicht angezeigt werden",
+                "404": "Benutzer nicht gefunden"
+            },
+            "update": {
+                "400": "Ungültige Anfragedaten",
+                "403": "Benutzer kann nicht aktualisiert werden",
+                "404": "Benutzer nicht gefunden",
+                "409": "Ein Benutzer mit diesem Benutzernamen oder dieser E-Mail-Adresse existiert bereits",
+                "422": "Ungültige Benutzerdaten"
+            },
+            "delete": {
+                "403": "Benutzer kann nicht gelöscht werden",
+                "404": "Benutzer nicht gefunden"
+            }
+        },
+        "entity": {
+            "create": {
+                "400": "Ungültige Anfragedaten",
+                "403": "Entität kann nicht erstellt werden",
+                "409": "Eine Entität mit demselben Schlüssel existiert in diesem Pfad bereits",
+                "422": "Ungültige Entitätsdaten"
+            },
+            "read": {
+                "403": "Entität kann nicht angezeigt werden",
+                "404": "Entität nicht gefunden"
+            },
+            "update": {
+                "400": "Ungültige Anfragedaten",
+                "403": "Entität kann nicht aktualisiert werden",
+                "404": "Entität nicht gefunden",
+                "409": "Eine Entität mit demselben Schlüssel existiert in diesem Pfad bereits",
+                "422": "Ungültige Entitätsdaten"
+            },
+            "delete": {
+                "403": "Entität kann nicht gelöscht werden",
+                "404": "Entität nicht gefunden"
+            }
+        },
+        "role": {
+            "create": {
+                "400": "Ungültige Anfragedaten",
+                "403": "Rolle kann nicht erstellt werden",
+                "409": "Eine Rolle mit diesem Namen existiert bereits",
+                "422": "Ungültige Rollendaten"
+            },
+            "read": {
+                "403": "Rolle kann nicht angezeigt werden",
+                "404": "Rolle nicht gefunden"
+            },
+            "update": {
+                "400": "Ungültige Anfragedaten",
+                "403": "Rolle kann nicht aktualisiert werden",
+                "404": "Rolle nicht gefunden",
+                "409": "Eine Rolle mit diesem Namen existiert bereits",
+                "422": "Ungültige Rollendaten"
+            },
+            "delete": {
+                "403": "Rolle kann nicht gelöscht werden",
+                "404": "Rolle nicht gefunden"
+            }
+        },
+        "entity_definition": {
+            "create": {
+                "400": "Ungültige Anfragedaten",
+                "403": "Entitätsdefinition kann nicht erstellt werden",
+                "409": "Eine Entitätsdefinition mit diesem Typ existiert bereits",
+                "422": "Ungültige Entitätsdefinitionsdaten"
+            },
+            "read": {
+                "403": "Entitätsdefinition kann nicht angezeigt werden",
+                "404": "Entitätsdefinition nicht gefunden"
+            },
+            "update": {
+                "400": "Ungültige Anfragedaten",
+                "403": "Entitätsdefinition kann nicht aktualisiert werden",
+                "404": "Entitätsdefinition nicht gefunden",
+                "409": "Eine Entitätsdefinition mit diesem Typ existiert bereits",
+                "422": "Ungültige Entitätsdefinitionsdaten"
+            },
+            "delete": {
+                "403": "Entitätsdefinition kann nicht gelöscht werden",
+                "404": "Entitätsdefinition nicht gefunden"
+            }
+        },
+        "api_key": {
+            "create": {
+                "400": "Ungültige Anfragedaten",
+                "403": "API-Schlüssel kann nicht erstellt werden",
+                "409": "Ein API-Schlüssel mit diesem Namen existiert bereits",
+                "422": "Ungültige API-Schlüsseldaten"
+            },
+            "read": {
+                "403": "API-Schlüssel kann nicht angezeigt werden",
+                "404": "API-Schlüssel nicht gefunden"
+            },
+            "update": {
+                "400": "Ungültige Anfragedaten",
+                "403": "API-Schlüssel kann nicht aktualisiert werden",
+                "404": "API-Schlüssel nicht gefunden",
+                "409": "Ein API-Schlüssel mit diesem Namen existiert bereits",
+                "422": "Ungültige API-Schlüsseldaten"
+            },
+            "delete": {
+                "403": "API-Schlüssel kann nicht gelöscht werden",
+                "404": "API-Schlüssel nicht gefunden"
+            }
+        },
+        "workflow": {
+            "create": {
+                "400": "Ungültige Anfragedaten",
+                "403": "Workflow kann nicht erstellt werden",
+                "409": "Ein Workflow mit diesem Namen existiert bereits",
+                "422": "Ungültige Workflowdaten"
+            },
+            "read": {
+                "403": "Workflow kann nicht angezeigt werden",
+                "404": "Workflow nicht gefunden"
+            },
+            "update": {
+                "400": "Ungültige Anfragedaten",
+                "403": "Workflow kann nicht aktualisiert werden",
+                "404": "Workflow nicht gefunden",
+                "409": "Ein Workflow mit diesem Namen existiert bereits",
+                "422": "Ungültige Workflowdaten"
+            },
+            "delete": {
+                "403": "Workflow kann nicht gelöscht werden",
+                "404": "Workflow nicht gefunden"
+            }
+        },
+        "system": {
+            "read": {
+                "403": "Systemeinstellungen können nicht angezeigt werden"
+            },
+            "update": {
+                "400": "Ungültige Anfragedaten",
+                "403": "Systemeinstellungen können nicht aktualisiert werden",
+                "422": "Ungültige Systemeinstellungsdaten"
+            }
+        }
     },
-    "run": {
-      "confirm_title": "Workflow jetzt ausführen",
-      "confirm_message_simple": "Bestätigen Sie, dass Sie diesen Workflow jetzt ausführen möchten. Optional können Sie eine CSV-Datei hochladen, die sofort verarbeitet wird.",
-      "upload_csv_toggle": "CSV für diesen Lauf hochladen",
-      "selected_file": "Ausgewählt",
-      "run_button": "Ausführen",
-      "enqueue_success": "Workflow-Lauf eingereiht",
-      "upload_success": "Hochgeladen und eingereiht (staged {staged_items})",
-      "enqueue_failed": "Einreihen fehlgeschlagen"
+    "general": {
+        "errors": {
+            "unknown": "Ein unbekannter Fehler ist aufgetreten",
+            "network": "Netzwerkverbindung fehlgeschlagen",
+            "server": "Serverfehler"
+        },
+        "language": {
+            "switch": "Sprache wechseln"
+        },
+        "theme": {
+            "toggle": "Theme wechseln",
+            "light": "Heller Modus",
+            "dark": "Dunkler Modus",
+            "system": "System",
+            "mode": "Theme"
+        },
+        "user": {
+            "profile": "Profil",
+            "profile_subtitle": "Bearbeiten Sie Ihre Profileinstellungen",
+            "logout_subtitle": "Von Ihrem Konto abmelden"
+        }
     },
-    "dsl": {
-      "steps_title": "DSL Schritte",
-      "add_step": "Schritt hinzufügen",
-      "from": "Von",
-      "from_type": "Von Typ",
-      "uri": "URI",
-      "csv_header": "Kopfzeile",
-      "csv_delimiter": "Trennzeichen",
-      "csv_escape": "Escape",
-      "csv_quote": "Anführungszeichen",
-      "auto_map_from_uri": "Automatisch von URI zuordnen",
-      "mapping_source_normalized": "Zuordnung (Quelle -> normalisiert)",
-      "mapping_normalized_destination": "Zuordnung (Ziel <- normalisiert)",
-      "source": "quelle",
-      "normalized": "normalisiert",
-      "add_mapping": "Zuordnung hinzufügen",
-      "transform": "Transformieren",
-      "transform_type": "Transformationsart",
-      "target": "Ziel",
-      "separator": "Separator",
-      "left_kind": "Links Art",
-      "left_field": "Linkes Feld",
-      "left_value": "Linker Wert",
-      "right_kind": "Rechts Art",
-      "right_field": "Rechtes Feld",
-      "right_value": "Rechter Wert",
-      "op": "Operation",
-      "op_add": "addieren",
-      "op_sub": "subtrahieren",
-      "op_mul": "multiplizieren",
-      "op_div": "dividieren",
-      "to": "Nach",
-      "to_type": "Nach Typ",
-      "output": "Ausgabe",
-      "entity_definition": "Entitätsdefinition",
-      "path": "Pfad",
-      "mode": "Modus",
-      "update_key": "Aktualisierungsschlüssel",
-      "destination": "ziel",
-      "entity_field": "Entitätsfeld",
-      "normalized_field": "Normalisiertes Feld",
-      "step_label": "Schritt {n}",
-      "source_type": "Quelltyp",
-      "format_type": "Formattyp",
-      "destination_type": "Zieltyp",
-      "auth_type": "Authentifizierung",
-      "auth_none": "Keine",
-      "auth_api_key": "API-Schlüssel",
-      "auth_basic": "Basis-Authentifizierung",
-      "auth_pre_shared_key": "Vorab geteilter Schlüssel",
-      "api_key": "API-Schlüssel",
-      "header_name": "Header-Name",
-      "username": "Benutzername",
-      "password": "Passwort",
-      "pre_shared_key": "Vorab geteilter Schlüssel",
-      "key_location": "Schlüsselposition",
-      "key_location_header": "Header",
-      "key_location_body": "Body",
-      "field_name": "Feldname",
-      "http_method": "HTTP-Methode",
-      "endpoint": "Endpunkt",
-      "endpoint_info": "Ihr Endpunkt ist erreichbar unter",
-      "filter_operator": "Filter-Operator",
-      "filter_field": "Filterfeld",
-      "filter_value": "Filterwert",
-      "apply_filter": "Filter anwenden",
-      "previous_step_info": "Dieser Schritt verwendet die Ausgabe des vorherigen Schritts",
-      "previous_step_error_first_step": "Kann 'Vorheriger Schritt' nicht als Eingabe für den ersten Schritt (Schritt 0) verwenden",
-      "mapping_previous_normalized": "Mapping (vorheriger Schritt -> normalisiert)",
-      "previous_field": "vorheriges Feld",
-      "next_step_info": "Die Ausgabe dieses Schritts wird an den nächsten Schritt weitergegeben",
-      "next_step_error_last_step": "Kann 'Nächster Schritt' nicht als Ausgabe für den letzten Schritt verwenden - es gibt keinen nächsten Schritt",
-      "mapping_normalized_next_step": "Mapping (normalisiert -> nächster Schritt Feld)",
-      "next_step_field": "nächstes Schritt Feld",
-      "available_fields": "Verfügbare Felder",
-      "select_field": "Feld auswählen",
-      "path_template": "Pfad-Vorlage",
-      "path_template_hint": "Verwenden Sie {feldname} Platzhalter, z.B. /statistics_instance/{license_key_id}",
-      "field_transforms": "Feld-Transformationen",
-      "target_path": "Ziel-Pfad-Feld",
-      "target_parent_uuid": "Ziel-Übergeordnete-UUID-Feld",
-      "target_entity_uuid": "Ziel-Entitäts-UUID-Feld",
-      "entity_type": "Entitätstyp",
-      "filters": "Filter",
-      "add_filter": "Filter hinzufügen",
-      "value_kind": "Wert-Art",
-      "value": "Wert",
-      "fallback_path": "Fallback-Pfad",
-      "path_separator": "Pfad-Trennzeichen"
-    },
-    "create": {
-      "button": "Workflow erstellen",
-      "title": "Workflow erstellen",
-      "name": "Name",
-      "description": "Beschreibung",
-      "kind": "Typ",
-      "enabled": "Aktiv",
-      "cron": "Zeitplan (Cron)",
-      "cron_disabled_for_api_source": "Cron ist für Workflows deaktiviert, die POST-Daten akzeptieren (from.api Quelltyp)",
-      "cron_disabled_for_api_output": "Cron ist für Workflows deaktiviert, die über die API exportieren (to.format.output.mode = api)",
-      "consumer_config": "Consumer-Konfiguration (JSON)",
-      "provider_config": "Provider-Konfiguration (JSON)",
-      "create_button": "Erstellen",
-      "json_invalid": "Ungültiges JSON",
-      "config_label": "Workflow Konfiguration",
-      "versioning_disabled": "Versionierung für diesen Workflow deaktivieren"
-    }
-  },
-  "validation": { "required": "Dieses Feld ist erforderlich" },
-  "api_keys": {
-    "create": {
-      "button": "Neuen Schlüssel erstellen",
-      "title": "Neuen API-Schlüssel erstellen",
-      "name_label": "Schlüsselname",
-      "name_required": "Name ist erforderlich",
-      "description_label": "Beschreibung (Optional)",
-      "expires_label": "Ablauf in Tagen (Optional)",
-      "expires_hint": "Leer lassen für kein Ablaufdatum",
-      "error": "API-Schlüssel konnte nicht erstellt werden",
-      "error_name_exists": "Ein API-Schlüssel mit diesem Namen existiert bereits"
-    },
-    "created": {
-      "title": "API-Schlüssel erstellt",
-      "warning": "Sie können diesen Schlüssel später nicht mehr abrufen. Bitte kopieren Sie ihn jetzt!",
-      "key_label": "API-Schlüssel",
-      "description": "Bewahren Sie diesen Schlüssel sicher auf. Er wird nicht mehr angezeigt.",
-      "copied": "API-Schlüssel in Zwischenablage kopiert!",
-      "copy_failed": "API-Schlüssel konnte nicht in Zwischenablage kopiert werden."
-    },
-    "view": {
-      "title": "API-Schlüssel Details",
-      "name": "Name",
-      "description": "Beschreibung",
-      "created": "Erstellt",
-      "expires": "Ablauf",
-      "last_used": "Zuletzt verwendet"
-    },
-    "revoke": {
-      "title": "Widerruf bestätigen",
-      "message": "Sind Sie sicher, dass Sie den API-Schlüssel \"{name}\" widerrufen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
-      "button": "Widerrufen",
-      "success": "API-Schlüssel erfolgreich widerrufen",
-      "error": "API-Schlüssel konnte nicht widerrufen werden"
-    },
-    "table": {
-      "name": "Name",
-      "description": "Beschreibung",
-      "status": "Status",
-      "created": "Erstellt",
-      "expires": "Ablauf",
-      "last_used": "Zuletzt verwendet",
-      "user_id": "Benutzer-ID",
-      "created_by": "Erstellt von",
-      "actions": "Aktionen"
-    }
-  },
-  "entities": {
-    "create": {
-      "key_label": "Schlüssel",
-      "key_required": "Schlüssel ist erforderlich",
-      "path_label": "Pfad",
-      "published_label": "Veröffentlicht",
-      "published_hint": "Diese Entität öffentlich verfügbar machen",
-      "button": "Neue Entität erstellen",
-      "title": "Neue Entität erstellen",
-      "entity_type_label": "Entitätstyp",
-      "entity_type_required": "Entitätstyp ist erforderlich",
-      "data_label": "Entitätsdaten",
-      "data_required": "Entitätsdaten sind erforderlich",
-      "parent_label": "Übergeordnete Entität (Optional)",
-      "error": "Entität konnte nicht erstellt werden",
-      "create_button": "Erstellen"
-    },
-    "edit": {
-      "title": "Entität bearbeiten",
-      "error": "Entität konnte nicht aktualisiert werden"
-    },
-    "delete": {
-      "title": "Löschen bestätigen",
-      "message": "Sind Sie sicher, dass Sie diese Entität löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
-      "button": "Löschen",
-      "success": "Entität erfolgreich gelöscht",
-      "error": "Entität konnte nicht gelöscht werden"
-    },
-    "details": {
-      "title": "Entitätsdetails",
-      "select_entity": "Wählen Sie eine Entität aus, um Details anzuzeigen",
-      "basic_info": "Grundinformationen",
-      "relationships": "Beziehungen",
-      "uuid": "UUID",
-      "entity_type": "Entitätstyp",
-      "created_at": "Erstellt am",
-      "updated_at": "Aktualisiert am",
-      "path": "Pfad",
-      "parent": "Übergeordnet",
-      "children": "Kinder",
-      "data": "Daten",
-      "raw_data": "Rohe Daten",
-      "formatted_data": "Formatierte Daten",
-      "history": "Historie",
-      "select_versions": "Wählen Sie zwei Versionen zum Vergleichen:",
-      "differences": "Unterschiede",
-      "version_a": "Version A",
-      "version_b": "Version B",
-      "compare": "Vergleichen",
-      "diff_field": "Feld",
-      "diff_a": "A",
-      "diff_b": "B",
-      "no_diff": "Keine Unterschiede",
-      "no_versions": "Keine Versionen verfügbar",
-      "no_children": "Keine Kinder",
-      "no_parent": "Kein übergeordnetes Element",
-      "child_count": "Kinder"
-    },
-    "tree": {
-      "title": "Entitätsbaum",
-      "loading": "Entitäten werden geladen...",
-      "no_entities": "Keine Entitäten gefunden",
-      "expand_all": "Alle erweitern",
-      "collapse_all": "Alle reduzieren"
-    },
-    "table": {
-      "uuid": "UUID",
-      "entity_type": "Entitätstyp",
-      "created_at": "Erstellt am",
-      "updated_at": "Aktualisiert am",
-      "path": "Pfad",
-      "actions": "Aktionen"
-    }
-  },
-  "entity_definitions": {
-    "create": {
-      "button": "Neue Definition erstellen",
-      "title": "Neue Entitätsdefinition erstellen",
-      "entity_type_label": "Entitätstyp",
-      "entity_type_required": "Entitätstyp ist erforderlich",
-      "entity_type_hint": "Muss eindeutig sein, alphanumerisch mit Unterstrichen, keine Leerzeichen",
-      "display_name_label": "Anzeigename",
-      "display_name_required": "Anzeigename ist erforderlich",
-      "description_label": "Beschreibung (Optional)",
-      "group_name_label": "Gruppenname (Optional)",
-      "allow_children_label": "Kinder erlauben",
-      "icon_label": "Symbol",
-      "icon_hint": "Wählen Sie ein Symbol für diese Entitätsdefinition",
-      "published_label": "Veröffentlicht",
-      "error": "Entitätsdefinition konnte nicht erstellt werden",
-      "create_button": "Erstellen"
-    },
-    "edit": {
-      "title": "Entitätsdefinition bearbeiten",
-      "save": "Änderungen speichern",
-      "cancel": "Abbrechen",
-      "error": "Entitätsdefinition konnte nicht aktualisiert werden"
-    },
-    "delete": {
-      "title": "Löschen bestätigen",
-      "message": "Sind Sie sicher, dass Sie die Entitätsdefinition \"{name}\" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
-      "button": "Löschen",
-      "success": "Entitätsdefinition erfolgreich gelöscht",
-      "error": "Entitätsdefinition konnte nicht gelöscht werden"
-    },
-    "meta_info": {
-      "entity_type": "Entitätstyp",
-      "display_name": "Anzeigename",
-      "description": "Beschreibung",
-      "group": "Gruppe",
-      "created": "Erstellt",
-      "updated": "Aktualisiert",
-      "version": "Version",
-      "status": "Status",
-      "published": "Veröffentlicht",
-      "draft": "Entwurf"
-    },
-    "fields": {
-      "title": "Felder",
-      "add_field": "Feld hinzufügen",
-      "edit_field": "Feld bearbeiten",
-      "field_name": "Feldname",
-      "display_name": "Anzeigename",
-      "field_type": "Feldtyp",
-      "required": "Erforderlich",
-      "indexed": "Indiziert",
-      "filterable": "Filterbar",
-      "description": "Beschreibung",
-      "default_value": "Standardwert",
-      "constraints": "Einschränkungen",
-      "ui_settings": "UI-Einstellungen",
-      "remove_field": "Feld entfernen",
-      "field_name_required": "Feldname ist erforderlich",
-      "field_name_invalid": "Feldname muss alphanumerisch mit Unterstrichen sein",
-      "display_name_required": "Anzeigename ist erforderlich",
-      "field_type_required": "Feldtyp ist erforderlich",
-      "update": "Aktualisieren",
-      "add": "Hinzufügen"
-    },
-    "table": {
-      "entity_type": "Entitätstyp",
-      "display_name": "Anzeigename",
-      "description": "Beschreibung",
-      "group_name": "Gruppe",
-      "fields_count": "Felder",
-      "published": "Veröffentlicht",
-      "created": "Erstellt",
-      "updated": "Aktualisiert",
-      "version": "Version",
-      "actions": "Aktionen"
-    },
-    "details": {
-      "title": "Entitätsdefinition Details",
-      "meta_info": "Meta-Informationen",
-      "fields": "Felder",
-      "apply_schema": "Schema anwenden",
-      "schema_applied": "Schema erfolgreich angewendet",
-      "schema_error": "Schema konnte nicht angewendet werden",
-      "apply_changes": "Änderungen anwenden",
-      "changes_saved": "Änderungen erfolgreich gespeichert",
-      "save_error": "Änderungen konnten nicht gespeichert werden",
-      "select_entity": "Wählen Sie eine Entitätsdefinition aus, um Details anzuzeigen",
-      "select_entity_description": "Wählen Sie eine Entitätsdefinition aus der Baumansicht, um ihre Eigenschaften und Felder zu sehen."
-    },
-    "errors": {
-      "validation_failed": "Validierung fehlgeschlagen",
-      "invalid_characters": "Ungültige Zeichen im Feldnamen verwendet",
-      "field_name_exists": "Ein Feld mit diesem Namen existiert bereits",
-      "entity_type_exists": "Eine Entitätsdefinition mit diesem Typ existiert bereits"
-    }
-  },
-  "table": {
-    "list": "Liste",
-    "total": "Summe",
-    "items_per_page": "Einträge pro Seite",
-    "next": "Weiter",
-    "previous": "Zurück",
-    "first": "Erste",
-    "last": "Letzte",
-    "page": "Seite",
-    "of": "von",
-    "no_data": "Keine Daten verfügbar",
-    "loading": "Lädt..."
-  },
-  "common": {
-    "cancel": "Abbrechen",
-    "close": "Schließen",
-    "save": "Speichern",
-    "refresh": "Aktualisieren",
-    "edit": "Bearbeiten",
-    "delete": "Löschen",
-    "yes": "Ja",
-    "no": "Nein",
-    "empty": "Leer"
-  },
-  "error": {
-    "generic": "Ein Fehler ist aufgetreten",
-    "400": "Ungültige Anfrage",
-    "401": "Authentifizierung erforderlich",
-    "403": "Berechtigung verweigert",
-    "404": "Ressource nicht gefunden",
-    "409": "Konflikt",
-    "422": "Validierung fehlgeschlagen",
-    "500": "Serverfehler",
-    "network": "Netzwerkfehler. Bitte versuchen Sie es erneut.",
-    "user": {
-      "create": {
-        "400": "Ungültige Anfragedaten",
-        "403": "Benutzer kann nicht erstellt werden",
-        "409": "Ein Benutzer mit diesem Benutzernamen oder dieser E-Mail-Adresse existiert bereits",
-        "422": "Ungültige Benutzerdaten"
-      },
-      "read": {
-        "403": "Benutzer kann nicht angezeigt werden",
-        "404": "Benutzer nicht gefunden"
-      },
-      "update": {
-        "400": "Ungültige Anfragedaten",
-        "403": "Benutzer kann nicht aktualisiert werden",
-        "404": "Benutzer nicht gefunden",
-        "409": "Ein Benutzer mit diesem Benutzernamen oder dieser E-Mail-Adresse existiert bereits",
-        "422": "Ungültige Benutzerdaten"
-      },
-      "delete": {
-        "403": "Benutzer kann nicht gelöscht werden",
-        "404": "Benutzer nicht gefunden"
-      }
-    },
-    "entity": {
-      "create": {
-        "400": "Ungültige Anfragedaten",
-        "403": "Entität kann nicht erstellt werden",
-        "409": "Eine Entität mit demselben Schlüssel existiert in diesem Pfad bereits",
-        "422": "Ungültige Entitätsdaten"
-      },
-      "read": {
-        "403": "Entität kann nicht angezeigt werden",
-        "404": "Entität nicht gefunden"
-      },
-      "update": {
-        "400": "Ungültige Anfragedaten",
-        "403": "Entität kann nicht aktualisiert werden",
-        "404": "Entität nicht gefunden",
-        "409": "Eine Entität mit demselben Schlüssel existiert in diesem Pfad bereits",
-        "422": "Ungültige Entitätsdaten"
-      },
-      "delete": {
-        "403": "Entität kann nicht gelöscht werden",
-        "404": "Entität nicht gefunden"
-      }
-    },
-    "role": {
-      "create": {
-        "400": "Ungültige Anfragedaten",
-        "403": "Rolle kann nicht erstellt werden",
-        "409": "Eine Rolle mit diesem Namen existiert bereits",
-        "422": "Ungültige Rollendaten"
-      },
-      "read": {
-        "403": "Rolle kann nicht angezeigt werden",
-        "404": "Rolle nicht gefunden"
-      },
-      "update": {
-        "400": "Ungültige Anfragedaten",
-        "403": "Rolle kann nicht aktualisiert werden",
-        "404": "Rolle nicht gefunden",
-        "409": "Eine Rolle mit diesem Namen existiert bereits",
-        "422": "Ungültige Rollendaten"
-      },
-      "delete": {
-        "403": "Rolle kann nicht gelöscht werden",
-        "404": "Rolle nicht gefunden"
-      }
-    },
-    "entity_definition": {
-      "create": {
-        "400": "Ungültige Anfragedaten",
-        "403": "Entitätsdefinition kann nicht erstellt werden",
-        "409": "Eine Entitätsdefinition mit diesem Typ existiert bereits",
-        "422": "Ungültige Entitätsdefinitionsdaten"
-      },
-      "read": {
-        "403": "Entitätsdefinition kann nicht angezeigt werden",
-        "404": "Entitätsdefinition nicht gefunden"
-      },
-      "update": {
-        "400": "Ungültige Anfragedaten",
-        "403": "Entitätsdefinition kann nicht aktualisiert werden",
-        "404": "Entitätsdefinition nicht gefunden",
-        "409": "Eine Entitätsdefinition mit diesem Typ existiert bereits",
-        "422": "Ungültige Entitätsdefinitionsdaten"
-      },
-      "delete": {
-        "403": "Entitätsdefinition kann nicht gelöscht werden",
-        "404": "Entitätsdefinition nicht gefunden"
-      }
-    },
-    "api_key": {
-      "create": {
-        "400": "Ungültige Anfragedaten",
-        "403": "API-Schlüssel kann nicht erstellt werden",
-        "409": "Ein API-Schlüssel mit diesem Namen existiert bereits",
-        "422": "Ungültige API-Schlüsseldaten"
-      },
-      "read": {
-        "403": "API-Schlüssel kann nicht angezeigt werden",
-        "404": "API-Schlüssel nicht gefunden"
-      },
-      "update": {
-        "400": "Ungültige Anfragedaten",
-        "403": "API-Schlüssel kann nicht aktualisiert werden",
-        "404": "API-Schlüssel nicht gefunden",
-        "409": "Ein API-Schlüssel mit diesem Namen existiert bereits",
-        "422": "Ungültige API-Schlüsseldaten"
-      },
-      "delete": {
-        "403": "API-Schlüssel kann nicht gelöscht werden",
-        "404": "API-Schlüssel nicht gefunden"
-      }
-    },
-    "workflow": {
-      "create": {
-        "400": "Ungültige Anfragedaten",
-        "403": "Workflow kann nicht erstellt werden",
-        "409": "Ein Workflow mit diesem Namen existiert bereits",
-        "422": "Ungültige Workflowdaten"
-      },
-      "read": {
-        "403": "Workflow kann nicht angezeigt werden",
-        "404": "Workflow nicht gefunden"
-      },
-      "update": {
-        "400": "Ungültige Anfragedaten",
-        "403": "Workflow kann nicht aktualisiert werden",
-        "404": "Workflow nicht gefunden",
-        "409": "Ein Workflow mit diesem Namen existiert bereits",
-        "422": "Ungültige Workflowdaten"
-      },
-      "delete": {
-        "403": "Workflow kann nicht gelöscht werden",
-        "404": "Workflow nicht gefunden"
-      }
-    },
-    "system": {
-      "read": {
-        "403": "Systemeinstellungen können nicht angezeigt werden"
-      },
-      "update": {
-        "400": "Ungültige Anfragedaten",
-        "403": "Systemeinstellungen können nicht aktualisiert werden",
-        "422": "Ungültige Systemeinstellungsdaten"
-      }
-    }
-  },
-  "general": {
-    "errors": {
-      "unknown": "Ein unbekannter Fehler ist aufgetreten",
-      "network": "Netzwerkverbindung fehlgeschlagen",
-      "server": "Serverfehler"
-    },
-    "language": {
-      "switch": "Sprache wechseln"
-    },
-    "theme": {
-      "toggle": "Theme wechseln",
-      "light": "Heller Modus",
-      "dark": "Dunkler Modus",
-      "system": "System",
-      "mode": "Theme"
-    },
-    "user": {
-      "profile": "Profil",
-      "profile_subtitle": "Bearbeiten Sie Ihre Profileinstellungen",
-      "logout_subtitle": "Von Ihrem Konto abmelden"
-    }
-  },
-  "users": {
-    "load": {
-      "error": "Benutzer konnten nicht geladen werden"
-    },
-    "create": {
-      "success": "Benutzer erfolgreich erstellt",
-      "error": "Benutzer konnte nicht erstellt werden"
-    },
-    "update": {
-      "success": "Benutzer erfolgreich aktualisiert",
-      "error": "Benutzer konnte nicht aktualisiert werden"
-    },
-    "delete": {
-      "success": "Benutzer erfolgreich gelöscht",
-      "error": "Benutzer konnte nicht gelöscht werden"
-    },
-    "get": {
-      "error": "Benutzer konnte nicht geladen werden"
+    "users": {
+        "load": {
+            "error": "Benutzer konnten nicht geladen werden"
+        },
+        "create": {
+            "success": "Benutzer erfolgreich erstellt",
+            "error": "Benutzer konnte nicht erstellt werden"
+        },
+        "update": {
+            "success": "Benutzer erfolgreich aktualisiert",
+            "error": "Benutzer konnte nicht aktualisiert werden"
+        },
+        "delete": {
+            "success": "Benutzer erfolgreich gelöscht",
+            "error": "Benutzer konnte nicht gelöscht werden"
+        },
+        "get": {
+            "error": "Benutzer konnte nicht geladen werden"
+        },
+        "roles": {
+            "get": {
+                "error": "Benutzerrollen konnten nicht geladen werden"
+            },
+            "assign": {
+                "success": "Rollen erfolgreich zugewiesen",
+                "error": "Rollen konnten nicht zugewiesen werden"
+            }
+        },
+        "errors": {
+            "username_exists": "Ein Benutzer mit diesem Benutzernamen existiert bereits",
+            "email_exists": "Ein Benutzer mit dieser E-Mail-Adresse existiert bereits",
+            "validation_failed": "Validierung fehlgeschlagen"
+        },
+        "dialog": {
+            "create_title": "Benutzer erstellen",
+            "edit_title": "Benutzer bearbeiten",
+            "username": "Benutzername",
+            "email": "E-Mail",
+            "password": "Passwort",
+            "password_hint": "Leer lassen, um das aktuelle Passwort beizubehalten",
+            "first_name": "Vorname",
+            "last_name": "Nachname",
+            "roles": "Rollen",
+            "roles_hint": "Wählen Sie eine oder mehrere Rollen für diesen Benutzer aus",
+            "active": "Aktiv",
+            "active_hint": "Ob das Benutzerkonto aktiv ist",
+            "super_admin": "Super-Administrator",
+            "super_admin_hint": "Super-Administratoren haben alle Berechtigungen unabhängig von zugewiesenen Rollen",
+            "cancel": "Abbrechen",
+            "create": "Erstellen",
+            "update": "Aktualisieren",
+            "validation": {
+                "required": "Dieses Feld ist erforderlich",
+                "email_invalid": "Muss eine gültige E-Mail-Adresse sein",
+                "min_length": "Muss mindestens {min} Zeichen lang sein"
+            }
+        },
+        "table": {
+            "username": "Benutzername",
+            "email": "E-Mail",
+            "full_name": "Vollständiger Name",
+            "role": "Rolle",
+            "status": "Status",
+            "is_active": "Aktiv",
+            "super_admin": "Super-Administrator",
+            "actions": "Aktionen"
+        }
     },
     "roles": {
-      "get": {
-        "error": "Benutzerrollen konnten nicht geladen werden"
-      },
-      "assign": {
-        "success": "Rollen erfolgreich zugewiesen",
-        "error": "Rollen konnten nicht zugewiesen werden"
-      }
-    },
-    "errors": {
-      "username_exists": "Ein Benutzer mit diesem Benutzernamen existiert bereits",
-      "email_exists": "Ein Benutzer mit dieser E-Mail-Adresse existiert bereits",
-      "validation_failed": "Validierung fehlgeschlagen"
-    },
-    "dialog": {
-      "create_title": "Benutzer erstellen",
-      "edit_title": "Benutzer bearbeiten",
-      "username": "Benutzername",
-      "email": "E-Mail",
-      "password": "Passwort",
-      "password_hint": "Leer lassen, um das aktuelle Passwort beizubehalten",
-      "first_name": "Vorname",
-      "last_name": "Nachname",
-      "roles": "Rollen",
-      "roles_hint": "Wählen Sie eine oder mehrere Rollen für diesen Benutzer aus",
-      "active": "Aktiv",
-      "active_hint": "Ob das Benutzerkonto aktiv ist",
-      "super_admin": "Super-Administrator",
-      "super_admin_hint": "Super-Administratoren haben alle Berechtigungen unabhängig von zugewiesenen Rollen",
-      "cancel": "Abbrechen",
-      "create": "Erstellen",
-      "update": "Aktualisieren",
-      "validation": {
-        "required": "Dieses Feld ist erforderlich",
-        "email_invalid": "Muss eine gültige E-Mail-Adresse sein",
-        "min_length": "Muss mindestens {min} Zeichen lang sein"
-      }
-    },
-    "table": {
-      "username": "Benutzername",
-      "email": "E-Mail",
-      "full_name": "Vollständiger Name",
-      "role": "Rolle",
-      "status": "Status",
-      "is_active": "Aktiv",
-      "super_admin": "Super-Administrator",
-      "actions": "Aktionen"
-    }
-  },
-  "roles": {
-    "load": {
-      "error": "Rollen konnten nicht geladen werden"
-    },
-    "create": {
-      "success": "Rolle erfolgreich erstellt",
-      "error": "Rolle konnte nicht erstellt werden"
-    },
-    "update": {
-      "success": "Rolle erfolgreich aktualisiert",
-      "error": "Rolle konnte nicht aktualisiert werden"
-    },
-    "delete": {
-      "success": "Rolle erfolgreich gelöscht",
-      "error": "Rolle konnte nicht gelöscht werden"
-    },
-    "dialog": {
-      "create_title": "Rolle erstellen",
-      "edit_title": "Rolle bearbeiten",
-      "name": "Name",
-      "description": "Beschreibung",
-      "super_admin": "Super-Administrator",
-      "super_admin_hint": "Benutzer mit dieser Rolle haben alle Berechtigungen unabhängig von zugewiesenen Berechtigungen",
-      "super_admin_disabled_hint": "Super-Administrator-Rollen haben alle Berechtigungen. Einzelne Berechtigungen können nicht konfiguriert werden.",
-      "permissions": "Berechtigungen",
-      "add_permission": "Berechtigung hinzufügen",
-      "cancel": "Abbrechen",
-      "create": "Erstellen",
-      "update": "Aktualisieren"
-    }
-  },
-  "permissions": {
-    "types": {
-      "read": "Lesen",
-      "create": "Erstellen",
-      "update": "Aktualisieren",
-      "delete": "Löschen",
-      "publish": "Veröffentlichen",
-      "admin": "Administrator",
-      "execute": "Ausführen"
-    },
-    "dialog": {
-      "create_title": "Rolle erstellen",
-      "edit_title": "Rolle bearbeiten",
-      "name": "Name",
-      "description": "Beschreibung",
-      "super_admin": "Super-Administrator",
-      "super_admin_hint": "Benutzer mit dieser Rolle haben alle Berechtigungen unabhängig von zugewiesenen Berechtigungen",
-      "super_admin_disabled_hint": "Super-Administrator-Rollen haben alle Berechtigungen. Einzelne Berechtigungen können nicht konfiguriert werden.",
-      "permissions": "Berechtigungen",
-      "add_permission": "Berechtigung hinzufügen",
-      "cancel": "Abbrechen",
-      "create": "Erstellen",
-      "update": "Aktualisieren"
-    },
-    "page": {
-      "title": "Benutzer und Rollen",
-      "tabs": {
-        "roles": "Rollen",
-        "users": "Benutzer"
-      },
-      "roles": {
-        "title": "Rollen",
-        "new_button": "Neue Rolle",
-        "loading": "Rollen werden geladen...",
-        "no_description": "Keine Beschreibung",
-        "permissions": "Berechtigungen",
-        "permission": "Berechtigung",
-        "table": {
-          "name": "Name",
-          "description": "Beschreibung",
-          "permissions": "Berechtigungen",
-          "created": "Erstellt",
-          "actions": "Aktionen"
+        "load": {
+            "error": "Rollen konnten nicht geladen werden"
+        },
+        "create": {
+            "success": "Rolle erfolgreich erstellt",
+            "error": "Rolle konnte nicht erstellt werden"
+        },
+        "update": {
+            "success": "Rolle erfolgreich aktualisiert",
+            "error": "Rolle konnte nicht aktualisiert werden"
         },
         "delete": {
-          "title": "Rolle löschen",
-          "message": "Sind Sie sicher, dass Sie die Rolle \"{name}\" löschen möchten?",
-          "confirm": "Löschen",
-          "cancel": "Abbrechen"
-        }
-      },
-      "users": {
-        "title": "Benutzer",
-        "new_button": "Neuer Benutzer",
-        "loading": "Benutzer werden geladen...",
-        "no_roles": "Keine Rollen zugewiesen",
-        "status": {
-          "active": "Aktiv",
-          "inactive": "Inaktiv"
+            "success": "Rolle erfolgreich gelöscht",
+            "error": "Rolle konnte nicht gelöscht werden"
         },
-        "table": {
-          "username": "Benutzername",
-          "email": "E-Mail",
-          "roles": "Rollen",
-          "status": "Status",
-          "created": "Erstellt",
-          "actions": "Aktionen"
-        },
-        "delete": {
-          "title": "Benutzer löschen",
-          "message": "Sind Sie sicher, dass Sie den Benutzer \"{username}\" löschen möchten?",
-          "confirm": "Löschen",
-          "cancel": "Abbrechen"
+        "dialog": {
+            "create_title": "Rolle erstellen",
+            "edit_title": "Rolle bearbeiten",
+            "name": "Name",
+            "description": "Beschreibung",
+            "super_admin": "Super-Administrator",
+            "super_admin_hint": "Benutzer mit dieser Rolle haben alle Berechtigungen unabhängig von zugewiesenen Berechtigungen",
+            "super_admin_disabled_hint": "Super-Administrator-Rollen haben alle Berechtigungen. Einzelne Berechtigungen können nicht konfiguriert werden.",
+            "permissions": "Berechtigungen",
+            "add_permission": "Berechtigung hinzufügen",
+            "cancel": "Abbrechen",
+            "create": "Erstellen",
+            "update": "Aktualisieren"
         }
-      }
-    }
-  },
-  "system": {
-    "admin": {
-      "title": "Systemverwaltung"
     },
-    "versioning": {
-      "section_title": "Entitätsversionierung",
-      "enabled": "Aktiviert",
-      "max_versions": "Max. Versionen (leer lassen für unbegrenzt)",
-      "max_age_days": "Max. Alter in Tagen (leer lassen, um Altersbereinigung zu deaktivieren)",
-      "save": "Speichern",
-      "save_success": "Einstellungen gespeichert",
-      "load_failed": "Einstellungen konnten nicht geladen werden",
-      "save_failed": "Einstellungen konnten nicht gespeichert werden"
+    "permissions": {
+        "types": {
+            "read": "Lesen",
+            "create": "Erstellen",
+            "update": "Aktualisieren",
+            "delete": "Löschen",
+            "publish": "Veröffentlichen",
+            "admin": "Administrator",
+            "execute": "Ausführen"
+        },
+        "dialog": {
+            "create_title": "Rolle erstellen",
+            "edit_title": "Rolle bearbeiten",
+            "name": "Name",
+            "description": "Beschreibung",
+            "super_admin": "Super-Administrator",
+            "super_admin_hint": "Benutzer mit dieser Rolle haben alle Berechtigungen unabhängig von zugewiesenen Berechtigungen",
+            "super_admin_disabled_hint": "Super-Administrator-Rollen haben alle Berechtigungen. Einzelne Berechtigungen können nicht konfiguriert werden.",
+            "permissions": "Berechtigungen",
+            "add_permission": "Berechtigung hinzufügen",
+            "cancel": "Abbrechen",
+            "create": "Erstellen",
+            "update": "Aktualisieren"
+        },
+        "page": {
+            "title": "Benutzer und Rollen",
+            "tabs": {
+                "roles": "Rollen",
+                "users": "Benutzer"
+            },
+            "roles": {
+                "title": "Rollen",
+                "new_button": "Neue Rolle",
+                "loading": "Rollen werden geladen...",
+                "no_description": "Keine Beschreibung",
+                "permissions": "Berechtigungen",
+                "permission": "Berechtigung",
+                "table": {
+                    "name": "Name",
+                    "description": "Beschreibung",
+                    "permissions": "Berechtigungen",
+                    "created": "Erstellt",
+                    "actions": "Aktionen"
+                },
+                "delete": {
+                    "title": "Rolle löschen",
+                    "message": "Sind Sie sicher, dass Sie die Rolle \"{name}\" löschen möchten?",
+                    "confirm": "Löschen",
+                    "cancel": "Abbrechen"
+                }
+            },
+            "users": {
+                "title": "Benutzer",
+                "new_button": "Neuer Benutzer",
+                "loading": "Benutzer werden geladen...",
+                "no_roles": "Keine Rollen zugewiesen",
+                "status": {
+                    "active": "Aktiv",
+                    "inactive": "Inaktiv"
+                },
+                "table": {
+                    "username": "Benutzername",
+                    "email": "E-Mail",
+                    "roles": "Rollen",
+                    "status": "Status",
+                    "created": "Erstellt",
+                    "actions": "Aktionen"
+                },
+                "delete": {
+                    "title": "Benutzer löschen",
+                    "message": "Sind Sie sicher, dass Sie den Benutzer \"{username}\" löschen möchten?",
+                    "confirm": "Löschen",
+                    "cancel": "Abbrechen"
+                }
+            }
+        }
+    },
+    "system": {
+        "admin": {
+            "title": "Systemverwaltung"
+        },
+        "versioning": {
+            "section_title": "Entitätsversionierung",
+            "enabled": "Aktiviert",
+            "max_versions": "Max. Versionen (leer lassen für unbegrenzt)",
+            "max_age_days": "Max. Alter in Tagen (leer lassen, um Altersbereinigung zu deaktivieren)",
+            "save": "Speichern",
+            "save_success": "Einstellungen gespeichert",
+            "load_failed": "Einstellungen konnten nicht geladen werden",
+            "save_failed": "Einstellungen konnten nicht gespeichert werden"
+        },
+        "license": {
+            "section_title": "Lizenzinformationen",
+            "state": "Status",
+            "company": "Unternehmen",
+            "license_type": "Lizenztyp",
+            "license_id": "Lizenz-ID",
+            "issued_at": "Ausgestellt am",
+            "expires_at": "Läuft ab am",
+            "version": "Version",
+            "never": "Nie",
+            "state_valid": "Gültig",
+            "state_invalid": "Ungültig",
+            "state_error": "Fehler",
+            "state_none": "Keine"
+        }
     },
     "license": {
-      "section_title": "Lizenzinformationen",
-      "state": "Status",
-      "company": "Unternehmen",
-      "license_type": "Lizenztyp",
-      "license_id": "Lizenz-ID",
-      "issued_at": "Ausgestellt am",
-      "expires_at": "Läuft ab am",
-      "version": "Version",
-      "never": "Nie",
-      "state_valid": "Gültig",
-      "state_invalid": "Ungültig",
-      "state_error": "Fehler",
-      "state_none": "Keine"
+        "banner": {
+            "no_license": "Warnung: Kein Lizenzschlüssel konfiguriert. Bitte konfigurieren Sie einen Lizenzschlüssel.",
+            "invalid_license": "Fehler: Der Lizenzschlüssel ist ungültig. Bitte kontaktieren Sie den Support.",
+            "error_license": "Fehler: Die Lizenzüberprüfung ist fehlgeschlagen. Bitte überprüfen Sie Ihre Netzwerkverbindung.",
+            "dismiss": "Ausblenden"
+        }
     }
-  },
-  "license": {
-    "banner": {
-      "no_license": "Warnung: Kein Lizenzschlüssel konfiguriert. Bitte konfigurieren Sie einen Lizenzschlüssel.",
-      "invalid_license": "Fehler: Der Lizenzschlüssel ist ungültig. Bitte kontaktieren Sie den Support.",
-      "error_license": "Fehler: Die Lizenzüberprüfung ist fehlgeschlagen. Bitte überprüfen Sie Ihre Netzwerkverbindung.",
-      "dismiss": "Ausblenden"
-    }
-  }
 }

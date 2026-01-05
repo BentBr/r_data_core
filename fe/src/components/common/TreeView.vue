@@ -77,7 +77,9 @@
 
     interface Emits {
         (e: 'update:expandedItems', items: string[]): void
+
         (e: 'item-click', item: TreeNode): void
+
         (e: 'selection-change', items: string[]): void
     }
 

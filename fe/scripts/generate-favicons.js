@@ -1,7 +1,7 @@
 import sharp from 'sharp'
-import { promises as fs } from 'fs'
+import {promises as fs} from 'fs'
 import path from 'path'
-import { fileURLToPath } from 'url'
+import {fileURLToPath} from 'url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -13,13 +13,13 @@ async function ensureDir(dir) {
     try {
         await fs.access(dir)
     } catch {
-        await fs.mkdir(dir, { recursive: true })
+        await fs.mkdir(dir, {recursive: true})
     }
 }
 
 async function generateFavicons() {
     const sourcePath = path.join(sourceDir, 'sloth_favicon_1024.png')
-    
+
     try {
         // Check if source file exists
         await fs.access(sourcePath)

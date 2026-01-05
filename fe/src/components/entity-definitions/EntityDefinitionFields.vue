@@ -133,8 +133,11 @@
 
     interface Emits {
         (e: 'save-changes'): void
+
         (e: 'add-field'): void
+
         (e: 'edit-field', field: FieldDefinition): void
+
         (e: 'remove-field', field: FieldDefinition): void
     }
 

@@ -154,7 +154,9 @@
 
     interface Emits {
         (e: 'update:modelValue', value: boolean): void
+
         (e: 'create', data: CreateEntityRequest): void
+
         (e: 'error', error: Error | ValidationError): void
     }
 

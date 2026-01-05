@@ -71,9 +71,9 @@
                     />
                 </template>
                 <v-list-item-title>{{ t('general.user.profile') }}</v-list-item-title>
-                <v-list-item-subtitle>{{
-                    t('general.user.profile_subtitle')
-                }}</v-list-item-subtitle>
+                <v-list-item-subtitle
+                    >{{ t('general.user.profile_subtitle') }}
+                </v-list-item-subtitle>
             </v-list-item>
 
             <!-- Theme Selection -->

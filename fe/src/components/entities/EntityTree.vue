@@ -80,7 +80,9 @@
 
     interface Emits {
         (e: 'update:expandedItems', items: string[]): void
+
         (e: 'item-click', item: TreeNode): void
+
         (e: 'selection-change', items: string[]): void
     }
 
@@ -408,6 +410,7 @@
         display: flex;
         flex-direction: column;
     }
+
     .tree-canvas {
         min-height: 500px;
         border: 1px solid rgba(var(--v-theme-on-surface), 0.12);

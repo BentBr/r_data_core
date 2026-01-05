@@ -126,6 +126,7 @@
 
     interface Emits {
         (e: 'update:modelValue', value: boolean): void
+
         (e: 'save', data: CreateRoleRequest | UpdateRoleRequest): void
     }
 

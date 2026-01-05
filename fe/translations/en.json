@@ -1,852 +1,863 @@
 {
-  "auth": {
-    "login": {
-      "title": "Sign In",
-      "username": "Username",
-      "password": "Password",
-      "submit": "Sign In",
-      "forgot_password": "Forgot your password?",
-      "forgot_password_message": "Password reset functionality is not yet implemented.",
-      "loading": "Signing in...",
-      "success": "Login successful",
-      "errors": {
-        "invalid_credentials": "Invalid username or password",
-        "username_required": "Username is required",
-        "password_required": "Password is required",
-        "username_too_short": "Username must be at least 3 characters",
-        "password_too_short": "Password must be at least 8 characters",
-        "validation_failed": "Login failed due to validation error",
-        "network_error": "Network error, please try again",
-        "server_error": "Server error, please try again later",
-        "authentication_required": "Authentication required"
-      }
+    "auth": {
+        "login": {
+            "title": "Sign In",
+            "username": "Username",
+            "password": "Password",
+            "submit": "Sign In",
+            "forgot_password": "Forgot your password?",
+            "forgot_password_message": "Password reset functionality is not yet implemented.",
+            "loading": "Signing in...",
+            "success": "Login successful",
+            "errors": {
+                "invalid_credentials": "Invalid username or password",
+                "username_required": "Username is required",
+                "password_required": "Password is required",
+                "username_too_short": "Username must be at least 3 characters",
+                "password_too_short": "Password must be at least 8 characters",
+                "validation_failed": "Login failed due to validation error",
+                "network_error": "Network error, please try again",
+                "server_error": "Server error, please try again later",
+                "authentication_required": "Authentication required"
+            }
+        },
+        "default_password_warning": "Security Warning: The default admin password is still in use. Please change it immediately for security.",
+        "default_password_warning_dismiss": "Dismiss",
+        "mobile_warning": "The admin interface of RDataCore is not meant to be used mobile!",
+        "mobile_warning_dismiss": "Dismiss"
     },
-    "default_password_warning": "Security Warning: The default admin password is still in use. Please change it immediately for security.",
-    "default_password_warning_dismiss": "Dismiss",
-    "mobile_warning": "The admin interface of RDataCore is not meant to be used mobile!",
-    "mobile_warning_dismiss": "Dismiss"
-  },
-  "navigation": {
-    "dashboard": "Dashboard",
-    "entity_definitions": "Entity Definitions",
-    "entities": "Entities",
-    "api_keys": "API Keys",
-    "workflows": "Workflows",
-    "permissions": "Permissions",
-    "system": "System",
-    "logout": "Logout"
-  },
-  "no_access": {
-    "title": "No Access",
-    "message": "You are logged in but don't have permission to access any features. Please contact your administrator.",
-    "logged_in_as": "Logged in as"
-  },
-  "dashboard": {
-    "title": "R Data Core Admin Dashboard",
-    "tiles": {
-      "entity_definitions": "Entity Definitions",
-      "entities": "Entities",
-      "workflows": "Workflows",
-      "online_users": "Online Users",
-      "top_entity_type": "Top: {type} ({count})",
-      "latest_workflow_states": "Latest: {states}"
+    "navigation": {
+        "dashboard": "Dashboard",
+        "entity_definitions": "Entity Definitions",
+        "entities": "Entities",
+        "api_keys": "API Keys",
+        "workflows": "Workflows",
+        "permissions": "Permissions",
+        "system": "System",
+        "logout": "Logout"
     },
-    "quick_actions": {
-      "title": "Quick Actions",
-      "new_entity_definition": "New Entity Definition",
-      "create_entity": "Create Entity",
-      "generate_api_key": "Generate API Key",
-      "create_workflow": "Create Workflow",
-      "create_user": "Create User",
-      "create_role": "Create Role",
-      "no_quick_create_permission_granted": "No quick create permission granted"
+    "no_access": {
+        "title": "No Access",
+        "message": "You are logged in but don't have permission to access any features. Please contact your administrator.",
+        "logged_in_as": "Logged in as"
     },
-    "loading": "Loading dashboard statistics...",
-    "error": "Failed to load dashboard statistics"
-  },
-  "workflows": {
+    "dashboard": {
+        "title": "R Data Core Admin Dashboard",
+        "tiles": {
+            "entity_definitions": "Entity Definitions",
+            "entities": "Entities",
+            "workflows": "Workflows",
+            "online_users": "Online Users",
+            "top_entity_type": "Top: {type} ({count})",
+            "latest_workflow_states": "Latest: {states}"
+        },
+        "quick_actions": {
+            "title": "Quick Actions",
+            "new_entity_definition": "New Entity Definition",
+            "create_entity": "Create Entity",
+            "generate_api_key": "Generate API Key",
+            "create_workflow": "Create Workflow",
+            "create_user": "Create User",
+            "create_role": "Create Role",
+            "no_quick_create_permission_granted": "No quick create permission granted"
+        },
+        "loading": "Loading dashboard statistics...",
+        "error": "Failed to load dashboard statistics"
+    },
+    "workflows": {
+        "table": {
+            "name": "Name",
+            "kind": "Kind",
+            "enabled": "Enabled",
+            "cron": "Cron",
+            "cron_disabled_endpoint": "Disabled (API)",
+            "actions": "Actions"
+        },
+        "history": {
+            "tab": "History",
+            "all": "All",
+            "select": "Workflow",
+            "status": "Status",
+            "queued": "Queued",
+            "finished": "Finished",
+            "processed": "Processed",
+            "failed": "Failed",
+            "logs": "Logs"
+        },
+        "logs": {
+            "time": "Time",
+            "level": "Level",
+            "message": "Message",
+            "meta": "Meta"
+        },
+        "actions": {
+            "run_now": "Run now",
+            "history": "History",
+            "delete": "Delete"
+        },
+        "delete": {
+            "title": "Confirm Delete",
+            "button": "Delete",
+            "confirm_message": "Are you sure you want to delete this workflow? This action cannot be undone.",
+            "success": "Workflow deleted successfully",
+            "error": "Failed to delete workflow"
+        },
+        "run": {
+            "confirm_title": "Run workflow now",
+            "confirm_message_simple": "Confirm you want to run this workflow now. Optionally upload a CSV to process immediately.",
+            "upload_csv_toggle": "Upload CSV for this run",
+            "selected_file": "Selected",
+            "run_button": "Run",
+            "enqueue_success": "Workflow run enqueued",
+            "upload_success": "Uploaded and enqueued (staged {staged_items})",
+            "enqueue_failed": "Failed to enqueue run"
+        },
+        "dsl": {
+            "steps_title": "DSL Steps",
+            "add_step": "Add step",
+            "from": "From",
+            "from_type": "From type",
+            "uri": "URI",
+            "csv_header": "Header",
+            "csv_delimiter": "Delimiter",
+            "csv_escape": "Escape",
+            "csv_quote": "Quote",
+            "auto_map_from_uri": "Auto map from URI",
+            "mapping_source_normalized": "Mapping (source -> normalized)",
+            "mapping_normalized_destination": "Mapping (output <- normalized)",
+            "source": "source",
+            "normalized": "normalized",
+            "add_mapping": "Add mapping",
+            "transform": "Transform",
+            "transform_type": "Transform type",
+            "target": "Target",
+            "separator": "Separator",
+            "left_kind": "Left kind",
+            "left_field": "Left field",
+            "left_value": "Left value",
+            "right_kind": "Right kind",
+            "right_field": "Right field",
+            "right_value": "Right value",
+            "op": "Operation",
+            "op_add": "add",
+            "op_sub": "sub",
+            "op_mul": "mul",
+            "op_div": "div",
+            "to": "To",
+            "to_type": "To type",
+            "output": "Output",
+            "entity_definition": "Entity definition",
+            "path": "Path",
+            "mode": "Mode",
+            "update_key": "Update key",
+            "destination": "destination",
+            "entity_field": "Entity field",
+            "normalized_field": "Normalized field",
+            "step_label": "Step {n}",
+            "source_type": "Source type",
+            "format_type": "Format type",
+            "destination_type": "Destination type",
+            "auth_type": "Authentication",
+            "auth_none": "None",
+            "auth_api_key": "API Key",
+            "auth_basic": "Basic Auth",
+            "auth_pre_shared_key": "Pre-shared Key",
+            "api_key": "API Key",
+            "header_name": "Header name",
+            "username": "Username",
+            "password": "Password",
+            "pre_shared_key": "Pre-shared Key",
+            "key_location": "Key location",
+            "key_location_header": "Header",
+            "key_location_body": "Body",
+            "field_name": "Field name",
+            "http_method": "HTTP Method",
+            "endpoint": "Endpoint",
+            "endpoint_info": "Your endpoint can be reached at",
+            "filter_operator": "Filter operator",
+            "filter_field": "Filter field",
+            "filter_value": "Filter value",
+            "apply_filter": "Apply filter",
+            "previous_step_info": "This step uses the output from the previous step",
+            "previous_step_error_first_step": "Cannot use 'Previous Step' as input for the first step (step 0)",
+            "mapping_previous_normalized": "Mapping (previous step -> normalized)",
+            "previous_field": "previous field",
+            "next_step_info": "This step's output will be passed to the next step",
+            "next_step_error_last_step": "Cannot use 'Next Step' as output for the last step - there is no next step",
+            "mapping_normalized_next_step": "Mapping (normalized -> next step field)",
+            "next_step_field": "next step field",
+            "available_fields": "Available fields",
+            "select_field": "Select field",
+            "path_template": "Path Template",
+            "path_template_hint": "Use {field_name} placeholders, e.g., /statistics_instance/{license_key_id}",
+            "field_transforms": "Field Transforms",
+            "target_path": "Target Path Field",
+            "target_parent_uuid": "Target Parent UUID Field",
+            "target_entity_uuid": "Target Entity UUID Field",
+            "entity_type": "Entity Type",
+            "filters": "Filters",
+            "add_filter": "Add Filter",
+            "value_kind": "Value Kind",
+            "value": "Value",
+            "fallback_path": "Fallback Path",
+            "path_separator": "Path Separator"
+        },
+        "create": {
+            "button": "Create Workflow",
+            "title": "Create Workflow",
+            "name": "Name",
+            "description": "Description",
+            "kind": "Kind",
+            "enabled": "Enabled",
+            "cron": "Schedule (cron)",
+            "cron_disabled_for_api_source": "Cron is disabled for workflows that accept POST data (from.api source type)",
+            "cron_disabled_for_api_output": "Cron is disabled for workflows that export via API (to.format.output.mode = api)",
+            "consumer_config": "Consumer Config (JSON)",
+            "provider_config": "Provider Config (JSON)",
+            "create_button": "Create",
+            "json_invalid": "Invalid JSON",
+            "config_label": "Workflow configuration",
+            "versioning_disabled": "Disable versioning for this workflow"
+        }
+    },
+    "validation": {
+        "required": "This field is required"
+    },
+    "api_keys": {
+        "create": {
+            "button": "Create New Key",
+            "title": "Create New API Key",
+            "name_label": "Key Name",
+            "name_required": "Name is required",
+            "description_label": "Description (Optional)",
+            "expires_label": "Expires in Days (Optional)",
+            "expires_hint": "Leave empty for no expiration",
+            "error": "Failed to create API key",
+            "error_name_exists": "An API key with this name already exists"
+        },
+        "created": {
+            "title": "API Key Created",
+            "warning": "You cannot retrieve this key afterwards. Please copy it now!",
+            "key_label": "API Key",
+            "description": "Store this key securely. It will not be shown again.",
+            "copied": "API key copied to clipboard!",
+            "copy_failed": "Failed to copy API key to clipboard."
+        },
+        "view": {
+            "title": "API Key Details",
+            "name": "Name",
+            "description": "Description",
+            "created": "Created",
+            "expires": "Expires",
+            "last_used": "Last Used"
+        },
+        "revoke": {
+            "title": "Confirm Revoke",
+            "message": "Are you sure you want to revoke the API key \"{name}\"? This action cannot be undone.",
+            "button": "Revoke",
+            "success": "API key revoked successfully",
+            "error": "Failed to revoke API key"
+        },
+        "table": {
+            "name": "Name",
+            "description": "Description",
+            "status": "Status",
+            "created": "Created",
+            "expires": "Expires",
+            "last_used": "Last Used",
+            "user_id": "User ID",
+            "created_by": "Created By",
+            "actions": "Actions"
+        }
+    },
+    "entities": {
+        "create": {
+            "key_label": "Key",
+            "key_required": "Key is required",
+            "path_label": "Path",
+            "published_label": "Published",
+            "published_hint": "Make this entity publicly available",
+            "button": "Create New Entity",
+            "title": "Create New Entity",
+            "entity_type_label": "Entity Type",
+            "entity_type_required": "Entity type is required",
+            "data_label": "Entity Data",
+            "data_required": "Entity data is required",
+            "parent_label": "Parent Entity (Optional)",
+            "error": "Failed to create entity",
+            "create_button": "Create"
+        },
+        "edit": {
+            "title": "Edit Entity",
+            "error": "Failed to update entity"
+        },
+        "delete": {
+            "title": "Confirm Delete",
+            "message": "Are you sure you want to delete this entity? This action cannot be undone.",
+            "button": "Delete",
+            "success": "Entity deleted successfully",
+            "error": "Failed to delete entity"
+        },
+        "details": {
+            "title": "Entity Details",
+            "select_entity": "Select an entity to view details",
+            "basic_info": "Basic Information",
+            "relationships": "Relationships",
+            "uuid": "UUID",
+            "entity_type": "Entity Type",
+            "created_at": "Created At",
+            "updated_at": "Updated At",
+            "path": "Path",
+            "parent": "Parent",
+            "children": "Children",
+            "data": "Data",
+            "raw_data": "Raw Data",
+            "formatted_data": "Formatted Data",
+            "history": "History",
+            "select_versions": "Select two versions to compare:",
+            "differences": "Differences",
+            "version_a": "Version A",
+            "version_b": "Version B",
+            "compare": "Compare",
+            "diff_field": "Field",
+            "diff_a": "A",
+            "diff_b": "B",
+            "no_diff": "No differences",
+            "no_versions": "No versions available",
+            "no_children": "No children",
+            "no_parent": "No parent",
+            "child_count": "children"
+        },
+        "tree": {
+            "title": "Entity Tree",
+            "loading": "Loading entities...",
+            "no_entities": "No entities found",
+            "expand_all": "Expand All",
+            "collapse_all": "Collapse All"
+        },
+        "table": {
+            "uuid": "UUID",
+            "entity_type": "Entity Type",
+            "created_at": "Created At",
+            "updated_at": "Updated At",
+            "path": "Path",
+            "actions": "Actions"
+        }
+    },
+    "entity_definitions": {
+        "create": {
+            "button": "Create New Definition",
+            "title": "Create New Entity Definition",
+            "entity_type_label": "Entity Type",
+            "entity_type_required": "Entity type is required",
+            "entity_type_hint": "Must be unique, alphanumeric with underscores, no spaces",
+            "display_name_label": "Display Name",
+            "display_name_required": "Display name is required",
+            "description_label": "Description (Optional)",
+            "group_name_label": "Group Name (Optional)",
+            "allow_children_label": "Allow Children",
+            "icon_label": "Icon",
+            "icon_hint": "Choose an icon for this entity definition",
+            "published_label": "Published",
+            "error": "Failed to create entity definition",
+            "create_button": "Create"
+        },
+        "edit": {
+            "title": "Edit Entity Definition",
+            "save": "Save Changes",
+            "cancel": "Cancel",
+            "error": "Failed to update entity definition"
+        },
+        "delete": {
+            "title": "Confirm Delete",
+            "message": "Are you sure you want to delete the entity definition \"{name}\"? This action cannot be undone.",
+            "button": "Delete",
+            "success": "Entity definition deleted successfully",
+            "error": "Failed to delete entity definition"
+        },
+        "meta_info": {
+            "entity_type": "Entity Type",
+            "display_name": "Display Name",
+            "description": "Description",
+            "group": "Group",
+            "created": "Created",
+            "updated": "Updated",
+            "version": "Version",
+            "status": "Status",
+            "published": "Published",
+            "draft": "Draft"
+        },
+        "fields": {
+            "title": "Fields",
+            "add_field": "Add Field",
+            "edit_field": "Edit Field",
+            "field_name": "Field Name",
+            "display_name": "Display Name",
+            "field_type": "Field Type",
+            "required": "Required",
+            "indexed": "Indexed",
+            "filterable": "Filterable",
+            "description": "Description",
+            "default_value": "Default Value",
+            "constraints": "Constraints",
+            "ui_settings": "UI Settings",
+            "remove_field": "Remove Field",
+            "field_name_required": "Field name is required",
+            "field_name_invalid": "Field name must be alphanumeric with underscores only",
+            "display_name_required": "Display name is required",
+            "field_type_required": "Field type is required",
+            "update": "Update",
+            "add": "Add"
+        },
+        "table": {
+            "entity_type": "Entity Type",
+            "display_name": "Display Name",
+            "description": "Description",
+            "group_name": "Group",
+            "fields_count": "Fields",
+            "published": "Published",
+            "created": "Created",
+            "updated": "Updated",
+            "version": "Version",
+            "actions": "Actions"
+        },
+        "details": {
+            "title": "Entity Definition Details",
+            "meta_info": "Meta Information",
+            "fields": "Fields",
+            "apply_schema": "Apply Schema",
+            "schema_applied": "Schema applied successfully",
+            "schema_error": "Failed to apply schema",
+            "apply_changes": "Apply Changes",
+            "changes_saved": "Changes saved successfully",
+            "save_error": "Failed to save changes",
+            "select_entity": "Select an entity definition to view details",
+            "select_entity_description": "Choose an entity definition from the tree view to see its properties and fields."
+        },
+        "errors": {
+            "validation_failed": "Validation failed",
+            "invalid_characters": "Invalid characters used in field name",
+            "field_name_exists": "A field with this name already exists",
+            "entity_type_exists": "An entity definition with this type already exists"
+        }
+    },
     "table": {
-      "name": "Name",
-      "kind": "Kind",
-      "enabled": "Enabled",
-      "cron": "Cron",
-      "cron_disabled_endpoint": "Disabled (API)",
-      "actions": "Actions"
+        "list": "List",
+        "total": "Total",
+        "items_per_page": "Items per page",
+        "next": "Next",
+        "previous": "Previous",
+        "first": "First",
+        "last": "Last",
+        "page": "Page",
+        "of": "of",
+        "no_data": "No data available",
+        "loading": "Loading..."
     },
-    "history": {
-      "tab": "History",
-      "all": "All",
-      "select": "Workflow",
-      "status": "Status",
-      "queued": "Queued",
-      "finished": "Finished",
-      "processed": "Processed",
-      "failed": "Failed",
-      "logs": "Logs"
+    "common": {
+        "cancel": "Cancel",
+        "close": "Close",
+        "save": "Save",
+        "refresh": "Refresh",
+        "edit": "Edit",
+        "delete": "Delete",
+        "yes": "Yes",
+        "no": "No",
+        "empty": "Empty"
     },
-    "logs": { "time": "Time", "level": "Level", "message": "Message", "meta": "Meta" },
-    "actions": { "run_now": "Run now", "history": "History", "delete": "Delete" },
-    "delete": {
-      "title": "Confirm Delete",
-      "button": "Delete",
-      "confirm_message": "Are you sure you want to delete this workflow? This action cannot be undone.",
-      "success": "Workflow deleted successfully",
-      "error": "Failed to delete workflow"
+    "error": {
+        "generic": "An error occurred",
+        "400": "Bad request",
+        "401": "Authentication required",
+        "403": "Permission denied",
+        "404": "Resource not found",
+        "409": "Conflict",
+        "422": "Validation failed",
+        "500": "Server error",
+        "network": "Network error. Please try again.",
+        "user": {
+            "create": {
+                "400": "Invalid request data",
+                "403": "Cannot create user",
+                "409": "A user with this username or email already exists",
+                "422": "Invalid user data"
+            },
+            "read": {
+                "403": "Cannot view user",
+                "404": "User not found"
+            },
+            "update": {
+                "400": "Invalid request data",
+                "403": "Cannot update user",
+                "404": "User not found",
+                "409": "A user with this username or email already exists",
+                "422": "Invalid user data"
+            },
+            "delete": {
+                "403": "Cannot delete user",
+                "404": "User not found"
+            }
+        },
+        "entity": {
+            "create": {
+                "400": "Invalid request data",
+                "403": "Cannot create entity",
+                "409": "An entity with the same key in this path already exists",
+                "422": "Invalid entity data"
+            },
+            "read": {
+                "403": "Cannot view entity",
+                "404": "Entity not found"
+            },
+            "update": {
+                "400": "Invalid request data",
+                "403": "Cannot update entity",
+                "404": "Entity not found",
+                "409": "An entity with the same key in this path already exists",
+                "422": "Invalid entity data"
+            },
+            "delete": {
+                "403": "Cannot delete entity",
+                "404": "Entity not found"
+            }
+        },
+        "role": {
+            "create": {
+                "400": "Invalid request data",
+                "403": "Cannot create role",
+                "409": "A role with this name already exists",
+                "422": "Invalid role data"
+            },
+            "read": {
+                "403": "Cannot view role",
+                "404": "Role not found"
+            },
+            "update": {
+                "400": "Invalid request data",
+                "403": "Cannot update role",
+                "404": "Role not found",
+                "409": "A role with this name already exists",
+                "422": "Invalid role data"
+            },
+            "delete": {
+                "403": "Cannot delete role",
+                "404": "Role not found"
+            }
+        },
+        "entity_definition": {
+            "create": {
+                "400": "Invalid request data",
+                "403": "Cannot create entity definition",
+                "409": "An entity definition with this type already exists",
+                "422": "Invalid entity definition data"
+            },
+            "read": {
+                "403": "Cannot view entity definition",
+                "404": "Entity definition not found"
+            },
+            "update": {
+                "400": "Invalid request data",
+                "403": "Cannot update entity definition",
+                "404": "Entity definition not found",
+                "409": "An entity definition with this type already exists",
+                "422": "Invalid entity definition data"
+            },
+            "delete": {
+                "403": "Cannot delete entity definition",
+                "404": "Entity definition not found"
+            }
+        },
+        "api_key": {
+            "create": {
+                "400": "Invalid request data",
+                "403": "Cannot create API key",
+                "409": "An API key with this name already exists",
+                "422": "Invalid API key data"
+            },
+            "read": {
+                "403": "Cannot view API key",
+                "404": "API key not found"
+            },
+            "update": {
+                "400": "Invalid request data",
+                "403": "Cannot update API key",
+                "404": "API key not found",
+                "409": "An API key with this name already exists",
+                "422": "Invalid API key data"
+            },
+            "delete": {
+                "403": "Cannot delete API key",
+                "404": "API key not found"
+            }
+        },
+        "workflow": {
+            "create": {
+                "400": "Invalid request data",
+                "403": "Cannot create workflow",
+                "409": "A workflow with this name already exists",
+                "422": "Invalid workflow data"
+            },
+            "read": {
+                "403": "Cannot view workflow",
+                "404": "Workflow not found"
+            },
+            "update": {
+                "400": "Invalid request data",
+                "403": "Cannot update workflow",
+                "404": "Workflow not found",
+                "409": "A workflow with this name already exists",
+                "422": "Invalid workflow data"
+            },
+            "delete": {
+                "403": "Cannot delete workflow",
+                "404": "Workflow not found"
+            }
+        },
+        "system": {
+            "read": {
+                "403": "Cannot view system settings"
+            },
+            "update": {
+                "400": "Invalid request data",
+                "403": "Cannot update system settings",
+                "422": "Invalid system settings data"
+            }
+        }
     },
-    "run": {
-      "confirm_title": "Run workflow now",
-      "confirm_message_simple": "Confirm you want to run this workflow now. Optionally upload a CSV to process immediately.",
-      "upload_csv_toggle": "Upload CSV for this run",
-      "selected_file": "Selected",
-      "run_button": "Run",
-      "enqueue_success": "Workflow run enqueued",
-      "upload_success": "Uploaded and enqueued (staged {staged_items})",
-      "enqueue_failed": "Failed to enqueue run"
+    "general": {
+        "errors": {
+            "unknown": "An unknown error occurred",
+            "network": "Network connection failed",
+            "server": "Server error"
+        },
+        "language": {
+            "switch": "Switch Language"
+        },
+        "theme": {
+            "toggle": "Toggle Theme",
+            "light": "Light Mode",
+            "dark": "Dark Mode",
+            "system": "System",
+            "mode": "Theme"
+        },
+        "user": {
+            "profile": "Profile",
+            "profile_subtitle": "Edit your profile settings",
+            "logout_subtitle": "Sign out of your account"
+        }
     },
-    "dsl": {
-      "steps_title": "DSL Steps",
-      "add_step": "Add step",
-      "from": "From",
-      "from_type": "From type",
-      "uri": "URI",
-      "csv_header": "Header",
-      "csv_delimiter": "Delimiter",
-      "csv_escape": "Escape",
-      "csv_quote": "Quote",
-      "auto_map_from_uri": "Auto map from URI",
-      "mapping_source_normalized": "Mapping (source -> normalized)",
-      "mapping_normalized_destination": "Mapping (output <- normalized)",
-      "source": "source",
-      "normalized": "normalized",
-      "add_mapping": "Add mapping",
-      "transform": "Transform",
-      "transform_type": "Transform type",
-      "target": "Target",
-      "separator": "Separator",
-      "left_kind": "Left kind",
-      "left_field": "Left field",
-      "left_value": "Left value",
-      "right_kind": "Right kind",
-      "right_field": "Right field",
-      "right_value": "Right value",
-      "op": "Operation",
-      "op_add": "add",
-      "op_sub": "sub",
-      "op_mul": "mul",
-      "op_div": "div",
-      "to": "To",
-      "to_type": "To type",
-      "output": "Output",
-      "entity_definition": "Entity definition",
-      "path": "Path",
-      "mode": "Mode",
-      "update_key": "Update key",
-      "destination": "destination",
-      "entity_field": "Entity field",
-      "normalized_field": "Normalized field",
-      "step_label": "Step {n}",
-      "source_type": "Source type",
-      "format_type": "Format type",
-      "destination_type": "Destination type",
-      "auth_type": "Authentication",
-      "auth_none": "None",
-      "auth_api_key": "API Key",
-      "auth_basic": "Basic Auth",
-      "auth_pre_shared_key": "Pre-shared Key",
-      "api_key": "API Key",
-      "header_name": "Header name",
-      "username": "Username",
-      "password": "Password",
-      "pre_shared_key": "Pre-shared Key",
-      "key_location": "Key location",
-      "key_location_header": "Header",
-      "key_location_body": "Body",
-      "field_name": "Field name",
-      "http_method": "HTTP Method",
-      "endpoint": "Endpoint",
-      "endpoint_info": "Your endpoint can be reached at",
-      "filter_operator": "Filter operator",
-      "filter_field": "Filter field",
-      "filter_value": "Filter value",
-      "apply_filter": "Apply filter",
-      "previous_step_info": "This step uses the output from the previous step",
-      "previous_step_error_first_step": "Cannot use 'Previous Step' as input for the first step (step 0)",
-      "mapping_previous_normalized": "Mapping (previous step -> normalized)",
-      "previous_field": "previous field",
-      "next_step_info": "This step's output will be passed to the next step",
-      "next_step_error_last_step": "Cannot use 'Next Step' as output for the last step - there is no next step",
-      "mapping_normalized_next_step": "Mapping (normalized -> next step field)",
-      "next_step_field": "next step field",
-      "available_fields": "Available fields",
-      "select_field": "Select field",
-      "path_template": "Path Template",
-      "path_template_hint": "Use {field_name} placeholders, e.g., /statistics_instance/{license_key_id}",
-      "field_transforms": "Field Transforms",
-      "target_path": "Target Path Field",
-      "target_parent_uuid": "Target Parent UUID Field",
-      "target_entity_uuid": "Target Entity UUID Field",
-      "entity_type": "Entity Type",
-      "filters": "Filters",
-      "add_filter": "Add Filter",
-      "value_kind": "Value Kind",
-      "value": "Value",
-      "fallback_path": "Fallback Path",
-      "path_separator": "Path Separator"
-    },
-    "create": {
-      "button": "Create Workflow",
-      "title": "Create Workflow",
-      "name": "Name",
-      "description": "Description",
-      "kind": "Kind",
-      "enabled": "Enabled",
-      "cron": "Schedule (cron)",
-      "cron_disabled_for_api_source": "Cron is disabled for workflows that accept POST data (from.api source type)",
-      "cron_disabled_for_api_output": "Cron is disabled for workflows that export via API (to.format.output.mode = api)",
-      "consumer_config": "Consumer Config (JSON)",
-      "provider_config": "Provider Config (JSON)",
-      "create_button": "Create",
-      "json_invalid": "Invalid JSON",
-      "config_label": "Workflow configuration",
-      "versioning_disabled": "Disable versioning for this workflow"
-    }
-  },
-  "validation": { "required": "This field is required" },
-  "api_keys": {
-    "create": {
-      "button": "Create New Key",
-      "title": "Create New API Key",
-      "name_label": "Key Name",
-      "name_required": "Name is required",
-      "description_label": "Description (Optional)",
-      "expires_label": "Expires in Days (Optional)",
-      "expires_hint": "Leave empty for no expiration",
-      "error": "Failed to create API key",
-      "error_name_exists": "An API key with this name already exists"
-    },
-    "created": {
-      "title": "API Key Created",
-      "warning": "You cannot retrieve this key afterwards. Please copy it now!",
-      "key_label": "API Key",
-      "description": "Store this key securely. It will not be shown again.",
-      "copied": "API key copied to clipboard!",
-      "copy_failed": "Failed to copy API key to clipboard."
-    },
-    "view": {
-      "title": "API Key Details",
-      "name": "Name",
-      "description": "Description",
-      "created": "Created",
-      "expires": "Expires",
-      "last_used": "Last Used"
-    },
-    "revoke": {
-      "title": "Confirm Revoke",
-      "message": "Are you sure you want to revoke the API key \"{name}\"? This action cannot be undone.",
-      "button": "Revoke",
-      "success": "API key revoked successfully",
-      "error": "Failed to revoke API key"
-    },
-    "table": {
-      "name": "Name",
-      "description": "Description",
-      "status": "Status",
-      "created": "Created",
-      "expires": "Expires",
-      "last_used": "Last Used",
-      "user_id": "User ID",
-      "created_by": "Created By",
-      "actions": "Actions"
-    }
-  },
-  "entities": {
-    "create": {
-      "key_label": "Key",
-      "key_required": "Key is required",
-      "path_label": "Path",
-      "published_label": "Published",
-      "published_hint": "Make this entity publicly available",
-      "button": "Create New Entity",
-      "title": "Create New Entity",
-      "entity_type_label": "Entity Type",
-      "entity_type_required": "Entity type is required",
-      "data_label": "Entity Data",
-      "data_required": "Entity data is required",
-      "parent_label": "Parent Entity (Optional)",
-      "error": "Failed to create entity",
-      "create_button": "Create"
-    },
-    "edit": {
-      "title": "Edit Entity",
-      "error": "Failed to update entity"
-    },
-    "delete": {
-      "title": "Confirm Delete",
-      "message": "Are you sure you want to delete this entity? This action cannot be undone.",
-      "button": "Delete",
-      "success": "Entity deleted successfully",
-      "error": "Failed to delete entity"
-    },
-    "details": {
-      "title": "Entity Details",
-      "select_entity": "Select an entity to view details",
-      "basic_info": "Basic Information",
-      "relationships": "Relationships",
-      "uuid": "UUID",
-      "entity_type": "Entity Type",
-      "created_at": "Created At",
-      "updated_at": "Updated At",
-      "path": "Path",
-      "parent": "Parent",
-      "children": "Children",
-      "data": "Data",
-      "raw_data": "Raw Data",
-      "formatted_data": "Formatted Data",
-      "history": "History",
-      "select_versions": "Select two versions to compare:",
-      "differences": "Differences",
-      "version_a": "Version A",
-      "version_b": "Version B",
-      "compare": "Compare",
-      "diff_field": "Field",
-      "diff_a": "A",
-      "diff_b": "B",
-      "no_diff": "No differences",
-      "no_versions": "No versions available",
-      "no_children": "No children",
-      "no_parent": "No parent",
-      "child_count": "children"
-    },
-    "tree": {
-      "title": "Entity Tree",
-      "loading": "Loading entities...",
-      "no_entities": "No entities found",
-      "expand_all": "Expand All",
-      "collapse_all": "Collapse All"
-    },
-    "table": {
-      "uuid": "UUID",
-      "entity_type": "Entity Type",
-      "created_at": "Created At",
-      "updated_at": "Updated At",
-      "path": "Path",
-      "actions": "Actions"
-    }
-  },
-  "entity_definitions": {
-    "create": {
-      "button": "Create New Definition",
-      "title": "Create New Entity Definition",
-      "entity_type_label": "Entity Type",
-      "entity_type_required": "Entity type is required",
-      "entity_type_hint": "Must be unique, alphanumeric with underscores, no spaces",
-      "display_name_label": "Display Name",
-      "display_name_required": "Display name is required",
-      "description_label": "Description (Optional)",
-      "group_name_label": "Group Name (Optional)",
-      "allow_children_label": "Allow Children",
-      "icon_label": "Icon",
-      "icon_hint": "Choose an icon for this entity definition",
-      "published_label": "Published",
-      "error": "Failed to create entity definition",
-      "create_button": "Create"
-    },
-    "edit": {
-      "title": "Edit Entity Definition",
-      "save": "Save Changes",
-      "cancel": "Cancel",
-      "error": "Failed to update entity definition"
-    },
-    "delete": {
-      "title": "Confirm Delete",
-      "message": "Are you sure you want to delete the entity definition \"{name}\"? This action cannot be undone.",
-      "button": "Delete",
-      "success": "Entity definition deleted successfully",
-      "error": "Failed to delete entity definition"
-    },
-    "meta_info": {
-      "entity_type": "Entity Type",
-      "display_name": "Display Name",
-      "description": "Description",
-      "group": "Group",
-      "created": "Created",
-      "updated": "Updated",
-      "version": "Version",
-      "status": "Status",
-      "published": "Published",
-      "draft": "Draft"
-    },
-    "fields": {
-      "title": "Fields",
-      "add_field": "Add Field",
-      "edit_field": "Edit Field",
-      "field_name": "Field Name",
-      "display_name": "Display Name",
-      "field_type": "Field Type",
-      "required": "Required",
-      "indexed": "Indexed",
-      "filterable": "Filterable",
-      "description": "Description",
-      "default_value": "Default Value",
-      "constraints": "Constraints",
-      "ui_settings": "UI Settings",
-      "remove_field": "Remove Field",
-      "field_name_required": "Field name is required",
-      "field_name_invalid": "Field name must be alphanumeric with underscores only",
-      "display_name_required": "Display name is required",
-      "field_type_required": "Field type is required",
-      "update": "Update",
-      "add": "Add"
-    },
-    "table": {
-      "entity_type": "Entity Type",
-      "display_name": "Display Name",
-      "description": "Description",
-      "group_name": "Group",
-      "fields_count": "Fields",
-      "published": "Published",
-      "created": "Created",
-      "updated": "Updated",
-      "version": "Version",
-      "actions": "Actions"
-    },
-    "details": {
-      "title": "Entity Definition Details",
-      "meta_info": "Meta Information",
-      "fields": "Fields",
-      "apply_schema": "Apply Schema",
-      "schema_applied": "Schema applied successfully",
-      "schema_error": "Failed to apply schema",
-      "apply_changes": "Apply Changes",
-      "changes_saved": "Changes saved successfully",
-      "save_error": "Failed to save changes",
-      "select_entity": "Select an entity definition to view details",
-      "select_entity_description": "Choose an entity definition from the tree view to see its properties and fields."
-    },
-    "errors": {
-      "validation_failed": "Validation failed",
-      "invalid_characters": "Invalid characters used in field name",
-      "field_name_exists": "A field with this name already exists",
-      "entity_type_exists": "An entity definition with this type already exists"
-    }
-  },
-  "table": {
-    "list": "List",
-    "total": "Total",
-    "items_per_page": "Items per page",
-    "next": "Next",
-    "previous": "Previous",
-    "first": "First",
-    "last": "Last",
-    "page": "Page",
-    "of": "of",
-    "no_data": "No data available",
-    "loading": "Loading..."
-  },
-  "common": {
-    "cancel": "Cancel",
-    "close": "Close",
-    "save": "Save",
-    "refresh": "Refresh",
-    "edit": "Edit",
-    "delete": "Delete",
-    "yes": "Yes",
-    "no": "No",
-    "empty": "Empty"
-  },
-  "error": {
-    "generic": "An error occurred",
-    "400": "Bad request",
-    "401": "Authentication required",
-    "403": "Permission denied",
-    "404": "Resource not found",
-    "409": "Conflict",
-    "422": "Validation failed",
-    "500": "Server error",
-    "network": "Network error. Please try again.",
-    "user": {
-      "create": {
-        "400": "Invalid request data",
-        "403": "Cannot create user",
-        "409": "A user with this username or email already exists",
-        "422": "Invalid user data"
-      },
-      "read": {
-        "403": "Cannot view user",
-        "404": "User not found"
-      },
-      "update": {
-        "400": "Invalid request data",
-        "403": "Cannot update user",
-        "404": "User not found",
-        "409": "A user with this username or email already exists",
-        "422": "Invalid user data"
-      },
-      "delete": {
-        "403": "Cannot delete user",
-        "404": "User not found"
-      }
-    },
-    "entity": {
-      "create": {
-        "400": "Invalid request data",
-        "403": "Cannot create entity",
-        "409": "An entity with the same key in this path already exists",
-        "422": "Invalid entity data"
-      },
-      "read": {
-        "403": "Cannot view entity",
-        "404": "Entity not found"
-      },
-      "update": {
-        "400": "Invalid request data",
-        "403": "Cannot update entity",
-        "404": "Entity not found",
-        "409": "An entity with the same key in this path already exists",
-        "422": "Invalid entity data"
-      },
-      "delete": {
-        "403": "Cannot delete entity",
-        "404": "Entity not found"
-      }
-    },
-    "role": {
-      "create": {
-        "400": "Invalid request data",
-        "403": "Cannot create role",
-        "409": "A role with this name already exists",
-        "422": "Invalid role data"
-      },
-      "read": {
-        "403": "Cannot view role",
-        "404": "Role not found"
-      },
-      "update": {
-        "400": "Invalid request data",
-        "403": "Cannot update role",
-        "404": "Role not found",
-        "409": "A role with this name already exists",
-        "422": "Invalid role data"
-      },
-      "delete": {
-        "403": "Cannot delete role",
-        "404": "Role not found"
-      }
-    },
-    "entity_definition": {
-      "create": {
-        "400": "Invalid request data",
-        "403": "Cannot create entity definition",
-        "409": "An entity definition with this type already exists",
-        "422": "Invalid entity definition data"
-      },
-      "read": {
-        "403": "Cannot view entity definition",
-        "404": "Entity definition not found"
-      },
-      "update": {
-        "400": "Invalid request data",
-        "403": "Cannot update entity definition",
-        "404": "Entity definition not found",
-        "409": "An entity definition with this type already exists",
-        "422": "Invalid entity definition data"
-      },
-      "delete": {
-        "403": "Cannot delete entity definition",
-        "404": "Entity definition not found"
-      }
-    },
-    "api_key": {
-      "create": {
-        "400": "Invalid request data",
-        "403": "Cannot create API key",
-        "409": "An API key with this name already exists",
-        "422": "Invalid API key data"
-      },
-      "read": {
-        "403": "Cannot view API key",
-        "404": "API key not found"
-      },
-      "update": {
-        "400": "Invalid request data",
-        "403": "Cannot update API key",
-        "404": "API key not found",
-        "409": "An API key with this name already exists",
-        "422": "Invalid API key data"
-      },
-      "delete": {
-        "403": "Cannot delete API key",
-        "404": "API key not found"
-      }
-    },
-    "workflow": {
-      "create": {
-        "400": "Invalid request data",
-        "403": "Cannot create workflow",
-        "409": "A workflow with this name already exists",
-        "422": "Invalid workflow data"
-      },
-      "read": {
-        "403": "Cannot view workflow",
-        "404": "Workflow not found"
-      },
-      "update": {
-        "400": "Invalid request data",
-        "403": "Cannot update workflow",
-        "404": "Workflow not found",
-        "409": "A workflow with this name already exists",
-        "422": "Invalid workflow data"
-      },
-      "delete": {
-        "403": "Cannot delete workflow",
-        "404": "Workflow not found"
-      }
-    },
-    "system": {
-      "read": {
-        "403": "Cannot view system settings"
-      },
-      "update": {
-        "400": "Invalid request data",
-        "403": "Cannot update system settings",
-        "422": "Invalid system settings data"
-      }
-    }
-  },
-  "general": {
-    "errors": {
-      "unknown": "An unknown error occurred",
-      "network": "Network connection failed",
-      "server": "Server error"
-    },
-    "language": {
-      "switch": "Switch Language"
-    },
-    "theme": {
-      "toggle": "Toggle Theme",
-      "light": "Light Mode",
-      "dark": "Dark Mode",
-      "system": "System",
-      "mode": "Theme"
-    },
-    "user": {
-      "profile": "Profile",
-      "profile_subtitle": "Edit your profile settings",
-      "logout_subtitle": "Sign out of your account"
-    }
-  },
-  "users": {
-    "load": {
-      "error": "Failed to load users"
-    },
-    "create": {
-      "success": "User created successfully",
-      "error": "Failed to create user"
-    },
-    "update": {
-      "success": "User updated successfully",
-      "error": "Failed to update user"
-    },
-    "delete": {
-      "success": "User deleted successfully",
-      "error": "Failed to delete user"
-    },
-    "get": {
-      "error": "Failed to load user"
+    "users": {
+        "load": {
+            "error": "Failed to load users"
+        },
+        "create": {
+            "success": "User created successfully",
+            "error": "Failed to create user"
+        },
+        "update": {
+            "success": "User updated successfully",
+            "error": "Failed to update user"
+        },
+        "delete": {
+            "success": "User deleted successfully",
+            "error": "Failed to delete user"
+        },
+        "get": {
+            "error": "Failed to load user"
+        },
+        "roles": {
+            "get": {
+                "error": "Failed to load user roles"
+            },
+            "assign": {
+                "success": "Roles assigned successfully",
+                "error": "Failed to assign roles"
+            }
+        },
+        "errors": {
+            "username_exists": "A user with this username already exists",
+            "email_exists": "A user with this email already exists",
+            "validation_failed": "Validation failed"
+        },
+        "dialog": {
+            "create_title": "Create User",
+            "edit_title": "Edit User",
+            "username": "Username",
+            "email": "Email",
+            "password": "Password",
+            "password_hint": "Leave empty to keep current password",
+            "first_name": "First Name",
+            "last_name": "Last Name",
+            "roles": "Roles",
+            "roles_hint": "Select one or more roles for this user",
+            "active": "Active",
+            "active_hint": "Whether the user account is active",
+            "super_admin": "Super Admin",
+            "super_admin_hint": "Super admin users have all permissions regardless of assigned roles",
+            "cancel": "Cancel",
+            "create": "Create",
+            "update": "Update",
+            "validation": {
+                "required": "This field is required",
+                "email_invalid": "Must be a valid email",
+                "min_length": "Must be at least {min} characters"
+            }
+        },
+        "table": {
+            "username": "Username",
+            "email": "Email",
+            "full_name": "Full Name",
+            "role": "Role",
+            "status": "Status",
+            "is_active": "Active",
+            "super_admin": "Super Admin",
+            "actions": "Actions"
+        }
     },
     "roles": {
-      "get": {
-        "error": "Failed to load user roles"
-      },
-      "assign": {
-        "success": "Roles assigned successfully",
-        "error": "Failed to assign roles"
-      }
-    },
-    "errors": {
-      "username_exists": "A user with this username already exists",
-      "email_exists": "A user with this email already exists",
-      "validation_failed": "Validation failed"
-    },
-    "dialog": {
-      "create_title": "Create User",
-      "edit_title": "Edit User",
-      "username": "Username",
-      "email": "Email",
-      "password": "Password",
-      "password_hint": "Leave empty to keep current password",
-      "first_name": "First Name",
-      "last_name": "Last Name",
-      "roles": "Roles",
-      "roles_hint": "Select one or more roles for this user",
-      "active": "Active",
-      "active_hint": "Whether the user account is active",
-      "super_admin": "Super Admin",
-      "super_admin_hint": "Super admin users have all permissions regardless of assigned roles",
-      "cancel": "Cancel",
-      "create": "Create",
-      "update": "Update",
-      "validation": {
-        "required": "This field is required",
-        "email_invalid": "Must be a valid email",
-        "min_length": "Must be at least {min} characters"
-      }
-    },
-    "table": {
-      "username": "Username",
-      "email": "Email",
-      "full_name": "Full Name",
-      "role": "Role",
-      "status": "Status",
-      "is_active": "Active",
-      "super_admin": "Super Admin",
-      "actions": "Actions"
-    }
-  },
-  "roles": {
-    "load": {
-      "error": "Failed to load roles"
-    },
-    "create": {
-      "success": "Role created successfully",
-      "error": "Failed to create role"
-    },
-    "update": {
-      "success": "Role updated successfully",
-      "error": "Failed to update role"
-    },
-    "delete": {
-      "success": "Role deleted successfully",
-      "error": "Failed to delete role"
-    },
-    "dialog": {
-      "create_title": "Create Role",
-      "edit_title": "Edit Role",
-      "name": "Name",
-      "description": "Description",
-      "super_admin": "Super Admin",
-      "super_admin_hint": "Users with this role will have all permissions regardless of assigned permissions",
-      "super_admin_disabled_hint": "Super Admin roles have all permissions. Individual permissions cannot be configured.",
-      "permissions": "Permissions",
-      "add_permission": "Add Permission",
-      "cancel": "Cancel",
-      "create": "Create",
-      "update": "Update"
-    }
-  },
-  "permissions": {
-    "types": {
-      "read": "Read",
-      "create": "Create",
-      "update": "Update",
-      "delete": "Delete",
-      "publish": "Publish",
-      "admin": "Admin",
-      "execute": "Execute"
-    },
-    "dialog": {
-      "create_title": "Create Role",
-      "edit_title": "Edit Role",
-      "name": "Name",
-      "description": "Description",
-      "super_admin": "Super Admin",
-      "super_admin_hint": "Users with this role will have all permissions regardless of assigned permissions",
-      "super_admin_disabled_hint": "Super Admin roles have all permissions. Individual permissions cannot be configured.",
-      "permissions": "Permissions",
-      "add_permission": "Add Permission",
-      "cancel": "Cancel",
-      "create": "Create",
-      "update": "Update"
-    },
-    "page": {
-      "title": "Users and Roles",
-      "tabs": {
-        "roles": "Roles",
-        "users": "Users"
-      },
-      "roles": {
-        "title": "Roles",
-        "new_button": "New Role",
-        "loading": "Loading roles...",
-        "no_description": "No description",
-        "permissions": "permissions",
-        "permission": "permission",
-        "table": {
-          "name": "Name",
-          "description": "Description",
-          "permissions": "Permissions",
-          "created": "Created",
-          "actions": "Actions"
+        "load": {
+            "error": "Failed to load roles"
+        },
+        "create": {
+            "success": "Role created successfully",
+            "error": "Failed to create role"
+        },
+        "update": {
+            "success": "Role updated successfully",
+            "error": "Failed to update role"
         },
         "delete": {
-          "title": "Delete Role",
-          "message": "Are you sure you want to delete the role \"{name}\"?",
-          "confirm": "Delete",
-          "cancel": "Cancel"
-        }
-      },
-      "users": {
-        "title": "Users",
-        "new_button": "New User",
-        "loading": "Loading users...",
-        "no_roles": "No roles assigned",
-        "status": {
-          "active": "Active",
-          "inactive": "Inactive"
+            "success": "Role deleted successfully",
+            "error": "Failed to delete role"
         },
-        "table": {
-          "username": "Username",
-          "email": "Email",
-          "roles": "Roles",
-          "status": "Status",
-          "created": "Created",
-          "actions": "Actions"
-        },
-        "delete": {
-          "title": "Delete User",
-          "message": "Are you sure you want to delete the user \"{username}\"?",
-          "confirm": "Delete",
-          "cancel": "Cancel"
+        "dialog": {
+            "create_title": "Create Role",
+            "edit_title": "Edit Role",
+            "name": "Name",
+            "description": "Description",
+            "super_admin": "Super Admin",
+            "super_admin_hint": "Users with this role will have all permissions regardless of assigned permissions",
+            "super_admin_disabled_hint": "Super Admin roles have all permissions. Individual permissions cannot be configured.",
+            "permissions": "Permissions",
+            "add_permission": "Add Permission",
+            "cancel": "Cancel",
+            "create": "Create",
+            "update": "Update"
         }
-      }
-    }
-  },
-  "system": {
-    "admin": {
-      "title": "System Administration"
     },
-    "versioning": {
-      "section_title": "Entity Versioning",
-      "enabled": "Enabled",
-      "max_versions": "Max versions (leave empty for unlimited)",
-      "max_age_days": "Max age days (leave empty to disable age pruning)",
-      "save": "Save",
-      "save_success": "Settings saved",
-      "load_failed": "Failed to load settings",
-      "save_failed": "Failed to save settings"
+    "permissions": {
+        "types": {
+            "read": "Read",
+            "create": "Create",
+            "update": "Update",
+            "delete": "Delete",
+            "publish": "Publish",
+            "admin": "Admin",
+            "execute": "Execute"
+        },
+        "dialog": {
+            "create_title": "Create Role",
+            "edit_title": "Edit Role",
+            "name": "Name",
+            "description": "Description",
+            "super_admin": "Super Admin",
+            "super_admin_hint": "Users with this role will have all permissions regardless of assigned permissions",
+            "super_admin_disabled_hint": "Super Admin roles have all permissions. Individual permissions cannot be configured.",
+            "permissions": "Permissions",
+            "add_permission": "Add Permission",
+            "cancel": "Cancel",
+            "create": "Create",
+            "update": "Update"
+        },
+        "page": {
+            "title": "Users and Roles",
+            "tabs": {
+                "roles": "Roles",
+                "users": "Users"
+            },
+            "roles": {
+                "title": "Roles",
+                "new_button": "New Role",
+                "loading": "Loading roles...",
+                "no_description": "No description",
+                "permissions": "permissions",
+                "permission": "permission",
+                "table": {
+                    "name": "Name",
+                    "description": "Description",
+                    "permissions": "Permissions",
+                    "created": "Created",
+                    "actions": "Actions"
+                },
+                "delete": {
+                    "title": "Delete Role",
+                    "message": "Are you sure you want to delete the role \"{name}\"?",
+                    "confirm": "Delete",
+                    "cancel": "Cancel"
+                }
+            },
+            "users": {
+                "title": "Users",
+                "new_button": "New User",
+                "loading": "Loading users...",
+                "no_roles": "No roles assigned",
+                "status": {
+                    "active": "Active",
+                    "inactive": "Inactive"
+                },
+                "table": {
+                    "username": "Username",
+                    "email": "Email",
+                    "roles": "Roles",
+                    "status": "Status",
+                    "created": "Created",
+                    "actions": "Actions"
+                },
+                "delete": {
+                    "title": "Delete User",
+                    "message": "Are you sure you want to delete the user \"{username}\"?",
+                    "confirm": "Delete",
+                    "cancel": "Cancel"
+                }
+            }
+        }
+    },
+    "system": {
+        "admin": {
+            "title": "System Administration"
+        },
+        "versioning": {
+            "section_title": "Entity Versioning",
+            "enabled": "Enabled",
+            "max_versions": "Max versions (leave empty for unlimited)",
+            "max_age_days": "Max age days (leave empty to disable age pruning)",
+            "save": "Save",
+            "save_success": "Settings saved",
+            "load_failed": "Failed to load settings",
+            "save_failed": "Failed to save settings"
+        },
+        "license": {
+            "section_title": "License Information",
+            "state": "State",
+            "company": "Company",
+            "license_type": "License Type",
+            "license_id": "License ID",
+            "issued_at": "Issued At",
+            "expires_at": "Expires At",
+            "version": "Version",
+            "never": "Never",
+            "state_valid": "Valid",
+            "state_invalid": "Invalid",
+            "state_error": "Error",
+            "state_none": "None"
+        }
     },
     "license": {
-      "section_title": "License Information",
-      "state": "State",
-      "company": "Company",
-      "license_type": "License Type",
-      "license_id": "License ID",
-      "issued_at": "Issued At",
-      "expires_at": "Expires At",
-      "version": "Version",
-      "never": "Never",
-      "state_valid": "Valid",
-      "state_invalid": "Invalid",
-      "state_error": "Error",
-      "state_none": "None"
+        "banner": {
+            "no_license": "Warning: No license key configured. Please configure a license key.",
+            "invalid_license": "Error: License key is invalid. Please contact support.",
+            "error_license": "Error: License verification failed. Please check your network connection.",
+            "dismiss": "Dismiss"
+        }
     }
-  },
-  "license": {
-    "banner": {
-      "no_license": "Warning: No license key configured. Please configure a license key.",
-      "invalid_license": "Error: License key is invalid. Please contact support.",
-      "error_license": "Error: License verification failed. Please check your network connection.",
-      "dismiss": "Dismiss"
-    }
-  }
 }

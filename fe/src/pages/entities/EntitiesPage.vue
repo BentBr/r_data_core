@@ -154,12 +154,14 @@
     interface CreateDialogInstance {
         setFieldErrors: (errors: Record<string, string>) => void
     }
+
     const createDialogRef = ref<CreateDialogInstance | null>(null)
 
     // EntityTree ref
     interface EntityTreeInstance {
         reloadPath: (path: string) => Promise<void>
     }
+
     const entityTreeRef = ref<EntityTreeInstance | null>(null)
 
     // Computed properties
