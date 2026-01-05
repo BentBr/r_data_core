@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.11](https://github.com/BentBr/r_data_core/compare/v0.3.10...v0.3.11) (2026-01-05)
+
+
+### Bug Fixes
+
+* adding missing version back in ([bd1e5b4](https://github.com/BentBr/r_data_core/commit/bd1e5b474b2cb9005dd2de7937d996e2ffa1243a))
+* getting some version fe + be ([34498bf](https://github.com/BentBr/r_data_core/commit/34498bf81896b57ec6c3877468b4fa86fc344f88))
+* getting some version fe + be ([e84bc93](https://github.com/BentBr/r_data_core/commit/e84bc93324c75c63e14c3314ea2a6f40b2c35555))
+* trying to get be version ([c554282](https://github.com/BentBr/r_data_core/commit/c554282f84cfc893882ae633187e04cc1fbbcebb))
+* trying to get be version ([70fa458](https://github.com/BentBr/r_data_core/commit/70fa458e62818d5804b2dd390f1dd373ec55958d))
+
 ## [0.3.10](https://github.com/BentBr/r_data_core/compare/v0.3.9...v0.3.10) (2026-01-05)
 
 
