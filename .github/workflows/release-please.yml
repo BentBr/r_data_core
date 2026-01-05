@@ -17,22 +17,24 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     outputs:
-      # Core (backend) release outputs
-      core_release_created: ${{ steps.release.outputs['.--release_created'] }}
-      core_tag_name: ${{ steps.release.outputs['.--tag_name'] }}
-      core_version: ${{ steps.release.outputs['.--version'] }}
+      # Core (backend) release outputs - try component name first, then path
+      core_release_created: ${{ steps.release.outputs['core--release_created'] || steps.release.outputs['.--release_created'] || steps.release.outputs.release_created }}
+      core_tag_name: ${{ steps.release.outputs['core--tag_name'] || steps.release.outputs['.--tag_name'] || steps.release.outputs.tag_name }}
+      core_version: ${{ steps.release.outputs['core--version'] || steps.release.outputs['.--version'] || steps.release.outputs.version }}
       # FE release outputs
       fe_release_created: ${{ steps.release.outputs['fe--release_created'] }}
       fe_tag_name: ${{ steps.release.outputs['fe--tag_name'] }}
       fe_version: ${{ steps.release.outputs['fe--version'] }}
       # Legacy outputs for backwards compatibility
-      release_created: ${{ steps.release.outputs['.--release_created'] }}
-      tag_name: ${{ steps.release.outputs['.--tag_name'] }}
-      version: ${{ steps.release.outputs['.--version'] }}
+      release_created: ${{ steps.release.outputs['core--release_created'] || steps.release.outputs['.--release_created'] || steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs['core--tag_name'] || steps.release.outputs['.--tag_name'] || steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs['core--version'] || steps.release.outputs['.--version'] || steps.release.outputs.version }}
       # PR tracking
       prs_created: ${{ steps.release.outputs.prs_created }}
       prs: ${{ steps.release.outputs.prs }}
       pr_head_sha: ${{ steps.get-pr-sha.outputs.sha }}
+      # Debug: all released paths
+      paths_released: ${{ steps.release.outputs.paths_released }}
     steps:
       - name: Release Please
         id: release
@@ -44,19 +46,41 @@ jobs:
 
       - name: Debug outputs
         env:
-          CORE_RELEASE_CREATED: ${{ steps.release.outputs['.--release_created'] }}
-          CORE_VERSION: ${{ steps.release.outputs['.--version'] }}
+          # Try all possible output key formats for core
+          CORE_BY_COMPONENT: ${{ steps.release.outputs['core--release_created'] }}
+          CORE_BY_PATH: ${{ steps.release.outputs['.--release_created'] }}
+          CORE_PLAIN: ${{ steps.release.outputs.release_created }}
+          CORE_VERSION_COMPONENT: ${{ steps.release.outputs['core--version'] }}
+          CORE_VERSION_PATH: ${{ steps.release.outputs['.--version'] }}
+          CORE_VERSION_PLAIN: ${{ steps.release.outputs.version }}
+          # FE outputs
           FE_RELEASE_CREATED: ${{ steps.release.outputs['fe--release_created'] }}
           FE_VERSION: ${{ steps.release.outputs['fe--version'] }}
+          # PR tracking
           PRS_CREATED: ${{ steps.release.outputs.prs_created }}
           PRS_JSON: ${{ steps.release.outputs.prs }}
+          PATHS_RELEASED: ${{ steps.release.outputs.paths_released }}
+          RELEASES_CREATED: ${{ steps.release.outputs.releases_created }}
         run: |
-          echo "Core release created: $CORE_RELEASE_CREATED"
-          echo "Core version: $CORE_VERSION"
-          echo "FE release created: $FE_RELEASE_CREATED"
-          echo "FE version: $FE_VERSION"
+          echo "=== Core Release Output Formats ==="
+          echo "core--release_created: $CORE_BY_COMPONENT"
+          echo ".--release_created: $CORE_BY_PATH"
+          echo "release_created (plain): $CORE_PLAIN"
+          echo ""
+          echo "=== Core Version Output Formats ==="
+          echo "core--version: $CORE_VERSION_COMPONENT"
+          echo ".--version: $CORE_VERSION_PATH"
+          echo "version (plain): $CORE_VERSION_PLAIN"
+          echo ""
+          echo "=== FE Outputs ==="
+          echo "fe--release_created: $FE_RELEASE_CREATED"
+          echo "fe--version: $FE_VERSION"
+          echo ""
+          echo "=== Global Outputs ==="
           echo "PRs created: $PRS_CREATED"
           echo "PRs: $PRS_JSON"
+          echo "paths_released: $PATHS_RELEASED"
+          echo "releases_created: $RELEASES_CREATED"
 
       - name: Get PR head SHA
         id: get-pr-sha
