@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.9](https://github.com/BentBr/r_data_core/compare/v0.3.8...v0.3.9) (2026-01-05)
+
+
+### Bug Fixes
+
+* **ci:** making sure fe / be are working besides each other ([b5a23f6](https://github.com/BentBr/r_data_core/commit/b5a23f685899e8b05be4e249def8dcfba2fb9c08))
+* **ci:** making sure fe / be are working besides each other ([dcd20fa](https://github.com/BentBr/r_data_core/commit/dcd20fa19b252307a1b2e9be2bb50446081578d7))
+
 ## [0.3.8](https://github.com/BentBr/r_data_core/compare/v0.3.7...v0.3.8) (2026-01-04)
 
 
