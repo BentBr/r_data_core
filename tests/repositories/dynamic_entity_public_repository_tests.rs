@@ -112,7 +112,7 @@ async fn test_list_available_entity_types() -> Result<()> {
     repo.create(&entity2).await?;
 
     // Wait a bit for view/table creation to complete
-    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
     // List available entity types
     let available_types = pub_repo.list_available_entity_types().await?;
