@@ -4,7 +4,10 @@ use httpmock::MockServer;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::{CacheConfig, LicenseConfig};
 use r_data_core_license::LicenseToolService;
-use r_data_core_license::{call_verification_api, create_license_key, LicenseType};
+use r_data_core_license::{
+    call_verification_api, create_license_key, decode_license_claims, LicenseType,
+    LICENSE_CACHE_KEY_PREFIX, LICENSE_CACHE_TTL_SECS,
+};
 use r_data_core_services::license::service::{LicenseService, LicenseState};
 use serial_test::serial;
 use std::sync::Arc;
@@ -619,4 +622,177 @@ async fn test_call_verification_api_unwrapped_format_invalid() {
     assert!(error_msg.contains("expired") || error_msg.contains("License"));
 
     mock.assert();
+}
+
+// Tests for decode_license_claims function
+
+#[test]
+fn test_decode_license_claims_valid() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let (private_key, _) = generate_test_keys(&temp_dir);
+
+    if private_key.is_empty() {
+        eprintln!("Skipping test - openssl not available");
+        return;
+    }
+
+    let private_key_path = temp_dir.path().join("private.key");
+    std::fs::write(&private_key_path, private_key).expect("Failed to write private key");
+
+    // Create a valid license key
+    let license_key = create_license_key(
+        "Decode Test Company",
+        LicenseType::CompanyI,
+        private_key_path.to_str().unwrap(),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
+    )
+    .expect("Failed to create license key");
+
+    // Test decode_license_claims
+    let claims = decode_license_claims(&license_key).expect("Should decode successfully");
+
+    assert_eq!(claims.company, "Decode Test Company");
+    assert_eq!(claims.license_type, LicenseType::CompanyI);
+    assert!(!claims.license_id.is_empty());
+    assert_eq!(claims.version, "v1");
+}
+
+#[test]
+fn test_decode_license_claims_invalid_jwt_format() {
+    // Test with invalid JWT format (not 3 parts)
+    let invalid_jwt = "not.a.valid.jwt.with.five.parts";
+    let result = decode_license_claims(invalid_jwt);
+    assert!(result.is_err());
+
+    let invalid_jwt2 = "only_one_part";
+    let result2 = decode_license_claims(invalid_jwt2);
+    assert!(result2.is_err());
+}
+
+#[test]
+fn test_decode_license_claims_invalid_base64() {
+    // Test with invalid base64 in payload
+    let invalid_jwt = "eyJhbGciOiJSUzI1NiJ9.not_valid_base64!@#$.signature";
+    let result = decode_license_claims(invalid_jwt);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_decode_license_claims_invalid_json() {
+    // Pre-encoded JWT with invalid JSON in payload
+    // Payload is base64url("not valid json") = "bm90IHZhbGlkIGpzb24"
+    let invalid_jwt = "eyJhbGciOiJSUzI1NiJ9.bm90IHZhbGlkIGpzb24.signature";
+
+    let result = decode_license_claims(invalid_jwt);
+    assert!(result.is_err());
+}
+
+// Tests for exported constants
+
+#[test]
+fn test_license_cache_constants() {
+    // Verify constants are exported and have expected values
+    assert_eq!(LICENSE_CACHE_KEY_PREFIX, "license:verification:");
+    assert_eq!(LICENSE_CACHE_TTL_SECS, 86400); // 24 hours
+}
+
+#[test]
+fn test_cache_key_format() {
+    // Verify that cache key format is consistent
+    let license_id = "019b7ffd-b2f9-76b1-b4b9-c9771e6fc21a";
+    let expected_key = format!("{LICENSE_CACHE_KEY_PREFIX}{license_id}");
+    assert_eq!(
+        expected_key,
+        "license:verification:019b7ffd-b2f9-76b1-b4b9-c9771e6fc21a"
+    );
+}
+
+// Test that both LicenseService and LicenseToolService use the same API implementation
+
+#[tokio::test]
+#[serial]
+async fn test_service_and_tool_use_same_api_implementation() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let (private_key, _) = generate_test_keys(&temp_dir);
+
+    if private_key.is_empty() {
+        eprintln!("Skipping test - openssl not available");
+        return;
+    }
+
+    let private_key_path = temp_dir.path().join("private.key");
+    std::fs::write(&private_key_path, private_key).expect("Failed to write private key");
+
+    // Create a valid license key
+    let license_key = create_license_key(
+        "Unified API Test",
+        LicenseType::Enterprise,
+        private_key_path.to_str().unwrap(),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
+    )
+    .expect("Failed to create license key");
+
+    let mock_server = MockServer::start();
+
+    // Use wrapped format to ensure both implementations handle it correctly
+    let mock = mock_server.mock(|when, then| {
+        when.method(httpmock::Method::POST)
+            .path("/verify")
+            .json_body(serde_json::json!({ "license_key": license_key }));
+        then.status(200).json_body(serde_json::json!({
+            "status": "Success",
+            "message": "Verified",
+            "data": {
+                "valid": true,
+                "message": null
+            }
+        }));
+    });
+
+    let config = LicenseConfig {
+        license_key: Some(license_key.clone()),
+        private_key: None,
+        public_key: None,
+        verification_url: format!("http://{}/verify", mock_server.address()),
+        statistics_url: format!("http://{}/submit", mock_server.address()),
+    };
+
+    let cache_config = CacheConfig {
+        enabled: true,
+        ttl: 300,
+        max_size: 10000,
+        entity_definition_ttl: 0,
+        api_key_ttl: 600,
+    };
+    let cache_manager = Arc::new(CacheManager::new(cache_config));
+
+    // Test with LicenseService
+    let service = LicenseService::new(config.clone(), cache_manager.clone());
+    let service_result = service.verify_license().await.expect("Should not fail");
+
+    assert_eq!(service_result.state, LicenseState::Valid);
+    assert_eq!(service_result.company, Some("Unified API Test".to_string()));
+
+    // Clear cache to force API call for tool
+    cache_manager
+        .delete(&format!(
+            "{LICENSE_CACHE_KEY_PREFIX}{}",
+            service_result.license_id.as_ref().unwrap()
+        ))
+        .await
+        .ok();
+
+    // Test with LicenseToolService
+    let tool_result = LicenseToolService::check_license(config, cache_manager)
+        .await
+        .expect("Should not fail");
+
+    assert_eq!(
+        tool_result.state,
+        r_data_core_license::LicenseCheckState::Valid
+    );
+    assert_eq!(tool_result.company, Some("Unified API Test".to_string()));
+
+    // Both should have called the API (2 calls total)
+    mock.assert_calls(2);
 }

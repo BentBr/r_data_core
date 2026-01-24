@@ -197,8 +197,8 @@ fn sort_and_combine(
     mut files: Vec<BrowseNode>,
 ) -> Vec<BrowseNode> {
     let mut folders: Vec<BrowseNode> = folder_map.into_values().collect();
-    folders.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
-    files.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    folders.sort_by_key(|a| a.name.to_lowercase());
+    files.sort_by_key(|a| a.name.to_lowercase());
 
     let mut all = Vec::new();
     all.extend(folders);
