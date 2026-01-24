@@ -6,9 +6,11 @@ use std::sync::Arc;
 
 use r_data_core_core::cache::CacheManager;
 
-use crate::api::call_verification_api;
+use crate::api::{
+    call_verification_api, decode_license_claims, LICENSE_CACHE_KEY_PREFIX, LICENSE_CACHE_TTL_SECS,
+};
 use crate::jwt::{create_license_key, verify_license_key};
-use crate::models::{LicenseClaims, LicenseType};
+use crate::models::LicenseType;
 
 /// Result of license creation
 #[derive(Debug)]
@@ -86,10 +88,63 @@ pub struct LicenseVerificationDisplayResult {
     pub error: Option<String>,
 }
 
+/// Cached license result format (must match `LicenseVerificationResult` from service)
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum CachedLicenseState {
+    None,
+    Invalid,
+    Error,
+    Valid,
+}
+
+/// Cached license verification result (must match `LicenseVerificationResult` from service)
+#[derive(serde::Serialize, serde::Deserialize)]
+struct CachedLicenseResult {
+    state: CachedLicenseState,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    company: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    license_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    license_id: Option<String>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        with = "time::serde::rfc3339::option"
+    )]
+    issued_at: Option<time::OffsetDateTime>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        with = "time::serde::rfc3339::option"
+    )]
+    expires_at: Option<time::OffsetDateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    version: Option<String>,
+    #[serde(with = "time::serde::rfc3339")]
+    verified_at: time::OffsetDateTime,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error_message: Option<String>,
+}
+
 /// Service for license tool operations
 pub struct LicenseToolService;
 
 impl LicenseToolService {
+    /// Parse `issued_at` string to `OffsetDateTime`
+    fn parse_issued_at(issued_at: &str) -> Option<time::OffsetDateTime> {
+        time::OffsetDateTime::parse(issued_at, &time::format_description::well_known::Rfc3339).ok()
+    }
+
+    /// Parse expiration from JWT claims the `exp` field (Unix timestamp)
+    fn parse_expiration(exp: Option<i64>) -> Option<time::OffsetDateTime> {
+        exp.and_then(|timestamp| time::OffsetDateTime::from_unix_timestamp(timestamp).ok())
+    }
+
+    /// Build cache key for a license ID
+    fn cache_key(license_id: &str) -> String {
+        format!("{LICENSE_CACHE_KEY_PREFIX}{license_id}")
+    }
+
     /// Create a new license key
     ///
     /// # Arguments
@@ -122,19 +177,13 @@ impl LicenseToolService {
         // Note: We try to construct public key path, but if it fails, we decode the JWT directly
         let public_key_file = private_key_file.replace("private", "public");
         let claims = verify_license_key(&token, &public_key_file).or_else(|_| {
-            // Fallback: decode JWT without verification to get claims
-            Self::decode_license_claims(&token)
+            decode_license_claims(&token).map_err(|e| crate::jwt::Error::JwtDecode(e.to_string()))
         })?;
 
         // Parse issued_at and expiration
-        let issued_at = time::OffsetDateTime::parse(
-            &claims.issued_at,
-            &time::format_description::well_known::Rfc3339,
-        )
-        .map_err(|e| format!("Failed to parse issued_at: {e}"))?;
-        let expires = claims
-            .exp
-            .and_then(|exp| time::OffsetDateTime::from_unix_timestamp(exp).ok());
+        let issued_at = Self::parse_issued_at(&claims.issued_at)
+            .ok_or_else(|| format!("Failed to parse issued_at: {}", claims.issued_at))?;
+        let expires = Self::parse_expiration(claims.exp);
 
         Ok(LicenseCreationResult {
             token,
@@ -162,14 +211,9 @@ impl LicenseToolService {
         match verify_license_key(license_key, public_key_file) {
             Ok(claims) => {
                 // Parse issued_at and expiration
-                let issued_at = time::OffsetDateTime::parse(
-                    &claims.issued_at,
-                    &time::format_description::well_known::Rfc3339,
-                )
-                .map_err(|e| format!("Failed to parse issued_at: {e}"))?;
-                let expires = claims
-                    .exp
-                    .and_then(|exp| time::OffsetDateTime::from_unix_timestamp(exp).ok());
+                let issued_at = Self::parse_issued_at(&claims.issued_at)
+                    .ok_or_else(|| format!("Failed to parse issued_at: {}", claims.issued_at))?;
+                let expires = Self::parse_expiration(claims.exp);
 
                 Ok(LicenseVerificationDisplayResult {
                     is_valid: true,
@@ -232,13 +276,31 @@ impl LicenseToolService {
             _ => return Ok(Self::none_state_result()),
         };
 
-        // Clear cache before verification (forces fresh check)
-        Self::clear_cache_for_license(license_key, &cache_manager).await;
+        // Get license_id for cache operations using shared decoder
+        let license_id = decode_license_claims(license_key)
+            .ok()
+            .map(|c| c.license_id);
 
-        // Call API and handle errors
+        // Clear cache before verification (forces fresh check)
+        if let Some(ref id) = license_id {
+            let cache_key = Self::cache_key(id);
+            let _ = cache_manager.delete(&cache_key).await;
+        }
+
+        // Call API using the shared implementation and handle errors
         match call_verification_api(license_key, &config.verification_url).await {
-            Ok(api_result) => Self::handle_successful_verification(api_result, cache_manager).await,
-            Err(e) => Self::handle_network_error(license_key, e, cache_manager).await,
+            Ok(api_result) => {
+                Self::handle_successful_verification(
+                    api_result,
+                    license_id.as_deref(),
+                    &cache_manager,
+                )
+                .await
+            }
+            Err(e) => {
+                Self::handle_network_error(license_key, e, license_id.as_deref(), &cache_manager)
+                    .await
+            }
         }
     }
 
@@ -257,58 +319,33 @@ impl LicenseToolService {
         }
     }
 
-    /// Clear cache entry for a license key
-    async fn clear_cache_for_license(license_key: &str, cache_manager: &Arc<CacheManager>) {
-        if let Ok(license_id) = Self::extract_license_id(license_key) {
-            let cache_key = format!("license:verification:{license_id}");
-            let _ = cache_manager.delete(&cache_key).await;
-        }
-    }
-
     /// Handle network error during license verification
     async fn handle_network_error(
         license_key: &str,
         error: Box<dyn std::error::Error + Send + Sync>,
-        cache_manager: Arc<CacheManager>,
+        license_id: Option<&str>,
+        cache_manager: &Arc<CacheManager>,
     ) -> Result<LicenseCheckResult, Box<dyn std::error::Error + Send + Sync>> {
-        use crate::api::decode_license_claims;
-
-        // Try to decode claims for error reporting
+        // Try to decode claims for error reporting using shared decoder
         let claims = decode_license_claims(license_key).ok();
-        let company = claims.as_ref().map(|c| c.company.clone());
-        let license_id = claims.as_ref().map(|c| c.license_id.clone());
-        let license_type = claims.as_ref().map(|c| c.license_type.to_string());
-        let version = claims.as_ref().map(|c| c.version.clone());
-        let issued_at = claims.as_ref().and_then(|c| {
-            time::OffsetDateTime::parse(
-                &c.issued_at,
-                &time::format_description::well_known::Rfc3339,
-            )
-            .ok()
-        });
-        let expires_at = claims
-            .as_ref()
-            .and_then(|c| c.exp)
-            .and_then(|exp| time::OffsetDateTime::from_unix_timestamp(exp).ok());
-
-        let verified_at = time::OffsetDateTime::now_utc();
-        let error_message = Some(format!("Network error: {error}"));
 
         let result = LicenseCheckResult {
             state: LicenseCheckState::Error,
-            company,
-            license_type,
-            license_id: license_id.clone(),
-            issued_at,
-            expires_at,
-            version,
-            verified_at,
-            error_message,
+            company: claims.as_ref().map(|c| c.company.clone()),
+            license_type: claims.as_ref().map(|c| c.license_type.to_string()),
+            license_id: license_id.map(str::to_string),
+            issued_at: claims
+                .as_ref()
+                .and_then(|c| Self::parse_issued_at(&c.issued_at)),
+            expires_at: claims.as_ref().and_then(|c| Self::parse_expiration(c.exp)),
+            version: claims.as_ref().map(|c| c.version.clone()),
+            verified_at: time::OffsetDateTime::now_utc(),
+            error_message: Some(format!("Network error: {error}")),
         };
 
-        // Cache the error result with NEW timestamp (invalidates old cache)
+        // Cache the error result
         if license_id.is_some() {
-            Self::cache_verification_result(&result, &cache_manager).await;
+            Self::cache_verification_result(&result, cache_manager).await;
         }
 
         Ok(result)
@@ -317,47 +354,29 @@ impl LicenseToolService {
     /// Handle successful API verification
     async fn handle_successful_verification(
         api_result: crate::api::LicenseVerificationApiResult,
-        cache_manager: Arc<CacheManager>,
+        license_id: Option<&str>,
+        cache_manager: &Arc<CacheManager>,
     ) -> Result<LicenseCheckResult, Box<dyn std::error::Error + Send + Sync>> {
-        // Parse issued_at (same as service does)
-        let issued_at = time::OffsetDateTime::parse(
-            &api_result.claims.issued_at,
-            &time::format_description::well_known::Rfc3339,
-        )
-        .map_err(|e| format!("Failed to parse issued_at: {e}"))?;
-
-        // Parse expiration from JWT claims `exp` field (Unix timestamp)
-        let expires_at = api_result
-            .claims
-            .exp
-            .and_then(|exp| time::OffsetDateTime::from_unix_timestamp(exp).ok());
-
-        // Build result
-        let license_id_str = api_result.claims.license_id.clone();
         let state = if api_result.is_valid {
             LicenseCheckState::Valid
         } else {
             LicenseCheckState::Invalid
         };
 
-        let verified_at = time::OffsetDateTime::now_utc();
-        let error_message = api_result.error_message.clone();
-
-        // Build result
         let result = LicenseCheckResult {
             state,
             company: Some(api_result.claims.company),
             license_type: Some(api_result.claims.license_type.to_string()),
-            license_id: Some(license_id_str),
-            issued_at: Some(issued_at),
-            expires_at,
+            license_id: license_id.map(str::to_string),
+            issued_at: Self::parse_issued_at(&api_result.claims.issued_at),
+            expires_at: Self::parse_expiration(api_result.claims.exp),
             version: Some(api_result.claims.version),
-            verified_at,
-            error_message,
+            verified_at: time::OffsetDateTime::now_utc(),
+            error_message: api_result.error_message,
         };
 
         // Cache the result
-        Self::cache_verification_result(&result, &cache_manager).await;
+        Self::cache_verification_result(&result, cache_manager).await;
 
         Ok(result)
     }
@@ -367,45 +386,9 @@ impl LicenseToolService {
         result: &LicenseCheckResult,
         cache_manager: &Arc<CacheManager>,
     ) {
-        // Create result matching LicenseVerificationResult format for cache
-        // This must match exactly what LicenseService stores
-        #[derive(serde::Serialize, serde::Deserialize)]
-        #[serde(rename_all = "lowercase")]
-        enum CachedLicenseState {
-            None,
-            Invalid,
-            Error,
-            Valid,
-        }
-
-        #[derive(serde::Serialize, serde::Deserialize)]
-        struct CachedLicenseResult {
-            state: CachedLicenseState,
-            #[serde(skip_serializing_if = "Option::is_none")]
-            company: Option<String>,
-            #[serde(skip_serializing_if = "Option::is_none")]
-            license_type: Option<String>,
-            #[serde(skip_serializing_if = "Option::is_none")]
-            license_id: Option<String>,
-            #[serde(
-                skip_serializing_if = "Option::is_none",
-                with = "time::serde::rfc3339::option"
-            )]
-            issued_at: Option<time::OffsetDateTime>,
-            #[serde(
-                skip_serializing_if = "Option::is_none",
-                with = "time::serde::rfc3339::option"
-            )]
-            expires_at: Option<time::OffsetDateTime>,
-            #[serde(skip_serializing_if = "Option::is_none")]
-            version: Option<String>,
-            #[serde(with = "time::serde::rfc3339")]
-            verified_at: time::OffsetDateTime,
-            #[serde(skip_serializing_if = "Option::is_none")]
-            error_message: Option<String>,
-        }
-
-        let license_id = result.license_id.as_deref().unwrap_or("");
+        let Some(ref license_id) = result.license_id else {
+            return;
+        };
 
         let cached_state = match result.state {
             LicenseCheckState::None => CachedLicenseState::None,
@@ -426,55 +409,12 @@ impl LicenseToolService {
             error_message: result.error_message.clone(),
         };
 
-        let cache_key = format!("license:verification:{license_id}");
-        let ttl = Some(86400_u64); // 24 hours (same as service)
+        let cache_key = Self::cache_key(license_id);
         let _ = cache_manager
-            .set(&cache_key, &cached_result, ttl)
+            .set(&cache_key, &cached_result, Some(LICENSE_CACHE_TTL_SECS))
             .await
             .map_err(|e| {
                 eprintln!("Warning: Failed to cache license verification result: {e}");
             });
-    }
-
-    /// Extract `license_id` from JWT (same logic as `LicenseService::decode_license_key`)
-    fn extract_license_id(
-        license_key: &str,
-    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-        use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-        use base64::Engine;
-
-        let parts: Vec<&str> = license_key.split('.').collect();
-        if parts.len() != 3 {
-            return Err("Invalid JWT format".into());
-        }
-
-        let payload = parts[1];
-        let decoded = URL_SAFE_NO_PAD.decode(payload)?;
-        let claims: serde_json::Value = serde_json::from_slice(&decoded)?;
-
-        claims
-            .get("license_id")
-            .and_then(|v| v.as_str())
-            .map(str::to_string)
-            .ok_or_else(|| "Missing license_id in JWT claims".into())
-    }
-
-    /// Decode license claims from JWT without verification (for display purposes)
-    fn decode_license_claims(
-        license_key: &str,
-    ) -> Result<LicenseClaims, Box<dyn std::error::Error + Send + Sync>> {
-        use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-        use base64::Engine;
-
-        let parts: Vec<&str> = license_key.split('.').collect();
-        if parts.len() != 3 {
-            return Err("Invalid JWT format".into());
-        }
-
-        let payload = parts[1];
-        let decoded = URL_SAFE_NO_PAD.decode(payload)?;
-        let claims: LicenseClaims = serde_json::from_slice(&decoded)?;
-
-        Ok(claims)
     }
 }

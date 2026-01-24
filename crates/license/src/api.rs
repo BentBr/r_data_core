@@ -104,8 +104,20 @@ pub async fn call_verification_api(
     })
 }
 
+/// Cache key prefix for license verification results
+pub const LICENSE_CACHE_KEY_PREFIX: &str = "license:verification:";
+
+/// Cache TTL for license verification results (24 hours in seconds)
+pub const LICENSE_CACHE_TTL_SECS: u64 = 86400;
+
 /// Decode license claims from JWT without verification (for display purposes)
-pub(crate) fn decode_license_claims(
+///
+/// # Arguments
+/// * `license_key` - License key JWT token
+///
+/// # Errors
+/// Returns an error if the JWT format is invalid or cannot be decoded
+pub fn decode_license_claims(
     license_key: &str,
 ) -> Result<LicenseClaims, Box<dyn std::error::Error + Send + Sync>> {
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
