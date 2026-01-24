@@ -78,7 +78,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create non-root user
 RUN useradd --create-home --user-group appuser
 USER appuser
-WORKDIR /home/appuser
+WORKDIR /usr/local/bin
 
 # Copy the specified binary
 COPY --from=builder --chown=appuser:appuser /app/target/release/${BINARY} /usr/local/bin/app
@@ -114,7 +114,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create non-root user
 RUN useradd --create-home --user-group appuser
 USER appuser
-WORKDIR /home/appuser
+WORKDIR /usr/local/bin
 
 # Copy main binary
 COPY --from=builder --chown=appuser:appuser /app/target/release/r_data_core /usr/local/bin/r_data_core
@@ -155,7 +155,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN useradd --create-home --user-group appuser
 USER appuser
-WORKDIR /home/appuser
+WORKDIR /usr/local/bin
 
 COPY --from=builder --chown=appuser:appuser /app/target/release/r_data_core_worker /usr/local/bin/r_data_core_worker
 
@@ -186,11 +186,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN useradd --create-home --user-group appuser
 USER appuser
-WORKDIR /home/appuser
+WORKDIR /usr/local/bin
 
 COPY --from=builder --chown=appuser:appuser /app/target/release/r_data_core_maintenance /usr/local/bin/r_data_core_maintenance
 
 ENTRYPOINT ["/usr/local/bin/r_data_core_maintenance"]
+
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD ["true"]
