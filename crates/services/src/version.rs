@@ -71,7 +71,7 @@ impl VersionService {
         }
 
         // Sort by version number descending (newest first)
-        out.sort_by(|a, b| b.version_number.cmp(&a.version_number));
+        out.sort_by_key(|b| std::cmp::Reverse(b.version_number));
 
         Ok(out)
     }
