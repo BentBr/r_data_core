@@ -94,7 +94,7 @@ pub async fn list_workflow_versions(
     }
 
     // Sort by version number descending (newest first)
-    out.sort_by(|a, b| b.version_number.cmp(&a.version_number));
+    out.sort_by_key(|b| std::cmp::Reverse(b.version_number));
 
     ApiResponse::ok(out)
 }
@@ -135,7 +135,7 @@ pub async fn get_workflow_version(
     let (workflow_uuid, version_number) = path.into_inner();
     let versioning_repo = WorkflowVersioningRepository::new(state.db_pool().clone());
 
-    // First try to get from versions table
+    // First, try to get from the versions table
     match versioning_repo
         .get_workflow_version(workflow_uuid, version_number)
         .await
