@@ -17,7 +17,7 @@ no_docker_compose = true
         "description" = "Runs vitest for FE testing"
     [commands.clippy]
         "alias" = "clippy"
-        "execution" = "cargo clippy --workspace --all-targets --all-features -- -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery"
+        "execution" = " cargo +nightly clippy --workspace --all-targets --all-features -- -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery "
         "description" = "Runs clippy with all lints enabled"
     [commands.lint]
         "alias" = "lint"
