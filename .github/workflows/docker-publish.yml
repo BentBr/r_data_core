@@ -43,8 +43,15 @@ env:
 jobs:
   # Build all backend images in a single job to share the compiled Rust artifacts
   build-backend:
-    # Only build backend when: not a workflow_call, OR build_backend input is true
-    if: ${{ github.event_name != 'workflow_call' || inputs.build_backend != false }}
+    # Build backend when:
+    # - workflow_call with build_backend=true
+    # - release event with tag starting with 'v' (not 'fe-v')
+    # - develop push or manual dispatch
+    if: |
+      (github.event_name == 'workflow_call' && inputs.build_backend != false) ||
+      (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'v') && !startsWith(github.event.release.tag_name, 'fe-v')) ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -175,8 +182,15 @@ jobs:
 
   # Build frontend image separately (fast, doesn't need shared cache with backend)
   build-frontend:
-    # Only build frontend when: not a workflow_call, OR build_frontend input is true
-    if: ${{ github.event_name != 'workflow_call' || inputs.build_frontend != false }}
+    # Build frontend when:
+    # - workflow_call with build_frontend=true
+    # - release event with tag starting with 'fe-v'
+    # - develop push or manual dispatch
+    if: |
+      (github.event_name == 'workflow_call' && inputs.build_frontend != false) ||
+      (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'fe-v')) ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -328,8 +342,12 @@ jobs:
   # Build and upload frontend ZIP to release
   upload-frontend-zip:
     runs-on: ubuntu-latest
-    # Only run for releases when frontend is being built
-    if: ${{ (inputs.version != '' || github.event_name == 'release') && (github.event_name != 'workflow_call' || inputs.build_frontend != false) }}
+    # Only run for FE releases:
+    # - workflow_call with build_frontend=true (from release-please FE release)
+    # - release event with tag starting with 'fe-v'
+    if: |
+      (github.event_name == 'workflow_call' && inputs.build_frontend != false && inputs.version != '') ||
+      (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'fe-v'))
     permissions:
       contents: write
     steps:
