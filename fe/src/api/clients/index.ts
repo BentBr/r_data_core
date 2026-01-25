@@ -228,6 +228,10 @@ export class TypedHttpClient extends BaseTypedHttpClient {
         return this.entitiesClient.browseByPath(...args)
     }
 
+    async searchEntitiesByPath(...args: Parameters<EntitiesClient['searchEntitiesByPath']>) {
+        return this.entitiesClient.searchEntitiesByPath(...args)
+    }
+
     async queryEntities(...args: Parameters<EntitiesClient['queryEntities']>) {
         return this.entitiesClient.queryEntities(...args)
     }

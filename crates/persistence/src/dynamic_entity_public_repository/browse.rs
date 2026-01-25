@@ -328,3 +328,70 @@ fn paginate_results(all: &[BrowseNode], offset: i64, limit: i64) -> Vec<BrowseNo
         all[start..all.len().min(end)].to_vec()
     }
 }
+
+/// Search entities by path prefix for autocomplete functionality
+///
+/// Returns entities where the full path (path + '/' + `entity_key`) or `entity_key`
+/// matches the search term (case-insensitive prefix match).
+///
+/// # Errors
+/// Returns an error if the database query fails
+pub async fn search_by_path_prefix(
+    db_pool: &PgPool,
+    search_term: &str,
+    limit: i64,
+) -> Result<Vec<BrowseNode>> {
+    // Normalize search term - ensure it starts with /
+    let normalized_search = if search_term.starts_with('/') {
+        search_term.to_string()
+    } else {
+        format!("/{search_term}")
+    };
+
+    // Escape special LIKE characters in the search term
+    let escaped_search = normalized_search
+        .replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_");
+
+    let search_pattern = format!("{escaped_search}%");
+    let entity_key_pattern = format!("{escaped_search}%");
+
+    let rows = sqlx::query_as::<_, RowRec>(
+        r"SELECT uuid, entity_type, path, entity_key, published
+          FROM entities_registry
+          WHERE (CASE WHEN path = '/' THEN '/' || entity_key ELSE path || '/' || entity_key END) ILIKE $1
+             OR entity_key ILIKE $2
+          ORDER BY path, entity_key
+          LIMIT $3",
+    )
+    .bind(&search_pattern)
+    .bind(entity_key_pattern)
+    .bind(limit)
+    .fetch_all(db_pool)
+    .await?;
+
+    // Convert to BrowseNode
+    let nodes = rows
+        .into_iter()
+        .map(|r| {
+            let full_path = if r.path == "/" {
+                format!("/{}", r.entity_key)
+            } else {
+                format!("{}/{}", r.path, r.entity_key)
+            };
+
+            BrowseNode {
+                kind: BrowseKind::File,
+                name: r.entity_key,
+                path: full_path,
+                entity_uuid: Some(r.uuid),
+                entity_type: Some(r.entity_type),
+                has_children: Some(false),
+                published: r.published,
+            }
+        })
+        .collect();
+
+    Ok(nodes)
+}
