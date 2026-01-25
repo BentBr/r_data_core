@@ -19,6 +19,7 @@ async fn test_statistics_collection_task_name_and_cron() {
         config,
         "http://localhost:8080".to_string(),
         vec!["http://localhost:3000".to_string()],
+        "postgres://localhost/test".to_string(),
     );
 
     assert_eq!(task.name(), "statistics_collection");
@@ -60,6 +61,7 @@ async fn test_statistics_collection_task_executes() {
         config,
         "http://localhost:8080".to_string(),
         vec!["http://localhost:3000".to_string()],
+        "postgres://localhost/test".to_string(),
     );
     let context = TaskContext::with_cache(pool.clone(), cache_manager);
 
@@ -96,6 +98,7 @@ async fn test_statistics_collection_task_prevents_multiple_runs() {
         config.clone(),
         "http://localhost:8080".to_string(),
         vec!["http://localhost:3000".to_string()],
+        "postgres://localhost/test".to_string(),
     );
     let context = TaskContext::with_cache(pool.clone(), cache_manager.clone());
 
@@ -109,6 +112,7 @@ async fn test_statistics_collection_task_prevents_multiple_runs() {
         config,
         "http://localhost:8080".to_string(),
         vec!["http://localhost:3000".to_string()],
+        "postgres://localhost/test".to_string(),
     );
     let context2 = TaskContext::with_cache(pool.clone(), cache_manager);
     let result2 = task2.execute(&context2).await;
