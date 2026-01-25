@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.12](https://github.com/BentBr/r_data_core/compare/v0.3.11...v0.3.12) (2026-01-25)
+
+
+### Bug Fixes
+
+* clippy lint + nightly addition for our local lints ([6ae0533](https://github.com/BentBr/r_data_core/commit/6ae05332d05262fc0bfe29202644cde2d351ce6c))
+* Fixed and homogenized the license checks ([66a8eef](https://github.com/BentBr/r_data_core/commit/66a8eef67f01af0ddaa625565603a681df5ea6f1))
+* Fixed and homogenized the license checks ([8e7302d](https://github.com/BentBr/r_data_core/commit/8e7302d2256b27bf62a33be1b60abccad01ff6f7))
+* set the correct working dir for our users ([d83e3c8](https://github.com/BentBr/r_data_core/commit/d83e3c84def6cd9cfdc8c4eb9f0a5968ea9bd535))
+
 ## [0.3.11](https://github.com/BentBr/r_data_core/compare/v0.3.10...v0.3.11) (2026-01-05)
 
 
