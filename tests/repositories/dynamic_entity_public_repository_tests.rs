@@ -272,6 +272,59 @@ async fn test_browse_published_status() -> Result<()> {
     Ok(())
 }
 
+/// Test search by path prefix functionality
+#[tokio::test]
+async fn test_search_by_path_prefix() -> Result<()> {
+    let pool = setup_test_db().await;
+    let pub_repo = DynamicEntityPublicRepository::new(pool.pool.clone());
+
+    // Create entity definition with unique name
+    let entity_type = unique_entity_type("test_search");
+    let entity_def = create_test_entity_definition(&pool, &entity_type).await?;
+
+    let repo = DynamicEntityRepository::new(pool.pool.clone());
+
+    // Create entities with different paths and keys
+    let search_key1 = format!("searchable-1-{}", Uuid::now_v7());
+    let search_key2 = format!("searchable-2-{}", Uuid::now_v7());
+    let other_key = format!("other-{}", Uuid::now_v7());
+
+    let entity1 = create_test_dynamic_entity(&entity_def, "Search 1", "/", &search_key1);
+    let entity2 = create_test_dynamic_entity(&entity_def, "Search 2", "/folder", &search_key2);
+    let entity3 = create_test_dynamic_entity(&entity_def, "Other", "/", &other_key);
+
+    repo.create(&entity1).await?;
+    repo.create(&entity2).await?;
+    repo.create(&entity3).await?;
+
+    // Search for "searchable" - should find both searchable entities
+    let results = pub_repo.search_by_path_prefix("/searchable", 10).await?;
+    assert!(
+        !results.is_empty(),
+        "Should find at least 1 searchable entity"
+    );
+    assert!(
+        results.iter().any(|n| n.name == search_key1),
+        "Should find search_key1"
+    );
+
+    // Search for "/folder/search" - should find entity2
+    let results = pub_repo.search_by_path_prefix("/folder/search", 10).await?;
+    assert!(
+        results.iter().any(|n| n.name == search_key2),
+        "Should find search_key2 at /folder path"
+    );
+
+    // Search with limit
+    let results = pub_repo.search_by_path_prefix("/", 1).await?;
+    assert_eq!(results.len(), 1, "Should respect limit");
+
+    // Search for non-existent path - should not error
+    let _results = pub_repo.search_by_path_prefix("/nonexistent", 10).await?;
+
+    Ok(())
+}
+
 /// Test that `browse_by_path` uses batched queries instead of N+1 queries
 /// This test creates many entities to ensure batching is necessary and verifies
 /// that `has_children` is correctly determined for all nodes using batched queries.

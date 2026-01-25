@@ -60,19 +60,22 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
 struct BrowseQuery {
     /// Folder path to browse; defaults to "/"
     path: Option<String>,
+    /// Search term for path prefix autocomplete (when provided, path is ignored)
+    search: Option<String>,
     /// Limit number of returned items (folders+files combined)
     limit: Option<i64>,
     /// Offset for pagination
     offset: Option<i64>,
 }
 
-/// Browse entities by virtual folder path
+/// Browse entities by virtual folder path or search by path prefix
 #[utoipa::path(
     get,
     path = "/api/v1/entities/by-path",
     tag = "public",
     params(
         ("path" = Option<String>, Query, description = "Folder path to browse, e.g. '/' or '/myFolder'"),
+        ("search" = Option<String>, Query, description = "Search term for path prefix autocomplete (when provided, path is ignored)"),
         ("limit" = Option<i64>, Query, description = "Max items per page (default 20)"),
         ("offset" = Option<i64>, Query, description = "Items to skip (default 0)")
     ),
@@ -95,6 +98,23 @@ pub async fn list_by_path(
     let repository = DynamicEntityPublicRepository::new(data.db_pool().clone());
     let limit = query.limit.unwrap_or(20).clamp(1, 100);
     let offset = query.offset.unwrap_or(0).max(0);
+
+    // If search term is provided, use path prefix search instead of browse
+    if let Some(ref search_term) = query.search {
+        if !search_term.is_empty() {
+            return match repository.search_by_path_prefix(search_term, limit).await {
+                Ok(nodes) => {
+                    #[allow(clippy::cast_possible_wrap)]
+                    let total = nodes.len() as i64;
+                    ApiResponse::ok_paginated(nodes, total, 1, limit)
+                }
+                Err(e) => HttpResponse::InternalServerError().json(json!({
+                    "status": "Error",
+                    "message": format!("Server error: {e}"),
+                })),
+            };
+        }
+    }
 
     match repository
         .browse_by_path(
