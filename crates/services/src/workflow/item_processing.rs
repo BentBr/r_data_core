@@ -81,20 +81,28 @@ async fn execute_steps_with_async_transforms(
                 if let Err(e) =
                     execute_async_transform(transform, &mut normalized, de_service, run_uuid).await
                 {
-                    // Log error but continue with zero-impact resilience
-                    let _ = repo
+                    // Log error - use "error" level so it's visible in logs UI
+                    let error_msg = e.to_string();
+                    log::error!(
+                        "[workflow] Async transform failed for item {item_uuid} at step {step_idx}: {error_msg}"
+                    );
+                    if let Err(log_err) = repo
                         .insert_run_log(
                             run_uuid,
-                            "warning",
-                            "Async transform execution failed",
+                            "error",
+                            &format!("Step {step_idx}: Async transform failed"),
                             Some(serde_json::json!({
                                 "item_uuid": item_uuid,
                                 "step_idx": step_idx,
-                                "error": e.to_string()
+                                "transform_type": format!("{:?}", transform),
+                                "error": error_msg
                             })),
                         )
-                        .await;
-                    // Continue without the async transform results
+                        .await
+                    {
+                        log::error!("[workflow] Failed to insert run log: {log_err}");
+                    }
+                    // Continue without the async transform results (zero-impact resilience)
                 }
             }
         }
@@ -159,9 +167,13 @@ async fn process_outputs(
         mark_item_processed(item_uuid, run_uuid, repo).await
     } else {
         // Entity op failed, mark item failed
-        let _ = repo
+        log::error!("[workflow] Item {item_uuid} failed: entity operation failed");
+        if let Err(e) = repo
             .set_raw_item_status(item_uuid, "failed", Some("entity operation failed"))
-            .await;
+            .await
+        {
+            log::error!("[workflow] Failed to mark item {item_uuid} as failed: {e}");
+        }
         Ok(false)
     }
 }
@@ -173,7 +185,8 @@ async fn mark_item_processed(
 ) -> r_data_core_core::error::Result<bool> {
     if let Err(e) = repo.set_raw_item_status(item_uuid, "processed", None).await {
         let db_meta = extract_sqlx_meta(&e);
-        let _ = repo
+        log::error!("[workflow] Failed to mark item {item_uuid} as processed: {e}");
+        if let Err(log_err) = repo
             .insert_run_log(
                 run_uuid,
                 "error",
@@ -185,7 +198,10 @@ async fn mark_item_processed(
                     "db": db_meta
                 })),
             )
-            .await;
+            .await
+        {
+            log::error!("[workflow] Failed to insert run log: {log_err}");
+        }
         return Ok(false);
     }
     Ok(true)
@@ -197,13 +213,19 @@ async fn handle_execution_error(
     run_uuid: Uuid,
     repo: &Arc<dyn WorkflowRepositoryTrait>,
 ) -> r_data_core_core::error::Result<bool> {
+    let error_msg = e.to_string();
+
+    // Log to stdout/stderr for visibility
+    log::error!("[workflow] Item {item_uuid} failed: {error_msg}");
+
     // Mark item as error to prevent reprocessing
     if let Err(set_err) = repo
-        .set_raw_item_status(item_uuid, "failed", Some(&e.to_string()))
+        .set_raw_item_status(item_uuid, "failed", Some(&error_msg))
         .await
     {
         let db_meta = extract_sqlx_meta(&set_err);
-        let _ = repo
+        log::error!("[workflow] Failed to mark item {item_uuid} as failed: {set_err}");
+        if let Err(log_err) = repo
             .insert_run_log(
                 run_uuid,
                 "error",
@@ -215,16 +237,29 @@ async fn handle_execution_error(
                     "db": db_meta
                 })),
             )
-            .await;
+            .await
+        {
+            log::error!("[workflow] Failed to insert run log: {log_err}");
+        }
     }
-    let _ = repo
+
+    // Log the actual error to workflow_run_logs
+    if let Err(log_err) = repo
         .insert_run_log(
             run_uuid,
             "error",
-            "DSL execute failed for item; item marked as error",
-            Some(serde_json::json!({ "item_uuid": item_uuid, "error": e.to_string() })),
+            "Item processing failed",
+            Some(serde_json::json!({
+                "item_uuid": item_uuid,
+                "error": error_msg,
+                "error_type": format!("{:?}", e)
+            })),
         )
-        .await;
+        .await
+    {
+        log::error!("[workflow] Failed to insert run log: {log_err}");
+    }
+
     Ok(false)
 }
 

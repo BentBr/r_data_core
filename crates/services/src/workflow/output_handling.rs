@@ -322,15 +322,24 @@ fn handle_entity_result(
             r_data_core_workflow::dsl::EntityWriteMode::Update => "update",
             r_data_core_workflow::dsl::EntityWriteMode::CreateOrUpdate => "create_or_update",
         };
+        let error_msg = e.to_string();
+
+        // Log to stdout/stderr for visibility
+        log::error!(
+            "[workflow] Entity {operation} failed for item {item_uuid}, type '{entity_definition}': {error_msg}"
+        );
+
+        // Log to database (spawn to not block, but we can't await here)
+        // Use blocking approach since we can't async in sync fn
         std::mem::drop(repo.insert_run_log(
             run_uuid,
             "error",
-            &format!("Entity {operation} failed"),
+            &format!("Entity {operation} failed for '{entity_definition}'"),
             Some(serde_json::json!({
                 "item_uuid": item_uuid,
                 "entity_type": entity_definition,
                 "mode": format!("{:?}", mode),
-                "error": e.to_string()
+                "error": error_msg
             })),
         ));
         return false;
