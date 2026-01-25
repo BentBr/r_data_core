@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.13](https://github.com/BentBr/r_data_core/compare/v0.3.12...v0.3.13) (2026-01-25)
+
+
+### Bug Fixes
+
+* making sure DSL issues are logged properly ([bf5a3c5](https://github.com/BentBr/r_data_core/commit/bf5a3c5dad057de3a5bc5371cddc0445b621bbcb))
+* making sure DSL issues are logged properly ([1742414](https://github.com/BentBr/r_data_core/commit/17424140778cc18c2e69832c1990ab159d4b523d))
+
 ## [0.3.12](https://github.com/BentBr/r_data_core/compare/v0.3.11...v0.3.12) (2026-01-25)
 
 

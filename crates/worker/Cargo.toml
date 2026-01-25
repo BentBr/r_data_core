@@ -1,6 +1,6 @@
 [package]
 name = "r_data_core_worker"
-version = "0.3.12"
+version = "0.3.13"
 edition = "2021"
 description = "Worker crate of - A Master Data Managebent backend providing efficient data handling and distribution with custom entities and workflows"
 authors = ["Bent Brüggemann <mail@bent-brueggemann.de>"]
