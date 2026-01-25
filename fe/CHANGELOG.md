@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.2](https://github.com/BentBr/r_data_core/compare/fe-v0.2.1...fe-v0.2.2) (2026-01-25)
+
+
+### Features
+
+* fe rework for parent/ path finding ([21b4cb5](https://github.com/BentBr/r_data_core/commit/21b4cb533f23c9c127bfe6ab6b0349d5f3ab91cb))
+* fe rework for parent/ path finding ([23a41b6](https://github.com/BentBr/r_data_core/commit/23a41b6495b6f8a997f79ada23314f27fa2a365c))
+
 ## [0.2.1](https://github.com/BentBr/r_data_core/compare/fe-v0.2.0...fe-v0.2.1) (2026-01-05)
 
 
