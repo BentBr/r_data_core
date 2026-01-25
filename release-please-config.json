@@ -1,18 +1,14 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
-  "separate-pull-requests": true,
   "packages": {
     ".": {
       "release-type": "rust",
-      "component": "core",
       "changelog-path": "CHANGELOG.md",
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": true,
       "draft": false,
       "prerelease": false,
-      "include-component-in-tag": false,
       "include-v-in-tag": true,
-      "exclude-paths": ["fe"],
       "extra-files": [
         "crates/api/Cargo.toml",
         "crates/core/Cargo.toml",
@@ -21,19 +17,9 @@
         "crates/services/Cargo.toml",
         "crates/workflow/Cargo.toml",
         "crates/worker/Cargo.toml",
-        "crates/test-support/Cargo.toml"
+        "crates/test-support/Cargo.toml",
+        "fe/package.json"
       ]
-    },
-    "fe": {
-      "release-type": "node",
-      "component": "fe",
-      "changelog-path": "CHANGELOG.md",
-      "bump-minor-pre-major": true,
-      "bump-patch-for-minor-pre-major": true,
-      "draft": false,
-      "prerelease": false,
-      "include-component-in-tag": true,
-      "include-v-in-tag": true
     }
   }
 }
