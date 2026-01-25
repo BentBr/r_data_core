@@ -1,5 +1,4 @@
 use super::FormatHandler;
-use anyhow::Result;
 use bytes::Bytes;
 use serde_json::Value;
 
@@ -21,7 +20,7 @@ impl FormatHandler for JsonFormatHandler {
 
     /// # Errors
     /// Returns an error if JSON parsing fails.
-    fn parse(&self, data: &[u8], _options: &Value) -> Result<Vec<Value>> {
+    fn parse(&self, data: &[u8], _options: &Value) -> r_data_core_core::error::Result<Vec<Value>> {
         // Try parsing as array first
         if let Ok(array) = serde_json::from_slice::<Vec<Value>>(data) {
             return Ok(array);
@@ -55,7 +54,7 @@ impl FormatHandler for JsonFormatHandler {
 
     /// # Errors
     /// Returns an error if JSON serialization fails.
-    fn serialize(&self, data: &[Value], options: &Value) -> Result<Bytes> {
+    fn serialize(&self, data: &[Value], options: &Value) -> r_data_core_core::error::Result<Bytes> {
         let as_array = options
             .get("as_array")
             .and_then(serde_json::Value::as_bool)
@@ -78,7 +77,7 @@ impl FormatHandler for JsonFormatHandler {
 
     /// # Errors
     /// Returns an error if the configuration is invalid.
-    fn validate_options(&self, _options: &Value) -> Result<()> {
+    fn validate_options(&self, _options: &Value) -> r_data_core_core::error::Result<()> {
         // JSON format has minimal options
         Ok(())
     }

@@ -2,7 +2,9 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::config::{ApiConfig, CacheConfig, DatabaseConfig, LogConfig, QueueConfig};
+use crate::config::{
+    ApiConfig, CacheConfig, DatabaseConfig, LicenseConfig, LogConfig, QueueConfig,
+};
 
 /// Application configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -23,6 +25,8 @@ pub struct AppConfig {
     pub log: LogConfig,
     /// Queue configuration (mandatory)
     pub queue: QueueConfig,
+    /// License configuration
+    pub license: LicenseConfig,
 }
 
 /// Worker-specific configuration
@@ -40,16 +44,18 @@ pub struct WorkerConfig {
     pub queue: QueueConfig,
     /// Cache configuration (optional, uses same Redis as queue if available)
     pub cache: CacheConfig,
+    /// License configuration
+    pub license: LicenseConfig,
 }
 
 /// Maintenance worker configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MaintenanceConfig {
-    /// Cron expression for maintenance scheduler
-    pub cron: String,
-
     /// Cron expression for version purger task (required)
     pub version_purger_cron: String,
+
+    /// Cron expression for refresh token cleanup task (required)
+    pub refresh_token_cleanup_cron: String,
 
     /// Database configuration used by maintenance worker
     pub database: DatabaseConfig,
@@ -58,4 +64,8 @@ pub struct MaintenanceConfig {
     pub cache: CacheConfig,
     /// Redis URL for cache usage (mandatory)
     pub redis_url: String,
+    /// License configuration
+    pub license: LicenseConfig,
+    /// API configuration (for admin URI and CORS origins)
+    pub api: ApiConfig,
 }

@@ -1,0 +1,147 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+  id-token: write
+  statuses: write
+  attestations: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+      prs_created: ${{ steps.release.outputs.prs_created }}
+      prs: ${{ steps.release.outputs.prs }}
+      pr_head_sha: ${{ steps.get-pr-sha.outputs.sha }}
+    steps:
+      - name: Release Please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Debug outputs
+        env:
+          RELEASE_CREATED: ${{ steps.release.outputs.release_created }}
+          VERSION: ${{ steps.release.outputs.version }}
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
+          PRS_CREATED: ${{ steps.release.outputs.prs_created }}
+          PRS_JSON: ${{ steps.release.outputs.prs }}
+        run: |
+          echo "=== Release Outputs ==="
+          echo "release_created: $RELEASE_CREATED"
+          echo "version: $VERSION"
+          echo "tag_name: $TAG_NAME"
+          echo ""
+          echo "=== PR Tracking ==="
+          echo "PRs created: $PRS_CREATED"
+          echo "PRs: $PRS_JSON"
+
+      - name: Get PR head SHA
+        id: get-pr-sha
+        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        uses: actions/github-script@v7
+        env:
+          PRS_OUTPUT: ${{ steps.release.outputs.prs }}
+        with:
+          script: |
+            const prsOutput = process.env.PRS_OUTPUT;
+            console.log('PRs output:', prsOutput);
+
+            if (!prsOutput) {
+              console.log('No PRs output available');
+              return;
+            }
+
+            // PRs output is a JSON array of PR objects
+            let prs;
+            try {
+              prs = JSON.parse(prsOutput);
+            } catch (e) {
+              console.log('Could not parse PRs output:', e);
+              return;
+            }
+
+            if (!Array.isArray(prs) || prs.length === 0) {
+              console.log('No PRs found in output');
+              return;
+            }
+
+            // Get the first PR's SHA (we'll run CI for all PRs)
+            const prNumber = prs[0].number;
+            console.log(`Fetching PR #${prNumber}`);
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+            core.setOutput('sha', pr.head.sha);
+            console.log(`PR #${prNumber} head SHA: ${pr.head.sha}`);
+
+  # Run CI for release-please PRs (GITHUB_TOKEN events don't trigger other workflows)
+  ci-for-release-pr:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.pr_head_sha != '' && needs.release-please.outputs.release_created != 'true' }}
+    uses: ./.github/workflows/ci.yml
+
+  # Report CI status to the PR (called workflows don't create status checks)
+  report-ci-status:
+    needs: [release-please, ci-for-release-pr]
+    if: ${{ always() && needs.release-please.outputs.pr_head_sha != '' && needs.release-please.outputs.release_created != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report CI status to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = '${{ needs.release-please.outputs.pr_head_sha }}';
+            const ciResult = '${{ needs.ci-for-release-pr.result }}';
+
+            if (!sha) {
+              console.log('No SHA available, skipping status update');
+              return;
+            }
+
+            const state = ciResult === 'success' ? 'success' :
+                          ciResult === 'failure' ? 'failure' :
+                          ciResult === 'cancelled' ? 'error' : 'pending';
+
+            const description = ciResult === 'success' ? 'All CI checks passed' :
+                               ciResult === 'failure' ? 'CI checks failed' :
+                               ciResult === 'cancelled' ? 'CI was cancelled' : 'CI is running';
+
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: sha,
+              state: state,
+              context: 'ci-gate',
+              description: description,
+              target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            });
+
+            console.log(`Set commit status for ${sha}: ${state}`);
+
+  # Build and publish Docker images when a release is created
+  docker-publish:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    uses: ./.github/workflows/docker-publish.yml
+    with:
+      version: ${{ needs.release-please.outputs.version }}
+      tag_name: ${{ needs.release-please.outputs.tag_name }}
+      build_backend: true
+      build_frontend: true
+    secrets: inherit

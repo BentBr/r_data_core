@@ -1,4 +1,4 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 // Tests for workflow export via cron jobs with entity sources
 

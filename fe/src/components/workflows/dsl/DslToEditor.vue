@@ -55,9 +55,9 @@
                 <div class="mb-2">
                     <v-expansion-panels variant="accordion">
                         <v-expansion-panel>
-                            <v-expansion-panel-title>{{
-                                t('workflows.dsl.auth_type')
-                            }}</v-expansion-panel-title>
+                            <v-expansion-panel-title
+                                >{{ t('workflows.dsl.auth_type') }}
+                            </v-expansion-panel-title>
                             <v-expansion-panel-text>
                                 <AuthConfigEditor
                                     :model-value="outputDestinationAuth"
@@ -100,8 +100,8 @@
                 size="x-small"
                 variant="tonal"
                 @click="addMapping"
-                >{{ t('workflows.dsl.add_mapping') }}</v-btn
-            >
+                >{{ t('workflows.dsl.add_mapping') }}
+            </v-btn>
         </template>
         <template v-else-if="modelValue.type === 'entity'">
             <v-select
@@ -149,8 +149,47 @@
                 size="x-small"
                 variant="tonal"
                 @click="addMapping"
-                >{{ t('workflows.dsl.add_mapping') }}</v-btn
+                >{{ t('workflows.dsl.add_mapping') }}
+            </v-btn>
+        </template>
+        <template v-else-if="modelValue.type === 'next_step'">
+            <!-- Info banner -->
+            <v-alert
+                v-if="isLastStep"
+                type="error"
+                density="compact"
+                class="mb-2"
             >
+                {{ t('workflows.dsl.next_step_error_last_step') }}
+            </v-alert>
+            <div
+                v-else
+                class="text-caption mb-2 pa-2"
+                style="background-color: rgba(var(--v-theme-info), 0.1); border-radius: 4px"
+            >
+                <v-icon
+                    size="small"
+                    class="mr-1"
+                    >mdi-arrow-down-circle
+                </v-icon>
+                {{ t('workflows.dsl.next_step_info') }}
+            </div>
+            <div class="text-caption mb-1 mt-2">
+                {{ t('workflows.dsl.mapping_normalized_next_step') }}
+            </div>
+            <MappingEditor
+                ref="mappingEditorRef"
+                :model-value="modelValue.mapping"
+                :left-label="t('workflows.dsl.normalized')"
+                :right-label="t('workflows.dsl.next_step_field')"
+                @update:model-value="updateField('mapping', $event)"
+            />
+            <v-btn
+                size="x-small"
+                variant="tonal"
+                @click="addMapping"
+                >{{ t('workflows.dsl.add_mapping') }}
+            </v-btn>
         </template>
     </div>
 </template>
@@ -170,6 +209,7 @@
     const props = defineProps<{
         modelValue: ToDef
         workflowUuid?: string | null
+        isLastStep?: boolean
     }>()
 
     const emit = defineEmits<{ (e: 'update:modelValue', value: ToDef): void }>()
@@ -250,7 +290,7 @@
         return ''
     })
 
-    const outputDestinationAuth = computed(() => {
+    const outputDestinationAuth = computed((): AuthConfig => {
         if (props.modelValue.type === 'format') {
             const output = props.modelValue.output
             if (
@@ -260,10 +300,10 @@
                 'destination' in output &&
                 'auth' in output.destination
             ) {
-                return output.destination.auth
+                return output.destination.auth ?? { type: 'none' }
             }
         }
-        return { type: 'none' as const }
+        return { type: 'none' }
     })
 
     const entityDefinition = computed(() => {
@@ -297,7 +337,11 @@
     const toTypes = [
         { title: 'Format (CSV/JSON)', value: 'format' },
         { title: 'Entity', value: 'entity' },
+        { title: 'Next Step', value: 'next_step' },
     ]
+
+    // Computed property for isLastStep
+    const isLastStep = computed(() => props.isLastStep ?? false)
     const outputModes = [
         { title: 'API', value: 'api' },
         { title: 'Download', value: 'download' },
@@ -632,7 +676,7 @@
         emit('update:modelValue', updated)
     }
 
-    function onTypeChange(newType: 'format' | 'entity') {
+    function onTypeChange(newType: 'format' | 'entity' | 'next_step') {
         let newTo: ToDef
         if (newType === 'format') {
             newTo = {
@@ -644,13 +688,19 @@
                 },
                 mapping: {},
             }
-        } else {
+        } else if (newType === 'entity') {
             // Entity type - NO output field
             newTo = {
                 type: 'entity',
                 entity_definition: '',
                 path: '',
                 mode: 'create',
+                mapping: {},
+            }
+        } else {
+            // next_step
+            newTo = {
+                type: 'next_step',
                 mapping: {},
             }
         }

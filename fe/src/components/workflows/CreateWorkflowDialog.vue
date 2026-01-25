@@ -30,9 +30,9 @@
                         class="mt-2"
                     >
                         <v-expansion-panel>
-                            <v-expansion-panel-title>{{
-                                t('workflows.create.config_label')
-                            }}</v-expansion-panel-title>
+                            <v-expansion-panel-title
+                                >{{ t('workflows.create.config_label') }}
+                            </v-expansion-panel-title>
                             <v-expansion-panel-text>
                                 <div class="mb-4">
                                     <DslConfigurator
@@ -57,15 +57,15 @@
                     variant="text"
                     color="mutedForeground"
                     @click="cancel"
-                    >{{ t('common.cancel') }}</v-btn
-                >
+                    >{{ t('common.cancel') }}
+                </v-btn>
                 <v-btn
                     color="primary"
                     variant="flat"
                     :loading="loading"
                     @click="submit"
-                    >{{ t('workflows.create.create_button') }}</v-btn
-                >
+                    >{{ t('workflows.create.create_button') }}
+                </v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
@@ -79,6 +79,7 @@
     import DslConfigurator from './DslConfigurator.vue'
     import WorkflowFormFields from './WorkflowFormFields.vue'
     import type { DslStep } from './dsl/dsl-utils'
+    import { sanitizeDslSteps, ensureCsvOptions, ensureEntityFilter } from './dsl/dsl-utils'
 
     const props = defineProps<{ modelValue: boolean }>()
     const emit = defineEmits<{
@@ -192,9 +193,8 @@
     async function submit() {
         configError.value = null
         cronError.value = null
-        if (steps.value && steps.value.length > 0) {
-            configJson.value = JSON.stringify({ steps: steps.value }, null, 2)
-        }
+        // Use whatever is in configJson (could be manually edited or synced from steps)
+        // No need to sync steps to JSON here - the watch handles that automatically
         const { parsed: parsedConfig, error: parseError } = parseJson(configJson.value)
         if (parseError) {
             configError.value = `${t('workflows.create.json_invalid')}: ${parseError}`
@@ -206,12 +206,13 @@
         }
         // Strict DSL presence and validation against BE
         try {
-            const steps = Array.isArray(parsedConfig?.steps) ? parsedConfig.steps : null
-            if (!steps || steps.length === 0) {
+            const configObj = parsedConfig as Record<string, unknown> | null
+            const configSteps = Array.isArray(configObj?.steps) ? configObj.steps : null
+            if (!configSteps || configSteps.length === 0) {
                 configError.value = t('workflows.create.dsl_required')
                 return
             }
-            await typedHttpClient.validateDsl(steps)
+            await typedHttpClient.validateDsl(configSteps as DslStep[])
         } catch (e: unknown) {
             if (e instanceof ValidationError) {
                 // Handle Symfony-style validation errors
@@ -228,8 +229,10 @@
                 }
                 return
             }
-            if (e?.violations) {
-                const v = e.violations[0]
+            const errorObj = e as Record<string, unknown> | null
+            if (errorObj?.violations) {
+                const violations = errorObj.violations as Array<{ message?: string }>
+                const v = violations[0]
                 configError.value = v?.message ?? t('workflows.create.dsl_invalid')
                 return
             }
@@ -249,7 +252,7 @@
                     hasApiSource.value || hasApiOutput.value
                         ? null
                         : (form.value.schedule_cron ?? null),
-                config: parsedConfig ?? {},
+                config: (parsedConfig ?? {}) as import('@/types/schemas').WorkflowConfig,
                 versioning_disabled: form.value.versioning_disabled,
             }
             const res = await typedHttpClient.createWorkflow(payload)
@@ -268,18 +271,65 @@
             loading.value = false
         }
     }
-    // Keep config JSON updated when steps change
+
+    // Bidirectional sync between steps and JSON
+    // We use flags to prevent recursive updates
+    let isSyncingSteps = false
+    let isSyncingJson = false
+
+    // Sync config JSON when steps change (fields → JSON)
     watch(
         steps,
         v => {
+            if (isSyncingSteps || isSyncingJson) {
+                return
+            }
             try {
-                configJson.value = JSON.stringify({ steps: v }, null, 2)
+                const newJson = JSON.stringify({ steps: v }, null, 2)
+                // Only update if different to prevent loops
+                if (configJson.value !== newJson) {
+                    isSyncingJson = true
+                    configJson.value = newJson
+                    // Reset flag after next tick
+                    setTimeout(() => {
+                        isSyncingJson = false
+                    }, 0)
+                }
             } catch {
                 // ignore
             }
         },
         { deep: true }
     )
+
+    // Sync steps when JSON changes manually (JSON → fields)
+    watch(configJson, jsonStr => {
+        if (isSyncingSteps || isSyncingJson) {
+            return
+        }
+        try {
+            const { parsed } = parseJson(jsonStr)
+            if (parsed && typeof parsed === 'object' && parsed !== null) {
+                const config = parsed as { steps?: unknown[] }
+                if (Array.isArray(config.steps)) {
+                    isSyncingSteps = true
+                    // Sanitize steps when loading from JSON
+                    const sanitized = sanitizeDslSteps(config.steps)
+                    sanitized.forEach(s => {
+                        ensureCsvOptions(s)
+                        ensureEntityFilter(s)
+                    })
+                    steps.value = sanitized
+                    // Reset flag after next tick
+                    setTimeout(() => {
+                        isSyncingSteps = false
+                    }, 0)
+                }
+            }
+        } catch {
+            // ignore parse errors - user might be typing
+        }
+    })
 
     // Expose for tests
     defineExpose({

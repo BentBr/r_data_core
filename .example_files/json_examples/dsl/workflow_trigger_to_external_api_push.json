@@ -1,0 +1,64 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "trigger",
+        "mapping": {}
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "next_step",
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "format",
+        "source": {
+          "source_type": "uri",
+          "config": {
+            "uri": "https://api.example.com/data"
+          },
+          "auth": null
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {
+          "id": "id",
+          "name": "name",
+          "value": "value"
+        }
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "format",
+        "output": {
+          "mode": "push",
+          "destination": {
+            "destination_type": "uri",
+            "config": {
+              "uri": "https://api.example.com/webhook"
+            },
+            "auth": null
+          }
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {
+          "id": "id",
+          "name": "name",
+          "value": "value"
+        }
+      }
+    }
+  ]
+}
+

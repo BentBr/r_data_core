@@ -136,28 +136,78 @@ const router = createRouter({
 const mockUsersLoading = ref(false)
 const mockUsersError = ref('')
 const mockUsers = ref([])
+const mockCreateUser = vi.fn()
+const mockUpdateUser = vi.fn()
+const mockDeleteUser = vi.fn()
+const mockLoadUsers = vi.fn().mockResolvedValue({
+    data: [],
+    meta: {
+        pagination: {
+            total: 0,
+            page: 1,
+            per_page: 20,
+            total_pages: 1,
+            has_previous: false,
+            has_next: false,
+        },
+    },
+})
+
+const mockHandleError = vi.fn()
+const mockHandleSuccess = vi.fn()
 
 vi.mock('@/composables/useUsers', () => ({
-    useUsers: () => ({
-        loading: mockUsersLoading,
-        error: mockUsersError,
-        users: mockUsers,
-        loadUsers: vi.fn().mockResolvedValue({
-            data: [],
-            meta: {
-                pagination: {
-                    total: 0,
-                    page: 1,
-                    per_page: 20,
-                    total_pages: 1,
-                    has_previous: false,
-                    has_next: false,
-                },
-            },
-        }),
-        createUser: vi.fn(),
-        updateUser: vi.fn(),
-        deleteUser: vi.fn(),
+    useUsers: () => {
+        // Wrap functions to call handleError/handleSuccess like the real composable
+        const createUserWrapper = async (data: unknown) => {
+            try {
+                const result = await mockCreateUser(data)
+                mockHandleSuccess('users.create.success')
+                return result
+            } catch (err) {
+                mockHandleError(err)
+                throw err
+            }
+        }
+
+        const updateUserWrapper = async (uuid: string, data: unknown) => {
+            try {
+                const result = await mockUpdateUser(uuid, data)
+                mockHandleSuccess('users.update.success')
+                return result
+            } catch (err) {
+                mockHandleError(err)
+                throw err
+            }
+        }
+
+        const deleteUserWrapper = async (uuid: string) => {
+            try {
+                const result = await mockDeleteUser(uuid)
+                mockHandleSuccess('users.delete.success')
+                return result
+            } catch (err) {
+                mockHandleError(err)
+                throw err
+            }
+        }
+
+        return {
+            loading: mockUsersLoading,
+            error: mockUsersError,
+            users: mockUsers,
+            loadUsers: mockLoadUsers,
+            createUser: createUserWrapper,
+            updateUser: updateUserWrapper,
+            deleteUser: deleteUserWrapper,
+        }
+    },
+}))
+
+vi.mock('@/composables/useErrorHandler', () => ({
+    useErrorHandler: () => ({
+        handleError: mockHandleError,
+        handleSuccess: mockHandleSuccess,
     }),
 }))
 
@@ -535,5 +585,212 @@ describe('PermissionsPage', () => {
         const formatted = (wrapper.vm as any).formatDate('2024-01-01T00:00:00Z')
         expect(formatted).toBeTruthy()
         expect(typeof formatted).toBe('string')
+    })
+
+    describe('user save error/success handling', () => {
+        beforeEach(() => {
+            mockCreateUser.mockClear()
+            mockUpdateUser.mockClear()
+            mockLoadUsers.mockClear()
+            mockHandleError.mockClear()
+            mockHandleSuccess.mockClear()
+        })
+
+        it('should show 403 error when updating user without permission', async () => {
+            const wrapper = mount(PermissionsPage, {
+                global: {
+                    plugins: [router],
+                    stubs: {
+                        UserDialog: true,
+                        RoleDialog: true,
+                    },
+                },
+            })
+            await vi.waitUntil(() => mockGetRoles.mock.calls.length > 0, { timeout: 1000 })
+            await wrapper.vm.$nextTick()
+
+            const error = new Error('HTTP 403: Forbidden')
+            mockUpdateUser.mockRejectedValue(error)
+
+            const editingUser = {
+                uuid: 'user-1',
+                username: 'testuser',
+                email: 'test@example.com',
+                full_name: 'Test User',
+                first_name: 'Test',
+                last_name: 'User',
+                role_uuids: [],
+                status: 'Active',
+                is_active: true,
+                is_admin: false,
+                super_admin: false,
+                last_login: null,
+                failed_login_attempts: 0,
+                created_at: '2024-01-01T00:00:00Z',
+                updated_at: '2024-01-01T00:00:00Z',
+                created_by: 'user-1',
+            }
+
+            // Set editing user and open dialog
+            ;(wrapper.vm as any).editingUser = editingUser
+            ;(wrapper.vm as any).showUserDialog = true
+            await wrapper.vm.$nextTick()
+
+            const updateData = {
+                email: 'updated@example.com',
+                first_name: 'Updated',
+                last_name: 'Name',
+            }
+
+            await (wrapper.vm as any).handleSaveUser(updateData)
+            await wrapper.vm.$nextTick()
+
+            expect(mockUpdateUser).toHaveBeenCalledWith('user-1', updateData)
+            // Error is handled in composable which calls handleError
+            expect(mockHandleError).toHaveBeenCalled()
+            // Dialog should stay open on error
+            expect((wrapper.vm as any).showUserDialog).toBe(true)
+            expect((wrapper.vm as any).editingUser).toEqual(editingUser)
+        })
+
+        it('should show success message on successful user update', async () => {
+            const wrapper = mount(PermissionsPage, {
+                global: {
+                    plugins: [router],
+                    stubs: {
+                        UserDialog: true,
+                        RoleDialog: true,
+                    },
+                },
+            })
+            await vi.waitUntil(() => mockGetRoles.mock.calls.length > 0, { timeout: 1000 })
+            await wrapper.vm.$nextTick()
+
+            mockUpdateUser.mockResolvedValue(undefined)
+
+            const editingUser = {
+                uuid: 'user-1',
+                username: 'testuser',
+                email: 'test@example.com',
+                full_name: 'Test User',
+                first_name: 'Test',
+                last_name: 'User',
+                role_uuids: [],
+                status: 'Active',
+                is_active: true,
+                is_admin: false,
+                super_admin: false,
+                last_login: null,
+                failed_login_attempts: 0,
+                created_at: '2024-01-01T00:00:00Z',
+                updated_at: '2024-01-01T00:00:00Z',
+                created_by: 'user-1',
+            }
+
+            // Set editing user and open dialog
+            ;(wrapper.vm as any).editingUser = editingUser
+            ;(wrapper.vm as any).showUserDialog = true
+            await wrapper.vm.$nextTick()
+
+            const updateData = {
+                email: 'updated@example.com',
+            }
+
+            await (wrapper.vm as any).handleSaveUser(updateData)
+            await wrapper.vm.$nextTick()
+
+            expect(mockUpdateUser).toHaveBeenCalledWith('user-1', updateData)
+            // Success is handled in composable which calls handleSuccess
+            expect(mockHandleSuccess).toHaveBeenCalled()
+            // Dialog should close on success
+            expect((wrapper.vm as any).showUserDialog).toBe(false)
+            expect((wrapper.vm as any).editingUser).toBeNull()
+            // User list should be refreshed
+            expect(mockLoadUsers).toHaveBeenCalled()
+        })
+
+        it('should show success message on successful user creation', async () => {
+            const wrapper = mount(PermissionsPage, {
+                global: {
+                    plugins: [router],
+                    stubs: {
+                        UserDialog: true,
+                        RoleDialog: true,
+                    },
+                },
+            })
+            await vi.waitUntil(() => mockGetRoles.mock.calls.length > 0, { timeout: 1000 })
+            await wrapper.vm.$nextTick()
+
+            mockCreateUser.mockResolvedValue(undefined)
+
+            // Open create dialog
+            ;(wrapper.vm as any).editingUser = null
+            ;(wrapper.vm as any).showUserDialog = true
+            await wrapper.vm.$nextTick()
+
+            const createData = {
+                username: 'newuser',
+                email: 'new@example.com',
+                password: 'password123',
+                first_name: 'New',
+                last_name: 'User',
+                is_active: true,
+                super_admin: false,
+            }
+
+            await (wrapper.vm as any).handleSaveUser(createData)
+            await wrapper.vm.$nextTick()
+
+            expect(mockCreateUser).toHaveBeenCalledWith(createData)
+            // Success is handled in composable which calls handleSuccess
+            expect(mockHandleSuccess).toHaveBeenCalled()
+            // Dialog should close on success
+            expect((wrapper.vm as any).showUserDialog).toBe(false)
+            expect((wrapper.vm as any).editingUser).toBeNull()
+            // User list should be refreshed
+            expect(mockLoadUsers).toHaveBeenCalled()
+        })
+
+        it('should handle 403 error when creating user without permission', async () => {
+            const wrapper = mount(PermissionsPage, {
+                global: {
+                    plugins: [router],
+                    stubs: {
+                        UserDialog: true,
+                        RoleDialog: true,
+                    },
+                },
+            })
+            await vi.waitUntil(() => mockGetRoles.mock.calls.length > 0, { timeout: 1000 })
+            await wrapper.vm.$nextTick()
+
+            const error = new Error('HTTP 403: Forbidden')
+            mockCreateUser.mockRejectedValue(error)
+
+            // Open create dialog
+            ;(wrapper.vm as any).editingUser = null
+            ;(wrapper.vm as any).showUserDialog = true
+            await wrapper.vm.$nextTick()
+
+            const createData = {
+                username: 'newuser',
+                email: 'new@example.com',
+                password: 'password123',
+                first_name: 'New',
+                last_name: 'User',
+                is_active: true,
+                super_admin: false,
+            }
+
+            await (wrapper.vm as any).handleSaveUser(createData)
+            await wrapper.vm.$nextTick()
+
+            expect(mockCreateUser).toHaveBeenCalledWith(createData)
+            // Error is handled in composable which calls handleError
+            expect(mockHandleError).toHaveBeenCalled()
+            // Dialog should stay open on error
+            expect((wrapper.vm as any).showUserDialog).toBe(true)
+        })
     })
 })

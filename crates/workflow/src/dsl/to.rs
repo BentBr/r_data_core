@@ -1,7 +1,6 @@
 use crate::data::adapters::auth::AuthConfig;
 use crate::data::adapters::destination::HttpMethod;
 use crate::dsl::validate_mapping;
-use anyhow::{bail, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -71,9 +70,20 @@ pub enum ToDef {
         /// Mapping from `normalized_field` -> `destination_field`
         mapping: std::collections::HashMap<String, String>,
     },
+    /// Explicitly pass data to the next step
+    /// This makes step chaining explicit and allows field mapping control
+    NextStep {
+        /// Mapping from `normalized_field` -> `next_step_field`
+        /// Empty mapping passes through all fields
+        mapping: std::collections::HashMap<String, String>,
+    },
 }
 
-pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<()> {
+pub(crate) fn validate_to(
+    idx: usize,
+    to: &ToDef,
+    safe_field: &Regex,
+) -> r_data_core_core::error::Result<()> {
     match to {
         ToDef::Format {
             output,
@@ -81,23 +91,26 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<
             mapping,
         } => {
             if format.format_type.trim().is_empty() {
-                bail!("DSL step {idx}: to.format.format.format_type must not be empty");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: to.format.format.format_type must not be empty"
+                )));
             }
             // Validate format-specific options
             if format.format_type.as_str() == "csv" {
-                if let Some(delimiter) = format.options.get("delimiter").and_then(|v| v.as_str()) {
+                if let Some(serde_json::Value::String(delimiter)) = format.options.get("delimiter")
+                {
                     if delimiter.len() != 1 {
-                        bail!("DSL step {idx}: to.format.format.options.delimiter must be a single character");
+                        return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: to.format.format.options.delimiter must be a single character")));
                     }
                 }
-                if let Some(escape) = format.options.get("escape").and_then(|v| v.as_str()) {
+                if let Some(serde_json::Value::String(escape)) = format.options.get("escape") {
                     if !escape.is_empty() && escape.len() != 1 {
-                        bail!("DSL step {idx}: to.format.format.options.escape must be a single character when set");
+                        return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: to.format.format.options.escape must be a single character when set")));
                     }
                 }
-                if let Some(quote) = format.options.get("quote").and_then(|v| v.as_str()) {
+                if let Some(serde_json::Value::String(quote)) = format.options.get("quote") {
                     if !quote.is_empty() && quote.len() != 1 {
-                        bail!("DSL step {idx}: to.format.format.options.quote must be a single character when set");
+                        return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: to.format.format.options.quote must be a single character when set")));
                     }
                 }
             } else {
@@ -115,18 +128,18 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<
                     ..
                 } => {
                     if destination.destination_type.trim().is_empty() {
-                        bail!("DSL step {idx}: to.format.output.push.destination.destination_type must not be empty");
+                        return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: to.format.output.push.destination.destination_type must not be empty")));
                     }
-                    if destination.destination_type.as_str() == "uri" {
+                    if destination.destination_type.as_str() == "uriformat!(" {
                         if let Some(uri) = destination.config.get("uri").and_then(|v| v.as_str()) {
                             if uri.trim().is_empty() {
-                                bail!("DSL step {idx}: to.format.output.push.destination.config.uri must not be empty");
+                                return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: to.format.output.push.destination.config.uri must not be empty")));
                             }
-                            if !uri.starts_with("http://") && !uri.starts_with("https://") {
-                                bail!("DSL step {idx}: to.format.output.push.destination.config.uri must start with http:// or https://");
+                            if !uri.starts_with("http://") && !uri.starts_with("https://format!(") {
+                                return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: to.format.output.push.destination.config.uri must start with http:// or https://")));
                             }
                         } else {
-                            bail!("DSL step {idx}: to.format.output.push.destination.config.uri is required for uri destination");
+                            return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: to.format.output.push.destination.config.uri is required for uri destination")));
                         }
                         // Validate HTTP method for URI destinations
                         if let Some(m) = method {
@@ -150,7 +163,7 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<
                     }
                     // Validate auth config if present
                     if let Some(auth) = &destination.auth {
-                        validate_auth_config(idx, auth, "to")?;
+                        validate_auth_config(idx, auth, "toformat!(")?;
                     }
                 }
             }
@@ -166,12 +179,20 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<
             mapping,
         } => {
             if entity_definition.trim().is_empty() {
-                bail!("DSL step {idx}: to.entity.entity_definition must not be empty");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: to.entity.entity_definition must not be empty"
+                )));
             }
             if path.trim().is_empty() {
-                bail!("DSL step {idx}: to.entity.path must not be empty");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: to.entity.path must not be empty"
+                )));
             }
             // Allow empty mappings
+            validate_mapping(idx, mapping, safe_field)?;
+        }
+        ToDef::NextStep { mapping } => {
+            // Allow empty mappings (passes through all fields)
             validate_mapping(idx, mapping, safe_field)?;
         }
     }
@@ -179,25 +200,37 @@ pub(crate) fn validate_to(idx: usize, to: &ToDef, safe_field: &Regex) -> Result<
 }
 
 /// Validate authentication configuration
-fn validate_auth_config(idx: usize, auth: &AuthConfig, context: &str) -> Result<()> {
+fn validate_auth_config(
+    idx: usize,
+    auth: &AuthConfig,
+    context: &str,
+) -> r_data_core_core::error::Result<()> {
     match auth {
         AuthConfig::None => {
             // No validation needed
         }
         AuthConfig::ApiKey { key, header_name } => {
             if key.trim().is_empty() {
-                bail!("DSL step {idx}: {context}.auth.api_key.key must not be empty");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.api_key.key must not be empty"
+                )));
             }
             if header_name.trim().is_empty() {
-                bail!("DSL step {idx}: {context}.auth.api_key.header_name must not be empty");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.api_key.header_name must not be empty"
+                )));
             }
         }
         AuthConfig::BasicAuth { username, password } => {
             if username.trim().is_empty() {
-                bail!("DSL step {idx}: {context}.auth.basic_auth.username must not be empty");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.basic_auth.username must not be empty"
+                )));
             }
             if password.trim().is_empty() {
-                bail!("DSL step {idx}: {context}.auth.basic_auth.password must not be empty");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.basic_auth.password must not be empty"
+                )));
             }
         }
         AuthConfig::PreSharedKey {
@@ -206,10 +239,14 @@ fn validate_auth_config(idx: usize, auth: &AuthConfig, context: &str) -> Result<
             field_name,
         } => {
             if key.trim().is_empty() {
-                bail!("DSL step {idx}: {context}.auth.pre_shared_key.key must not be empty");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.pre_shared_key.key must not be empty"
+                )));
             }
             if field_name.trim().is_empty() {
-                bail!("DSL step {idx}: {context}.auth.pre_shared_key.field_name must not be empty");
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: {context}.auth.pre_shared_key.field_name must not be empty"
+                )));
             }
         }
     }
@@ -219,6 +256,8 @@ fn validate_auth_config(idx: usize, auth: &AuthConfig, context: &str) -> Result<
 #[allow(clippy::missing_const_for_fn)] // Cannot be const due to pattern matching
 pub(crate) fn mapping_of(to: &ToDef) -> &std::collections::HashMap<String, String> {
     match to {
-        ToDef::Format { mapping, .. } | ToDef::Entity { mapping, .. } => mapping,
+        ToDef::Format { mapping, .. }
+        | ToDef::Entity { mapping, .. }
+        | ToDef::NextStep { mapping } => mapping,
     }
 }

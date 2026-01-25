@@ -1,0 +1,39 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "format",
+        "source": { "source_type": "uri", "config": { "uri": "http://example.com/data.csv" } },
+        "format": { "format_type": "csv", "options": {} },
+        "mapping": { "price": "price" }
+      },
+      "transform": { "type": "none" },
+      "to": {
+        "type": "format",
+        "output": { "mode": "api" },
+        "format": { "format_type": "json", "options": {} },
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "previous_step",
+        "mapping": { "price": "base_price" }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "total",
+        "left": { "kind": "field", "field": "base_price" },
+        "op": "mul",
+        "right": { "kind": "const", "value": 1.19 }
+      },
+      "to": {
+        "type": "format",
+        "output": { "mode": "api" },
+        "format": { "format_type": "json", "options": {} },
+        "mapping": { "total": "total" }
+      }
+    }
+  ]
+}
+

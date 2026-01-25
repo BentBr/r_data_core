@@ -75,6 +75,9 @@ pub struct AdminLoginResponse {
     /// Refresh token expiration (RFC3339 timestamp)
     #[serde(with = "time::serde::rfc3339")]
     pub refresh_expires_at: OffsetDateTime,
+
+    /// Whether the default admin password is still in use (false if check is disabled)
+    pub using_default_password: bool,
 }
 
 /// Admin registration request body

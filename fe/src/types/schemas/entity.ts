@@ -17,6 +17,7 @@ export const FieldDefinitionSchema = z.object({
         'Object',
         'Array',
         'Uuid',
+        'Json',
         'ManyToOne',
         'ManyToMany',
         'Select',

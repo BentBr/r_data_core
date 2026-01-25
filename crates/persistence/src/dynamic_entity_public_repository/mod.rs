@@ -8,6 +8,7 @@ mod browse;
 mod utils;
 
 pub use browse::browse_by_path;
+pub use browse::search_by_path_prefix;
 pub use utils::get_entity_count;
 
 /// Repository for public API operations on dynamic entities
@@ -91,5 +92,20 @@ impl DynamicEntityPublicRepository {
         offset: i64,
     ) -> Result<(Vec<BrowseNode>, i64)> {
         browse::browse_by_path(&self.db_pool, raw_path, limit, offset).await
+    }
+
+    /// Search entities by path prefix for autocomplete functionality
+    ///
+    /// Returns entities where the full path (path + '/' + `entity_key`) or `entity_key`
+    /// matches the search term (case-insensitive prefix match).
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
+    pub async fn search_by_path_prefix(
+        &self,
+        search_term: &str,
+        limit: i64,
+    ) -> Result<Vec<BrowseNode>> {
+        browse::search_by_path_prefix(&self.db_pool, search_term, limit).await
     }
 }

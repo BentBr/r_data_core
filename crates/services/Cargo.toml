@@ -1,14 +1,17 @@
 [package]
 name = "r_data_core_services"
-version = "0.1.0"
+version = "0.3.13"
 edition = "2021"
-license = "MIT"
+description = "Services crate of - A Master Data Managebent backend providing efficient data handling and distribution with custom entities and workflows"
+authors = ["Bent Brüggemann <mail@bent-brueggemann.de>"]
+license = "Business"
 
 [dependencies]
 # Core dependencies
 r_data_core_core = { path = "../core" }
 r_data_core_persistence = { path = "../persistence" }
 r_data_core_workflow = { path = "../workflow" }
+r_data_core_license = { path = "../license" }
 
 # External dependencies
 async-trait = "0.1"
@@ -18,13 +21,14 @@ sqlx = { version = "0.8.4", features = ["postgres", "uuid", "time"] }
 uuid = { version = "1.6", features = ["v7", "serde"] }
 log = "0.4"
 env_logger = "0.11"
-anyhow = "1.0"
 bytes = "1.6"
 cron = "0.12"
 time = { version = "0.3", features = ["serde", "formatting", "parsing", "macros"] }
 regex = "1.10"
 futures = "0.3"
 tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+base64 = "0.22"
 
 [dev-dependencies]
 mockall = "0.12"

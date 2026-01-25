@@ -53,9 +53,9 @@ export class EntitiesClient extends BaseTypedHttpClient {
             kind: 'folder' | 'file'
             name: string
             path: string
-            entity_uuid?: string
-            entity_type?: string
-            has_children?: boolean
+            entity_uuid?: string | null
+            entity_type?: string | null
+            has_children?: boolean | null
             published: boolean
         }>
         meta?: {
@@ -75,6 +75,52 @@ export class EntitiesClient extends BaseTypedHttpClient {
         const encoded = encodeURIComponent(path)
         return await this.paginatedRequest(
             `/api/v1/entities/by-path?path=${encoded}&limit=${limit}&offset=${offset}`,
+            PaginatedApiResponseSchema(
+                z.array(
+                    z.object({
+                        kind: z.enum(['folder', 'file']),
+                        name: z.string(),
+                        path: z.string(),
+                        entity_uuid: UuidSchema.nullable().optional(),
+                        entity_type: z.string().nullable().optional(),
+                        has_children: z.boolean().nullable().optional(),
+                        published: z.boolean(),
+                    })
+                )
+            )
+        )
+    }
+
+    async searchEntitiesByPath(
+        searchTerm: string,
+        limit = 10
+    ): Promise<{
+        data: Array<{
+            kind: 'folder' | 'file'
+            name: string
+            path: string
+            entity_uuid?: string | null
+            entity_type?: string | null
+            has_children?: boolean | null
+            published: boolean
+        }>
+        meta?: {
+            pagination?: {
+                total: number
+                page: number
+                per_page: number
+                total_pages: number
+                has_previous: boolean
+                has_next: boolean
+            }
+            request_id?: string
+            timestamp?: string
+            custom?: unknown
+        }
+    }> {
+        const encoded = encodeURIComponent(searchTerm)
+        return await this.paginatedRequest(
+            `/api/v1/entities/by-path?search=${encoded}&limit=${limit}`,
             PaginatedApiResponseSchema(
                 z.array(
                     z.object({

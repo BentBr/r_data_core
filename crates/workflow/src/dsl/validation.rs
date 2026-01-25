@@ -1,6 +1,5 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use anyhow::bail;
 use regex::Regex;
 use std::collections::HashMap;
 
@@ -17,11 +16,13 @@ pub fn validate_mapping<H: std::hash::BuildHasher>(
     idx: usize,
     mapping: &HashMap<String, String, H>,
     safe_field: &Regex,
-) -> anyhow::Result<()> {
+) -> r_data_core_core::error::Result<()> {
     // Allow empty mappings
     for (k, v) in mapping {
         if !safe_field.is_match(k) || !safe_field.is_match(v) {
-            bail!("DSL step {idx}: mapping contains unsafe field names ('{k}' -> '{v}')");
+            return Err(r_data_core_core::error::Error::Validation(format!(
+                "DSL step {idx}: mapping contains unsafe field names ('{k}' -> '{v}')"
+            )));
         }
     }
     Ok(())

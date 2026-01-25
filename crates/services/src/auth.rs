@@ -36,7 +36,7 @@ impl AuthService {
         let route_permissions: Vec<(&str, ResourceNamespace, PermissionType)> = vec![
             (
                 "/dashboard",
-                ResourceNamespace::System,
+                ResourceNamespace::DashboardStats,
                 PermissionType::Read,
             ),
             (
@@ -61,7 +61,7 @@ impl AuthService {
             ),
             (
                 "/permissions",
-                ResourceNamespace::Roles,
+                ResourceNamespace::Users,
                 PermissionType::Read,
             ),
             ("/system", ResourceNamespace::System, PermissionType::Read),

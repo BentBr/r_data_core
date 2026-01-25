@@ -97,7 +97,9 @@
 
     interface Emits {
         (e: 'update:page', page: number): void
+
         (e: 'update:items-per-page', itemsPerPage: number): void
+
         (e: 'update:sort', sortBy: string | null, sortOrder: 'asc' | 'desc' | null): void
     }
 

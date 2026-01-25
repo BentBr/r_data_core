@@ -24,7 +24,7 @@ pub fn has_permission(
     permission_type: &PermissionType,
     path: Option<&str>,
 ) -> bool {
-    // Super admin flag always has all permissions
+    // Global admin: Super admin flag always has all permissions for all namespaces
     if claims.is_super_admin {
         debug!(
             "Permission check: super_admin user '{}' has all permissions for {}:{}",
@@ -35,15 +35,63 @@ pub fn has_permission(
         return true;
     }
 
-    // Build permission string to check
-    let perm_str = format!("{permission_type}").to_lowercase();
     let namespace_str = namespace.as_str();
+
+    // Resource-level admin: Check if user has Admin permission for this namespace
+    // Admin permission grants all permission types for the namespace
+    let admin_permission_string = format!("{namespace_str}:admin");
+    let has_admin = claims.permissions.iter().any(|p| {
+        // Check for exact admin permission match
+        if p == &admin_permission_string {
+            return true;
+        }
+        // For entities namespace, check if admin permission with path constraint allows the requested path
+        if matches!(namespace, ResourceNamespace::Entities) {
+            if let Some(req_path) = path {
+                // Check for "entities:/path:admin" format
+                if p.starts_with(&format!("{namespace_str}:")) && p.ends_with(":admin") {
+                    if let Some(perm_path) = p.strip_prefix(&format!("{namespace_str}:")) {
+                        if let Some(perm_path) = perm_path.strip_suffix(":admin") {
+                            return req_path.starts_with(perm_path);
+                        }
+                    }
+                }
+            } else {
+                // If no path provided but admin permission has path constraint, deny access
+                // (Admin with path constraint only grants access when path matches)
+                if p.starts_with(&format!("{namespace_str}:")) && p.ends_with(":admin") {
+                    if let Some(perm_path) = p.strip_prefix(&format!("{namespace_str}:")) {
+                        if let Some(perm_path) = perm_path.strip_suffix(":admin") {
+                            // If there's a path in the permission, it means it has a constraint
+                            if !perm_path.is_empty() {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        false
+    });
+
+    if has_admin {
+        debug!(
+            "Permission check: user '{}' has admin permission for {} namespace, granting {}",
+            claims.name,
+            namespace.as_str(),
+            permission_type
+        );
+        return true;
+    }
+
+    // Build permission string to check for exact permission match
+    let perm_str = format!("{permission_type}").to_lowercase();
     let permission_string = path.map_or_else(
         || format!("{namespace_str}:{perm_str}"),
         |p| format!("{namespace_str}:{p}:{perm_str}"),
     );
 
-    // Check if user has the permission
+    // Check if user has the exact permission
     let has_perm = claims.permissions.iter().any(|p| {
         // Exact match
         p == &permission_string

@@ -1,4 +1,4 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -23,7 +23,7 @@ mockall::mock! {
     impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryTrait {
         async fn get_all_by_type(&self, entity_type: &str, limit: i64, offset: i64, exclusive_fields: Option<Vec<String>>) -> Result<Vec<DynamicEntity>>;
         async fn get_by_type(&self, entity_type: &str, uuid: &Uuid, exclusive_fields: Option<Vec<String>>) -> Result<Option<DynamicEntity>>;
-        async fn create(&self, entity: &DynamicEntity) -> Result<()>;
+        async fn create(&self, entity: &DynamicEntity) -> Result<Uuid>;
         async fn update(&self, entity: &DynamicEntity) -> Result<()>;
         async fn delete_by_type(&self, entity_type: &str, uuid: &Uuid) -> Result<()>;
         async fn filter_entities(
@@ -232,7 +232,7 @@ impl TestService {
             .await
     }
 
-    async fn create_entity(&self, entity: &DynamicEntity) -> Result<()> {
+    async fn create_entity(&self, entity: &DynamicEntity) -> Result<Uuid> {
         // Check if the entity type is published
         let entity_def = self
             .class_service
@@ -341,7 +341,7 @@ async fn test_create_entity_success() -> Result<()> {
         .repository
         .expect_create()
         .with(predicate::always())
-        .returning(|_| Ok(()));
+        .returning(|_| Ok(Uuid::now_v7()));
 
     let entity = create_test_entity("test_entity", true);
 

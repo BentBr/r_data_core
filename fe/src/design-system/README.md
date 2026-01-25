@@ -1,10 +1,12 @@
 # Design System Documentation
 
-This directory contains the unified design system for R Data Core, extracted from the Figma design system: https://www.figma.com/make/TfyVgKu2VFjIRq4frfI3CM/RDataCore
+This directory contains the unified design system for R Data Core, extracted from the Figma design
+system: https://www.figma.com/make/TfyVgKu2VFjIRq4frfI3CM/RDataCore
 
 ## Overview
 
-The design system provides consistent styling, components, and patterns across the entire application. All UI elements follow the same design principles and use standardized tokens.
+The design system provides consistent styling, components, and patterns across the entire application. All UI elements
+follow the same design principles and use standardized tokens.
 
 ## Files
 
@@ -28,6 +30,7 @@ Colors are defined for both light and dark themes in `tokens.ts`:
 ### Spacing
 
 Based on 4px base unit:
+
 - `xs`: 4px
 - `sm`: 8px
 - `md`: 16px
@@ -57,15 +60,18 @@ Based on 4px base unit:
 ### Buttons
 
 **Variants:**
+
 - **Primary**: `color="primary"`, `variant="flat"` - Main actions
 - **Secondary**: `color="secondary"`, `variant="outlined"` - Secondary actions
 - **Text**: `variant="text"` - Minimal style
 - **Destructive**: `color="error"`, `variant="flat"` - Delete/dangerous actions
 
 **Sizes:**
+
 - `small`, `default`, `large`
 
 **Example:**
+
 ```vue
 <v-btn color="primary" variant="flat">Save</v-btn>
 <v-btn color="secondary" variant="outlined">Cancel</v-btn>
@@ -75,12 +81,14 @@ Based on 4px base unit:
 ### Input Fields
 
 All input fields use standardized styling via Vuetify defaults:
+
 - **Variant**: `outlined` (default)
 - **Density**: `comfortable` (default)
 - **Color**: `primary` for focus states
 - **Border Radius**: 8px
 
 **Components:**
+
 - `v-text-field` - Text inputs
 - `v-select` - Dropdowns
 - `v-textarea` - Multi-line text
@@ -89,6 +97,7 @@ All input fields use standardized styling via Vuetify defaults:
 - `v-file-input` - File uploads
 
 **Example:**
+
 ```vue
 <v-text-field
     v-model="value"
@@ -108,6 +117,7 @@ Use the unified `Badge` component instead of `v-chip`:
 ```
 
 **Props:**
+
 - `status`: Auto-maps to color ('success', 'error', 'warning', 'info')
 - `color`: Direct color override
 - `size`: 'small', 'default', 'large'
@@ -124,6 +134,7 @@ Use `SmartIcon` component with standard sizes:
 ```
 
 **Standard Sizes:**
+
 - `xs`: 16px - Small inline icons, table actions
 - `sm`: 20px - Button icons, form field icons
 - `md`: 24px - Default size, most common use case
@@ -135,16 +146,19 @@ Use `SmartIcon` component with standard sizes:
 Dialogs use consistent styling:
 
 **Max Widths:**
+
 - `small`: 400px
 - `default`: 600px
 - `form`: 800px
 - `wide`: 1200px
 
 **Padding:**
+
 - Title/Content: 24px (pa-6)
 - Actions: 16px vertical, 24px horizontal (pa-4 px-6)
 
 **Example:**
+
 ```vue
 <v-dialog :max-width="getDialogMaxWidth('form')">
     <v-card>
@@ -177,7 +191,8 @@ import { getDialogMaxWidth, getStatusColor } from '@/design-system/components'
 
 ### Component Defaults
 
-Component defaults are automatically applied via Vuetify configuration in `main.ts`. You don't need to specify common props unless you want to override them.
+Component defaults are automatically applied via Vuetify configuration in `main.ts`. You don't need to specify common
+props unless you want to override them.
 
 ### Color Usage
 
@@ -189,6 +204,7 @@ Component defaults are automatically applied via Vuetify configuration in `main.
 ### Spacing
 
 Use spacing tokens consistently:
+
 - Form fields: `mb-4` (16px) between fields
 - Sections: `mt-6` (24px) or `mb-6` between sections
 - Buttons: `gap-2` (8px) between button groups
@@ -200,6 +216,7 @@ Always use `SmartIcon` component with standard size names (xs, sm, md, lg, xl) r
 ## Examples
 
 See the example designs in `/example_designs/` folder for visual reference:
+
 - `input_form_controls.png` - Input field styling
 - `buttons_elements.png` - Button variants
 - `brand_background_colours.png` - Color palette

@@ -1,4 +1,4 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use serde_json::json;
 use std::collections::HashMap;
@@ -25,7 +25,7 @@ async fn create_test_entity_definition(
     use r_data_core_services::EntityDefinitionService;
 
     let entity_def = EntityDefinition {
-        uuid: Uuid::now_v7(),
+        uuid: Uuid::nil(),
         entity_type: entity_type.to_string(),
         display_name: format!("Test {entity_type}"),
         description: Some(format!("Test description for {entity_type}")),
@@ -77,9 +77,7 @@ fn create_test_dynamic_entity(
     path: &str,
     entity_key: &str,
 ) -> DynamicEntity {
-    let uuid = Uuid::now_v7();
     let mut field_data = HashMap::new();
-    field_data.insert("uuid".to_string(), json!(uuid.to_string()));
     field_data.insert("name".to_string(), json!(name));
     field_data.insert("entity_key".to_string(), json!(entity_key));
     field_data.insert("path".to_string(), json!(path));
@@ -114,7 +112,7 @@ async fn test_list_available_entity_types() -> Result<()> {
     repo.create(&entity2).await?;
 
     // Wait a bit for view/table creation to complete
-    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
     // List available entity types
     let available_types = pub_repo.list_available_entity_types().await?;
@@ -153,17 +151,12 @@ async fn test_browse_by_path() -> Result<()> {
     let repo = DynamicEntityRepository::new(pool.pool.clone());
 
     // Root level entities - use entity_key as the key
-    let root1_uuid = Uuid::now_v7();
-    let root2_uuid = Uuid::now_v7();
-    let root1_key = format!("root1-{root1_uuid}");
-    let root2_key = format!("root2-{root2_uuid}");
+    let root1_key = format!("root1-{}", Uuid::now_v7());
+    let root2_key = format!("root2-{}", Uuid::now_v7());
     let root1 = create_test_dynamic_entity(&entity_def, "Root 1", "/", &root1_key);
     let root2 = create_test_dynamic_entity(&entity_def, "Root 2", "/", &root2_key);
-    repo.create(&root1).await?;
-    repo.create(&root2).await?;
-
-    // Get root1 UUID and path for child
-    let root1_uuid = root1.get::<Uuid>("uuid")?;
+    let root1_uuid = repo.create(&root1).await?;
+    let _root2_uuid = repo.create(&root2).await?;
     let root1_path = format!("/{root1_key}");
 
     // Child entities
@@ -279,6 +272,59 @@ async fn test_browse_published_status() -> Result<()> {
     Ok(())
 }
 
+/// Test search by path prefix functionality
+#[tokio::test]
+async fn test_search_by_path_prefix() -> Result<()> {
+    let pool = setup_test_db().await;
+    let pub_repo = DynamicEntityPublicRepository::new(pool.pool.clone());
+
+    // Create entity definition with unique name
+    let entity_type = unique_entity_type("test_search");
+    let entity_def = create_test_entity_definition(&pool, &entity_type).await?;
+
+    let repo = DynamicEntityRepository::new(pool.pool.clone());
+
+    // Create entities with different paths and keys
+    let search_key1 = format!("searchable-1-{}", Uuid::now_v7());
+    let search_key2 = format!("searchable-2-{}", Uuid::now_v7());
+    let other_key = format!("other-{}", Uuid::now_v7());
+
+    let entity1 = create_test_dynamic_entity(&entity_def, "Search 1", "/", &search_key1);
+    let entity2 = create_test_dynamic_entity(&entity_def, "Search 2", "/folder", &search_key2);
+    let entity3 = create_test_dynamic_entity(&entity_def, "Other", "/", &other_key);
+
+    repo.create(&entity1).await?;
+    repo.create(&entity2).await?;
+    repo.create(&entity3).await?;
+
+    // Search for "searchable" - should find both searchable entities
+    let results = pub_repo.search_by_path_prefix("/searchable", 10).await?;
+    assert!(
+        !results.is_empty(),
+        "Should find at least 1 searchable entity"
+    );
+    assert!(
+        results.iter().any(|n| n.name == search_key1),
+        "Should find search_key1"
+    );
+
+    // Search for "/folder/search" - should find entity2
+    let results = pub_repo.search_by_path_prefix("/folder/search", 10).await?;
+    assert!(
+        results.iter().any(|n| n.name == search_key2),
+        "Should find search_key2 at /folder path"
+    );
+
+    // Search with limit
+    let results = pub_repo.search_by_path_prefix("/", 1).await?;
+    assert_eq!(results.len(), 1, "Should respect limit");
+
+    // Search for non-existent path - should not error
+    let _results = pub_repo.search_by_path_prefix("/nonexistent", 10).await?;
+
+    Ok(())
+}
+
 /// Test that `browse_by_path` uses batched queries instead of N+1 queries
 /// This test creates many entities to ensure batching is necessary and verifies
 /// that `has_children` is correctly determined for all nodes using batched queries.
@@ -297,11 +343,9 @@ async fn test_browse_by_path_batched_queries() -> Result<()> {
     // This would cause N+1 queries if not batched
     let mut root_entities = Vec::new();
     for i in 0..60 {
-        let root_uuid = Uuid::now_v7();
-        let root_key = format!("root-{i}-{root_uuid}");
+        let root_key = format!("root-{i}-{}", Uuid::now_v7());
         let root = create_test_dynamic_entity(&entity_def, &format!("Root {i}"), "/", &root_key);
-        let root_uuid = root.get::<Uuid>("uuid")?;
-        repo.create(&root).await?;
+        let root_uuid = repo.create(&root).await?;
         root_entities.push((root_key, root_uuid));
     }
 

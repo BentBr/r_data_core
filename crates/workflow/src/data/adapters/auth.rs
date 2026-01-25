@@ -1,5 +1,4 @@
 use actix_web::HttpRequest;
-use anyhow::Result;
 use async_trait::async_trait;
 use reqwest::RequestBuilder;
 use serde::{Deserialize, Serialize};
@@ -12,13 +11,19 @@ pub trait AuthProvider: Send + Sync {
     ///
     /// # Errors
     /// Returns an error if authentication cannot be applied to the request.
-    fn apply_to_request(&self, builder: RequestBuilder) -> Result<RequestBuilder>;
+    fn apply_to_request(
+        &self,
+        builder: RequestBuilder,
+    ) -> r_data_core_core::error::Result<RequestBuilder>;
 
     /// Extract auth from incoming request (for pre-shared keys, etc.)
     ///
     /// # Errors
     /// Returns an error if extraction fails.
-    fn extract_from_request(&self, req: &HttpRequest) -> Result<Option<String>>;
+    fn extract_from_request(
+        &self,
+        req: &HttpRequest,
+    ) -> r_data_core_core::error::Result<Option<String>>;
 
     /// Auth type identifier
     fn auth_type(&self) -> &'static str;
@@ -29,7 +34,10 @@ pub trait AuthFactory: Send + Sync {
     fn auth_type(&self) -> &'static str;
     /// # Errors
     /// Returns an error if the auth provider cannot be created from the config.
-    fn create(&self, config: &serde_json::Value) -> Result<Box<dyn AuthProvider>>;
+    fn create(
+        &self,
+        config: &serde_json::Value,
+    ) -> r_data_core_core::error::Result<Box<dyn AuthProvider>>;
 }
 
 /// Key location for pre-shared keys
@@ -73,11 +81,17 @@ pub struct NoAuthProvider;
 
 #[async_trait]
 impl AuthProvider for NoAuthProvider {
-    fn apply_to_request(&self, builder: RequestBuilder) -> Result<RequestBuilder> {
+    fn apply_to_request(
+        &self,
+        builder: RequestBuilder,
+    ) -> r_data_core_core::error::Result<RequestBuilder> {
         Ok(builder)
     }
 
-    fn extract_from_request(&self, _req: &HttpRequest) -> Result<Option<String>> {
+    fn extract_from_request(
+        &self,
+        _req: &HttpRequest,
+    ) -> r_data_core_core::error::Result<Option<String>> {
         Ok(None)
     }
 
@@ -104,11 +118,17 @@ impl ApiKeyAuthProvider {
 
 #[async_trait]
 impl AuthProvider for ApiKeyAuthProvider {
-    fn apply_to_request(&self, builder: RequestBuilder) -> Result<RequestBuilder> {
+    fn apply_to_request(
+        &self,
+        builder: RequestBuilder,
+    ) -> r_data_core_core::error::Result<RequestBuilder> {
         Ok(builder.header(&self.header_name, &self.key))
     }
 
-    fn extract_from_request(&self, _req: &HttpRequest) -> Result<Option<String>> {
+    fn extract_from_request(
+        &self,
+        _req: &HttpRequest,
+    ) -> r_data_core_core::error::Result<Option<String>> {
         Ok(None)
     }
 
@@ -132,11 +152,17 @@ impl BasicAuthProvider {
 
 #[async_trait]
 impl AuthProvider for BasicAuthProvider {
-    fn apply_to_request(&self, builder: RequestBuilder) -> Result<RequestBuilder> {
+    fn apply_to_request(
+        &self,
+        builder: RequestBuilder,
+    ) -> r_data_core_core::error::Result<RequestBuilder> {
         Ok(builder.basic_auth(&self.username, Some(&self.password)))
     }
 
-    fn extract_from_request(&self, _req: &HttpRequest) -> Result<Option<String>> {
+    fn extract_from_request(
+        &self,
+        _req: &HttpRequest,
+    ) -> r_data_core_core::error::Result<Option<String>> {
         Ok(None)
     }
 
@@ -165,7 +191,10 @@ impl PreSharedKeyAuthProvider {
 
 #[async_trait]
 impl AuthProvider for PreSharedKeyAuthProvider {
-    fn apply_to_request(&self, builder: RequestBuilder) -> Result<RequestBuilder> {
+    fn apply_to_request(
+        &self,
+        builder: RequestBuilder,
+    ) -> r_data_core_core::error::Result<RequestBuilder> {
         match self.location {
             KeyLocation::Header => Ok(builder.header(&self.field_name, &self.key)),
             KeyLocation::Body => {
@@ -175,15 +204,24 @@ impl AuthProvider for PreSharedKeyAuthProvider {
         }
     }
 
-    fn extract_from_request(&self, req: &HttpRequest) -> Result<Option<String>> {
+    fn extract_from_request(
+        &self,
+        req: &HttpRequest,
+    ) -> r_data_core_core::error::Result<Option<String>> {
         match self.location {
-            KeyLocation::Header => {
-                if let Some(header_value) = req.headers().get(&self.field_name) {
-                    Ok(Some(header_value.to_str()?.to_string()))
-                } else {
-                    Ok(None)
-                }
-            }
+            KeyLocation::Header => req.headers().get(&self.field_name).map_or_else(
+                || Ok(None),
+                |header_value| {
+                    header_value
+                        .to_str()
+                        .map(|s| Some(s.to_string()))
+                        .map_err(|e| {
+                            r_data_core_core::error::Error::Validation(format!(
+                                "Invalid header value: {e}"
+                            ))
+                        })
+                },
+            ),
             KeyLocation::Body => {
                 // Body extraction needs to be done in the route handler
                 // This is a placeholder
@@ -201,7 +239,9 @@ impl AuthProvider for PreSharedKeyAuthProvider {
 ///
 /// # Errors
 /// Returns an error if the auth provider cannot be created from the config.
-pub fn create_auth_provider(config: &AuthConfig) -> Result<Box<dyn AuthProvider>> {
+pub fn create_auth_provider(
+    config: &AuthConfig,
+) -> r_data_core_core::error::Result<Box<dyn AuthProvider>> {
     match config {
         AuthConfig::None => Ok(Box::new(NoAuthProvider)),
         AuthConfig::ApiKey { key, header_name } => Ok(Box::new(ApiKeyAuthProvider::new(

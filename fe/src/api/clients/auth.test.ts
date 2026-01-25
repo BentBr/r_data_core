@@ -53,6 +53,7 @@ describe('AuthClient', () => {
                     username: 'testuser',
                     access_expires_at: '2024-12-31T23:59:59Z',
                     refresh_expires_at: '2025-12-31T23:59:59Z',
+                    using_default_password: true,
                 },
             }
 
@@ -95,6 +96,66 @@ describe('AuthClient', () => {
             })
 
             await expect(client.login(credentials)).rejects.toThrow()
+        })
+
+        it('should handle login response with using_default_password field', async () => {
+            const credentials: LoginRequest = {
+                username: 'testuser',
+                password: 'testpass',
+            }
+
+            const mockResponse = {
+                status: 'Success',
+                message: 'Login successful',
+                data: {
+                    access_token: 'access-token-123',
+                    refresh_token: 'refresh-token-123',
+                    user_uuid: '01234567-89ab-7def-8123-456789abcdef',
+                    username: 'testuser',
+                    access_expires_at: '2024-12-31T23:59:59Z',
+                    refresh_expires_at: '2025-12-31T23:59:59Z',
+                    using_default_password: true,
+                },
+            }
+
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: async () => mockResponse,
+            })
+
+            const result = await client.login(credentials)
+
+            expect(result.using_default_password).toBe(true)
+        })
+
+        it('should handle login response with using_default_password as false', async () => {
+            const credentials: LoginRequest = {
+                username: 'testuser',
+                password: 'testpass',
+            }
+
+            const mockResponse = {
+                status: 'Success',
+                message: 'Login successful',
+                data: {
+                    access_token: 'access-token-123',
+                    refresh_token: 'refresh-token-123',
+                    user_uuid: '01234567-89ab-7def-8123-456789abcdef',
+                    username: 'testuser',
+                    access_expires_at: '2024-12-31T23:59:59Z',
+                    refresh_expires_at: '2025-12-31T23:59:59Z',
+                    using_default_password: false,
+                },
+            }
+
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: async () => mockResponse,
+            })
+
+            const result = await client.login(credentials)
+
+            expect(result.using_default_password).toBe(false)
         })
     })
 

@@ -1,7 +1,6 @@
 pub mod uri;
 
 use crate::data::adapters::auth::AuthProvider;
-use anyhow::Result;
 use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
@@ -44,13 +43,17 @@ pub trait DataDestination: Send + Sync {
     ///
     /// # Errors
     /// Returns an error if the push operation fails.
-    async fn push(&self, ctx: &DestinationContext, data: Bytes) -> Result<()>;
+    async fn push(
+        &self,
+        ctx: &DestinationContext,
+        data: Bytes,
+    ) -> r_data_core_core::error::Result<()>;
 
     /// Validate destination configuration
     ///
     /// # Errors
     /// Returns an error if the configuration is invalid.
-    fn validate(&self, config: &serde_json::Value) -> Result<()>;
+    fn validate(&self, config: &serde_json::Value) -> r_data_core_core::error::Result<()>;
 }
 
 /// Factory for creating destination instances
@@ -58,5 +61,8 @@ pub trait DestinationFactory: Send + Sync {
     fn destination_type(&self) -> &'static str;
     /// # Errors
     /// Returns an error if the destination cannot be created from the config.
-    fn create(&self, config: &serde_json::Value) -> Result<Box<dyn DataDestination>>;
+    fn create(
+        &self,
+        config: &serde_json::Value,
+    ) -> r_data_core_core::error::Result<Box<dyn DataDestination>>;
 }

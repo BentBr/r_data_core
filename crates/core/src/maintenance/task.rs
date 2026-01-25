@@ -1,6 +1,9 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use async_trait::async_trait;
+use std::sync::Arc;
+
+use crate::cache::CacheManager;
 
 /// Trait that all maintenance tasks must implement
 #[async_trait]
@@ -30,4 +33,10 @@ pub trait TaskContext: Send + Sync {
     /// # Returns
     /// A reference to the `PostgresSQL` connection pool
     fn pool(&self) -> &sqlx::PgPool;
+
+    /// Get the cache manager if available
+    ///
+    /// # Returns
+    /// An optional reference to the shared cache manager
+    fn cache_manager(&self) -> Option<Arc<CacheManager>>;
 }

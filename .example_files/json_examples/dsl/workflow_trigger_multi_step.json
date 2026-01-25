@@ -1,0 +1,88 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "trigger",
+        "mapping": {}
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "next_step",
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "format",
+        "source": {
+          "source_type": "uri",
+          "config": {
+            "uri": "https://api.example.com/data"
+          },
+          "auth": null
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {
+          "price": "price",
+          "quantity": "quantity"
+        }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "subtotal",
+        "left": {
+          "kind": "field",
+          "field": "price"
+        },
+        "op": "mul",
+        "right": {
+          "kind": "field",
+          "field": "quantity"
+        }
+      },
+      "to": {
+        "type": "next_step",
+        "mapping": {
+          "subtotal": "subtotal"
+        }
+      }
+    },
+    {
+      "from": {
+        "type": "previous_step",
+        "mapping": {
+          "subtotal": "subtotal"
+        }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "total",
+        "left": {
+          "kind": "field",
+          "field": "subtotal"
+        },
+        "op": "mul",
+        "right": {
+          "kind": "const",
+          "value": 1.19
+        }
+      },
+      "to": {
+        "type": "entity",
+        "entity_definition": "${ENTITY_TYPE}",
+        "path": "/",
+        "mode": "create",
+        "mapping": {
+          "subtotal": "subtotal",
+          "total": "total"
+        }
+      }
+    }
+  ]
+}
+

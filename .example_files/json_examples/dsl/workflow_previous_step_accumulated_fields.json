@@ -1,0 +1,136 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "format",
+        "source": {
+          "source_type": "api",
+          "config": {}
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {
+          "base_salary": "base_salary",
+          "employee_name": "employee_name"
+        }
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "previous_step",
+        "mapping": {
+          "base_salary": "base_salary",
+          "employee_name": "employee_name"
+        }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "health_insurance",
+        "left": {
+          "kind": "field",
+          "field": "base_salary"
+        },
+        "op": "mul",
+        "right": {
+          "kind": "const",
+          "value": 0.05
+        }
+      },
+      "to": {
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "previous_step",
+        "mapping": {
+          "base_salary": "base_salary",
+          "health_insurance": "health_insurance",
+          "employee_name": "employee_name"
+        }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "retirement_contrib",
+        "left": {
+          "kind": "field",
+          "field": "base_salary"
+        },
+        "op": "mul",
+        "right": {
+          "kind": "const",
+          "value": 0.10
+        }
+      },
+      "to": {
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "previous_step",
+        "mapping": {
+          "base_salary": "base_salary",
+          "health_insurance": "health_insurance",
+          "retirement_contrib": "retirement_contrib",
+          "employee_name": "employee_name"
+        }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "total_benefits",
+        "left": {
+          "kind": "field",
+          "field": "health_insurance"
+        },
+        "op": "add",
+        "right": {
+          "kind": "field",
+          "field": "retirement_contrib"
+        }
+      },
+      "to": {
+        "type": "entity",
+        "entity_definition": "employee_compensation",
+        "mapping": {
+          "employee_name": "name",
+          "base_salary": "salary",
+          "total_benefits": "benefits"
+        }
+      }
+    }
+  ]
+}
+

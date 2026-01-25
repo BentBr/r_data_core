@@ -1,0 +1,16 @@
+{
+  "steps": [{
+    "from": {
+      "type": "previous_step",
+      "mapping": { "price": "price" }
+    },
+    "transform": { "type": "none" },
+    "to": {
+      "type": "format",
+      "output": { "mode": "api" },
+      "format": { "format_type": "json", "options": {} },
+      "mapping": {}
+    }
+  }]
+}
+

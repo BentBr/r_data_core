@@ -152,6 +152,7 @@
     .mapping-table-wrapper {
         overflow-x: auto;
     }
+
     .mapping-table {
         min-width: 560px;
     }

@@ -15,8 +15,8 @@ mod update;
 use create::create_entity;
 use filter::filter_entities_impl;
 use query::{
-    count_entities_impl, delete_by_type_impl, get_all_by_type_impl, get_by_type_impl,
-    has_children_impl, query_by_parent_impl, query_by_path_impl,
+    count_entities_impl, delete_by_type_impl, find_one_by_filters_impl, get_all_by_type_impl,
+    get_by_type_impl, has_children_impl, query_by_parent_impl, query_by_path_impl,
 };
 use update::update_entity;
 
@@ -51,7 +51,8 @@ impl DynamicEntityRepository {
     ///
     /// # Errors
     /// Returns an error if the database operation fails or validation fails
-    pub async fn create(&self, entity: &DynamicEntity) -> Result<()> {
+    /// Returns the UUID
+    pub async fn create(&self, entity: &DynamicEntity) -> Result<Uuid> {
         create_entity(self, entity).await
     }
 
@@ -106,11 +107,27 @@ impl DynamicEntityRepository {
     pub async fn has_children(&self, parent_uuid: &Uuid) -> Result<bool> {
         has_children_impl(self, parent_uuid).await
     }
+
+    /// Find a single entity by filters
+    ///
+    /// # Arguments
+    /// * `entity_type` - Type of entity to find
+    /// * `filters` - Map of field names to values for filtering
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
+    pub async fn find_one_by_filters(
+        &self,
+        entity_type: &str,
+        filters: &std::collections::HashMap<String, serde_json::Value>,
+    ) -> Result<Option<DynamicEntity>> {
+        find_one_by_filters_impl(self, entity_type, filters).await
+    }
 }
 
 #[async_trait::async_trait]
 impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
-    async fn create(&self, entity: &DynamicEntity) -> Result<()> {
+    async fn create(&self, entity: &DynamicEntity) -> Result<Uuid> {
         self.create(entity).await
     }
 

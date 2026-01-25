@@ -22,7 +22,7 @@ mock! {
 
     #[async_trait]
     impl DynamicEntityRepositoryTrait for DynamicEntityRepo {
-        async fn create(&self, entity: &DynamicEntity) -> Result<()>;
+        async fn create(&self, entity: &DynamicEntity) -> Result<Uuid>;
         async fn update(&self, entity: &DynamicEntity) -> Result<()>;
         async fn get_by_type(&self, entity_type: &str, uuid: &Uuid, exclusive_fields: Option<Vec<String>>) -> Result<Option<DynamicEntity>>;
         async fn get_all_by_type(&self, entity_type: &str, limit: i64, offset: i64, exclusive_fields: Option<Vec<String>>) -> Result<Vec<DynamicEntity>>;
@@ -217,7 +217,7 @@ async fn test_create_entity() -> Result<()> {
         .with(predicate::function(|e: &DynamicEntity| {
             e.entity_type == "test_entity"
         }))
-        .returning(|_| Ok(()));
+        .returning(|_| Ok(Uuid::now_v7()));
 
     // Create service with proper mocks
     let class_service = EntityDefinitionService::new_without_cache(Arc::new(class_repo));

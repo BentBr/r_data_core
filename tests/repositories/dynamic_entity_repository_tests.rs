@@ -1,4 +1,4 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use serde_json::json;
 use std::collections::HashMap;
@@ -70,7 +70,6 @@ fn create_test_dynamic_entity(entity_definition: &EntityDefinition) -> DynamicEn
     let mut field_data = HashMap::new();
     field_data.insert("name".to_string(), json!("John Doe"));
     field_data.insert("age".to_string(), json!(30));
-    field_data.insert("uuid".to_string(), json!(Uuid::now_v7().to_string()));
     field_data.insert("entity_key".to_string(), json!(Uuid::now_v7().to_string()));
     field_data.insert("created_by".to_string(), json!(Uuid::now_v7().to_string()));
 
@@ -113,35 +112,39 @@ async fn test_dynamic_entity_crud() -> Result<()> {
     // Create a test entity
     let entity = create_test_dynamic_entity(&created_def);
 
-    // Test create
-    repo.create(&entity).await?;
+    let entity_uuid = repo.create(&entity).await?;
 
-    // Get the UUID from the entity's field_data
-    let uuid = entity.get::<Uuid>("uuid")?;
+    assert!(!entity_uuid.is_nil(), "UUID should be valid");
 
-    // Test get by type and UUID
-    let retrieved = repo.get_by_type(&entity.entity_type, &uuid, None).await?;
+    // Test get by type and UUID - use the returned UUID
+    let retrieved = repo
+        .get_by_type(&entity.entity_type, &entity_uuid, None)
+        .await?;
     assert!(retrieved.is_some());
     let retrieved = retrieved.unwrap();
     assert_eq!(retrieved.entity_type, entity.entity_type);
 
-    // Test update
+    // Test update - need to set UUID in field_data for update to work
     let mut updated_entity = entity.clone();
+    updated_entity.set("uuid", entity_uuid.to_string())?;
     updated_entity.set("name", "Jane Doe".to_string())?;
     repo.update(&updated_entity).await?;
 
     // Verify update
     let retrieved = repo
-        .get_by_type(&entity.entity_type, &uuid, None)
+        .get_by_type(&entity.entity_type, &entity_uuid, None)
         .await?
         .unwrap();
     assert_eq!(retrieved.get::<String>("name")?, "Jane Doe");
 
     // Test delete
-    repo.delete_by_type(&entity.entity_type, &uuid).await?;
+    repo.delete_by_type(&entity.entity_type, &entity_uuid)
+        .await?;
 
     // Verify delete
-    let retrieved = repo.get_by_type(&entity.entity_type, &uuid, None).await?;
+    let retrieved = repo
+        .get_by_type(&entity.entity_type, &entity_uuid, None)
+        .await?;
     assert!(retrieved.is_none());
 
     Ok(())
@@ -222,12 +225,8 @@ async fn test_list_entities_by_parent() -> Result<()> {
         .get_entity_definition_by_entity_type(&entity_def.entity_type)
         .await?;
 
-    // Create a parent entity
     let parent = create_test_dynamic_entity(&created_def);
-    repo.create(&parent).await?;
-
-    // Get parent UUID from field data
-    let parent_uuid = parent.get::<Uuid>("uuid")?;
+    let parent_uuid = repo.create(&parent).await?;
 
     // Create child entities and set parent reference in field data
     let mut child1 = create_test_dynamic_entity(&created_def);
@@ -341,7 +340,7 @@ async fn test_count_entities() -> Result<()> {
     for i in 0..5 {
         let mut entity = create_test_dynamic_entity(&created_def);
         entity.set("name", format!("Test Entity {i}"))?;
-        repo.create(&entity).await?;
+        let _uuid = repo.create(&entity).await?;
     }
 
     // Test count function
@@ -435,10 +434,8 @@ async fn test_field_name_case_handling() -> Result<()> {
         .await?;
 
     // Create an entity with camelCase field names (matching entity definition)
-    let uuid = Uuid::now_v7();
     let created_by = Uuid::now_v7();
     let mut field_data = HashMap::new();
-    field_data.insert("uuid".to_string(), json!(uuid.to_string()));
     field_data.insert("firstName".to_string(), json!("John")); // camelCase
     field_data.insert("lastName".to_string(), json!("Doe")); // camelCase
     field_data.insert("email".to_string(), json!("john.doe@example.com"));
@@ -455,14 +452,14 @@ async fn test_field_name_case_handling() -> Result<()> {
     };
 
     // Test 1: Create entity - field names should be converted to lowercase in database
-    repo.create(&entity).await?;
+    let entity_uuid = repo.create(&entity).await?;
 
     // Test 2: Verify database stores columns in lowercase
     let table_name = format!("entity_{}", entity_type.to_lowercase());
     let row = sqlx::query(&format!(
         "SELECT firstname, lastname, email FROM {table_name} WHERE uuid = $1"
     ))
-    .bind(uuid)
+    .bind(entity_uuid)
     .fetch_optional(&pool.pool)
     .await
     .map_err(r_data_core_core::error::Error::Database)?;
@@ -486,7 +483,7 @@ async fn test_field_name_case_handling() -> Result<()> {
     assert_eq!(db_email, Some("john.doe@example.com".to_string()));
 
     // Test 3: Read entity back - field names should be in entity definition case (camelCase)
-    let retrieved = repo.get_by_type(&entity_type, &uuid, None).await?;
+    let retrieved = repo.get_by_type(&entity_type, &entity_uuid, None).await?;
 
     assert!(retrieved.is_some(), "Entity should be retrievable");
     let retrieved = retrieved.unwrap();
@@ -546,7 +543,7 @@ async fn test_field_name_case_handling() -> Result<()> {
     repo.update(&updated_entity).await?;
 
     // Test 5: Verify update worked and field names are still in camelCase
-    let updated_retrieved = repo.get_by_type(&entity_type, &uuid, None).await?;
+    let updated_retrieved = repo.get_by_type(&entity_type, &entity_uuid, None).await?;
 
     assert!(updated_retrieved.is_some());
     let updated_retrieved = updated_retrieved.unwrap();
@@ -572,7 +569,7 @@ async fn test_field_name_case_handling() -> Result<()> {
     let updated_row = sqlx::query(&format!(
         "SELECT firstname, lastname FROM {table_name} WHERE uuid = $1"
     ))
-    .bind(uuid)
+    .bind(entity_uuid)
     .fetch_optional(&pool.pool)
     .await
     .map_err(r_data_core_core::error::Error::Database)?;

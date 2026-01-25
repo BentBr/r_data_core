@@ -21,6 +21,7 @@ vi.mock('@/api/typed-client', () => ({
     },
     ValidationError: class ValidationError extends Error {
         violations: Array<{ field: string; message: string }>
+
         constructor(violations: Array<{ field: string; message: string }>) {
             super('validation')
             this.violations = violations
@@ -42,10 +43,12 @@ vi.mock('@/composables/useSnackbar', () => ({
     }),
 }))
 
+const mockHasPermission = vi.fn()
 vi.mock('@/stores/auth', () => ({
     useAuthStore: () => ({
         isAuthenticated: true,
         token: 'test-token',
+        hasPermission: mockHasPermission,
     }),
 }))
 
@@ -69,6 +72,10 @@ describe('EntitiesPage - Path Detection Logic', () => {
         })
         mockCreateEntity.mockResolvedValue({})
         mockDeleteEntity.mockResolvedValue({ message: 'Successfully deleted' })
+        // Default: user has create permission
+        mockHasPermission.mockImplementation((namespace: string, permission: string) => {
+            return namespace === 'Entities' && (permission === 'Create' || permission === 'Admin')
+        })
     })
 
     it('createEntity calculates correct path for single-segment path', async () => {
@@ -227,5 +234,57 @@ describe('EntitiesPage - Path Detection Logic', () => {
 
         // Root path should remain root
         expect(pathToReload).toBe('/')
+    })
+
+    it('shows create button when user has Entities:Create permission', async () => {
+        mockHasPermission.mockImplementation((namespace: string, permission: string) => {
+            return namespace === 'Entities' && permission === 'Create'
+        })
+
+        const wrapper = mount(EntitiesPage, {
+            global: {
+                plugins: [router],
+            },
+        })
+
+        await vi.waitUntil(() => mockGetEntityDefinitions.mock.calls.length > 0, { timeout: 1000 })
+        await wrapper.vm.$nextTick()
+
+        // Check that canCreateEntity computed is true
+        expect((wrapper.vm as any).canCreateEntity).toBe(true)
+    })
+
+    it('shows create button when user has Entities:Admin permission', async () => {
+        mockHasPermission.mockImplementation((namespace: string, permission: string) => {
+            return namespace === 'Entities' && permission === 'Admin'
+        })
+
+        const wrapper = mount(EntitiesPage, {
+            global: {
+                plugins: [router],
+            },
+        })
+
+        await vi.waitUntil(() => mockGetEntityDefinitions.mock.calls.length > 0, { timeout: 1000 })
+        await wrapper.vm.$nextTick()
+
+        // Check that canCreateEntity computed is true
+        expect((wrapper.vm as any).canCreateEntity).toBe(true)
+    })
+
+    it('hides create button when user lacks create permissions', async () => {
+        mockHasPermission.mockImplementation(() => false)
+
+        const wrapper = mount(EntitiesPage, {
+            global: {
+                plugins: [router],
+            },
+        })
+
+        await vi.waitUntil(() => mockGetEntityDefinitions.mock.calls.length > 0, { timeout: 1000 })
+        await wrapper.vm.$nextTick()
+
+        // Check that canCreateEntity computed is false
+        expect((wrapper.vm as any).canCreateEntity).toBe(false)
     })
 })

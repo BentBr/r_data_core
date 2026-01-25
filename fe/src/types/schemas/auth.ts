@@ -14,6 +14,7 @@ export const LoginResponseSchema = z.object({
     username: z.string(),
     access_expires_at: TimestampSchema,
     refresh_expires_at: TimestampSchema,
+    using_default_password: z.boolean(),
 })
 
 // Refresh token schemas

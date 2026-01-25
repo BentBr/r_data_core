@@ -14,6 +14,10 @@
     import Badge from '@/components/common/Badge.vue'
     import { getDialogMaxWidth } from '@/design-system/components'
     import { useSnackbar } from '@/composables/useSnackbar'
+    import { useErrorHandler } from '@/composables/useErrorHandler'
+    import { useAuthStore } from '@/stores/auth'
+
+    const authStore = useAuthStore()
 
     type WorkflowSummary = {
         uuid: string
@@ -65,7 +69,8 @@
     const deleting = ref(false)
     const uploadEnabled = ref(false)
     const uploadFile = ref<File | null>(null)
-    const { currentSnackbar, showSuccess, showError } = useSnackbar()
+    const { currentSnackbar, showSuccess } = useSnackbar()
+    const { handleError } = useErrorHandler()
     const { t } = useTranslations()
     const route = useRoute()
 
@@ -84,6 +89,14 @@
         has_next: boolean
     } | null>(null)
     const isComponentMounted = ref(false)
+
+    // Permission check for create button
+    const canCreateWorkflow = computed(() => {
+        return (
+            authStore.hasPermission('Workflows', 'Create') ||
+            authStore.hasPermission('Workflows', 'Admin')
+        )
+    })
 
     const loadWorkflows = async (page = 1, perPage = 20) => {
         if (!isComponentMounted.value) {
@@ -143,7 +156,7 @@
             }
             showRunDialog.value = false
         } catch (e) {
-            showError(e instanceof Error ? e.message : 'Failed to enqueue run')
+            handleError(e)
         }
     }
 
@@ -177,7 +190,7 @@
             workflowToDelete.value = null
             await loadWorkflows(currentPage.value, itemsPerPage.value)
         } catch (e) {
-            showError(e instanceof Error ? e.message : t('workflows.delete.error'))
+            handleError(e)
         } finally {
             deleting.value = false
         }
@@ -300,6 +313,7 @@
         <PageLayout>
             <template #actions>
                 <v-btn
+                    v-if="canCreateWorkflow"
                     color="primary"
                     variant="flat"
                     @click="showCreate = true"
@@ -580,8 +594,8 @@
                         <v-btn
                             variant="text"
                             @click="showLogs = false"
-                            >{{ t('common.close') }}</v-btn
-                        >
+                            >{{ t('common.close') }}
+                        </v-btn>
                     </v-card-actions>
                 </v-card>
             </v-dialog>
@@ -622,14 +636,14 @@
                         <v-btn
                             variant="text"
                             @click="showRunDialog = false"
-                            >{{ t('common.cancel') }}</v-btn
-                        >
+                            >{{ t('common.cancel') }}
+                        </v-btn>
                         <v-btn
                             color="primary"
                             :disabled="uploadEnabled && !uploadFile"
                             @click="confirmRunNow"
-                            >{{ t('workflows.run.run_button') }}</v-btn
-                        >
+                            >{{ t('workflows.run.run_button') }}
+                        </v-btn>
                     </v-card-actions>
                 </v-card>
             </v-dialog>

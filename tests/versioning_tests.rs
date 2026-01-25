@@ -1,4 +1,4 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use r_data_core_api::admin::workflows::models::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
@@ -207,17 +207,16 @@ async fn test_entity_definition_update_creates_snapshot_and_increments_version()
 async fn test_maintenance_prunes_by_age_and_count() {
     let pool = setup_test_db().await;
     let repo = VersionRepository::new(pool.pool.clone());
-    let entity_uuid = Uuid::now_v7();
-
     // Create a dummy entity in entities_registry to satisfy foreign key constraint
-    sqlx::query(
-        "INSERT INTO entities_registry (uuid, entity_type, path, entity_key, version, created_at, updated_at, created_by, published)
-         VALUES ($1, $2, '/', $1::text, 5, NOW(), NOW(), $3, true)"
+    let entity_uuid = sqlx::query_scalar::<_, Uuid>(
+        "INSERT INTO entities_registry (entity_type, path, entity_key, version, created_at, updated_at, created_by, published)
+         VALUES ($1, '/', $2, 5, NOW(), NOW(), $3, true)
+         RETURNING uuid"
     )
-    .bind(entity_uuid)
     .bind("dynamic_entity")
+    .bind(Uuid::now_v7().to_string())
     .bind(Uuid::now_v7())
-    .execute(&pool.pool)
+    .fetch_one(&pool.pool)
     .await
     .unwrap();
 

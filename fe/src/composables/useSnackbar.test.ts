@@ -1,7 +1,18 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { useSnackbar } from './useSnackbar'
 
 describe('useSnackbar', () => {
+    beforeEach(() => {
+        // Clear snackbar state before each test
+        const { clearSnackbar } = useSnackbar()
+        clearSnackbar()
+        vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+        vi.useRealTimers()
+    })
+
     it('should initialize with null snackbar', () => {
         const { currentSnackbar } = useSnackbar()
         expect(currentSnackbar.value).toBeNull()
@@ -90,5 +101,78 @@ describe('useSnackbar', () => {
         showError('Second message')
         expect(currentSnackbar.value?.message).toBe('Second message')
         expect(currentSnackbar.value?.color).toBe('error')
+    })
+
+    describe('singleton pattern', () => {
+        it('should share state between multiple useSnackbar instances', () => {
+            const instance1 = useSnackbar()
+            const instance2 = useSnackbar()
+
+            // Show message from instance 1
+            instance1.showSuccess('Shared message')
+
+            // Should be visible from instance 2
+            expect(instance2.currentSnackbar.value?.message).toBe('Shared message')
+        })
+
+        it('should clear state from any instance', () => {
+            const instance1 = useSnackbar()
+            const instance2 = useSnackbar()
+
+            instance1.showError('Error message')
+            expect(instance2.currentSnackbar.value).not.toBeNull()
+
+            instance2.clearSnackbar()
+            expect(instance1.currentSnackbar.value).toBeNull()
+        })
+    })
+
+    describe('auto-clear timeout', () => {
+        it('should auto-clear snackbar after timeout plus buffer', () => {
+            const { currentSnackbar, showSuccess } = useSnackbar()
+
+            showSuccess('Test message', 3000)
+            expect(currentSnackbar.value).not.toBeNull()
+
+            // Advance time past the timeout + 500ms buffer
+            vi.advanceTimersByTime(3500)
+
+            expect(currentSnackbar.value).toBeNull()
+        })
+
+        it('should cancel previous auto-clear when showing new snackbar', () => {
+            const { currentSnackbar, showSuccess, showError } = useSnackbar()
+
+            showSuccess('First message', 2000)
+
+            // Advance time partially
+            vi.advanceTimersByTime(1000)
+            expect(currentSnackbar.value?.message).toBe('First message')
+
+            // Show new snackbar (should cancel previous timeout)
+            showError('Second message', 3000)
+            expect(currentSnackbar.value?.message).toBe('Second message')
+
+            // Advance past original timeout - should still show second message
+            vi.advanceTimersByTime(1600) // 1000 + 1600 = 2600ms (past first timeout + buffer)
+            expect(currentSnackbar.value?.message).toBe('Second message')
+
+            // Advance past second timeout + buffer
+            vi.advanceTimersByTime(2000)
+            expect(currentSnackbar.value).toBeNull()
+        })
+
+        it('should clear timeout when manually clearing snackbar', () => {
+            const { currentSnackbar, showSuccess, clearSnackbar } = useSnackbar()
+
+            showSuccess('Test message', 5000)
+            clearSnackbar()
+
+            expect(currentSnackbar.value).toBeNull()
+
+            // Advance past the original timeout - should stay null
+            vi.advanceTimersByTime(6000)
+            expect(currentSnackbar.value).toBeNull()
+        })
     })
 })

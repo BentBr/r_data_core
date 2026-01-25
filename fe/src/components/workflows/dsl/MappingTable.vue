@@ -13,7 +13,7 @@
             </thead>
             <tbody>
                 <tr
-                    v-for="(pair, idx) in pairs"
+                    v-for="(_pair, idx) in pairs"
                     :key="idx"
                 >
                     <td>
@@ -97,6 +97,7 @@
     .mapping-table-wrapper {
         overflow-x: auto;
     }
+
     .mapping-table {
         min-width: 560px;
     }

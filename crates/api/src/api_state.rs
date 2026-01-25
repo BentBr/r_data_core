@@ -18,6 +18,7 @@ pub trait ApiStateTrait: Send + Sync + 'static {
     fn workflow_service_ref(&self) -> &dyn std::any::Any;
     fn queue_ref(&self) -> &dyn std::any::Any;
     fn dashboard_stats_service_ref(&self) -> &dyn std::any::Any;
+    fn license_service_ref(&self) -> &dyn std::any::Any;
 
     /// Get `API` config - helper method that downcasts from `api_config_ref`
     fn api_config(&self) -> &r_data_core_core::config::ApiConfig {
@@ -93,6 +94,13 @@ pub trait ApiStateTrait: Send + Sync + 'static {
             .downcast_ref::<r_data_core_services::DashboardStatsService>()
             .expect("ApiState must provide DashboardStatsService")
     }
+
+    /// Get license service - helper method that downcasts from `license_service_ref`
+    fn license_service(&self) -> &std::sync::Arc<r_data_core_services::LicenseService> {
+        self.license_service_ref()
+            .downcast_ref::<std::sync::Arc<r_data_core_services::LicenseService>>()
+            .expect("ApiState must provide LicenseService")
+    }
 }
 
 /// Wrapper type to allow `web::Data` extraction for `ApiStateTrait`
@@ -146,6 +154,10 @@ impl ApiStateTrait for ApiStateWrapper {
 
     fn dashboard_stats_service_ref(&self) -> &dyn std::any::Any {
         self.0.dashboard_stats_service_ref()
+    }
+
+    fn license_service_ref(&self) -> &dyn std::any::Any {
+        self.0.license_service_ref()
     }
 }
 

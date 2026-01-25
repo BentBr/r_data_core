@@ -1,4 +1,4 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use crate::repositories::{get_entity_definition_repository_with_pool, TestRepository};
 use r_data_core_core::entity_definition::definition::{EntityDefinition, EntityDefinitionParams};
@@ -452,7 +452,6 @@ async fn test_create_entity_definition_from_json_examples() {
 
         // Set creator ID and other required fields
         definition.created_by = creator_id;
-        definition.uuid = Uuid::now_v7();
 
         // Convert entity_type to lowercase to avoid case sensitivity issues
         definition.entity_type = definition.entity_type.to_lowercase();
@@ -471,7 +470,15 @@ async fn test_create_entity_definition_from_json_examples() {
         created_uuids.push(uuid);
 
         // Verify it was created correctly
-        let retrieved = repository.get_by_uuid(&uuid).await.unwrap().unwrap();
+        let retrieved = repository
+            .get_by_uuid(&uuid)
+            .await
+            .unwrap_or_else(|e| {
+                panic!("Failed to retrieve {name} entity definition: {e}");
+            })
+            .unwrap_or_else(|| {
+                panic!("{name} entity definition not found after creation (UUID: {uuid})");
+            });
         assert_eq!(retrieved.entity_type, definition.entity_type);
         assert_eq!(retrieved.fields.len(), definition.fields.len());
 

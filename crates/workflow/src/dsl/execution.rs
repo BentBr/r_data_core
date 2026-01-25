@@ -1,44 +1,141 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use serde_json::Value;
 
 use super::transform::{Operand, StringOperand};
 
-/// Evaluate a numeric operand
+/// Cast a JSON value to f64 with strict error handling
+///
+/// # Arguments
+/// * `value` - The JSON value to cast
+/// * `field_name` - The field name for error messages
+///
+/// # Returns
+/// Result with f64 or error message
+///
+/// # Errors
+/// Returns an error if the value cannot be converted to f64
+pub fn cast_to_f64_strict(value: &Value, field_name: &str) -> Result<f64, String> {
+    match value {
+        Value::Number(n) => n
+            .as_f64()
+            .ok_or_else(|| format!("Field '{field_name}': number out of f64 range")),
+        Value::String(s) => {
+            let trimmed = s.trim();
+            if trimmed.is_empty() {
+                return Err(format!(
+                    "Field '{field_name}': empty string cannot be converted to number"
+                ));
+            }
+            trimmed
+                .parse::<f64>()
+                .map_err(|_| format!("Field '{field_name}': cannot convert string '{s}' to number"))
+        }
+        Value::Null => Err(format!("Field '{field_name}' is null, expected a number")),
+        Value::Bool(_) => Err(format!(
+            "Field '{field_name}' is boolean, expected a number"
+        )),
+        Value::Array(_) => Err(format!(
+            "Field '{field_name}' is an array, expected a number"
+        )),
+        Value::Object(_) => Err(format!(
+            "Field '{field_name}' is an object, expected a number"
+        )),
+    }
+}
+
+/// Cast a JSON value to string with smart number formatting
+/// - Integers and integer-valued floats: "123" not "123.0"
+/// - Decimals: "123.45"
+/// - Booleans: "true" or "false"
+///
+/// # Arguments
+/// * `value` - The JSON value to cast
+/// * `field_name` - The field name for error messages
+///
+/// # Returns
+/// Result with String or error message
+///
+/// # Errors
+/// Returns an error if the value cannot be converted to string
+pub fn cast_to_string_smart(value: &Value, field_name: &str) -> Result<String, String> {
+    match value {
+        Value::String(s) => Ok(s.clone()),
+        Value::Number(n) => n.as_i64().map_or_else(
+            || {
+                n.as_f64().map_or_else(
+                    || Ok(n.to_string()), // Fallback for u64 or other number types
+                    |f| {
+                        // Check if float is effectively an integer
+                        #[allow(clippy::float_cmp)] // We explicitly want exact comparison here
+                        if f.fract() == 0.0 && f.is_finite() {
+                            Ok(format!("{f:.0}"))
+                        } else {
+                            Ok(f.to_string())
+                        }
+                    },
+                )
+            },
+            |i| Ok(i.to_string()),
+        ),
+        Value::Bool(b) => Ok(b.to_string()),
+        Value::Null => Err(format!(
+            "Field '{field_name}' is null, cannot convert to string"
+        )),
+        Value::Array(_) => Err(format!(
+            "Field '{field_name}' is an array, cannot convert to string"
+        )),
+        Value::Object(_) => Err(format!(
+            "Field '{field_name}' is an object, cannot convert to string"
+        )),
+    }
+}
+
+/// Evaluate a numeric operand with strict type casting
 ///
 /// # Arguments
 /// * `ctx` - Context JSON value
 /// * `op` - Operand to evaluate
 ///
 /// # Returns
-/// Optional f64 value if evaluation succeeds
-#[must_use]
-pub fn eval_operand(ctx: &Value, op: &Operand) -> Option<f64> {
+/// Result with f64 value or error message
+///
+/// # Errors
+/// Returns an error if the operand cannot be evaluated or cast to a number
+pub fn eval_operand(ctx: &Value, op: &Operand) -> Result<f64, String> {
     match op {
-        Operand::Field { field } => get_nested(ctx, field).and_then(|v| v.as_f64()),
-        Operand::Const { value } => Some(*value),
+        Operand::Field { field } => {
+            let value = get_nested(ctx, field)
+                .ok_or_else(|| format!("Field '{field}' not found in context"))?;
+            cast_to_f64_strict(&value, field)
+        }
+        Operand::Const { value } => Ok(*value),
         Operand::ExternalEntityField { .. } => {
-            // Future: resolve from repository; for now not supported in apply
-            None
+            // Future: resolve from repository; for now not supported
+            Err("ExternalEntityField is not supported in calculations".to_string())
         }
     }
 }
 
-/// Evaluate a string operand
+/// Evaluate a string operand with smart type casting
 ///
 /// # Arguments
 /// * `ctx` - Context JSON value
 /// * `op` - String operand to evaluate
 ///
 /// # Returns
-/// Optional String value if evaluation succeeds
-#[must_use]
-pub fn eval_string_operand(ctx: &Value, op: &StringOperand) -> Option<String> {
+/// Result with String value or error message
+///
+/// # Errors
+/// Returns an error if the operand cannot be evaluated or cast to a string
+pub fn eval_string_operand(ctx: &Value, op: &StringOperand) -> Result<String, String> {
     match op {
         StringOperand::Field { field } => {
-            get_nested(ctx, field).and_then(|v| v.as_str().map(ToString::to_string))
+            let value = get_nested(ctx, field)
+                .ok_or_else(|| format!("Field '{field}' not found in context"))?;
+            cast_to_string_smart(&value, field)
         }
-        StringOperand::ConstString { value } => Some(value.clone()),
+        StringOperand::ConstString { value } => Ok(value.clone()),
     }
 }
 

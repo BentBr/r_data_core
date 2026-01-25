@@ -1,0 +1,104 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "format",
+        "source": {
+          "source_type": "uri",
+          "config": {
+            "uri": "https://api.example.com/products"
+          }
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {
+          "product_id": "product_id",
+          "product_name": "name",
+          "price": "price",
+          "quantity": "quantity"
+        }
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "previous_step",
+        "mapping": {
+          "price": "price",
+          "quantity": "quantity",
+          "name": "name"
+        }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "total_value",
+        "left": {
+          "kind": "field",
+          "field": "price"
+        },
+        "op": "mul",
+        "right": {
+          "kind": "field",
+          "field": "quantity"
+        }
+      },
+      "to": {
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "previous_step",
+        "mapping": {
+          "total_value": "total_value",
+          "name": "name"
+        }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "total_with_tax",
+        "left": {
+          "kind": "field",
+          "field": "total_value"
+        },
+        "op": "mul",
+        "right": {
+          "kind": "const",
+          "value": 1.19
+        }
+      },
+      "to": {
+        "type": "entity",
+        "entity_definition": "product_inventory",
+        "mapping": {
+          "total_with_tax": "final_value",
+          "name": "product_name"
+        }
+      }
+    }
+  ]
+}
+

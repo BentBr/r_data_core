@@ -1,6 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -8,12 +8,16 @@ use tokio_cron_scheduler::{Job, JobScheduler};
 use uuid::Uuid;
 
 use r_data_core_core::config::load_worker_config;
-use r_data_core_persistence::WorkflowRepository;
+use r_data_core_persistence::{ComponentVersionRepository, WorkflowRepository};
+
+/// Current version from Cargo.toml
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 use r_data_core_services::adapters::{
     DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter,
 };
 use r_data_core_services::bootstrap::{init_cache_manager, init_logger_with_default, init_pg_pool};
 use r_data_core_services::compute_reconcile_actions;
+use r_data_core_services::LicenseService;
 use r_data_core_services::{
     DynamicEntityService, EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService,
 };
@@ -23,7 +27,7 @@ use r_data_core_workflow::data::jobs::FetchAndStageJob;
 
 #[tokio::main]
 #[allow(clippy::too_many_lines)] // Main function orchestrates many components
-async fn main() -> anyhow::Result<()> {
+async fn main() -> r_data_core_core::error::Result<()> {
     // Basic logger init
     init_logger_with_default("info");
 
@@ -45,11 +49,26 @@ async fn main() -> anyhow::Result<()> {
         &config.database.connection_string,
         config.database.max_connections,
     )
-    .await?;
+    .await
+    .map_err(|e| {
+        r_data_core_core::error::Error::Config(format!("Failed to initialize database pool: {e}"))
+    })?;
 
     // Initialize cache manager (shares Redis with queue if available)
     let cache_manager =
         init_cache_manager(config.cache.clone(), Some(&config.queue.redis_url)).await;
+
+    // Verify license on startup
+    let license_service = LicenseService::new(config.license.clone(), cache_manager.clone());
+    license_service.verify_license_on_startup("worker").await;
+
+    // Report worker version to database
+    let version_repo = ComponentVersionRepository::new(pool.clone());
+    if let Err(e) = version_repo.upsert("worker", VERSION).await {
+        warn!("Failed to report worker version: {e}");
+    } else {
+        info!("Worker version {VERSION} registered");
+    }
 
     let queue_cfg = Arc::new(config.queue.clone());
     let _queue = ApalisRedisQueue::from_parts(
@@ -60,7 +79,9 @@ async fn main() -> anyhow::Result<()> {
     .await?;
 
     // Scheduler: scan workflows with cron and schedule tasks
-    let scheduler = JobScheduler::new().await?;
+    let scheduler = JobScheduler::new().await.map_err(|e| {
+        r_data_core_core::error::Error::Config(format!("Failed to create job scheduler: {e}"))
+    })?;
 
     let repo = WorkflowRepository::new(pool.clone());
     let scheduled_workflows: Arc<Mutex<HashMap<Uuid, (Uuid, String)>>> =
@@ -73,7 +94,7 @@ async fn main() -> anyhow::Result<()> {
                         pool: sqlx::Pool<sqlx::Postgres>,
                         queue_cfg: Arc<r_data_core_core::config::QueueConfig>|
      -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = anyhow::Result<Uuid>> + Send>,
+        Box<dyn std::future::Future<Output = r_data_core_core::error::Result<Uuid>> + Send>,
     > {
         Box::pin(async move {
             let pool_clone = pool.clone();
@@ -134,8 +155,13 @@ async fn main() -> anyhow::Result<()> {
                             .await;
                     }
                 })
+            })
+            .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to create job: {e}")))?;
+            let job_id = scheduler.add(job).await.map_err(|e| {
+                r_data_core_core::error::Error::Config(format!(
+                    "Failed to add job to scheduler: {e}"
+                ))
             })?;
-            let job_id = scheduler.add(job).await?;
             Ok(job_id)
         })
     };
@@ -159,7 +185,9 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    scheduler.start().await?;
+    scheduler.start().await.map_err(|e| {
+        r_data_core_core::error::Error::Config(format!("Failed to start scheduler: {e}"))
+    })?;
     info!("Worker scheduler started");
 
     // Reconcile scheduler with DB periodically (detect enabled/disabled/cron changes)
@@ -217,20 +245,54 @@ async fn main() -> anyhow::Result<()> {
 
     // Redis-backed consumer loop: block on queue and process runs.
     {
+        const MAX_BACKOFF_MS: u64 = 30_000; // Max 30 seconds
+        const BACKOFF_MULTIPLIER: u64 = 2;
+
         let pool_for_consumer = pool.clone();
         let queue_cfg = queue_cfg.clone();
         let cache_manager_for_consumer = cache_manager.clone();
         tokio::spawn(async move {
-            let queue = ApalisRedisQueue::from_parts(
+            let queue = match ApalisRedisQueue::from_parts(
                 &queue_cfg.redis_url,
                 &queue_cfg.fetch_key,
                 &queue_cfg.process_key,
             )
             .await
-            .expect("failed to init redis queue");
+            {
+                Ok(q) => q,
+                Err(e) => {
+                    error!(
+                        "Failed to initialize Redis queue: {e}. Worker consumer will not start."
+                    );
+                    return;
+                }
+            };
+            info!(
+                "Worker consumer loop started, waiting for jobs from queue '{}'...",
+                queue_cfg.fetch_key
+            );
+
+            let mut iteration_count: u64 = 0;
+            let mut retry_backoff_ms: u64 = 250; // Start with 250ms backoff
+
             loop {
+                iteration_count = iteration_count.wrapping_add(1);
+                // Log health check every 100 iterations (roughly every few minutes if no jobs)
+                if iteration_count.is_multiple_of(100) {
+                    info!(
+                        "Consumer loop alive, waiting for jobs from queue '{}' (iteration {})",
+                        queue_cfg.fetch_key, iteration_count
+                    );
+                }
+
                 match queue.blocking_pop_fetch().await {
                     Ok(job) => {
+                        // Reset backoff on successful pop
+                        retry_backoff_ms = 250;
+                        info!(
+                            "Popped fetch job from queue: workflow_id={}, run_uuid={:?}",
+                            job.workflow_id, job.trigger_id
+                        );
                         let repo = WorkflowRepository::new(pool_for_consumer.clone());
                         // Determine or create the run UUID
                         let run_uuid = if let Some(run) = job.trigger_id {
@@ -336,9 +398,16 @@ async fn main() -> anyhow::Result<()> {
                         }
                     }
                     Err(e) => {
-                        error!("Queue pop failed: {e}");
-                        // brief backoff before retrying to avoid hot loop
-                        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+                        error!(
+                            "Queue pop failed from '{}': {e}. Retrying after {}ms backoff...",
+                            queue_cfg.fetch_key, retry_backoff_ms
+                        );
+                        // Exponential backoff with max cap to avoid hot loop and reduce Redis load
+                        tokio::time::sleep(std::time::Duration::from_millis(retry_backoff_ms))
+                            .await;
+                        // Increase backoff for next retry, but cap at MAX_BACKOFF_MS
+                        retry_backoff_ms =
+                            (retry_backoff_ms * BACKOFF_MULTIPLIER).min(MAX_BACKOFF_MS);
                     }
                 }
             }

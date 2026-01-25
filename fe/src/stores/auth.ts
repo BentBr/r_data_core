@@ -4,6 +4,8 @@ import { typedHttpClient } from '@/api/typed-client'
 import { env } from '@/env-check'
 import { useTranslations } from '@/composables/useTranslations'
 import { getRefreshToken, setRefreshToken, deleteRefreshToken } from '@/utils/cookies'
+import { useLicenseStore } from './license'
+import { useVersionStore } from './versions'
 import type { LoginRequest, User } from '@/types/schemas'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -20,9 +22,37 @@ export const useAuthStore = defineStore('auth', () => {
     const permissions = ref<string[]>([])
     const isSuperAdmin = ref(false)
     const allowedRoutes = ref<string[]>([])
+    const usingDefaultPassword = ref(false)
+    const defaultPasswordBannerDismissed = ref(false)
+    const mobileWarningDismissed = ref(false)
+
+    // LocalStorage keys for banner dismissal
+    const DISMISSED_BANNER_KEY = 'default_password_banner_dismissed'
+    const MOBILE_WARNING_DISMISSED_KEY = 'mobile_warning_banner_dismissed'
+
+    // Initialize dismissed states from localStorage
+    if (typeof window !== 'undefined') {
+        const defaultPasswordDismissed = localStorage.getItem(DISMISSED_BANNER_KEY)
+        defaultPasswordBannerDismissed.value = defaultPasswordDismissed === 'true'
+
+        const mobileDismissed = localStorage.getItem(MOBILE_WARNING_DISMISSED_KEY)
+        mobileWarningDismissed.value = mobileDismissed === 'true'
+    }
 
     // Getters
     const isAuthenticated = computed(() => !!access_token.value && !!user.value)
+    const isDefaultPasswordInUse = computed(() => {
+        // Return false if password changed (false)
+        if (!usingDefaultPassword.value) {
+            return false
+        }
+        // Check if banner was dismissed (using reactive ref)
+        if (defaultPasswordBannerDismissed.value) {
+            return false
+        }
+        // Only return true if using default password and not dismissed
+        return usingDefaultPassword.value
+    })
     const isTokenExpired = computed(() => {
         if (!access_token.value) {
             return true
@@ -66,6 +96,7 @@ export const useAuthStore = defineStore('auth', () => {
                 first_name: '',
                 last_name: '',
                 is_active: true,
+                is_admin: false, // Will be determined from permissions
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
             }
@@ -79,10 +110,24 @@ export const useAuthStore = defineStore('auth', () => {
             // Set up automatic token refresh
             setupTokenRefresh(response.access_expires_at)
 
+            // Store default password check result
+            usingDefaultPassword.value = response.using_default_password
+
+            // Load license status after login
+            const licenseStore = useLicenseStore()
+            void licenseStore.loadLicenseStatus()
+            // Reset banner dismissal on new login
+            licenseStore.resetBannerDismissal()
+
+            // Load system versions after login
+            const versionStore = useVersionStore()
+            void versionStore.loadVersions()
+
             if (env.enableApiLogging) {
                 console.log('[Auth] Login successful:', {
                     username: response.username,
                     expires_at: response.access_expires_at,
+                    using_default_password: usingDefaultPassword.value,
                 })
             }
         } catch (err) {
@@ -103,6 +148,29 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    const dismissDefaultPasswordBanner = (): void => {
+        defaultPasswordBannerDismissed.value = true
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(DISMISSED_BANNER_KEY, 'true')
+        }
+        if (env.enableApiLogging) {
+            console.log('[Auth] Default password banner dismissed')
+        }
+    }
+
+    // Mobile warning banner
+    const isMobileWarningDismissed = computed(() => mobileWarningDismissed.value)
+
+    const dismissMobileWarningBanner = (): void => {
+        mobileWarningDismissed.value = true
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(MOBILE_WARNING_DISMISSED_KEY, 'true')
+        }
+        if (env.enableApiLogging) {
+            console.log('[Auth] Mobile warning banner dismissed')
+        }
+    }
+
     const clearAuthState = (): void => {
         // Clear state immediately to prevent API calls
         access_token.value = null
@@ -111,6 +179,15 @@ export const useAuthStore = defineStore('auth', () => {
         isSuperAdmin.value = false
         allowedRoutes.value = []
         error.value = null
+        usingDefaultPassword.value = false
+
+        // Reset dismissed banner states so they show again for next login
+        defaultPasswordBannerDismissed.value = false
+        mobileWarningDismissed.value = false
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem(DISMISSED_BANNER_KEY)
+            localStorage.removeItem(MOBILE_WARNING_DISMISSED_KEY)
+        }
 
         // Clear refresh token from secure cookie
         deleteRefreshToken()
@@ -120,6 +197,10 @@ export const useAuthStore = defineStore('auth', () => {
             clearTimeout(refreshTimer.value)
             refreshTimer.value = null
         }
+
+        // Clear version info
+        const versionStore = useVersionStore()
+        versionStore.clearVersions()
 
         if (env.enableApiLogging) {
             console.log('[Auth] Auth state cleared immediately')
@@ -153,7 +234,19 @@ export const useAuthStore = defineStore('auth', () => {
         // Clear state
         access_token.value = null
         user.value = null
+        permissions.value = []
+        isSuperAdmin.value = false
+        allowedRoutes.value = []
         error.value = null
+        usingDefaultPassword.value = false
+
+        // Reset dismissed banner states so they show again for next login
+        defaultPasswordBannerDismissed.value = false
+        mobileWarningDismissed.value = false
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem(DISMISSED_BANNER_KEY)
+            localStorage.removeItem(MOBILE_WARNING_DISMISSED_KEY)
+        }
 
         // Clear refresh token from secure cookie
         deleteRefreshToken()
@@ -257,6 +350,7 @@ export const useAuthStore = defineStore('auth', () => {
                     first_name: '',
                     last_name: '',
                     is_active: true,
+                    is_admin: false,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
                 }
@@ -342,6 +436,7 @@ export const useAuthStore = defineStore('auth', () => {
                         first_name: '',
                         last_name: '',
                         is_active: true,
+                        is_admin: false,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString(),
                     }
@@ -442,13 +537,35 @@ export const useAuthStore = defineStore('auth', () => {
         return allowedRoutes.value.includes(route)
     }
 
+    // Helper function to convert frontend namespace format to backend format
+    // Frontend: "Workflows", "EntityDefinitions", "ApiKeys"
+    // Backend: "workflows", "entity_definitions", "api_keys"
+    const convertNamespaceToBackendFormat = (namespace: string): string => {
+        // Convert PascalCase to snake_case and lowercase
+        // EntityDefinitions -> entity_definitions
+        // ApiKeys -> api_keys
+        // Workflows -> workflows
+        return namespace
+            .replace(/([A-Z])/g, '_$1')
+            .toLowerCase()
+            .replace(/^_/, '') // Remove leading underscore
+    }
+
     const hasPermission = (namespace: string, permissionType: string): boolean => {
-        // Super admin has all permissions
+        // Global admin: Super admin has all permissions for all namespaces
         if (isSuperAdmin.value) {
             return true
         }
-        // Check if user has the specific permission
-        const permissionString = `${namespace}:${permissionType.toLowerCase()}`
+        // Convert namespace to backend format (workflows, entity_definitions, api_keys, etc.)
+        const namespaceBackend = convertNamespaceToBackendFormat(namespace)
+        // Resource-level admin: Check if user has Admin permission for this namespace
+        // Admin permission grants all permission types for the namespace
+        const adminPermissionString = `${namespaceBackend}:admin`
+        if (permissions.value.includes(adminPermissionString)) {
+            return true
+        }
+        // Exact permission check: Check if user has the specific permission
+        const permissionString = `${namespaceBackend}:${permissionType.toLowerCase()}`
         return permissions.value.includes(permissionString)
     }
 
@@ -474,6 +591,8 @@ export const useAuthStore = defineStore('auth', () => {
         // Getters
         isAuthenticated,
         isTokenExpired,
+        isDefaultPasswordInUse,
+        isMobileWarningDismissed,
 
         // Actions
         login,
@@ -485,5 +604,7 @@ export const useAuthStore = defineStore('auth', () => {
         canAccessRoute,
         hasPermission,
         loadUserPermissions,
+        dismissDefaultPasswordBanner,
+        dismissMobileWarningBanner,
     }
 })

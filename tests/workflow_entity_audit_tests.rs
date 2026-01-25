@@ -1,4 +1,4 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use r_data_core_api::admin::workflows::models::CreateWorkflowRequest;
 use r_data_core_persistence::EntityDefinitionRepository;
@@ -78,7 +78,10 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
         versioning_disabled: false,
     };
 
-    let wf_uuid = wf_service.create(&req, creator_uuid).await?;
+    let wf_uuid = wf_service
+        .create(&req, creator_uuid)
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
 
     // Create dynamic entity service
     let de_repo = DynamicEntityRepository::new(pool.pool.clone());
@@ -91,7 +94,10 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
         WorkflowService::new_with_entities(wf_adapter_arc, Arc::new(de_service));
 
     // Enqueue run
-    let run_uuid = wf_service_with_entities.enqueue_run(wf_uuid).await?;
+    let run_uuid = wf_service_with_entities
+        .enqueue_run(wf_uuid)
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
 
     // Stage raw items
     let payloads = vec![json!({
@@ -100,7 +106,8 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
     })];
     wf_service_with_entities
         .stage_raw_items(wf_uuid, run_uuid, payloads)
-        .await?;
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
 
     // Process staged items
     let result = wf_service_with_entities
@@ -110,12 +117,13 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
     // Always check run logs to see what happened
     let logs = wf_service_with_entities
         .list_run_logs_paginated(run_uuid, 10, 0)
-        .await?;
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
     eprintln!("Run logs after processing: {logs:?}");
 
     if let Err(e) = result {
         eprintln!("Workflow processing failed: {e:?}");
-        return Err(e);
+        return Err(anyhow::anyhow!("{e}"));
     }
 
     // Check processed/failed counts
@@ -125,7 +133,10 @@ async fn workflow_creates_entity_with_run_uuid_as_created_by() -> anyhow::Result
     if processed == 0 && failed == 0 {
         // Check if items were actually staged
         let wf_repo_check = WorkflowRepository::new(pool.pool.clone());
-        let staged_count = wf_repo_check.count_raw_items_for_run(run_uuid).await?;
+        let staged_count = wf_repo_check
+            .count_raw_items_for_run(run_uuid)
+            .await
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
         eprintln!("Staged items count: {staged_count}");
         return Err(anyhow::anyhow!(
             "No items were processed. Staged: {staged_count}"
@@ -201,9 +212,7 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     let de_adapter = DynamicEntityRepositoryAdapter::new(de_repo);
     let de_service = DynamicEntityService::new(Arc::new(de_adapter), Arc::new(ed_service.clone()));
 
-    let entity_uuid = Uuid::now_v7();
     let mut field_data = HashMap::new();
-    field_data.insert("uuid".to_string(), json!(entity_uuid.to_string()));
     field_data.insert("name".to_string(), json!("Original Name"));
     field_data.insert("email".to_string(), json!("original@example.com"));
     field_data.insert("entity_key".to_string(), json!("original-key"));
@@ -220,7 +229,7 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
         definition: Arc::new(entity_def),
     };
 
-    de_service.create_entity(&entity).await?;
+    let entity_uuid = de_service.create_entity(&entity).await?;
 
     // Create workflow with update mode
     let wf_repo = WorkflowRepository::new(pool.pool.clone());
@@ -270,7 +279,10 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
         versioning_disabled: false,
     };
 
-    let wf_uuid = wf_service.create(&req, creator_uuid).await?;
+    let wf_uuid = wf_service
+        .create(&req, creator_uuid)
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
 
     // Create workflow service with entities
     let de_repo2 = DynamicEntityRepository::new(pool.pool.clone());
@@ -284,7 +296,10 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     );
 
     // Enqueue run
-    let run_uuid = wf_service_with_entities.enqueue_run(wf_uuid).await?;
+    let run_uuid = wf_service_with_entities
+        .enqueue_run(wf_uuid)
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
 
     // Stage raw items with entity_key to find the entity
     let payloads = vec![json!({
@@ -294,7 +309,8 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     })];
     wf_service_with_entities
         .stage_raw_items(wf_uuid, run_uuid, payloads)
-        .await?;
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
 
     // Process staged items
     let result = wf_service_with_entities
@@ -304,12 +320,13 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     // Always check run logs to see what happened
     let logs = wf_service_with_entities
         .list_run_logs_paginated(run_uuid, 10, 0)
-        .await?;
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
     eprintln!("Run logs after processing: {logs:?}");
 
     if let Err(e) = result {
         eprintln!("Workflow processing failed: {e:?}");
-        return Err(e);
+        return Err(anyhow::anyhow!("{e}"));
     }
 
     // Check processed/failed counts
@@ -319,7 +336,10 @@ async fn workflow_updates_entity_with_run_uuid_as_updated_by() -> anyhow::Result
     if processed == 0 && failed == 0 {
         // Check if items were actually staged
         let wf_repo_check = WorkflowRepository::new(pool.pool.clone());
-        let staged_count = wf_repo_check.count_raw_items_for_run(run_uuid).await?;
+        let staged_count = wf_repo_check
+            .count_raw_items_for_run(run_uuid)
+            .await
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
         eprintln!("Staged items count: {staged_count}");
         return Err(anyhow::anyhow!(
             "No items were processed. Staged: {staged_count}"

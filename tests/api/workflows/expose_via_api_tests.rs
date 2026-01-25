@@ -1,4 +1,4 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 // Tests for exposing data via our API endpoint (CSV/JSON)
 // Use Case 4: Expose data via our API endpoint (CSV/JSON), ignore cron

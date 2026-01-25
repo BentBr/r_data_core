@@ -1,96 +1,197 @@
-# Build arguments
-ARG RUST_VERSION=1.88.0
-ARG BUILD_MODE=release
-ARG BINARY_NAME=r_data_core
-ARG PACKAGE_NAME=r_data_core
-ARG RUST_LOG_LEVEL=warning
+# syntax=docker/dockerfile:1
 
-# Builder stage with optimized caching
-FROM rust:${RUST_VERSION}-slim AS builder
+# ==============================================================================
+# Multi-stage Dockerfile for r_data_core binaries
+# Supports multi-architecture builds (amd64, arm64)
+#
+# Build args:
+#   BINARY - Which binary to build (r_data_core, r_data_core_worker, r_data_core_maintenance)
+#
+# Example:
+#   docker build --build-arg BINARY=r_data_core -t r-data-core:latest .
+# ==============================================================================
 
-# Re-declare build args inside this stage so they are available to RUN steps
-ARG BUILD_MODE
-ARG BINARY_NAME
-ARG PACKAGE_NAME
+ARG RUST_VERSION=1.92.0
+ARG DEBIAN_VERSION=bookworm
 
-LABEL org.opencontainers.image.title="R Data Core"
-LABEL org.opencontainers.image.description="R Data Core Backend. Easy rust-backed performant MDM"
-LABEL org.opencontainers.image.version="1.0.0"
-LABEL org.opencontainers.image.authors="Bent Brüggemann <mail@bent-brueggemann.de>"
-LABEL org.opencontainers.image.source="https://github.com/BentBr/r_data_core"
-LABEL org.opencontainers.image.licenses="MIT"
+# OCI image metadata (used by GHCR package pages)
+# Can be overridden by CI via --build-arg.
+ARG OCI_SOURCE="https://github.com/bentbr/r_data_core"
+ARG OCI_REVISION=""
+ARG OCI_CREATED=""
 
-WORKDIR /usr/src/r_data_core
+# ==============================================================================
+# Chef stage - compute recipe for dependency caching
+# ==============================================================================
+FROM rust:${RUST_VERSION} AS chef
+RUN cargo install cargo-chef --locked
+WORKDIR /app
 
-# Install build dependencies required by Rust crates (compiler toolchain, OpenSSL, PostgreSQL headers, etc.)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    pkg-config \
-    libssl-dev \
-    libpq-dev \
-    ca-certificates \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# ==============================================================================
+# Planner stage - create dependency recipe
+# ==============================================================================
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
 
-# Copy Cargo files first for better caching
-COPY Cargo.toml Cargo.lock ./
+# ==============================================================================
+# Builder stage - compile binaries
+# ==============================================================================
+FROM chef AS builder
 
-# Build dependencies only (this layer will be cached unless Cargo files change)
-# Use BuildKit cache mounts for faster builds
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    --mount=type=cache,target=/usr/src/r_data_core/target \
-    if [ "${BUILD_MODE}" = "release" ]; then \
-        cargo build --release --package ${PACKAGE_NAME} --bin ${BINARY_NAME} || true; \
-    else \
-        cargo build --package ${PACKAGE_NAME} --bin ${BINARY_NAME} || true; \
-    fi
+# Install sqlx-cli for offline mode preparation
+RUN cargo install sqlx-cli --no-default-features --features postgres --locked
 
-# Copy source code and migrations
-COPY src/ ./src/
-COPY migrations/ ./migrations/
-COPY .sqlx/ ./.sqlx/
-COPY crates/ ./crates/
+# Copy and cook dependencies first (cached layer)
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
 
-# Build the actual binary
-# Note: We don't cache the target directory here to ensure source changes trigger rebuilds
-# We only cache the registry and git to speed up dependency downloads
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    cargo clean && \
-    if [ "${BUILD_MODE}" = "release" ]; then \
-        cargo build --release --package ${PACKAGE_NAME} --bin ${BINARY_NAME}; \
-    else \
-        cargo build --package ${PACKAGE_NAME} --bin ${BINARY_NAME}; \
-    fi
+# Copy source code
+COPY . .
 
-# Final stage
-FROM debian:bookworm-slim
+# Build all binaries in release mode with SQLx offline mode
+ENV SQLX_OFFLINE=true
+RUN cargo build --release --workspace
 
-# Redeclare build arguments for this stage
-ARG BUILD_MODE
-ARG BINARY_NAME
-ARG RUST_LOG_LEVEL
+# ==============================================================================
+# Runtime stage - minimal image with single binary
+# ==============================================================================
+FROM debian:${DEBIAN_VERSION}-slim AS runtime
+
+ARG BINARY=r_data_core
+ARG OCI_SOURCE
+ARG OCI_REVISION
+ARG OCI_CREATED
+
+LABEL org.opencontainers.image.title="r-data-core-runtime" \
+      org.opencontainers.image.description="Generic runtime image for a single r_data_core binary (set via BINARY build-arg)." \
+      org.opencontainers.image.source=$OCI_SOURCE \
+      org.opencontainers.image.revision=$OCI_REVISION \
+      org.opencontainers.image.created=$OCI_CREATED
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
-    libpq5 \
+    libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the binary from builder
-COPY --from=builder /usr/src/r_data_core/target/${BUILD_MODE}/${BINARY_NAME} /usr/local/bin/
+# Create non-root user
+RUN useradd --create-home --user-group appuser
+USER appuser
+WORKDIR /usr/local/bin
 
-# Create a non-root user
-RUN groupadd -r rdata && useradd -r -g rdata rdata
-USER rdata
+# Copy the specified binary
+COPY --from=builder --chown=appuser:appuser /app/target/release/${BINARY} /usr/local/bin/app
 
-# Set environment variables
-ENV RUST_LOG=${RUST_LOG_LEVEL}
-ENV BINARY_NAME=${BINARY_NAME}
+# Set default command
+ENTRYPOINT ["/usr/local/bin/app"]
 
-# Expose the port
-EXPOSE 80
+# Health check placeholder - override in docker-compose or k8s
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD ["true"]
 
-# Run the binary (use shell form to expand ENV variable)
-CMD ["sh", "-c", "exec ${BINARY_NAME}"]
+# ==============================================================================
+# Main app image - includes helper utilities
+# ==============================================================================
+FROM debian:${DEBIAN_VERSION}-slim AS r_data_core
+
+ARG OCI_SOURCE
+ARG OCI_REVISION
+ARG OCI_CREATED
+
+LABEL org.opencontainers.image.title="r-data-core" \
+      org.opencontainers.image.description="r_data_core backend API service with utility binaries." \
+      org.opencontainers.image.source=$OCI_SOURCE \
+      org.opencontainers.image.revision=$OCI_REVISION \
+      org.opencontainers.image.created=$OCI_CREATED
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd --create-home --user-group appuser
+USER appuser
+WORKDIR /usr/local/bin
+
+# Copy main binary
+COPY --from=builder --chown=appuser:appuser /app/target/release/r_data_core /usr/local/bin/r_data_core
+
+# Copy utility binaries for operations/maintenance tasks
+# These can be run via: docker compose exec core /usr/local/bin/<binary>
+COPY --from=builder --chown=appuser:appuser /app/target/release/run_migrations /usr/local/bin/run_migrations
+COPY --from=builder --chown=appuser:appuser /app/target/release/clear_cache /usr/local/bin/clear_cache
+COPY --from=builder --chown=appuser:appuser /app/target/release/hash_password /usr/local/bin/hash_password
+COPY --from=builder --chown=appuser:appuser /app/target/release/license_tool /usr/local/bin/license_tool
+
+ENTRYPOINT ["/usr/local/bin/r_data_core"]
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD ["true"]
+
+# ==============================================================================
+# Worker image
+# ==============================================================================
+FROM debian:${DEBIAN_VERSION}-slim AS r_data_core_worker
+
+ARG OCI_SOURCE
+ARG OCI_REVISION
+ARG OCI_CREATED
+
+LABEL org.opencontainers.image.title="r-data-core-worker" \
+      org.opencontainers.image.description="r_data_core background worker service." \
+      org.opencontainers.image.source=$OCI_SOURCE \
+      org.opencontainers.image.revision=$OCI_REVISION \
+      org.opencontainers.image.created=$OCI_CREATED
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --create-home --user-group appuser
+USER appuser
+WORKDIR /usr/local/bin
+
+COPY --from=builder --chown=appuser:appuser /app/target/release/r_data_core_worker /usr/local/bin/r_data_core_worker
+
+ENTRYPOINT ["/usr/local/bin/r_data_core_worker"]
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD ["true"]
+
+# ==============================================================================
+# Maintenance image
+# ==============================================================================
+FROM debian:${DEBIAN_VERSION}-slim AS r_data_core_maintenance
+
+ARG OCI_SOURCE
+ARG OCI_REVISION
+ARG OCI_CREATED
+
+LABEL org.opencontainers.image.title="r-data-core-maintenance" \
+      org.opencontainers.image.description="r_data_core maintenance/ops image for administrative and one-off tasks." \
+      org.opencontainers.image.source="${OCI_SOURCE}" \
+      org.opencontainers.image.revision="${OCI_REVISION}" \
+      org.opencontainers.image.created="${OCI_CREATED}"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --create-home --user-group appuser
+USER appuser
+WORKDIR /usr/local/bin
+
+COPY --from=builder --chown=appuser:appuser /app/target/release/r_data_core_maintenance /usr/local/bin/r_data_core_maintenance
+
+ENTRYPOINT ["/usr/local/bin/r_data_core_maintenance"]
+
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD ["true"]

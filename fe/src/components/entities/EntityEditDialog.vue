@@ -29,13 +29,14 @@
 
                     <!-- Parent Entity Selection -->
                     <v-select
-                        v-model="parentUuidValue"
+                        :model-value="parentUuidValue"
                         :items="availableParents"
                         item-title="title"
                         item-value="uuid"
                         :label="t('entities.create.parent_label')"
                         clearable
                         class="mt-4"
+                        @update:model-value="(v: string | null) => (parentUuidValue = v)"
                     />
 
                     <!-- Published Switch -->
@@ -123,6 +124,7 @@
 
     interface Emits {
         (e: 'update:modelValue', value: boolean): void
+
         (e: 'update', data: UpdateEntityRequest): void
     }
 
@@ -151,7 +153,7 @@
         set: value => emit('update:modelValue', value),
     })
 
-    const availableParents = computed(() => {
+    const availableParents = computed((): Array<{ title: string; uuid: string }> => {
         if (!props.entity?.entity_type) {
             return []
         }
@@ -162,9 +164,9 @@
     })
 
     const parentUuidValue = computed({
-        get: () => formData.value.parent_uuid ?? null,
-        set: (value: string | null) => {
-            formData.value.parent_uuid = value
+        get: () => formData.value.parent_uuid,
+        set: (value: string | null | undefined) => {
+            formData.value.parent_uuid = value ?? null
         },
     })
 
@@ -177,7 +179,7 @@
             }
             formData.value = {
                 data,
-                parent_uuid: props.entity.field_data?.parent_uuid ?? null,
+                parent_uuid: (props.entity.field_data?.parent_uuid as string) ?? null,
             }
         }
     }

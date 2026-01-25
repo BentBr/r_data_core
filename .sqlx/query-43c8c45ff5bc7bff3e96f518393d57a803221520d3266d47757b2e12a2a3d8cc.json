@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO api_keys \n            (user_uuid, key_hash, name, description, is_active, created_at, expires_at, created_by, published)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n            RETURNING uuid\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Varchar",
+        "Text",
+        "Bool",
+        "Timestamptz",
+        "Timestamptz",
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "43c8c45ff5bc7bff3e96f518393d57a803221520d3266d47757b2e12a2a3d8cc"
+}

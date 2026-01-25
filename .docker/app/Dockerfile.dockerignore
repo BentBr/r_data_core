@@ -1,0 +1,50 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Development artifacts
+target/
+.idea/
+.vscode/
+.example_files/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# CI/CD (not needed in Docker build)
+.github/
+
+# Frontend directories (not needed for backend images)
+fe/
+static-website/
+
+# Test files
+tests/
+**/tests/
+**/*_test.rs
+
+# Temp files
+**/*.rs.bk
+*.swp
+*.swo
+
+# Logs
+server.log
+*.log
+
+# SQLx offline data is needed for build
+# .sqlx/
+
+# Docker files (prevent recursive copy)
+.docker/
+Dockerfile*
+docker-compose*.yml
+.dockerignore

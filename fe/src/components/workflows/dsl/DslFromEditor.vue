@@ -55,7 +55,7 @@
                 />
             </div>
             <div
-                v-if="formatType === 'csv'"
+                v-if="formatType === 'csv' && sourceType !== 'trigger'"
                 class="mb-2"
             >
                 <div class="d-flex align-center ga-2 flex-wrap">
@@ -69,16 +69,16 @@
                         size="x-small"
                         variant="tonal"
                         @click="autoMapFromUri"
-                        >{{ t('workflows.dsl.auto_map_from_uri') }}</v-btn
-                    >
+                        >{{ t('workflows.dsl.auto_map_from_uri') }}
+                    </v-btn>
                 </div>
             </div>
             <div class="mb-2">
                 <v-expansion-panels variant="accordion">
                     <v-expansion-panel>
-                        <v-expansion-panel-title>{{
-                            t('workflows.dsl.auth_type')
-                        }}</v-expansion-panel-title>
+                        <v-expansion-panel-title
+                            >{{ t('workflows.dsl.auth_type') }}
+                        </v-expansion-panel-title>
                         <v-expansion-panel-text>
                             <AuthConfigEditor
                                 :model-value="sourceAuth"
@@ -102,8 +102,17 @@
                 size="x-small"
                 variant="tonal"
                 @click="addMapping"
-                >{{ t('workflows.dsl.add_mapping') }}</v-btn
+                >{{ t('workflows.dsl.add_mapping') }}
+            </v-btn>
+        </template>
+        <template v-else-if="modelValue.type === 'trigger'">
+            <div
+                class="text-caption mb-2 pa-2"
+                style="background-color: rgba(var(--v-theme-primary), 0.1); border-radius: 4px"
             >
+                <strong>{{ t('workflows.dsl.endpoint_info') }}:</strong> GET
+                {{ getTriggerEndpointUri() }}
+            </div>
         </template>
         <template v-else-if="modelValue.type === 'entity'">
             <v-select
@@ -173,8 +182,49 @@
                 size="x-small"
                 variant="tonal"
                 @click="addMapping"
-                >{{ t('workflows.dsl.add_mapping') }}</v-btn
+                >{{ t('workflows.dsl.add_mapping') }}
+            </v-btn>
+        </template>
+        <template v-else-if="modelValue.type === 'previous_step'">
+            <!-- Info banner -->
+            <v-alert
+                v-if="stepIndex === 0"
+                type="error"
+                density="compact"
+                class="mb-2"
             >
+                {{ t('workflows.dsl.previous_step_error_first_step') }}
+            </v-alert>
+            <div
+                v-else
+                class="text-caption mb-2 pa-2"
+                style="background-color: rgba(var(--v-theme-info), 0.1); border-radius: 4px"
+            >
+                <v-icon
+                    size="small"
+                    class="mr-1"
+                    >mdi-arrow-up-circle
+                </v-icon>
+                {{ t('workflows.dsl.previous_step_info') }}
+            </div>
+            <div class="text-caption mb-1 mt-2">
+                {{ t('workflows.dsl.mapping_previous_normalized') }}
+            </div>
+            <MappingEditor
+                ref="mappingEditorRef"
+                :model-value="modelValue.mapping"
+                :left-label="t('workflows.dsl.previous_field')"
+                :right-label="t('workflows.dsl.normalized')"
+                :left-items="previousStepFields"
+                :use-select-for-left="previousStepFields.length > 0"
+                @update:model-value="updateField('mapping', $event)"
+            />
+            <v-btn
+                size="x-small"
+                variant="tonal"
+                @click="addMapping"
+                >{{ t('workflows.dsl.add_mapping') }}
+            </v-btn>
         </template>
     </div>
 </template>
@@ -194,6 +244,8 @@
     const props = defineProps<{
         modelValue: FromDef
         workflowUuid?: string | null
+        stepIndex?: number
+        previousStepFields?: string[]
     }>()
 
     const emit = defineEmits<{ (e: 'update:modelValue', value: FromDef): void }>()
@@ -204,6 +256,10 @@
     const mappingEditorRef = ref<{ addEmptyPair: () => void } | null>(null)
     const entityDefItems = ref<{ title: string; value: string }[]>([])
     const filterFieldItems = ref<string[]>([])
+
+    // Default props
+    const stepIndex = computed(() => props.stepIndex ?? 0)
+    const previousStepFields = computed(() => props.previousStepFields ?? [])
 
     // Computed properties to avoid 'as any' in templates
     const sourceType = computed(() => {
@@ -331,9 +387,16 @@
         return buildApiUrl(`/api/v1/workflows/${uuid}`)
     }
 
+    function getTriggerEndpointUri(): string {
+        const uuid = props.workflowUuid ?? '{workflow-uuid}'
+        return buildApiUrl(`/api/v1/workflows/${uuid}/trigger`)
+    }
+
     const fromTypes = [
         { title: 'Format (CSV/JSON)', value: 'format' },
         { title: 'Entity', value: 'entity' },
+        { title: 'Previous Step', value: 'previous_step' },
+        { title: 'Trigger', value: 'trigger' },
     ]
 
     function updateField(field: string, value: unknown) {
@@ -349,11 +412,11 @@
     function updateFilterField(field: string, value: unknown) {
         const updated = { ...props.modelValue } as Record<string, unknown>
         updated.filter ??= { field: '', operator: '=', value: '' }
-        updated.filter[field] = value
+        ;(updated.filter as Record<string, unknown>)[field] = value
         emit('update:modelValue', updated as FromDef)
     }
 
-    function toggleFilter(enabled: boolean) {
+    function toggleFilter(enabled: boolean | null) {
         const updated = { ...props.modelValue } as Record<string, unknown>
         if (enabled) {
             updated.filter ??= { field: '', operator: '=', value: '' }
@@ -383,7 +446,12 @@
             source: {
                 ...props.modelValue.source,
                 source_type: newType,
-                config: newType === 'uri' ? { uri: '' } : newType === 'api' ? {} : {},
+                config:
+                    newType === 'uri'
+                        ? { uri: '' }
+                        : newType === 'api' || newType === 'trigger'
+                          ? {}
+                          : {},
             },
         }
         emit('update:modelValue', updated)
@@ -452,7 +520,7 @@
         emit('update:modelValue', updated)
     }
 
-    function onTypeChange(newType: 'format' | 'entity') {
+    function onTypeChange(newType: 'format' | 'entity' | 'previous_step' | 'trigger') {
         let newFrom: FromDef
         if (newType === 'format') {
             newFrom = {
@@ -468,11 +536,22 @@
                 },
                 mapping: {},
             }
-        } else {
+        } else if (newType === 'entity') {
             newFrom = {
                 type: 'entity',
                 entity_definition: '',
                 filter: { field: '', operator: '=', value: '' },
+                mapping: {},
+            }
+        } else if (newType === 'trigger') {
+            newFrom = {
+                type: 'trigger',
+                mapping: {},
+            }
+        } else {
+            // previous_step
+            newFrom = {
+                type: 'previous_step',
                 mapping: {},
             }
         }
@@ -535,8 +614,8 @@
             return
         }
         const header = props.modelValue.format.options?.has_header !== false
-        const delimiter = props.modelValue.format.options?.delimiter ?? ','
-        const quote = props.modelValue.format.options?.quote ?? '"'
+        const delimiter = (props.modelValue.format.options?.delimiter as string) ?? ','
+        const quote = (props.modelValue.format.options?.quote as string) ?? '"'
         let fields: string[]
         if (header) {
             fields = parseCsvHeader(text, delimiter, quote)
@@ -570,8 +649,8 @@
             const res = await fetch(uri)
             const txt = await res.text()
             const header = props.modelValue.format.options?.has_header !== false
-            const delimiter = props.modelValue.format.options?.delimiter ?? ','
-            const quote = props.modelValue.format.options?.quote ?? '"'
+            const delimiter = (props.modelValue.format.options?.delimiter as string) ?? ','
+            const quote = (props.modelValue.format.options?.quote as string) ?? '"'
             let fields: string[]
             if (header) {
                 fields = parseCsvHeader(txt, delimiter, quote)

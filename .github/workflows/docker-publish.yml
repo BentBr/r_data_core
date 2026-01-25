@@ -1,0 +1,373 @@
+name: Build and Publish Docker Images
+
+on:
+  # Keep release trigger for manual releases (not via release-please)
+  release:
+    types: [published]
+  # Build on develop push
+  push:
+    branches:
+      - develop
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag for the images (e.g., test, custom-v1)'
+        required: true
+        default: 'manual'
+  # Called by release-please workflow
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version from release-please'
+        required: true
+        type: string
+      tag_name:
+        description: 'Tag name from release-please'
+        required: true
+        type: string
+      build_backend:
+        description: 'Whether to build backend images'
+        required: false
+        type: boolean
+        default: true
+      build_frontend:
+        description: 'Whether to build frontend images'
+        required: false
+        type: boolean
+        default: true
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # Build all backend images in a single job to share the compiled Rust artifacts
+  build-backend:
+    if: ${{ github.event_name != 'workflow_call' || inputs.build_backend != false }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set lowercase repo owner
+        id: repo
+        run: echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "tag=${{ inputs.version }}" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "release" ]; then
+            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
+            echo "tag=develop" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push backend images
+        uses: docker/bake-action@v6
+        with:
+          files: .docker/docker-bake.hcl
+          targets: backend
+          provenance: true
+          set: |
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          REPO_OWNER: ${{ steps.repo.outputs.owner_lc }}
+          TAG: ${{ steps.tag.outputs.tag }}
+
+      # Also push 'latest' tag for releases
+      - name: Push latest tags for releases
+        if: steps.tag.outputs.is_release == 'true'
+        uses: docker/bake-action@v6
+        with:
+          files: .docker/docker-bake.hcl
+          targets: backend
+          provenance: true
+          set: |
+            *.cache-from=type=gha
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          REPO_OWNER: ${{ steps.repo.outputs.owner_lc }}
+          TAG: latest
+
+      - name: Verify backend multi-arch manifests
+        run: |
+          echo "Verifying multi-arch manifests for backend images..."
+
+          for image in r-data-core r-data-core-worker r-data-core-maintenance; do
+            echo "Checking $image:${{ steps.tag.outputs.tag }}..."
+            docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/${image}:${{ steps.tag.outputs.tag }}
+
+            # Verify both architectures are present
+            if docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/${image}:${{ steps.tag.outputs.tag }} | grep -q "linux/amd64" && \
+               docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/${image}:${{ steps.tag.outputs.tag }} | grep -q "linux/arm64"; then
+              echo "✓ Both linux/amd64 and linux/arm64 architectures found for ${image}"
+            else
+              echo "✗ Missing architecture for ${image}"
+              exit 1
+            fi
+          done
+
+      - name: Resolve backend manifest digest (r-data-core)
+        id: backend-digest
+        run: |
+          set -u
+          IMAGE="${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core:${{ steps.tag.outputs.tag }}"
+          echo "Resolving digest for: $IMAGE"
+          INSPECT_OUT="$(docker buildx imagetools inspect "$IMAGE" 2>&1)"
+          INSPECT_EXIT=$?
+          if [ $INSPECT_EXIT -ne 0 ]; then
+            echo "docker buildx imagetools inspect failed (exit $INSPECT_EXIT):"
+            echo "$INSPECT_OUT"
+            exit $INSPECT_EXIT
+          fi
+          echo "$INSPECT_OUT"
+
+          DIGEST="$(echo "$INSPECT_OUT" | sed -nE 's/^[[:space:]]*Digest:[[:space:]]+//p' | head -n1)"
+          if [[ -z "${DIGEST}" ]]; then
+            echo "Failed to resolve digest for $IMAGE"
+            exit 1
+          fi
+          if ! [[ "${DIGEST}" =~ ^sha256:[0-9a-fA-F]{64}$ ]]; then
+            echo "Resolved digest is not in expected format sha256:<hex>: ${DIGEST}"
+            exit 1
+          fi
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate artifact attestation for r-data-core
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core
+          subject-digest: ${{ steps.backend-digest.outputs.digest }}
+          push-to-registry: true
+        continue-on-error: true
+
+  # Build frontend image separately (fast, doesn't need shared cache with backend)
+  build-frontend:
+    if: ${{ github.event_name != 'workflow_call' || inputs.build_frontend != false }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set lowercase repo owner
+        id: repo
+        run: echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core-admin-fe
+          tags: |
+            # On release (manual): version tag + latest
+            type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'release' }}
+            type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+            # On workflow_call from release-please (check if inputs.version is set)
+            type=raw,value=${{ inputs.version }},enable=${{ inputs.version != '' }}
+            type=raw,value=latest,enable=${{ inputs.version != '' }}
+            # On develop push: develop + sha
+            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' && inputs.version == '' }}
+            type=sha,prefix=develop-,enable=${{ github.ref == 'refs/heads/develop' && inputs.version == '' }}
+            # On manual dispatch
+            type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.version == '' }}
+
+      - name: Build and push
+        id: build-push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./.docker/fe/Dockerfile
+          target: production
+          platforms: linux/amd64,linux/arm64
+          outputs: type=image,push=true,annotation-index.org.opencontainers.image.description=Admin frontend for r_data_core served by nginx
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+
+      - name: Verify frontend multi-arch manifest
+        run: |
+          echo "Verifying multi-arch manifest for frontend image..."
+
+          # Use the image digest to inspect
+          IMAGE_REF="${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core-admin-fe@${{ steps.build-push.outputs.digest }}"
+          echo "Inspecting: $IMAGE_REF"
+          docker buildx imagetools inspect "$IMAGE_REF"
+
+          # Verify both architectures are present
+          if docker buildx imagetools inspect "$IMAGE_REF" | grep -q "linux/amd64" && \
+             docker buildx imagetools inspect "$IMAGE_REF" | grep -q "linux/arm64"; then
+            echo "✓ Both linux/amd64 and linux/arm64 architectures found for frontend image"
+          else
+            echo "✗ Missing architecture for frontend image"
+            exit 1
+          fi
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core-admin-fe
+          subject-digest: ${{ steps.build-push.outputs.digest }}
+          push-to-registry: true
+        continue-on-error: true
+
+  # Summary job that runs after images are built
+  publish-summary:
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    if: always() && (needs.build-backend.result == 'success' || needs.build-frontend.result == 'success')
+    steps:
+      - name: Summary
+        env:
+          BACKEND_RESULT: ${{ needs.build-backend.result }}
+          FRONTEND_RESULT: ${{ needs.build-frontend.result }}
+        run: |
+          OWNER_LC="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "## Docker Images Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -n "${{ inputs.version }}" ]; then
+            TAG="${{ inputs.tag_name }}"
+          elif [ "${{ github.event_name }}" == "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+          elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
+            TAG="develop"
+          else
+            TAG="${{ inputs.tag }}"
+          fi
+
+          echo "| Image | Tag | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-----|--------|" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$BACKEND_RESULT" == "success" ]; then
+            echo "| \`ghcr.io/${OWNER_LC}/r-data-core\` | \`${TAG}\` | ✅ |" >> $GITHUB_STEP_SUMMARY
+            echo "| \`ghcr.io/${OWNER_LC}/r-data-core-worker\` | \`${TAG}\` | ✅ |" >> $GITHUB_STEP_SUMMARY
+            echo "| \`ghcr.io/${OWNER_LC}/r-data-core-maintenance\` | \`${TAG}\` | ✅ |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$BACKEND_RESULT" == "skipped" ]; then
+            echo "| \`ghcr.io/${OWNER_LC}/r-data-core\` | - | ⏭️ skipped |" >> $GITHUB_STEP_SUMMARY
+            echo "| \`ghcr.io/${OWNER_LC}/r-data-core-worker\` | - | ⏭️ skipped |" >> $GITHUB_STEP_SUMMARY
+            echo "| \`ghcr.io/${OWNER_LC}/r-data-core-maintenance\` | - | ⏭️ skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$FRONTEND_RESULT" == "success" ]; then
+            echo "| \`ghcr.io/${OWNER_LC}/r-data-core-admin-fe\` | \`${TAG}\` | ✅ |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$FRONTEND_RESULT" == "skipped" ]; then
+            echo "| \`ghcr.io/${OWNER_LC}/r-data-core-admin-fe\` | - | ⏭️ skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Usage" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          if [ "$BACKEND_RESULT" == "success" ]; then
+            echo "# Backend" >> $GITHUB_STEP_SUMMARY
+            echo "docker pull ghcr.io/${OWNER_LC}/r-data-core:${TAG}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "$FRONTEND_RESULT" == "success" ]; then
+            echo "# Admin Frontend (nginx)" >> $GITHUB_STEP_SUMMARY
+            echo "docker pull ghcr.io/${OWNER_LC}/r-data-core-admin-fe:${TAG}" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  # Build and upload frontend ZIP to release
+  upload-frontend-zip:
+    runs-on: ubuntu-latest
+    if: ${{ (inputs.version != '' || github.event_name == 'release') && (github.event_name != 'workflow_call' || inputs.build_frontend != false) }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: fe/package-lock.json
+
+      - name: Install dependencies
+        working-directory: fe
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: fe
+        run: npm run build
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+            echo "tag_name=${{ inputs.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+            echo "tag_name=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create ZIP archive
+        run: |
+          cd fe/dist
+          zip -r ../../r-data-core-admin-fe-${{ steps.version.outputs.version }}.zip .
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag_name }}
+          files: r-data-core-admin-fe-${{ steps.version.outputs.version }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

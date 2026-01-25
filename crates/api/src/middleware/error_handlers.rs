@@ -80,14 +80,5 @@ pub fn create_error_handlers() -> ActixErrorHandlers<BoxBody> {
         .handler(StatusCode::BAD_REQUEST, AppErrorHandlers::handle_error)
 }
 
-// Add a custom panic handler for middleware errors
-#[allow(dead_code)] // Handler for future use
-pub fn handle_middleware_panic(err: &actix_web::Error) -> HttpResponse {
-    log::error!("Middleware panic: {err:?}");
-
-    // Return a friendly error response
-    ApiResponse::<()>::internal_error("An unexpected error occurred processing your request")
-}
-
 // Type alias to make the code more readable
 type Result<T> = std::result::Result<T, actix_web::Error>;

@@ -194,6 +194,9 @@ fn generate_all_permissions() -> Vec<String> {
     permissions.extend(generate_standard_permissions(&ResourceNamespace::ApiKeys));
     permissions.extend(generate_standard_permissions(&ResourceNamespace::Roles));
     permissions.extend(generate_standard_permissions(&ResourceNamespace::System));
+    permissions.extend(generate_standard_permissions(
+        &ResourceNamespace::DashboardStats,
+    ));
     permissions
 }
 
@@ -277,6 +280,7 @@ mod tests {
             jwt_expiration: 3600,
             enable_docs: true,
             cors_origins: vec!["*".to_string()],
+            check_default_admin_password: true,
         }
     }
 

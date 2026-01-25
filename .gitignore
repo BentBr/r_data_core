@@ -1,10 +1,18 @@
 /target
 .env
+*.key
 server.log
 .idea
 logs
+
+compose.override.yaml
 
 /fe/coverage
 
 # Mac-specific
 .DS_Store
+
+#AI tools
+CLAUDE.md
+/.claude
+.cursor-context.md

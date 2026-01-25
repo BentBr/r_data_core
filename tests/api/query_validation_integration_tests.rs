@@ -1,15 +1,16 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 #![allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 
 use actix_web::{http::StatusCode, test, web, App};
 use r_data_core_core::cache::CacheManager;
-use r_data_core_core::config::CacheConfig;
+use r_data_core_core::config::{CacheConfig, LicenseConfig};
 use r_data_core_core::error::Result;
 use r_data_core_persistence::{
     AdminUserRepository, ApiKeyRepository, DashboardStatsRepository, WorkflowRepository,
 };
 use r_data_core_services::{
-    AdminUserService, ApiKeyService, DashboardStatsService, EntityDefinitionService, RoleService,
+    AdminUserService, ApiKeyService, DashboardStatsService, EntityDefinitionService,
+    LicenseService, RoleService,
 };
 use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_test_support::{
@@ -43,6 +44,9 @@ async fn setup_test_app() -> Result<(
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
 
+    let license_config = LicenseConfig::default();
+    let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
+
     let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.pool.clone())));
     let api_key_service = ApiKeyService::new(api_key_repository);
 
@@ -70,6 +74,7 @@ async fn setup_test_app() -> Result<(
             jwt_expiration: 3600,
             enable_docs: true,
             cors_origins: vec![],
+            check_default_admin_password: true,
         },
         role_service: RoleService::new(pool.pool.clone(), cache_manager.clone(), Some(3600)),
         cache_manager: cache_manager.clone(),
@@ -80,6 +85,7 @@ async fn setup_test_app() -> Result<(
         workflow_service,
         dashboard_stats_service,
         queue: test_queue_client_async().await,
+        license_service,
     };
 
     let app = test::init_service(

@@ -1,13 +1,58 @@
 name: CI
 
 on:
-  push:
-    branches: [ main ]
+  # Only run on PRs - merges to main/develop already passed CI on the PR
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
+  # Allow other workflows to call this one (for release-please PRs)
+  workflow_call:
 
 jobs:
+  # Detect which parts of the codebase changed
+  # For workflow_call (release-please), run all checks since we can't detect changes
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend || steps.default.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend || steps.default.outputs.frontend }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Fetch enough history for paths-filter to work
+          fetch-depth: 0
+
+      - name: Detect changes (PR only)
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'crates/**'
+              - 'migrations/**'
+              - 'tests/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.sqlx/**'
+              - 'src/**'
+            frontend:
+              - 'fe/**'
+
+      # For workflow_call (release-please PRs), run all checks
+      - name: Default to all checks (workflow_call)
+        if: ${{ github.event_name != 'pull_request' }}
+        id: default
+        run: |
+          echo "backend=true" >> $GITHUB_OUTPUT
+          echo "frontend=true" >> $GITHUB_OUTPUT
+
+  # ============================================================================
+  # Backend Jobs - Only run when backend files change
+  # ============================================================================
   backend-prepare:
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -49,7 +94,8 @@ jobs:
           fi
 
   backend-clippy:
-    needs: backend-prepare
+    needs: [changes, backend-prepare]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -82,7 +128,8 @@ jobs:
             -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery
 
   backend-format:
-    needs: backend-prepare
+    needs: [changes, backend-prepare]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -105,7 +152,8 @@ jobs:
         run: cargo fmt --check --all
 
   backend-audit:
-    needs: backend-prepare
+    needs: [changes, backend-prepare]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -140,34 +188,40 @@ jobs:
         run: cargo audit
 
   backend-tests:
-    needs: backend-prepare
+    needs: [changes, backend-prepare]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: rdata_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:8-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    # Note: Using docker run instead of services: block to support workflow_call (reusable workflows)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Start PostgreSQL
+        run: |
+          docker run -d --name postgres \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=rdata_test \
+            -p 5432:5432 \
+            postgres:18-alpine
+          # Wait for postgres to be ready
+          for i in {1..30}; do
+            docker exec postgres pg_isready -U postgres && break
+            echo "Waiting for postgres..."
+            sleep 1
+          done
+
+      - name: Start Redis
+        run: |
+          docker run -d --name redis \
+            -p 6379:6379 \
+            redis:8-alpine
+          # Wait for redis to be ready
+          for i in {1..30}; do
+            docker exec redis redis-cli ping && break
+            echo "Waiting for redis..."
+            sleep 1
+          done
 
       - name: Install Rust (nightly)
         uses: dtolnay/rust-toolchain@master
@@ -207,7 +261,8 @@ jobs:
         run: RUST_LOG=error cargo test --workspace
 
   backend-build:
-    needs: backend-prepare
+    needs: [changes, backend-prepare]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -229,7 +284,12 @@ jobs:
           SQLX_OFFLINE: true
         run: cargo build --workspace --all-features
 
+  # ============================================================================
+  # Frontend Jobs - Only run when frontend files change
+  # ============================================================================
   frontend-prepare:
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -238,7 +298,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: fe/package-lock.json
 
@@ -255,7 +315,8 @@ jobs:
         run: npm ci
 
   frontend-lint:
-    needs: frontend-prepare
+    needs: [changes, frontend-prepare]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -264,11 +325,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: fe/package-lock.json
 
       - name: Cache node_modules
+        id: cache-node-modules
         uses: actions/cache@v4
         with:
           path: fe/node_modules
@@ -277,6 +339,7 @@ jobs:
             ${{ runner.os }}-node-modules-
 
       - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         working-directory: fe
         run: npm ci
 
@@ -285,7 +348,8 @@ jobs:
         run: npm run lint
 
   frontend-tests:
-    needs: frontend-prepare
+    needs: [changes, frontend-prepare]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -294,16 +358,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: fe/package-lock.json
 
-      - name: Install system dependencies for sharp
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libvips-dev
-
       - name: Cache node_modules
+        id: cache-node-modules
         uses: actions/cache@v4
         with:
           path: fe/node_modules
@@ -312,15 +372,17 @@ jobs:
             ${{ runner.os }}-node-modules-
 
       - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         working-directory: fe
-        run: npm ci --include=optional
+        run: npm ci
 
       - name: Run tests
         working-directory: fe
         run: npm run test
 
   frontend-audit:
-    needs: frontend-prepare
+    needs: [changes, frontend-prepare]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -329,11 +391,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: fe/package-lock.json
 
       - name: Cache node_modules
+        id: cache-node-modules
         uses: actions/cache@v4
         with:
           path: fe/node_modules
@@ -342,6 +405,7 @@ jobs:
             ${{ runner.os }}-node-modules-
 
       - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         working-directory: fe
         run: npm ci
 
@@ -349,7 +413,9 @@ jobs:
         working-directory: fe
         run: npm audit --audit-level=moderate
 
-  static-website-prepare:
+  frontend-build:
+    needs: [changes, frontend-prepare]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -360,160 +426,45 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: static-website/package-lock.json
+          cache-dependency-path: fe/package-lock.json
 
       - name: Cache node_modules
+        id: cache-node-modules
         uses: actions/cache@v4
         with:
-          path: static-website/node_modules
-          key: ${{ runner.os }}-static-website-node-modules-${{ hashFiles('static-website/package-lock.json') }}
+          path: fe/node_modules
+          key: ${{ runner.os }}-node-modules-sharp-${{ hashFiles('fe/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-static-website-node-modules-
+            ${{ runner.os }}-node-modules-sharp-
+
+      - name: Install system dependencies for sharp
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvips-dev
 
       - name: Install dependencies
-        working-directory: static-website
-        run: npm ci
-
-  static-website-lint:
-    needs: static-website-prepare
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: static-website/package-lock.json
-
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: static-website/node_modules
-          key: ${{ runner.os }}-static-website-node-modules-${{ hashFiles('static-website/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-static-website-node-modules-
-
-      - name: Install dependencies
-        working-directory: static-website
-        run: npm ci
-
-      - name: Lint
-        working-directory: static-website
-        run: npm run lint
-
-  static-website-build:
-    needs: static-website-prepare
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: static-website/package-lock.json
-
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: static-website/node_modules
-          key: ${{ runner.os }}-static-website-node-modules-${{ hashFiles('static-website/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-static-website-node-modules-
-
-      - name: Install dependencies
-        working-directory: static-website
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        working-directory: fe
         run: npm ci
 
       - name: Build
-        working-directory: static-website
-        env:
-          VITE_BASE_URL: https://rdatacore.eu
-          VITE_SITE_NAME: RDataCore
-          VITE_R_DATA_CORE_DEMO_URL: https://demo.rdatacore.eu
-          VITE_API_DOCS_URL: https://rdatacore.eu/api/docs/
-          VITE_ADMIN_API_DOCS_URL: https://rdatacore.eu/admin/api/docs/
+        working-directory: fe
         run: npm run build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: static-website-dist
-          path: static-website/dist
+          name: frontend-dist
+          path: fe/dist
           retention-days: 7
 
-  static-website-test:
-    needs: static-website-prepare
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: static-website/package-lock.json
-
-      - name: Install system dependencies for sharp
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libvips-dev
-
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: static-website/node_modules
-          key: ${{ runner.os }}-static-website-node-modules-${{ hashFiles('static-website/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-static-website-node-modules-
-
-      - name: Install dependencies
-        working-directory: static-website
-        run: npm ci --include=optional
-
-      - name: Run tests
-        working-directory: static-website
-        run: npm run test
-
-  static-website-audit:
-    needs: static-website-prepare
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: static-website/package-lock.json
-
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: static-website/node_modules
-          key: ${{ runner.os }}-static-website-node-modules-${{ hashFiles('static-website/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-static-website-node-modules-
-
-      - name: Install dependencies
-        working-directory: static-website
-        run: npm ci
-
-      - name: Security audit
-        working-directory: static-website
-        run: npm audit --audit-level=moderate
-
+  # ============================================================================
+  # CI Gate - Passes when all applicable checks pass
+  # ============================================================================
   ci-gate:
     needs:
+      - changes
       - backend-clippy
       - backend-format
       - backend-audit
@@ -522,11 +473,39 @@ jobs:
       - frontend-lint
       - frontend-tests
       - frontend-audit
-      - static-website-lint
-      - static-website-test
-      - static-website-build
-      - static-website-audit
+      - frontend-build
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
-      - name: All checks passed
-        run: echo "All CI checks have passed successfully"
+      - name: Check backend results
+        if: ${{ needs.changes.outputs.backend == 'true' }}
+        run: |
+          if [[ "${{ needs.backend-clippy.result }}" != "success" ]] || \
+             [[ "${{ needs.backend-format.result }}" != "success" ]] || \
+             [[ "${{ needs.backend-audit.result }}" != "success" ]] || \
+             [[ "${{ needs.backend-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.backend-build.result }}" != "success" ]]; then
+            echo "Backend checks failed"
+            exit 1
+          fi
+          echo "All backend checks passed"
+
+      - name: Check frontend results
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
+        run: |
+          if [[ "${{ needs.frontend-lint.result }}" != "success" ]] || \
+             [[ "${{ needs.frontend-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.frontend-audit.result }}" != "success" ]] || \
+             [[ "${{ needs.frontend-build.result }}" != "success" ]]; then
+            echo "Frontend checks failed"
+            exit 1
+          fi
+          echo "All frontend checks passed"
+
+      - name: Verify at least one component was checked
+        run: |
+          if [[ "${{ needs.changes.outputs.backend }}" != "true" ]] && \
+             [[ "${{ needs.changes.outputs.frontend }}" != "true" ]]; then
+            echo "No backend or frontend changes detected - nothing to check"
+          fi
+          echo "CI gate passed"

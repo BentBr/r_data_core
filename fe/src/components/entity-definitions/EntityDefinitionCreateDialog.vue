@@ -116,6 +116,7 @@
 
     interface Emits {
         (e: 'update:modelValue', value: boolean): void
+
         (e: 'create', data: CreateEntityDefinitionRequest): void
     }
 

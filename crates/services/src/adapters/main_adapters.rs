@@ -149,7 +149,8 @@ impl DynamicEntityRepositoryAdapter {
 #[async_trait]
 impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
     /// Create a new entity
-    async fn create(&self, entity: &DynamicEntity) -> r_data_core_core::error::Result<()> {
+    /// Returns the UUID
+    async fn create(&self, entity: &DynamicEntity) -> r_data_core_core::error::Result<Uuid> {
         self.inner.create(entity).await
     }
 

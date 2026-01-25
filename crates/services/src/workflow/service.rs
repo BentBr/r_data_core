@@ -47,18 +47,11 @@ impl WorkflowService {
         )
     }
 
-    #[allow(dead_code)]
-    fn input_uri_from_config(cfg: &serde_json::Value) -> Option<String> {
-        cfg.pointer("/input/source/uri")
-            .and_then(|v| v.as_str())
-            .map(std::string::ToString::to_string)
-    }
-
     /// List all workflows
     ///
     /// # Errors
     /// Returns an error if the database query fails
-    pub async fn list(&self) -> anyhow::Result<Vec<Workflow>> {
+    pub async fn list(&self) -> r_data_core_core::error::Result<Vec<Workflow>> {
         self.repo.list_all().await
     }
 
@@ -66,7 +59,7 @@ impl WorkflowService {
     ///
     /// # Errors
     /// Returns an error if the database query fails
-    pub async fn get(&self, uuid: Uuid) -> anyhow::Result<Option<Workflow>> {
+    pub async fn get(&self, uuid: Uuid) -> r_data_core_core::error::Result<Option<Workflow>> {
         self.repo.get_by_uuid(uuid).await
     }
 
@@ -78,13 +71,24 @@ impl WorkflowService {
         &self,
         req: &CreateWorkflowRequest,
         created_by: Uuid,
-    ) -> anyhow::Result<Uuid> {
+    ) -> r_data_core_core::error::Result<Uuid> {
         if let Some(expr) = &req.schedule_cron {
-            Schedule::from_str(expr).map_err(|e| anyhow::anyhow!("Invalid cron schedule: {e}"))?;
+            Schedule::from_str(expr).map_err(|e| {
+                r_data_core_core::error::Error::Validation(format!("Invalid cron schedule: {e}"))
+            })?;
         }
         // Strict DSL: parse and validate
-        let program = r_data_core_workflow::dsl::DslProgram::from_config(&req.config)?;
-        program.validate()?;
+        let program =
+            r_data_core_workflow::dsl::DslProgram::from_config(&req.config).map_err(|e| {
+                r_data_core_core::error::Error::Validation(format!(
+                    "Invalid workflow DSL configuration: {e}"
+                ))
+            })?;
+        program.validate().map_err(|e| {
+            r_data_core_core::error::Error::Validation(format!(
+                "Workflow DSL validation failed: {e}"
+            ))
+        })?;
         self.repo.create(req, created_by).await
     }
 
@@ -97,13 +101,24 @@ impl WorkflowService {
         uuid: Uuid,
         req: &UpdateWorkflowRequest,
         updated_by: Uuid,
-    ) -> anyhow::Result<()> {
+    ) -> r_data_core_core::error::Result<()> {
         if let Some(expr) = &req.schedule_cron {
-            Schedule::from_str(expr).map_err(|e| anyhow::anyhow!("Invalid cron schedule: {e}"))?;
+            Schedule::from_str(expr).map_err(|e| {
+                r_data_core_core::error::Error::Validation(format!("Invalid cron schedule: {e}"))
+            })?;
         }
         // Strict DSL: parse and validate
-        let program = r_data_core_workflow::dsl::DslProgram::from_config(&req.config)?;
-        program.validate()?;
+        let program =
+            r_data_core_workflow::dsl::DslProgram::from_config(&req.config).map_err(|e| {
+                r_data_core_core::error::Error::Validation(format!(
+                    "Invalid workflow DSL configuration: {e}"
+                ))
+            })?;
+        program.validate().map_err(|e| {
+            r_data_core_core::error::Error::Validation(format!(
+                "Workflow DSL validation failed: {e}"
+            ))
+        })?;
         self.repo.update(uuid, req, updated_by).await
     }
 
@@ -111,7 +126,7 @@ impl WorkflowService {
     ///
     /// # Errors
     /// Returns an error if the database operation fails
-    pub async fn delete(&self, uuid: Uuid) -> anyhow::Result<()> {
+    pub async fn delete(&self, uuid: Uuid) -> r_data_core_core::error::Result<()> {
         self.repo.delete(uuid).await
     }
 
@@ -125,7 +140,7 @@ impl WorkflowService {
         offset: i64,
         sort_by: Option<String>,
         sort_order: Option<String>,
-    ) -> anyhow::Result<(Vec<Workflow>, i64)> {
+    ) -> r_data_core_core::error::Result<(Vec<Workflow>, i64)> {
         let (items, total) = tokio::try_join!(
             self.repo.list_paginated(limit, offset, sort_by, sort_order),
             self.repo.count_all()
@@ -150,7 +165,7 @@ impl WorkflowService {
         &self,
         params: &crate::query_validation::ListQueryParams,
         field_validator: &crate::query_validation::FieldValidator,
-    ) -> anyhow::Result<(
+    ) -> r_data_core_core::error::Result<(
         (Vec<Workflow>, i64),
         crate::query_validation::ValidatedListQuery,
     )> {
@@ -159,7 +174,11 @@ impl WorkflowService {
         let validated =
             validate_list_query(params, "workflows", field_validator, 20, 100, true, &[])
                 .await
-                .map_err(|e| anyhow::anyhow!("Query validation failed: {e}"))?;
+                .map_err(|e| {
+                    r_data_core_core::error::Error::Validation(format!(
+                        "Query validation failed: {e}"
+                    ))
+                })?;
 
         let (items, total) = tokio::try_join!(
             self.repo.list_paginated(
@@ -183,7 +202,7 @@ impl WorkflowService {
         workflow_uuid: Uuid,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(
+    ) -> r_data_core_core::error::Result<(
         Vec<(
             Uuid,
             String,
@@ -208,7 +227,7 @@ impl WorkflowService {
         run_uuid: Uuid,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(
+    ) -> r_data_core_core::error::Result<(
         Vec<(Uuid, String, String, String, Option<serde_json::Value>)>,
         i64,
     )> {
@@ -221,7 +240,7 @@ impl WorkflowService {
     ///
     /// # Errors
     /// Returns an error if the database query fails
-    pub async fn run_exists(&self, run_uuid: Uuid) -> anyhow::Result<bool> {
+    pub async fn run_exists(&self, run_uuid: Uuid) -> r_data_core_core::error::Result<bool> {
         self.repo.run_exists(run_uuid).await
     }
 
@@ -233,7 +252,7 @@ impl WorkflowService {
         &self,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(
+    ) -> r_data_core_core::error::Result<(
         Vec<(
             Uuid,
             String,
@@ -251,7 +270,7 @@ impl WorkflowService {
     ///
     /// # Errors
     /// Returns an error if the database operation fails
-    pub async fn enqueue_run(&self, workflow_uuid: Uuid) -> anyhow::Result<Uuid> {
+    pub async fn enqueue_run(&self, workflow_uuid: Uuid) -> r_data_core_core::error::Result<Uuid> {
         let trigger_id = Uuid::now_v7();
         let run_uuid = self
             .repo
@@ -274,7 +293,7 @@ impl WorkflowService {
     ///
     /// # Errors
     /// Returns an error if the database update fails
-    pub async fn mark_run_running(&self, run_uuid: Uuid) -> anyhow::Result<()> {
+    pub async fn mark_run_running(&self, run_uuid: Uuid) -> r_data_core_core::error::Result<()> {
         self.repo.mark_run_running(run_uuid).await
     }
 
@@ -287,7 +306,7 @@ impl WorkflowService {
         run_uuid: Uuid,
         processed: i64,
         failed: i64,
-    ) -> anyhow::Result<()> {
+    ) -> r_data_core_core::error::Result<()> {
         self.repo
             .mark_run_success(run_uuid, processed, failed)
             .await
@@ -297,7 +316,11 @@ impl WorkflowService {
     ///
     /// # Errors
     /// Returns an error if the database update fails
-    pub async fn mark_run_failure(&self, run_uuid: Uuid, message: &str) -> anyhow::Result<()> {
+    pub async fn mark_run_failure(
+        &self,
+        run_uuid: Uuid,
+        message: &str,
+    ) -> r_data_core_core::error::Result<()> {
         self.repo.mark_run_failure(run_uuid, message).await
     }
 
@@ -311,7 +334,7 @@ impl WorkflowService {
         level: &str,
         message: &str,
         meta: Option<serde_json::Value>,
-    ) -> anyhow::Result<()> {
+    ) -> r_data_core_core::error::Result<()> {
         self.repo
             .insert_run_log(run_uuid, level, message, meta)
             .await
@@ -321,7 +344,10 @@ impl WorkflowService {
     ///
     /// # Errors
     /// Returns an error if the database query fails
-    pub async fn get_run_status(&self, run_uuid: Uuid) -> anyhow::Result<Option<String>> {
+    pub async fn get_run_status(
+        &self,
+        run_uuid: Uuid,
+    ) -> r_data_core_core::error::Result<Option<String>> {
         self.repo.get_run_status(run_uuid).await
     }
 
@@ -334,7 +360,7 @@ impl WorkflowService {
         workflow_uuid: Uuid,
         run_uuid: Uuid,
         payloads: Vec<serde_json::Value>,
-    ) -> anyhow::Result<i64> {
+    ) -> r_data_core_core::error::Result<i64> {
         self.repo
             .insert_raw_items(workflow_uuid, run_uuid, payloads)
             .await
@@ -352,15 +378,13 @@ impl WorkflowService {
         &self,
         workflow_uuid: Uuid,
         bytes: &[u8],
-    ) -> anyhow::Result<(Uuid, i64)> {
+    ) -> r_data_core_core::error::Result<(Uuid, i64)> {
         let run_uuid = self.enqueue_run(workflow_uuid).await?;
 
         // Read workflow config for input options
-        let wf = self
-            .repo
-            .get_by_uuid(workflow_uuid)
-            .await?
-            .ok_or_else(|| anyhow::anyhow!("Workflow not found"))?;
+        let wf = self.repo.get_by_uuid(workflow_uuid).await?.ok_or_else(|| {
+            r_data_core_core::error::Error::NotFound("Workflow not found".to_string())
+        })?;
         let input_type = Self::infer_input_type(&wf.config).unwrap_or_else(|| "csv".to_string());
         let inline = String::from_utf8_lossy(bytes).to_string();
         let payloads = match input_type.as_str() {
@@ -368,7 +392,12 @@ impl WorkflowService {
                 use r_data_core_workflow::data::adapters::format::FormatHandler;
                 let format_cfg = Self::csv_format_from_config(&wf.config);
                 r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new()
-                    .parse(inline.as_bytes(), &format_cfg)?
+                    .parse(inline.as_bytes(), &format_cfg)
+                    .map_err(|e| {
+                        r_data_core_core::error::Error::Validation(format!(
+                            "Failed to parse CSV data: {e}"
+                        ))
+                    })?
             }
             "ndjson" => inline
                 .lines()
@@ -376,7 +405,7 @@ impl WorkflowService {
                 .map(serde_json::from_str::<serde_json::Value>)
                 .collect::<Result<Vec<_>, _>>()?,
             other => {
-                return Err(anyhow::anyhow!(format!(
+                return Err(r_data_core_core::error::Error::Validation(format!(
                     "Unsupported input type for upload: {other}"
                 )))
             }
@@ -414,18 +443,21 @@ impl WorkflowService {
         &self,
         workflow_uuid: Uuid,
         bytes: &[u8],
-    ) -> anyhow::Result<(Uuid, i64)> {
+    ) -> r_data_core_core::error::Result<(Uuid, i64)> {
         let run_uuid = self.enqueue_run(workflow_uuid).await?;
 
         // Read workflow config for input options
-        let wf = self
-            .repo
-            .get_by_uuid(workflow_uuid)
-            .await?
-            .ok_or_else(|| anyhow::anyhow!("Workflow not found"))?;
+        let wf = self.repo.get_by_uuid(workflow_uuid).await?.ok_or_else(|| {
+            r_data_core_core::error::Error::NotFound("Workflow not found".to_string())
+        })?;
 
         // Try to infer format from DSL
-        let program = r_data_core_workflow::dsl::DslProgram::from_config(&wf.config)?;
+        let program =
+            r_data_core_workflow::dsl::DslProgram::from_config(&wf.config).map_err(|e| {
+                r_data_core_core::error::Error::Validation(format!(
+                    "Invalid workflow DSL configuration: {e}"
+                ))
+            })?;
         let format_type = program
             .steps
             .first()
@@ -456,7 +488,12 @@ impl WorkflowService {
                 {
                     use r_data_core_workflow::data::adapters::format::FormatHandler;
                     r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new()
-                        .parse(bytes, &format_cfg)?
+                        .parse(bytes, &format_cfg)
+                        .map_err(|e| {
+                            r_data_core_core::error::Error::Validation(format!(
+                                "Failed to parse CSV data: {e}"
+                            ))
+                        })?
                 }
             }
             "json" => {
@@ -476,11 +513,16 @@ impl WorkflowService {
                 {
                     use r_data_core_workflow::data::adapters::format::FormatHandler;
                     r_data_core_workflow::data::adapters::format::json::JsonFormatHandler::new()
-                        .parse(bytes, &format_cfg)?
+                        .parse(bytes, &format_cfg)
+                        .map_err(|e| {
+                            r_data_core_core::error::Error::Validation(format!(
+                                "Failed to parse JSON data: {e}"
+                            ))
+                        })?
                 }
             }
             other => {
-                return Err(anyhow::anyhow!(format!(
+                return Err(r_data_core_core::error::Error::Validation(format!(
                     "Unsupported input type for upload: {other}"
                 )))
             }
@@ -517,16 +559,18 @@ impl WorkflowService {
         &self,
         workflow_uuid: Uuid,
         run_uuid: Uuid,
-    ) -> anyhow::Result<i64> {
-        let wf = self
-            .repo
-            .get_by_uuid(workflow_uuid)
-            .await?
-            .ok_or_else(|| anyhow::anyhow!("Workflow not found"))?;
+    ) -> r_data_core_core::error::Result<i64> {
+        let wf = self.repo.get_by_uuid(workflow_uuid).await?.ok_or_else(|| {
+            r_data_core_core::error::Error::NotFound("Workflow not found".to_string())
+        })?;
 
         // Parse DSL program to get FromDef steps
-        let program = r_data_core_workflow::dsl::DslProgram::from_config(&wf.config)
-            .map_err(|e| anyhow::anyhow!("Failed to parse DSL for fetch: {e}"))?;
+        let program =
+            r_data_core_workflow::dsl::DslProgram::from_config(&wf.config).map_err(|e| {
+                r_data_core_core::error::Error::Validation(format!(
+                    "Failed to parse DSL for fetch: {e}"
+                ))
+            })?;
 
         // Find Format-based and Entity-based FromDef steps that need fetching
         let mut total_staged = 0_i64;
@@ -558,6 +602,7 @@ impl WorkflowService {
                     .await?;
                 total_staged += staged;
             }
+            // Skip trigger - it has no data to fetch (no-op, loop continues naturally)
         }
 
         Ok(total_staged)
@@ -569,10 +614,10 @@ impl WorkflowService {
         filter: Option<&r_data_core_workflow::dsl::EntityFilter>,
         workflow_uuid: Uuid,
         run_uuid: Uuid,
-    ) -> anyhow::Result<i64> {
+    ) -> r_data_core_core::error::Result<i64> {
         let Some(entity_service) = &self.dynamic_entity_service else {
-            return Err(anyhow::anyhow!(
-                "Entity service not available for entity source workflow"
+            return Err(r_data_core_core::error::Error::Api(
+                "Entity service not available for entity source workflow".to_string(),
             ));
         };
 
@@ -594,7 +639,9 @@ impl WorkflowService {
                 None,
             )
             .await
-            .map_err(|e| anyhow::anyhow!("Failed to fetch entities: {e}"))?;
+            .map_err(|e| {
+                r_data_core_core::error::Error::Entity(format!("Failed to fetch entities: {e}"))
+            })?;
 
         #[allow(clippy::cast_possible_wrap)]
         let entity_count = entities.len() as i64;
@@ -635,14 +682,19 @@ impl WorkflowService {
         format: &r_data_core_workflow::dsl::from::FormatConfig,
         workflow_uuid: Uuid,
         run_uuid: Uuid,
-    ) -> anyhow::Result<i64> {
+    ) -> r_data_core_core::error::Result<i64> {
         let auth_provider = source
             .auth
             .as_ref()
             .map(|auth_cfg| {
                 r_data_core_workflow::data::adapters::auth::create_auth_provider(auth_cfg)
             })
-            .transpose()?;
+            .transpose()
+            .map_err(|e| {
+                r_data_core_core::error::Error::Config(format!(
+                    "Failed to create auth provider: {e}"
+                ))
+            })?;
 
         let source_ctx = r_data_core_workflow::data::adapters::source::SourceContext {
             auth: auth_provider,
@@ -655,17 +707,21 @@ impl WorkflowService {
                     Box::new(r_data_core_workflow::data::adapters::source::uri::UriSource::new())
                 }
                 _ => {
-                    return Err(anyhow::anyhow!(
+                    return Err(r_data_core_core::error::Error::Validation(format!(
                         "Unsupported source type: {}",
                         source.source_type
-                    ));
+                    )));
                 }
             };
 
-        let mut stream = source_adapter.fetch(&source_ctx).await?;
+        let mut stream = source_adapter.fetch(&source_ctx).await.map_err(|e| {
+            r_data_core_core::error::Error::Api(format!("Failed to fetch data from source: {e}"))
+        })?;
         let mut all_data = Vec::new();
         while let Some(chunk_result) = stream.next().await {
-            let chunk = chunk_result?;
+            let chunk = chunk_result.map_err(|e| {
+                r_data_core_core::error::Error::Api(format!("Failed to read data chunk: {e}"))
+            })?;
             all_data.extend_from_slice(&chunk);
         }
 
@@ -678,14 +734,20 @@ impl WorkflowService {
                     r_data_core_workflow::data::adapters::format::json::JsonFormatHandler::new(),
                 ),
                 _ => {
-                    return Err(anyhow::anyhow!(
+                    return Err(r_data_core_core::error::Error::Validation(format!(
                         "Unsupported format type: {}",
                         format.format_type
-                    ));
+                    )));
                 }
             };
 
-        let payloads = format_handler.parse(&all_data, &format.options)?;
+        let payloads = format_handler
+            .parse(&all_data, &format.options)
+            .map_err(|e| {
+                r_data_core_core::error::Error::Validation(format!(
+                    "Failed to parse data format: {e}"
+                ))
+            })?;
         let staged = self
             .stage_raw_items(workflow_uuid, run_uuid, payloads)
             .await?;
@@ -741,12 +803,10 @@ impl WorkflowService {
         &self,
         workflow_uuid: Uuid,
         run_uuid: Uuid,
-    ) -> anyhow::Result<(i64, i64)> {
-        let wf = self
-            .repo
-            .get_by_uuid(workflow_uuid)
-            .await?
-            .ok_or_else(|| anyhow::anyhow!("Workflow not found"))?;
+    ) -> r_data_core_core::error::Result<(i64, i64)> {
+        let wf = self.repo.get_by_uuid(workflow_uuid).await?.ok_or_else(|| {
+            r_data_core_core::error::Error::NotFound("Workflow not found".to_string())
+        })?;
 
         // Build DSL program from config; require presence and validation
         let program = match r_data_core_workflow::dsl::DslProgram::from_config(&wf.config) {
@@ -800,7 +860,7 @@ impl WorkflowService {
         &self,
         run_uuid: Uuid,
         message: String,
-    ) -> anyhow::Result<(i64, i64)> {
+    ) -> r_data_core_core::error::Result<(i64, i64)> {
         let _ = self
             .repo
             .insert_run_log(run_uuid, "error", &message, None)
@@ -819,6 +879,6 @@ impl WorkflowService {
             }
         }
         let _ = self.repo.mark_run_failure(run_uuid, &message).await;
-        Err(anyhow::anyhow!(message))
+        Err(r_data_core_core::error::Error::Validation(message))
     }
 }

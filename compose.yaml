@@ -67,8 +67,9 @@ services:
         build:
             context: .
             dockerfile: ./.docker/app/Dockerfile
+            target: r_data_core
             args:
-                RUST_VERSION: "1.88.0"
+                RUST_VERSION: "1.92.0"
                 BUILD_MODE: "debug"
                 PACKAGE_NAME: "r_data_core"
                 BINARY_NAME: "r_data_core"
@@ -111,8 +112,9 @@ services:
         build:
             context: .
             dockerfile: ./.docker/app/Dockerfile
+            target: r_data_core_worker
             args:
-                RUST_VERSION: "1.88.0"
+                RUST_VERSION: "1.92.0"
                 BUILD_MODE: "debug"
                 PACKAGE_NAME: "r_data_core_worker"
                 BINARY_NAME: "r_data_core_worker"
@@ -145,8 +147,9 @@ services:
         build:
             context: .
             dockerfile: ./.docker/app/Dockerfile
+            target: r_data_core_maintenance
             args:
-                RUST_VERSION: "1.88.0"
+                RUST_VERSION: "1.92.0"
                 BUILD_MODE: "debug"
                 PACKAGE_NAME: "r_data_core_worker"
                 BINARY_NAME: "r_data_core_maintenance"
@@ -167,9 +170,9 @@ services:
             REDIS_URL: redis://redis:6379
             RUST_LOG: info
             LOG_LEVEL: info
-            # Using the long definition every 5 minutes
-            MAINTENANCE_CRON: "* */5 * * * *"
-            VERSION_PURGER_CRON: "* */5 * * * *"
+            # Cron expressions for maintenance tasks (every 5 minutes)
+            VERSION_PURGER_CRON: "0 */5 * * * *"
+            REFRESH_TOKEN_CLEANUP_CRON: "0 */5 * * * *"
             VIRTUAL_HOST: .maintenance.rdatacore.docker
         networks:
             default:
@@ -196,42 +199,13 @@ services:
             - VITE_API_BASE_URL=http://rdatacore.docker
             - VITE_ADMIN_BASE_URL=http://admin.rdatacore.docker
             - VITE_DEV_MODE=true
-            - VITE_ENABLE_API_LOGGING=true
             - VITE_TOKEN_REFRESH_BUFFER=5
             - VITE_DEFAULT_PAGE_SIZE=100
             - VITE_MAX_PAGE_SIZE=100
-            - VITE_ENABLE_API_KEY_MANAGEMENT=true
-            - VITE_ENABLE_USER_MANAGEMENT=true
-            - VITE_ENABLE_SYSTEM_METRICS=true
+            - VITE_ENABLE_API_LOGGING=true
             - VITE_ENABLE_PRODUCTION_SOURCEMAPS=false
-
-    node-static:
-        container_name: rdata_node_static
-        build:
-            context: .
-            dockerfile: ./.docker/static-website/Dockerfile
-        platform: linux/amd64
-        volumes:
-            - ./static-website:/var/www/html
-            - node_static_modules:/var/www/html/node_modules
-        working_dir: /var/www/html/
-        ports:
-            - '80'
-        networks:
-            default:
-                aliases:
-                    - website.rdatacore.docker
-        environment:
-            - VIRTUAL_HOST=.website.rdatacore.docker
-            # Frontend Environment Variables
-            - VITE_BASE_URL=http://website.rdatacore.docker
-            - VITE_SITE_NAME=RDataCore
-            - VITE_R_DATA_CORE_DEMO_URL=http://admin.rdatacore.docker
-            - VITE_API_DOCS_URL=http://rdatacore.docker/api/docs/
-            - VITE_ADMIN_API_DOCS_URL=http://rdatacore.docker/admin/api/docs/
 
 volumes:
     postgres_data:
     postgres_test_data:
     redis_data:
-    node_static_modules:

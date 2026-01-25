@@ -1,15 +1,15 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use actix_web::{test, web, App};
 use r_data_core_api::{configure_app, ApiState, ApiStateWrapper};
 use r_data_core_core::admin_user::AdminUser;
 use r_data_core_core::cache::CacheManager;
-use r_data_core_core::config::CacheConfig;
+use r_data_core_core::config::{CacheConfig, LicenseConfig};
 use r_data_core_persistence::{
     AdminUserRepository, ApiKeyRepository, ApiKeyRepositoryTrait, WorkflowRepository,
 };
 use r_data_core_services::{
-    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService,
+    AdminUserService, ApiKeyService, DynamicEntityService, EntityDefinitionService, LicenseService,
     WorkflowRepositoryAdapter,
 };
 use r_data_core_workflow::data::WorkflowKind;
@@ -40,6 +40,9 @@ async fn setup_app_with_entities() -> anyhow::Result<(
         max_size: 10000,
     };
     let cache_manager = Arc::new(CacheManager::new(cache_config));
+
+    let license_config = LicenseConfig::default();
+    let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
 
     let api_key_repository = Arc::new(ApiKeyRepository::new(Arc::new(pool.pool.clone())));
     let api_key_service = ApiKeyService::new(api_key_repository);
@@ -82,6 +85,7 @@ async fn setup_app_with_entities() -> anyhow::Result<(
             jwt_expiration: 3600,
             enable_docs: true,
             cors_origins: vec![],
+            check_default_admin_password: true,
         },
         role_service: r_data_core_services::RoleService::new(
             pool.pool.clone(),
@@ -96,6 +100,7 @@ async fn setup_app_with_entities() -> anyhow::Result<(
         workflow_service,
         dashboard_stats_service,
         queue: test_queue_client_async().await,
+        license_service,
     };
 
     let app_data = web::Data::new(ApiStateWrapper::new(api_state));
@@ -121,6 +126,7 @@ async fn setup_app_with_entities() -> anyhow::Result<(
         jwt_expiration: 3600,
         enable_docs: true,
         cors_origins: vec![],
+        check_default_admin_password: true,
     };
     let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, &[])?;
 
@@ -148,7 +154,9 @@ async fn create_provider_workflow(
         config,
         versioning_disabled: false,
     };
-    repo.create(&create_req, creator_uuid).await
+    repo.create(&create_req, creator_uuid)
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))
 }
 
 async fn create_consumer_workflow_with_api_source(
@@ -166,7 +174,9 @@ async fn create_consumer_workflow_with_api_source(
         config,
         versioning_disabled: false,
     };
-    repo.create(&create_req, creator_uuid).await
+    repo.create(&create_req, creator_uuid)
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))
 }
 
 #[actix_web::test]
@@ -495,7 +505,7 @@ async fn test_provider_endpoint_stats() -> anyhow::Result<()> {
 #[actix_web::test]
 #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
-    let (app, pool, _token, _) = setup_app_with_entities().await?;
+    let (app, pool, token, _) = setup_app_with_entities().await?;
 
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
         .fetch_one(&pool.pool)
@@ -538,6 +548,7 @@ async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
     let csv_data: Vec<u8> = b"name,email\nJohn,john@example.com".to_vec();
     let req = test::TestRequest::post()
         .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .insert_header(("Content-Type", "text/csv"))
         .set_payload(csv_data)
         .to_request();
@@ -569,7 +580,7 @@ async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
 #[actix_web::test]
 #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
-    let (app, pool, _token, _) = setup_app_with_entities().await?;
+    let (app, pool, token, _) = setup_app_with_entities().await?;
 
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
         .fetch_one(&pool.pool)
@@ -623,6 +634,7 @@ async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
     let csv_data: Vec<u8> = b"name,email\nJohn,john@example.com".to_vec();
     let req = test::TestRequest::post()
         .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .insert_header(("Content-Type", "text/csv"))
         .set_payload(csv_data)
         .to_request();
@@ -717,7 +729,7 @@ async fn test_provider_endpoint_returns_404_for_consumer_workflow() -> anyhow::R
 #[actix_web::test]
 #[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_consumer_endpoint_post_returns_405_for_provider_workflow() -> anyhow::Result<()> {
-    let (app, pool, _token, _) = setup_app_with_entities().await?;
+    let (app, pool, token, _) = setup_app_with_entities().await?;
 
     let creator_uuid: Uuid = sqlx::query_scalar("SELECT uuid FROM admin_users LIMIT 1")
         .fetch_one(&pool.pool)
@@ -760,6 +772,7 @@ async fn test_consumer_endpoint_post_returns_405_for_provider_workflow() -> anyh
     let payload: Vec<u8> = b"{}".to_vec();
     let req = test::TestRequest::post()
         .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
         .insert_header(("Content-Type", "application/json"))
         .set_payload(payload)
         .to_request();

@@ -153,6 +153,7 @@
                             {{ t('permissions.page.roles.title') || 'Roles' }}
                         </h3>
                         <v-btn
+                            v-if="canCreateRole"
                             color="primary"
                             @click="openCreateDialog"
                         >
@@ -291,8 +292,9 @@
             >
                 <p>
                     {{
-                        t('permissions.page.roles.delete.message', { name: roleToDelete?.name }) ||
-                        `Are you sure you want to delete the role "${roleToDelete?.name}"?`
+                        t('permissions.page.roles.delete.message', {
+                            name: roleToDelete?.name ?? '',
+                        }) || `Are you sure you want to delete the role "${roleToDelete?.name}"?`
                     }}
                 </p>
             </DialogManager>
@@ -307,7 +309,7 @@
                 <p>
                     {{
                         t('permissions.page.users.delete.message', {
-                            username: userToDelete?.username,
+                            username: userToDelete?.username ?? '',
                         })
                     }}
                 </p>
@@ -372,12 +374,17 @@
 
     const authStore = useAuthStore()
 
-    // Permission checks
+    // Permission checks - hasPermission already handles isSuperAdmin internally
     const canCreateUser = computed(() => {
-        if (authStore.isSuperAdmin) {
-            return true
-        }
-        return authStore.hasPermission('Roles', 'Admin')
+        return (
+            authStore.hasPermission('Users', 'Create') || authStore.hasPermission('Users', 'Admin')
+        )
+    })
+
+    const canCreateRole = computed(() => {
+        return (
+            authStore.hasPermission('Roles', 'Create') || authStore.hasPermission('Roles', 'Admin')
+        )
     })
 
     // Reactive state
@@ -444,7 +451,9 @@
         'EntityDefinitions',
         'ApiKeys',
         'Roles',
+        'Users',
         'System',
+        'DashboardStats',
     ]
     const permissionTypes: PermissionType[] = [
         'Read',
@@ -454,7 +463,6 @@
         'Publish',
         'Admin',
         'Execute',
-        'Custom',
     ]
     const accessLevels: AccessLevel[] = ['None', 'Own', 'Group', 'All']
 
@@ -700,19 +708,23 @@
 
     const handleSaveUser = async (data: CreateUserRequest | UpdateUserRequest) => {
         savingUser.value = true
+        const isEditing = !!editingUser.value
 
         try {
-            if (editingUser.value) {
-                await updateUser(editingUser.value.uuid, data as UpdateUserRequest)
+            if (isEditing) {
+                await updateUser(editingUser.value!.uuid, data as UpdateUserRequest)
             } else {
                 await createUser(data as CreateUserRequest)
             }
 
+            // Close dialog and reload list on success
             showUserDialog.value = false
             editingUser.value = null
             await loadUsers(usersCurrentPage.value, usersItemsPerPage.value)
         } catch {
-            // Error already handled in composable
+            // Error already handled in composable via global error handler
+            // Keep dialog open on error so user can fix and retry
+            // Dialog stays open, editingUser remains set
         } finally {
             savingUser.value = false
         }
@@ -757,15 +769,25 @@
         void loadRoles(currentPage.value, itemsPerPage.value)
 
         // Check for query params
-        // Switch to users tab if requested
+        // Switch to appropriate tab if requested
         if (route.query.tab === 'users') {
             activeTab.value = 'users'
+        } else if (route.query.tab === 'roles') {
+            activeTab.value = 'roles'
         }
 
         // Open create user dialog if requested
         if (route.query.create === 'true' && route.query.tab === 'users') {
             await nextTick()
             openCreateUserDialog()
+            // Remove query params from URL
+            window.history.replaceState({}, '', '/permissions')
+        }
+
+        // Open create role dialog if requested
+        if (route.query.create === 'true' && route.query.tab === 'roles') {
+            await nextTick()
+            openCreateDialog()
             // Remove query params from URL
             window.history.replaceState({}, '', '/permissions')
         }

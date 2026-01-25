@@ -61,7 +61,7 @@ mod datetime_serde {
 #[serde(default)]
 pub struct EntityDefinition {
     /// Unique identifier for this entity type definition
-    #[serde(default = "generate_uuid")]
+    #[serde(default)]
     pub uuid: Uuid,
     /// Entity type name, must be unique in the database
     pub entity_type: String,
@@ -100,7 +100,7 @@ impl Default for EntityDefinition {
     fn default() -> Self {
         let now = OffsetDateTime::now_utc();
         Self {
-            uuid: generate_uuid(),
+            uuid: Uuid::nil(),
             entity_type: String::new(),
             display_name: String::new(),
             description: None,
@@ -117,11 +117,6 @@ impl Default for EntityDefinition {
             version: default_version(),
         }
     }
-}
-
-/// Generate a new UUID v7 for deserialization defaults
-fn generate_uuid() -> Uuid {
-    Uuid::now_v7()
 }
 
 /// Default version for new entities

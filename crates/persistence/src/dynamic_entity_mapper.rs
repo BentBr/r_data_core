@@ -125,9 +125,22 @@ fn extract_json_field(row: &PgRow, column_name: &str) -> JsonValue {
 /// Extract field data from a database row based on column types
 pub fn extract_field_data(row: &PgRow) -> HashMap<String, JsonValue> {
     let mut field_data = HashMap::new();
+    let mut seen_columns = std::collections::HashSet::new();
 
-    for column in row.columns() {
+    // Process columns in reverse order so later columns (like explicitly selected UUID) overwrite earlier ones
+    // This handles cases where we have duplicate column names (e.g., e.uuid and r.uuid both named "uuid")
+    let column_count = row.columns().len();
+    for i in (0..column_count).rev() {
+        let column = &row.columns()[i];
         let column_name = column.name();
+
+        // Skip if we've already processed this column name (handles duplicates)
+        // We process in reverse so the last occurrence (which appears first in SELECT) wins
+        if seen_columns.contains(column_name) {
+            continue;
+        }
+        seen_columns.insert(column_name.to_string());
+
         let column_type = column.type_info().to_string();
 
         debug!("Column: {column_name} of type {column_type}");
@@ -188,18 +201,38 @@ pub fn map_row_to_entity(
     // Map lowercase database column names back to entity definition field names (original case)
     // Database columns are lowercase, but entity definition uses original case
     let mut mapped_field_data = HashMap::new();
+
+    // System/reserved fields that should always be kept as-is
+    let system_fields = [
+        "uuid",
+        "created_at",
+        "updated_at",
+        "created_by",
+        "updated_by",
+        "published",
+        "version",
+        "path",
+        "entity_key",
+        "parent_uuid",
+    ];
+
     for (db_column_name, value) in &field_data {
-        // Find the field definition that matches this column (case-insensitive)
-        if let Some(field_def) = entity_def
-            .fields
-            .iter()
-            .find(|f| f.name.to_lowercase() == *db_column_name)
-        {
-            // Use the original field name from entity definition
-            mapped_field_data.insert(field_def.name.clone(), value.clone());
-        } else {
-            // For system/reserved fields, keep as-is (they should already match)
+        // Check if this is a system field - if so, keep it as-is
+        if system_fields.contains(&db_column_name.as_str()) {
             mapped_field_data.insert(db_column_name.clone(), value.clone());
+        } else {
+            // Find the field definition that matches this column (case-insensitive)
+            if let Some(field_def) = entity_def
+                .fields
+                .iter()
+                .find(|f| f.name.to_lowercase() == *db_column_name)
+            {
+                // Use the original field name from entity definition
+                mapped_field_data.insert(field_def.name.clone(), value.clone());
+            } else {
+                // Unknown field, keep as-is
+                mapped_field_data.insert(db_column_name.clone(), value.clone());
+            }
         }
     }
 

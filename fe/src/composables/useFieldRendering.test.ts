@@ -42,6 +42,21 @@ describe('useFieldRendering', () => {
             expect(getFieldComponent('Select')).toBe('v-select')
         })
 
+        it('should return correct component for Json field', () => {
+            const { getFieldComponent } = useFieldRendering()
+            expect(getFieldComponent('Json')).toBe('v-textarea')
+        })
+
+        it('should return correct component for Object field', () => {
+            const { getFieldComponent } = useFieldRendering()
+            expect(getFieldComponent('Object')).toBe('v-textarea')
+        })
+
+        it('should return correct component for Array field', () => {
+            const { getFieldComponent } = useFieldRendering()
+            expect(getFieldComponent('Array')).toBe('v-textarea')
+        })
+
         it('should return default component for unknown field type', () => {
             const { getFieldComponent } = useFieldRendering()
             expect(getFieldComponent('UnknownType')).toBe('v-text-field')
@@ -56,6 +71,8 @@ describe('useFieldRendering', () => {
                 display_name: 'Test Field',
                 field_type: 'String',
                 required: true,
+                indexed: false,
+                filterable: false,
             }
 
             const rules = getFieldRules(field)
@@ -72,6 +89,8 @@ describe('useFieldRendering', () => {
                 display_name: 'Test Field',
                 field_type: 'Integer',
                 required: false,
+                indexed: false,
+                filterable: false,
                 constraints: { min: 5 },
             }
 
@@ -91,6 +110,8 @@ describe('useFieldRendering', () => {
                 display_name: 'Test Field',
                 field_type: 'Integer',
                 required: false,
+                indexed: false,
+                filterable: false,
                 constraints: { max: 10 },
             }
 
@@ -109,6 +130,8 @@ describe('useFieldRendering', () => {
                 display_name: 'Test Field',
                 field_type: 'String',
                 required: false,
+                indexed: false,
+                filterable: false,
                 constraints: { pattern: '^[A-Z]+$' },
             }
 
@@ -127,6 +150,8 @@ describe('useFieldRendering', () => {
                 display_name: 'Test Field',
                 field_type: 'Integer',
                 required: true,
+                indexed: false,
+                filterable: false,
                 constraints: { min: 5, max: 10 },
             }
 
@@ -150,6 +175,21 @@ describe('useFieldRendering', () => {
         it('should return correct icon for Date field', () => {
             const { getFieldIcon } = useFieldRendering()
             expect(getFieldIcon('Date')).toBe('calendar')
+        })
+
+        it('should return correct icon for Json field', () => {
+            const { getFieldIcon } = useFieldRendering()
+            expect(getFieldIcon('Json')).toBe('code')
+        })
+
+        it('should return correct icon for Object field', () => {
+            const { getFieldIcon } = useFieldRendering()
+            expect(getFieldIcon('Object')).toBe('code')
+        })
+
+        it('should return correct icon for Array field', () => {
+            const { getFieldIcon } = useFieldRendering()
+            expect(getFieldIcon('Array')).toBe('list')
         })
 
         it('should return default icon for unknown field type', () => {
@@ -198,6 +238,26 @@ describe('useFieldRendering', () => {
             const obj = { key: 'value' }
             expect(formatFieldValue(obj, 'Json')).toBe('{"key":"value"}')
             expect(formatFieldValue(obj, 'Object')).toBe('{"key":"value"}')
+        })
+
+        it('should format Json values with complex nested structures', () => {
+            const { formatFieldValue } = useFieldRendering()
+            const complexObj = {
+                count: 10,
+                names: ['Customer', 'Order'],
+                metadata: { version: 1 },
+            }
+            const formatted = formatFieldValue(complexObj, 'Json')
+            expect(formatted).toContain('"count":10')
+            expect(formatted).toContain('"names"')
+        })
+
+        it('should format Json array values', () => {
+            const { formatFieldValue } = useFieldRendering()
+            const arr = [{ entity_type: 'Customer', count: 100 }]
+            const formatted = formatFieldValue(arr, 'Json')
+            expect(formatted).toContain('"entity_type":"Customer"')
+            expect(formatted).toContain('"count":100')
         })
 
         it('should format Array values', () => {

@@ -77,9 +77,13 @@ describe('useApiKeys', () => {
                 {
                     uuid: 'key-1',
                     name: 'Test Key',
-                    key_prefix: 'test_',
-                    last_used_at: null,
+                    is_active: true,
                     created_at: '2024-01-01T00:00:00Z',
+                    expires_at: null,
+                    last_used_at: null,
+                    created_by: null,
+                    user_uuid: 'user-1',
+                    published: true,
                 },
             ]
             mockGetApiKeys.mockResolvedValue({

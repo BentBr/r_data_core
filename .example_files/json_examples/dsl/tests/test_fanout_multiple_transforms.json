@@ -1,0 +1,58 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "format",
+        "source": { "source_type": "api", "config": {} },
+        "format": { "format_type": "json", "options": {} },
+        "mapping": { "a": "a", "b": "b" }
+      },
+      "transform": { "type": "none" },
+      "to": {
+        "type": "format",
+        "output": { "mode": "api" },
+        "format": { "format_type": "json", "options": {} },
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "previous_step",
+        "mapping": { "a": "a", "b": "b" }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "sum",
+        "left": { "kind": "field", "field": "a" },
+        "op": "add",
+        "right": { "kind": "field", "field": "b" }
+      },
+      "to": {
+        "type": "format",
+        "output": { "mode": "api" },
+        "format": { "format_type": "json", "options": {} },
+        "mapping": {}
+      }
+    },
+    {
+      "from": {
+        "type": "previous_step",
+        "mapping": { "sum": "sum", "a": "a" }
+      },
+      "transform": {
+        "type": "arithmetic",
+        "target": "product",
+        "left": { "kind": "field", "field": "sum" },
+        "op": "mul",
+        "right": { "kind": "field", "field": "a" }
+      },
+      "to": {
+        "type": "format",
+        "output": { "mode": "api" },
+        "format": { "format_type": "json", "options": {} },
+        "mapping": {}
+      }
+    }
+  ]
+}
+

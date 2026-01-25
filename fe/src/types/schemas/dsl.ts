@@ -60,19 +60,32 @@ export const DslFromJsonSchema = z.object({
 
 export const DslEntityFilterSchema = z.object({
     field: z.string(),
+    operator: z.string().optional(),
     value: z.string(),
 })
 
 export const DslFromEntitySchema = z.object({
     type: z.literal('entity'),
     entity_definition: z.string(),
-    filter: DslEntityFilterSchema,
+    filter: DslEntityFilterSchema.optional(),
+    mapping: z.record(z.string(), z.string()),
+})
+
+export const DslFromPreviousStepSchema = z.object({
+    type: z.literal('previous_step'),
+    mapping: z.record(z.string(), z.string()),
+})
+
+export const DslFromTriggerSchema = z.object({
+    type: z.literal('trigger'),
     mapping: z.record(z.string(), z.string()),
 })
 
 export const DslFromSchema = z.discriminatedUnion('type', [
     DslFromFormatSchema, // New format-based structure
     DslFromEntitySchema,
+    DslFromPreviousStepSchema, // Step chaining support
+    DslFromTriggerSchema, // Webhook trigger support
 ])
 
 // Destination configuration
@@ -113,7 +126,17 @@ export const DslToEntitySchema = z.object({
     update_key: z.string().optional(),
     mapping: z.record(z.string(), z.string()),
 })
-export const DslToSchema = z.discriminatedUnion('type', [DslToFormatSchema, DslToEntitySchema])
+
+export const DslToNextStepSchema = z.object({
+    type: z.literal('next_step'),
+    mapping: z.record(z.string(), z.string()),
+})
+
+export const DslToSchema = z.discriminatedUnion('type', [
+    DslToFormatSchema,
+    DslToEntitySchema,
+    DslToNextStepSchema,
+])
 
 export const DslOperandFieldSchema = z.object({
     kind: z.literal('field'),
@@ -166,10 +189,39 @@ export const DslTransformConcatSchema = z.object({
     separator: z.string().optional(),
     right: DslStringOperandSchema,
 })
+export const DslTransformResolveEntityPathSchema = z.object({
+    type: z.literal('resolve_entity_path'),
+    target_path: z.string(),
+    target_parent_uuid: z.string().optional(),
+    entity_type: z.string(),
+    filters: z.record(z.string(), DslStringOperandSchema),
+    value_transforms: z.record(z.string(), z.string()).optional(),
+    fallback_path: z.string().optional(),
+})
+export const DslTransformBuildPathSchema = z.object({
+    type: z.literal('build_path'),
+    target: z.string(),
+    template: z.string(),
+    separator: z.string().optional(),
+    field_transforms: z.record(z.string(), z.string()).optional(),
+})
+export const DslTransformGetOrCreateEntitySchema = z.object({
+    type: z.literal('get_or_create_entity'),
+    target_path: z.string(),
+    target_parent_uuid: z.string().optional(),
+    target_entity_uuid: z.string().optional(),
+    entity_type: z.string(),
+    path_template: z.string(),
+    create_field_data: z.record(z.string(), DslStringOperandSchema).optional(),
+    path_separator: z.string().optional(),
+})
 export const DslTransformSchema = z.discriminatedUnion('type', [
     DslTransformNoneSchema,
     DslTransformArithmeticSchema,
     DslTransformConcatSchema,
+    DslTransformResolveEntityPathSchema,
+    DslTransformBuildPathSchema,
+    DslTransformGetOrCreateEntitySchema,
 ])
 
 export const DslStepSchema = z.object({
@@ -207,6 +259,19 @@ export type DslStep = z.infer<typeof DslStepSchema>
 export type DslValidateRequest = z.infer<typeof DslValidateRequestSchema>
 export type DslValidateResponse = z.infer<typeof DslValidateResponseSchema>
 export type DslOptionsResponse = z.infer<typeof DslOptionsResponseSchema>
+
+// Export component types for DSL editors
+export type FromDef = z.infer<typeof DslFromSchema>
+export type ToDef = z.infer<typeof DslToSchema>
+export type Transform = z.infer<typeof DslTransformSchema>
+export type OutputMode = z.infer<typeof OutputModeSchema>
+export type HttpMethod = z.infer<typeof HttpMethodSchema>
+export type Operand = z.infer<typeof DslOperandSchema>
+export type StringOperand = z.infer<typeof DslStringOperandSchema>
+export type AuthConfig = z.infer<typeof AuthConfigSchema>
+export type SourceConfig = z.infer<typeof SourceConfigSchema>
+export type FormatConfig = z.infer<typeof FormatConfigSchema>
+export type DestinationConfig = z.infer<typeof DestinationConfigSchema>
 
 // Re-export ApiResponseSchema for consumers that need it alongside DSL
 export { ApiResponseSchema }

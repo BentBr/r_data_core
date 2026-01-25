@@ -203,14 +203,7 @@ async fn create_entity_definition(
     // Extract definition and prepare for validation
     let mut entity_def = definition.into_inner();
 
-    // Generate a new UUID if one wasn't provided
-    if entity_def.uuid == Uuid::nil() {
-        entity_def.uuid = Uuid::now_v7();
-    }
-
-    // Log UUIDs for debugging
-    let uuid = entity_def.uuid;
-    debug!("Class Definition UUID: {uuid}");
+    debug!("Creating entity definition");
     debug!("Creator UUID (from token): {creator_uuid}");
 
     // Set server-controlled fields
@@ -643,7 +636,7 @@ pub async fn list_entity_definition_versions(
     }
 
     // Sort by version number descending (newest first)
-    out.sort_by(|a, b| b.version_number.cmp(&a.version_number));
+    out.sort_by_key(|b| std::cmp::Reverse(b.version_number));
 
     ApiResponse::ok(out)
 }

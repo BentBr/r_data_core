@@ -5,6 +5,9 @@ import { resolve } from 'path'
 
 export default defineConfig({
     plugins: [vue(), vuetify({ autoImport: true })],
+    define: {
+        __APP_VERSION__: JSON.stringify('0.0.0-test'),
+    },
     test: {
         globals: true,
         environment: 'jsdom',

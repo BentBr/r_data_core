@@ -3,6 +3,7 @@
 pub mod admin_user_repository;
 pub mod admin_user_repository_trait;
 pub mod api_key_repository;
+pub mod component_version_repository;
 pub mod dashboard_stats_repository;
 pub mod dashboard_stats_repository_trait;
 pub mod dynamic_entity_mapper;
@@ -16,6 +17,7 @@ pub mod dynamic_entity_versioning;
 pub mod entity_definition_repository;
 pub mod entity_definition_versioning_repository;
 pub mod entity_definition_versioning_repository_trait;
+pub mod migration_service;
 pub mod refresh_token_repository;
 pub mod refresh_token_repository_trait;
 pub mod repository;
@@ -23,6 +25,8 @@ pub mod role_repository;
 pub mod role_repository_trait;
 pub mod settings_repository;
 pub mod settings_repository_trait;
+pub mod statistics_repository;
+pub mod statistics_repository_trait;
 pub mod version_repository;
 pub mod version_repository_trait;
 pub mod workflow_repository;
@@ -37,6 +41,7 @@ pub use admin_user_repository_trait::{
     is_key_valid, AdminUserRepositoryTrait, ApiKeyRepositoryTrait, CreateAdminUserParams,
 };
 pub use api_key_repository::ApiKeyRepository;
+pub use component_version_repository::{ComponentVersion, ComponentVersionRepository};
 pub use dashboard_stats_repository::DashboardStatsRepository;
 pub use dashboard_stats_repository_trait::DashboardStatsRepositoryTrait;
 pub use dynamic_entity_public_repository::DynamicEntityPublicRepository;
@@ -50,6 +55,7 @@ pub use entity_definition_versioning_repository::{
     EntityDefinitionVersioningRepository,
 };
 pub use entity_definition_versioning_repository_trait::EntityDefinitionVersioningRepositoryTrait;
+pub use migration_service::{AppliedMigration, MigrationService, MigrationStatus};
 pub use refresh_token_repository::RefreshTokenRepository;
 pub use refresh_token_repository_trait::RefreshTokenRepositoryTrait;
 pub use repository::{EntityRepository, PgPoolExtension};
@@ -57,6 +63,10 @@ pub use role_repository::RoleRepository;
 pub use role_repository_trait::RoleRepositoryTrait;
 pub use settings_repository::SystemSettingsRepository;
 pub use settings_repository_trait::SettingsRepositoryTrait;
+pub use statistics_repository::StatisticsRepository;
+pub use statistics_repository_trait::{
+    EntityCount, EntityDefinitionsStats, StatisticsRepositoryTrait,
+};
 pub use version_repository::{EntityVersionMeta, EntityVersionPayload, VersionRepository};
 pub use version_repository_trait::VersionRepositoryTrait;
 pub use workflow_repository::{get_provider_config, WorkflowRepository};

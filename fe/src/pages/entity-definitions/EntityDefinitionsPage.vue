@@ -3,6 +3,7 @@
         <PageLayout>
             <template #actions>
                 <v-btn
+                    v-if="canCreateEntityDefinition"
                     color="primary"
                     variant="flat"
                     @click="showCreateDialog = true"
@@ -85,6 +86,7 @@
     import { typedHttpClient } from '@/api/typed-client'
     import { useTranslations } from '@/composables/useTranslations'
     import { useSnackbar } from '@/composables/useSnackbar'
+    import { useErrorHandler } from '@/composables/useErrorHandler'
     import type {
         EntityDefinition,
         CreateEntityDefinitionRequest,
@@ -105,7 +107,16 @@
     const authStore = useAuthStore()
     const route = useRoute()
     const { t } = useTranslations()
-    const { currentSnackbar, showSuccess, showError } = useSnackbar()
+    const { currentSnackbar, showSuccess } = useSnackbar()
+    const { handleError } = useErrorHandler()
+
+    // Permission check for create button
+    const canCreateEntityDefinition = computed(() => {
+        return (
+            authStore.hasPermission('EntityDefinitions', 'Create') ||
+            authStore.hasPermission('EntityDefinitions', 'Admin')
+        )
+    })
 
     // Reactive state
     const loading = ref(false)
@@ -299,7 +310,7 @@
                 }
             } catch (err) {
                 console.error('Failed to load entity definition:', err)
-                showError(err instanceof Error ? err.message : 'Failed to load entity definition')
+                handleError(err)
             } finally {
                 loading.value = false
             }
@@ -357,9 +368,7 @@
 
             showSuccess(t('entity_definitions.details.changes_saved'))
         } catch (err) {
-            showError(
-                err instanceof Error ? err.message : t('entity_definitions.details.save_error')
-            )
+            handleError(err)
         } finally {
             savingChanges.value = false
         }
@@ -377,33 +386,8 @@
 
             showSuccess('Entity definition created successfully')
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : ''
-
-            // Handle specific 409 conflict errors
-            if (
-                errorMessage.includes('409') ||
-                errorMessage.includes('conflict') ||
-                errorMessage.includes('already exists')
-            ) {
-                showError(t('entity_definitions.errors.entity_type_exists'))
-            } else if (errorMessage.includes('422') || errorMessage.includes('validation')) {
-                if (
-                    errorMessage.includes('field name') ||
-                    errorMessage.includes('invalid characters') ||
-                    errorMessage.includes('reserved SQL keyword')
-                ) {
-                    showError(t('entity_definitions.errors.invalid_characters'))
-                } else if (
-                    errorMessage.includes('field exists') ||
-                    errorMessage.includes('already exists')
-                ) {
-                    showError(t('entity_definitions.errors.field_name_exists'))
-                } else {
-                    showError(t('entity_definitions.errors.validation_failed'))
-                }
-            } else {
-                showError(errorMessage ?? t('entity_definitions.create.error'))
-            }
+            // Error message is handled by global error handler
+            handleError(err)
         } finally {
             creating.value = false
         }
@@ -457,31 +441,8 @@
 
             showSuccess('Entity definition updated successfully')
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : ''
-
-            // Handle specific 422 validation errors
-            if (errorMessage.includes('422') || errorMessage.includes('validation')) {
-                if (
-                    errorMessage.includes('field name') ||
-                    errorMessage.includes('invalid characters')
-                ) {
-                    showError(t('entity_definitions.errors.invalid_characters'))
-                } else if (
-                    errorMessage.includes('field exists') ||
-                    errorMessage.includes('already exists')
-                ) {
-                    showError(t('entity_definitions.errors.field_name_exists'))
-                } else if (
-                    errorMessage.includes('entity type') ||
-                    errorMessage.includes('type exists')
-                ) {
-                    showError(t('entity_definitions.errors.entity_type_exists'))
-                } else {
-                    showError(t('entity_definitions.errors.validation_failed'))
-                }
-            } else {
-                showError(errorMessage ?? t('entity_definitions.edit.error'))
-            }
+            // Error message is handled by global error handler
+            handleError(err)
         } finally {
             updating.value = false
         }
@@ -508,7 +469,7 @@
 
             showSuccess(t('entity_definitions.delete.success'))
         } catch (err) {
-            showError(err instanceof Error ? err.message : t('entity_definitions.delete.error'))
+            handleError(err)
         } finally {
             deleting.value = false
         }

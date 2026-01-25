@@ -106,18 +106,18 @@ impl RoleRepository {
     ///
     /// # Errors
     /// Returns an error if database insert fails
+    /// Returns the UUID
     pub async fn create(&self, role: &Role, created_by: Uuid) -> Result<Uuid> {
-        let uuid = role.base.uuid;
         let permissions_json = serde_json::to_value(&role.permissions)
             .map_err(|e| Error::Unknown(format!("Failed to serialize permissions: {e}")))?;
 
-        sqlx::query(
+        let uuid = sqlx::query_scalar::<_, Uuid>(
             "
-            INSERT INTO roles (uuid, path, name, description, permissions, is_system, super_admin, created_by, published, version)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            INSERT INTO roles (path, name, description, permissions, is_system, super_admin, created_by, published, version)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            RETURNING uuid
             ",
         )
-        .bind(uuid)
         .bind(&role.base.path)
         .bind(&role.name)
         .bind(&role.description)
@@ -127,7 +127,7 @@ impl RoleRepository {
         .bind(created_by)
         .bind(role.base.published)
         .bind(role.base.version)
-        .execute(&self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(Error::Database)?;
 
@@ -303,6 +303,20 @@ impl RoleRepositoryTrait for RoleRepository {
 
     async fn delete(&self, uuid: Uuid) -> Result<()> {
         Self::delete(self, uuid).await
+    }
+
+    async fn list_all(
+        &self,
+        limit: i64,
+        offset: i64,
+        sort_by: Option<String>,
+        sort_order: Option<String>,
+    ) -> Result<Vec<Role>> {
+        Self::list_all(self, limit, offset, sort_by, sort_order).await
+    }
+
+    async fn count_all(&self) -> Result<i64> {
+        Self::count_all(self).await
     }
 }
 

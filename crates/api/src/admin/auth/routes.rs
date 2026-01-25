@@ -51,6 +51,21 @@ async fn load_user_roles(
     }
 }
 
+/// Check if admin user is still using the default password
+async fn check_admin_default_password(repo: &AdminUserRepository) -> bool {
+    // Default password hash from migration
+    const DEFAULT_PASSWORD_HASH: &str = "$argon2id$v=19$m=19456,t=2,p=1$AyU4SymrYGzpmYfqDSbugg$AhzMvJ1bOxrv2WQ1ks3PRFXGezp966kjJwkoUdJbFY4";
+
+    match repo.find_by_username_or_email("admin").await {
+        Ok(Some(admin_user)) => admin_user.password_hash == DEFAULT_PASSWORD_HASH,
+        Ok(None) => false,
+        Err(e) => {
+            log::warn!("Failed to check default admin password: {e:?}");
+            false
+        }
+    }
+}
+
 /// Generate tokens and build login response
 fn build_login_response(
     user: &AdminUser,
@@ -58,6 +73,7 @@ fn build_login_response(
     refresh_token: String,
     access_expires_at: OffsetDateTime,
     refresh_expires_at: OffsetDateTime,
+    using_default_password: bool,
 ) -> actix_web::HttpResponse {
     ApiResponse::ok(AdminLoginResponse {
         access_token,
@@ -66,6 +82,7 @@ fn build_login_response(
         username: user.username.clone(),
         access_expires_at,
         refresh_expires_at,
+        using_default_password,
     })
 }
 
@@ -266,6 +283,13 @@ pub async fn admin_login(
         return ApiResponse::internal_error("Authentication failed");
     }
 
+    // Check if default admin password is still in use (if enabled)
+    let using_default_password = if data.api_config().check_default_admin_password {
+        check_admin_default_password(&repo).await
+    } else {
+        false
+    };
+
     // Build response
     build_login_response(
         &user,
@@ -273,6 +297,7 @@ pub async fn admin_login(
         refresh_token,
         access_expires_at,
         refresh_expires_at,
+        using_default_password,
     )
 }
 

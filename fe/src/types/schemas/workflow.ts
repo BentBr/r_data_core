@@ -50,5 +50,6 @@ export interface WorkflowConfig extends Record<string, unknown> {
     transform?: unknown
     auth?: unknown
     csv_options?: unknown
+
     [key: string]: unknown
 }

@@ -45,6 +45,22 @@
                     </template>
                 </v-list-item>
             </v-list>
+
+            <v-spacer />
+
+            <!-- Version Info -->
+            <div class="version-info pa-3">
+                <div class="text-caption text-medium-emphasis">
+                    <div>FE: v{{ versionStore.feVersion }}</div>
+                    <div v-if="versionStore.coreVersion">Core: v{{ versionStore.coreVersion }}</div>
+                    <div v-if="versionStore.workerVersion">
+                        Worker: v{{ versionStore.workerVersion.version }}
+                    </div>
+                    <div v-if="versionStore.maintenanceVersion">
+                        Maint: v{{ versionStore.maintenanceVersion.version }}
+                    </div>
+                </div>
+            </div>
         </v-navigation-drawer>
 
         <!-- App Bar -->
@@ -70,6 +86,9 @@
 
         <!-- Main Content -->
         <v-main>
+            <DefaultPasswordBanner />
+            <LicenseBanner />
+            <MobileWarningBanner />
             <router-view v-slot="{ Component, route }">
                 <transition
                     name="fade"
@@ -90,13 +109,18 @@
     import { ref, computed, onMounted, onUnmounted } from 'vue'
     import { useRoute } from 'vue-router'
     import { useAuthStore } from '@/stores/auth'
+    import { useVersionStore } from '@/stores/versions'
     import { useTranslations } from '@/composables/useTranslations'
     import LanguageSwitch from '@/components/common/LanguageSwitch.vue'
     import UserProfileMenu from '@/components/common/UserProfileMenu.vue'
     import SmartIcon from '@/components/common/SmartIcon.vue'
+    import DefaultPasswordBanner from '@/components/common/DefaultPasswordBanner.vue'
+    import LicenseBanner from '@/components/common/LicenseBanner.vue'
+    import MobileWarningBanner from '@/components/common/MobileWarningBanner.vue'
 
     const route = useRoute()
     const authStore = useAuthStore()
+    const versionStore = useVersionStore()
     const { t } = useTranslations()
 
     // State
@@ -147,10 +171,6 @@
 
         // Filter items based on user permissions
         return items.filter(item => {
-            // Dashboard is always accessible if authenticated
-            if (item.path === '/dashboard') {
-                return true
-            }
             // Check if user can access the route
             return authStore.canAccessRoute(item.path)
         })
@@ -196,6 +216,15 @@
 
     .v-navigation-drawer {
         transition: width 0.3s ease;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .version-info {
+        border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+        font-family: monospace;
+        font-size: 0.7rem;
+        line-height: 1.4;
     }
 </style>
 

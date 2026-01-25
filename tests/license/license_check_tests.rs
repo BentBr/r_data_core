@@ -1,0 +1,798 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
+use httpmock::MockServer;
+use r_data_core_core::cache::CacheManager;
+use r_data_core_core::config::{CacheConfig, LicenseConfig};
+use r_data_core_license::LicenseToolService;
+use r_data_core_license::{
+    call_verification_api, create_license_key, decode_license_claims, LicenseType,
+    LICENSE_CACHE_KEY_PREFIX, LICENSE_CACHE_TTL_SECS,
+};
+use r_data_core_services::license::service::{LicenseService, LicenseState};
+use serial_test::serial;
+use std::sync::Arc;
+use tempfile::TempDir;
+
+/// Generate RSA key pair for testing
+fn generate_test_keys(temp_dir: &TempDir) -> (String, String) {
+    let private_key_path = temp_dir.path().join("private.key");
+    let public_key_path = temp_dir.path().join("public.key");
+
+    // Generate private key using openssl
+    let private_key_output = std::process::Command::new("openssl")
+        .args(["genrsa", "-out", private_key_path.to_str().unwrap(), "2048"])
+        .output();
+
+    let Ok(private_key_output) = private_key_output else {
+        return (String::new(), String::new());
+    };
+
+    if !private_key_output.status.success() {
+        return (String::new(), String::new());
+    }
+
+    // Generate public key from private key
+    let public_key_output = std::process::Command::new("openssl")
+        .args([
+            "rsa",
+            "-in",
+            private_key_path.to_str().unwrap(),
+            "-pubout",
+            "-out",
+            public_key_path.to_str().unwrap(),
+        ])
+        .output()
+        .expect("Failed to generate public key");
+
+    if !public_key_output.status.success() {
+        return (String::new(), String::new());
+    }
+
+    let private_key =
+        std::fs::read_to_string(&private_key_path).expect("Failed to read private key");
+    let public_key = std::fs::read_to_string(&public_key_path).expect("Failed to read public key");
+
+    (private_key, public_key)
+}
+
+#[tokio::test]
+#[serial]
+async fn test_license_check_valid() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let (private_key, _) = generate_test_keys(&temp_dir);
+
+    if private_key.is_empty() {
+        eprintln!("Skipping test - openssl not available");
+        return;
+    }
+
+    let private_key_path = temp_dir.path().join("private.key");
+    std::fs::write(&private_key_path, private_key).expect("Failed to write private key");
+
+    // Create a valid license key
+    let license_key = create_license_key(
+        "Test Company",
+        LicenseType::Enterprise,
+        private_key_path.to_str().unwrap(),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
+    )
+    .expect("Failed to create license key");
+
+    let mock_server = MockServer::start();
+    let mock = mock_server.mock(|when, then| {
+        when.method(httpmock::Method::POST)
+            .path("/verify")
+            .json_body(serde_json::json!({ "license_key": license_key }));
+        then.status(200)
+            .json_body(serde_json::json!({ "valid": true }));
+    });
+
+    let config = LicenseConfig {
+        license_key: Some(license_key.clone()),
+        private_key: None,
+        public_key: None,
+        verification_url: format!("http://{}/verify", mock_server.address()),
+        statistics_url: format!("http://{}/submit", mock_server.address()),
+    };
+
+    let cache_config = CacheConfig {
+        enabled: true,
+        ttl: 300,
+        max_size: 10000,
+        entity_definition_ttl: 0,
+        api_key_ttl: 600,
+    };
+    let cache_manager = Arc::new(CacheManager::new(cache_config));
+
+    // Test check_license function
+    let result = LicenseToolService::check_license(config, cache_manager.clone())
+        .await
+        .expect("Should not fail");
+
+    assert_eq!(result.state, r_data_core_license::LicenseCheckState::Valid);
+    assert_eq!(result.company, Some("Test Company".to_string()));
+    assert_eq!(result.license_type, Some("Enterprise".to_string()));
+    assert!(result.license_id.is_some());
+    assert!(result.version.is_some());
+
+    // Verify cache was updated
+    let service = LicenseService::new(
+        LicenseConfig {
+            license_key: Some(license_key),
+            private_key: None,
+            public_key: None,
+            verification_url: format!("http://{}/verify", mock_server.address()),
+            statistics_url: format!("http://{}/submit", mock_server.address()),
+        },
+        cache_manager,
+    );
+
+    let cached_result = service
+        .get_cached_license_status()
+        .await
+        .expect("Should not fail");
+
+    assert!(cached_result.is_some());
+    let cached = cached_result.unwrap();
+    assert_eq!(cached.state, LicenseState::Valid);
+    assert_eq!(cached.company, Some("Test Company".to_string()));
+
+    mock.assert();
+}
+
+#[tokio::test]
+#[serial]
+async fn test_license_check_invalid_api_response() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let (private_key, _) = generate_test_keys(&temp_dir);
+
+    if private_key.is_empty() {
+        eprintln!("Skipping test - openssl not available");
+        return;
+    }
+
+    let private_key_path = temp_dir.path().join("private.key");
+    std::fs::write(&private_key_path, private_key).expect("Failed to write private key");
+
+    // Create a valid license key
+    let license_key = create_license_key(
+        "Test Company",
+        LicenseType::Community,
+        private_key_path.to_str().unwrap(),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
+    )
+    .expect("Failed to create license key");
+
+    let mock_server = MockServer::start();
+    let mock = mock_server.mock(|when, then| {
+        when.method(httpmock::Method::POST)
+            .path("/verify")
+            .json_body(serde_json::json!({ "license_key": license_key }));
+        then.status(200).json_body(serde_json::json!({
+            "valid": false,
+            "message": "License has been revoked"
+        }));
+    });
+
+    let config = LicenseConfig {
+        license_key: Some(license_key.clone()),
+        private_key: None,
+        public_key: None,
+        verification_url: format!("http://{}/verify", mock_server.address()),
+        statistics_url: format!("http://{}/submit", mock_server.address()),
+    };
+
+    let cache_config = CacheConfig {
+        enabled: true,
+        ttl: 300,
+        max_size: 10000,
+        entity_definition_ttl: 0,
+        api_key_ttl: 600,
+    };
+    let cache_manager = Arc::new(CacheManager::new(cache_config));
+
+    // Test check_license function
+    let result = LicenseToolService::check_license(config.clone(), cache_manager.clone())
+        .await
+        .expect("Should not fail");
+
+    assert_eq!(
+        result.state,
+        r_data_core_license::LicenseCheckState::Invalid
+    );
+    assert_eq!(result.company, Some("Test Company".to_string()));
+    assert!(result.error_message.is_some());
+    let error_msg = result.error_message.unwrap();
+    assert!(error_msg.contains("revoked") || error_msg.contains("License"));
+
+    // Verify cache was updated with Invalid state
+    let service = LicenseService::new(config, cache_manager);
+    let cached_result = service
+        .get_cached_license_status()
+        .await
+        .expect("Should not fail");
+
+    assert!(cached_result.is_some());
+    let cached = cached_result.unwrap();
+    assert_eq!(cached.state, LicenseState::Invalid);
+
+    mock.assert();
+}
+
+#[tokio::test]
+#[serial]
+async fn test_license_check_network_error() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let (private_key, _) = generate_test_keys(&temp_dir);
+
+    if private_key.is_empty() {
+        eprintln!("Skipping test - openssl not available");
+        return;
+    }
+
+    let private_key_path = temp_dir.path().join("private.key");
+    std::fs::write(&private_key_path, private_key).expect("Failed to write private key");
+
+    // Create a valid license key
+    let license_key = create_license_key(
+        "Test Company",
+        LicenseType::Enterprise,
+        private_key_path.to_str().unwrap(),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
+    )
+    .expect("Failed to create license key");
+
+    // Use a non-existent server URL to simulate network error
+    let config = LicenseConfig {
+        license_key: Some(license_key),
+        private_key: None,
+        public_key: None,
+        verification_url: "http://127.0.0.1:99999/verify".to_string(), // Invalid port
+        statistics_url: "http://127.0.0.1:99999/submit".to_string(),
+    };
+
+    let cache_config = CacheConfig {
+        enabled: true,
+        ttl: 300,
+        max_size: 10000,
+        entity_definition_ttl: 0,
+        api_key_ttl: 600,
+    };
+    let cache_manager = Arc::new(CacheManager::new(cache_config));
+
+    // Test check_license function - should handle network error gracefully
+    // Note: The API call will fail, but we should still get a result
+    let result = LicenseToolService::check_license(config, cache_manager)
+        .await
+        .expect("Should not fail");
+
+    // Network errors result in Error state
+    assert_eq!(result.state, r_data_core_license::LicenseCheckState::Error);
+    assert!(result.error_message.is_some());
+}
+
+#[tokio::test]
+#[serial]
+async fn test_license_check_none_state() {
+    let mock_server = MockServer::start();
+    let config = LicenseConfig {
+        license_key: None,
+        private_key: None,
+        public_key: None,
+        verification_url: format!("http://{}/verify", mock_server.address()),
+        statistics_url: format!("http://{}/submit", mock_server.address()),
+    };
+
+    let cache_config = CacheConfig {
+        enabled: true,
+        ttl: 300,
+        max_size: 10000,
+        entity_definition_ttl: 0,
+        api_key_ttl: 600,
+    };
+    let cache_manager = Arc::new(CacheManager::new(cache_config));
+
+    let result = LicenseToolService::check_license(config, cache_manager)
+        .await
+        .expect("Should not fail");
+
+    assert_eq!(result.state, r_data_core_license::LicenseCheckState::None);
+    assert!(result.company.is_none());
+    assert!(result.license_id.is_none());
+}
+
+#[tokio::test]
+#[serial]
+async fn test_license_check_cache_invalidation_with_new_timestamp() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let (private_key, _) = generate_test_keys(&temp_dir);
+
+    if private_key.is_empty() {
+        eprintln!("Skipping test - openssl not available");
+        return;
+    }
+
+    let private_key_path = temp_dir.path().join("private.key");
+    std::fs::write(&private_key_path, private_key).expect("Failed to write private key");
+
+    // Create a valid license key
+    let license_key = create_license_key(
+        "Test Company",
+        LicenseType::Enterprise,
+        private_key_path.to_str().unwrap(),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
+    )
+    .expect("Failed to create license key");
+
+    let mock_server = MockServer::start();
+
+    // First mock: return valid
+    let mock_valid = mock_server.mock(|when, then| {
+        when.method(httpmock::Method::POST)
+            .path("/verify")
+            .json_body(serde_json::json!({ "license_key": license_key }));
+        then.status(200)
+            .json_body(serde_json::json!({ "valid": true }));
+    });
+
+    let config = LicenseConfig {
+        license_key: Some(license_key.clone()),
+        private_key: None,
+        public_key: None,
+        verification_url: format!("http://{}/verify", mock_server.address()),
+        statistics_url: format!("http://{}/submit", mock_server.address()),
+    };
+
+    let cache_config = CacheConfig {
+        enabled: true,
+        ttl: 300,
+        max_size: 10000,
+        entity_definition_ttl: 0,
+        api_key_ttl: 600,
+    };
+    let cache_manager = Arc::new(CacheManager::new(cache_config));
+
+    // First verification - should cache Valid state
+    let service1 = LicenseService::new(config.clone(), cache_manager.clone());
+    let result1 = service1.verify_license().await.expect("Should not fail");
+    assert_eq!(result1.state, LicenseState::Valid);
+    let first_verified_at = result1.verified_at;
+    mock_valid.assert();
+
+    // Verify cache has Valid state with first timestamp
+    let cached1 = service1
+        .get_cached_license_status()
+        .await
+        .expect("Should not fail");
+    assert_eq!(cached1.as_ref().unwrap().state, LicenseState::Valid);
+    assert_eq!(cached1.as_ref().unwrap().verified_at, first_verified_at);
+
+    // Wait a bit to ensure different timestamp
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+    // Now simulate network error (unreachable endpoint)
+    let config_with_error = LicenseConfig {
+        license_key: Some(license_key.clone()),
+        private_key: None,
+        public_key: None,
+        verification_url: "http://127.0.0.1:99999/verify".to_string(), // Invalid port
+        statistics_url: "http://127.0.0.1:99999/submit".to_string(),
+    };
+
+    // Use check_license which should clear cache and force fresh verification
+    // Even though it fails, it should update cache with Error state and NEW timestamp
+    let result2 =
+        LicenseToolService::check_license(config_with_error.clone(), cache_manager.clone())
+            .await
+            .expect("Should not fail");
+
+    assert_eq!(result2.state, r_data_core_license::LicenseCheckState::Error);
+    let second_verified_at = result2.verified_at;
+
+    // Verify timestamp is NEW (different from first)
+    assert!(
+        second_verified_at > first_verified_at,
+        "New verification should have later timestamp"
+    );
+
+    // Verify cache was updated with Error state and NEW timestamp
+    let service2 = LicenseService::new(config_with_error, cache_manager);
+    let cached2 = service2
+        .get_cached_license_status()
+        .await
+        .expect("Should not fail");
+    assert!(cached2.is_some());
+    let cached_result = cached2.unwrap();
+    assert_eq!(cached_result.state, LicenseState::Error);
+    assert_eq!(
+        cached_result.verified_at, second_verified_at,
+        "Cache should have the new timestamp from check_license"
+    );
+    assert!(
+        cached_result.verified_at > first_verified_at,
+        "Cached timestamp should be newer than the original"
+    );
+}
+
+#[tokio::test]
+#[serial]
+async fn test_call_verification_api_wrapped_format() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let (private_key, _) = generate_test_keys(&temp_dir);
+
+    if private_key.is_empty() {
+        eprintln!("Skipping test - openssl not available");
+        return;
+    }
+
+    let private_key_path = temp_dir.path().join("private.key");
+    std::fs::write(&private_key_path, private_key).expect("Failed to write private key");
+
+    // Create a valid license key
+    let license_key = create_license_key(
+        "Wrapped Format Test",
+        LicenseType::Enterprise,
+        private_key_path.to_str().unwrap(),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
+    )
+    .expect("Failed to create license key");
+
+    let mock_server = MockServer::start();
+    let mock = mock_server.mock(|when, then| {
+        when.method(httpmock::Method::POST)
+            .path("/verify")
+            .json_body(serde_json::json!({ "license_key": license_key }));
+        // Return wrapped ApiResponse format (internal endpoint format)
+        then.status(200).json_body(serde_json::json!({
+            "status": "Success",
+            "message": "Operation completed successfully",
+            "data": {
+                "valid": true,
+                "message": null
+            }
+        }));
+    });
+
+    let verification_url = format!("http://{}/verify", mock_server.address());
+
+    // Test that call_verification_api can parse wrapped format
+    let result = call_verification_api(&license_key, &verification_url)
+        .await
+        .expect("Should not fail");
+
+    assert!(result.is_valid);
+    assert_eq!(result.claims.company, "Wrapped Format Test");
+    assert_eq!(result.claims.license_type, LicenseType::Enterprise);
+    assert!(result.error_message.is_none());
+
+    mock.assert();
+}
+
+#[tokio::test]
+#[serial]
+async fn test_call_verification_api_unwrapped_format() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let (private_key, _) = generate_test_keys(&temp_dir);
+
+    if private_key.is_empty() {
+        eprintln!("Skipping test - openssl not available");
+        return;
+    }
+
+    let private_key_path = temp_dir.path().join("private.key");
+    std::fs::write(&private_key_path, private_key).expect("Failed to write private key");
+
+    // Create a valid license key
+    let license_key = create_license_key(
+        "Unwrapped Format Test",
+        LicenseType::Community,
+        private_key_path.to_str().unwrap(),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
+    )
+    .expect("Failed to create license key");
+
+    let mock_server = MockServer::start();
+    let mock = mock_server.mock(|when, then| {
+        when.method(httpmock::Method::POST)
+            .path("/verify")
+            .json_body(serde_json::json!({ "license_key": license_key }));
+        // Return unwrapped format (external API format)
+        then.status(200).json_body(serde_json::json!({
+            "valid": true,
+            "message": null
+        }));
+    });
+
+    let verification_url = format!("http://{}/verify", mock_server.address());
+
+    // Test that call_verification_api can parse unwrapped format
+    let result = call_verification_api(&license_key, &verification_url)
+        .await
+        .expect("Should not fail");
+
+    assert!(result.is_valid);
+    assert_eq!(result.claims.company, "Unwrapped Format Test");
+    assert_eq!(result.claims.license_type, LicenseType::Community);
+    assert!(result.error_message.is_none());
+
+    mock.assert();
+}
+
+#[tokio::test]
+#[serial]
+async fn test_call_verification_api_wrapped_format_invalid() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let (private_key, _) = generate_test_keys(&temp_dir);
+
+    if private_key.is_empty() {
+        eprintln!("Skipping test - openssl not available");
+        return;
+    }
+
+    let private_key_path = temp_dir.path().join("private.key");
+    std::fs::write(&private_key_path, private_key).expect("Failed to write private key");
+
+    // Create a valid license key
+    let license_key = create_license_key(
+        "Invalid Wrapped Test",
+        LicenseType::Enterprise,
+        private_key_path.to_str().unwrap(),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
+    )
+    .expect("Failed to create license key");
+
+    let mock_server = MockServer::start();
+    let mock = mock_server.mock(|when, then| {
+        when.method(httpmock::Method::POST)
+            .path("/verify")
+            .json_body(serde_json::json!({ "license_key": license_key }));
+        // Return wrapped ApiResponse format with invalid license
+        then.status(200).json_body(serde_json::json!({
+            "status": "Success",
+            "message": "Operation completed successfully",
+            "data": {
+                "valid": false,
+                "message": "License has been revoked"
+            }
+        }));
+    });
+
+    let verification_url = format!("http://{}/verify", mock_server.address());
+
+    // Test that call_verification_api can parse wrapped format with invalid result
+    let result = call_verification_api(&license_key, &verification_url)
+        .await
+        .expect("Should not fail");
+
+    assert!(!result.is_valid);
+    assert_eq!(result.claims.company, "Invalid Wrapped Test");
+    assert!(result.error_message.is_some());
+    let error_msg = result.error_message.unwrap();
+    assert!(error_msg.contains("revoked") || error_msg.contains("License"));
+
+    mock.assert();
+}
+
+#[tokio::test]
+#[serial]
+async fn test_call_verification_api_unwrapped_format_invalid() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let (private_key, _) = generate_test_keys(&temp_dir);
+
+    if private_key.is_empty() {
+        eprintln!("Skipping test - openssl not available");
+        return;
+    }
+
+    let private_key_path = temp_dir.path().join("private.key");
+    std::fs::write(&private_key_path, private_key).expect("Failed to write private key");
+
+    // Create a valid license key
+    let license_key = create_license_key(
+        "Invalid Unwrapped Test",
+        LicenseType::Education,
+        private_key_path.to_str().unwrap(),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
+    )
+    .expect("Failed to create license key");
+
+    let mock_server = MockServer::start();
+    let mock = mock_server.mock(|when, then| {
+        when.method(httpmock::Method::POST)
+            .path("/verify")
+            .json_body(serde_json::json!({ "license_key": license_key }));
+        // Return unwrapped format with invalid license
+        then.status(200).json_body(serde_json::json!({
+            "valid": false,
+            "message": "License expired"
+        }));
+    });
+
+    let verification_url = format!("http://{}/verify", mock_server.address());
+
+    // Test that call_verification_api can parse unwrapped format with invalid result
+    let result = call_verification_api(&license_key, &verification_url)
+        .await
+        .expect("Should not fail");
+
+    assert!(!result.is_valid);
+    assert_eq!(result.claims.company, "Invalid Unwrapped Test");
+    assert!(result.error_message.is_some());
+    let error_msg = result.error_message.unwrap();
+    assert!(error_msg.contains("expired") || error_msg.contains("License"));
+
+    mock.assert();
+}
+
+// Tests for decode_license_claims function
+
+#[test]
+fn test_decode_license_claims_valid() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let (private_key, _) = generate_test_keys(&temp_dir);
+
+    if private_key.is_empty() {
+        eprintln!("Skipping test - openssl not available");
+        return;
+    }
+
+    let private_key_path = temp_dir.path().join("private.key");
+    std::fs::write(&private_key_path, private_key).expect("Failed to write private key");
+
+    // Create a valid license key
+    let license_key = create_license_key(
+        "Decode Test Company",
+        LicenseType::CompanyI,
+        private_key_path.to_str().unwrap(),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
+    )
+    .expect("Failed to create license key");
+
+    // Test decode_license_claims
+    let claims = decode_license_claims(&license_key).expect("Should decode successfully");
+
+    assert_eq!(claims.company, "Decode Test Company");
+    assert_eq!(claims.license_type, LicenseType::CompanyI);
+    assert!(!claims.license_id.is_empty());
+    assert_eq!(claims.version, "v1");
+}
+
+#[test]
+fn test_decode_license_claims_invalid_jwt_format() {
+    // Test with invalid JWT format (not 3 parts)
+    let invalid_jwt = "not.a.valid.jwt.with.five.parts";
+    let result = decode_license_claims(invalid_jwt);
+    assert!(result.is_err());
+
+    let invalid_jwt2 = "only_one_part";
+    let result2 = decode_license_claims(invalid_jwt2);
+    assert!(result2.is_err());
+}
+
+#[test]
+fn test_decode_license_claims_invalid_base64() {
+    // Test with invalid base64 in payload
+    let invalid_jwt = "eyJhbGciOiJSUzI1NiJ9.not_valid_base64!@#$.signature";
+    let result = decode_license_claims(invalid_jwt);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_decode_license_claims_invalid_json() {
+    // Pre-encoded JWT with invalid JSON in payload
+    // Payload is base64url("not valid json") = "bm90IHZhbGlkIGpzb24"
+    let invalid_jwt = "eyJhbGciOiJSUzI1NiJ9.bm90IHZhbGlkIGpzb24.signature";
+
+    let result = decode_license_claims(invalid_jwt);
+    assert!(result.is_err());
+}
+
+// Tests for exported constants
+
+#[test]
+fn test_license_cache_constants() {
+    // Verify constants are exported and have expected values
+    assert_eq!(LICENSE_CACHE_KEY_PREFIX, "license:verification:");
+    assert_eq!(LICENSE_CACHE_TTL_SECS, 86400); // 24 hours
+}
+
+#[test]
+fn test_cache_key_format() {
+    // Verify that cache key format is consistent
+    let license_id = "019b7ffd-b2f9-76b1-b4b9-c9771e6fc21a";
+    let expected_key = format!("{LICENSE_CACHE_KEY_PREFIX}{license_id}");
+    assert_eq!(
+        expected_key,
+        "license:verification:019b7ffd-b2f9-76b1-b4b9-c9771e6fc21a"
+    );
+}
+
+// Test that both LicenseService and LicenseToolService use the same API implementation
+
+#[tokio::test]
+#[serial]
+async fn test_service_and_tool_use_same_api_implementation() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let (private_key, _) = generate_test_keys(&temp_dir);
+
+    if private_key.is_empty() {
+        eprintln!("Skipping test - openssl not available");
+        return;
+    }
+
+    let private_key_path = temp_dir.path().join("private.key");
+    std::fs::write(&private_key_path, private_key).expect("Failed to write private key");
+
+    // Create a valid license key
+    let license_key = create_license_key(
+        "Unified API Test",
+        LicenseType::Enterprise,
+        private_key_path.to_str().unwrap(),
+        Some(time::OffsetDateTime::now_utc() + time::Duration::days(365)),
+    )
+    .expect("Failed to create license key");
+
+    let mock_server = MockServer::start();
+
+    // Use wrapped format to ensure both implementations handle it correctly
+    let mock = mock_server.mock(|when, then| {
+        when.method(httpmock::Method::POST)
+            .path("/verify")
+            .json_body(serde_json::json!({ "license_key": license_key }));
+        then.status(200).json_body(serde_json::json!({
+            "status": "Success",
+            "message": "Verified",
+            "data": {
+                "valid": true,
+                "message": null
+            }
+        }));
+    });
+
+    let config = LicenseConfig {
+        license_key: Some(license_key.clone()),
+        private_key: None,
+        public_key: None,
+        verification_url: format!("http://{}/verify", mock_server.address()),
+        statistics_url: format!("http://{}/submit", mock_server.address()),
+    };
+
+    let cache_config = CacheConfig {
+        enabled: true,
+        ttl: 300,
+        max_size: 10000,
+        entity_definition_ttl: 0,
+        api_key_ttl: 600,
+    };
+    let cache_manager = Arc::new(CacheManager::new(cache_config));
+
+    // Test with LicenseService
+    let service = LicenseService::new(config.clone(), cache_manager.clone());
+    let service_result = service.verify_license().await.expect("Should not fail");
+
+    assert_eq!(service_result.state, LicenseState::Valid);
+    assert_eq!(service_result.company, Some("Unified API Test".to_string()));
+
+    // Clear cache to force API call for tool
+    cache_manager
+        .delete(&format!(
+            "{LICENSE_CACHE_KEY_PREFIX}{}",
+            service_result.license_id.as_ref().unwrap()
+        ))
+        .await
+        .ok();
+
+    // Test with LicenseToolService
+    let tool_result = LicenseToolService::check_license(config, cache_manager)
+        .await
+        .expect("Should not fail");
+
+    assert_eq!(
+        tool_result.state,
+        r_data_core_license::LicenseCheckState::Valid
+    );
+    assert_eq!(tool_result.company, Some("Unified API Test".to_string()));
+
+    // Both should have called the API (2 calls total)
+    mock.assert_calls(2);
+}

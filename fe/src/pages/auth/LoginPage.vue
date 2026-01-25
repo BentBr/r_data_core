@@ -33,6 +33,23 @@
 
                         <!-- Login Form -->
                         <v-card-text>
+                            <!-- Mobile Warning -->
+                            <v-alert
+                                v-if="isMobile"
+                                type="warning"
+                                variant="tonal"
+                                prominent
+                                class="mb-4"
+                            >
+                                <template #prepend>
+                                    <SmartIcon
+                                        icon="alert-triangle"
+                                        size="sm"
+                                    />
+                                </template>
+                                {{ t('auth.mobile_warning') }}
+                            </v-alert>
+
                             <v-form
                                 ref="loginForm"
                                 v-model="formValid"
@@ -162,7 +179,7 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, reactive, onMounted } from 'vue'
+    import { ref, reactive, onMounted, onUnmounted } from 'vue'
     import { useRouter } from 'vue-router'
     import { useAuthStore } from '@/stores/auth'
     import { useTranslations } from '@/composables/useTranslations'
@@ -179,6 +196,11 @@
     const formValid = ref(false)
     const showPassword = ref(false)
     const forgotPasswordSnackbar = ref(false)
+    const isMobile = ref(false)
+
+    const updateIsMobile = () => {
+        isMobile.value = window.innerWidth < 1200
+    }
 
     // Form state
     const credentials = reactive({
@@ -187,26 +209,20 @@
     })
 
     // Field-specific errors
-    const fieldErrors = reactive({
+    const fieldErrors = reactive<{ username: string[]; password: string[] }>({
         username: [],
         password: [],
     })
 
     // Validation rules with translations
     const usernameRules = [
-        (v: unknown) => !!v,
-        (v: unknown) => {
-            const isValid = v && typeof v === 'string' && v.length >= 3
-            return isValid ?? t('auth.login.errors.username_too_short')
-        },
+        (v: string) => !!v || t('auth.login.errors.username_required'),
+        (v: string) => v.length >= 3 || t('auth.login.errors.username_too_short'),
     ]
 
     const passwordRules = [
-        (v: unknown) => !!v,
-        (v: unknown) => {
-            const isValid = v && typeof v === 'string' && v.length >= 8
-            return isValid ?? t('auth.login.errors.password_too_short')
-        },
+        (v: string) => !!v || t('auth.login.errors.password_required'),
+        (v: string) => v.length >= 8 || t('auth.login.errors.password_too_short'),
     ]
 
     // Methods
@@ -263,7 +279,7 @@
         }
     }
 
-    const clearFieldError = field => {
+    const clearFieldError = (field: 'username' | 'password') => {
         fieldErrors[field] = []
         authStore.clearError()
     }
@@ -274,6 +290,9 @@
 
     // Lifecycle
     onMounted(() => {
+        updateIsMobile()
+        window.addEventListener('resize', updateIsMobile)
+
         // If user is already authenticated, redirect to appropriate page
         if (authStore.isAuthenticated) {
             const redirectParam = router.currentRoute.value.query.redirect
@@ -281,6 +300,10 @@
                 (Array.isArray(redirectParam) ? redirectParam[0] : redirectParam) ?? '/dashboard'
             void router.push(redirectTo)
         }
+    })
+
+    onUnmounted(() => {
+        window.removeEventListener('resize', updateIsMobile)
     })
 </script>
 

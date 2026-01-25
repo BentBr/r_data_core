@@ -1,7 +1,6 @@
 pub mod csv;
 pub mod json;
 
-use anyhow::Result;
 use bytes::Bytes;
 use serde_json::Value;
 
@@ -14,19 +13,19 @@ pub trait FormatHandler: Send + Sync {
     ///
     /// # Errors
     /// Returns an error if parsing fails.
-    fn parse(&self, data: &[u8], options: &Value) -> Result<Vec<Value>>;
+    fn parse(&self, data: &[u8], options: &Value) -> r_data_core_core::error::Result<Vec<Value>>;
 
     /// Serialize JSON objects to format
     ///
     /// # Errors
     /// Returns an error if serialization fails.
-    fn serialize(&self, data: &[Value], options: &Value) -> Result<Bytes>;
+    fn serialize(&self, data: &[Value], options: &Value) -> r_data_core_core::error::Result<Bytes>;
 
     /// Validate format configuration
     ///
     /// # Errors
     /// Returns an error if the configuration is invalid.
-    fn validate_options(&self, options: &Value) -> Result<()>;
+    fn validate_options(&self, options: &Value) -> r_data_core_core::error::Result<()>;
 }
 
 /// Factory for creating format handlers

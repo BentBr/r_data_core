@@ -2,6 +2,39 @@
  * Utility functions for DSL configuration
  */
 
+// Import and re-export types from schema for type consistency across the app
+import type {
+    DslStep,
+    FromDef,
+    ToDef,
+    Transform,
+    OutputMode,
+    HttpMethod,
+    Operand,
+    StringOperand,
+    AuthConfig,
+    SourceConfig,
+    FormatConfig,
+    DestinationConfig,
+} from '@/types/schemas/dsl'
+
+// Re-export all schema types
+export type {
+    DslStep,
+    FromDef,
+    ToDef,
+    Transform,
+    OutputMode,
+    HttpMethod,
+    Operand,
+    StringOperand,
+    AuthConfig,
+    SourceConfig,
+    FormatConfig,
+    DestinationConfig,
+}
+
+// Local convenience type aliases
 export type Mapping = Record<string, string>
 
 export type CsvOptions = {
@@ -11,128 +44,52 @@ export type CsvOptions = {
     quote?: string
 }
 
-// Auth configuration types
-export type KeyLocation = 'header' | 'body'
-
-export type AuthConfig =
-    | { type: 'none' }
-    | { type: 'api_key'; key: string; header_name?: string }
-    | { type: 'basic_auth'; username: string; password: string }
-    | { type: 'pre_shared_key'; key: string; location: KeyLocation; field_name: string }
-
-// Source configuration
-export type SourceConfig = {
-    source_type: string // "uri", "file", "api", "sftp", etc.
-    config: Record<string, unknown> // Source-specific config
-    auth?: AuthConfig
-}
-
-// Format configuration
-export type FormatConfig = {
-    format_type: string // "csv", "json", "xml", etc.
-    options?: Record<string, unknown> // Format-specific options
-}
-
-// Destination configuration
-export type DestinationConfig = {
-    destination_type: string // "uri", "file", "sftp", etc.
-    config: Record<string, unknown> // Destination-specific config
-    auth?: AuthConfig
-}
-
-// HTTP method
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'
-
-// Output mode
-export type OutputMode =
-    | { mode: 'download' }
-    | { mode: 'api' }
-    | { mode: 'push'; destination: DestinationConfig; method?: HttpMethod }
-
-export type FromDef =
-    | { type: 'format'; source: SourceConfig; format: FormatConfig; mapping: Mapping }
-    | {
-          type: 'entity'
-          entity_definition: string
-          filter?: { field: string; operator?: string; value: string }
-          mapping: Mapping
-      }
-
-export type OperandField = { kind: 'field'; field: string }
-export type OperandConst = { kind: 'const'; value: number }
-export type Operand = OperandField | OperandConst
-
-export type StringOperandField = { kind: 'field'; field: string }
-export type StringOperandConst = { kind: 'const_string'; value: string }
-export type StringOperand = StringOperandField | StringOperandConst
-
-export type Transform =
-    | { type: 'none' }
-    | {
-          type: 'arithmetic'
-          target: string
-          left: Operand
-          op: 'add' | 'sub' | 'mul' | 'div'
-          right: Operand
-      }
-    | {
-          type: 'concat'
-          target: string
-          left: StringOperand
-          separator?: string
-          right: StringOperand
-      }
-
-export type ToDef =
-    | { type: 'format'; output: OutputMode; format: FormatConfig; mapping: Mapping }
-    | {
-          type: 'entity'
-          entity_definition: string
-          path: string
-          mode: 'create' | 'update' | 'create_or_update'
-          update_key?: string
-          identify?: { field: string; value: string }
-          mapping: Mapping
-      }
-
-export type DslStep = { from: FromDef; transform: Transform; to: ToDef }
-
 /**
  * Sanitizes a DSL step by removing invalid fields
  * - Removes 'output' field from entity type 'to' definitions
  * - Ensures required fields exist
  */
 export function sanitizeDslStep(step: unknown): DslStep {
-    const sanitized = { ...(step as Record<string, unknown>) } as Record<string, unknown>
+    const stepObj = step as Record<string, unknown>
+    const sanitized: Record<string, unknown> = { ...stepObj }
 
     // Sanitize 'to' definition
     if (sanitized.to) {
-        if (sanitized.to.type === 'entity') {
+        const toDef = sanitized.to as Record<string, unknown>
+        if (toDef.type === 'entity') {
             // Remove 'output' field from entity type
-            const { output, ...rest } = sanitized.to
+            const { output, ...rest } = toDef
             sanitized.to = rest
             // output is intentionally discarded
             void output
-        } else if (sanitized.to.type === 'format') {
+        } else if (toDef.type === 'format') {
             // Ensure output mode exists
-            sanitized.to.output ??= { mode: 'api' }
+            toDef.output ??= { mode: 'api' }
             // Ensure format exists
-            sanitized.to.format ??= { format_type: 'json', options: {} }
+            toDef.format ??= { format_type: 'json', options: {} }
+        } else if (toDef.type === 'next_step') {
+            // Ensure mapping exists
+            toDef.mapping ??= {}
         }
     }
 
     // Sanitize 'from' definition
     if (sanitized.from) {
-        if (sanitized.from.type === 'format') {
+        const fromDef = sanitized.from as Record<string, unknown>
+        if (fromDef.type === 'format') {
             // Ensure source and format exist
-            sanitized.from.source ??= { source_type: 'uri', config: {} }
-            sanitized.from.format ??= { format_type: 'csv', options: {} }
-            // Remove endpoint field from api source type (from.api accepts POST, no endpoint needed)
-            if (sanitized.from.source.source_type === 'api' && sanitized.from.source.config) {
-                if (sanitized.from.source.config.endpoint !== undefined) {
-                    delete sanitized.from.source.config.endpoint
+            fromDef.source ??= { source_type: 'uri', config: {} }
+            fromDef.format ??= { format_type: 'csv', options: {} }
+            // Remove endpoint field from api source type
+            // from.api accepts POST - no endpoint needed
+            const source = fromDef.source as Record<string, unknown> | undefined
+            if (source?.source_type === 'api' && source.config) {
+                const config = source.config as Record<string, unknown>
+                if (config.endpoint !== undefined) {
+                    delete config.endpoint
                 }
             }
+            // Note: trigger is now a separate type, not a source type
         }
     }
 

@@ -198,6 +198,7 @@
 
     interface Emits {
         (e: 'update:modelValue', value: boolean): void
+
         (e: 'save', field: FieldDefinition): void
     }
 
@@ -227,6 +228,7 @@
         'Object',
         'Array',
         'Uuid',
+        'Json',
         'ManyToOne',
         'ManyToMany',
         'Select',
@@ -341,6 +343,22 @@
             case 'DateTime':
                 // Keep as string for date/datetime
                 return typeof value === 'string' ? value : undefined
+            case 'Object':
+            case 'Array':
+            case 'Json':
+                // If already an object/array, return as-is
+                if (typeof value === 'object') {
+                    return value
+                }
+                // Try to parse JSON string
+                if (typeof value === 'string') {
+                    try {
+                        return JSON.parse(value)
+                    } catch {
+                        return undefined
+                    }
+                }
+                return undefined
             default:
                 // String, Text, etc. - keep as string
                 return typeof value === 'string' ? value : String(value)
@@ -369,4 +387,13 @@
         emit('save', sanitizedField)
         closeDialog()
     }
+
+    // Expose for tests
+    defineExpose({
+        form,
+        formValid,
+        formRef,
+        showDefaultValue,
+        saveField,
+    })
 </script>

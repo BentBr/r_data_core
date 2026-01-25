@@ -1,12 +1,17 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 pub mod adapters;
 pub mod api;
 pub mod cache;
+pub mod license;
 pub mod repositories;
 pub mod services;
+pub mod statistics;
 pub mod utils;
+pub mod worker;
+pub mod workflow;
 
 // Top level integration test modules
+mod clear_cache_tests;
 mod dsl_integration_tests;
 mod dynamic_entity_api_tests;
 mod e2e_workflow_queue_tests;

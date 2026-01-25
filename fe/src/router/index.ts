@@ -55,6 +55,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/system/SystemPage.vue'),
         meta: { requiresAuth: true },
     },
+    {
+        path: '/no-access',
+        name: 'NoAccess',
+        component: () => import('@/pages/no-access/NoAccessPage.vue'),
+        meta: { requiresAuth: true },
+    },
     // Catch-all route for 404 handling
     {
         path: '/:pathMatch(.*)*',
@@ -73,7 +79,7 @@ router.beforeEach(async (to, from, next) => {
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
     const authStore = useAuthStore()
 
-    // If going to login page, allow it
+    // If going to login page, allow it (no auth checks needed)
     if (to.name === 'Login') {
         next()
         return
@@ -82,10 +88,12 @@ router.beforeEach(async (to, from, next) => {
     if (requiresAuth) {
         // Check if user is authenticated first
         if (!authStore.isAuthenticated) {
-            // Immediately redirect to login
+            // If coming from login page, don't add redirect query (prevents loops after logout)
+            // Otherwise, preserve the redirect query for normal auth redirects
+            const redirectQuery = from.name === 'Login' ? {} : { redirect: to.fullPath }
             next({
                 name: 'Login',
-                query: { redirect: to.fullPath },
+                query: redirectQuery,
             })
             return
         }
@@ -99,36 +107,52 @@ router.beforeEach(async (to, from, next) => {
 
         // Check again after potential refresh
         if (!authStore.isAuthenticated) {
-            // Redirect to login with return URL
+            // If coming from login page, don't add redirect query (prevents loops after logout)
+            // Otherwise, preserve the redirect query for normal auth redirects
+            const redirectQuery = from.name === 'Login' ? {} : { redirect: to.fullPath }
             next({
                 name: 'Login',
-                query: { redirect: to.fullPath },
+                query: redirectQuery,
             })
             return
         }
 
         // Check if token is expired after potential refresh
         if (authStore.isTokenExpired) {
-            // Token is expired, logout and redirect to login
+            // Token is expired, logout and redirect to login without redirect query
             await authStore.logout()
             next({
                 name: 'Login',
-                query: { redirect: to.fullPath },
+                query: {},
             })
             return
         }
 
-        // Check route permissions for all routes that require auth (except dashboard)
-        // Dashboard is always accessible if authenticated
-        if (to.name !== 'Dashboard') {
-            const routePath = to.path
-            if (!authStore.canAccessRoute(routePath)) {
-                // User doesn't have permission for this route, redirect to dashboard
+        // Check route permissions for all routes that require auth
+        // Allow access to /no-access route for authenticated users (even without other permissions)
+        if (to.path === '/no-access') {
+            next()
+            return
+        }
+
+        const routePath = to.path
+        if (!authStore.canAccessRoute(routePath)) {
+            // User doesn't have permission for this route
+            // Try to redirect to first available route from allowedRoutes
+            // allowedRoutes is exported as readonly ref, access via .value if needed
+            const allowedRoutesList = authStore.allowedRoutes as string[]
+            if (allowedRoutesList && allowedRoutesList.length > 0) {
+                // Redirect to first available route
                 next({
-                    name: 'Dashboard',
+                    path: allowedRoutesList[0],
                 })
                 return
             }
+            // If no allowed routes, redirect to /no-access (keep user authenticated)
+            next({
+                name: 'NoAccess',
+            })
+            return
         }
     }
 

@@ -192,8 +192,8 @@ describe('DslFromEditor', () => {
 
             const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
-            const updated = emitted[emitted.length - 1][0] as FromDef
-            if (updated.type === 'entity') {
+            const updated = emitted![emitted!.length - 1][0] as FromDef
+            if (updated.type === 'entity' && updated.filter) {
                 expect(updated.filter.operator).toBe('>')
             }
         }
@@ -228,8 +228,8 @@ describe('DslFromEditor', () => {
 
             const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
-            const updated = emitted[emitted.length - 1][0] as FromDef
-            if (updated.type === 'entity') {
+            const updated = emitted![emitted!.length - 1][0] as FromDef
+            if (updated.type === 'entity' && updated.filter) {
                 expect(updated.filter.field).toBe('category')
             }
         } else {
@@ -297,7 +297,7 @@ describe('DslFromEditor', () => {
 
         const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]> | undefined
         expect(emitted?.length).toBeGreaterThan(0)
-        const updated = emitted[emitted.length - 1][0] as FromDef
+        const updated = emitted![emitted!.length - 1][0] as FromDef
         expect(updated.type).toBe('entity')
     })
 
@@ -358,7 +358,7 @@ describe('DslFromEditor', () => {
 
             const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
-            const updated = emitted[emitted.length - 1][0] as FromDef
+            const updated = emitted![emitted!.length - 1][0] as FromDef
             if (updated.type === 'format') {
                 expect(updated.source.source_type).toBe('api')
                 // from.api source type should NOT have endpoint field (accepts POST, no endpoint needed)
@@ -400,7 +400,7 @@ describe('DslFromEditor', () => {
 
             const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]> | undefined
             expect(emitted?.length).toBeGreaterThan(0)
-            const updated = emitted[emitted.length - 1][0] as FromDef
+            const updated = emitted![emitted!.length - 1][0] as FromDef
             if (updated.type === 'format') {
                 expect(updated.format.format_type).toBe('json')
             }
@@ -435,7 +435,7 @@ describe('DslFromEditor', () => {
 
             const emitted = wrapper.emitted('update:modelValue')
             if (emitted && emitted.length > 0) {
-                const updated = emitted[emitted.length - 1][0] as FromDef
+                const updated = emitted![emitted!.length - 1][0] as FromDef
                 if (updated.type === 'format') {
                     expect(updated.source.config.uri).toBe('http://example.com/new.csv')
                 }
@@ -483,7 +483,7 @@ describe('DslFromEditor', () => {
         // Verify config does not have endpoint field
         const emitted = wrapper.emitted('update:modelValue')
         if (emitted && emitted.length > 0) {
-            const updated = emitted[emitted.length - 1][0] as FromDef
+            const updated = emitted![emitted!.length - 1][0] as FromDef
             if (updated.type === 'format') {
                 expect(updated.source.config.endpoint).toBeUndefined()
             }

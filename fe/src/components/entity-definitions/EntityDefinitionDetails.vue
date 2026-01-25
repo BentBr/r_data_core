@@ -122,10 +122,15 @@
 
     interface Emits {
         (e: 'edit'): void
+
         (e: 'delete'): void
+
         (e: 'save-changes'): void
+
         (e: 'add-field'): void
+
         (e: 'edit-field', field: import('@/types/schemas').FieldDefinition): void
+
         (e: 'remove-field', field: import('@/types/schemas').FieldDefinition): void
     }
 
