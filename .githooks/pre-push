@@ -56,7 +56,7 @@ ensure_docker_running() {
     local running_services
     running_services="$(cd "$root" && docker compose ps --services --filter "status=running" 2>/dev/null || echo "")"
 
-    local required_services=("postgres" "pg-test" "redis" "node")
+    local required_services=("postgres" "postgres-test" "redis" "node")
     local missing_services=()
 
     for svc in "${required_services[@]}"; do
