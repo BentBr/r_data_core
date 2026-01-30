@@ -255,6 +255,7 @@ chmod +x .githooks/pre-push
 ```
 
 The pre-push hook runs automatically before each push and performs:
+- **Docker check** - Ensures required services are running, starts them if not
 - **Clippy** - Rust linting with strict settings
 - **Rust tests** - All workspace tests
 - **Frontend tests** - Admin frontend vitest

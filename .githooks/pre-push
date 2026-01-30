@@ -39,6 +39,44 @@ check_git_hook_skip_env() {
     fi
 }
 
+ensure_docker_running() {
+    local root; root="$(repo_root)"
+
+    # Check if Docker is available
+    if ! command -v docker &> /dev/null; then
+        fail "Docker is not installed or not in PATH"
+    fi
+
+    # Check if Docker daemon is running
+    if ! docker info &> /dev/null; then
+        fail "Docker daemon is not running. Please start Docker first."
+    fi
+
+    # Check if required services are running
+    local running_services
+    running_services="$(cd "$root" && docker compose ps --services --filter "status=running" 2>/dev/null || echo "")"
+
+    local required_services=("postgres" "pg-test" "redis" "node")
+    local missing_services=()
+
+    for svc in "${required_services[@]}"; do
+        if ! echo "$running_services" | grep -q "^${svc}$"; then
+            missing_services+=("$svc")
+        fi
+    done
+
+    if [[ ${#missing_services[@]} -gt 0 ]]; then
+        log "Starting Docker services (missing: ${missing_services[*]})"
+        (cd "$root" && docker compose up -d "${required_services[@]}")
+
+        # Wait for services to be healthy
+        log "Waiting for services to be ready..."
+        sleep 5
+    else
+        log "Docker services already running"
+    fi
+}
+
 acquire_lock() {
     if [[ -f "$GIT_HOOK_LOCK_FILE" ]]; then
         local existing_pid
@@ -358,6 +396,8 @@ main() {
     log "Primary branch detected: ${default_branch}"
 
     validate_conventional_commits "${default_branch}" "${start_branch}"
+
+    ensure_docker_running
 
     run_quality_checks
 
