@@ -1,0 +1,407 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+GIT_HOOK_REMOTE="${GIT_HOOK_REMOTE:-origin}"
+GIT_HOOK_LOCK_FILE="/tmp/git-prepush-rdata.lock"
+
+GIT_HOOK_RUN_CLIPPY="${GIT_HOOK_RUN_CLIPPY:-1}"
+GIT_HOOK_CLIPPY_CMD="${GIT_HOOK_CLIPPY_CMD:-rdt clippy}"
+GIT_HOOK_CLIPPY_MAX_ERR_LINES="${GIT_HOOK_CLIPPY_MAX_ERR_LINES:-50}"
+
+GIT_HOOK_RUN_TEST="${GIT_HOOK_RUN_TEST:-1}"
+GIT_HOOK_TEST_CMD="${GIT_HOOK_TEST_CMD:-rdt test}"
+GIT_HOOK_TEST_MAX_ERR_LINES="${GIT_HOOK_TEST_MAX_ERR_LINES:-50}"
+
+GIT_HOOK_RUN_TEST_FE="${GIT_HOOK_RUN_TEST_FE:-1}"
+GIT_HOOK_TEST_FE_CMD="${GIT_HOOK_TEST_FE_CMD:-rdt test-fe}"
+GIT_HOOK_TEST_FE_MAX_ERR_LINES="${GIT_HOOK_TEST_FE_MAX_ERR_LINES:-50}"
+
+GIT_HOOK_RUN_LINT="${GIT_HOOK_RUN_LINT:-1}"
+GIT_HOOK_LINT_CMD="${GIT_HOOK_LINT_CMD:-rdt lint}"
+GIT_HOOK_LINT_MAX_ERR_LINES="${GIT_HOOK_LINT_MAX_ERR_LINES:-50}"
+
+GIT_HOOK_RUN_COMMIT_LINT="${GIT_HOOK_RUN_COMMIT_LINT:-1}"
+
+log() {
+    printf "[%s] %s\n" "$(date +%H:%M:%S)" "$*"
+}
+
+fail() {
+    printf "[ERROR] %s\n" "$*" >&2
+    release_lock
+    exit 1
+}
+
+check_git_hook_skip_env() {
+    if [[ "${GIT_HOOK_SKIP:-0}" == "1" ]]; then
+        log "Skipping hook logic (GIT_HOOK_SKIP=1)"
+        exit 0
+    fi
+}
+
+ensure_docker_running() {
+    local root; root="$(repo_root)"
+
+    # Check if Docker is available
+    if ! command -v docker &> /dev/null; then
+        fail "Docker is not installed or not in PATH"
+    fi
+
+    # Check if Docker daemon is running
+    if ! docker info &> /dev/null; then
+        fail "Docker daemon is not running. Please start Docker first."
+    fi
+
+    # Check if required services are running
+    local running_services
+    running_services="$(cd "$root" && docker compose ps --services --filter "status=running" 2>/dev/null || echo "")"
+
+    local required_services=("postgres" "postgres_test" "redis" "node" "worker" "maintenance")
+    local missing_services=()
+
+    for svc in "${required_services[@]}"; do
+        if ! echo "$running_services" | grep -q "^${svc}$"; then
+            missing_services+=("$svc")
+        fi
+    done
+
+    if [[ ${#missing_services[@]} -gt 0 ]]; then
+        log "Starting Docker services (missing: ${missing_services[*]})"
+        (cd "$root" && docker compose up -d "${required_services[@]}")
+
+        # Wait for services to be healthy
+        log "Waiting for services to be ready..."
+        sleep 5
+    else
+        log "Docker services already running"
+    fi
+}
+
+acquire_lock() {
+    if [[ -f "$GIT_HOOK_LOCK_FILE" ]]; then
+        local existing_pid
+        existing_pid="$(cat "$GIT_HOOK_LOCK_FILE" 2>/dev/null || true)"
+
+        if [[ -n "$existing_pid" ]]; then
+            if kill -0 "$existing_pid" 2>/dev/null; then
+                log "Another pre-push hook (PID ${existing_pid}) is already running. Exiting."
+                exit 0
+            fi
+        fi
+    fi
+
+    echo $$ > "$GIT_HOOK_LOCK_FILE"
+    trap 'release_lock' EXIT INT TERM
+}
+
+release_lock() {
+    if [[ -f "$GIT_HOOK_LOCK_FILE" ]]; then
+        local lock_pid
+        lock_pid="$(cat "$GIT_HOOK_LOCK_FILE" 2>/dev/null || echo "")"
+
+        if [[ "$lock_pid" == "$$" ]]; then
+            rm -f "$GIT_HOOK_LOCK_FILE"
+        fi
+    fi
+}
+
+repo_root() {
+    git rev-parse --show-toplevel 2>/dev/null || pwd
+}
+
+normalize_bool_10() {
+    local v="${1:-}"
+    v="$(echo "$v" | tr '[:upper:]' '[:lower:]')"
+    case "$v" in
+        1|true|yes|on)  echo "1" ;;
+        0|false|no|off|'') echo "0" ;;
+        *) echo "$v" ;;
+    esac
+}
+
+load_env_overrides_all() {
+    local root; root="$(repo_root)"
+    local files=(".env.docker" ".env.local" ".env.docker.local")
+    local allowed=" GIT_HOOK_REMOTE GIT_HOOK_LOCK_FILE GIT_HOOK_RUN_CLIPPY GIT_HOOK_CLIPPY_CMD GIT_HOOK_CLIPPY_MAX_ERR_LINES GIT_HOOK_RUN_TEST GIT_HOOK_TEST_CMD GIT_HOOK_TEST_MAX_ERR_LINES GIT_HOOK_RUN_TEST_FE GIT_HOOK_TEST_FE_CMD GIT_HOOK_TEST_FE_MAX_ERR_LINES GIT_HOOK_RUN_LINT GIT_HOOK_LINT_CMD GIT_HOOK_LINT_MAX_ERR_LINES GIT_HOOK_RUN_COMMIT_LINT GIT_HOOK_SKIP "
+    local booleans=" GIT_HOOK_RUN_CLIPPY GIT_HOOK_RUN_TEST GIT_HOOK_RUN_TEST_FE GIT_HOOK_RUN_LINT GIT_HOOK_RUN_COMMIT_LINT GIT_HOOK_SKIP "
+
+    for f in "${files[@]}"; do
+        local path="${root}/${f}"
+        [[ -f "$path" ]] || continue
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+            if [[ "$line" =~ ^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=(.*)$ ]]; then
+                local key="${BASH_REMATCH[1]}"
+                local val="${BASH_REMATCH[2]}"
+
+                val="${val#"${val%%[![:space:]]*}"}"
+                val="${val%"${val##*[![:space:]]}"}"
+                [[ "$val" =~ ^\"(.*)\"$ ]] && val="${BASH_REMATCH[1]}"
+                [[ "$val" =~ ^\'(.*)\'$ ]] && val="${BASH_REMATCH[1]}"
+
+                [[ " $allowed " != *" $key "* ]] && continue
+                if [[ " $booleans " == *" $key "* ]]; then
+                    val="$(normalize_bool_10 "$val")"
+                fi
+
+                export "$key=$val"
+            fi
+        done < "$path"
+        log "Loaded $f"
+    done
+}
+
+get_current_branch_name() {
+    git rev-parse --abbrev-ref HEAD 2>/dev/null || echo ""
+}
+
+remote_branch_exists() {
+    local branch_name="$1"
+    git ls-remote --exit-code --heads "${GIT_HOOK_REMOTE}" "refs/heads/${branch_name}" >/dev/null 2>&1
+}
+
+detect_default_remote_branch() {
+    local ref head_line primary
+
+    ref="$(git symbolic-ref --quiet --short "refs/remotes/${GIT_HOOK_REMOTE}/HEAD" 2>/dev/null || true)"
+    if [[ -n "$ref" ]]; then
+        printf "%s\n" "${ref#${GIT_HOOK_REMOTE}/}"
+        return 0
+    fi
+
+    head_line="$(git remote show "${GIT_HOOK_REMOTE}" 2>/dev/null | grep -E 'HEAD branch:' || true)"
+    primary="$(echo "${head_line#HEAD branch: }" | xargs)"
+
+    if [[ -n "$primary" ]] && remote_branch_exists "$primary"; then
+        printf "%s\n" "$primary"
+        return 0
+    fi
+
+    if remote_branch_exists "main"; then
+        printf "main\n"
+        return 0
+    fi
+
+    if remote_branch_exists "master"; then
+        printf "master\n"
+        return 0
+    fi
+
+    return 1
+}
+
+fetch_remote_all() {
+    git fetch --prune "${GIT_HOOK_REMOTE}" >/dev/null
+}
+
+ensure_clean_working_tree() {
+    if ! git diff-index --quiet HEAD -- || ! git diff --cached --quiet; then
+        fail "Uncommitted changes detected. Please commit or stash before pushing."
+    fi
+}
+
+validate_conventional_commits() {
+    local base_branch="$1"
+    local current_branch="$2"
+
+    if [[ "${GIT_HOOK_RUN_COMMIT_LINT}" != "1" ]]; then
+        return 0
+    fi
+
+    log "Validating Conventional Commits"
+
+    local merge_base
+    merge_base="$(git merge-base "${GIT_HOOK_REMOTE}/${base_branch}" "${current_branch}" 2>/dev/null || echo "")"
+
+    if [[ -z "$merge_base" ]]; then
+        log "Could not determine merge base, skipping commit validation"
+        return 0
+    fi
+
+    local commits
+    commits="$(git rev-list "${merge_base}..${current_branch}" 2>/dev/null || echo "")"
+
+    if [[ -z "$commits" ]]; then
+        return 0
+    fi
+
+    local conventional_pattern="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?(!)?: .+"
+    local merge_pattern="^Merge "
+    local invalid_commits=()
+
+    while IFS= read -r commit_sha; do
+        [[ -z "$commit_sha" ]] && continue
+
+        local subject
+        subject="$(git log -1 --format='%s' "$commit_sha")"
+
+        if [[ "$subject" =~ $merge_pattern ]]; then
+            continue
+        fi
+
+        if ! [[ "$subject" =~ $conventional_pattern ]]; then
+            invalid_commits+=("$commit_sha: $subject")
+        fi
+    done <<< "$commits"
+
+    if [[ ${#invalid_commits[@]} -gt 0 ]]; then
+        log "The following commits do not follow Conventional Commits format:"
+        for msg in "${invalid_commits[@]}"; do
+            log "   - $msg"
+        done
+        log ""
+        log "Expected format: <type>[optional scope][!]: <description>"
+        log "Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+        log "Examples:"
+        log "   feat: add user authentication"
+        log "   fix(auth): resolve token expiration issue"
+        log "   feat!: breaking change to API"
+        fail "Commit message validation failed"
+    fi
+
+    log "All commits follow Conventional Commits format"
+}
+
+run_clippy() {
+    local tmp_file
+    tmp_file="$(mktemp)"
+
+    log "Running Clippy"
+
+    set +e
+    ${GIT_HOOK_CLIPPY_CMD} 2>&1 | tee "${tmp_file}"
+    local clippy_status=$?
+    set -e
+
+    if (( clippy_status != 0 )); then
+        local total_lines
+        total_lines="$(wc -l < "${tmp_file}" | tr -d ' ')"
+        log "Clippy errors (showing first ${GIT_HOOK_CLIPPY_MAX_ERR_LINES} of ${total_lines}):"
+        head -n "${GIT_HOOK_CLIPPY_MAX_ERR_LINES}" "${tmp_file}"
+        rm -f "${tmp_file}"
+        fail "Clippy failed"
+    fi
+
+    rm -f "${tmp_file}"
+    log "Clippy passed"
+}
+
+run_test() {
+    local tmp_file
+    tmp_file="$(mktemp)"
+
+    log "Running Rust tests"
+
+    set +e
+    ${GIT_HOOK_TEST_CMD} 2>&1 | tee "${tmp_file}"
+    local test_status=$?
+    set -e
+
+    if (( test_status != 0 )); then
+        local total_lines
+        total_lines="$(wc -l < "${tmp_file}" | tr -d ' ')"
+        log "Test errors (showing first ${GIT_HOOK_TEST_MAX_ERR_LINES} of ${total_lines}):"
+        head -n "${GIT_HOOK_TEST_MAX_ERR_LINES}" "${tmp_file}"
+        rm -f "${tmp_file}"
+        fail "Rust tests failed"
+    fi
+
+    rm -f "${tmp_file}"
+    log "Rust tests passed"
+}
+
+run_test_fe() {
+    local tmp_file
+    tmp_file="$(mktemp)"
+
+    log "Running frontend tests (admin)"
+
+    set +e
+    ${GIT_HOOK_TEST_FE_CMD} 2>&1 | tee "${tmp_file}"
+    local test_status=$?
+    set -e
+
+    if (( test_status != 0 )); then
+        local total_lines
+        total_lines="$(wc -l < "${tmp_file}" | tr -d ' ')"
+        log "Frontend test errors (showing first ${GIT_HOOK_TEST_FE_MAX_ERR_LINES} of ${total_lines}):"
+        head -n "${GIT_HOOK_TEST_FE_MAX_ERR_LINES}" "${tmp_file}"
+        rm -f "${tmp_file}"
+        fail "Frontend tests (admin) failed"
+    fi
+
+    rm -f "${tmp_file}"
+    log "Frontend tests (admin) passed"
+}
+
+run_lint() {
+    local tmp_file
+    tmp_file="$(mktemp)"
+
+    log "Running ESLint (admin frontend)"
+
+    set +e
+    ${GIT_HOOK_LINT_CMD} 2>&1 | tee "${tmp_file}"
+    local lint_status=$?
+    set -e
+
+    if (( lint_status != 0 )); then
+        local total_lines
+        total_lines="$(wc -l < "${tmp_file}" | tr -d ' ')"
+        log "Lint errors (showing first ${GIT_HOOK_LINT_MAX_ERR_LINES} of ${total_lines}):"
+        head -n "${GIT_HOOK_LINT_MAX_ERR_LINES}" "${tmp_file}"
+        rm -f "${tmp_file}"
+        fail "ESLint (admin) failed"
+    fi
+
+    rm -f "${tmp_file}"
+    log "ESLint (admin) passed"
+}
+
+run_quality_checks() {
+    if [[ "${GIT_HOOK_RUN_CLIPPY}" == "1" ]]; then
+        run_clippy
+    fi
+
+    if [[ "${GIT_HOOK_RUN_TEST}" == "1" ]]; then
+        run_test
+    fi
+
+    if [[ "${GIT_HOOK_RUN_TEST_FE}" == "1" ]]; then
+        run_test_fe
+    fi
+
+    if [[ "${GIT_HOOK_RUN_LINT}" == "1" ]]; then
+        run_lint
+    fi
+}
+
+main() {
+    load_env_overrides_all
+
+    check_git_hook_skip_env
+    acquire_lock
+
+    log "Pre-push hook started"
+
+    local start_branch
+    start_branch="$(get_current_branch_name)"
+    log "Current branch: ${start_branch}"
+
+    ensure_clean_working_tree
+    fetch_remote_all
+
+    local default_branch
+    default_branch="$(detect_default_remote_branch)"
+    log "Primary branch detected: ${default_branch}"
+
+    validate_conventional_commits "${default_branch}" "${start_branch}"
+
+    ensure_docker_running
+
+    run_quality_checks
+
+    log "All checks passed"
+}
+
+main "$@"

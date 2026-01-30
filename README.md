@@ -245,6 +245,37 @@ Workflows can be triggered by:
 
 For development setup, testing, and contribution guidelines, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
+### Git Hooks
+
+This project uses git hooks for pre-push quality checks. To enable:
+
+```bash
+git config core.hooksPath .githooks
+chmod +x .githooks/pre-push
+```
+
+The pre-push hook runs automatically before each push and performs:
+- **Docker check** - Ensures required services are running, starts them if not
+- **Clippy** - Rust linting with strict settings
+- **Rust tests** - All workspace tests
+- **Frontend tests** - Admin frontend vitest
+- **ESLint** - Admin frontend linting
+- **Conventional Commits** - Validates commit message format
+
+To skip the hook temporarily:
+```bash
+GIT_HOOK_SKIP=1 git push
+```
+
+You can disable individual checks via environment variables in `.env.local`:
+```bash
+GIT_HOOK_RUN_CLIPPY=0      # Disable Clippy
+GIT_HOOK_RUN_TEST=0        # Disable Rust tests
+GIT_HOOK_RUN_TEST_FE=0     # Disable frontend tests
+GIT_HOOK_RUN_LINT=0        # Disable ESLint
+GIT_HOOK_RUN_COMMIT_LINT=0 # Disable conventional commits check
+```
+
 ## License
 
 See [Pricing](https://rdatacore.eu/en/pricing) for license information.
