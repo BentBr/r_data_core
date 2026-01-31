@@ -318,6 +318,7 @@ pub async fn query_entities(
                 .map(|e| DynamicEntityResponse {
                     entity_type: e.entity_type,
                     field_data: e.field_data,
+                    children_count: None,
                 })
                 .collect();
 

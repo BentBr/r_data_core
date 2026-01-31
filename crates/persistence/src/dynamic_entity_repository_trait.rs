@@ -115,4 +115,7 @@ pub trait DynamicEntityRepositoryTrait: Send + Sync {
 
     /// Count entities of a specific type
     async fn count_entities(&self, entity_type: &str) -> Result<i64>;
+
+    /// Count children for an entity
+    async fn count_children(&self, parent_uuid: &Uuid) -> Result<i64>;
 }

@@ -163,8 +163,20 @@ export class EntitiesClient extends BaseTypedHttpClient {
         )
     }
 
-    async getEntity(entityType: string, uuid: string): Promise<DynamicEntity> {
-        return this.request(`/api/v1/${entityType}/${uuid}`, ApiResponseSchema(DynamicEntitySchema))
+    async getEntity(
+        entityType: string,
+        uuid: string,
+        options?: { includeChildrenCount?: boolean }
+    ): Promise<DynamicEntity> {
+        const params = new URLSearchParams()
+        if (options?.includeChildrenCount) {
+            params.set('include_children_count', 'true')
+        }
+        const queryString = params.toString()
+        const url = queryString
+            ? `/api/v1/${entityType}/${uuid}?${queryString}`
+            : `/api/v1/${entityType}/${uuid}`
+        return this.request(url, ApiResponseSchema(DynamicEntitySchema))
     }
 
     async createEntity(

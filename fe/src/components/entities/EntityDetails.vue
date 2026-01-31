@@ -197,7 +197,7 @@
                                         >{{ t('entities.details.children') }}
                                     </v-list-item-title>
                                     <v-list-item-subtitle>
-                                        0
+                                        {{ entity.children_count ?? 0 }}
                                         {{ t('entities.details.child_count') }}
                                     </v-list-item-subtitle>
                                 </v-list-item>

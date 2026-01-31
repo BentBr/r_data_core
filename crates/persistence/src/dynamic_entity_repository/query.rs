@@ -277,6 +277,24 @@ pub async fn has_children_impl(repo: &DynamicEntityRepository, parent_uuid: &Uui
     Ok(exists.unwrap_or(false))
 }
 
+/// Count children for an entity
+///
+/// # Errors
+/// Returns an error if the database query fails
+pub async fn count_children_impl(
+    repo: &DynamicEntityRepository,
+    parent_uuid: &Uuid,
+) -> Result<i64> {
+    let count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM entities_registry WHERE parent_uuid = $1")
+            .bind(parent_uuid)
+            .fetch_one(&repo.pool)
+            .await
+            .map_err(r_data_core_core::error::Error::Database)?;
+
+    Ok(count)
+}
+
 /// Get a specific entity by type and UUID
 ///
 /// # Errors

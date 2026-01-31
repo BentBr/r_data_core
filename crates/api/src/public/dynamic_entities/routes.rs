@@ -34,6 +34,19 @@ fn to_dynamic_entity_response(entity: DynamicEntity) -> DynamicEntityResponse {
     DynamicEntityResponse {
         entity_type: entity.entity_type,
         field_data: entity.field_data,
+        children_count: None,
+    }
+}
+
+// Helper function to convert DynamicEntity to DynamicEntityResponse with children count
+fn to_dynamic_entity_response_with_children_count(
+    entity: DynamicEntity,
+    children_count: Option<i64>,
+) -> DynamicEntityResponse {
+    DynamicEntityResponse {
+        entity_type: entity.entity_type,
+        field_data: entity.field_data,
+        children_count,
     }
 }
 
@@ -291,6 +304,7 @@ pub async fn create_entity(
         ("entity_type" = String, Path, description = "Type of entity"),
         ("uuid" = Uuid, Path, description = "Entity UUID"),
         ("include" = Option<String>, Query, description = "Comma-separated list of related entities to include"),
+        ("include_children_count" = Option<bool>, Query, description = "Include count of child entities"),
         ("fields" = Option<Vec<String>>, Query, description = "Fields to include in the response")
     ),
     responses(
@@ -315,6 +329,7 @@ pub async fn get_entity(
     let (entity_type, uuid_str) = path.into_inner();
     let fields = query.fields.get_fields();
     let _includes = query.include.get_includes();
+    let include_children_count = query.include.should_include_children_count();
 
     // Validate requested fields
     if let Err(response) = validate_requested_fields(&data, &entity_type, fields.as_ref()).await {
@@ -328,14 +343,20 @@ pub async fn get_entity(
 
     if let Some(service) = data.dynamic_entity_service() {
         match service
-            .get_entity_by_uuid(&entity_type, &uuid, fields)
+            .get_entity_by_uuid_with_children_count(
+                &entity_type,
+                &uuid,
+                fields,
+                include_children_count,
+            )
             .await
         {
-            Ok(Some(entity)) => {
-                let response = to_dynamic_entity_response(entity);
+            Ok((Some(entity), children_count)) => {
+                let response =
+                    to_dynamic_entity_response_with_children_count(entity, children_count);
                 ApiResponse::ok(response)
             }
-            Ok(None) => ApiResponse::<()>::not_found(&format!(
+            Ok((None, _)) => ApiResponse::<()>::not_found(&format!(
                 "Entity of type '{entity_type}' with UUID '{uuid}' not found"
             )),
             Err(e) => handle_entity_error(e, &entity_type),

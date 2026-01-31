@@ -348,6 +348,8 @@ impl FilterQuery {
 pub struct IncludeQuery {
     /// Comma-separated list of related entities to include
     pub include: Option<String>,
+    /// Whether to include the count of child entities in the response
+    pub include_children_count: Option<bool>,
 }
 
 impl IncludeQuery {
@@ -361,6 +363,12 @@ impl IncludeQuery {
                 .filter(|s| !s.is_empty())
                 .collect()
         })
+    }
+
+    /// Check if children count should be included
+    #[must_use]
+    pub fn should_include_children_count(&self) -> bool {
+        self.include_children_count.unwrap_or(false)
     }
 }
 
