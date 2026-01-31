@@ -54,5 +54,5 @@
     }
 
     // Default isLastStep
-    const isLastStep = computed(() => props.isLastStep ?? false)
+    const isLastStep = computed(() => props.isLastStep)
 </script>

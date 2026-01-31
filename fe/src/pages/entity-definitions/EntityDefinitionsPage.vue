@@ -230,7 +230,7 @@
         try {
             const response = await typedHttpClient.getEntityDefinitions()
             // Sanitize fields to ensure constraints and ui_settings are always objects
-            entityDefinitions.value = (response.data || []).map(definition => ({
+            entityDefinitions.value = response.data.map(definition => ({
                 ...definition,
                 fields: sanitizeFields(definition.fields),
             }))
@@ -337,7 +337,7 @@
             })
 
             // Reload the definition from server to get latest version and history
-            if (selectedDefinition.value?.uuid) {
+            if (selectedDefinition.value.uuid) {
                 try {
                     const reloaded = await typedHttpClient.getEntityDefinition(
                         selectedDefinition.value.uuid
@@ -408,7 +408,7 @@
             await typedHttpClient.updateEntityDefinition(selectedDefinition.value.uuid!, data)
 
             // Reload the definition from server to get latest version and history
-            if (selectedDefinition.value?.uuid) {
+            if (selectedDefinition.value.uuid) {
                 try {
                     const reloaded = await typedHttpClient.getEntityDefinition(
                         selectedDefinition.value.uuid

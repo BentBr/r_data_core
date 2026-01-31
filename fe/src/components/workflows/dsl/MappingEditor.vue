@@ -112,7 +112,7 @@
             if (isUpdatingFromLocal) {
                 return
             }
-            const newPairs = getMappingPairs(newMapping || {})
+            const newPairs = getMappingPairs(newMapping)
             // Preserve any empty pairs that are currently being edited
             const currentEmptyPairs = localPairs.value.filter(p => !p.k && !p.v)
             // Only update if actually different to prevent loops

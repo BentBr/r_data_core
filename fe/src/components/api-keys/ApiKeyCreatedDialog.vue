@@ -89,29 +89,14 @@
     const copyApiKey = () => {
         const apiKey = props.apiKey
 
-        // Modern approach
-        if (navigator?.clipboard?.writeText) {
-            navigator.clipboard
-                .writeText(apiKey)
-                .then(() => {
-                    emit('copy-success')
-                })
-                .catch(err => {
-                    console.error('Failed to copy API key:', err)
-                })
-        } else {
-            // Fallback method (old browsers / JS) - based on masteringjs.io tutorial
-            const input = document.querySelector('#apiKey') as HTMLInputElement
-            if (input) {
-                input.select()
-                input.setSelectionRange(0, 99999)
-                try {
-                    document.execCommand('copy')
-                    emit('copy-success')
-                } catch (err) {
-                    console.error('Failed to copy API key:', err)
-                }
-            }
-        }
+        // Modern approach - all supported browsers have clipboard API
+        navigator.clipboard
+            .writeText(apiKey)
+            .then(() => {
+                emit('copy-success')
+            })
+            .catch(err => {
+                console.error('Failed to copy API key:', err)
+            })
     }
 </script>

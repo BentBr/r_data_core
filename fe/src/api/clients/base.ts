@@ -286,8 +286,8 @@ export class BaseTypedHttpClient {
                 }
                 // Create a more user-friendly error message
                 const firstIssue = validationError.issues[0]
-                const fieldPath = firstIssue?.path?.join('.') || 'unknown field'
-                const message = firstIssue?.message ?? 'Invalid format'
+                const fieldPath = firstIssue.path.join('.') || 'unknown field'
+                const message = firstIssue.message || 'Invalid format'
                 throw new Error(`Response validation failed: ${message} (${fieldPath})`)
             }
             throw validationError
@@ -550,8 +550,8 @@ export class BaseTypedHttpClient {
                 }
                 // Create a more user-friendly error message
                 const firstIssue = validationError.issues[0]
-                const fieldPath = firstIssue?.path?.join('.') || 'unknown field'
-                const message = firstIssue?.message ?? 'Invalid format'
+                const fieldPath = firstIssue.path.join('.') || 'unknown field'
+                const message = firstIssue.message || 'Invalid format'
                 throw new Error(`Response validation failed: ${message} (${fieldPath})`)
             }
             throw validationError

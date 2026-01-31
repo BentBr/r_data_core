@@ -31,7 +31,7 @@ export function useEntities() {
     const loadEntityDefinitions = async (): Promise<void> => {
         try {
             const response = await typedHttpClient.getEntityDefinitions()
-            entityDefinitions.value = response.data || []
+            entityDefinitions.value = response.data
         } catch (err) {
             handleError(err, 'Failed to load entity definitions')
             error.value = err instanceof Error ? err.message : 'Failed to load entity definitions'
@@ -119,7 +119,7 @@ export function useEntities() {
             await typedHttpClient.deleteEntity(entityType, uuid)
 
             // Remove from list
-            entities.value = entities.value.filter(e => e.field_data?.uuid !== uuid)
+            entities.value = entities.value.filter(e => e.field_data.uuid !== uuid)
             selectedEntity.value = null
             selectedItems.value = []
 
@@ -154,7 +154,7 @@ export function useEntities() {
      * Computed: selected entity UUID
      */
     const selectedEntityUuid = computed(() => {
-        return selectedEntity.value?.field_data?.uuid ?? ''
+        return (selectedEntity.value?.field_data.uuid as string | undefined) ?? ''
     })
 
     return {

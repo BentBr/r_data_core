@@ -40,7 +40,7 @@
     })
 
     const iconName = computed(() => {
-        let icon = props.icon ?? 'file-text'
+        let icon = props.icon
 
         // Handle mdi- prefixed icons by stripping the prefix
         // These should be mapped via Vuetify icon aliases, but as a fallback,

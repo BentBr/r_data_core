@@ -179,12 +179,10 @@
         loading.value = true
         try {
             const settings = await typedHttpClient.getEntityVersioningSettings()
-            if (settings) {
-                form.value = {
-                    enabled: settings.enabled,
-                    max_versions: settings.max_versions ?? null,
-                    max_age_days: settings.max_age_days ?? null,
-                }
+            form.value = {
+                enabled: settings.enabled,
+                max_versions: settings.max_versions ?? null,
+                max_age_days: settings.max_age_days ?? null,
             }
         } catch (err) {
             handleError(err)

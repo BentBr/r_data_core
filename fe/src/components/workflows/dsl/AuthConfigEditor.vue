@@ -82,7 +82,7 @@
 
     const { t } = useTranslations()
 
-    const authType = computed(() => props.modelValue?.type || 'none')
+    const authType = computed(() => props.modelValue.type)
 
     const authTypes = [
         { title: t('workflows.dsl.auth_none'), value: 'none' },

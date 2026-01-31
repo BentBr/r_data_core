@@ -279,7 +279,7 @@
     const sourceUri = computed(() => {
         if (props.modelValue.type === 'format') {
             const config = props.modelValue.source.config
-            if (typeof config === 'object' && config !== null && 'uri' in config) {
+            if (typeof config === 'object' && 'uri' in config) {
                 const uri = config.uri
                 return uri != null ? String(uri) : ''
             }
@@ -337,8 +337,8 @@
     watch(
         () => entityDefinitions.value,
         defs => {
-            entityDefItems.value = (defs ?? []).map(d => ({
-                title: d.display_name ?? d.entity_type,
+            entityDefItems.value = defs.map(d => ({
+                title: d.display_name || d.entity_type,
                 value: d.entity_type,
             }))
         },
@@ -610,12 +610,13 @@
             return
         }
         const text = await file.text()
-        if (props.modelValue.type !== 'format' || props.modelValue.format.format_type !== 'csv') {
+        if (props.modelValue.format.format_type !== 'csv') {
             return
         }
-        const header = props.modelValue.format.options?.has_header !== false
-        const delimiter = (props.modelValue.format.options?.delimiter as string) ?? ','
-        const quote = (props.modelValue.format.options?.quote as string) ?? '"'
+        const opts = props.modelValue.format.options ?? {}
+        const header = opts.has_header !== false
+        const delimiter = (opts.delimiter as string) || ','
+        const quote = (opts.quote as string) || '"'
         let fields: string[]
         if (header) {
             fields = parseCsvHeader(text, delimiter, quote)
@@ -638,19 +639,17 @@
             return
         }
         const config = props.modelValue.source.config
-        const uri =
-            typeof config === 'object' && config !== null && 'uri' in config
-                ? String(config.uri)
-                : ''
+        const uri = typeof config === 'object' && 'uri' in config ? String(config.uri) : ''
         if (!uri) {
             return
         }
         try {
             const res = await fetch(uri)
             const txt = await res.text()
-            const header = props.modelValue.format.options?.has_header !== false
-            const delimiter = (props.modelValue.format.options?.delimiter as string) ?? ','
-            const quote = (props.modelValue.format.options?.quote as string) ?? '"'
+            const autoOpts = props.modelValue.format.options ?? {}
+            const header = autoOpts.has_header !== false
+            const delimiter = (autoOpts.delimiter as string) || ','
+            const quote = (autoOpts.quote as string) || '"'
             let fields: string[]
             if (header) {
                 fields = parseCsvHeader(txt, delimiter, quote)

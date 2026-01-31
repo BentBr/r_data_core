@@ -176,7 +176,7 @@
     // Methods
     const initializeFormData = () => {
         if (props.entity) {
-            const data = { ...(props.entity.field_data || {}) }
+            const data = { ...props.entity.field_data }
             if (data.published === undefined) {
                 data.published = false
             }
@@ -195,7 +195,7 @@
 
             formData.value = {
                 data,
-                parent_uuid: (props.entity.field_data?.parent_uuid as string) ?? null,
+                parent_uuid: (props.entity.field_data.parent_uuid as string | undefined) ?? null,
             }
             fieldErrors.value = {}
         }

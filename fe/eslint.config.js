@@ -81,6 +81,7 @@ export default [
             '@typescript-eslint/no-floating-promises': 'error',
             '@typescript-eslint/prefer-nullish-coalescing': 'error',
             '@typescript-eslint/prefer-optional-chain': 'error',
+            '@typescript-eslint/no-unnecessary-condition': 'error',
 
             // Disable conflicting ESLint rules in favor of TypeScript equivalents
             'no-unused-vars': 'off',

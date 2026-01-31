@@ -106,9 +106,9 @@
     // Check if any step has from.api source type (accepts POST, no cron needed)
     const hasApiSource = computed(() => {
         return props.steps.some((step: DslStep) => {
-            if (step.from?.type === 'format' && step.from?.source?.source_type === 'api') {
+            if (step.from.type === 'format' && step.from.source.source_type === 'api') {
                 // from.api without endpoint field = accepts POST
-                return !step.from?.source?.config?.endpoint
+                return !step.from.source.config.endpoint
             }
             return false
         })
@@ -116,16 +116,16 @@
 
     // Check if any step has to.format.output.mode === 'api' (exports via GET, no cron needed)
     const hasApiOutput = computed(() => {
-        if (!props.steps || props.steps.length === 0) {
+        if (props.steps.length === 0) {
             return false
         }
         return props.steps.some(step => {
-            if (step.to?.type === 'format') {
+            if (step.to.type === 'format') {
                 const output = step.to.output
                 if (typeof output === 'string') {
                     return output === 'api'
                 }
-                if (typeof output === 'object' && output !== null && 'mode' in output) {
+                if (typeof output === 'object' && 'mode' in output) {
                     return output.mode === 'api'
                 }
             }
@@ -156,7 +156,7 @@
         if (cronDebounce) {
             clearTimeout(cronDebounce)
         }
-        if (!value?.trim()) {
+        if (!value.trim()) {
             emit('update:nextRuns', [])
             return
         }

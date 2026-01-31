@@ -11,7 +11,7 @@ type Language = (typeof AVAILABLE_LANGUAGES)[number]
 
 // Current language state with localStorage persistence
 const currentLanguage = ref<Language>(
-    (localStorage.getItem('preferred-language') as Language) || 'en'
+    (localStorage.getItem('preferred-language') as Language | null) ?? 'en'
 )
 const translations = reactive<Record<Language, TranslationData>>({
     en: {},
@@ -55,12 +55,12 @@ export function useTranslations() {
 
     // Get current language translations
     const currentTranslations = computed(() => {
-        return translations[currentLanguage.value] || {}
+        return translations[currentLanguage.value]
     })
 
     // Get fallback (English) translations
     const fallbackTranslations = computed(() => {
-        return translations.en || {}
+        return translations.en
     })
 
     // Translate function with optional parameters

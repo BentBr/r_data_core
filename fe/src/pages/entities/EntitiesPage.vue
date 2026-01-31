@@ -168,7 +168,7 @@
 
     // Computed properties
     const selectedEntityUuid = computed((): string => {
-        const uuid = selectedEntity.value?.field_data?.uuid
+        const uuid = selectedEntity.value?.field_data.uuid
         return typeof uuid === 'string' ? uuid : ''
     })
 
@@ -213,7 +213,7 @@
 
         try {
             const response = await typedHttpClient.getEntityDefinitions()
-            entityDefinitions.value = response.data || []
+            entityDefinitions.value = response.data
         } catch (err) {
             console.error('Failed to load entity definitions:', err)
             error.value = err instanceof Error ? err.message : 'Failed to load entity definitions'
@@ -269,7 +269,7 @@
             showCreateDialog.value = false
 
             // Get the path where the entity was created
-            const entityPath = data.data?.path as string | undefined
+            const entityPath = data.data.path as string | undefined
 
             // Determine the path to reload using the same logic as deletion:
             // - If path has multiple segments (e.g., /test/entity-name), get parent directory
@@ -347,9 +347,9 @@
 
             // Update the list
             const index = entities.value.findIndex(
-                e => e.field_data?.uuid === selectedEntityUuid.value
+                e => e.field_data.uuid === selectedEntityUuid.value
             )
-            if (index !== -1 && selectedEntity.value) {
+            if (index !== -1) {
                 entities.value[index] = selectedEntity.value
             }
 
@@ -389,7 +389,7 @@
 
         try {
             // Get the path of the entity before deletion
-            const entityPath = selectedEntity.value.field_data?.path as string | undefined
+            const entityPath = selectedEntity.value.field_data.path as string | undefined
 
             // The entity path might be:
             // 1. A directory path like "/test" - reload it directly
@@ -416,7 +416,7 @@
 
             // Remove from list
             entities.value = entities.value.filter(
-                e => e.field_data?.uuid !== selectedEntityUuid.value
+                e => e.field_data.uuid !== selectedEntityUuid.value
             )
             selectedEntity.value = null
             selectedItems.value = []

@@ -148,10 +148,10 @@ export function defaultStep(): DslStep {
  * Ensures CSV options exist on a step
  */
 export function ensureCsvOptions(step: DslStep) {
-    if (step.from?.type === 'format' && step.from.format.format_type === 'csv') {
+    if (step.from.type === 'format' && step.from.format.format_type === 'csv') {
         step.from.format.options ??= defaultCsvOptions()
     }
-    if (step.to?.type === 'format' && step.to.format.format_type === 'csv') {
+    if (step.to.type === 'format' && step.to.format.format_type === 'csv') {
         step.to.format.options ??= defaultCsvOptions()
     }
 }
@@ -160,7 +160,7 @@ export function ensureCsvOptions(step: DslStep) {
  * Ensures entity filter exists on a step
  */
 export function ensureEntityFilter(step: DslStep) {
-    if (step.from?.type === 'entity') {
+    if (step.from.type === 'entity') {
         const f = step.from as {
             filter?: { field: string; operator?: string; value: string }
             mapping?: Record<string, string>

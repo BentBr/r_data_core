@@ -319,9 +319,6 @@
             .join('')
 
     const resolveFieldValue = (data: Record<string, unknown>, fieldName: string): unknown => {
-        if (!data) {
-            return undefined
-        }
         // 1) exact
         if (fieldName in data) {
             return (data as Record<string, unknown>)[fieldName]
@@ -359,7 +356,7 @@
             return
         }
         try {
-            const uuid = String(props.entity.field_data?.uuid ?? '')
+            const uuid = String(props.entity.field_data.uuid ?? '')
             const entityType = props.entity.entity_type
             versions.value = await typedHttpClient.listEntityVersions(entityType, uuid)
         } catch (e) {
@@ -371,17 +368,16 @@
         if (!props.entity) {
             return
         }
-        const uuid = String(props.entity.field_data?.uuid ?? '')
+        const uuid = String(props.entity.field_data.uuid ?? '')
         const entityType = props.entity.entity_type
         try {
             const [a, b] = await Promise.all([
                 typedHttpClient.getEntityVersion(entityType, uuid, versionA),
                 typedHttpClient.getEntityVersion(entityType, uuid, versionB),
             ])
-            const diffRows = computeDiffRows(
-                (a.data as Record<string, unknown>) ?? {},
-                (b.data as Record<string, unknown>) ?? {}
-            )
+            const aData = a.data as Record<string, unknown>
+            const bData = b.data as Record<string, unknown>
+            const diffRows = computeDiffRows(aData, bData)
             versionHistoryRef.value?.updateDiffRows(diffRows)
         } catch (e) {
             console.error('Failed to load diff:', e)
@@ -389,7 +385,7 @@
     }
 
     watch(
-        () => props.entity?.field_data?.uuid,
+        () => props.entity?.field_data.uuid,
         async () => {
             await loadVersions()
         },
@@ -423,7 +419,7 @@
 
         switch (fieldType) {
             case 'Boolean':
-                return value ? t('common.yes') : t('common.no')
+                return value === true ? t('common.yes') : t('common.no')
             case 'Date':
             case 'DateTime':
                 return new Date(value as string).toLocaleDateString()

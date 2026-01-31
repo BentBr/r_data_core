@@ -103,18 +103,12 @@
             return []
         }
         const previousStep = stepsLocal.value[stepIndex - 1]
-        if (!previousStep) {
-            return []
-        }
         const { normalizedFields } = useNormalizedFields(previousStep)
         return normalizedFields.value
     }
 
     function getNormalizedFields(stepIndex: number): string[] {
         const step = stepsLocal.value[stepIndex]
-        if (!step) {
-            return []
-        }
         const { normalizedFields } = useNormalizedFields(step)
         return normalizedFields.value
     }
@@ -182,14 +176,14 @@
             }
             // Only update if actually different to prevent loops
             const currentStr = JSON.stringify(stepsLocal.value)
-            const newStr = JSON.stringify(newValue || [])
+            const newStr = JSON.stringify(newValue)
             if (currentStr !== newStr) {
                 // Preserve currently open panels
                 const preservedOpenPanels = [...openPanels.value]
                 isUpdating = true
                 try {
                     // Sanitize steps when loading from props
-                    const sanitized = sanitizeDslSteps(newValue || [])
+                    const sanitized = sanitizeDslSteps(newValue)
                     sanitized.forEach(s => {
                         ensureCsvOptions(s)
                         ensureEntityFilter(s)

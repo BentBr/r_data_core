@@ -46,7 +46,7 @@ export function useEntityDefinitions() {
 
         try {
             const response = await typedHttpClient.getEntityDefinitions()
-            entityDefinitions.value = (response.data ?? []).map(definition => ({
+            entityDefinitions.value = response.data.map(definition => ({
                 ...definition,
                 fields: sanitizeFields(definition.fields),
             }))
@@ -73,9 +73,7 @@ export function useEntityDefinitions() {
             // Reload the list
             await loadEntityDefinitions()
 
-            handleSuccess(
-                t('entity_definitions.create.success') ?? 'Entity definition created successfully'
-            )
+            handleSuccess(t('entity_definitions.create.success'))
             return true
         } catch (err) {
             handleError(

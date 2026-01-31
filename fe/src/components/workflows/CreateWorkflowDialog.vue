@@ -114,11 +114,11 @@
 
     // Check if any step has from.api source type (accepts POST, no cron needed)
     const hasApiOutput = computed(() => {
-        if (!steps.value || steps.value.length === 0) {
+        if (steps.value.length === 0) {
             return false
         }
         return steps.value.some(step => {
-            if (step.to?.type === 'format' && step.to.output?.mode === 'api') {
+            if (step.to.type === 'format' && step.to.output.mode === 'api') {
                 return true
             }
             return false
@@ -127,9 +127,9 @@
 
     const hasApiSource = computed(() => {
         return steps.value.some((step: DslStep) => {
-            if (step.from?.type === 'format' && step.from?.source?.source_type === 'api') {
+            if (step.from.type === 'format' && step.from.source.source_type === 'api') {
                 // from.api without endpoint field = accepts POST
-                return !step.from?.source?.config?.endpoint
+                return !step.from.source.config.endpoint
             }
             return false
         })
@@ -159,7 +159,7 @@
         if (cronDebounce) {
             clearTimeout(cronDebounce)
         }
-        if (!value?.trim()) {
+        if (!value.trim()) {
             nextRuns.value = []
             return
         }
@@ -175,7 +175,7 @@
     }
 
     function parseJson(input: string): { parsed: unknown; error: string | null } {
-        if (!input?.trim()) {
+        if (!input.trim()) {
             return { parsed: undefined, error: null }
         }
         try {
@@ -216,7 +216,7 @@
         } catch (e: unknown) {
             if (e instanceof ValidationError) {
                 // Handle Symfony-style validation errors
-                const violations = e.violations || []
+                const violations = e.violations
                 if (violations.length > 0) {
                     // Show all violations, with field names if available
                     const errorMessages = violations.map(v => {
@@ -233,7 +233,7 @@
             if (errorObj?.violations) {
                 const violations = errorObj.violations as Array<{ message?: string }>
                 const v = violations[0]
-                configError.value = v?.message ?? t('workflows.create.dsl_invalid')
+                configError.value = v.message ?? t('workflows.create.dsl_invalid')
                 return
             }
             configError.value = e instanceof Error ? e.message : t('workflows.create.dsl_invalid')
@@ -244,15 +244,13 @@
         try {
             const payload = {
                 name: form.value.name,
-                description: form.value.description ?? null,
+                description: form.value.description,
                 kind: form.value.kind,
                 enabled: form.value.enabled,
                 // Set schedule_cron to null when API source or API output is used
                 schedule_cron:
-                    hasApiSource.value || hasApiOutput.value
-                        ? null
-                        : (form.value.schedule_cron ?? null),
-                config: (parsedConfig ?? {}) as import('@/types/schemas').WorkflowConfig,
+                    hasApiSource.value || hasApiOutput.value ? null : form.value.schedule_cron,
+                config: parsedConfig as import('@/types/schemas').WorkflowConfig,
                 versioning_disabled: form.value.versioning_disabled,
             }
             const res = await typedHttpClient.createWorkflow(payload)
@@ -309,7 +307,7 @@
         }
         try {
             const { parsed } = parseJson(jsonStr)
-            if (parsed && typeof parsed === 'object' && parsed !== null) {
+            if (parsed && typeof parsed === 'object') {
                 const config = parsed as { steps?: unknown[] }
                 if (Array.isArray(config.steps)) {
                     isSyncingSteps = true

@@ -381,16 +381,13 @@
 
     // Computed properties for display
     const topEntityType = computed(() => {
-        if (!stats.value?.entities?.by_type || stats.value.entities.by_type.length === 0) {
+        if (stats.value.entities.by_type.length === 0) {
             return null
         }
         return stats.value.entities.by_type[0]
     })
 
     const latestWorkflowStates = computed(() => {
-        if (!stats.value?.workflows?.workflows) {
-            return []
-        }
         return stats.value.workflows.workflows
             .filter(w => w.latest_status)
             .map(w => `${w.name}: ${w.latest_status}`)

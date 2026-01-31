@@ -8,7 +8,7 @@ export function useTheme() {
 
     // User's theme preference (system, light, dark)
     const userPreference = ref<ThemeMode>(
-        (localStorage.getItem('theme-preference') as ThemeMode) || 'system'
+        (localStorage.getItem('theme-preference') as ThemeMode | null) ?? 'system'
     )
 
     // System preference detection
@@ -33,9 +33,7 @@ export function useTheme() {
 
     // Detect system preference
     const detectSystemPreference = () => {
-        if (typeof window !== 'undefined' && window.matchMedia) {
-            systemPrefersDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches
-        }
+        systemPrefersDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches
     }
 
     // Update Vuetify theme
@@ -57,17 +55,15 @@ export function useTheme() {
 
     // Initialize system preference listener
     const initializeSystemListener = () => {
-        if (typeof window !== 'undefined' && window.matchMedia) {
-            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
 
-            // Initial detection
-            detectSystemPreference()
+        // Initial detection
+        detectSystemPreference()
 
-            // Listen for changes
-            mediaQuery.addEventListener('change', e => {
-                systemPrefersDark.value = e.matches
-            })
-        }
+        // Listen for changes
+        mediaQuery.addEventListener('change', e => {
+            systemPrefersDark.value = e.matches
+        })
     }
 
     // Watch for theme changes and update Vuetify

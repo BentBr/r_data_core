@@ -281,10 +281,9 @@
                 'destination' in output &&
                 'config' in output.destination &&
                 typeof output.destination.config === 'object' &&
-                output.destination.config !== null &&
                 'uri' in output.destination.config
             ) {
-                return String(output.destination.config.uri) ?? ''
+                return String(output.destination.config.uri)
             }
         }
         return ''
@@ -341,7 +340,7 @@
     ]
 
     // Computed property for isLastStep
-    const isLastStep = computed(() => props.isLastStep ?? false)
+    const isLastStep = computed(() => props.isLastStep)
     const outputModes = [
         { title: 'API', value: 'api' },
         { title: 'Download', value: 'download' },
@@ -371,8 +370,8 @@
     watch(
         () => entityDefinitions.value,
         defs => {
-            entityDefItems.value = (defs ?? []).map(d => ({
-                title: d.display_name ?? d.entity_type,
+            entityDefItems.value = defs.map(d => ({
+                title: d.display_name || d.entity_type,
                 value: d.entity_type,
             }))
         },
@@ -439,13 +438,10 @@
     function getOutputMode(): string {
         if (props.modelValue.type === 'format') {
             const output = props.modelValue.output
-            if (!output) {
-                return 'api'
-            }
             if (typeof output === 'string') {
                 return output
             }
-            if ('mode' in output && output.mode) {
+            if ('mode' in output) {
                 return output.mode
             }
         }
@@ -518,17 +514,6 @@
         const currentOutput = props.modelValue.output
         let output: OutputMode
         if (
-            !currentOutput ||
-            (typeof currentOutput === 'object' &&
-                'mode' in currentOutput &&
-                currentOutput.mode !== 'push')
-        ) {
-            output = {
-                mode: 'push',
-                destination: { destination_type: newType, config: {}, auth: { type: 'none' } },
-                method: 'POST',
-            }
-        } else if (
             typeof currentOutput === 'object' &&
             'mode' in currentOutput &&
             currentOutput.mode === 'push'
@@ -542,7 +527,11 @@
                 },
             }
         } else {
-            output = { mode: 'api' }
+            output = {
+                mode: 'push',
+                destination: { destination_type: newType, config: {}, auth: { type: 'none' } },
+                method: 'POST',
+            }
         }
         const updated: ToDef = {
             ...props.modelValue,
@@ -558,17 +547,6 @@
         const currentOutput = props.modelValue.output
         let output: OutputMode
         if (
-            !currentOutput ||
-            (typeof currentOutput === 'object' &&
-                'mode' in currentOutput &&
-                currentOutput.mode !== 'push')
-        ) {
-            output = {
-                mode: 'push',
-                destination: { destination_type: 'uri', config: {}, auth: { type: 'none' } },
-                method: 'POST',
-            }
-        } else if (
             typeof currentOutput === 'object' &&
             'mode' in currentOutput &&
             currentOutput.mode === 'push'
@@ -584,7 +562,15 @@
                 },
             }
         } else {
-            output = { mode: 'api' }
+            output = {
+                mode: 'push',
+                destination: {
+                    destination_type: 'uri',
+                    config: { [key]: value },
+                    auth: { type: 'none' },
+                },
+                method: 'POST',
+            }
         }
         const updated: ToDef = {
             ...props.modelValue,
@@ -600,21 +586,6 @@
         const currentOutput = props.modelValue.output
         let output: OutputMode
         if (
-            !currentOutput ||
-            (typeof currentOutput === 'object' &&
-                'mode' in currentOutput &&
-                currentOutput.mode !== 'push')
-        ) {
-            output = {
-                mode: 'push',
-                destination: {
-                    destination_type: 'uri',
-                    config: { uri: '' },
-                    auth: { type: 'none' },
-                },
-                method: 'POST',
-            }
-        } else if (
             typeof currentOutput === 'object' &&
             'mode' in currentOutput &&
             currentOutput.mode === 'push'
@@ -624,7 +595,15 @@
                 method,
             }
         } else {
-            output = { mode: 'api' }
+            output = {
+                mode: 'push',
+                destination: {
+                    destination_type: 'uri',
+                    config: { uri: '' },
+                    auth: { type: 'none' },
+                },
+                method,
+            }
         }
         const updated: ToDef = {
             ...props.modelValue,
@@ -640,21 +619,6 @@
         const currentOutput = props.modelValue.output
         let output: OutputMode
         if (
-            !currentOutput ||
-            (typeof currentOutput === 'object' &&
-                'mode' in currentOutput &&
-                currentOutput.mode !== 'push')
-        ) {
-            output = {
-                mode: 'push',
-                destination: {
-                    destination_type: 'uri',
-                    config: { uri: '' },
-                    auth: { type: 'none' },
-                },
-                method: 'POST',
-            }
-        } else if (
             typeof currentOutput === 'object' &&
             'mode' in currentOutput &&
             currentOutput.mode === 'push'
@@ -667,7 +631,15 @@
                 },
             }
         } else {
-            output = { mode: 'api' }
+            output = {
+                mode: 'push',
+                destination: {
+                    destination_type: 'uri',
+                    config: { uri: '' },
+                    auth,
+                },
+                method: 'POST',
+            }
         }
         const updated: ToDef = {
             ...props.modelValue,
