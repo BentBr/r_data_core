@@ -380,3 +380,128 @@ async fn test_update_entity_published_status() -> Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_get_entity_by_uuid_with_children_count() -> Result<()> {
+    let mut repo = MockDynamicEntityRepo::new();
+    let mut class_repo = MockEntityDefinitionRepo::new();
+
+    let entity_type = "test_entity";
+    let uuid = Uuid::nil();
+
+    // Setup mock entity definition repository
+    class_repo
+        .expect_get_by_entity_type()
+        .with(predicate::eq(entity_type))
+        .returning(|_| Ok(Some(create_test_entity_definition())));
+
+    // Setup mock repository response for get_by_type
+    repo.expect_get_by_type()
+        .with(
+            predicate::eq(entity_type),
+            predicate::eq(uuid),
+            predicate::eq(None),
+        )
+        .returning(|_, _, _| Ok(Some(create_test_entity())));
+
+    // Setup mock repository response for count_children
+    repo.expect_count_children()
+        .with(predicate::eq(uuid))
+        .returning(|_| Ok(5));
+
+    // Create service with proper mocks
+    let class_service = EntityDefinitionService::new_without_cache(Arc::new(class_repo));
+    let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
+
+    // Test with include_children_count = true
+    let (entity, children_count) = service
+        .get_entity_by_uuid_with_children_count(entity_type, &uuid, None, true)
+        .await?;
+
+    assert!(entity.is_some());
+    assert_eq!(entity.unwrap().entity_type, entity_type);
+    assert_eq!(children_count, Some(5));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_get_entity_by_uuid_without_children_count() -> Result<()> {
+    let mut repo = MockDynamicEntityRepo::new();
+    let mut class_repo = MockEntityDefinitionRepo::new();
+
+    let entity_type = "test_entity";
+    let uuid = Uuid::nil();
+
+    // Setup mock entity definition repository
+    class_repo
+        .expect_get_by_entity_type()
+        .with(predicate::eq(entity_type))
+        .returning(|_| Ok(Some(create_test_entity_definition())));
+
+    // Setup mock repository response for get_by_type
+    repo.expect_get_by_type()
+        .with(
+            predicate::eq(entity_type),
+            predicate::eq(uuid),
+            predicate::eq(None),
+        )
+        .returning(|_, _, _| Ok(Some(create_test_entity())));
+
+    // count_children should NOT be called when include_children_count is false
+
+    // Create service with proper mocks
+    let class_service = EntityDefinitionService::new_without_cache(Arc::new(class_repo));
+    let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
+
+    // Test with include_children_count = false
+    let (entity, children_count) = service
+        .get_entity_by_uuid_with_children_count(entity_type, &uuid, None, false)
+        .await?;
+
+    assert!(entity.is_some());
+    assert_eq!(entity.unwrap().entity_type, entity_type);
+    assert_eq!(children_count, None);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_get_entity_by_uuid_with_children_count_entity_not_found() -> Result<()> {
+    let mut repo = MockDynamicEntityRepo::new();
+    let mut class_repo = MockEntityDefinitionRepo::new();
+
+    let entity_type = "test_entity";
+    let uuid = Uuid::nil();
+
+    // Setup mock entity definition repository
+    class_repo
+        .expect_get_by_entity_type()
+        .with(predicate::eq(entity_type))
+        .returning(|_| Ok(Some(create_test_entity_definition())));
+
+    // Setup mock repository response - entity not found
+    repo.expect_get_by_type()
+        .with(
+            predicate::eq(entity_type),
+            predicate::eq(uuid),
+            predicate::eq(None),
+        )
+        .returning(|_, _, _| Ok(None));
+
+    // count_children should NOT be called when entity is not found
+
+    // Create service with proper mocks
+    let class_service = EntityDefinitionService::new_without_cache(Arc::new(class_repo));
+    let service = DynamicEntityService::new(Arc::new(repo), Arc::new(class_service));
+
+    // Test with include_children_count = true but entity not found
+    let (entity, children_count) = service
+        .get_entity_by_uuid_with_children_count(entity_type, &uuid, None, true)
+        .await?;
+
+    assert!(entity.is_none());
+    assert_eq!(children_count, None);
+
+    Ok(())
+}
