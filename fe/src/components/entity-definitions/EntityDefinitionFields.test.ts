@@ -278,4 +278,125 @@ describe('EntityDefinitionFields', () => {
         expect(applyButton.exists()).toBe(true)
         // Vuetify loading state is handled internally, just verify button exists when saving
     })
+
+    describe('Json field type icon and color mappings', () => {
+        const jsonField: FieldDefinition = {
+            name: 'json_data',
+            display_name: 'JSON Data',
+            field_type: 'Json',
+            description: 'A JSON field that accepts any valid JSON value',
+            required: false,
+            indexed: false,
+            filterable: false,
+            default_value: undefined,
+            constraints: {},
+            ui_settings: {},
+        }
+
+        const objectField: FieldDefinition = {
+            name: 'object_data',
+            display_name: 'Object Data',
+            field_type: 'Object',
+            description: 'An Object field that only accepts JSON objects',
+            required: false,
+            indexed: false,
+            filterable: false,
+            default_value: undefined,
+            constraints: {},
+            ui_settings: {},
+        }
+
+        const arrayField: FieldDefinition = {
+            name: 'array_data',
+            display_name: 'Array Data',
+            field_type: 'Array',
+            description: 'An Array field',
+            required: false,
+            indexed: false,
+            filterable: false,
+            default_value: undefined,
+            constraints: {},
+            ui_settings: {},
+        }
+
+        const definitionWithJsonTypes: EntityDefinition = {
+            ...mockDefinition,
+            fields: [jsonField, objectField, arrayField],
+        }
+
+        it('renders Json field type with braces icon', () => {
+            const wrapper = mount(EntityDefinitionFields, {
+                props: {
+                    definition: definitionWithJsonTypes,
+                    hasUnsavedChanges: false,
+                    savingChanges: false,
+                },
+                global: {
+                    plugins: [vuetify],
+                },
+            })
+
+            // Check that Json field has braces icon
+            const smartIcons = wrapper.findAllComponents(SmartIcon)
+            const bracesIcons = smartIcons.filter(icon => icon.props('icon') === 'braces')
+            expect(bracesIcons.length).toBeGreaterThan(0)
+        })
+
+        it('renders Json field type distinct from Object field type', () => {
+            const wrapper = mount(EntityDefinitionFields, {
+                props: {
+                    definition: definitionWithJsonTypes,
+                    hasUnsavedChanges: false,
+                    savingChanges: false,
+                },
+                global: {
+                    plugins: [vuetify],
+                },
+            })
+
+            // Check that both Json (braces) and Object (box) icons are rendered
+            const smartIcons = wrapper.findAllComponents(SmartIcon)
+            const bracesIcons = smartIcons.filter(icon => icon.props('icon') === 'braces')
+            const boxIcons = smartIcons.filter(icon => icon.props('icon') === 'box')
+
+            expect(bracesIcons.length).toBeGreaterThan(0) // Json field
+            expect(boxIcons.length).toBeGreaterThan(0) // Object field
+        })
+
+        it('renders Json field type with teal color', () => {
+            const wrapper = mount(EntityDefinitionFields, {
+                props: {
+                    definition: definitionWithJsonTypes,
+                    hasUnsavedChanges: false,
+                    savingChanges: false,
+                },
+                global: {
+                    plugins: [vuetify],
+                },
+            })
+
+            // Check that Json field has teal color
+            const smartIcons = wrapper.findAllComponents(SmartIcon)
+            const tealIcons = smartIcons.filter(icon => icon.props('color') === 'teal')
+            expect(tealIcons.length).toBeGreaterThan(0)
+        })
+
+        it('displays Json field type badge', () => {
+            const wrapper = mount(EntityDefinitionFields, {
+                props: {
+                    definition: definitionWithJsonTypes,
+                    hasUnsavedChanges: false,
+                    savingChanges: false,
+                },
+                global: {
+                    plugins: [vuetify],
+                },
+            })
+
+            // Check that Json badge is displayed
+            expect(wrapper.text()).toContain('Json')
+            expect(wrapper.text()).toContain('Object')
+            expect(wrapper.text()).toContain('Array')
+        })
+    })
 })

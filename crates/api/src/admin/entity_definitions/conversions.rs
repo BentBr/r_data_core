@@ -166,3 +166,92 @@ pub const fn field_type_to_schema(field_type: &FieldType) -> FieldTypeSchema {
         FieldType::File => FieldTypeSchema::File,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_json_field_type_converts_to_json_schema() {
+        let result = field_type_to_schema(&FieldType::Json);
+        assert!(matches!(result, FieldTypeSchema::Json));
+    }
+
+    #[test]
+    fn test_object_field_type_converts_to_object_schema() {
+        let result = field_type_to_schema(&FieldType::Object);
+        assert!(matches!(result, FieldTypeSchema::Object));
+    }
+
+    #[test]
+    fn test_json_and_object_are_distinct() {
+        let json_result = field_type_to_schema(&FieldType::Json);
+        let object_result = field_type_to_schema(&FieldType::Object);
+
+        // They should be different variants
+        assert!(matches!(json_result, FieldTypeSchema::Json));
+        assert!(matches!(object_result, FieldTypeSchema::Object));
+    }
+
+    #[test]
+    fn test_array_field_type_converts_to_array_schema() {
+        let result = field_type_to_schema(&FieldType::Array);
+        assert!(matches!(result, FieldTypeSchema::Array));
+    }
+
+    #[test]
+    fn test_all_field_types_have_schema_mappings() {
+        // Ensure all field types can be converted without panic
+        let field_types = [
+            FieldType::String,
+            FieldType::Text,
+            FieldType::Wysiwyg,
+            FieldType::Integer,
+            FieldType::Float,
+            FieldType::Boolean,
+            FieldType::DateTime,
+            FieldType::Date,
+            FieldType::Object,
+            FieldType::Array,
+            FieldType::Uuid,
+            FieldType::Json,
+            FieldType::ManyToOne,
+            FieldType::ManyToMany,
+            FieldType::Select,
+            FieldType::MultiSelect,
+            FieldType::Image,
+            FieldType::File,
+        ];
+
+        for field_type in field_types {
+            // This should not panic
+            let _ = field_type_to_schema(&field_type);
+        }
+    }
+
+    #[test]
+    fn test_json_schema_serializes_as_json() {
+        let json_schema = FieldTypeSchema::Json;
+        let serialized = serde_json::to_string(&json_schema).unwrap();
+        assert_eq!(serialized, "\"Json\"");
+    }
+
+    #[test]
+    fn test_object_schema_serializes_as_object() {
+        let object_schema = FieldTypeSchema::Object;
+        let serialized = serde_json::to_string(&object_schema).unwrap();
+        assert_eq!(serialized, "\"Object\"");
+    }
+
+    #[test]
+    fn test_json_schema_deserializes_from_json() {
+        let json_schema: FieldTypeSchema = serde_json::from_str("\"Json\"").unwrap();
+        assert!(matches!(json_schema, FieldTypeSchema::Json));
+    }
+
+    #[test]
+    fn test_object_schema_deserializes_from_object() {
+        let object_schema: FieldTypeSchema = serde_json::from_str("\"Object\"").unwrap();
+        assert!(matches!(object_schema, FieldTypeSchema::Object));
+    }
+}

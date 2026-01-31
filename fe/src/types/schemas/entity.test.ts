@@ -190,6 +190,128 @@ describe('Entity Schemas', () => {
         })
     })
 
+    describe('FieldDefinitionSchema field_type variants', () => {
+        it('should accept Json field type', () => {
+            const field = {
+                name: 'metadata',
+                display_name: 'Metadata',
+                field_type: 'Json' as const,
+                required: false,
+                indexed: false,
+                filterable: false,
+            }
+
+            const result = FieldDefinitionSchema.safeParse(field)
+            expect(result.success).toBe(true)
+            if (result.success) {
+                expect(result.data.field_type).toBe('Json')
+            }
+        })
+
+        it('should accept Object field type (distinct from Json)', () => {
+            const field = {
+                name: 'settings',
+                display_name: 'Settings',
+                field_type: 'Object' as const,
+                required: false,
+                indexed: false,
+                filterable: false,
+            }
+
+            const result = FieldDefinitionSchema.safeParse(field)
+            expect(result.success).toBe(true)
+            if (result.success) {
+                expect(result.data.field_type).toBe('Object')
+            }
+        })
+
+        it('should accept Array field type', () => {
+            const field = {
+                name: 'tags',
+                display_name: 'Tags',
+                field_type: 'Array' as const,
+                required: false,
+                indexed: false,
+                filterable: false,
+            }
+
+            const result = FieldDefinitionSchema.safeParse(field)
+            expect(result.success).toBe(true)
+            if (result.success) {
+                expect(result.data.field_type).toBe('Array')
+            }
+        })
+
+        it('should validate entity definition with Json field for API arrays', () => {
+            // This is the actual use case: statistics submission with JSON arrays
+            const entityDef = {
+                uuid: '019a9766-20bb-7533-a3fc-8bc07fa4491a',
+                entity_type: 'StatisticSubmission',
+                display_name: 'Statistic Submission',
+                description: 'Statistics from instances',
+                allow_children: false,
+                fields: [
+                    {
+                        name: 'cors_origins',
+                        display_name: 'CORS Origins',
+                        field_type: 'Json' as const,
+                        description: 'Array of allowed CORS origins',
+                        required: false,
+                        indexed: false,
+                        filterable: false,
+                        constraints: null,
+                        ui_settings: null,
+                    },
+                    {
+                        name: 'entities_per_definition',
+                        display_name: 'Entities Per Definition',
+                        field_type: 'Json' as const,
+                        description: 'Array of entity type counts',
+                        required: false,
+                        indexed: false,
+                        filterable: false,
+                        constraints: null,
+                        ui_settings: null,
+                    },
+                    {
+                        name: 'entity_definitions',
+                        display_name: 'Entity Definitions',
+                        field_type: 'Json' as const,
+                        description: 'Object with entity definition info',
+                        required: false,
+                        indexed: false,
+                        filterable: false,
+                        constraints: null,
+                        ui_settings: null,
+                    },
+                ],
+                published: true,
+            }
+
+            const result = EntityDefinitionSchema.safeParse(entityDef)
+            expect(result.success).toBe(true)
+            if (result.success) {
+                expect(result.data.fields[0].field_type).toBe('Json')
+                expect(result.data.fields[1].field_type).toBe('Json')
+                expect(result.data.fields[2].field_type).toBe('Json')
+            }
+        })
+
+        it('should reject invalid field type', () => {
+            const field = {
+                name: 'test_field',
+                display_name: 'Test Field',
+                field_type: 'InvalidType',
+                required: false,
+                indexed: false,
+                filterable: false,
+            }
+
+            const result = FieldDefinitionSchema.safeParse(field)
+            expect(result.success).toBe(false)
+        })
+    })
+
     describe('DynamicEntitySchema', () => {
         it('should accept entity without children_count', () => {
             const entity = {
