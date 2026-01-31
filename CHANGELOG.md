@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.2](https://github.com/BentBr/r_data_core/compare/core-v0.4.1...core-v0.4.2) (2026-01-31)
+
+
+### Bug Fixes
+
+* making sure async jobs do log proper errors as well ([574da9b](https://github.com/BentBr/r_data_core/commit/574da9bfd2ff6e5812f1fbdf13dae1cd66deb622))
+* making sure json is accepting every type of valid json (array, o… ([0d34da3](https://github.com/BentBr/r_data_core/commit/0d34da3a8b9f865949e528b156d766cfebe92429))
+* making sure json is accepting every type of valid json (array, object, etc.) ([a38ec32](https://github.com/BentBr/r_data_core/commit/a38ec327370653a362c5540eddccfd91c247cdaf))
+
 ## [0.4.1](https://github.com/BentBr/r_data_core/compare/core-v0.4.0...core-v0.4.1) (2026-01-31)
 
 
