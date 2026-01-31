@@ -128,7 +128,7 @@ impl DynamicEntityValidator {
             | FieldType::ManyToOne
             | FieldType::ManyToMany
             | FieldType::Image
-            | FieldType::File => Ok(())
+            | FieldType::File => Ok(()),
         }
     }
 
@@ -412,7 +412,6 @@ impl DynamicEntityValidator {
 
         Ok(())
     }
-
 }
 
 /// # Errors
@@ -877,7 +876,10 @@ mod tests {
             let result = validate_entity_with_violations(&entity, &entity_def);
             assert!(result.is_ok());
             let violations = result.unwrap();
-            assert!(violations.is_empty(), "Json field should accept string values");
+            assert!(
+                violations.is_empty(),
+                "Json field should accept string values"
+            );
         }
 
         #[test]
@@ -894,7 +896,10 @@ mod tests {
             let result = validate_entity_with_violations(&entity, &entity_def);
             assert!(result.is_ok());
             let violations = result.unwrap();
-            assert!(violations.is_empty(), "Json field should accept array values");
+            assert!(
+                violations.is_empty(),
+                "Json field should accept array values"
+            );
         }
 
         #[test]
@@ -963,9 +968,10 @@ mod tests {
             let violations = result.unwrap();
             // Only items field should have a violation (json_content accepts any value now)
             assert_eq!(violations.len(), 1);
-
-            let fields: Vec<&str> = violations.iter().map(|v| v.field.as_str()).collect();
-            assert!(fields.contains(&"items"));
+            assert!(violations
+                .iter()
+                .map(|v| v.field.as_str())
+                .any(|x| x == "items"));
         }
 
         #[test]
