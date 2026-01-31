@@ -32,6 +32,7 @@ mockall::mock! {
             params: &FilterEntitiesParams,
         ) -> Result<Vec<DynamicEntity>>;
         async fn count_entities(&self, entity_type: &str) -> Result<i64>;
+        async fn count_children(&self, parent_uuid: &Uuid) -> Result<i64>;
     }
 }
 

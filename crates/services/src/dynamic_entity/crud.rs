@@ -83,6 +83,35 @@ impl DynamicEntityService {
             .await
     }
 
+    /// Get an entity by UUID with optional children count
+    ///
+    /// # Errors
+    /// Returns an error if entity type is not found, not published, or database query fails
+    pub async fn get_entity_by_uuid_with_children_count(
+        &self,
+        entity_type: &str,
+        uuid: &Uuid,
+        exclusive_fields: Option<Vec<String>>,
+        include_children_count: bool,
+    ) -> Result<(Option<DynamicEntity>, Option<i64>)> {
+        // Verify the entity type exists and is published
+        self.check_entity_type_exists_and_published(entity_type)
+            .await?;
+
+        let entity = self
+            .repository
+            .get_by_type(entity_type, uuid, exclusive_fields)
+            .await?;
+
+        let children_count = if include_children_count && entity.is_some() {
+            Some(self.repository.count_children(uuid).await?)
+        } else {
+            None
+        };
+
+        Ok((entity, children_count))
+    }
+
     /// Create a new entity with validation
     ///
     /// # Errors

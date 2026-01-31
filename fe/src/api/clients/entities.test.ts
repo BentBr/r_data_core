@@ -141,6 +141,95 @@ describe('EntitiesClient', () => {
                 expect.any(Object)
             )
         })
+
+        it('should include include_children_count parameter when requested', async () => {
+            const mockResponse = {
+                status: 'Success',
+                message: 'OK',
+                data: {
+                    entity_type: 'Customer',
+                    field_data: {
+                        uuid: '01234567-89ab-7def-8123-456789abcdef',
+                        name: 'Test Customer',
+                    },
+                    children_count: 5,
+                },
+            }
+
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: async () => mockResponse,
+            })
+
+            const result = await client.getEntity(
+                'Customer',
+                '01234567-89ab-7def-8123-456789abcdef',
+                { includeChildrenCount: true }
+            )
+
+            expect(result).toBeDefined()
+            expect(result.entity_type).toBe('Customer')
+            expect(result.children_count).toBe(5)
+            expect(mockFetch).toHaveBeenCalledWith(
+                expect.stringContaining('include_children_count=true'),
+                expect.any(Object)
+            )
+        })
+
+        it('should not include include_children_count parameter when not requested', async () => {
+            const mockResponse = {
+                status: 'Success',
+                message: 'OK',
+                data: {
+                    entity_type: 'Customer',
+                    field_data: {
+                        uuid: '01234567-89ab-7def-8123-456789abcdef',
+                        name: 'Test Customer',
+                    },
+                },
+            }
+
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: async () => mockResponse,
+            })
+
+            await client.getEntity('Customer', '01234567-89ab-7def-8123-456789abcdef')
+
+            expect(mockFetch).toHaveBeenCalledWith(
+                expect.not.stringContaining('include_children_count'),
+                expect.any(Object)
+            )
+        })
+
+        it('should handle null children_count in response', async () => {
+            const mockResponse = {
+                status: 'Success',
+                message: 'OK',
+                data: {
+                    entity_type: 'Customer',
+                    field_data: {
+                        uuid: '01234567-89ab-7def-8123-456789abcdef',
+                        name: 'Test Customer',
+                    },
+                    children_count: null,
+                },
+            }
+
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: async () => mockResponse,
+            })
+
+            const result = await client.getEntity(
+                'Customer',
+                '01234567-89ab-7def-8123-456789abcdef',
+                { includeChildrenCount: true }
+            )
+
+            expect(result).toBeDefined()
+            expect(result.children_count).toBeNull()
+        })
     })
 
     describe('createEntity', () => {

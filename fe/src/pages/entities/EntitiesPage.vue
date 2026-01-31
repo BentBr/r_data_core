@@ -247,7 +247,9 @@
         if (item.uuid && item.entity_type) {
             try {
                 loading.value = true
-                const entity = await typedHttpClient.getEntity(item.entity_type, item.uuid)
+                const entity = await typedHttpClient.getEntity(item.entity_type, item.uuid, {
+                    includeChildrenCount: true,
+                })
                 selectedEntity.value = entity
                 selectedItems.value = [item.uuid]
             } catch (err) {

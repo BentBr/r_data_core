@@ -206,6 +206,11 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
     async fn count_entities(&self, entity_type: &str) -> r_data_core_core::error::Result<i64> {
         self.inner.count_entities(entity_type).await
     }
+
+    /// Count children for an entity
+    async fn count_children(&self, parent_uuid: &Uuid) -> r_data_core_core::error::Result<i64> {
+        self.inner.count_children(parent_uuid).await
+    }
 }
 
 /// Repository adapter for `AdminUserRepository`

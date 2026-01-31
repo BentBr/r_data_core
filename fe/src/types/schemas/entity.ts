@@ -53,10 +53,11 @@ export const EntityDefinitionSchema = z.object({
 })
 
 // Dynamic Entity schema
-// Backend returns: { entity_type, field_data: { uuid, path, etc., ...customFields } }
+// Backend returns: { entity_type, field_data: { uuid, path, etc., ...customFields }, children_count? }
 export const DynamicEntitySchema = z.object({
     entity_type: z.string(),
     field_data: z.record(z.string(), z.unknown()),
+    children_count: z.number().int().nullable().optional(),
 })
 
 // Entity request/response schemas

@@ -21,6 +21,26 @@ where
     )
 }
 
+/// Custom deserializer for converting string query parameters to bool
+fn deserialize_optional_bool<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error;
+
+    let value = Option::<String>::deserialize(deserializer)?;
+    value.map_or_else(
+        || Ok(None),
+        |s| match s.to_lowercase().as_str() {
+            "true" | "1" | "yes" => Ok(Some(true)),
+            "false" | "0" | "no" => Ok(Some(false)),
+            _ => Err(D::Error::custom(format!(
+                "invalid type: string \"{s}\", expected boolean (true/false)"
+            ))),
+        },
+    )
+}
+
 /// Flexible pagination query parameters that support both `page`/`per_page` and `limit`/`offset`
 ///
 /// This struct provides a unified pagination interface that supports two common pagination patterns:
@@ -348,6 +368,9 @@ impl FilterQuery {
 pub struct IncludeQuery {
     /// Comma-separated list of related entities to include
     pub include: Option<String>,
+    /// Whether to include the count of child entities in the response
+    #[serde(deserialize_with = "deserialize_optional_bool", default)]
+    pub include_children_count: Option<bool>,
 }
 
 impl IncludeQuery {
@@ -361,6 +384,12 @@ impl IncludeQuery {
                 .filter(|s| !s.is_empty())
                 .collect()
         })
+    }
+
+    /// Check if children count should be included
+    #[must_use]
+    pub fn should_include_children_count(&self) -> bool {
+        self.include_children_count.unwrap_or(false)
     }
 }
 
@@ -546,5 +575,41 @@ mod tests {
         assert_eq!(result.per_page, Some(25));
         assert_eq!(result.limit, Some(50));
         assert_eq!(result.offset, Some(100));
+    }
+
+    #[test]
+    fn test_include_query_with_boolean_string() {
+        // Test that the deserializer handles string "true"/"false" for boolean fields
+        let json = serde_json::json!({
+            "include": "children",
+            "include_children_count": "true"
+        });
+
+        let result: IncludeQuery = serde_json::from_value(json).unwrap();
+        assert_eq!(result.include, Some("children".to_string()));
+        assert_eq!(result.include_children_count, Some(true));
+        assert!(result.should_include_children_count());
+    }
+
+    #[test]
+    fn test_include_query_with_boolean_false_string() {
+        let json = serde_json::json!({
+            "include_children_count": "false"
+        });
+
+        let result: IncludeQuery = serde_json::from_value(json).unwrap();
+        assert_eq!(result.include_children_count, Some(false));
+        assert!(!result.should_include_children_count());
+    }
+
+    #[test]
+    fn test_include_query_with_missing_boolean() {
+        let json = serde_json::json!({
+            "include": "children"
+        });
+
+        let result: IncludeQuery = serde_json::from_value(json).unwrap();
+        assert_eq!(result.include_children_count, None);
+        assert!(!result.should_include_children_count());
     }
 }

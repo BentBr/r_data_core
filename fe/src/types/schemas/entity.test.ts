@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { FieldDefinitionSchema, EntityDefinitionSchema } from './entity'
+import { FieldDefinitionSchema, EntityDefinitionSchema, DynamicEntitySchema } from './entity'
 
 describe('Entity Schemas', () => {
     describe('FieldDefinitionSchema', () => {
@@ -186,6 +186,96 @@ describe('Entity Schemas', () => {
                         expect(field.constraints).toBeNull()
                     }
                 }
+            }
+        })
+    })
+
+    describe('DynamicEntitySchema', () => {
+        it('should accept entity without children_count', () => {
+            const entity = {
+                entity_type: 'Customer',
+                field_data: {
+                    uuid: '01234567-89ab-7def-8123-456789abcdef',
+                    name: 'Test Customer',
+                },
+            }
+
+            const result = DynamicEntitySchema.safeParse(entity)
+            expect(result.success).toBe(true)
+            if (result.success) {
+                expect(result.data.children_count).toBeUndefined()
+            }
+        })
+
+        it('should accept entity with children_count as number', () => {
+            const entity = {
+                entity_type: 'Customer',
+                field_data: {
+                    uuid: '01234567-89ab-7def-8123-456789abcdef',
+                    name: 'Test Customer',
+                },
+                children_count: 5,
+            }
+
+            const result = DynamicEntitySchema.safeParse(entity)
+            expect(result.success).toBe(true)
+            if (result.success) {
+                expect(result.data.children_count).toBe(5)
+            }
+        })
+
+        it('should accept entity with children_count as zero', () => {
+            const entity = {
+                entity_type: 'Customer',
+                field_data: {
+                    uuid: '01234567-89ab-7def-8123-456789abcdef',
+                    name: 'Test Customer',
+                },
+                children_count: 0,
+            }
+
+            const result = DynamicEntitySchema.safeParse(entity)
+            expect(result.success).toBe(true)
+            if (result.success) {
+                expect(result.data.children_count).toBe(0)
+            }
+        })
+
+        it('should accept entity with children_count as null', () => {
+            const entity = {
+                entity_type: 'Customer',
+                field_data: {
+                    uuid: '01234567-89ab-7def-8123-456789abcdef',
+                    name: 'Test Customer',
+                },
+                children_count: null,
+            }
+
+            const result = DynamicEntitySchema.safeParse(entity)
+            expect(result.success).toBe(true)
+            if (result.success) {
+                expect(result.data.children_count).toBeNull()
+            }
+        })
+
+        it('should validate API response with children_count', () => {
+            // This matches the actual API response structure
+            const apiResponse = {
+                entity_type: 'Customer',
+                field_data: {
+                    uuid: '01234567-89ab-7def-8123-456789abcdef',
+                    name: 'Test Customer',
+                    created_at: '2024-01-01T00:00:00Z',
+                    updated_at: '2024-01-01T00:00:00Z',
+                },
+                children_count: 10,
+            }
+
+            const result = DynamicEntitySchema.safeParse(apiResponse)
+            expect(result.success).toBe(true)
+            if (result.success) {
+                expect(result.data.entity_type).toBe('Customer')
+                expect(result.data.children_count).toBe(10)
             }
         })
     })
