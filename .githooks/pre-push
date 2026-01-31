@@ -4,6 +4,10 @@ set -euo pipefail
 GIT_HOOK_REMOTE="${GIT_HOOK_REMOTE:-origin}"
 GIT_HOOK_LOCK_FILE="/tmp/git-prepush-rdata.lock"
 
+GIT_HOOK_RUN_FMT="${GIT_HOOK_RUN_FMT:-1}"
+GIT_HOOK_FMT_CMD="${GIT_HOOK_FMT_CMD:-cargo fmt --check --all}"
+GIT_HOOK_FMT_MAX_ERR_LINES="${GIT_HOOK_FMT_MAX_ERR_LINES:-50}"
+
 GIT_HOOK_RUN_CLIPPY="${GIT_HOOK_RUN_CLIPPY:-1}"
 GIT_HOOK_CLIPPY_CMD="${GIT_HOOK_CLIPPY_CMD:-rdt clippy}"
 GIT_HOOK_CLIPPY_MAX_ERR_LINES="${GIT_HOOK_CLIPPY_MAX_ERR_LINES:-50}"
@@ -122,8 +126,8 @@ normalize_bool_10() {
 load_env_overrides_all() {
     local root; root="$(repo_root)"
     local files=(".env.docker" ".env.local" ".env.docker.local")
-    local allowed=" GIT_HOOK_REMOTE GIT_HOOK_LOCK_FILE GIT_HOOK_RUN_CLIPPY GIT_HOOK_CLIPPY_CMD GIT_HOOK_CLIPPY_MAX_ERR_LINES GIT_HOOK_RUN_TEST GIT_HOOK_TEST_CMD GIT_HOOK_TEST_MAX_ERR_LINES GIT_HOOK_RUN_TEST_FE GIT_HOOK_TEST_FE_CMD GIT_HOOK_TEST_FE_MAX_ERR_LINES GIT_HOOK_RUN_LINT GIT_HOOK_LINT_CMD GIT_HOOK_LINT_MAX_ERR_LINES GIT_HOOK_RUN_COMMIT_LINT GIT_HOOK_SKIP "
-    local booleans=" GIT_HOOK_RUN_CLIPPY GIT_HOOK_RUN_TEST GIT_HOOK_RUN_TEST_FE GIT_HOOK_RUN_LINT GIT_HOOK_RUN_COMMIT_LINT GIT_HOOK_SKIP "
+    local allowed=" GIT_HOOK_REMOTE GIT_HOOK_LOCK_FILE GIT_HOOK_RUN_FMT GIT_HOOK_FMT_CMD GIT_HOOK_FMT_MAX_ERR_LINES GIT_HOOK_RUN_CLIPPY GIT_HOOK_CLIPPY_CMD GIT_HOOK_CLIPPY_MAX_ERR_LINES GIT_HOOK_RUN_TEST GIT_HOOK_TEST_CMD GIT_HOOK_TEST_MAX_ERR_LINES GIT_HOOK_RUN_TEST_FE GIT_HOOK_TEST_FE_CMD GIT_HOOK_TEST_FE_MAX_ERR_LINES GIT_HOOK_RUN_LINT GIT_HOOK_LINT_CMD GIT_HOOK_LINT_MAX_ERR_LINES GIT_HOOK_RUN_COMMIT_LINT GIT_HOOK_SKIP "
+    local booleans=" GIT_HOOK_RUN_FMT GIT_HOOK_RUN_CLIPPY GIT_HOOK_RUN_TEST GIT_HOOK_RUN_TEST_FE GIT_HOOK_RUN_LINT GIT_HOOK_RUN_COMMIT_LINT GIT_HOOK_SKIP "
 
     for f in "${files[@]}"; do
         local path="${root}/${f}"
@@ -262,6 +266,30 @@ validate_conventional_commits() {
     log "All commits follow Conventional Commits format"
 }
 
+run_fmt() {
+    local tmp_file
+    tmp_file="$(mktemp)"
+
+    log "Running cargo fmt check"
+
+    set +e
+    ${GIT_HOOK_FMT_CMD} 2>&1 | tee "${tmp_file}"
+    local fmt_status=$?
+    set -e
+
+    if (( fmt_status != 0 )); then
+        local total_lines
+        total_lines="$(wc -l < "${tmp_file}" | tr -d ' ')"
+        log "Format errors (showing first ${GIT_HOOK_FMT_MAX_ERR_LINES} of ${total_lines}):"
+        head -n "${GIT_HOOK_FMT_MAX_ERR_LINES}" "${tmp_file}"
+        rm -f "${tmp_file}"
+        fail "cargo fmt check failed. Run 'cargo fmt --all' to fix formatting."
+    fi
+
+    rm -f "${tmp_file}"
+    log "cargo fmt check passed"
+}
+
 run_clippy() {
     local tmp_file
     tmp_file="$(mktemp)"
@@ -359,6 +387,10 @@ run_lint() {
 }
 
 run_quality_checks() {
+    if [[ "${GIT_HOOK_RUN_FMT}" == "1" ]]; then
+        run_fmt
+    fi
+
     if [[ "${GIT_HOOK_RUN_CLIPPY}" == "1" ]]; then
         run_clippy
     fi
