@@ -194,10 +194,12 @@ pub enum FieldTypeSchema {
     DateTime,
     /// Date only field (date in database)
     Date,
-    /// JSON object field (jsonb in database)
+    /// JSON object field (jsonb in database, must be an object)
     Object,
     /// JSON array field (jsonb in database)
     Array,
+    /// Any valid JSON value (jsonb in database - objects, arrays, strings, numbers, booleans, null)
+    Json,
     /// UUID field (uuid in database)
     Uuid,
     /// Reference to a single related entity (foreign key)
