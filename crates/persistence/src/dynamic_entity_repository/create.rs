@@ -296,3 +296,120 @@ fn format_value_for_sql(value: &JsonValue) -> String {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    mod format_value_for_sql_tests {
+        use super::*;
+
+        #[test]
+        fn test_format_string_value() {
+            let value = json!("hello world");
+            assert_eq!(format_value_for_sql(&value), "'hello world'");
+        }
+
+        #[test]
+        fn test_format_string_with_quotes() {
+            let value = json!("it's a test");
+            assert_eq!(format_value_for_sql(&value), "'it''s a test'");
+        }
+
+        #[test]
+        fn test_format_integer_value() {
+            let value = json!(42);
+            assert_eq!(format_value_for_sql(&value), "42");
+        }
+
+        #[test]
+        fn test_format_float_value() {
+            let value = json!(3.83);
+            assert_eq!(format_value_for_sql(&value), "3.83");
+        }
+
+        #[test]
+        fn test_format_boolean_true() {
+            let value = json!(true);
+            assert_eq!(format_value_for_sql(&value), "TRUE");
+        }
+
+        #[test]
+        fn test_format_boolean_false() {
+            let value = json!(false);
+            assert_eq!(format_value_for_sql(&value), "FALSE");
+        }
+
+        #[test]
+        fn test_format_null_value() {
+            let value = json!(null);
+            assert_eq!(format_value_for_sql(&value), "NULL");
+        }
+
+        #[test]
+        fn test_format_object_value() {
+            let value = json!({"key": "value"});
+            let result = format_value_for_sql(&value);
+            assert!(result.starts_with('\''));
+            assert!(result.ends_with("'::jsonb"));
+            assert!(result.contains("key"));
+            assert!(result.contains("value"));
+        }
+
+        #[test]
+        fn test_format_object_with_nested_structure() {
+            let value = json!({
+                "order_items": {
+                    "0": "product1",
+                    "1": "product2"
+                }
+            });
+            let result = format_value_for_sql(&value);
+            assert!(result.ends_with("'::jsonb"));
+            assert!(result.contains("order_items"));
+            assert!(result.contains("product1"));
+        }
+
+        #[test]
+        fn test_format_array_value() {
+            let value = json!([1, 2, 3]);
+            let result = format_value_for_sql(&value);
+            assert!(result.starts_with('\''));
+            assert!(result.ends_with("'::jsonb"));
+            assert!(result.contains("[1,2,3]"));
+        }
+
+        #[test]
+        fn test_format_array_of_objects() {
+            let value = json!([{"id": 1}, {"id": 2}]);
+            let result = format_value_for_sql(&value);
+            assert!(result.ends_with("'::jsonb"));
+            assert!(result.contains("id"));
+        }
+
+        #[test]
+        fn test_format_object_with_quotes_in_value() {
+            let value = json!({"message": "it's a test"});
+            let result = format_value_for_sql(&value);
+            // Single quotes should be escaped for SQL
+            assert!(result.ends_with("'::jsonb"));
+            // The JSON string itself will have the quote, but SQL escaping doubles it
+            assert!(result.contains("it''s"));
+        }
+
+        #[test]
+        fn test_format_empty_object() {
+            let value = json!({});
+            let result = format_value_for_sql(&value);
+            assert_eq!(result, "'{}'::jsonb");
+        }
+
+        #[test]
+        fn test_format_empty_array() {
+            let value = json!([]);
+            let result = format_value_for_sql(&value);
+            assert_eq!(result, "'[]'::jsonb");
+        }
+    }
+}
