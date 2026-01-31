@@ -32,7 +32,8 @@ pub async fn handle_format_push_output(
     {
         let data_bytes = serialize_for_push(format, produced, item_uuid, run_uuid, repo).await?;
         let dest_ctx = create_destination_context(destination, method.as_ref().copied())?;
-        let dest_adapter = create_destination_adapter(destination, item_uuid, run_uuid, repo)?;
+        let dest_adapter =
+            create_destination_adapter(destination, item_uuid, run_uuid, repo).await?;
         push_data(
             dest_adapter,
             &dest_ctx,
@@ -80,11 +81,13 @@ async fn serialize_for_push(
             }
         };
 
-    format_handler
+    let result = format_handler
         .serialize(std::slice::from_ref(produced), &format.options)
-        .map(|bytes| bytes.to_vec())
-        .map_err(|e| {
-            std::mem::drop(repo.insert_run_log(
+        .map(|bytes| bytes.to_vec());
+
+    if let Err(ref e) = result {
+        let _ = repo
+            .insert_run_log(
                 run_uuid,
                 "error",
                 "Failed to serialize data for push",
@@ -92,9 +95,11 @@ async fn serialize_for_push(
                     "item_uuid": item_uuid,
                     "error": e.to_string()
                 })),
-            ));
-            r_data_core_core::error::Error::Unknown(format!("Failed to serialize: {e}"))
-        })
+            )
+            .await;
+    }
+
+    result.map_err(|e| r_data_core_core::error::Error::Unknown(format!("Failed to serialize: {e}")))
 }
 
 fn create_destination_context(
@@ -121,7 +126,7 @@ fn create_destination_context(
     )
 }
 
-fn create_destination_adapter(
+async fn create_destination_adapter(
     destination: &r_data_core_workflow::dsl::to::DestinationConfig,
     item_uuid: Uuid,
     run_uuid: Uuid,
@@ -134,15 +139,17 @@ fn create_destination_adapter(
             r_data_core_workflow::data::adapters::destination::uri::UriDestination::new(),
         ))
     } else {
-        std::mem::drop(repo.insert_run_log(
-            run_uuid,
-            "error",
-            "Unsupported destination type",
-            Some(serde_json::json!({
-                "item_uuid": item_uuid,
-                "destination_type": destination.destination_type
-            })),
-        ));
+        let _ = repo
+            .insert_run_log(
+                run_uuid,
+                "error",
+                "Unsupported destination type",
+                Some(serde_json::json!({
+                    "item_uuid": item_uuid,
+                    "destination_type": destination.destination_type
+                })),
+            )
+            .await;
         Err(r_data_core_core::error::Error::Validation(
             "Unsupported destination type".to_string(),
         ))
@@ -159,11 +166,11 @@ async fn push_data(
     repo: &Arc<dyn WorkflowRepositoryTrait>,
 ) -> r_data_core_core::error::Result<()> {
     use bytes::Bytes;
-    dest_adapter
-        .push(dest_ctx, Bytes::from(data_bytes))
-        .await
-        .map_err(|e| {
-            std::mem::drop(repo.insert_run_log(
+    let result = dest_adapter.push(dest_ctx, Bytes::from(data_bytes)).await;
+
+    if let Err(ref e) = result {
+        let _ = repo
+            .insert_run_log(
                 run_uuid,
                 "error",
                 "Failed to push data to destination",
@@ -172,9 +179,11 @@ async fn push_data(
                     "destination_type": destination.destination_type,
                     "error": e.to_string()
                 })),
-            ));
-            r_data_core_core::error::Error::Api(format!("Failed to push: {e}"))
-        })
+            )
+            .await;
+    }
+
+    result.map_err(|e| r_data_core_core::error::Error::Api(format!("Failed to push: {e}")))
 }
 
 /// Parameters for handling entity output
@@ -239,7 +248,8 @@ pub async fn handle_entity_output(
             params.item_uuid,
             params.run_uuid,
             params.repo,
-        );
+        )
+        .await;
         Ok(success)
     } else {
         Ok(true) // Not an entity output, nothing to handle
@@ -308,7 +318,7 @@ async fn execute_entity_operation(
     }
 }
 
-fn handle_entity_result(
+async fn handle_entity_result(
     result: r_data_core_core::error::Result<()>,
     mode: &r_data_core_workflow::dsl::EntityWriteMode,
     entity_definition: &str,
@@ -329,19 +339,23 @@ fn handle_entity_result(
             "[workflow] Entity {operation} failed for item {item_uuid}, type '{entity_definition}': {error_msg}"
         );
 
-        // Log to database (spawn to not block, but we can't await here)
-        // Use blocking approach since we can't async in sync fn
-        std::mem::drop(repo.insert_run_log(
-            run_uuid,
-            "error",
-            &format!("Entity {operation} failed for '{entity_definition}'"),
-            Some(serde_json::json!({
-                "item_uuid": item_uuid,
-                "entity_type": entity_definition,
-                "mode": format!("{:?}", mode),
-                "error": error_msg
-            })),
-        ));
+        // Log to database for workflow run history
+        if let Err(log_err) = repo
+            .insert_run_log(
+                run_uuid,
+                "error",
+                &format!("Entity {operation} failed for '{entity_definition}'"),
+                Some(serde_json::json!({
+                    "item_uuid": item_uuid,
+                    "entity_type": entity_definition,
+                    "mode": format!("{:?}", mode),
+                    "error": error_msg
+                })),
+            )
+            .await
+        {
+            log::error!("[workflow] Failed to insert run log: {log_err}");
+        }
         return false;
     }
     true

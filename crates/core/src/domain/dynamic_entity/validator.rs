@@ -983,8 +983,8 @@ mod tests {
             let violations = result.unwrap();
             assert_eq!(violations.len(), 1);
 
-            // Message should be clean without redundant "Field 'x'" prefix
-            // since field name is in the separate 'field' property
+            // Message should be clean without the redundant "Field 'x'" prefix
+            // since the field name is in the separate 'field' property
             let msg = &violations[0].message;
             assert_eq!(msg, "must be an array");
         }
