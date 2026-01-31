@@ -299,4 +299,188 @@ describe('useFieldRendering', () => {
             expect(getInputType('UnknownType')).toBe('text')
         })
     })
+
+    describe('isJsonFieldType', () => {
+        it('should return true for Json field type', () => {
+            const { isJsonFieldType } = useFieldRendering()
+            expect(isJsonFieldType('Json')).toBe(true)
+        })
+
+        it('should return true for Object field type', () => {
+            const { isJsonFieldType } = useFieldRendering()
+            expect(isJsonFieldType('Object')).toBe(true)
+        })
+
+        it('should return true for Array field type', () => {
+            const { isJsonFieldType } = useFieldRendering()
+            expect(isJsonFieldType('Array')).toBe(true)
+        })
+
+        it('should return false for String field type', () => {
+            const { isJsonFieldType } = useFieldRendering()
+            expect(isJsonFieldType('String')).toBe(false)
+        })
+
+        it('should return false for Integer field type', () => {
+            const { isJsonFieldType } = useFieldRendering()
+            expect(isJsonFieldType('Integer')).toBe(false)
+        })
+
+        it('should return false for unknown field type', () => {
+            const { isJsonFieldType } = useFieldRendering()
+            expect(isJsonFieldType('Unknown')).toBe(false)
+        })
+    })
+
+    describe('parseJsonFieldValue', () => {
+        it('should return value unchanged for non-JSON field types', () => {
+            const { parseJsonFieldValue } = useFieldRendering()
+            const result = parseJsonFieldValue('hello', 'String')
+            expect(result.parsed).toBe('hello')
+            expect(result.error).toBeNull()
+        })
+
+        it('should return object unchanged if already an object', () => {
+            const { parseJsonFieldValue } = useFieldRendering()
+            const obj = { key: 'value' }
+            const result = parseJsonFieldValue(obj, 'Json')
+            expect(result.parsed).toEqual(obj)
+            expect(result.error).toBeNull()
+        })
+
+        it('should return array unchanged if already an array', () => {
+            const { parseJsonFieldValue } = useFieldRendering()
+            const arr = [1, 2, 3]
+            const result = parseJsonFieldValue(arr, 'Array')
+            expect(result.parsed).toEqual(arr)
+            expect(result.error).toBeNull()
+        })
+
+        it('should return null/undefined/empty string unchanged', () => {
+            const { parseJsonFieldValue } = useFieldRendering()
+            expect(parseJsonFieldValue(null, 'Json').parsed).toBeNull()
+            expect(parseJsonFieldValue(undefined, 'Json').parsed).toBeUndefined()
+            expect(parseJsonFieldValue('', 'Json').parsed).toBe('')
+        })
+
+        it('should parse valid JSON object string for Json type', () => {
+            const { parseJsonFieldValue } = useFieldRendering()
+            const result = parseJsonFieldValue('{"order_items": {"0": "product1"}}', 'Json')
+            expect(result.parsed).toEqual({ order_items: { '0': 'product1' } })
+            expect(result.error).toBeNull()
+        })
+
+        it('should parse valid JSON object string for Object type', () => {
+            const { parseJsonFieldValue } = useFieldRendering()
+            const result = parseJsonFieldValue('{"name": "test", "count": 5}', 'Object')
+            expect(result.parsed).toEqual({ name: 'test', count: 5 })
+            expect(result.error).toBeNull()
+        })
+
+        it('should parse valid JSON array string for Array type', () => {
+            const { parseJsonFieldValue } = useFieldRendering()
+            const result = parseJsonFieldValue('["a", "b", "c"]', 'Array')
+            expect(result.parsed).toEqual(['a', 'b', 'c'])
+            expect(result.error).toBeNull()
+        })
+
+        it('should return error for invalid JSON string', () => {
+            const { parseJsonFieldValue } = useFieldRendering()
+            const result = parseJsonFieldValue('not valid json', 'Json')
+            expect(result.parsed).toBe('not valid json')
+            expect(result.error).toBe('Must be valid JSON')
+        })
+
+        it('should return error when Array type receives non-array JSON', () => {
+            const { parseJsonFieldValue } = useFieldRendering()
+            const result = parseJsonFieldValue('{"key": "value"}', 'Array')
+            expect(result.parsed).toBe('{"key": "value"}')
+            expect(result.error).toBe('Must be a valid JSON array')
+        })
+
+        it('should return error when Object type receives array JSON', () => {
+            const { parseJsonFieldValue } = useFieldRendering()
+            const result = parseJsonFieldValue('[1, 2, 3]', 'Object')
+            expect(result.parsed).toBe('[1, 2, 3]')
+            expect(result.error).toBe('Must be a valid JSON object')
+        })
+
+        it('should return error when Json type receives non-object JSON', () => {
+            const { parseJsonFieldValue } = useFieldRendering()
+            const result = parseJsonFieldValue('"just a string"', 'Json')
+            expect(result.parsed).toBe('"just a string"')
+            expect(result.error).toBe('Must be a valid JSON object')
+        })
+
+        it('should handle nested JSON structures', () => {
+            const { parseJsonFieldValue } = useFieldRendering()
+            const nestedJson = '{"items": [{"id": 1}, {"id": 2}], "meta": {"total": 2}}'
+            const result = parseJsonFieldValue(nestedJson, 'Json')
+            expect(result.parsed).toEqual({
+                items: [{ id: 1 }, { id: 2 }],
+                meta: { total: 2 },
+            })
+            expect(result.error).toBeNull()
+        })
+
+        it('should handle JSON with special characters', () => {
+            const { parseJsonFieldValue } = useFieldRendering()
+            const result = parseJsonFieldValue('{"message": "Hello \\"world\\""}', 'Json')
+            expect(result.parsed).toEqual({ message: 'Hello "world"' })
+            expect(result.error).toBeNull()
+        })
+    })
+
+    describe('stringifyJsonFieldValue', () => {
+        it('should return value as string for non-JSON field types', () => {
+            const { stringifyJsonFieldValue } = useFieldRendering()
+            expect(stringifyJsonFieldValue('hello', 'String')).toBe('hello')
+            expect(stringifyJsonFieldValue(123, 'Integer')).toBe('123')
+        })
+
+        it('should return empty string for null/undefined', () => {
+            const { stringifyJsonFieldValue } = useFieldRendering()
+            expect(stringifyJsonFieldValue(null, 'Json')).toBe('')
+            expect(stringifyJsonFieldValue(undefined, 'Object')).toBe('')
+        })
+
+        it('should stringify object with pretty formatting', () => {
+            const { stringifyJsonFieldValue } = useFieldRendering()
+            const obj = { key: 'value' }
+            const result = stringifyJsonFieldValue(obj, 'Json')
+            expect(result).toBe('{\n  "key": "value"\n}')
+        })
+
+        it('should stringify array with pretty formatting', () => {
+            const { stringifyJsonFieldValue } = useFieldRendering()
+            const arr = [1, 2, 3]
+            const result = stringifyJsonFieldValue(arr, 'Array')
+            expect(result).toBe('[\n  1,\n  2,\n  3\n]')
+        })
+
+        it('should stringify nested object with pretty formatting', () => {
+            const { stringifyJsonFieldValue } = useFieldRendering()
+            const obj = { items: [{ id: 1 }], meta: { count: 1 } }
+            const result = stringifyJsonFieldValue(obj, 'Object')
+            expect(result).toContain('"items"')
+            expect(result).toContain('"meta"')
+            expect(result.split('\n').length).toBeGreaterThan(1)
+        })
+
+        it('should return string value unchanged for JSON field type', () => {
+            const { stringifyJsonFieldValue } = useFieldRendering()
+            // If value is already a string (e.g., user input), return as-is
+            expect(stringifyJsonFieldValue('{"key": "value"}', 'Json')).toBe('{"key": "value"}')
+        })
+
+        it('should handle empty object', () => {
+            const { stringifyJsonFieldValue } = useFieldRendering()
+            expect(stringifyJsonFieldValue({}, 'Json')).toBe('{}')
+        })
+
+        it('should handle empty array', () => {
+            const { stringifyJsonFieldValue } = useFieldRendering()
+            expect(stringifyJsonFieldValue([], 'Array')).toBe('[]')
+        })
+    })
 })

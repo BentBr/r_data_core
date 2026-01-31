@@ -248,7 +248,7 @@
     const emit = defineEmits<Emits>()
 
     const { t } = useTranslations()
-    const { getFieldComponent, getFieldRules } = useFieldRendering()
+    const { getFieldComponent, getFieldRules, parseJsonFieldValue } = useFieldRendering()
 
     // Form state
     const form = ref()
@@ -543,9 +543,33 @@
         // Clear any previous errors
         fieldErrors.value = {}
 
+        // Parse JSON fields before sending
+        const processedData: Record<string, unknown> = { ...formData.value.data }
+        if (selectedEntityDefinition.value) {
+            for (const field of selectedEntityDefinition.value.fields) {
+                const fieldName = field.name
+                if (processedData[fieldName] !== undefined) {
+                    const { parsed, error } = parseJsonFieldValue(
+                        processedData[fieldName],
+                        field.field_type
+                    )
+                    if (error) {
+                        fieldErrors.value[fieldName] = error
+                    } else {
+                        processedData[fieldName] = parsed
+                    }
+                }
+            }
+        }
+
+        // If there were JSON parsing errors, don't submit
+        if (Object.keys(fieldErrors.value).length > 0) {
+            return
+        }
+
         emit('create', {
             entity_type: formData.value.entity_type,
-            data: formData.value.data,
+            data: processedData,
             parent_uuid: formData.value.parent_uuid,
         })
     }

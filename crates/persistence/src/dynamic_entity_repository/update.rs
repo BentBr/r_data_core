@@ -262,8 +262,8 @@ async fn update_entity_table(
             } else if json_value.is_null() {
                 entity_query = entity_query.bind(None::<String>);
             } else {
-                // Fallback: bind as JSON string representation
-                entity_query = entity_query.bind(json_value.to_string());
+                // For JSON objects and arrays, bind as serde_json::Value for JSONB columns
+                entity_query = entity_query.bind(json_value.clone());
             }
         }
 

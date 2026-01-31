@@ -161,11 +161,85 @@ export function useFieldRendering() {
         return typeMap[fieldType] || 'text'
     }
 
+    /**
+     * Checks if a field type requires JSON parsing before sending to API
+     */
+    const isJsonFieldType = (fieldType: string): boolean => {
+        return ['Json', 'Object', 'Array'].includes(fieldType)
+    }
+
+    /**
+     * Parses JSON field values from strings to objects
+     * Returns the original value if parsing fails or if value is already an object
+     */
+    const parseJsonFieldValue = (
+        value: unknown,
+        fieldType: string
+    ): { parsed: unknown; error: string | null } => {
+        if (!isJsonFieldType(fieldType)) {
+            return { parsed: value, error: null }
+        }
+
+        // If value is already an object/array, return as-is
+        if (typeof value === 'object') {
+            return { parsed: value, error: null }
+        }
+
+        // If value is null, undefined, or empty string, return as-is
+        if (value === null || value === undefined || value === '') {
+            return { parsed: value, error: null }
+        }
+
+        // Try to parse string as JSON
+        if (typeof value === 'string') {
+            try {
+                const parsed = JSON.parse(value) as unknown
+                // Validate the parsed result matches the expected type
+                if (fieldType === 'Array' && !Array.isArray(parsed)) {
+                    return { parsed: value, error: 'Must be a valid JSON array' }
+                }
+                if (
+                    (fieldType === 'Object' || fieldType === 'Json') &&
+                    (typeof parsed !== 'object' || Array.isArray(parsed) || parsed === null)
+                ) {
+                    return { parsed: value, error: 'Must be a valid JSON object' }
+                }
+                return { parsed, error: null }
+            } catch {
+                return { parsed: value, error: 'Must be valid JSON' }
+            }
+        }
+
+        return { parsed: value, error: null }
+    }
+
+    /**
+     * Stringifies JSON field values for display in textarea
+     */
+    const stringifyJsonFieldValue = (value: unknown, fieldType: string): string => {
+        if (!isJsonFieldType(fieldType)) {
+            return String(value ?? '')
+        }
+
+        if (value === null || value === undefined) {
+            return ''
+        }
+
+        if (typeof value === 'object') {
+            return JSON.stringify(value, null, 2)
+        }
+
+        return String(value)
+    }
+
     return {
         getFieldComponent,
         getFieldRules,
         getFieldIcon,
         formatFieldValue,
         getInputType,
+        isJsonFieldType,
+        parseJsonFieldValue,
+        stringifyJsonFieldValue,
     }
 }
