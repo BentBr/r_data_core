@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.1](https://github.com/BentBr/r_data_core/compare/core-v0.4.0...core-v0.4.1) (2026-01-31)
+
+
+### Features
+
+* Added children counter ([026bd78](https://github.com/BentBr/r_data_core/commit/026bd7806e97c7f5019d4490df35e41e0709e112))
+
+
+### Bug Fixes
+
+* making sure json is handled and sent properly (json validation) ([b36e1ef](https://github.com/BentBr/r_data_core/commit/b36e1efbdb8462b02e2d3cc76bf4268f24ca9b51))
+* making sure the children_counts are working on be with and without param ([1cab0bf](https://github.com/BentBr/r_data_core/commit/1cab0bf363dc6315809bff15212c666fc718a55b))
+
 ## [0.4.0](https://github.com/BentBr/r_data_core/compare/core-v0.3.13...core-v0.4.0) (2026-01-30)
 
 
