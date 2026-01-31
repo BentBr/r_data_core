@@ -122,10 +122,13 @@ impl DynamicEntityValidator {
             FieldType::MultiSelect => Self::validate_multi_select(&ctx),
             FieldType::Array => Self::validate_array(&ctx),
             FieldType::Object => Self::validate_object(&ctx),
-            FieldType::Json => Self::validate_json(&ctx),
-            FieldType::ManyToOne | FieldType::ManyToMany | FieldType::Image | FieldType::File => {
-                Ok(())
-            } // Relation and asset validation is handled separately
+            // Json accepts any valid JSON value (objects, arrays, strings, numbers, booleans, null)
+            // No additional validation needed since serde_json already ensures valid JSON
+            FieldType::Json
+            | FieldType::ManyToOne
+            | FieldType::ManyToMany
+            | FieldType::Image
+            | FieldType::File => Ok(())
         }
     }
 
@@ -410,14 +413,6 @@ impl DynamicEntityValidator {
         Ok(())
     }
 
-    /// Validate JSON fields
-    /// JSON fields must be objects (not strings, arrays, numbers, etc.)
-    fn validate_json(ctx: &ValidationContext) -> Result<()> {
-        if !ctx.value.is_object() {
-            return Err(ctx.create_validation_error("must be an object"));
-        }
-        Ok(())
-    }
 }
 
 /// # Errors
@@ -680,39 +675,46 @@ mod tests {
         }
 
         #[test]
-        fn test_validate_json_rejects_string() {
+        fn test_validate_json_accepts_string() {
             let field_def = create_test_field(FieldType::Json, false);
-            let value = json!("{\"key\": \"value\"}"); // String representation of JSON
+            let value = json!("a plain string value");
             let result = DynamicEntityValidator::validate_field(&field_def, &value);
-            assert!(result.is_err());
-            let err = result.unwrap_err();
-            assert!(err.to_string().contains("must be an object"));
+            assert!(result.is_ok());
         }
 
         #[test]
-        fn test_validate_json_rejects_array() {
+        fn test_validate_json_accepts_array() {
             let field_def = create_test_field(FieldType::Json, false);
             let value = json!([1, 2, 3]);
             let result = DynamicEntityValidator::validate_field(&field_def, &value);
-            assert!(result.is_err());
-            let err = result.unwrap_err();
-            assert!(err.to_string().contains("must be an object"));
+            assert!(result.is_ok());
         }
 
         #[test]
-        fn test_validate_json_rejects_number() {
+        fn test_validate_json_accepts_array_of_objects() {
+            let field_def = create_test_field(FieldType::Json, false);
+            let value = json!([
+                {"entity_type": "Customer", "count": 100},
+                {"entity_type": "Order", "count": 500}
+            ]);
+            let result = DynamicEntityValidator::validate_field(&field_def, &value);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_validate_json_accepts_number() {
             let field_def = create_test_field(FieldType::Json, false);
             let value = json!(123);
             let result = DynamicEntityValidator::validate_field(&field_def, &value);
-            assert!(result.is_err());
+            assert!(result.is_ok());
         }
 
         #[test]
-        fn test_validate_json_rejects_boolean() {
+        fn test_validate_json_accepts_boolean() {
             let field_def = create_test_field(FieldType::Json, false);
             let value = json!(true);
             let result = DynamicEntityValidator::validate_field(&field_def, &value);
-            assert!(result.is_err());
+            assert!(result.is_ok());
         }
 
         #[test]
@@ -754,6 +756,14 @@ mod tests {
         fn test_validate_json_accepts_empty_object() {
             let field_def = create_test_field(FieldType::Json, false);
             let value = json!({});
+            let result = DynamicEntityValidator::validate_field(&field_def, &value);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_validate_json_accepts_empty_array() {
+            let field_def = create_test_field(FieldType::Json, false);
+            let value = json!([]);
             let result = DynamicEntityValidator::validate_field(&field_def, &value);
             assert!(result.is_ok());
         }
@@ -854,23 +864,37 @@ mod tests {
         }
 
         #[test]
-        fn test_violations_for_json_string_value() {
+        fn test_json_field_accepts_string_value() {
+            // Json field type now accepts any valid JSON value including strings
             let entity_def = create_test_entity_definition();
             let entity = json!({
                 "entity_type": "test_entity",
                 "field_data": {
-                    "json_content": "{\"key\": \"value\"}" // String instead of object
+                    "json_content": "a plain string value"
                 }
             });
 
             let result = validate_entity_with_violations(&entity, &entity_def);
             assert!(result.is_ok());
             let violations = result.unwrap();
-            assert_eq!(violations.len(), 1);
-            assert_eq!(violations[0].field, "json_content");
-            assert!(violations[0].message.contains("must be an object"));
-            // Verify the message doesn't have redundant field prefix
-            assert!(!violations[0].message.starts_with("Field '"));
+            assert!(violations.is_empty(), "Json field should accept string values");
+        }
+
+        #[test]
+        fn test_json_field_accepts_array_value() {
+            // Json field type now accepts any valid JSON value including arrays
+            let entity_def = create_test_entity_definition();
+            let entity = json!({
+                "entity_type": "test_entity",
+                "field_data": {
+                    "json_content": [{"key": "value"}, {"key": "value2"}]
+                }
+            });
+
+            let result = validate_entity_with_violations(&entity, &entity_def);
+            assert!(result.is_ok());
+            let violations = result.unwrap();
+            assert!(violations.is_empty(), "Json field should accept array values");
         }
 
         #[test]
@@ -924,33 +948,33 @@ mod tests {
         }
 
         #[test]
-        fn test_multiple_violations_for_multiple_invalid_fields() {
+        fn test_violations_for_invalid_array_field() {
             let entity_def = create_test_entity_definition();
             let entity = json!({
                 "entity_type": "test_entity",
                 "field_data": {
-                    "json_content": "not an object",
-                    "items": "not an array"
+                    "json_content": "valid json string value",  // Json accepts any value
+                    "items": "not an array"  // Array field requires array
                 }
             });
 
             let result = validate_entity_with_violations(&entity, &entity_def);
             assert!(result.is_ok());
             let violations = result.unwrap();
-            assert_eq!(violations.len(), 2);
+            // Only items field should have a violation (json_content accepts any value now)
+            assert_eq!(violations.len(), 1);
 
             let fields: Vec<&str> = violations.iter().map(|v| v.field.as_str()).collect();
-            assert!(fields.contains(&"json_content"));
             assert!(fields.contains(&"items"));
         }
 
         #[test]
-        fn test_violation_message_format() {
+        fn test_violation_message_format_for_array() {
             let entity_def = create_test_entity_definition();
             let entity = json!({
                 "entity_type": "test_entity",
                 "field_data": {
-                    "json_content": 12345 // Number instead of object
+                    "items": "not an array"  // String instead of array
                 }
             });
 
@@ -962,7 +986,7 @@ mod tests {
             // Message should be clean without redundant "Field 'x'" prefix
             // since field name is in the separate 'field' property
             let msg = &violations[0].message;
-            assert_eq!(msg, "must be an object");
+            assert_eq!(msg, "must be an array");
         }
     }
 }
