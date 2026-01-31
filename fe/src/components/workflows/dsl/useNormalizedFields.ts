@@ -40,10 +40,6 @@ export function useNormalizedFields(input: DslStep | FromDef | Ref<DslStep | Fro
 
         const mapping = fromDef.mapping
 
-        if (!mapping || typeof mapping !== 'object') {
-            return []
-        }
-
         // Normalized fields are the VALUES in the mapping
         // mapping: { "source_field": "normalized_field" }
         const fields = Object.values(mapping).filter(v => typeof v === 'string' && v.trim() !== '')

@@ -165,10 +165,8 @@
                     formData.value = {
                         name: props.editingRole.name,
                         description: props.editingRole.description ?? null,
-                        permissions: props.editingRole.permissions
-                            ? JSON.parse(JSON.stringify(props.editingRole.permissions))
-                            : [],
-                        super_admin: props.editingRole.super_admin ?? false,
+                        permissions: JSON.parse(JSON.stringify(props.editingRole.permissions)),
+                        super_admin: props.editingRole.super_admin,
                     }
                 } else {
                     formData.value = {

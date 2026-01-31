@@ -113,11 +113,7 @@
     }
 
     const validateForm = () => {
-        if (!createForm.value) {
-            createFormValid.value = false
-            return
-        }
-        createFormValid.value = !!createForm.value.name?.trim()
+        createFormValid.value = !!createForm.value.name.trim()
     }
 
     const createApiKey = () => {

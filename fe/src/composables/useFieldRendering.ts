@@ -53,7 +53,7 @@ export function useFieldRendering() {
         const rules: ValidationRule[] = []
 
         if (field.required) {
-            rules.push(v => !!v || `${field.display_name ?? field.name} is required`)
+            rules.push(v => !!v || `${field.display_name || field.name} is required`)
         }
 
         if (field.constraints?.min !== undefined) {
@@ -76,7 +76,7 @@ export function useFieldRendering() {
                 v =>
                     !v ||
                     new RegExp(pattern).test(String(v)) ||
-                    `Invalid format for ${field.display_name ?? field.name}`
+                    `Invalid format for ${field.display_name || field.name}`
             )
         }
 
@@ -118,12 +118,12 @@ export function useFieldRendering() {
      */
     const formatFieldValue = (value: unknown, fieldType: string): string => {
         if (value === null || value === undefined) {
-            return t('common.empty') ?? 'Empty'
+            return t('common.empty')
         }
 
         switch (fieldType) {
             case 'Boolean':
-                return value ? t('common.yes') || 'Yes' : t('common.no') || 'No'
+                return value === true ? t('common.yes') : t('common.no')
             case 'Date':
             case 'DateTime':
                 return new Date(value as string).toLocaleDateString()
@@ -185,12 +185,12 @@ export function useFieldRendering() {
             return { parsed: value, error: null }
         }
 
-        // If value is null, undefined, or empty string, return as-is
-        if (value === null || value === undefined || value === '') {
+        // If value is empty string, return as-is
+        if (value === '') {
             return { parsed: value, error: null }
         }
 
-        // Try to parse string as JSON
+        // Try to parse string as JSON (value is string at this point)
         if (typeof value === 'string') {
             try {
                 const parsed = JSON.parse(value) as unknown

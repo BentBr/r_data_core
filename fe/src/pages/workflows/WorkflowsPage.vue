@@ -114,7 +114,7 @@
             // Normalize kind from API response (Consumer/Provider) to lowercase (consumer/provider)
             items.value = response.data.map(item => ({
                 ...item,
-                kind: (item.kind?.toLowerCase() as 'consumer' | 'provider') || 'consumer',
+                kind: item.kind.toLowerCase() as 'consumer' | 'provider',
             }))
             if (response.meta?.pagination) {
                 totalItems.value = response.meta.pagination.total
@@ -126,7 +126,7 @@
                 paginationMeta.value = null
             }
         } catch (e: unknown) {
-            error.value = (e instanceof Error ? e.message : String(e)) ?? 'Failed to load workflows'
+            error.value = e instanceof Error ? e.message : String(e)
         } finally {
             loading.value = false
         }

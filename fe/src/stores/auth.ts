@@ -501,7 +501,7 @@ export const useAuthStore = defineStore('auth', () => {
     const decodeAndStorePermissions = (token: string): void => {
         try {
             const payload = JSON.parse(atob(token.split('.')[1]))
-            permissions.value = (payload.permissions as string[]) || []
+            permissions.value = (payload.permissions as string[] | undefined) ?? []
             isSuperAdmin.value = payload.is_super_admin === true
         } catch (err) {
             if (env.enableApiLogging) {
@@ -515,9 +515,9 @@ export const useAuthStore = defineStore('auth', () => {
     const loadUserPermissions = async (): Promise<void> => {
         try {
             const response = await typedHttpClient.getUserPermissions()
-            isSuperAdmin.value = response.is_super_admin || false
-            allowedRoutes.value = response.allowed_routes || []
-            permissions.value = response.permissions || []
+            isSuperAdmin.value = response.is_super_admin
+            allowedRoutes.value = response.allowed_routes
+            permissions.value = response.permissions
         } catch (err) {
             if (env.enableApiLogging) {
                 console.error('[Auth] Failed to load user permissions:', err)

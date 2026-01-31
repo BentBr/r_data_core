@@ -201,7 +201,7 @@
                     password: '',
                     first_name: newUser.first_name ?? '',
                     last_name: newUser.last_name ?? '',
-                    role_uuids: newUser.role_uuids ?? [],
+                    role_uuids: newUser.role_uuids,
                     is_active: newUser.is_active,
                     super_admin: newUser.super_admin,
                 }

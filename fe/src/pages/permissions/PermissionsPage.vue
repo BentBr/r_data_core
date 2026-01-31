@@ -534,11 +534,11 @@
 
     // Helper function to get role names for a user
     const getRoleNamesForUser = (user: UserResponse): string[] => {
-        if (!user.role_uuids || user.role_uuids.length === 0) {
+        if (user.role_uuids.length === 0) {
             return []
         }
         return roles.value
-            .filter(role => user.role_uuids?.includes(role.uuid))
+            .filter(role => user.role_uuids.includes(role.uuid))
             .map(role => role.name)
     }
 

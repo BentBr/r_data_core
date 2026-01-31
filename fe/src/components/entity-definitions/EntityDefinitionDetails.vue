@@ -173,10 +173,9 @@
                 typedHttpClient.getEntityDefinitionVersion(uuid, versionA),
                 typedHttpClient.getEntityDefinitionVersion(uuid, versionB),
             ])
-            const diffRows = computeDiffRows(
-                (a.data as Record<string, unknown>) || {},
-                (b.data as Record<string, unknown>) || {}
-            )
+            const aData = a.data as Record<string, unknown>
+            const bData = b.data as Record<string, unknown>
+            const diffRows = computeDiffRows(aData, bData)
             versionHistoryRef.value?.updateDiffRows(diffRows)
         } catch (e) {
             console.error('Failed to load diff:', e)

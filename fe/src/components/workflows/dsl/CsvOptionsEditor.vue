@@ -41,17 +41,13 @@
 
     const { t } = useTranslations()
 
-    function defaults(): CsvOptions {
-        return { has_header: true, delimiter: ',', escape: undefined, quote: undefined }
-    }
-
-    const opts = ref<CsvOptions>({ ...(props.modelValue || defaults()) })
+    const opts = ref<CsvOptions>({ ...props.modelValue })
 
     // Update local state when prop changes
     watch(
         () => props.modelValue,
         v => {
-            const newOpts = { ...(v || defaults()) }
+            const newOpts = { ...v }
             // Only update if actually different to prevent loops
             const currentStr = JSON.stringify(opts.value)
             const newStr = JSON.stringify(newOpts)

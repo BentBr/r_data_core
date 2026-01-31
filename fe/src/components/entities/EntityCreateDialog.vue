@@ -26,7 +26,7 @@
                         item-title="display_name"
                         item-value="entity_type"
                         :label="t('entities.create.entity_type_label')"
-                        :rules="[v => !!v ?? t('entities.create.entity_type_required')]"
+                        :rules="[v => !!v || t('entities.create.entity_type_required')]"
                         required
                         class="mb-4"
                         @update:model-value="onEntityTypeChange"
@@ -38,7 +38,7 @@
                         :label="t('entities.create.key_label')"
                         :rules="[
                             (v: string | null | undefined) =>
-                                !!v ?? t('entities.create.key_required'),
+                                !!v || t('entities.create.key_required'),
                         ]"
                         :error-messages="fieldErrors.entity_key ? [fieldErrors.entity_key] : []"
                         required
@@ -634,11 +634,11 @@
             // Only prefill if dialog is open AND entity_type is already selected
             if (newParent && dialogVisible.value && formData.value.entity_type) {
                 pathSetByParent.value = true
-                formData.value.parent_uuid = (newParent.field_data?.uuid as string) ?? null
+                formData.value.parent_uuid = (newParent.field_data.uuid as string) || null
 
                 // Also update the path based on parent
-                const parentPath = newParent.field_data?.path as string | undefined
-                const parentKey = newParent.field_data?.entity_key as string | undefined
+                const parentPath = newParent.field_data.path as string | undefined
+                const parentKey = newParent.field_data.entity_key as string | undefined
 
                 if (parentPath && parentKey) {
                     // Set path to parent.path + '/' + parent.entity_key
@@ -660,10 +660,10 @@
     watch(dialogVisible, async visible => {
         if (visible && props.defaultParent && formData.value.entity_type) {
             pathSetByParent.value = true
-            formData.value.parent_uuid = (props.defaultParent.field_data?.uuid as string) ?? null
+            formData.value.parent_uuid = (props.defaultParent.field_data.uuid as string) || null
 
-            const parentPath = props.defaultParent.field_data?.path as string | undefined
-            const parentKey = props.defaultParent.field_data?.entity_key as string | undefined
+            const parentPath = props.defaultParent.field_data.path as string | undefined
+            const parentKey = props.defaultParent.field_data.entity_key as string | undefined
 
             if (parentPath && parentKey) {
                 const fullPath = parentPath.endsWith('/')

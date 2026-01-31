@@ -441,7 +441,7 @@
         | 'build_path'
         | 'resolve_entity_path'
         | 'get_or_create_entity'
-    >(props.modelValue.type || 'none')
+    >(props.modelValue.type)
 
     // Computed properties to avoid 'as any' in templates
     const arithmeticTarget = computed(() => {
@@ -536,7 +536,7 @@
 
     const resolveEntityPathFilters = computed(() => {
         if (props.modelValue.type === 'resolve_entity_path') {
-            return props.modelValue.filters ?? {}
+            return props.modelValue.filters
         }
         return {}
     })
@@ -601,16 +601,13 @@
     watch(
         () => props.modelValue,
         newTransform => {
-            transformType.value = newTransform.type ?? 'none'
+            transformType.value = newTransform.type
             if (newTransform.type === 'arithmetic') {
-                left.value = newTransform.left ?? { kind: 'field', field: '' }
-                right.value = newTransform.right ?? { kind: 'const', value: 0 }
+                left.value = newTransform.left
+                right.value = newTransform.right
             } else if (newTransform.type === 'concat') {
-                leftConcat.value = newTransform.left ?? { kind: 'field', field: '' }
-                rightConcat.value = newTransform.right ?? {
-                    kind: 'const_string',
-                    value: '',
-                }
+                leftConcat.value = newTransform.left
+                rightConcat.value = newTransform.right
             }
         },
         { immediate: true, deep: true }
@@ -660,7 +657,7 @@
     function updateFilterField(field: string, value: string) {
         if (props.modelValue.type === 'resolve_entity_path') {
             const filters = { ...props.modelValue.filters }
-            if (filters[field]?.kind === 'field') {
+            if (filters[field].kind === 'field') {
                 filters[field] = { kind: 'field', field: value }
             }
             const updated: Transform = {
@@ -674,7 +671,7 @@
     function updateFilterValue(field: string, value: string) {
         if (props.modelValue.type === 'resolve_entity_path') {
             const filters = { ...props.modelValue.filters }
-            if (filters[field]?.kind === 'const_string') {
+            if (filters[field].kind === 'const_string') {
                 filters[field] = { kind: 'const_string', value }
             }
             const updated: Transform = {
@@ -832,15 +829,14 @@
                 entity_type: '',
                 filters: {},
             }
-        } else if (newType === 'get_or_create_entity') {
+        } else {
+            // newType is 'get_or_create_entity' at this point
             newTransform = {
                 type: 'get_or_create_entity',
                 target_path: '',
                 entity_type: '',
                 path_template: '',
             }
-        } else {
-            newTransform = { type: 'none' }
         }
         emit('update:modelValue', newTransform)
     }

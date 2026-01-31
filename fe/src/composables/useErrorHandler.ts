@@ -54,7 +54,8 @@ export function useErrorHandler() {
         // Handle HttpError with namespace + action + status code
         if (error instanceof HttpError) {
             const { statusCode, namespace, action, originalMessage } = error
-            const finalNamespace = namespace ?? context ?? 'unknown' // Use provided context if HttpError doesn't have one
+            // Use provided context if namespace is empty
+            const finalNamespace = namespace.length > 0 ? namespace : (context ?? 'unknown')
 
             // For 422 errors, try to translate the backend message
             if (statusCode === 422 && originalMessage) {

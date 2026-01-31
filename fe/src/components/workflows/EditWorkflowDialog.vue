@@ -149,9 +149,9 @@
     // Check if any step has from.api source type (accepts POST, no cron needed)
     const hasApiSource = computed(() => {
         return steps.value.some((step: DslStep) => {
-            if (step.from?.type === 'format' && step.from?.source?.source_type === 'api') {
+            if (step.from.type === 'format' && step.from.source.source_type === 'api') {
                 // from.api without endpoint field = accepts POST
-                return !step.from?.source?.config?.endpoint
+                return !step.from.source.config.endpoint
             }
             return false
         })
@@ -160,12 +160,12 @@
     // Check if any step has to.format.output.mode === 'api' (exports via GET, no cron needed)
     const hasApiOutput = computed(() => {
         return steps.value.some((step: DslStep) => {
-            if (step.to?.type === 'format') {
+            if (step.to.type === 'format') {
                 const output = step.to.output
                 if (typeof output === 'string') {
                     return output === 'api'
                 }
-                if (typeof output === 'object' && output !== null && 'mode' in output) {
+                if (typeof output === 'object' && 'mode' in output) {
                     return output.mode === 'api'
                 }
             }
@@ -213,10 +213,9 @@
                 typedHttpClient.getWorkflowVersion(props.workflowUuid, versionA),
                 typedHttpClient.getWorkflowVersion(props.workflowUuid, versionB),
             ])
-            const diffRows = computeDiffRows(
-                (a.data as Record<string, unknown>) ?? {},
-                (b.data as Record<string, unknown>) ?? {}
-            )
+            const aData = a.data as Record<string, unknown>
+            const bData = b.data as Record<string, unknown>
+            const diffRows = computeDiffRows(aData, bData)
             versionHistoryRef.value?.updateDiffRows(diffRows)
         } catch (e) {
             console.error('Failed to load diff:', e)
@@ -239,9 +238,9 @@
                 'versioning_disabled' in data && typeof data.versioning_disabled === 'boolean'
                     ? data.versioning_disabled
                     : false
-            configJson.value = JSON.stringify(data.config ?? {}, null, 2)
+            configJson.value = JSON.stringify(data.config, null, 2)
             try {
-                const cfg = (data.config ?? {}) as { steps?: DslStep[] }
+                const cfg = data.config as { steps?: DslStep[] }
                 isSyncingSteps = true
                 steps.value = Array.isArray(cfg.steps) ? cfg.steps : []
                 // Reset flag after next tick
@@ -268,7 +267,7 @@
         if (cronDebounce) {
             clearTimeout(cronDebounce)
         }
-        if (!value?.trim()) {
+        if (!value.trim()) {
             nextRuns.value = []
             return
         }
@@ -288,7 +287,7 @@
     }
 
     function parseJson(input: string): unknown | undefined {
-        if (!input?.trim()) {
+        if (!input.trim()) {
             return undefined
         }
         try {
@@ -314,7 +313,7 @@
         // Strict DSL presence and validation against BE
         try {
             const config = parsedConfig as { steps?: unknown[] }
-            const steps = Array.isArray(config?.steps) ? config.steps : null
+            const steps = Array.isArray(config.steps) ? config.steps : null
             if (!steps || steps.length === 0) {
                 configError.value = 'DSL steps are required'
                 return
@@ -323,7 +322,7 @@
         } catch (e: unknown) {
             if (e instanceof ValidationError) {
                 // Handle Symfony-style validation errors
-                const violations = e.violations || []
+                const violations = e.violations
                 if (violations.length > 0) {
                     // Show all violations, with field names if available
                     const errorMessages = violations.map(v => {
@@ -332,7 +331,7 @@
                     })
                     configError.value = errorMessages.join('; ')
                 } else {
-                    configError.value = e.message ?? 'Invalid DSL'
+                    configError.value = e.message || 'Invalid DSL'
                 }
                 return
             }
@@ -340,7 +339,7 @@
                 const violations = (e as { violations?: Array<{ message?: string }> }).violations
                 if (violations && violations.length > 0) {
                     const v = violations[0]
-                    configError.value = v?.message ?? 'Invalid DSL'
+                    configError.value = v.message ?? 'Invalid DSL'
                     return
                 }
             }
@@ -352,7 +351,7 @@
         try {
             await typedHttpClient.updateWorkflow(props.workflowUuid, {
                 name: form.value.name,
-                description: form.value.description ?? null,
+                description: form.value.description || null,
                 kind: form.value.kind,
                 enabled: form.value.enabled,
                 // Set schedule_cron to null when API source or API output is used
@@ -360,7 +359,7 @@
                     hasApiSource.value || hasApiOutput.value
                         ? null
                         : (form.value.schedule_cron ?? null),
-                config: (parsedConfig ?? {}) as WorkflowConfig,
+                config: parsedConfig as WorkflowConfig,
                 versioning_disabled: form.value.versioning_disabled,
             })
             emit('updated')
@@ -418,7 +417,7 @@
             }
             try {
                 const parsed = parseJson(jsonStr)
-                if (parsed && typeof parsed === 'object' && parsed !== null) {
+                if (parsed && typeof parsed === 'object') {
                     const config = parsed as { steps?: unknown[] }
                     if (Array.isArray(config.steps)) {
                         isSyncingSteps = true

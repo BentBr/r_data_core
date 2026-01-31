@@ -189,7 +189,7 @@
 
         // If it's the root path, reload the root
         if (normalizedPath === '/' || normalizedPath === '') {
-            const currentExpandedItems = [...(props.expandedItems || [])]
+            const currentExpandedItems = [...props.expandedItems]
             loadedPaths.value.delete('/')
             await loadPath('/')
             emit('update:expandedItems', currentExpandedItems)
@@ -201,7 +201,7 @@
 
         if (node) {
             // Preserve expanded state
-            const wasExpanded = props.expandedItems?.includes(node.id) || false
+            const wasExpanded = props.expandedItems.includes(node.id)
 
             // Clear the path from loadedPaths so it can be reloaded
             loadedPaths.value.delete(normalizedPath)
@@ -210,7 +210,7 @@
 
             // Restore expanded state if it was expanded
             if (wasExpanded) {
-                const newExpandedItems = [...(props.expandedItems || [])]
+                const newExpandedItems = [...props.expandedItems]
                 if (!newExpandedItems.includes(node.id)) {
                     newExpandedItems.push(node.id)
                 }
@@ -223,7 +223,7 @@
                 await reloadPath(parentPath)
             } else {
                 // Fallback: reload root
-                const currentExpandedItems = [...(props.expandedItems || [])]
+                const currentExpandedItems = [...props.expandedItems]
                 loadedPaths.value.delete('/')
                 await loadPath('/')
                 emit('update:expandedItems', currentExpandedItems)
@@ -277,7 +277,7 @@
 
     async function handleExpandedItemsChange(newExpandedItems: string[]) {
         // Find newly expanded items that don't have loaded children yet
-        const newlyExpanded = newExpandedItems.filter(id => !props.expandedItems?.includes(id))
+        const newlyExpanded = newExpandedItems.filter(id => !props.expandedItems.includes(id))
 
         for (const expandedId of newlyExpanded) {
             const node = findNodeById(treeItems.value, expandedId)

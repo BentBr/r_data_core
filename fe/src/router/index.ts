@@ -105,8 +105,8 @@ router.beforeEach(async (to, from, next) => {
             console.error('[Router] Auth check failed:', err)
         }
 
-        // Check again after potential refresh
-        if (!authStore.isAuthenticated) {
+        // Check again after a potential refresh
+        if (!authStore.isAuthenticated as boolean) {
             // If coming from login page, don't add redirect query (prevents loops after logout)
             // Otherwise, preserve the redirect query for normal auth redirects
             const redirectQuery = from.name === 'Login' ? {} : { redirect: to.fullPath }
@@ -141,7 +141,7 @@ router.beforeEach(async (to, from, next) => {
             // Try to redirect to first available route from allowedRoutes
             // allowedRoutes is exported as readonly ref, access via .value if needed
             const allowedRoutesList = authStore.allowedRoutes as string[]
-            if (allowedRoutesList && allowedRoutesList.length > 0) {
+            if (allowedRoutesList.length > 0) {
                 // Redirect to first available route
                 next({
                     path: allowedRoutesList[0],

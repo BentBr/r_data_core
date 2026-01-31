@@ -66,18 +66,17 @@
 
     const treeItems = computed((): TreeNode[] => {
         // Group entity definitions by group_name
-        const grouped = props.entityDefinitions.reduce(
+        const grouped = props.entityDefinitions.reduce<Record<string, EntityDefinition[]>>(
             (acc, def) => {
                 if (!def.group_name) {
                     return acc
                 } // Skip definitions without group
-                if (!acc[def.group_name]) {
-                    acc[def.group_name] = []
-                }
-                acc[def.group_name].push(def)
+                const group = acc[def.group_name] ?? []
+                group.push(def)
+                acc[def.group_name] = group
                 return acc
             },
-            {} as Record<string, EntityDefinition[]>
+            {}
         )
 
         // Get entity definitions without groups
