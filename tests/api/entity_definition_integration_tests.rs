@@ -669,7 +669,9 @@ mod tests {
         assert_eq!(body["status"], "Success");
 
         // Verify field types are preserved correctly
-        let fields = body["data"]["fields"].as_array().expect("fields should be array");
+        let fields = body["data"]["fields"]
+            .as_array()
+            .expect("fields should be array");
         assert_eq!(fields.len(), 5);
 
         // Find and verify each field type
@@ -731,7 +733,9 @@ mod tests {
             .find(|d| d["entity_type"] == "statistic_submission")
             .expect("statistic_submission should be in list");
 
-        let list_fields = stat_def["fields"].as_array().expect("fields should be array");
+        let list_fields = stat_def["fields"]
+            .as_array()
+            .expect("fields should be array");
         let list_cors_field = list_fields
             .iter()
             .find(|f| f["name"] == "cors_origins")
