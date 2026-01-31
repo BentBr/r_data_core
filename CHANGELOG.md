@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.3](https://github.com/BentBr/r_data_core/compare/core-v0.4.2...core-v0.4.3) (2026-01-31)
+
+
+### Bug Fixes
+
+* splitting json format into separate options (object, array, string..) ([36ad4ce](https://github.com/BentBr/r_data_core/commit/36ad4cec041c62bd8629ee115787932bf6644cf0))
+
 ## [0.4.2](https://github.com/BentBr/r_data_core/compare/core-v0.4.1...core-v0.4.2) (2026-01-31)
 
 
