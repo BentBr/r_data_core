@@ -290,6 +290,9 @@ fn format_value_for_sql(value: &JsonValue) -> String {
             }
         }
         JsonValue::Null => "NULL".to_string(),
-        _ => format!("'{}'", value.to_string().replace('\'', "''")), // For complex types
+        // For JSON objects and arrays, cast to JSONB to match PostgreSQL column types
+        JsonValue::Object(_) | JsonValue::Array(_) => {
+            format!("'{}'::jsonb", value.to_string().replace('\'', "''"))
+        }
     }
 }

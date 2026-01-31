@@ -69,6 +69,7 @@
                                     :label="field.display_name"
                                     :hint="field.description"
                                     :rules="getFieldRules(field)"
+                                    :error-messages="getFieldErrorMessages(field.name)"
                                     :required="field.required"
                                     :placeholder="field.ui_settings?.placeholder"
                                     :options="field.ui_settings?.options"
@@ -135,7 +136,8 @@
     const emit = defineEmits<Emits>()
 
     const { t } = useTranslations()
-    const { getFieldComponent, getFieldRules } = useFieldRendering()
+    const { getFieldComponent, getFieldRules, parseJsonFieldValue, stringifyJsonFieldValue } =
+        useFieldRendering()
 
     // Form state
     const form = ref()
@@ -146,6 +148,7 @@
         },
         parent_uuid: null,
     })
+    const fieldErrors = ref<Record<string, string>>({})
 
     // Computed properties
     const dialogVisible = computed({
@@ -177,10 +180,24 @@
             if (data.published === undefined) {
                 data.published = false
             }
+
+            // Stringify JSON fields for display in textareas
+            if (props.entityDefinition) {
+                for (const field of props.entityDefinition.fields) {
+                    if (data[field.name] !== undefined) {
+                        data[field.name] = stringifyJsonFieldValue(
+                            data[field.name],
+                            field.field_type
+                        )
+                    }
+                }
+            }
+
             formData.value = {
                 data,
                 parent_uuid: (props.entity.field_data?.parent_uuid as string) ?? null,
             }
+            fieldErrors.value = {}
         }
     }
 
@@ -189,11 +206,52 @@
             return
         }
 
+        // Clear any previous errors
+        fieldErrors.value = {}
+
+        // Parse JSON fields before sending
+        const processedData: Record<string, unknown> = { ...formData.value.data }
+        if (props.entityDefinition) {
+            for (const field of props.entityDefinition.fields) {
+                const fieldName = field.name
+                if (processedData[fieldName] !== undefined) {
+                    const { parsed, error } = parseJsonFieldValue(
+                        processedData[fieldName],
+                        field.field_type
+                    )
+                    if (error) {
+                        fieldErrors.value[fieldName] = error
+                    } else {
+                        processedData[fieldName] = parsed
+                    }
+                }
+            }
+        }
+
+        // If there were JSON parsing errors, don't submit
+        if (Object.keys(fieldErrors.value).length > 0) {
+            return
+        }
+
         emit('update', {
-            data: formData.value.data,
+            data: processedData,
             parent_uuid: formData.value.parent_uuid,
         })
     }
+
+    const getFieldErrorMessages = (fieldName: string) => {
+        const error = fieldErrors.value[fieldName]
+        return error ? [error] : []
+    }
+
+    const setFieldErrors = (errors: Record<string, string>) => {
+        fieldErrors.value = errors
+    }
+
+    // Expose method for parent to set field errors
+    defineExpose({
+        setFieldErrors,
+    })
 
     const closeDialog = () => {
         dialogVisible.value = false
@@ -203,6 +261,7 @@
             },
             parent_uuid: undefined,
         }
+        fieldErrors.value = {}
     }
 
     // Watch for dialog visibility changes
@@ -222,5 +281,17 @@
                 initializeFormData()
             }
         }
+    )
+
+    // Watch formData and clear field errors when user edits fields
+    watch(
+        () => formData.value.data,
+        () => {
+            // Clear any field errors when user edits the form
+            if (Object.keys(fieldErrors.value).length > 0) {
+                fieldErrors.value = {}
+            }
+        },
+        { deep: true }
     )
 </script>

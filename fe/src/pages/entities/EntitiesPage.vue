@@ -69,6 +69,7 @@
             />
 
             <EntityEditDialog
+                ref="editDialogRef"
                 v-model="showEditDialog"
                 :entity="selectedEntity"
                 :entity-definition="selectedEntityDefinition"
@@ -151,11 +152,12 @@
     const isComponentMounted = ref(false)
 
     // Dialog refs
-    interface CreateDialogInstance {
+    interface DialogInstance {
         setFieldErrors: (errors: Record<string, string>) => void
     }
 
-    const createDialogRef = ref<CreateDialogInstance | null>(null)
+    const createDialogRef = ref<DialogInstance | null>(null)
+    const editDialogRef = ref<DialogInstance | null>(null)
 
     // EntityTree ref
     interface EntityTreeInstance {
@@ -353,7 +355,24 @@
 
             showSuccess('Entity updated successfully')
         } catch (err) {
-            handleError(err)
+            // Handle structured validation errors - keep dialog open for field errors
+            if (err instanceof ValidationError) {
+                // Convert violations to a field error map
+                const fieldErrors: Record<string, string> = {}
+                for (const violation of err.violations) {
+                    fieldErrors[violation.field] = violation.message
+                }
+
+                // Set field errors on the dialog - keep dialog open
+                if (editDialogRef.value) {
+                    editDialogRef.value.setFieldErrors(fieldErrors)
+                }
+
+                // Error message is handled by global error handler
+                handleError(err)
+            } else {
+                handleError(err)
+            }
         } finally {
             updating.value = false
         }

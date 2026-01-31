@@ -411,10 +411,11 @@ impl DynamicEntityValidator {
     }
 
     /// Validate JSON fields
-    #[allow(clippy::unnecessary_wraps)] // Returns Result for consistency with other validators
-    const fn validate_json(_: &ValidationContext) -> Result<()> {
-        // For JSON fields, we accept any valid JSON
-        // No additional validation needed as Value is already valid JSON
+    /// JSON fields must be objects (not strings, arrays, numbers, etc.)
+    fn validate_json(ctx: &ValidationContext) -> Result<()> {
+        if !ctx.value.is_object() {
+            return Err(ctx.create_validation_error("must be an object"));
+        }
         Ok(())
     }
 }
@@ -544,9 +545,19 @@ pub fn validate_entity_with_violations(
         if let Some(field_def) = entity_def.get_field(field_name) {
             let _ = ValidationContext::with_field_name(field_def, value, field_name);
             if let Err(e) = DynamicEntityValidator::validate_field(field_def, value) {
+                // Extract just the inner message from the Error::Validation variant
+                // and strip the "Field 'x' " prefix if present for cleaner violation messages
+                let message = match e {
+                    crate::error::Error::Validation(msg) => {
+                        // Strip "Field 'field_name' " prefix if present
+                        let prefix = format!("Field '{field_name}' ");
+                        msg.strip_prefix(&prefix).unwrap_or(&msg).to_string()
+                    }
+                    other => other.to_string(),
+                };
                 violations.push(FieldViolation {
                     field: field_name.clone(),
-                    message: e.to_string(),
+                    message,
                 });
             }
         } else {
