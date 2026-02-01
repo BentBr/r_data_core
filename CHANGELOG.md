@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.4](https://github.com/BentBr/r_data_core/compare/core-v0.4.3...core-v0.4.4) (2026-02-01)
+
+
+### Features
+
+* allowing literals: [@literal](https://github.com/literal):true, [@literal](https://github.com/literal):"string text" [@literal](https://github.com/literal):123 ([feb5ddf](https://github.com/BentBr/r_data_core/commit/feb5ddf0b08c50a0c3ac6b51a43760af7d062e0a))
+
+
+### Bug Fixes
+
+* icons in fe fit to the choosen type ([2dbae64](https://github.com/BentBr/r_data_core/commit/2dbae64c22f00901b78b08e62328954f2184fc2b))
+* making sure json is not generally handled as objects ([c35af40](https://github.com/BentBr/r_data_core/commit/c35af40a88308836c66f18cfbd224a61b6ac9516))
+* updates accept correct datetime ([fd99c5b](https://github.com/BentBr/r_data_core/commit/fd99c5bb21a67333ff66ce997d1c214c61f76b02))
+
 ## [0.4.3](https://github.com/BentBr/r_data_core/compare/core-v0.4.2...core-v0.4.3) (2026-01-31)
 
 
