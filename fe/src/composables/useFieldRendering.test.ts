@@ -179,12 +179,12 @@ describe('useFieldRendering', () => {
 
         it('should return correct icon for Json field', () => {
             const { getFieldIcon } = useFieldRendering()
-            expect(getFieldIcon('Json')).toBe('code')
+            expect(getFieldIcon('Json')).toBe('braces')
         })
 
         it('should return correct icon for Object field', () => {
             const { getFieldIcon } = useFieldRendering()
-            expect(getFieldIcon('Object')).toBe('code')
+            expect(getFieldIcon('Object')).toBe('box')
         })
 
         it('should return correct icon for Array field', () => {

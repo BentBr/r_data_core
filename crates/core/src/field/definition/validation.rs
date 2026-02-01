@@ -680,7 +680,10 @@ mod tests {
             let value = json!([1, 2, 3]);
             let result = field.validate_value(&value);
             assert!(result.is_err());
-            assert!(result.unwrap_err().to_string().contains("must be an object"));
+            assert!(result
+                .unwrap_err()
+                .to_string()
+                .contains("must be an object"));
         }
 
         #[test]

@@ -85,6 +85,7 @@ export function useFieldRendering() {
 
     /**
      * Gets the icon for a field type
+     * Icon mappings must match EntityDefinitionFields.vue for consistency
      */
     const getFieldIcon = (fieldType: string): string => {
         const iconMap: Record<string, string> = {
@@ -101,8 +102,8 @@ export function useFieldRendering() {
             Url: 'link',
             File: 'file',
             Image: 'image',
-            Json: 'code',
-            Object: 'code',
+            Json: 'braces',
+            Object: 'box',
             Array: 'list',
             Uuid: 'hash',
             ManyToOne: 'link',
