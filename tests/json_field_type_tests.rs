@@ -147,7 +147,7 @@ mod json_field_type_tests {
     #[test]
     fn test_json_field_accepts_float() {
         let entity_def = create_entity_definition_with_field("data", FieldType::Json);
-        let entity = create_test_entity("data", json!(3.14159), entity_def);
+        let entity = create_test_entity("data", json!(84.234), entity_def);
 
         let result = entity.validate();
         assert!(result.is_ok(), "Json field should accept float: {result:?}");
