@@ -202,3 +202,111 @@ fn merge_objects(target: &mut Value, addition: &Value) {
         }
     }
 }
+
+/// Prefix for literal values in mapping
+pub const LITERAL_PREFIX: &str = "@literal:";
+
+/// Parse a literal value from a mapping source string
+///
+/// Literal values use the `@literal:` prefix followed by a JSON value.
+/// This allows setting constant values in entity mappings without reading from input data.
+///
+/// # Examples
+/// - `@literal:true` → `Value::Bool(true)`
+/// - `@literal:false` → `Value::Bool(false)`
+/// - `@literal:"string"` → `Value::String("string")`
+/// - `@literal:123` → `Value::Number(123)`
+/// - `@literal:null` → `Value::Null`
+///
+/// # Arguments
+/// * `source` - The source string from mapping (e.g., `@literal:true` or `field_name`)
+///
+/// # Returns
+/// `Some(Value)` if the source is a literal value, `None` if it's a field reference
+pub fn parse_literal_value(source: &str) -> Option<Value> {
+    if !source.starts_with(LITERAL_PREFIX) {
+        return None;
+    }
+
+    let json_str = &source[LITERAL_PREFIX.len()..];
+
+    // Parse the JSON value
+    serde_json::from_str(json_str).ok()
+}
+
+#[cfg(test)]
+mod literal_value_tests {
+    use super::*;
+
+    #[test]
+    fn test_literal_true() {
+        let result = parse_literal_value("@literal:true");
+        assert_eq!(result, Some(Value::Bool(true)));
+    }
+
+    #[test]
+    fn test_literal_false() {
+        let result = parse_literal_value("@literal:false");
+        assert_eq!(result, Some(Value::Bool(false)));
+    }
+
+    #[test]
+    fn test_literal_string() {
+        let result = parse_literal_value("@literal:\"hello world\"");
+        assert_eq!(result, Some(Value::String("hello world".to_string())));
+    }
+
+    #[test]
+    fn test_literal_number_integer() {
+        let result = parse_literal_value("@literal:42");
+        assert_eq!(result, Some(serde_json::json!(42)));
+    }
+
+    #[test]
+    fn test_literal_number_float() {
+        let result = parse_literal_value("@literal:3.5");
+        assert_eq!(result, Some(serde_json::json!(3.5)));
+    }
+
+    #[test]
+    fn test_literal_null() {
+        let result = parse_literal_value("@literal:null");
+        assert_eq!(result, Some(Value::Null));
+    }
+
+    #[test]
+    fn test_literal_array() {
+        let result = parse_literal_value("@literal:[1, 2, 3]");
+        assert_eq!(result, Some(serde_json::json!([1, 2, 3])));
+    }
+
+    #[test]
+    fn test_literal_object() {
+        let result = parse_literal_value("@literal:{\"key\": \"value\"}");
+        assert_eq!(result, Some(serde_json::json!({"key": "value"})));
+    }
+
+    #[test]
+    fn test_not_literal_returns_none() {
+        let result = parse_literal_value("field_name");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_not_literal_with_at_sign() {
+        let result = parse_literal_value("@field_name");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_invalid_json_returns_none() {
+        let result = parse_literal_value("@literal:invalid");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_empty_literal_returns_none() {
+        let result = parse_literal_value("@literal:");
+        assert_eq!(result, None);
+    }
+}

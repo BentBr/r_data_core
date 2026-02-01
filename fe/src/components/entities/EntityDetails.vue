@@ -393,6 +393,7 @@
     )
 
     const getFieldIcon = (fieldType: string) => {
+        // Icon mappings must match EntityDefinitionFields.vue for consistency
         const iconMap: Record<string, string> = {
             String: 'type',
             Text: 'file-text',
@@ -407,7 +408,14 @@
             Url: 'link',
             File: 'file',
             Image: 'image',
-            Json: 'code',
+            Json: 'braces',
+            Object: 'box',
+            Array: 'list',
+            Uuid: 'hash',
+            ManyToOne: 'link',
+            ManyToMany: 'link-2',
+            Select: 'list-checks',
+            MultiSelect: 'list-checks',
         }
         return iconMap[fieldType] || 'type'
     }
@@ -426,8 +434,19 @@
             case 'Time':
                 return new Date(`2000-01-01T${value}`).toLocaleTimeString()
             case 'Json':
-                return typeof value === 'object' ? JSON.stringify(value) : String(value)
+            case 'Object':
+            case 'Array':
+                // Always stringify JSON/Object/Array types to show actual content
+                if (typeof value === 'object') {
+                    return JSON.stringify(value)
+                }
+                return String(value)
             default:
+                // Handle edge case: value is object/array but field type is String/Text
+                // This prevents "[object Object]" from being shown
+                if (typeof value === 'object') {
+                    return JSON.stringify(value)
+                }
                 return String(value)
         }
     }

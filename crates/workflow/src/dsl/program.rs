@@ -654,7 +654,11 @@ impl DslProgram {
             let mut sorted_mapping: Vec<_> = out_mapping.iter().collect();
             sorted_mapping.sort_by_key(|(dst, _)| *dst);
             for (dst, src) in sorted_mapping {
-                let v = execution::get_nested(normalized, src).unwrap_or(Value::Null);
+                // Check if the source is a literal value (e.g., @literal:true)
+                // Otherwise, read from the normalized input data
+                let v = execution::parse_literal_value(src)
+                    .or_else(|| execution::get_nested(normalized, src))
+                    .unwrap_or(Value::Null);
                 execution::set_nested(&mut produced, dst, v);
             }
             produced
