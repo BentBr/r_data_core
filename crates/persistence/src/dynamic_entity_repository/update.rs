@@ -1,6 +1,7 @@
 use serde_json::Value as JsonValue;
 use sqlx::Postgres;
 use sqlx::{Row, Transaction};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::dynamic_entity_utils;
@@ -9,6 +10,12 @@ use r_data_core_core::error::Result;
 use r_data_core_core::DynamicEntity;
 
 use super::DynamicEntityRepository;
+
+/// Try to parse a string as an ISO 8601 / RFC 3339 timestamp
+/// Returns Some(OffsetDateTime) if successful, None otherwise
+fn try_parse_timestamp(s: &str) -> Option<OffsetDateTime> {
+    OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339).ok()
+}
 
 /// Update an existing dynamic entity
 ///
@@ -254,7 +261,13 @@ async fn update_entity_table(
             if let Some(bool_val) = json_value.as_bool() {
                 entity_query = entity_query.bind(bool_val);
             } else if let Some(s) = json_value.as_str() {
-                entity_query = entity_query.bind(s);
+                // Try to parse as timestamp first (for DateTime/Date columns)
+                // ISO 8601 / RFC 3339 timestamps like "2026-01-31T19:26:08.971926Z"
+                if let Some(ts) = try_parse_timestamp(s) {
+                    entity_query = entity_query.bind(ts);
+                } else {
+                    entity_query = entity_query.bind(s);
+                }
             } else if let Some(n) = json_value.as_i64() {
                 entity_query = entity_query.bind(n);
             } else if let Some(n) = json_value.as_f64() {
@@ -274,4 +287,66 @@ async fn update_entity_table(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod try_parse_timestamp_tests {
+        use super::*;
+
+        #[test]
+        fn test_parse_rfc3339_with_z() {
+            let result = try_parse_timestamp("2026-01-31T19:26:08.971926Z");
+            assert!(result.is_some());
+            let ts = result.unwrap();
+            assert_eq!(ts.year(), 2026);
+            assert_eq!(ts.month() as u8, 1);
+            assert_eq!(ts.day(), 31);
+        }
+
+        #[test]
+        fn test_parse_rfc3339_with_offset() {
+            let result = try_parse_timestamp("2026-01-31T19:26:08+00:00");
+            assert!(result.is_some());
+        }
+
+        #[test]
+        fn test_parse_rfc3339_no_fractional_seconds() {
+            let result = try_parse_timestamp("2026-01-31T19:26:08Z");
+            assert!(result.is_some());
+        }
+
+        #[test]
+        fn test_parse_regular_string_returns_none() {
+            let result = try_parse_timestamp("hello world");
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn test_parse_date_only_returns_none() {
+            // Date-only strings are not valid RFC 3339
+            let result = try_parse_timestamp("2026-01-31");
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn test_parse_uuid_returns_none() {
+            let result = try_parse_timestamp("550e8400-e29b-41d4-a716-446655440000");
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn test_parse_empty_string_returns_none() {
+            let result = try_parse_timestamp("");
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn test_parse_url_returns_none() {
+            let result = try_parse_timestamp("https://example.com");
+            assert!(result.is_none());
+        }
+    }
 }
