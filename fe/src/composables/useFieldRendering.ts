@@ -115,6 +115,7 @@ export function useFieldRendering() {
 
     /**
      * Formats a field value for display based on its type
+     * Also handles edge cases where the value type doesn't match the field type
      */
     const formatFieldValue = (value: unknown, fieldType: string): string => {
         if (value === null || value === undefined) {
@@ -135,6 +136,11 @@ export function useFieldRendering() {
             case 'Array':
                 return Array.isArray(value) ? `[${value.length} items]` : String(value)
             default:
+                // Handle edge case: value is object/array but field type is String/Text
+                // This can happen when field type is misconfigured or data was migrated
+                if (typeof value === 'object') {
+                    return JSON.stringify(value)
+                }
                 return String(value)
         }
     }
@@ -232,6 +238,19 @@ export function useFieldRendering() {
         return String(value)
     }
 
+    /**
+     * Gets a user-friendly display name for a field type
+     * Maps internal type names to clearer display names
+     */
+    const getFieldTypeDisplayName = (fieldType: string): string => {
+        const displayNameMap: Record<string, string> = {
+            Object: 'Json Object',
+            Array: 'Json Array',
+            Json: 'Json (any)',
+        }
+        return displayNameMap[fieldType] || fieldType
+    }
+
     return {
         getFieldComponent,
         getFieldRules,
@@ -241,5 +260,6 @@ export function useFieldRendering() {
         isJsonFieldType,
         parseJsonFieldValue,
         stringifyJsonFieldValue,
+        getFieldTypeDisplayName,
     }
 }

@@ -271,6 +271,50 @@ describe('useFieldRendering', () => {
             expect(formatFieldValue(123, 'String')).toBe('123')
             expect(formatFieldValue('text', 'String')).toBe('text')
         })
+
+        // Edge case tests: object/array values with non-JSON field types
+        // This handles misconfigured field types where value is object but type is String
+
+        it('should handle object values with String field type (edge case)', () => {
+            const { formatFieldValue } = useFieldRendering()
+            const value = [
+                { entity_type: 'Puh', count: 7 },
+                { entity_type: 'customer', count: 3006 },
+            ]
+            const result = formatFieldValue(value, 'String')
+            // Should NOT produce "[object Object],[object Object]"
+            expect(result).not.toContain('[object Object]')
+            expect(result).toBe(JSON.stringify(value))
+        })
+
+        it('should handle array values with Text field type (edge case)', () => {
+            const { formatFieldValue } = useFieldRendering()
+            const value = ['*', 'https://example.com']
+            const result = formatFieldValue(value, 'Text')
+            expect(result).not.toContain('[object Object]')
+            expect(result).toBe(JSON.stringify(value))
+        })
+
+        it('should handle nested object values with unknown field type', () => {
+            const { formatFieldValue } = useFieldRendering()
+            const value = { count: 10, names: ['Test'] }
+            const result = formatFieldValue(value, 'UnknownType')
+            expect(result).toBe(JSON.stringify(value))
+        })
+
+        it('should handle entity count array with incorrect String field type', () => {
+            // This is the exact edge case from the statistics submission
+            const { formatFieldValue } = useFieldRendering()
+            const value = [
+                { entity_type: 'Puh', count: 7 },
+                { entity_type: 'customer', count: 3006 },
+                { entity_type: 'user', count: 1 },
+            ]
+            const result = formatFieldValue(value, 'String')
+            expect(result).not.toContain('[object Object]')
+            expect(result).toContain('"entity_type":"Puh"')
+            expect(result).toContain('"count":3006')
+        })
     })
 
     describe('getInputType', () => {

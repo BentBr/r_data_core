@@ -57,6 +57,8 @@
                                 data-test="field_type"
                                 name="field_type"
                                 :items="fieldTypes"
+                                item-title="title"
+                                item-value="value"
                                 :label="t('entity_definitions.fields.field_type')"
                                 :rules="[
                                     v => !!v ?? t('entity_definitions.fields.field_type_required'),
@@ -217,24 +219,24 @@
     const formRef = ref<HTMLFormElement | null>(null)
 
     const fieldTypes = [
-        'String',
-        'Text',
-        'Wysiwyg',
-        'Integer',
-        'Float',
-        'Boolean',
-        'Date',
-        'DateTime',
-        'Object',
-        'Array',
-        'Uuid',
-        'Json',
-        'ManyToOne',
-        'ManyToMany',
-        'Select',
-        'MultiSelect',
-        'Image',
-        'File',
+        { title: 'String', value: 'String' },
+        { title: 'Text', value: 'Text' },
+        { title: 'Wysiwyg', value: 'Wysiwyg' },
+        { title: 'Integer', value: 'Integer' },
+        { title: 'Float', value: 'Float' },
+        { title: 'Boolean', value: 'Boolean' },
+        { title: 'Date', value: 'Date' },
+        { title: 'DateTime', value: 'DateTime' },
+        { title: 'Json (any)', value: 'Json' },
+        { title: 'Json Object', value: 'Object' },
+        { title: 'Json Array', value: 'Array' },
+        { title: 'Uuid', value: 'Uuid' },
+        { title: 'ManyToOne', value: 'ManyToOne' },
+        { title: 'ManyToMany', value: 'ManyToMany' },
+        { title: 'Select', value: 'Select' },
+        { title: 'MultiSelect', value: 'MultiSelect' },
+        { title: 'Image', value: 'Image' },
+        { title: 'File', value: 'File' },
     ]
 
     const form = ref<FieldDefinition>({

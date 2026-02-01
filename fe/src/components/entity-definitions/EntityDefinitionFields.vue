@@ -69,7 +69,7 @@
                             size="small"
                             class="mr-2"
                         >
-                            {{ item.field_type }}
+                            {{ getFieldTypeDisplayName(item.field_type) }}
                         </Badge>
                         <SmartIcon
                             v-if="item.required"
@@ -200,5 +200,14 @@
             File: 'brown',
         }
         return colorMap[fieldType] || 'primary'
+    }
+
+    const getFieldTypeDisplayName = (fieldType: string) => {
+        const displayNameMap: Record<string, string> = {
+            Object: 'Json Object',
+            Array: 'Json Array',
+            Json: 'Json (any)',
+        }
+        return displayNameMap[fieldType] || fieldType
     }
 </script>
