@@ -1,7 +1,7 @@
 name: Build and Publish Docker Images
 
 on:
-  # Keep release trigger for manual releases (not via release-please)
+  # Keep the release trigger for manual releases (not via release-please)
   release:
     types: [published]
   # Build on develop push
@@ -41,39 +41,18 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  # Build all backend images in a single job to share the compiled Rust artifacts
-  build-backend:
+  # Determine build configuration (shared by all jobs)
+  prepare:
     if: ${{ github.event_name != 'workflow_call' || inputs.build_backend != false }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-      attestations: write
-
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      is_release: ${{ steps.tag.outputs.is_release }}
+      owner_lc: ${{ steps.repo.outputs.owner_lc }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Set lowercase repo owner
         id: repo
         run: echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: linux/amd64,linux/arm64
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Determine tag
         id: tag
         run: |
@@ -91,58 +70,135 @@ jobs:
             echo "is_release=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build and push backend images
+  # Build AMD64 backend images on native amd64 runner
+  build-backend-amd64:
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push AMD64 backend images
         uses: docker/bake-action@v6
         with:
           files: .docker/docker-bake.hcl
-          targets: backend
+          targets: backend-amd64
           provenance: true
           set: |
-            *.cache-from=type=gha
-            *.cache-to=type=gha,mode=max
+            *.cache-from=type=gha,scope=backend-amd64
+            *.cache-to=type=gha,mode=max,scope=backend-amd64
         env:
           REGISTRY: ${{ env.REGISTRY }}
-          REPO_OWNER: ${{ steps.repo.outputs.owner_lc }}
-          TAG: ${{ steps.tag.outputs.tag }}
+          REPO_OWNER: ${{ needs.prepare.outputs.owner_lc }}
+          TAG: ${{ needs.prepare.outputs.tag }}
 
-      # Also push 'latest' tag for releases
-      - name: Push latest tags for releases
-        if: steps.tag.outputs.is_release == 'true'
+  # Build ARM64 backend images on native arm64 runner
+  build-backend-arm64:
+    needs: prepare
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push ARM64 backend images
         uses: docker/bake-action@v6
         with:
           files: .docker/docker-bake.hcl
-          targets: backend
+          targets: backend-arm64
           provenance: true
           set: |
-            *.cache-from=type=gha
+            *.cache-from=type=gha,scope=backend-arm64
+            *.cache-to=type=gha,mode=max,scope=backend-arm64
         env:
           REGISTRY: ${{ env.REGISTRY }}
-          REPO_OWNER: ${{ steps.repo.outputs.owner_lc }}
-          TAG: latest
+          REPO_OWNER: ${{ needs.prepare.outputs.owner_lc }}
+          TAG: ${{ needs.prepare.outputs.tag }}
 
+  # Merge architecture-specific images into multi-arch manifests
+  merge-backend-manifests:
+    needs: [prepare, build-backend-amd64, build-backend-arm64]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create multi-arch manifests
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          OWNER: ${{ needs.prepare.outputs.owner_lc }}
+        run: |
+          for image in r-data-core r-data-core-worker r-data-core-maintenance; do
+            echo "Creating multi-arch manifest for ${image}:${TAG}..."
+            docker buildx imagetools create -t ${{ env.REGISTRY }}/${OWNER}/${image}:${TAG} \
+              ${{ env.REGISTRY }}/${OWNER}/${image}:${TAG}-amd64 \
+              ${{ env.REGISTRY }}/${OWNER}/${image}:${TAG}-arm64
+          done
+      - name: Create latest manifests for releases
+        if: needs.prepare.outputs.is_release == 'true'
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          OWNER: ${{ needs.prepare.outputs.owner_lc }}
+        run: |
+          for image in r-data-core r-data-core-worker r-data-core-maintenance; do
+            echo "Creating multi-arch manifest for ${image}:latest..."
+            docker buildx imagetools create -t ${{ env.REGISTRY }}/${OWNER}/${image}:latest \
+              ${{ env.REGISTRY }}/${OWNER}/${image}:${TAG}-amd64 \
+              ${{ env.REGISTRY }}/${OWNER}/${image}:${TAG}-arm64
+          done
       - name: Verify backend multi-arch manifests
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          OWNER: ${{ needs.prepare.outputs.owner_lc }}
         run: |
           echo "Verifying multi-arch manifests for backend images..."
-
           for image in r-data-core r-data-core-worker r-data-core-maintenance; do
-            echo "Checking $image:${{ steps.tag.outputs.tag }}..."
-            docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/${image}:${{ steps.tag.outputs.tag }}
-
+            echo "Checking $image:${TAG}..."
+            docker buildx imagetools inspect ${{ env.REGISTRY }}/${OWNER}/${image}:${TAG}
             # Verify both architectures are present
-            if docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/${image}:${{ steps.tag.outputs.tag }} | grep -q "linux/amd64" && \
-               docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/${image}:${{ steps.tag.outputs.tag }} | grep -q "linux/arm64"; then
+            if docker buildx imagetools inspect ${{ env.REGISTRY }}/${OWNER}/${image}:${TAG} | grep -q "linux/amd64" && \
+               docker buildx imagetools inspect ${{ env.REGISTRY }}/${OWNER}/${image}:${TAG} | grep -q "linux/arm64"; then
               echo "✓ Both linux/amd64 and linux/arm64 architectures found for ${image}"
             else
               echo "✗ Missing architecture for ${image}"
               exit 1
             fi
           done
-
       - name: Resolve backend manifest digest (r-data-core)
         id: backend-digest
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          OWNER: ${{ needs.prepare.outputs.owner_lc }}
         run: |
           set -u
-          IMAGE="${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core:${{ steps.tag.outputs.tag }}"
+          IMAGE="${{ env.REGISTRY }}/${OWNER}/r-data-core:${TAG}"
           echo "Resolving digest for: $IMAGE"
           INSPECT_OUT="$(docker buildx imagetools inspect "$IMAGE" 2>&1)"
           INSPECT_EXIT=$?
@@ -152,7 +208,6 @@ jobs:
             exit $INSPECT_EXIT
           fi
           echo "$INSPECT_OUT"
-
           DIGEST="$(echo "$INSPECT_OUT" | sed -nE 's/^[[:space:]]*Digest:[[:space:]]+//p' | head -n1)"
           if [[ -z "${DIGEST}" ]]; then
             echo "Failed to resolve digest for $IMAGE"
@@ -163,11 +218,10 @@ jobs:
             exit 1
           fi
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
-
       - name: Generate artifact attestation for r-data-core
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core
+          subject-name: ${{ env.REGISTRY }}/${{ needs.prepare.outputs.owner_lc }}/r-data-core
           subject-digest: ${{ steps.backend-digest.outputs.digest }}
           push-to-registry: true
         continue-on-error: true
@@ -181,30 +235,24 @@ jobs:
       packages: write
       id-token: write
       attestations: write
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set lowercase repo owner
         id: repo
         run: echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
           platforms: linux/amd64,linux/arm64
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Extract metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v5
@@ -223,7 +271,6 @@ jobs:
             type=sha,prefix=develop-,enable=${{ github.ref == 'refs/heads/develop' && inputs.version == '' }}
             # On manual dispatch
             type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.version == '' }}
-
       - name: Build and push
         id: build-push
         uses: docker/build-push-action@v6
@@ -238,16 +285,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: true
-
       - name: Verify frontend multi-arch manifest
         run: |
           echo "Verifying multi-arch manifest for frontend image..."
-
           # Use the image digest to inspect
           IMAGE_REF="${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core-admin-fe@${{ steps.build-push.outputs.digest }}"
           echo "Inspecting: $IMAGE_REF"
           docker buildx imagetools inspect "$IMAGE_REF"
-
           # Verify both architectures are present
           if docker buildx imagetools inspect "$IMAGE_REF" | grep -q "linux/amd64" && \
              docker buildx imagetools inspect "$IMAGE_REF" | grep -q "linux/arm64"; then
@@ -256,7 +300,6 @@ jobs:
             echo "✗ Missing architecture for frontend image"
             exit 1
           fi
-
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:
@@ -267,32 +310,21 @@ jobs:
 
   # Summary job that runs after images are built
   publish-summary:
-    needs: [build-backend, build-frontend]
+    needs: [prepare, merge-backend-manifests, build-frontend]
     runs-on: ubuntu-latest
-    if: always() && (needs.build-backend.result == 'success' || needs.build-frontend.result == 'success')
+    if: always() && (needs.merge-backend-manifests.result == 'success' || needs.build-frontend.result == 'success')
     steps:
       - name: Summary
         env:
-          BACKEND_RESULT: ${{ needs.build-backend.result }}
+          BACKEND_RESULT: ${{ needs.merge-backend-manifests.result }}
           FRONTEND_RESULT: ${{ needs.build-frontend.result }}
+          OWNER_LC: ${{ needs.prepare.outputs.owner_lc }}
+          TAG: ${{ needs.prepare.outputs.tag }}
         run: |
-          OWNER_LC="${GITHUB_REPOSITORY_OWNER,,}"
           echo "## Docker Images Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
-          if [ -n "${{ inputs.version }}" ]; then
-            TAG="${{ inputs.tag_name }}"
-          elif [ "${{ github.event_name }}" == "release" ]; then
-            TAG="${{ github.event.release.tag_name }}"
-          elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
-            TAG="develop"
-          else
-            TAG="${{ inputs.tag }}"
-          fi
-
           echo "| Image | Tag | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|-----|--------|" >> $GITHUB_STEP_SUMMARY
-
           if [ "$BACKEND_RESULT" == "success" ]; then
             echo "| \`ghcr.io/${OWNER_LC}/r-data-core\` | \`${TAG}\` | ✅ |" >> $GITHUB_STEP_SUMMARY
             echo "| \`ghcr.io/${OWNER_LC}/r-data-core-worker\` | \`${TAG}\` | ✅ |" >> $GITHUB_STEP_SUMMARY
@@ -302,13 +334,11 @@ jobs:
             echo "| \`ghcr.io/${OWNER_LC}/r-data-core-worker\` | - | ⏭️ skipped |" >> $GITHUB_STEP_SUMMARY
             echo "| \`ghcr.io/${OWNER_LC}/r-data-core-maintenance\` | - | ⏭️ skipped |" >> $GITHUB_STEP_SUMMARY
           fi
-
           if [ "$FRONTEND_RESULT" == "success" ]; then
             echo "| \`ghcr.io/${OWNER_LC}/r-data-core-admin-fe\` | \`${TAG}\` | ✅ |" >> $GITHUB_STEP_SUMMARY
           elif [ "$FRONTEND_RESULT" == "skipped" ]; then
             echo "| \`ghcr.io/${OWNER_LC}/r-data-core-admin-fe\` | - | ⏭️ skipped |" >> $GITHUB_STEP_SUMMARY
           fi
-
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Usage" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
@@ -332,22 +362,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: fe/package-lock.json
-
       - name: Install dependencies
         working-directory: fe
         run: npm ci
-
       - name: Build frontend
         working-directory: fe
         run: npm run build
-
       - name: Determine version
         id: version
         run: |
@@ -358,12 +384,10 @@ jobs:
             echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
             echo "tag_name=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
           fi
-
       - name: Create ZIP archive
         run: |
           cd fe/dist
           zip -r ../../r-data-core-admin-fe-${{ steps.version.outputs.version }}.zip .
-
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
