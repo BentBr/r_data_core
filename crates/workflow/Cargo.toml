@@ -17,7 +17,7 @@ regex = "1.10"
 utoipa = { version = "5.4.0", features = ["time", "uuid"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 log = "0.4"
-bytes = "1.6"
+bytes = "1.11.1"
 futures = "0.3"
 redis = { version = "0.32", features = ["tokio-comp", "connection-manager"] }
 actix-web = "4.5"
