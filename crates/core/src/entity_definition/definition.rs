@@ -450,6 +450,22 @@ impl EntityDefinition {
             }
         }
 
+        // Add unique indexes for fields marked as unique
+        for field in &self.fields {
+            if field.validation.unique == Some(true) {
+                let field_name = &field.name;
+                // Skip relation fields as they're handled separately
+                if matches!(
+                    field.field_type,
+                    FieldType::ManyToMany | FieldType::ManyToOne
+                ) {
+                    continue;
+                }
+                sql.push_str("-- UNIQUE: Field unique constraint\n");
+                let _ = write!(sql, "CREATE UNIQUE INDEX IF NOT EXISTS idx_{table_name}_{field_name}_unique ON {table_name} ({field_name});\n\n");
+            }
+        }
+
         sql
     }
 
@@ -464,5 +480,100 @@ impl EntityDefinition {
     #[must_use]
     pub fn generate_sql_schema(&self) -> String {
         self.generate_schema_sql()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::field::ui::UiSettings;
+    use crate::field::FieldDefinition;
+
+    fn create_test_entity_definition() -> EntityDefinition {
+        EntityDefinition {
+            uuid: Uuid::now_v7(),
+            entity_type: "test".to_string(),
+            display_name: "Test Entity".to_string(),
+            description: None,
+            group_name: None,
+            allow_children: false,
+            icon: None,
+            fields: vec![FieldDefinition {
+                name: "name".to_string(),
+                display_name: "Name".to_string(),
+                field_type: FieldType::String,
+                description: None,
+                required: false,
+                indexed: false,
+                filterable: false,
+                default_value: None,
+                validation: crate::field::options::FieldValidation::default(),
+                ui_settings: UiSettings::default(),
+                constraints: std::collections::HashMap::new(),
+            }],
+            schema: Schema::default(),
+            created_at: time::OffsetDateTime::now_utc(),
+            updated_at: time::OffsetDateTime::now_utc(),
+            created_by: Uuid::nil(),
+            updated_by: None,
+            published: false,
+            version: 1,
+        }
+    }
+
+    #[test]
+    fn test_generate_schema_sql_includes_unique_index() {
+        let mut def = create_test_entity_definition();
+        def.fields[0].validation.unique = Some(true);
+
+        let sql = def.generate_schema_sql();
+
+        assert!(
+            sql.contains("CREATE UNIQUE INDEX IF NOT EXISTS idx_entity_test_name_unique"),
+            "SQL should contain unique index creation"
+        );
+        assert!(
+            sql.contains("ON entity_test (name)"),
+            "SQL should specify correct table and column"
+        );
+    }
+
+    #[test]
+    fn test_generate_schema_sql_no_unique_index_when_false() {
+        let mut def = create_test_entity_definition();
+        def.fields[0].validation.unique = Some(false);
+
+        let sql = def.generate_schema_sql();
+
+        assert!(
+            !sql.contains("_unique"),
+            "SQL should not contain unique index when unique is false"
+        );
+    }
+
+    #[test]
+    fn test_generate_schema_sql_no_unique_index_when_none() {
+        let def = create_test_entity_definition();
+        // validation.unique is None by default
+
+        let sql = def.generate_schema_sql();
+
+        assert!(
+            !sql.contains("_unique"),
+            "SQL should not contain unique index when unique is None"
+        );
+    }
+
+    #[test]
+    fn test_generate_schema_sql_unique_index_comment() {
+        let mut def = create_test_entity_definition();
+        def.fields[0].validation.unique = Some(true);
+
+        let sql = def.generate_schema_sql();
+
+        assert!(
+            sql.contains("-- UNIQUE: Field unique constraint"),
+            "SQL should contain unique constraint comment"
+        );
     }
 }

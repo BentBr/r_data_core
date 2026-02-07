@@ -409,7 +409,18 @@
             "display_name_required": "Display name is required",
             "field_type_required": "Field type is required",
             "update": "Update",
-            "add": "Add"
+            "add": "Add",
+            "validation_options": "Validation",
+            "min_length": "Min Length",
+            "max_length": "Max Length",
+            "pattern": "Pattern (Regex)",
+            "pattern_hint": "Regular expression for validation",
+            "email_format": "Email Format",
+            "min_value": "Min Value",
+            "max_value": "Max Value",
+            "positive_only": "Positive Only",
+            "unique": "Unique",
+            "unique_hint": "Each entity must have a unique value for this field"
         },
         "table": {
             "entity_type": "Entity Type",

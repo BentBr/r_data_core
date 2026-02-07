@@ -283,10 +283,38 @@ async fn update_entity_table(
         // Always bind UUID
         entity_query = entity_query.bind(uuid);
 
-        entity_query.execute(&mut **tx).await?;
+        let result = entity_query.execute(&mut **tx).await;
+
+        // Handle unique constraint violations
+        if let Err(e) = result {
+            if let sqlx::Error::Database(db_err) = &e {
+                // Postgres unique_violation code
+                if db_err.code().as_deref() == Some("23505") {
+                    let field_name =
+                        extract_field_from_unique_constraint(db_err.constraint(), &table_name);
+                    return Err(r_data_core_core::error::Error::ValidationFailed(format!(
+                        "Field '{field_name}' must be unique. A record with this value already exists."
+                    )));
+                }
+            }
+            return Err(r_data_core_core::error::Error::Database(e));
+        }
     }
 
     Ok(())
+}
+
+/// Extract field name from unique constraint name
+/// Constraint format: idx_{table}_{field}_unique
+fn extract_field_from_unique_constraint(constraint: Option<&str>, table_name: &str) -> String {
+    if let Some(constraint_name) = constraint {
+        let prefix = format!("idx_{table_name}_");
+        let suffix = "_unique";
+        if constraint_name.starts_with(&prefix) && constraint_name.ends_with(suffix) {
+            return constraint_name[prefix.len()..constraint_name.len() - suffix.len()].to_string();
+        }
+    }
+    "unknown".to_string()
 }
 
 #[cfg(test)]
@@ -347,6 +375,34 @@ mod tests {
         fn test_parse_url_returns_none() {
             let result = try_parse_timestamp("https://example.com");
             assert!(result.is_none());
+        }
+    }
+
+    mod extract_field_from_unique_constraint_tests {
+        use super::*;
+
+        #[test]
+        fn test_extract_field_from_valid_constraint() {
+            let result = extract_field_from_unique_constraint(
+                Some("idx_entity_customer_email_unique"),
+                "entity_customer",
+            );
+            assert_eq!(result, "email");
+        }
+
+        #[test]
+        fn test_extract_field_from_constraint_with_underscores() {
+            let result = extract_field_from_unique_constraint(
+                Some("idx_entity_test_my_field_unique"),
+                "entity_test",
+            );
+            assert_eq!(result, "my_field");
+        }
+
+        #[test]
+        fn test_extract_field_from_none_constraint() {
+            let result = extract_field_from_unique_constraint(None, "entity_test");
+            assert_eq!(result, "unknown");
         }
     }
 }

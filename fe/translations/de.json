@@ -409,7 +409,18 @@
             "display_name_required": "Anzeigename ist erforderlich",
             "field_type_required": "Feldtyp ist erforderlich",
             "update": "Aktualisieren",
-            "add": "Hinzufügen"
+            "add": "Hinzufügen",
+            "validation_options": "Validierung",
+            "min_length": "Mindestlänge",
+            "max_length": "Maximallänge",
+            "pattern": "Muster (Regex)",
+            "pattern_hint": "Regulärer Ausdruck zur Validierung",
+            "email_format": "E-Mail-Format",
+            "min_value": "Mindestwert",
+            "max_value": "Maximalwert",
+            "positive_only": "Nur positive Werte",
+            "unique": "Eindeutig",
+            "unique_hint": "Jede Entität muss einen eindeutigen Wert für dieses Feld haben"
         },
         "table": {
             "entity_type": "Entitätstyp",

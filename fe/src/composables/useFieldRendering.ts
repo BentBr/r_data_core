@@ -80,6 +80,20 @@ export function useFieldRendering() {
             )
         }
 
+        // String length validation
+        if (field.constraints?.min_length !== undefined) {
+            const minLen = Number(field.constraints.min_length)
+            rules.push(
+                v => !v || String(v).length >= minLen || `Minimum ${minLen} characters required`
+            )
+        }
+        if (field.constraints?.max_length !== undefined) {
+            const maxLen = Number(field.constraints.max_length)
+            rules.push(
+                v => !v || String(v).length <= maxLen || `Maximum ${maxLen} characters allowed`
+            )
+        }
+
         return rules
     }
 

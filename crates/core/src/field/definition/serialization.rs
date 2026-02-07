@@ -88,6 +88,13 @@ impl<'de> Deserialize<'de> for FieldDefinition {
             }
         }
 
+        // Handle unique constraint
+        if let Some(unique) = helper.constraints.get("unique").cloned() {
+            if let Some(unique_val) = unique.as_bool() {
+                helper.validation.unique = Some(unique_val);
+            }
+        }
+
         // Handle options source for Select/MultiSelect fields
         if let Some(options) = helper.constraints.get("options").cloned() {
             if let Some(options_array) = options.as_array() {

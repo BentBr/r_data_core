@@ -62,4 +62,62 @@ pub struct FieldValidation {
 
     /// For select fields: options source
     pub options_source: Option<OptionsSource>,
+
+    /// Whether this field must have unique values within the entity type
+    pub unique: Option<bool>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_field_validation_unique_serialization() {
+        let validation = FieldValidation {
+            unique: Some(true),
+            ..Default::default()
+        };
+
+        let json = serde_json::to_string(&validation).unwrap();
+        assert!(json.contains("\"unique\":true"));
+
+        let deserialized: FieldValidation = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.unique, Some(true));
+    }
+
+    #[test]
+    fn test_field_validation_unique_defaults_to_none() {
+        let validation = FieldValidation::default();
+        assert_eq!(validation.unique, None);
+    }
+
+    #[test]
+    fn test_field_validation_with_all_string_constraints() {
+        let validation = FieldValidation {
+            min_length: Some(5),
+            max_length: Some(100),
+            pattern: Some("^[a-z]+$".to_string()),
+            unique: Some(true),
+            ..Default::default()
+        };
+
+        assert_eq!(validation.min_length, Some(5));
+        assert_eq!(validation.max_length, Some(100));
+        assert_eq!(validation.pattern, Some("^[a-z]+$".to_string()));
+        assert_eq!(validation.unique, Some(true));
+    }
+
+    #[test]
+    fn test_field_validation_unique_false_serialization() {
+        let validation = FieldValidation {
+            unique: Some(false),
+            ..Default::default()
+        };
+
+        let json = serde_json::to_string(&validation).unwrap();
+        assert!(json.contains("\"unique\":false"));
+
+        let deserialized: FieldValidation = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.unique, Some(false));
+    }
 }

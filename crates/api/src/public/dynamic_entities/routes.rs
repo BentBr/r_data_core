@@ -278,10 +278,23 @@ pub async fn create_entity(
                         ApiResponse::<EntityResponse>::created(response_data)
                     }
                     Err(e) => {
-                        // Map unique violation to 409
+                        // Map unique violation to appropriate error response
                         if let r_data_core_core::error::Error::ValidationFailed(msg) = &e {
                             if msg.contains("same key") {
                                 return ApiResponse::<()>::conflict(msg);
+                            }
+                            // Handle unique field constraint violations
+                            if msg.contains("must be unique") {
+                                let field = extract_field_from_unique_message(msg);
+                                let violations = vec![crate::response::ValidationViolation {
+                                    field,
+                                    message: msg.clone(),
+                                    code: Some("UNIQUE_VIOLATION".to_string()),
+                                }];
+                                return ApiResponse::<()>::unprocessable_entity_with_violations(
+                                    "Validation failed",
+                                    violations,
+                                );
                             }
                         }
                         handle_entity_error(e, &entity_type)
@@ -434,6 +447,19 @@ pub async fn update_entity(
                             if msg.contains("same key") {
                                 return ApiResponse::<()>::conflict(msg);
                             }
+                            // Handle unique field constraint violations
+                            if msg.contains("must be unique") {
+                                let field = extract_field_from_unique_message(msg);
+                                let violations = vec![crate::response::ValidationViolation {
+                                    field,
+                                    message: msg.clone(),
+                                    code: Some("UNIQUE_VIOLATION".to_string()),
+                                }];
+                                return ApiResponse::<()>::unprocessable_entity_with_violations(
+                                    "Validation failed",
+                                    violations,
+                                );
+                            }
                         }
                         handle_entity_error(e, &entity_type)
                     }
@@ -486,6 +512,18 @@ pub async fn delete_entity(
     } else {
         ApiResponse::<()>::internal_error("Dynamic entity service not initialized")
     }
+}
+
+/// Extract field name from unique violation message
+/// Message format: "Field '`field_name`' must be unique..."
+fn extract_field_from_unique_message(msg: &str) -> String {
+    if let Some(start) = msg.find("Field '") {
+        let rest = &msg[start + 7..];
+        if let Some(end) = rest.find('\'') {
+            return rest[..end].to_string();
+        }
+    }
+    "unknown".to_string()
 }
 
 /// Helper function to handle entity-related errors
