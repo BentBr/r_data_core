@@ -260,7 +260,10 @@ async fn test_path_parent_integrity_must_always_match() {
     let mut parent_data: HashMap<String, Value> = HashMap::new();
     parent_data.insert("entity_key".to_string(), json!("parent"));
     parent_data.insert("path".to_string(), json!("/Clients/grandparent"));
-    parent_data.insert("parent_uuid".to_string(), json!(grandparent_uuid.to_string()));
+    parent_data.insert(
+        "parent_uuid".to_string(),
+        json!(grandparent_uuid.to_string()),
+    );
     parent_data.insert("key_id".to_string(), json!("p-key"));
     parent_data.insert("published".to_string(), json!(true));
     parent_data.insert("created_by".to_string(), json!(Uuid::now_v7().to_string()));

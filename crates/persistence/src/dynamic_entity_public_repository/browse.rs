@@ -284,7 +284,8 @@ async fn check_folder_children(
     let mut result = HashSet::new();
     for matching_path in matching_paths {
         for folder_path in folder_paths {
-            if matching_path == *folder_path || matching_path.starts_with(&format!("{folder_path}/"))
+            if matching_path == *folder_path
+                || matching_path.starts_with(&format!("{folder_path}/"))
             {
                 result.insert(folder_path.clone());
             }
