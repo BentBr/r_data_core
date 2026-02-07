@@ -82,21 +82,40 @@ async fn create_test_entity_definition(
 }
 
 // Helper to create test entity
+// The `full_path` parameter is the full path to the entity (e.g., "/statistics_instance/license-123").
+// This function parses it into parent_path (stored as `path`) and entity_key.
 fn create_test_entity(
     entity_def: &r_data_core_core::entity_definition::definition::EntityDefinition,
     license_key_id: Option<&str>,
-    path: &str,
+    full_path: &str,
 ) -> r_data_core_core::DynamicEntity {
     use std::collections::HashMap;
     use std::sync::Arc;
 
+    // Parse full_path into parent_path and entity_key
+    // For "/statistics_instance/license-123", this gives parent_path="/statistics_instance", entity_key="license-123"
+    let path_parts: Vec<&str> = full_path
+        .trim_start_matches('/')
+        .split('/')
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    let (parent_path, entity_key) = if path_parts.is_empty() {
+        ("/".to_string(), Uuid::now_v7().to_string())
+    } else if path_parts.len() == 1 {
+        // Root-level entity like "/license-123"
+        ("/".to_string(), path_parts[0].to_string())
+    } else {
+        // Non-root entity like "/statistics_instance/license-123"
+        let parent = format!("/{}", path_parts[0..path_parts.len() - 1].join("/"));
+        let key = path_parts[path_parts.len() - 1].to_string();
+        (parent, key)
+    };
+
     let mut field_data = HashMap::new();
-    // entity_key is a system field, will be set automatically
-    field_data.insert("path".to_string(), json!(path));
-    // entity_key is required - generate one if not provided
-    field_data
-        .entry("entity_key".to_string())
-        .or_insert_with(|| json!(Uuid::now_v7().to_string()));
+    // `path` stores the parent path, not the full path
+    field_data.insert("path".to_string(), json!(parent_path));
+    field_data.insert("entity_key".to_string(), json!(entity_key));
     if let Some(license_id) = license_key_id {
         field_data.insert("license_key_id".to_string(), json!(license_id));
     }

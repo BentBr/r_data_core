@@ -99,11 +99,13 @@ async fn test_execute_async_transform_resolve_entity_path() -> r_data_core_core:
     );
 
     // Create entity with license_key_id
+    // Note: `path` stores the parent path, not the full path.
+    // Full path = path + '/' + entity_key = '/statistics_instance' + '/' + 'license-123'
     let license_key_id = "LICENSE-123";
-    let entity_path = "/statistics_instance/license-123";
+    let entity_path = "/statistics_instance/license-123"; // This is the FULL path (for assertions)
     let mut field_data = HashMap::new();
-    field_data.insert("entity_key".to_string(), json!(Uuid::now_v7().to_string()));
-    field_data.insert("path".to_string(), json!(entity_path));
+    field_data.insert("entity_key".to_string(), json!("license-123")); // entity_key = last segment
+    field_data.insert("path".to_string(), json!("/statistics_instance")); // path = parent path
     field_data.insert("license_key_id".to_string(), json!(license_key_id));
     field_data.insert("created_by".to_string(), json!(Uuid::now_v7().to_string()));
 
@@ -174,10 +176,12 @@ async fn test_execute_async_transform_resolve_entity_path_not_found(
     );
 
     // Create the fallback entity first (required for fallback to work)
-    let fallback_path = "/test/fallback";
+    // Note: `path` stores the parent path, not the full path.
+    // Full path = path + '/' + entity_key = '/test' + '/' + 'fallback'
+    let fallback_path = "/test/fallback"; // This is the FULL path
     let mut fallback_field_data = HashMap::new();
-    fallback_field_data.insert("entity_key".to_string(), json!("fallback"));
-    fallback_field_data.insert("path".to_string(), json!(fallback_path));
+    fallback_field_data.insert("entity_key".to_string(), json!("fallback")); // entity_key = last segment
+    fallback_field_data.insert("path".to_string(), json!("/test")); // path = parent path
     fallback_field_data.insert("license_key_id".to_string(), json!("fallback"));
     fallback_field_data.insert("created_by".to_string(), json!(Uuid::now_v7().to_string()));
 
@@ -322,11 +326,13 @@ async fn test_step_by_step_execution_resolve_then_build_path() -> r_data_core_co
     );
 
     // Create entity with license_key_id
+    // Note: `path` stores the parent path, not the full path.
+    // Full path = path + '/' + entity_key = '/instances' + '/' + 'stepwise-test'
     let license_key_id = "STEPWISE-TEST-123";
-    let entity_path = "/instances/stepwise-test";
+    let entity_path = "/instances/stepwise-test"; // This is the FULL path (for assertions)
     let mut field_data = HashMap::new();
-    field_data.insert("entity_key".to_string(), json!(Uuid::now_v7().to_string()));
-    field_data.insert("path".to_string(), json!(entity_path));
+    field_data.insert("entity_key".to_string(), json!("stepwise-test")); // entity_key = last segment
+    field_data.insert("path".to_string(), json!("/instances")); // path = parent path
     field_data.insert("license_key_id".to_string(), json!(license_key_id));
     field_data.insert("created_by".to_string(), json!(Uuid::now_v7().to_string()));
 

@@ -172,38 +172,50 @@ pub async fn ensure_entity_key<S: std::hash::BuildHasher>(
     }
 }
 
-/// Derive path from `parent_uuid` by looking up parent entity
+/// Derive and enforce path from `parent_uuid` by looking up parent entity
 ///
-/// If `parent_uuid` is set in `field_data` and path is not set, looks up the parent entity
-/// and generates path as `{parent_path}/{entity_key}`.
+/// **IMPORTANT**: When `parent_uuid` is set, this function ALWAYS derives the path from the parent
+/// to ensure data integrity. The path is calculated as:
+/// `{parent_path}/{parent_entity_key}/{child_entity_key}`
+///
+/// This ensures that:
+/// 1. The entity's path is always consistent with its parent relationship
+/// 2. The path reflects the actual hierarchy in the entity tree
+///
+/// If `parent_uuid` is NOT set, the function requires that a path is already present.
 ///
 /// # Errors
-/// Returns an error if parent entity lookup fails
+/// Returns an error if:
+/// - `parent_uuid` is set but parent entity lookup fails
+/// - Neither `parent_uuid` nor `path` is provided
 async fn derive_path_from_parent<S: std::hash::BuildHasher>(
     de_service: &DynamicEntityService,
     field_data: &mut HashMap<String, Value, S>,
 ) -> r_data_core_core::error::Result<()> {
-    // Check if path is already set
-    if field_data.contains_key("path") {
-        return Ok(());
-    }
-
     // Check if parent_uuid is set
-    let parent_uuid_str = match field_data.get("parent_uuid").and_then(|v| v.as_str()) {
-        Some(s) => s.to_string(),
-        None => {
-            return Err(r_data_core_core::error::Error::Validation(
-                "Either 'path' or 'parent_uuid' must be provided for entity creation".to_string(),
-            ));
+    let Some(parent_uuid_str) = field_data
+        .get("parent_uuid")
+        .and_then(|v| v.as_str())
+        .map(ToString::to_string)
+    else {
+        // No parent_uuid - path must be provided
+        if field_data.contains_key("path") {
+            return Ok(());
         }
+        return Err(r_data_core_core::error::Error::Validation(
+            "Either 'path' or 'parent_uuid' must be provided for entity creation".to_string(),
+        ));
     };
+
+    // parent_uuid is set - ALWAYS derive path from parent for consistency
+    // This ensures path is always: parent_path + "/" + parent_entity_key + "/" + child_entity_key
 
     // Parse parent UUID
     let parent_uuid = Uuid::parse_str(&parent_uuid_str).map_err(|e| {
         r_data_core_core::error::Error::Validation(format!("Invalid parent_uuid: {e}"))
     })?;
 
-    // Look up parent entity (search across all entity types)
+    // Look up the parent entity (search across all entity types)
     let parent = de_service
         .get_entity_by_uuid_any_type(parent_uuid)
         .await
@@ -213,7 +225,7 @@ async fn derive_path_from_parent<S: std::hash::BuildHasher>(
             ))
         })?;
 
-    // Get parent's path
+    // Get parent's path (this is the parent's parent path)
     let parent_path = parent
         .field_data
         .get("path")
@@ -224,8 +236,27 @@ async fn derive_path_from_parent<S: std::hash::BuildHasher>(
             ))
         })?;
 
-    // Get entity_key (must already be set at this point)
-    let entity_key = field_data
+    // Get parent's entity_key
+    let parent_entity_key = parent
+        .field_data
+        .get("entity_key")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| {
+            r_data_core_core::error::Error::Validation(format!(
+                "Parent entity {parent_uuid} has no entity_key"
+            ))
+        })?;
+
+    // Calculate the parent's full path: parent_path + "/" + parent_entity_key
+    let parent_full_path = if parent_path == "/" {
+        format!("/{parent_entity_key}")
+    } else {
+        format!("{parent_path}/{parent_entity_key}")
+    };
+
+    // Validate that child entity_key exists (must already be set at this point)
+    // We don't use the value here - it's used elsewhere to construct the full path
+    let _entity_key = field_data
         .get("entity_key")
         .and_then(|v| v.as_str())
         .ok_or_else(|| {
@@ -234,9 +265,10 @@ async fn derive_path_from_parent<S: std::hash::BuildHasher>(
             )
         })?;
 
-    // Generate path as {parent_path}/{entity_key}
-    let derived_path = format!("{parent_path}/{entity_key}");
-    let normalized_path = normalize_path(&derived_path);
+    // Derive child's path as parent_full_path (which becomes the child's parent path)
+    // The child's full path would be: parent_full_path + "/" + entity_key
+    // But we store the parent path in the 'path' field, so: path = parent_full_path
+    let normalized_path = normalize_path(&parent_full_path);
     field_data.insert("path".to_string(), Value::String(normalized_path));
 
     Ok(())
@@ -375,7 +407,7 @@ pub async fn create_or_update_entity(
 
     match lookup_result {
         EntityLookupResult::Found(mut entity) => {
-            // Update existing entity
+            // Update the existing entity
             for (k, v) in &normalized_field_data {
                 // Don't overwrite created_at or created_by
                 if k != "created_at" && k != "created_by" {
@@ -403,6 +435,10 @@ pub async fn create_or_update_entity(
             // Ensure entity_key exists
             ensure_entity_key(de_service, &ctx.entity_type, &mut final_data).await;
 
+            // Derive path from parent_uuid if parent_uuid is set
+            // This ensures path is always consistent with parent relationship
+            derive_path_from_parent(de_service, &mut final_data).await?;
+
             let entity = DynamicEntity {
                 entity_type: ctx.entity_type.clone(),
                 field_data: final_data,
@@ -420,20 +456,42 @@ pub async fn create_or_update_entity(
 /// - `entity_uuid`: The entity's UUID (use as `parent_uuid` for children)
 pub type ResolvedEntityPath = (String, Option<Uuid>);
 
-/// Look up an entity by its path and return (path, uuid)
+/// Look up an entity by its full path and return (path, uuid)
+///
+/// Full path is the combination of parent path + `entity_key`. For example,
+/// an entity with `path="/Clients"` and `entity_key="unlicensed"` has full path
+/// `/Clients/unlicensed`.
 ///
 /// # Errors
 /// Returns an error if the entity is not found at the given path
 async fn lookup_entity_by_path(
     entity_type: &str,
-    path: &str,
+    full_path: &str,
     de_service: &DynamicEntityService,
 ) -> r_data_core_core::error::Result<Option<ResolvedEntityPath>> {
     use log::error;
+    use r_data_core_workflow::dsl::path_resolution::parse_entity_path;
 
-    let normalized_path = normalize_path(path);
+    let normalized_full_path = normalize_path(full_path);
+
+    // Parse the full path into parent_path and entity_key
+    // For "/Clients/unlicensed", this gives parent_path="/Clients", entity_key="unlicensed"
+    let (_, entity_key, parent_path_opt) = parse_entity_path(&normalized_full_path);
+
+    if entity_key.is_empty() {
+        error!("Cannot lookup entity at root path '/'");
+        return Err(r_data_core_core::error::Error::NotFound(
+            "Cannot lookup entity at root path '/'".to_string(),
+        ));
+    }
+
+    // Build filter: match on parent path AND entity_key
     let mut filter_map: HashMap<String, Value> = HashMap::new();
-    filter_map.insert("path".to_string(), Value::String(normalized_path.clone()));
+    filter_map.insert("entity_key".to_string(), Value::String(entity_key.clone()));
+
+    // For entities at root level (e.g., "/mykey"), parent_path is None, meaning path = "/"
+    let parent_path = parent_path_opt.unwrap_or_else(|| "/".to_string());
+    filter_map.insert("path".to_string(), Value::String(parent_path));
 
     match de_service
         .filter_entities(entity_type, 1, 0, Some(filter_map), None, None, None)
@@ -447,18 +505,18 @@ async fn lookup_entity_by_path(
                     .and_then(|v| v.as_str())
                     .and_then(|s| Uuid::parse_str(s).ok());
 
-                Ok(Some((normalized_path, entity_uuid)))
+                Ok(Some((normalized_full_path, entity_uuid)))
             } else {
                 error!(
-                    "Fallback entity not found at path '{normalized_path}' for type '{entity_type}'. Please create the fallback entity first."
+                    "Fallback entity not found at path '{normalized_full_path}' for type '{entity_type}'. Please create the fallback entity first."
                 );
                 Err(r_data_core_core::error::Error::NotFound(format!(
-                    "Fallback entity not found at path '{normalized_path}' for type '{entity_type}'. Please create the fallback entity first."
+                    "Fallback entity not found at path '{normalized_full_path}' for type '{entity_type}'. Please create the fallback entity first."
                 )))
             }
         }
         Err(e) => {
-            error!("Failed to lookup entity by path '{path}': {e}");
+            error!("Failed to lookup entity by path '{full_path}': {e}");
             Err(e)
         }
     }
@@ -520,12 +578,26 @@ pub async fn resolve_entity_path(
     match entities {
         Ok(entities) => {
             if let Some(entity) = entities.first() {
-                // Entity found - extract path and UUID
-                let path = entity
+                // Entity found - construct full path from parent_path + entity_key
+                // The `path` field stores the parent path, not the full path.
+                // Full path = path + '/' + entity_key (or '/' + entity_key for root entities)
+                let parent_path = entity
                     .field_data
                     .get("path")
                     .and_then(|v| v.as_str())
-                    .map_or_else(|| "/".to_string(), ToString::to_string);
+                    .unwrap_or("/");
+
+                let entity_key = entity
+                    .field_data
+                    .get("entity_key")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+
+                let full_path = if parent_path == "/" {
+                    format!("/{entity_key}")
+                } else {
+                    format!("{parent_path}/{entity_key}")
+                };
 
                 let entity_uuid = entity
                     .field_data
@@ -533,7 +605,7 @@ pub async fn resolve_entity_path(
                     .and_then(|v| v.as_str())
                     .and_then(|s| Uuid::parse_str(s).ok());
 
-                Ok(Some((path, entity_uuid)))
+                Ok(Some((full_path, entity_uuid)))
             } else {
                 // Entity not found - try fallback
                 match fallback_path {
