@@ -82,21 +82,40 @@ async fn create_test_entity_definition(
 }
 
 // Helper to create test entity
+// The `full_path` parameter is the full path to the entity (e.g., "/statistics_instance/license-123").
+// This function parses it into parent_path (stored as `path`) and entity_key.
 fn create_test_entity(
     entity_def: &r_data_core_core::entity_definition::definition::EntityDefinition,
     license_key_id: Option<&str>,
-    path: &str,
+    full_path: &str,
 ) -> r_data_core_core::DynamicEntity {
     use std::collections::HashMap;
     use std::sync::Arc;
 
+    // Parse full_path into parent_path and entity_key
+    // For "/statistics_instance/license-123", this gives parent_path="/statistics_instance", entity_key="license-123"
+    let path_parts: Vec<&str> = full_path
+        .trim_start_matches('/')
+        .split('/')
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    let (parent_path, entity_key) = if path_parts.is_empty() {
+        ("/".to_string(), Uuid::now_v7().to_string())
+    } else if path_parts.len() == 1 {
+        // Root-level entity like "/license-123"
+        ("/".to_string(), path_parts[0].to_string())
+    } else {
+        // Non-root entity like "/statistics_instance/license-123"
+        let parent = format!("/{}", path_parts[0..path_parts.len() - 1].join("/"));
+        let key = path_parts[path_parts.len() - 1].to_string();
+        (parent, key)
+    };
+
     let mut field_data = HashMap::new();
-    // entity_key is a system field, will be set automatically
-    field_data.insert("path".to_string(), json!(path));
-    // entity_key is required - generate one if not provided
-    field_data
-        .entry("entity_key".to_string())
-        .or_insert_with(|| json!(Uuid::now_v7().to_string()));
+    // `path` stores the parent path, not the full path
+    field_data.insert("path".to_string(), json!(parent_path));
+    field_data.insert("entity_key".to_string(), json!(entity_key));
     if let Some(license_id) = license_key_id {
         field_data.insert("license_key_id".to_string(), json!(license_id));
     }
@@ -141,9 +160,9 @@ async fn test_resolve_entity_path_found() -> Result<()> {
     let result = resolve_entity_path(entity_type, &filters, None, None, &de_service).await?;
 
     assert!(result.is_some());
-    let (path, parent_uuid) = result.unwrap();
+    let (path, entity_uuid) = result.unwrap();
     assert_eq!(path, entity_path);
-    assert!(parent_uuid.is_none()); // Root level entity
+    assert!(entity_uuid.is_some()); // Entity was found
 
     Ok(())
 }
@@ -152,7 +171,7 @@ async fn test_resolve_entity_path_found() -> Result<()> {
 async fn test_resolve_entity_path_not_found_uses_fallback() -> Result<()> {
     let pool = setup_test_db().await;
     let entity_type = "test_instance";
-    let _entity_def = create_test_entity_definition(&pool, entity_type).await?;
+    let entity_def = create_test_entity_definition(&pool, entity_type).await?;
 
     let repo = DynamicEntityRepository::new(pool.pool.clone());
     let de_service = DynamicEntityService::new(
@@ -163,11 +182,18 @@ async fn test_resolve_entity_path_not_found_uses_fallback() -> Result<()> {
         ))),
     );
 
+    // Create the fallback entity (required for fallback to work)
+    let fallback_path = "/test/fallback";
+    let fallback_entity = create_test_entity(&entity_def, Some("fallback"), fallback_path);
+    let fallback_uuid = de_service.create_entity(&fallback_entity).await?;
+
+    // Wait for database
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
     // Try to resolve non-existent entity
     let mut filters = HashMap::new();
     filters.insert("license_key_id".to_string(), json!("NON-EXISTENT"));
 
-    let fallback_path = "/test/fallback";
     let result = resolve_entity_path(
         entity_type,
         &filters,
@@ -177,10 +203,15 @@ async fn test_resolve_entity_path_not_found_uses_fallback() -> Result<()> {
     )
     .await?;
 
-    // Should return fallback path when explicitly configured
+    // Should return fallback path and UUID when entity not found
     assert!(result.is_some());
-    let (path, _parent_uuid) = result.unwrap();
+    let (path, entity_uuid) = result.unwrap();
     assert_eq!(path, fallback_path);
+    assert!(
+        entity_uuid.is_some(),
+        "Should return the fallback entity's UUID"
+    );
+    assert_eq!(entity_uuid.unwrap(), fallback_uuid);
 
     Ok(())
 }
@@ -226,8 +257,9 @@ async fn test_resolve_entity_path_with_value_transform() -> Result<()> {
     .await?;
 
     assert!(result.is_some());
-    let (path, _parent_uuid) = result.unwrap();
+    let (path, entity_uuid) = result.unwrap();
     assert_eq!(path, entity_path);
+    assert!(entity_uuid.is_some()); // Entity was found
 
     Ok(())
 }

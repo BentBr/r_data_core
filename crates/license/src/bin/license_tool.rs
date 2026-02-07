@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::{load_cache_config, load_license_config};
 use r_data_core_license::{LicenseCheckState, LicenseToolService};
-use std::io::{self, Read};
+use std::io::{self, IsTerminal, Read};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -129,7 +129,7 @@ fn read_license_key(license_key: Option<&str>, license_key_file: Option<&str>) -
             license_key_file.map_or_else(
                 || {
                     // Check if stdin is a TTY - if so, don't wait for input
-                    if atty::is(atty::Stream::Stdin) {
+                    if io::stdin().is_terminal() {
                         eprintln!("Error: No license key provided. Use --license-key <KEY> or --license-key-file <FILE>");
                         eprintln!("Alternatively, pipe the license key to stdin: echo 'KEY' | license_tool verify --public-key-file <FILE>");
                         std::process::exit(1);

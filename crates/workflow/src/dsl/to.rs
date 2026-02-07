@@ -59,8 +59,9 @@ pub enum ToDef {
     /// Persist to entity records
     Entity {
         entity_definition: String,
-        /// Path or namespace hint for entity tree
-        path: String,
+        /// Path or namespace hint for entity tree (optional - derived from `parent_uuid` if not set)
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        path: Option<String>,
         /// Create or Update mode (for update, identify existing records via optional filter)
         mode: EntityWriteMode,
         /// Optional filter to identify the record to update
@@ -183,10 +184,13 @@ pub(crate) fn validate_to(
                     "DSL step {idx}: to.entity.entity_definition must not be empty"
                 )));
             }
-            if path.trim().is_empty() {
-                return Err(r_data_core_core::error::Error::Validation(format!(
-                    "DSL step {idx}: to.entity.path must not be empty"
-                )));
+            // Path is optional - if not provided, it will be derived from parent_uuid at runtime
+            if let Some(p) = path {
+                if p.trim().is_empty() {
+                    return Err(r_data_core_core::error::Error::Validation(format!(
+                        "DSL step {idx}: to.entity.path must not be empty when provided"
+                    )));
+                }
             }
             // Allow empty mappings
             validate_mapping(idx, mapping, safe_field)?;

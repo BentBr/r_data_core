@@ -206,106 +206,144 @@ fn sort_and_combine(
     all
 }
 
-async fn check_children(db_pool: &PgPool, nodes: &mut [BrowseNode]) -> Result<()> {
-    // Collect all UUIDs and folder paths that need checking
-    // This is to avoid N+1 queries
-    let mut uuids_to_check: Vec<Uuid> = Vec::new();
-    let mut folder_paths_to_check: Vec<String> = Vec::new();
-    let mut uuid_to_index: HashMap<Uuid, Vec<usize>> = HashMap::new();
-    let mut path_to_index: HashMap<String, Vec<usize>> = HashMap::new();
+/// Data collected for checking children status
+struct ChildrenCheckData {
+    uuids_to_check: Vec<Uuid>,
+    folder_paths_to_check: Vec<String>,
+    file_full_paths_to_check: Vec<String>,
+    uuid_to_index: HashMap<Uuid, Vec<usize>>,
+    path_to_index: HashMap<String, Vec<usize>>,
+}
+
+fn collect_children_check_data(nodes: &[BrowseNode]) -> ChildrenCheckData {
+    let mut data = ChildrenCheckData {
+        uuids_to_check: Vec::new(),
+        folder_paths_to_check: Vec::new(),
+        file_full_paths_to_check: Vec::new(),
+        uuid_to_index: HashMap::new(),
+        path_to_index: HashMap::new(),
+    };
 
     for (index, node) in nodes.iter().enumerate() {
+        if node.has_children == Some(true) {
+            continue;
+        }
+
         if let Some(uuid) = node.entity_uuid {
-            // Skip if already marked as having children
-            if node.has_children == Some(true) {
-                continue;
+            if !data.uuid_to_index.contains_key(&uuid) {
+                data.uuids_to_check.push(uuid);
+                data.file_full_paths_to_check.push(node.path.clone());
             }
-            if !uuid_to_index.contains_key(&uuid) {
-                uuids_to_check.push(uuid);
-            }
-            uuid_to_index.entry(uuid).or_default().push(index);
+            data.uuid_to_index.entry(uuid).or_default().push(index);
         } else if node.kind == BrowseKind::Folder {
-            // Skip if already marked as having children
-            if node.has_children == Some(true) {
-                continue;
-            }
             let path = node.path.clone();
-            if !path_to_index.contains_key(&path) {
-                folder_paths_to_check.push(path.clone());
+            if !data.path_to_index.contains_key(&path) {
+                data.folder_paths_to_check.push(path.clone());
             }
-            path_to_index.entry(path).or_default().push(index);
+            data.path_to_index.entry(path).or_default().push(index);
         }
     }
 
-    // Batch check UUIDs: find all parent_uuid values that exist in our list
-    let mut uuid_has_children: HashSet<Uuid> = HashSet::new();
-    if !uuids_to_check.is_empty() {
-        let parent_uuids: Vec<Uuid> = sqlx::query_scalar::<_, Uuid>(
-            "SELECT DISTINCT parent_uuid FROM entities_registry WHERE parent_uuid = ANY($1::uuid[])",
-        )
-        .bind(&uuids_to_check)
+    data
+}
+
+async fn check_folder_children(
+    db_pool: &PgPool,
+    folder_paths: &[String],
+) -> Result<HashSet<String>> {
+    if folder_paths.is_empty() {
+        return Ok(HashSet::new());
+    }
+
+    let mut query_parts = Vec::new();
+    let mut bind_values: Vec<&str> = Vec::new();
+
+    for (idx, path) in folder_paths.iter().enumerate() {
+        let param_num = idx + 1;
+        query_parts.push(format!(
+            "(path = ${param_num} OR path LIKE ${param_num} || '/%')"
+        ));
+        bind_values.push(path);
+    }
+
+    let query = format!(
+        "SELECT DISTINCT path FROM entities_registry WHERE {}",
+        query_parts.join(" OR ")
+    );
+
+    let mut query_builder = sqlx::query_scalar::<_, String>(&query);
+    for path in &bind_values {
+        query_builder = query_builder.bind(*path);
+    }
+
+    let matching_paths: Vec<String> = query_builder
         .fetch_all(db_pool)
         .await
         .map_err(r_data_core_core::error::Error::from)?;
 
-        uuid_has_children.extend(parent_uuids);
-    }
-
-    // Batch check folder paths: find all paths that match our folder paths
-    let mut folder_has_children: HashSet<String> = HashSet::new();
-    if !folder_paths_to_check.is_empty() {
-        // Build a query that checks all folder paths efficiently
-        // For each folder path, we check: path = folder_path OR path LIKE folder_path || '/%'
-        // We use a single query with OR conditions to batch all checks
-        let mut query_parts = Vec::new();
-        let mut bind_values: Vec<&str> = Vec::new();
-
-        for (idx, path) in folder_paths_to_check.iter().enumerate() {
-            let param_num = idx + 1;
-            query_parts.push(format!(
-                "(path = ${param_num} OR path LIKE ${param_num} || '/%')"
-            ));
-            bind_values.push(path);
-        }
-
-        let query = format!(
-            "SELECT DISTINCT path FROM entities_registry WHERE {}",
-            query_parts.join(" OR ")
-        );
-
-        let mut query_builder = sqlx::query_scalar::<_, String>(&query);
-        for path in &bind_values {
-            query_builder = query_builder.bind(*path);
-        }
-
-        let matching_paths: Vec<String> = query_builder
-            .fetch_all(db_pool)
-            .await
-            .map_err(r_data_core_core::error::Error::from)?;
-
-        // For each matching path, determine which folder paths it matches
-        for matching_path in matching_paths {
-            for folder_path in &folder_paths_to_check {
-                if matching_path == *folder_path
-                    || matching_path.starts_with(&format!("{folder_path}/"))
-                {
-                    folder_has_children.insert(folder_path.clone());
-                }
+    let mut result = HashSet::new();
+    for matching_path in matching_paths {
+        for folder_path in folder_paths {
+            if matching_path == *folder_path
+                || matching_path.starts_with(&format!("{folder_path}/"))
+            {
+                result.insert(folder_path.clone());
             }
         }
     }
 
-    // Update nodes with the results
-    for (uuid, indices) in uuid_to_index {
-        let has_children = uuid_has_children.contains(&uuid);
+    Ok(result)
+}
+
+async fn check_children(db_pool: &PgPool, nodes: &mut [BrowseNode]) -> Result<()> {
+    let data = collect_children_check_data(nodes);
+
+    // Batch check UUIDs: find all parent_uuid values that exist in our list
+    let uuid_has_children: HashSet<Uuid> = if data.uuids_to_check.is_empty() {
+        HashSet::new()
+    } else {
+        sqlx::query_scalar::<_, Uuid>(
+            "SELECT DISTINCT parent_uuid FROM entities_registry WHERE parent_uuid = ANY($1::uuid[])",
+        )
+        .bind(&data.uuids_to_check)
+        .fetch_all(db_pool)
+        .await
+        .map_err(r_data_core_core::error::Error::from)?
+        .into_iter()
+        .collect()
+    };
+
+    // Batch check file paths: find if any entity has `path` equal to our file's full path
+    let file_path_has_children: HashSet<String> = if data.file_full_paths_to_check.is_empty() {
+        HashSet::new()
+    } else {
+        sqlx::query_scalar::<_, String>(
+            "SELECT DISTINCT path FROM entities_registry WHERE path = ANY($1::text[])",
+        )
+        .bind(&data.file_full_paths_to_check)
+        .fetch_all(db_pool)
+        .await
+        .map_err(r_data_core_core::error::Error::from)?
+        .into_iter()
+        .collect()
+    };
+
+    // Batch check folder paths
+    let folder_has_children = check_folder_children(db_pool, &data.folder_paths_to_check).await?;
+
+    // Update file nodes: has_children = true if parent_uuid match OR path match
+    for (uuid, indices) in data.uuid_to_index {
+        let has_children_by_uuid = uuid_has_children.contains(&uuid);
         for index in indices {
             if let Some(node) = nodes.get_mut(index) {
-                node.has_children = Some(has_children);
+                let has_children_by_path = file_path_has_children.contains(&node.path);
+                node.has_children = Some(has_children_by_uuid || has_children_by_path);
             }
         }
     }
 
-    for (path, indices) in path_to_index {
+    // Update folder nodes
+    for (path, indices) in data.path_to_index {
         let has_children = folder_has_children.contains(&path);
         for index in indices {
             if let Some(node) = nodes.get_mut(index) {

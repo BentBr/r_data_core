@@ -186,7 +186,12 @@ impl MaintenanceTask for StatisticsCollectionTask {
         let repository = Arc::new(r_data_core_persistence::StatisticsRepository::new(
             context.pool().clone(),
         ));
-        let statistics_service = StatisticsService::new(self.config.clone(), repository);
+        // Use database_url for generating deterministic instance key for unlicensed instances
+        let statistics_service = StatisticsService::with_database_url(
+            self.config.clone(),
+            repository,
+            self.database_url.clone(),
+        );
 
         // Collect and send statistics (silent failure - only stdout)
         statistics_service

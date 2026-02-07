@@ -67,7 +67,7 @@ log = "0.4"
 env_logger = "0.11"
 
 # CSV/bytes
-bytes = "1.6"
+bytes = "1.11.1"
 
 # Caching
 redis = { version = "0.32", features = ["tokio-comp", "connection-manager"] }

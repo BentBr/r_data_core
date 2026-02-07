@@ -99,11 +99,13 @@ async fn test_execute_async_transform_resolve_entity_path() -> r_data_core_core:
     );
 
     // Create entity with license_key_id
+    // Note: `path` stores the parent path, not the full path.
+    // Full path = path + '/' + entity_key = '/statistics_instance' + '/' + 'license-123'
     let license_key_id = "LICENSE-123";
-    let entity_path = "/statistics_instance/license-123";
+    let entity_path = "/statistics_instance/license-123"; // This is the FULL path (for assertions)
     let mut field_data = HashMap::new();
-    field_data.insert("entity_key".to_string(), json!(Uuid::now_v7().to_string()));
-    field_data.insert("path".to_string(), json!(entity_path));
+    field_data.insert("entity_key".to_string(), json!("license-123")); // entity_key = last segment
+    field_data.insert("path".to_string(), json!("/statistics_instance")); // path = parent path
     field_data.insert("license_key_id".to_string(), json!(license_key_id));
     field_data.insert("created_by".to_string(), json!(Uuid::now_v7().to_string()));
 
@@ -121,7 +123,7 @@ async fn test_execute_async_transform_resolve_entity_path() -> r_data_core_core:
     let transform = Transform::ResolveEntityPath(
         r_data_core_workflow::dsl::transform::ResolveEntityPathTransform {
             target_path: "instance_path".to_string(),
-            target_parent_uuid: Some("parent_uuid".to_string()),
+            target_uuid: Some("instance_uuid".to_string()),
             entity_type: entity_type.to_string(),
             filters: {
                 let mut filters = HashMap::new();
@@ -162,7 +164,7 @@ async fn test_execute_async_transform_resolve_entity_path_not_found(
 ) -> r_data_core_core::error::Result<()> {
     let pool = setup_test_db().await;
     let entity_type = "test_instance";
-    let _entity_def = create_test_entity_definition(&pool, entity_type).await?;
+    let entity_def = create_test_entity_definition(&pool, entity_type).await?;
 
     let repo = DynamicEntityRepository::new(pool.pool.clone());
     let de_service = DynamicEntityService::new(
@@ -173,11 +175,31 @@ async fn test_execute_async_transform_resolve_entity_path_not_found(
         ))),
     );
 
+    // Create the fallback entity first (required for fallback to work)
+    // Note: `path` stores the parent path, not the full path.
+    // Full path = path + '/' + entity_key = '/test' + '/' + 'fallback'
+    let fallback_path = "/test/fallback"; // This is the FULL path
+    let mut fallback_field_data = HashMap::new();
+    fallback_field_data.insert("entity_key".to_string(), json!("fallback")); // entity_key = last segment
+    fallback_field_data.insert("path".to_string(), json!("/test")); // path = parent path
+    fallback_field_data.insert("license_key_id".to_string(), json!("fallback"));
+    fallback_field_data.insert("created_by".to_string(), json!(Uuid::now_v7().to_string()));
+
+    let fallback_entity = r_data_core_core::DynamicEntity {
+        entity_type: entity_type.to_string(),
+        field_data: fallback_field_data,
+        definition: std::sync::Arc::new(entity_def),
+    };
+    de_service.create_entity(&fallback_entity).await?;
+
+    // Wait for database
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
     // Create transform for non-existent entity
     let transform = Transform::ResolveEntityPath(
         r_data_core_workflow::dsl::transform::ResolveEntityPathTransform {
             target_path: "instance_path".to_string(),
-            target_parent_uuid: None,
+            target_uuid: Some("instance_uuid".to_string()),
             entity_type: entity_type.to_string(),
             filters: {
                 let mut filters = HashMap::new();
@@ -190,7 +212,7 @@ async fn test_execute_async_transform_resolve_entity_path_not_found(
                 filters
             },
             value_transforms: None,
-            fallback_path: Some("/test/fallback".to_string()),
+            fallback_path: Some(fallback_path.to_string()),
         },
     );
 
@@ -201,13 +223,17 @@ async fn test_execute_async_transform_resolve_entity_path_not_found(
 
     let run_uuid = Uuid::now_v7();
 
-    // Execute async transform - should use fallback (zero-impact resilience)
+    // Execute async transform - should use fallback entity
     execute_async_transform(&transform, &mut normalized, &de_service, run_uuid).await?;
 
-    // Check that fallback path was set
+    // Check that fallback path and UUID were set
     assert_eq!(
         normalized.get("instance_path").and_then(|v| v.as_str()),
-        Some("/test/fallback")
+        Some(fallback_path)
+    );
+    assert!(
+        normalized.get("instance_uuid").is_some(),
+        "Should set instance_uuid to the fallback entity's UUID"
     );
 
     Ok(())
@@ -233,8 +259,7 @@ async fn test_execute_async_transform_get_or_create_entity() -> r_data_core_core
     let transform = Transform::GetOrCreateEntity(
         r_data_core_workflow::dsl::transform::GetOrCreateEntityTransform {
             target_path: "instance_path".to_string(),
-            target_parent_uuid: Some("parent_uuid".to_string()),
-            target_entity_uuid: Some("entity_uuid".to_string()),
+            target_uuid: Some("entity_uuid".to_string()),
             entity_type: entity_type.to_string(),
             path_template: "/statistics_instance/{license_key_id}".to_string(),
             create_field_data: None,
@@ -301,11 +326,13 @@ async fn test_step_by_step_execution_resolve_then_build_path() -> r_data_core_co
     );
 
     // Create entity with license_key_id
+    // Note: `path` stores the parent path, not the full path.
+    // Full path = path + '/' + entity_key = '/instances' + '/' + 'stepwise-test'
     let license_key_id = "STEPWISE-TEST-123";
-    let entity_path = "/instances/stepwise-test";
+    let entity_path = "/instances/stepwise-test"; // This is the FULL path (for assertions)
     let mut field_data = HashMap::new();
-    field_data.insert("entity_key".to_string(), json!(Uuid::now_v7().to_string()));
-    field_data.insert("path".to_string(), json!(entity_path));
+    field_data.insert("entity_key".to_string(), json!("stepwise-test")); // entity_key = last segment
+    field_data.insert("path".to_string(), json!("/instances")); // path = parent path
     field_data.insert("license_key_id".to_string(), json!(license_key_id));
     field_data.insert("created_by".to_string(), json!(Uuid::now_v7().to_string()));
 

@@ -511,6 +511,29 @@ pub async fn delete_by_type_impl(
     Ok(())
 }
 
+/// Get an entity by UUID without knowing the entity type
+/// Searches the `entities_registry` table directly to find entity type, then queries the view
+pub async fn get_by_uuid_any_type_impl(
+    repo: &DynamicEntityRepository,
+    uuid: &Uuid,
+) -> Result<Option<DynamicEntity>> {
+    // First, find the entity type from entities_registry
+    let entity_type_opt: Option<String> =
+        sqlx::query_scalar("SELECT entity_type FROM entities_registry WHERE uuid = $1")
+            .bind(uuid)
+            .fetch_optional(&repo.pool)
+            .await
+            .map_err(r_data_core_core::error::Error::Database)?;
+
+    match entity_type_opt {
+        Some(entity_type) => {
+            // Now query the entity-specific view to get all fields
+            get_by_type_impl(repo, &entity_type, uuid, None).await
+        }
+        None => Ok(None),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

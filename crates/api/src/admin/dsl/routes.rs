@@ -576,7 +576,7 @@ pub async fn list_to_options(auth: RequiredAuth) -> impl Responder {
     .unwrap();
     let ex_entity = serde_json::to_value(ToDef::Entity {
         entity_definition: "product".to_string(),
-        path: "/".to_string(),
+        path: Some("/".to_string()),
         mode: EntityWriteMode::Create,
         identify: None,
         update_key: None,

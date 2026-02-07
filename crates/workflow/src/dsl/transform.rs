@@ -76,14 +76,14 @@ pub enum StringOperand {
     ConstString { value: String },
 }
 
-/// Resolve entity path transform - finds entity by filters and sets `path`/`parent_uuid`
+/// Resolve entity path transform - finds entity by filters and sets path and UUID
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ResolveEntityPathTransform {
     /// Target field to store the resolved path
     pub target_path: String,
-    /// Optional target field to store `parent_uuid`
+    /// Optional target field to store the found entity's UUID (use as `parent_uuid` for children)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub target_parent_uuid: Option<String>,
+    pub target_uuid: Option<String>,
     /// Entity type to query
     pub entity_type: String,
     /// Filters to find the entity (field -> value mapping)
@@ -117,12 +117,9 @@ pub struct BuildPathTransform {
 pub struct GetOrCreateEntityTransform {
     /// Target field to store the entity path
     pub target_path: String,
-    /// Optional target field to store `parent_uuid`
+    /// Optional target field to store the entity's UUID (use as `parent_uuid` for children)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub target_parent_uuid: Option<String>,
-    /// Optional target field to store `entity_uuid`
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub target_entity_uuid: Option<String>,
+    pub target_uuid: Option<String>,
     /// Entity type to get/create
     pub entity_type: String,
     /// Path template to build (e.g., "/{field1}/{field2}")
@@ -211,10 +208,10 @@ fn validate_resolve_entity_path_transform(
             "DSL step {idx}: transform.resolve_entity_path.target_path must be a safe identifier"
         )));
     }
-    if let Some(ref target_parent) = rep.target_parent_uuid {
-        if !safe_field.is_match(target_parent) {
+    if let Some(ref target_uuid) = rep.target_uuid {
+        if !safe_field.is_match(target_uuid) {
             return Err(r_data_core_core::error::Error::Validation(format!(
-                "DSL step {idx}: transform.resolve_entity_path.target_parent_uuid must be a safe identifier"
+                "DSL step {idx}: transform.resolve_entity_path.target_uuid must be a safe identifier"
             )));
         }
     }
@@ -268,17 +265,10 @@ fn validate_get_or_create_entity_transform(
             "DSL step {idx}: transform.get_or_create_entity.target_path must be a safe identifier"
         )));
     }
-    if let Some(ref target_parent) = goc.target_parent_uuid {
-        if !safe_field.is_match(target_parent) {
-            return Err(r_data_core_core::error::Error::Validation(format!(
-                "DSL step {idx}: transform.get_or_create_entity.target_parent_uuid must be a safe identifier"
-            )));
-        }
-    }
-    if let Some(ref target_uuid) = goc.target_entity_uuid {
+    if let Some(ref target_uuid) = goc.target_uuid {
         if !safe_field.is_match(target_uuid) {
             return Err(r_data_core_core::error::Error::Validation(format!(
-                "DSL step {idx}: transform.get_or_create_entity.target_entity_uuid must be a safe identifier"
+                "DSL step {idx}: transform.get_or_create_entity.target_uuid must be a safe identifier"
             )));
         }
     }

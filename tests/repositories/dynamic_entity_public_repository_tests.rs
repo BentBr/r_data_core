@@ -325,6 +325,152 @@ async fn test_search_by_path_prefix() -> Result<()> {
     Ok(())
 }
 
+/// Test `has_children` detection when children exist via path (not `parent_uuid`)
+///
+/// This tests the scenario where an entity has children that reference it via the `path` field
+/// rather than via `parent_uuid`. This is important because path-based parent-child relationships
+/// are a common pattern in the system.
+#[tokio::test]
+async fn test_has_children_via_path_not_parent_uuid() -> Result<()> {
+    let pool = setup_test_db().await;
+    let pub_repo = DynamicEntityPublicRepository::new(pool.pool.clone());
+
+    // Create entity definition
+    let entity_type = unique_entity_type("test_has_children_path");
+    let entity_def = create_test_entity_definition(&pool, &entity_type).await?;
+
+    let repo = DynamicEntityRepository::new(pool.pool.clone());
+
+    // Create a parent entity at /Users with entity_key "peter-shaw"
+    // Full path will be /Users/peter-shaw
+    let parent_key = format!("parent-{}", Uuid::now_v7());
+    let parent = create_test_dynamic_entity(&entity_def, "Parent Entity", "/Users", &parent_key);
+    repo.create(&parent).await?;
+
+    // Create a child entity that uses path /Users/parent_key (the parent's full path)
+    // This child does NOT have parent_uuid set
+    let child_key = format!("child-{}", Uuid::now_v7());
+    let parent_full_path = format!("/Users/{parent_key}");
+    let child =
+        create_test_dynamic_entity(&entity_def, "Child Entity", &parent_full_path, &child_key);
+    // Note: no parent_uuid set on the child
+    repo.create(&child).await?;
+
+    // Wait for entities to be created
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+    // Browse /Users - should see parent entity with has_children=true
+    let (nodes, _) = pub_repo.browse_by_path("/Users", 100, 0).await?;
+
+    let parent_node = nodes
+        .iter()
+        .find(|n| n.name == parent_key)
+        .expect("Parent node should be found");
+
+    assert_eq!(
+        parent_node.has_children,
+        Some(true),
+        "Parent entity should have has_children=true because it has a child entity \
+         whose path field equals the parent's full path ({parent_full_path})"
+    );
+
+    // Verify the child is visible when browsing the parent's path
+    let (child_nodes, _) = pub_repo.browse_by_path(&parent_full_path, 100, 0).await?;
+    assert!(
+        child_nodes.iter().any(|n| n.name == child_key),
+        "Child entity should be found when browsing parent's full path"
+    );
+
+    Ok(())
+}
+
+/// Test `has_children` correctly detects children both via `parent_uuid` AND via path
+///
+/// An entity should show `has_children=true` if EITHER:
+/// 1. Another entity has `parent_uuid` set to this entity's UUID, OR
+/// 2. Another entity has `path` equal to this entity's full path
+#[tokio::test]
+async fn test_has_children_via_parent_uuid_and_path() -> Result<()> {
+    let pool = setup_test_db().await;
+    let pub_repo = DynamicEntityPublicRepository::new(pool.pool.clone());
+
+    // Create entity definition
+    let entity_type = unique_entity_type("test_has_children_both");
+    let entity_def = create_test_entity_definition(&pool, &entity_type).await?;
+
+    let repo = DynamicEntityRepository::new(pool.pool.clone());
+
+    // Create parent1 with child via parent_uuid
+    let parent1_key = format!("parent1-{}", Uuid::now_v7());
+    let parent1 = create_test_dynamic_entity(&entity_def, "Parent 1", "/", &parent1_key);
+    let parent1_uuid = repo.create(&parent1).await?;
+
+    let child1_key = format!("child1-{}", Uuid::now_v7());
+    let parent1_full_path = format!("/{parent1_key}");
+    let mut child1 =
+        create_test_dynamic_entity(&entity_def, "Child 1", &parent1_full_path, &child1_key);
+    child1.set("parent_uuid", parent1_uuid.to_string())?;
+    repo.create(&child1).await?;
+
+    // Create parent2 with child via path only (no parent_uuid)
+    let parent2_key = format!("parent2-{}", Uuid::now_v7());
+    let parent2 = create_test_dynamic_entity(&entity_def, "Parent 2", "/", &parent2_key);
+    repo.create(&parent2).await?;
+
+    let child2_key = format!("child2-{}", Uuid::now_v7());
+    let parent2_full_path = format!("/{parent2_key}");
+    let child2 =
+        create_test_dynamic_entity(&entity_def, "Child 2", &parent2_full_path, &child2_key);
+    // No parent_uuid set
+    repo.create(&child2).await?;
+
+    // Create parent3 with NO children
+    let parent3_key = format!("parent3-{}", Uuid::now_v7());
+    let parent3 = create_test_dynamic_entity(&entity_def, "Parent 3", "/", &parent3_key);
+    repo.create(&parent3).await?;
+
+    // Wait for entities to be created
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+    // Browse root - check has_children for all parents
+    let (nodes, _) = pub_repo.browse_by_path("/", 100, 0).await?;
+
+    // Parent1 should have children (via parent_uuid)
+    let parent1_node = nodes
+        .iter()
+        .find(|n| n.name == parent1_key)
+        .expect("Parent1 should be found");
+    assert_eq!(
+        parent1_node.has_children,
+        Some(true),
+        "Parent1 should have has_children=true (child via parent_uuid)"
+    );
+
+    // Parent2 should have children (via path only)
+    let parent2_node = nodes
+        .iter()
+        .find(|n| n.name == parent2_key)
+        .expect("Parent2 should be found");
+    assert_eq!(
+        parent2_node.has_children,
+        Some(true),
+        "Parent2 should have has_children=true (child via path only, no parent_uuid)"
+    );
+
+    // Parent3 should NOT have children
+    let parent3_node = nodes
+        .iter()
+        .find(|n| n.name == parent3_key)
+        .expect("Parent3 should be found");
+    assert_eq!(
+        parent3_node.has_children,
+        Some(false),
+        "Parent3 should have has_children=false (no children)"
+    );
+
+    Ok(())
+}
+
 /// Test that `browse_by_path` uses batched queries instead of N+1 queries
 /// This test creates many entities to ensure batching is necessary and verifies
 /// that `has_children` is correctly determined for all nodes using batched queries.

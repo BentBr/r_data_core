@@ -34,6 +34,7 @@ mock! {
         ) -> Result<Vec<DynamicEntity>>;
         async fn count_entities(&self, entity_type: &str) -> Result<i64>;
         async fn count_children(&self, parent_uuid: &Uuid) -> Result<i64>;
+        async fn get_by_uuid_any_type(&self, uuid: &Uuid) -> Result<Option<DynamicEntity>>;
     }
 }
 

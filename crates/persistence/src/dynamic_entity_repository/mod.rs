@@ -16,8 +16,8 @@ use create::create_entity;
 use filter::filter_entities_impl;
 use query::{
     count_children_impl, count_entities_impl, delete_by_type_impl, find_one_by_filters_impl,
-    get_all_by_type_impl, get_by_type_impl, has_children_impl, query_by_parent_impl,
-    query_by_path_impl,
+    get_all_by_type_impl, get_by_type_impl, get_by_uuid_any_type_impl, has_children_impl,
+    query_by_parent_impl, query_by_path_impl,
 };
 use update::update_entity;
 
@@ -181,5 +181,9 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
 
     async fn count_children(&self, parent_uuid: &Uuid) -> Result<i64> {
         self.count_children(parent_uuid).await
+    }
+
+    async fn get_by_uuid_any_type(&self, uuid: &Uuid) -> Result<Option<DynamicEntity>> {
+        get_by_uuid_any_type_impl(self, uuid).await
     }
 }

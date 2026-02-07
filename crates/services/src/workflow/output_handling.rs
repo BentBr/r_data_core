@@ -4,6 +4,7 @@ use crate::workflow::entity_persistence::{
     create_entity, create_or_update_entity, update_entity, PersistenceContext,
 };
 use r_data_core_persistence::WorkflowRepositoryTrait;
+use r_data_core_workflow::dsl::path_resolution::build_path_from_fields;
 use r_data_core_workflow::dsl::ToDef;
 use serde_json::Value as JsonValue;
 use std::sync::Arc;
@@ -197,6 +198,30 @@ pub struct EntityOutputParams<'a> {
     pub repo: &'a Arc<dyn WorkflowRepositoryTrait>,
 }
 
+/// Resolve path template from produced data
+///
+/// If the path contains template placeholders like `{field_name}`, they are resolved
+/// from the produced data. If resolution fails, the original path is returned.
+fn resolve_path_template(path: &str, produced: &JsonValue) -> String {
+    // Check if path contains template placeholders
+    if !path.contains('{') {
+        return path.to_string();
+    }
+
+    // Try to resolve the path template from produced data
+    match build_path_from_fields::<std::collections::hash_map::RandomState>(
+        path, produced, None, None,
+    ) {
+        Ok(resolved) => resolved,
+        Err(e) => {
+            log::warn!(
+                "Failed to resolve path template '{path}' from produced data: {e}. Using path as-is."
+            );
+            path.to_string()
+        }
+    }
+}
+
 /// Handle Entity outputs
 ///
 /// # Errors
@@ -214,6 +239,12 @@ pub async fn handle_entity_output(
         mapping: _,
     } = to_def
     {
+        // Resolve path template from produced data if path is provided
+        // Path is optional - if not provided, it will be derived from parent_uuid in entity_persistence
+        let resolved_path = path
+            .as_ref()
+            .map(|p| resolve_path_template(p, &params.produced));
+
         let produced_for_update = prepare_produced_for_update(
             mode,
             &params.produced,
@@ -224,7 +255,7 @@ pub async fn handle_entity_output(
         let ctx = PersistenceContext {
             entity_type: entity_definition.clone(),
             produced: produced_for_update.clone(),
-            path: Some(path.clone()),
+            path: resolved_path.clone(),
             run_uuid: params.run_uuid,
             update_key: update_key.clone(),
             skip_versioning: params.versioning_disabled,
@@ -235,7 +266,7 @@ pub async fn handle_entity_output(
             produced: params.produced.clone(),
             ctx: &ctx,
             entity_definition: entity_definition.to_owned(),
-            path: path.to_owned(),
+            path: resolved_path,
             run_uuid: params.run_uuid,
             versioning_disabled: params.versioning_disabled,
         };
@@ -288,7 +319,7 @@ struct EntityOperationParams<'a> {
     produced: JsonValue,
     ctx: &'a PersistenceContext,
     entity_definition: String,
-    path: String,
+    path: Option<String>,
     run_uuid: Uuid,
     versioning_disabled: bool,
 }
@@ -302,7 +333,7 @@ async fn execute_entity_operation(
             let create_ctx = PersistenceContext {
                 entity_type: params.entity_definition.clone(),
                 produced: params.produced.clone(),
-                path: Some(params.path.clone()),
+                path: params.path.clone(),
                 run_uuid: params.run_uuid,
                 update_key: None,
                 skip_versioning: params.versioning_disabled,
