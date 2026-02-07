@@ -205,6 +205,23 @@ services:
             - VITE_ENABLE_API_LOGGING=true
             - VITE_ENABLE_PRODUCTION_SOURCEMAPS=false
 
+    # For local testing if you want to use an api key and push data from the outside
+    # (so you have a public endpoint without exposing everything)
+    nginx-proxy:
+        container_name: rdata_nginx_proxy
+        image: nginx:alpine
+        volumes:
+            - ./.docker/local_dev/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+            - ./.docker/local_dev/api-key.conf:/etc/nginx/api-key.conf:ro
+        ports:
+            - '8080:80'
+        depends_on:
+            - app
+        networks:
+            default:
+                aliases:
+                    - nginx.rdatacore.docker
+
 volumes:
     postgres_data:
     postgres_test_data:

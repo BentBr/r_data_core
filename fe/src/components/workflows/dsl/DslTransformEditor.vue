@@ -256,13 +256,13 @@
                 @update:model-value="updateResolveEntityPathField('target_path', $event)"
             />
             <v-text-field
-                :model-value="resolveEntityPathTargetParent"
-                :label="t('workflows.dsl.target_parent_uuid')"
+                :model-value="resolveEntityPathTargetUuid"
+                :label="t('workflows.dsl.target_uuid')"
                 density="comfortable"
                 class="mb-2"
-                hint="Optional: field to store parent UUID"
+                hint="Optional: field to store entity UUID (use as parent_uuid for children)"
                 persistent-hint
-                @update:model-value="updateResolveEntityPathField('target_parent_uuid', $event)"
+                @update:model-value="updateResolveEntityPathField('target_uuid', $event)"
             />
             <v-text-field
                 :model-value="resolveEntityPathEntityType"
@@ -351,22 +351,13 @@
                 @update:model-value="updateGetOrCreateField('target_path', $event)"
             />
             <v-text-field
-                :model-value="getOrCreateTargetParent"
-                :label="t('workflows.dsl.target_parent_uuid')"
-                density="comfortable"
-                class="mb-2"
-                hint="Optional: field to store parent UUID"
-                persistent-hint
-                @update:model-value="updateGetOrCreateField('target_parent_uuid', $event)"
-            />
-            <v-text-field
                 :model-value="getOrCreateTargetUuid"
-                :label="t('workflows.dsl.target_entity_uuid')"
+                :label="t('workflows.dsl.target_uuid')"
                 density="comfortable"
                 class="mb-2"
-                hint="Optional: field to store entity UUID"
+                hint="Optional: field to store entity UUID (use as parent_uuid for children)"
                 persistent-hint
-                @update:model-value="updateGetOrCreateField('target_entity_uuid', $event)"
+                @update:model-value="updateGetOrCreateField('target_uuid', $event)"
             />
             <v-text-field
                 :model-value="getOrCreateEntityType"
@@ -520,9 +511,9 @@
         return ''
     })
 
-    const resolveEntityPathTargetParent = computed(() => {
+    const resolveEntityPathTargetUuid = computed(() => {
         if (props.modelValue.type === 'resolve_entity_path') {
-            return props.modelValue.target_parent_uuid ?? ''
+            return props.modelValue.target_uuid ?? ''
         }
         return ''
     })
@@ -556,16 +547,9 @@
         return ''
     })
 
-    const getOrCreateTargetParent = computed(() => {
-        if (props.modelValue.type === 'get_or_create_entity') {
-            return props.modelValue.target_parent_uuid ?? ''
-        }
-        return ''
-    })
-
     const getOrCreateTargetUuid = computed(() => {
         if (props.modelValue.type === 'get_or_create_entity') {
-            return props.modelValue.target_entity_uuid ?? ''
+            return props.modelValue.target_uuid ?? ''
         }
         return ''
     })

@@ -118,4 +118,8 @@ pub trait DynamicEntityRepositoryTrait: Send + Sync {
 
     /// Count children for an entity
     async fn count_children(&self, parent_uuid: &Uuid) -> Result<i64>;
+
+    /// Get an entity by UUID regardless of entity type
+    /// Searches the `entities_registry` table directly
+    async fn get_by_uuid_any_type(&self, uuid: &Uuid) -> Result<Option<DynamicEntity>>;
 }

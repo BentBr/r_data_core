@@ -141,9 +141,9 @@ async fn test_resolve_entity_path_found() -> Result<()> {
     let result = resolve_entity_path(entity_type, &filters, None, None, &de_service).await?;
 
     assert!(result.is_some());
-    let (path, parent_uuid) = result.unwrap();
+    let (path, entity_uuid) = result.unwrap();
     assert_eq!(path, entity_path);
-    assert!(parent_uuid.is_none()); // Root level entity
+    assert!(entity_uuid.is_some()); // Entity was found
 
     Ok(())
 }
@@ -152,7 +152,7 @@ async fn test_resolve_entity_path_found() -> Result<()> {
 async fn test_resolve_entity_path_not_found_uses_fallback() -> Result<()> {
     let pool = setup_test_db().await;
     let entity_type = "test_instance";
-    let _entity_def = create_test_entity_definition(&pool, entity_type).await?;
+    let entity_def = create_test_entity_definition(&pool, entity_type).await?;
 
     let repo = DynamicEntityRepository::new(pool.pool.clone());
     let de_service = DynamicEntityService::new(
@@ -163,11 +163,18 @@ async fn test_resolve_entity_path_not_found_uses_fallback() -> Result<()> {
         ))),
     );
 
+    // Create the fallback entity (required for fallback to work)
+    let fallback_path = "/test/fallback";
+    let fallback_entity = create_test_entity(&entity_def, Some("fallback"), fallback_path);
+    let fallback_uuid = de_service.create_entity(&fallback_entity).await?;
+
+    // Wait for database
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
     // Try to resolve non-existent entity
     let mut filters = HashMap::new();
     filters.insert("license_key_id".to_string(), json!("NON-EXISTENT"));
 
-    let fallback_path = "/test/fallback";
     let result = resolve_entity_path(
         entity_type,
         &filters,
@@ -177,10 +184,15 @@ async fn test_resolve_entity_path_not_found_uses_fallback() -> Result<()> {
     )
     .await?;
 
-    // Should return fallback path when explicitly configured
+    // Should return fallback path and UUID when entity not found
     assert!(result.is_some());
-    let (path, _parent_uuid) = result.unwrap();
+    let (path, entity_uuid) = result.unwrap();
     assert_eq!(path, fallback_path);
+    assert!(
+        entity_uuid.is_some(),
+        "Should return the fallback entity's UUID"
+    );
+    assert_eq!(entity_uuid.unwrap(), fallback_uuid);
 
     Ok(())
 }
@@ -226,8 +238,9 @@ async fn test_resolve_entity_path_with_value_transform() -> Result<()> {
     .await?;
 
     assert!(result.is_some());
-    let (path, _parent_uuid) = result.unwrap();
+    let (path, entity_uuid) = result.unwrap();
     assert_eq!(path, entity_path);
+    assert!(entity_uuid.is_some()); // Entity was found
 
     Ok(())
 }

@@ -35,8 +35,8 @@ pub struct StatisticsPayload {
     pub admin_uri: String,
     /// CORS origins
     pub cors_origins: Vec<String>,
-    /// License key ID
-    pub license_key_id: Option<String>,
+    /// License key ID (always present - from license or deterministic hash)
+    pub license_key_id: String,
     /// Submission timestamp (ISO 8601)
     pub submitted_at: String,
 }
@@ -49,6 +49,8 @@ pub struct StatisticsService {
     client: Client,
     /// Statistics repository
     repository: Arc<StatisticsRepository>,
+    /// Database URL (used as fallback seed for generating instance key when unlicensed)
+    database_url: Option<String>,
 }
 
 impl StatisticsService {
@@ -67,6 +69,31 @@ impl StatisticsService {
             config,
             client,
             repository,
+            database_url: None,
+        }
+    }
+
+    /// Create a new statistics service with database URL for unlicensed instance key generation
+    ///
+    /// # Arguments
+    /// * `config` - License configuration
+    /// * `repository` - Statistics repository
+    /// * `database_url` - Database URL (used as seed for generating instance key when unlicensed)
+    #[must_use]
+    pub fn with_database_url(
+        config: LicenseConfig,
+        repository: Arc<StatisticsRepository>,
+        database_url: String,
+    ) -> Self {
+        let client = Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()
+            .unwrap_or_default();
+        Self {
+            config,
+            client,
+            repository,
+            database_url: Some(database_url),
         }
     }
 
@@ -98,6 +125,7 @@ impl StatisticsService {
         admin_uri: &str,
         cors_origins: &[String],
     ) -> Result<StatisticsPayload, Box<dyn std::error::Error + Send + Sync>> {
+        use sha2::{Digest, Sha256};
         use time::OffsetDateTime;
         use uuid::Uuid;
 
@@ -109,8 +137,29 @@ impl StatisticsService {
             .format(&time::format_description::well_known::Rfc3339)
             .map_err(|e| format!("Failed to format timestamp: {e}"))?;
 
-        // Get license key ID
-        let license_key_id = self.get_license_key_id().ok();
+        // Get license key ID, or generate a deterministic one for unlicensed instances
+        let license_key_id = self.get_license_key_id().ok().unwrap_or_else(|| {
+            // For unlicensed instances, generate a deterministic UUID from the database URL
+            // This ensures the same instance always reports with the same key
+            let seed = self
+                .database_url
+                .as_ref()
+                .map_or_else(|| admin_uri.to_string(), Clone::clone);
+
+            let mut hasher = Sha256::new();
+            hasher.update(seed.as_bytes());
+            let hash = hasher.finalize();
+
+            // Create a deterministic UUID from the hash (UUID v5 style)
+            let mut uuid_bytes = [0u8; 16];
+            uuid_bytes.copy_from_slice(&hash[..16]);
+            // Set version to 5 (SHA-1 based, we use SHA-256 but the same idea)
+            uuid_bytes[6] = (uuid_bytes[6] & 0x0f) | 0x50;
+            // Set variant to RFC 4122
+            uuid_bytes[8] = (uuid_bytes[8] & 0x3f) | 0x80;
+
+            Uuid::from_bytes(uuid_bytes).to_string()
+        });
 
         // Get entity definitions count and names
         let entity_definitions = self.repository.get_entity_definitions_stats().await?;

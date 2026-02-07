@@ -661,11 +661,10 @@
                 mapping: {},
             }
         } else if (newType === 'entity') {
-            // Entity type - NO output field
+            // Entity type - NO output field, path is optional (derived from parent_uuid if not set)
             newTo = {
                 type: 'entity',
                 entity_definition: '',
-                path: '',
                 mode: 'create',
                 mapping: {},
             }

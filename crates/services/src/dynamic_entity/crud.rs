@@ -112,6 +112,24 @@ impl DynamicEntityService {
         Ok((entity, children_count))
     }
 
+    /// Get an entity by UUID without knowing the entity type
+    ///
+    /// This searches across all entity types. Useful when you have a UUID
+    /// but don't know which entity type it belongs to (e.g., `parent_uuid` lookup).
+    ///
+    /// # Errors
+    /// Returns an error if entity is not found or database query fails
+    pub async fn get_entity_by_uuid_any_type(&self, uuid: Uuid) -> Result<DynamicEntity> {
+        self.repository
+            .get_by_uuid_any_type(&uuid)
+            .await?
+            .ok_or_else(|| {
+                r_data_core_core::error::Error::NotFound(format!(
+                    "Entity with UUID {uuid} not found"
+                ))
+            })
+    }
+
     /// Create a new entity with validation
     ///
     /// # Errors

@@ -39,6 +39,12 @@ impl EntityDefinitionService {
                 system: true,
             },
             ServiceEntityFieldInfo {
+                name: "parent_uuid".into(),
+                field_type: "Uuid".into(),
+                required: false,
+                system: true,
+            },
+            ServiceEntityFieldInfo {
                 name: "path".into(),
                 field_type: "String".into(),
                 required: false,

@@ -120,7 +120,7 @@ export const DslToFormatSchema = z.object({
 export const DslToEntitySchema = z.object({
     type: z.literal('entity'),
     entity_definition: z.string(),
-    path: z.string(),
+    path: z.string().optional(), // Optional - derived from parent_uuid if not set
     mode: z.enum(['create', 'update', 'create_or_update']),
     identify: DslEntityFilterSchema.optional(),
     update_key: z.string().optional(),
@@ -192,7 +192,7 @@ export const DslTransformConcatSchema = z.object({
 export const DslTransformResolveEntityPathSchema = z.object({
     type: z.literal('resolve_entity_path'),
     target_path: z.string(),
-    target_parent_uuid: z.string().optional(),
+    target_uuid: z.string().optional(),
     entity_type: z.string(),
     filters: z.record(z.string(), DslStringOperandSchema),
     value_transforms: z.record(z.string(), z.string()).optional(),
@@ -208,8 +208,7 @@ export const DslTransformBuildPathSchema = z.object({
 export const DslTransformGetOrCreateEntitySchema = z.object({
     type: z.literal('get_or_create_entity'),
     target_path: z.string(),
-    target_parent_uuid: z.string().optional(),
-    target_entity_uuid: z.string().optional(),
+    target_uuid: z.string().optional(),
     entity_type: z.string(),
     path_template: z.string(),
     create_field_data: z.record(z.string(), DslStringOperandSchema).optional(),

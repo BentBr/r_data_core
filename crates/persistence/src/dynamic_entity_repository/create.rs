@@ -28,7 +28,7 @@ pub async fn create_entity(repo: &DynamicEntityRepository, entity: &DynamicEntit
     entity.validate()?;
 
     // Extract the path (default root) and mandatory key
-    let mut path = entity
+    let path = entity
         .field_data
         .get("path")
         .and_then(|v| v.as_str().map(ToString::to_string))
@@ -46,7 +46,7 @@ pub async fn create_entity(repo: &DynamicEntityRepository, entity: &DynamicEntit
             )
         })?;
 
-    // Resolve parent_uuid, and validate/normalize path consistency
+    // Resolve the parent_uuid, and validate/normalize path consistency
     let mut resolved_parent_uuid = dynamic_entity_utils::extract_uuid_from_entity_field_data(
         &entity.field_data,
         "parent_uuid",
@@ -71,32 +71,23 @@ pub async fn create_entity(repo: &DynamicEntityRepository, entity: &DynamicEntit
         }
     }
 
-    // Validate parent/path when we have a parent (explicit or inferred)
+    // Validate if the parent exists when parent_uuid is set
     if let Some(parent_uuid_val) = resolved_parent_uuid {
-        // Fetch parent entity to validate path
-        let parent_result: Option<(String, String)> =
-            sqlx::query_as("SELECT path, entity_key FROM entities_registry WHERE uuid = $1")
+        // Fetch the parent entity to validate it exists
+        let parent_exists: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM entities_registry WHERE uuid = $1)")
                 .bind(parent_uuid_val)
-                .fetch_optional(&repo.pool)
+                .fetch_one(&repo.pool)
                 .await
                 .map_err(r_data_core_core::error::Error::Database)?;
 
-        if let Some((parent_path, parent_key)) = parent_result {
-            let expected_path = if parent_path.ends_with('/') {
-                format!("{parent_path}{parent_key}")
-            } else {
-                format!("{parent_path}/{parent_key}")
-            };
-
-            // Normalize the path to the expected parent path
-            if path != expected_path {
-                path = expected_path;
-            }
-        } else {
+        if !parent_exists {
             return Err(r_data_core_core::error::Error::Validation(
                 "Parent entity not found".to_string(),
             ));
         }
+        // Note: We don't overwrite the path here. The path was already correctly
+        // derived from parent_uuid + entity_key in derive_path_from_parent()
     }
 
     // Start a transaction

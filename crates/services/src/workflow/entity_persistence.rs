@@ -172,6 +172,76 @@ pub async fn ensure_entity_key<S: std::hash::BuildHasher>(
     }
 }
 
+/// Derive path from `parent_uuid` by looking up parent entity
+///
+/// If `parent_uuid` is set in `field_data` and path is not set, looks up the parent entity
+/// and generates path as `{parent_path}/{entity_key}`.
+///
+/// # Errors
+/// Returns an error if parent entity lookup fails
+async fn derive_path_from_parent<S: std::hash::BuildHasher>(
+    de_service: &DynamicEntityService,
+    field_data: &mut HashMap<String, Value, S>,
+) -> r_data_core_core::error::Result<()> {
+    // Check if path is already set
+    if field_data.contains_key("path") {
+        return Ok(());
+    }
+
+    // Check if parent_uuid is set
+    let parent_uuid_str = match field_data.get("parent_uuid").and_then(|v| v.as_str()) {
+        Some(s) => s.to_string(),
+        None => {
+            return Err(r_data_core_core::error::Error::Validation(
+                "Either 'path' or 'parent_uuid' must be provided for entity creation".to_string(),
+            ));
+        }
+    };
+
+    // Parse parent UUID
+    let parent_uuid = Uuid::parse_str(&parent_uuid_str).map_err(|e| {
+        r_data_core_core::error::Error::Validation(format!("Invalid parent_uuid: {e}"))
+    })?;
+
+    // Look up parent entity (search across all entity types)
+    let parent = de_service
+        .get_entity_by_uuid_any_type(parent_uuid)
+        .await
+        .map_err(|e| {
+            r_data_core_core::error::Error::NotFound(format!(
+                "Parent entity with UUID {parent_uuid} not found: {e}"
+            ))
+        })?;
+
+    // Get parent's path
+    let parent_path = parent
+        .field_data
+        .get("path")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| {
+            r_data_core_core::error::Error::Validation(format!(
+                "Parent entity {parent_uuid} has no path"
+            ))
+        })?;
+
+    // Get entity_key (must already be set at this point)
+    let entity_key = field_data
+        .get("entity_key")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| {
+            r_data_core_core::error::Error::Validation(
+                "entity_key must be set before deriving path from parent_uuid".to_string(),
+            )
+        })?;
+
+    // Generate path as {parent_path}/{entity_key}
+    let derived_path = format!("{parent_path}/{entity_key}");
+    let normalized_path = normalize_path(&derived_path);
+    field_data.insert("path".to_string(), Value::String(normalized_path));
+
+    Ok(())
+}
+
 /// Create a new entity
 ///
 /// # Errors
@@ -191,6 +261,9 @@ pub async fn create_entity(
 
     // Ensure entity_key exists
     ensure_entity_key(de_service, &ctx.entity_type, &mut final_data).await;
+
+    // Derive path from parent_uuid if path is not set
+    derive_path_from_parent(de_service, &mut final_data).await?;
 
     // Log missing required fields for debugging
     let missing_required_fields: Vec<String> = def
@@ -341,8 +414,57 @@ pub async fn create_or_update_entity(
     Ok(())
 }
 
+/// Result of entity path resolution: (path, `entity_uuid`)
+///
+/// - `path`: The entity's path
+/// - `entity_uuid`: The entity's UUID (use as `parent_uuid` for children)
+pub type ResolvedEntityPath = (String, Option<Uuid>);
+
+/// Look up an entity by its path and return (path, uuid)
+///
+/// # Errors
+/// Returns an error if the entity is not found at the given path
+async fn lookup_entity_by_path(
+    entity_type: &str,
+    path: &str,
+    de_service: &DynamicEntityService,
+) -> r_data_core_core::error::Result<Option<ResolvedEntityPath>> {
+    use log::error;
+
+    let normalized_path = normalize_path(path);
+    let mut filter_map: HashMap<String, Value> = HashMap::new();
+    filter_map.insert("path".to_string(), Value::String(normalized_path.clone()));
+
+    match de_service
+        .filter_entities(entity_type, 1, 0, Some(filter_map), None, None, None)
+        .await
+    {
+        Ok(entities) => {
+            if let Some(entity) = entities.first() {
+                let entity_uuid = entity
+                    .field_data
+                    .get("uuid")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| Uuid::parse_str(s).ok());
+
+                Ok(Some((normalized_path, entity_uuid)))
+            } else {
+                error!(
+                    "Fallback entity not found at path '{normalized_path}' for type '{entity_type}'. Please create the fallback entity first."
+                );
+                Err(r_data_core_core::error::Error::NotFound(format!(
+                    "Fallback entity not found at path '{normalized_path}' for type '{entity_type}'. Please create the fallback entity first."
+                )))
+            }
+        }
+        Err(e) => {
+            error!("Failed to lookup entity by path '{path}': {e}");
+            Err(e)
+        }
+    }
+}
+
 /// Resolve entity path by filters with optional value transformation
-/// Resolves entity path by querying with filters
 ///
 /// # Arguments
 /// * `entity_type` - Type of entity to find
@@ -352,11 +474,11 @@ pub async fn create_or_update_entity(
 /// * `de_service` - Dynamic entity service
 ///
 /// # Returns
-/// `Ok(Some((path, parent_uuid)))` - Returns path if entity found or `fallback_path` is provided
+/// `Ok(Some((path, entity_uuid)))` - Returns path and UUID if entity found or fallback
 /// `Ok(None)` - Returns None if entity not found and no `fallback_path` provided
 ///
 /// # Errors
-/// Returns an error if database operation fails
+/// Returns an error if the database operation fails
 #[allow(clippy::implicit_hasher)] // Using default hasher (RandomState) is fine for this use case
 pub async fn resolve_entity_path(
     entity_type: &str,
@@ -364,11 +486,10 @@ pub async fn resolve_entity_path(
     value_transforms: Option<&HashMap<String, String>>,
     fallback_path: Option<&str>,
     de_service: &DynamicEntityService,
-) -> r_data_core_core::error::Result<Option<(String, Option<Uuid>)>> {
+) -> r_data_core_core::error::Result<Option<ResolvedEntityPath>> {
     use log::{error, warn};
 
     // Apply transformations to filter values
-    // Note: We need to convert the HashMap types to match the function signature
     let transformed_filters = {
         let mut result = HashMap::new();
         for (k, v) in filters {
@@ -392,40 +513,45 @@ pub async fn resolve_entity_path(
         filter_map.insert(k.clone(), v.clone());
     }
 
-    match de_service
+    let entities = de_service
         .filter_entities(entity_type, 1, 0, Some(filter_map), None, None, None)
-        .await
-    {
+        .await;
+
+    match entities {
         Ok(entities) => {
-            entities.first().map_or_else(|| fallback_path.map_or_else(
-                    || {
-                        warn!(
-                            "Entity not found for type '{entity_type}' with filters, no fallback path configured"
-                        );
-                        Ok(None)
-                    },
-                    |fallback| {
-                        warn!(
-                            "Entity not found for type '{entity_type}' with filters, using configured fallback path: {fallback}"
-                        );
-                        Ok(Some((fallback.to_string(), None)))
-                    },
-                ), |entity| {
-                // Extract path and parent_uuid from the entity
+            if let Some(entity) = entities.first() {
+                // Entity found - extract path and UUID
                 let path = entity
                     .field_data
                     .get("path")
                     .and_then(|v| v.as_str())
                     .map_or_else(|| "/".to_string(), ToString::to_string);
 
-                let parent_uuid = entity
+                let entity_uuid = entity
                     .field_data
-                    .get("parent_uuid")
+                    .get("uuid")
                     .and_then(|v| v.as_str())
                     .and_then(|s| Uuid::parse_str(s).ok());
 
-                Ok(Some((path, parent_uuid)))
-            })
+                Ok(Some((path, entity_uuid)))
+            } else {
+                // Entity not found - try fallback
+                match fallback_path {
+                    None => {
+                        warn!(
+                            "Entity not found for type '{entity_type}' with filters, no fallback path configured"
+                        );
+                        Ok(None)
+                    }
+                    Some(fallback) => {
+                        warn!(
+                            "Entity not found for type '{entity_type}' with filters, using fallback: {fallback}"
+                        );
+                        // Look up the fallback entity by path to get its UUID
+                        lookup_entity_by_path(entity_type, fallback, de_service).await
+                    }
+                }
+            }
         }
         Err(e) => {
             // Database error - return error, don't use fallback
