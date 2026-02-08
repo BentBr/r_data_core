@@ -9,6 +9,7 @@ pub mod authentication_tests;
 pub mod dynamic_entity_api_tests;
 pub mod dynamic_entity_routes_tests;
 pub mod entity_definition_integration_tests;
+pub mod entity_definitions;
 pub mod error_handling_tests;
 pub mod meta;
 pub mod provider_workflow_endpoints_tests;
