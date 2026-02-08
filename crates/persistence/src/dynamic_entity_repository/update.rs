@@ -1,6 +1,6 @@
 use serde_json::Value as JsonValue;
 use sqlx::Postgres;
-use sqlx::{Row, Transaction};
+use sqlx::Transaction;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -157,19 +157,11 @@ async fn update_registry(
     registry_query = registry_query.bind(uuid);
 
     // Execute the registry update and map unique violations
-    let res = registry_query.execute(&mut **tx).await;
-    if let Err(e) = res {
-        if let sqlx::Error::Database(db_err) = &e {
-            if db_err.code().as_deref() == Some("23505") {
-                return Err(r_data_core_core::error::Error::ValidationFailed(
-                    "An entity with the same key already exists in this path".to_string(),
-                ));
-            }
-        }
-        return Err(r_data_core_core::error::Error::Database(e));
-    }
-
-    Ok(())
+    registry_query
+        .execute(&mut **tx)
+        .await
+        .map(|_| ())
+        .map_err(dynamic_entity_utils::map_registry_unique_violation)
 }
 
 /// Update entity-specific table
@@ -190,36 +182,7 @@ async fn update_entity_table(
     };
 
     // Get column names for this table
-    let columns_result = sqlx::query(
-        "SELECT column_name
-         FROM information_schema.columns
-         WHERE table_schema = current_schema() AND table_name = $1",
-    )
-    .bind(&table_name)
-    .fetch_all(&mut **tx)
-    .await?;
-
-    // Extract column names
-    let valid_columns: Vec<String> = columns_result
-        .iter()
-        .map(|row| {
-            row.try_get::<String, _>("column_name")
-                .unwrap_or_default()
-                .to_lowercase()
-        })
-        .collect();
-
-    // Registry fields that should not be included in the entity table
-    let registry_fields = [
-        "entity_type",
-        "path",
-        "created_at",
-        "updated_at",
-        "created_by",
-        "updated_by",
-        "published",
-        "version",
-    ];
+    let valid_columns = dynamic_entity_utils::fetch_valid_columns(&mut **tx, &table_name).await?;
 
     // Build SET clauses for entity-specific fields with proper parameterization
     let mut set_clauses = Vec::new();
@@ -227,7 +190,7 @@ async fn update_entity_table(
     let mut param_index = 1;
 
     for (key, value) in &entity.field_data {
-        if registry_fields.contains(&key.as_str()) || key == "uuid" {
+        if dynamic_entity_utils::REGISTRY_FIELDS.contains(&key.as_str()) || key == "uuid" {
             continue; // Skip fields that are stored in entities_registry
         }
         if key == "__skip_versioning" {
@@ -283,38 +246,15 @@ async fn update_entity_table(
         // Always bind UUID
         entity_query = entity_query.bind(uuid);
 
-        let result = entity_query.execute(&mut **tx).await;
-
         // Handle unique constraint violations
-        if let Err(e) = result {
-            if let sqlx::Error::Database(db_err) = &e {
-                // Postgres unique_violation code
-                if db_err.code().as_deref() == Some("23505") {
-                    let field_name =
-                        extract_field_from_unique_constraint(db_err.constraint(), &table_name);
-                    return Err(r_data_core_core::error::Error::ValidationFailed(format!(
-                        "Field '{field_name}' must be unique. A record with this value already exists."
-                    )));
-                }
-            }
-            return Err(r_data_core_core::error::Error::Database(e));
-        }
+        entity_query
+            .execute(&mut **tx)
+            .await
+            .map(|_| ())
+            .map_err(|e| dynamic_entity_utils::map_entity_unique_violation(e, &table_name))?;
     }
 
     Ok(())
-}
-
-/// Extract field name from unique constraint name
-/// Constraint format: idx_{table}_{field}_unique
-fn extract_field_from_unique_constraint(constraint: Option<&str>, table_name: &str) -> String {
-    if let Some(constraint_name) = constraint {
-        let prefix = format!("idx_{table_name}_");
-        let suffix = "_unique";
-        if constraint_name.starts_with(&prefix) && constraint_name.ends_with(suffix) {
-            return constraint_name[prefix.len()..constraint_name.len() - suffix.len()].to_string();
-        }
-    }
-    "unknown".to_string()
 }
 
 #[cfg(test)]
@@ -375,34 +315,6 @@ mod tests {
         fn test_parse_url_returns_none() {
             let result = try_parse_timestamp("https://example.com");
             assert!(result.is_none());
-        }
-    }
-
-    mod extract_field_from_unique_constraint_tests {
-        use super::*;
-
-        #[test]
-        fn test_extract_field_from_valid_constraint() {
-            let result = extract_field_from_unique_constraint(
-                Some("idx_entity_customer_email_unique"),
-                "entity_customer",
-            );
-            assert_eq!(result, "email");
-        }
-
-        #[test]
-        fn test_extract_field_from_constraint_with_underscores() {
-            let result = extract_field_from_unique_constraint(
-                Some("idx_entity_test_my_field_unique"),
-                "entity_test",
-            );
-            assert_eq!(result, "my_field");
-        }
-
-        #[test]
-        fn test_extract_field_from_none_constraint() {
-            let result = extract_field_from_unique_constraint(None, "entity_test");
-            assert_eq!(result, "unknown");
         }
     }
 }

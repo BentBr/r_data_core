@@ -1,6 +1,6 @@
 use serde_json::Value as JsonValue;
 use sqlx::Postgres;
-use sqlx::{Row, Transaction};
+use sqlx::Transaction;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -46,7 +46,7 @@ pub async fn create_entity(repo: &DynamicEntityRepository, entity: &DynamicEntit
             )
         })?;
 
-    // Resolve the parent_uuid, and validate/normalize path consistency
+    // Resolve the the parent_uuid, and validate/normalize path consistency
     let mut resolved_parent_uuid = dynamic_entity_utils::extract_uuid_from_entity_field_data(
         &entity.field_data,
         "parent_uuid",
@@ -155,20 +155,7 @@ async fn insert_into_registry(
         .await;
 
     // Map unique violations on (path,key) to a conflict error
-    match result {
-        Ok(uuid) => Ok(uuid),
-        Err(e) => {
-            if let sqlx::Error::Database(db_err) = &e {
-                // Postgres unique_violation code
-                if db_err.code().as_deref() == Some("23505") {
-                    return Err(r_data_core_core::error::Error::ValidationFailed(
-                        "An entity with the same key already exists in this path".to_string(),
-                    ));
-                }
-            }
-            Err(r_data_core_core::error::Error::Database(e))
-        }
-    }
+    result.map_err(dynamic_entity_utils::map_registry_unique_violation)
 }
 
 /// Insert entity data into entity-specific table
@@ -180,36 +167,7 @@ async fn insert_into_entity_table(
     let table_name = dynamic_entity_utils::get_table_name(&entity.entity_type);
 
     // Get column names for this table
-    let columns_result = sqlx::query(
-        "SELECT column_name
-         FROM information_schema.columns
-         WHERE table_schema = current_schema() AND table_name = $1",
-    )
-    .bind(&table_name)
-    .fetch_all(&mut **tx)
-    .await?;
-
-    // Extract column names
-    let valid_columns: Vec<String> = columns_result
-        .iter()
-        .map(|row| {
-            row.try_get::<String, _>("column_name")
-                .unwrap_or_default()
-                .to_lowercase()
-        })
-        .collect();
-
-    // Registry fields that should not be included in the entity table
-    let registry_fields = [
-        "entity_type",
-        "path",
-        "created_at",
-        "updated_at",
-        "created_by",
-        "updated_by",
-        "published",
-        "version",
-    ];
+    let valid_columns = dynamic_entity_utils::fetch_valid_columns(&mut **tx, &table_name).await?;
 
     // Build query for entity-specific table
     let mut columns = vec!["uuid".to_string()];
@@ -217,7 +175,7 @@ async fn insert_into_entity_table(
 
     // Add entity-specific fields
     for (key, value) in &entity.field_data {
-        if registry_fields.contains(&key.as_str()) || key == "uuid" {
+        if dynamic_entity_utils::REGISTRY_FIELDS.contains(&key.as_str()) || key == "uuid" {
             continue; // Skip fields that are stored in entities_registry
         }
 
@@ -252,35 +210,9 @@ async fn insert_into_entity_table(
     };
 
     // Handle unique constraint violations
-    match result {
-        Ok(_) => Ok(()),
-        Err(e) => {
-            if let sqlx::Error::Database(db_err) = &e {
-                // Postgres unique_violation code
-                if db_err.code().as_deref() == Some("23505") {
-                    let field_name =
-                        extract_field_from_unique_constraint(db_err.constraint(), &table_name);
-                    return Err(r_data_core_core::error::Error::ValidationFailed(format!(
-                        "Field '{field_name}' must be unique. A record with this value already exists."
-                    )));
-                }
-            }
-            Err(r_data_core_core::error::Error::Database(e))
-        }
-    }
-}
-
-/// Extract field name from unique constraint name
-/// Constraint format: idx_{table}_{field}_unique
-fn extract_field_from_unique_constraint(constraint: Option<&str>, table_name: &str) -> String {
-    if let Some(constraint_name) = constraint {
-        let prefix = format!("idx_{table_name}_");
-        let suffix = "_unique";
-        if constraint_name.starts_with(&prefix) && constraint_name.ends_with(suffix) {
-            return constraint_name[prefix.len()..constraint_name.len() - suffix.len()].to_string();
-        }
-    }
-    "unknown".to_string()
+    result
+        .map(|_| ())
+        .map_err(|e| dynamic_entity_utils::map_entity_unique_violation(e, &table_name))
 }
 
 /// Extract timestamp from field data
@@ -430,50 +362,6 @@ mod tests {
             let value = json!([]);
             let result = format_value_for_sql(&value);
             assert_eq!(result, "'[]'::jsonb");
-        }
-    }
-
-    mod extract_field_from_unique_constraint_tests {
-        use super::*;
-
-        #[test]
-        fn test_extract_field_from_valid_constraint() {
-            let result = extract_field_from_unique_constraint(
-                Some("idx_entity_customer_email_unique"),
-                "entity_customer",
-            );
-            assert_eq!(result, "email");
-        }
-
-        #[test]
-        fn test_extract_field_from_constraint_with_underscores() {
-            let result = extract_field_from_unique_constraint(
-                Some("idx_entity_test_my_field_unique"),
-                "entity_test",
-            );
-            assert_eq!(result, "my_field");
-        }
-
-        #[test]
-        fn test_extract_field_from_none_constraint() {
-            let result = extract_field_from_unique_constraint(None, "entity_test");
-            assert_eq!(result, "unknown");
-        }
-
-        #[test]
-        fn test_extract_field_from_mismatched_prefix() {
-            let result = extract_field_from_unique_constraint(
-                Some("idx_other_table_field_unique"),
-                "entity_test",
-            );
-            assert_eq!(result, "unknown");
-        }
-
-        #[test]
-        fn test_extract_field_from_missing_suffix() {
-            let result =
-                extract_field_from_unique_constraint(Some("idx_entity_test_field"), "entity_test");
-            assert_eq!(result, "unknown");
         }
     }
 }

@@ -186,3 +186,138 @@ pub fn extract_uuid_from_entity_field_data<H: std::hash::BuildHasher>(
 ) -> Option<Uuid> {
     field_data.get(field_name).and_then(extract_uuid_from_json)
 }
+
+/// Registry fields that should not be included in entity-specific tables
+pub const REGISTRY_FIELDS: &[&str] = &[
+    "entity_type",
+    "path",
+    "created_at",
+    "updated_at",
+    "created_by",
+    "updated_by",
+    "published",
+    "version",
+];
+
+/// Fetch valid column names for a given table from `information_schema`
+///
+/// # Errors
+/// Returns an error if the database query fails
+pub async fn fetch_valid_columns<'e, E>(executor: E, table_name: &str) -> Result<Vec<String>>
+where
+    E: sqlx::Executor<'e, Database = sqlx::Postgres>,
+{
+    let columns_result = sqlx::query(
+        "SELECT column_name
+         FROM information_schema.columns
+         WHERE table_schema = current_schema() AND table_name = $1",
+    )
+    .bind(table_name)
+    .fetch_all(executor)
+    .await?;
+
+    Ok(columns_result
+        .iter()
+        .map(|row| {
+            row.try_get::<String, _>("column_name")
+                .unwrap_or_default()
+                .to_lowercase()
+        })
+        .collect())
+}
+
+/// Extract field name from a unique constraint name
+/// Constraint format: `idx_{table}_{field}_unique`
+#[must_use]
+pub fn extract_field_from_unique_constraint(constraint: Option<&str>, table_name: &str) -> String {
+    if let Some(constraint_name) = constraint {
+        let prefix = format!("idx_{table_name}_");
+        let suffix = "_unique";
+        if constraint_name.starts_with(&prefix) && constraint_name.ends_with(suffix) {
+            return constraint_name[prefix.len()..constraint_name.len() - suffix.len()].to_string();
+        }
+    }
+    "unknown".to_string()
+}
+
+/// Map a sqlx unique constraint violation on the `entities_registry` (path + key) to a validation
+/// error. Non-unique-violation errors are mapped to `Error::Database`.
+#[must_use]
+pub fn map_registry_unique_violation(err: sqlx::Error) -> r_data_core_core::error::Error {
+    if let sqlx::Error::Database(ref db_err) = err {
+        if db_err.code().as_deref() == Some("23505") {
+            return r_data_core_core::error::Error::ValidationFailed(
+                "An entity with the same key already exists in this path".to_string(),
+            );
+        }
+    }
+    r_data_core_core::error::Error::Database(err)
+}
+
+/// Map a sqlx unique constraint violation on an entity-specific table to a validation error,
+/// extracting the field name from the constraint.
+/// Non-unique-violation errors are mapped to `Error::Database`.
+#[must_use]
+pub fn map_entity_unique_violation(
+    err: sqlx::Error,
+    table_name: &str,
+) -> r_data_core_core::error::Error {
+    if let sqlx::Error::Database(ref db_err) = err {
+        if db_err.code().as_deref() == Some("23505") {
+            let field_name = extract_field_from_unique_constraint(db_err.constraint(), table_name);
+            return r_data_core_core::error::Error::ValidationFailed(format!(
+                "Field '{field_name}' must be unique. A record with this value already exists."
+            ));
+        }
+    }
+    r_data_core_core::error::Error::Database(err)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod extract_field_from_unique_constraint_tests {
+        use super::*;
+
+        #[test]
+        fn test_extract_field_from_valid_constraint() {
+            let result = extract_field_from_unique_constraint(
+                Some("idx_entity_customer_email_unique"),
+                "entity_customer",
+            );
+            assert_eq!(result, "email");
+        }
+
+        #[test]
+        fn test_extract_field_from_constraint_with_underscores() {
+            let result = extract_field_from_unique_constraint(
+                Some("idx_entity_test_my_field_unique"),
+                "entity_test",
+            );
+            assert_eq!(result, "my_field");
+        }
+
+        #[test]
+        fn test_extract_field_from_none_constraint() {
+            let result = extract_field_from_unique_constraint(None, "entity_test");
+            assert_eq!(result, "unknown");
+        }
+
+        #[test]
+        fn test_extract_field_from_mismatched_prefix() {
+            let result = extract_field_from_unique_constraint(
+                Some("idx_other_table_field_unique"),
+                "entity_test",
+            );
+            assert_eq!(result, "unknown");
+        }
+
+        #[test]
+        fn test_extract_field_from_missing_suffix() {
+            let result =
+                extract_field_from_unique_constraint(Some("idx_entity_test_field"), "entity_test");
+            assert_eq!(result, "unknown");
+        }
+    }
+}
