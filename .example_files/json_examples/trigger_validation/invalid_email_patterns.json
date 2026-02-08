@@ -15,10 +15,13 @@
       "indexed": true,
       "filterable": true,
       "constraints": {
-        "min_length": 5,
-        "max_length": 255,
-        "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
-        "error_message": "Please enter a valid email address"
+        "type": "string",
+        "constraints": {
+          "min_length": 5,
+          "max_length": 255,
+          "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+          "error_message": "Please enter a valid email address"
+        }
       },
       "ui_settings": {
         "display_order": 1,
@@ -35,10 +38,13 @@
       "indexed": true,
       "filterable": true,
       "constraints": {
-        "min_length": 3,
-        "max_length": 50,
-        "pattern": "^[a-zA-Z0-9_-]+$",
-        "error_message": "Username can only contain letters, numbers, underscores and hyphens"
+        "type": "string",
+        "constraints": {
+          "min_length": 3,
+          "max_length": 50,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "error_message": "Username can only contain letters, numbers, underscores and hyphens"
+        }
       },
       "ui_settings": {
         "display_order": 2,
@@ -54,8 +60,11 @@
       "indexed": true,
       "filterable": true,
       "constraints": {
-        "min_length": 1,
-        "max_length": 50
+        "type": "string",
+        "constraints": {
+          "min_length": 1,
+          "max_length": 50
+        }
       },
       "ui_settings": {
         "display_order": 3,
@@ -71,8 +80,11 @@
       "indexed": true,
       "filterable": true,
       "constraints": {
-        "min_length": 1,
-        "max_length": 50
+        "type": "string",
+        "constraints": {
+          "min_length": 1,
+          "max_length": 50
+        }
       },
       "ui_settings": {
         "display_order": 4,
@@ -80,4 +92,4 @@
       }
     }
   ]
-} 
+}

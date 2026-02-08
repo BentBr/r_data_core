@@ -233,6 +233,8 @@ pub struct FieldDefinitionSchema {
     pub indexed: bool,
     /// Whether the field can be used in API filtering
     pub filterable: bool,
+    /// Whether the field must have unique values (DB-level constraint)
+    pub unique: bool,
     /// Default value for the field
     pub default_value: Option<Value>,
     /// Type-specific field constraints

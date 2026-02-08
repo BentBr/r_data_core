@@ -63,3 +63,67 @@ pub struct FieldValidation {
     /// For select fields: options source
     pub options_source: Option<OptionsSource>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_field_validation_with_string_constraints() {
+        let validation = FieldValidation {
+            min_length: Some(5),
+            max_length: Some(100),
+            pattern: Some("^[a-z]+$".to_string()),
+            ..Default::default()
+        };
+
+        assert_eq!(validation.min_length, Some(5));
+        assert_eq!(validation.max_length, Some(100));
+        assert_eq!(validation.pattern, Some("^[a-z]+$".to_string()));
+    }
+
+    #[test]
+    fn test_field_validation_defaults_to_none() {
+        let validation = FieldValidation::default();
+        assert_eq!(validation.min_length, None);
+        assert_eq!(validation.max_length, None);
+        assert_eq!(validation.pattern, None);
+        assert_eq!(validation.min_value, None);
+        assert_eq!(validation.max_value, None);
+        assert_eq!(validation.positive_only, None);
+    }
+
+    #[test]
+    fn test_field_validation_serialization() {
+        let validation = FieldValidation {
+            min_length: Some(5),
+            max_length: Some(100),
+            pattern: Some("^[a-z]+$".to_string()),
+            ..Default::default()
+        };
+
+        let json = serde_json::to_string(&validation).unwrap();
+        assert!(json.contains("\"min_length\":5"));
+        assert!(json.contains("\"max_length\":100"));
+        assert!(json.contains("\"pattern\":\"^[a-z]+$\""));
+
+        let deserialized: FieldValidation = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.min_length, Some(5));
+        assert_eq!(deserialized.max_length, Some(100));
+        assert_eq!(deserialized.pattern, Some("^[a-z]+$".to_string()));
+    }
+
+    #[test]
+    fn test_field_validation_numeric_constraints() {
+        let validation = FieldValidation {
+            min_value: Some(serde_json::json!(0)),
+            max_value: Some(serde_json::json!(100)),
+            positive_only: Some(true),
+            ..Default::default()
+        };
+
+        assert_eq!(validation.min_value, Some(serde_json::json!(0)));
+        assert_eq!(validation.max_value, Some(serde_json::json!(100)));
+        assert_eq!(validation.positive_only, Some(true));
+    }
+}

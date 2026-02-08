@@ -126,6 +126,7 @@ pub fn field_definition_to_schema_model(field: &FieldDefinition) -> FieldDefinit
         required: field.required,
         indexed: field.indexed,
         filterable: field.filterable,
+        unique: field.unique,
         default_value: field.default_value.clone(),
         constraints: Some(constraints),
         ui_settings: UiSettingsSchema {

@@ -95,6 +95,96 @@
                         </v-col>
                     </v-row>
 
+                    <!-- Validation Options Section -->
+                    <v-row v-if="showValidationSection">
+                        <v-col cols="12">
+                            <v-divider class="my-2" />
+                            <div class="text-subtitle-2 mb-2">
+                                {{ t('entity_definitions.fields.validation_options') }}
+                            </div>
+                        </v-col>
+                    </v-row>
+
+                    <!-- String validation (String, Text, Wysiwyg) -->
+                    <template v-if="isStringType">
+                        <v-row>
+                            <v-col cols="4">
+                                <v-text-field
+                                    v-model.number="constraintMinLength"
+                                    :label="t('entity_definitions.fields.min_length')"
+                                    type="number"
+                                    min="0"
+                                />
+                            </v-col>
+                            <v-col cols="4">
+                                <v-text-field
+                                    v-model.number="constraintMaxLength"
+                                    :label="t('entity_definitions.fields.max_length')"
+                                    type="number"
+                                    min="0"
+                                />
+                            </v-col>
+                            <v-col cols="4">
+                                <v-checkbox
+                                    v-model="emailPreset"
+                                    :label="t('entity_definitions.fields.email_format')"
+                                    density="compact"
+                                />
+                            </v-col>
+                        </v-row>
+                        <v-row>
+                            <v-col cols="12">
+                                <v-text-field
+                                    v-model="constraintPattern"
+                                    :label="t('entity_definitions.fields.pattern')"
+                                    :hint="t('entity_definitions.fields.pattern_hint')"
+                                    :disabled="emailPreset"
+                                    persistent-hint
+                                />
+                            </v-col>
+                        </v-row>
+                    </template>
+
+                    <!-- Numeric validation (Integer, Float) -->
+                    <template v-if="isNumericType">
+                        <v-row>
+                            <v-col cols="4">
+                                <v-text-field
+                                    v-model.number="constraintMin"
+                                    :label="t('entity_definitions.fields.min_value')"
+                                    type="number"
+                                />
+                            </v-col>
+                            <v-col cols="4">
+                                <v-text-field
+                                    v-model.number="constraintMax"
+                                    :label="t('entity_definitions.fields.max_value')"
+                                    type="number"
+                                />
+                            </v-col>
+                            <v-col cols="4">
+                                <v-checkbox
+                                    v-model="constraintPositiveOnly"
+                                    :label="t('entity_definitions.fields.positive_only')"
+                                    density="compact"
+                                />
+                            </v-col>
+                        </v-row>
+                    </template>
+
+                    <!-- Uniqueness (String, Text, Integer, Uuid) -->
+                    <v-row v-if="supportsUniqueness">
+                        <v-col cols="12">
+                            <v-checkbox
+                                v-model="constraintUnique"
+                                :label="t('entity_definitions.fields.unique')"
+                                :hint="t('entity_definitions.fields.unique_hint')"
+                                persistent-hint
+                                density="compact"
+                            />
+                        </v-col>
+                    </v-row>
+
                     <v-row v-if="showDefaultValue">
                         <v-col cols="12">
                             <!-- Boolean: Dropdown -->
@@ -247,6 +337,7 @@
         required: false,
         indexed: false,
         filterable: false,
+        unique: false,
         default_value: undefined,
         constraints: {},
         ui_settings: {},
@@ -258,6 +349,89 @@
         )
     })
 
+    // Validation section computed properties
+    const EMAIL_REGEX = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'
+
+    const isStringType = computed(() =>
+        ['String', 'Text', 'Wysiwyg'].includes(form.value.field_type)
+    )
+    const isNumericType = computed(() => ['Integer', 'Float'].includes(form.value.field_type))
+    const supportsUniqueness = computed(() =>
+        ['String', 'Text', 'Integer', 'Uuid'].includes(form.value.field_type)
+    )
+    const showValidationSection = computed(
+        () => isStringType.value || isNumericType.value || supportsUniqueness.value
+    )
+
+    const emailPreset = computed({
+        get: () => form.value.constraints?.pattern === EMAIL_REGEX,
+        set: (value: boolean) => {
+            form.value.constraints ??= {}
+            form.value.constraints.pattern = value ? EMAIL_REGEX : undefined
+        },
+    })
+
+    // Constraint computed properties with safe getters/setters
+    const ensureConstraints = () => {
+        form.value.constraints ??= {}
+    }
+
+    const constraintMinLength = computed({
+        get: () => form.value.constraints?.min_length as number | undefined,
+        set: (value: number | undefined) => {
+            ensureConstraints()
+            form.value.constraints!.min_length = value
+        },
+    })
+
+    const constraintMaxLength = computed({
+        get: () => form.value.constraints?.max_length as number | undefined,
+        set: (value: number | undefined) => {
+            ensureConstraints()
+            form.value.constraints!.max_length = value
+        },
+    })
+
+    const constraintPattern = computed({
+        get: () => form.value.constraints?.pattern as string | undefined,
+        set: (value: string | undefined) => {
+            ensureConstraints()
+            form.value.constraints!.pattern = value
+        },
+    })
+
+    const constraintMin = computed({
+        get: () => form.value.constraints?.min as number | undefined,
+        set: (value: number | undefined) => {
+            ensureConstraints()
+            form.value.constraints!.min = value
+        },
+    })
+
+    const constraintMax = computed({
+        get: () => form.value.constraints?.max as number | undefined,
+        set: (value: number | undefined) => {
+            ensureConstraints()
+            form.value.constraints!.max = value
+        },
+    })
+
+    const constraintPositiveOnly = computed({
+        get: () => form.value.constraints?.positive_only as boolean | undefined,
+        set: (value: boolean | undefined) => {
+            ensureConstraints()
+            form.value.constraints!.positive_only = value
+        },
+    })
+
+    // Unique is at root level (DB-level constraint), not in constraints
+    const constraintUnique = computed({
+        get: () => form.value.unique ?? false,
+        set: (value: boolean) => {
+            form.value.unique = value
+        },
+    })
+
     const resetForm = () => {
         form.value = {
             name: '',
@@ -267,6 +441,7 @@
             required: false,
             indexed: false,
             filterable: false,
+            unique: false,
             default_value: undefined,
             constraints: {},
             ui_settings: {},
@@ -278,6 +453,13 @@
         () => props.field,
         newField => {
             if (newField) {
+                // API returns nested constraints: { type: "string", constraints: { pattern: "..." } }
+                // Extract inner constraints for the flat form structure
+                const apiConstraints = newField.constraints as
+                    | { type?: string; constraints?: Record<string, unknown> }
+                    | undefined
+                const innerConstraints = apiConstraints?.constraints ?? {}
+
                 // Editing existing field - populate form with field data
                 form.value = {
                     name: newField.name,
@@ -287,8 +469,10 @@
                     required: newField.required,
                     indexed: newField.indexed,
                     filterable: newField.filterable,
+                    unique: newField.unique ?? false,
                     default_value: newField.default_value,
-                    constraints: newField.constraints ?? {},
+                    // Use flat structure internally (extracted from nested API structure)
+                    constraints: innerConstraints,
                     ui_settings: newField.ui_settings ?? {},
                 }
             } else {
@@ -367,6 +551,33 @@
         }
     }
 
+    // Get the constraint type based on field type
+    const getConstraintType = (fieldType: string): string => {
+        switch (fieldType) {
+            case 'String':
+            case 'Text':
+            case 'Wysiwyg':
+                return 'string'
+            case 'Integer':
+                return 'integer'
+            case 'Float':
+                return 'float'
+            case 'DateTime':
+                return 'datetime'
+            case 'Date':
+                return 'date'
+            case 'Select':
+                return 'select'
+            case 'MultiSelect':
+                return 'multiselect'
+            case 'ManyToOne':
+            case 'ManyToMany':
+                return 'relation'
+            default:
+                return 'schema'
+        }
+    }
+
     const saveField = () => {
         if (!formValid.value) {
             return
@@ -378,11 +589,20 @@
                 ? formatDefaultValue(form.value.default_value, form.value.field_type)
                 : undefined
 
+        // Format constraints back to API nested structure: { type: "string", constraints: { ... } }
+        const constraintType = getConstraintType(form.value.field_type)
+        const formattedConstraints = {
+            type: constraintType,
+            constraints: form.value.constraints ?? {},
+        }
+
         // Ensure constraints and ui_settings are always objects, not null
+        // unique is at root level (DB-level constraint)
         const sanitizedField = {
             ...form.value,
+            unique: form.value.unique ?? false,
             default_value: formattedDefaultValue,
-            constraints: form.value.constraints ?? {},
+            constraints: formattedConstraints,
             ui_settings: form.value.ui_settings ?? {},
         }
 
@@ -397,5 +617,17 @@
         formRef,
         showDefaultValue,
         saveField,
+        isStringType,
+        isNumericType,
+        supportsUniqueness,
+        showValidationSection,
+        emailPreset,
+        constraintMinLength,
+        constraintMaxLength,
+        constraintPattern,
+        constraintMin,
+        constraintMax,
+        constraintPositiveOnly,
+        constraintUnique,
     })
 </script>

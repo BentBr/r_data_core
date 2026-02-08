@@ -338,12 +338,20 @@ impl EntityDefinition {
 
     /// Generate SQL table schema for this class
     #[must_use]
-    #[allow(clippy::write_with_newline)] // SQL strings need newlines for proper formatting
     pub fn generate_schema_sql(&self) -> String {
         let table_name = self.get_table_name();
         let mut sql = String::new();
 
-        // Check if table exists and create it if not
+        self.generate_create_table_sql(&mut sql, &table_name);
+        self.generate_relation_tables_sql(&mut sql, &table_name);
+        self.generate_indexes_sql(&mut sql, &table_name);
+
+        sql
+    }
+
+    /// Generate CREATE TABLE statement with all columns
+    #[allow(clippy::write_with_newline)]
+    fn generate_create_table_sql(&self, sql: &mut String, table_name: &str) {
         let _ = write!(sql, "CREATE TABLE IF NOT EXISTS {table_name} (\n");
         sql.push_str("    uuid UUID PRIMARY KEY DEFAULT uuidv7(),\n");
         sql.push_str("    path TEXT,\n");
@@ -354,16 +362,11 @@ impl EntityDefinition {
         sql.push_str("    published BOOLEAN NOT NULL DEFAULT FALSE,\n");
         sql.push_str("    version INTEGER NOT NULL DEFAULT 1");
 
-        // Add all field columns directly to the CREATE TABLE statement
         for field in &self.fields {
-            let field_name = field.name.clone();
-
-            // Skip relation fields as they'll be handled separately
+            let field_name = &field.name;
             if matches!(field.field_type, FieldType::ManyToMany) {
                 continue;
             }
-
-            // For ManyToOne, add a reference column
             if matches!(field.field_type, FieldType::ManyToOne) {
                 if field.validation.target_class.is_some() {
                     let _ = write!(sql, ",\n    {field_name}_uuid UUID");
@@ -371,7 +374,6 @@ impl EntityDefinition {
                 continue;
             }
 
-            // Use the field's get_sql_type method to determine the SQL type
             let sql_type = crate::field::types::get_sql_type_for_field(
                 &field.field_type,
                 field.validation.max_length,
@@ -384,73 +386,116 @@ impl EntityDefinition {
                 }),
             );
 
-            // Add NOT NULL constraint if required
             let _ = write!(sql, ",\n    {field_name} {sql_type}");
             if field.required {
                 sql.push_str(" NOT NULL");
             }
         }
-
         sql.push_str("\n);\n\n");
+    }
 
-        // Create relationship tables for ManyToMany relations
+    /// Generate `ManyToMany` relation tables
+    #[allow(clippy::write_with_newline)]
+    fn generate_relation_tables_sql(&self, sql: &mut String, table_name: &str) {
         for field in &self.fields {
-            if matches!(field.field_type, FieldType::ManyToMany) {
-                if let Some(target_class) = &field.validation.target_class {
-                    let relation_table = format!(
-                        "{}_{}_{}_relation",
-                        table_name,
-                        self.entity_type.to_lowercase(),
-                        target_class.to_lowercase()
-                    );
+            if !matches!(field.field_type, FieldType::ManyToMany) {
+                continue;
+            }
+            let Some(target_class) = &field.validation.target_class else {
+                continue;
+            };
 
-                    let _ = write!(sql, "CREATE TABLE IF NOT EXISTS {relation_table} (\n");
-                    let entity_lower = self.entity_type.to_lowercase();
-                    let target_lower = target_class.to_lowercase();
-                    let _ = write!(
-                        sql,
-                        "    {entity_lower}_uuid UUID NOT NULL REFERENCES {table_name} (uuid),\n"
-                    );
-                    let _ = write!(sql, "    {target_lower}_uuid UUID NOT NULL,\n");
-                    sql.push_str(
-                        "    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n",
-                    );
-                    sql.push_str("    PRIMARY KEY (");
-                    let _ = write!(sql, "{entity_lower}_uuid, {target_lower}_uuid");
-                    sql.push_str(")\n);\n\n");
+            let relation_table = format!(
+                "{}_{}_{}_relation",
+                table_name,
+                self.entity_type.to_lowercase(),
+                target_class.to_lowercase()
+            );
+            let entity_lower = self.entity_type.to_lowercase();
+            let target_lower = target_class.to_lowercase();
 
-                    // Add indexes for the relation table with explicit comments for identification
-                    sql.push_str("-- INDEX: Relation table source index\n");
-                    let entity_lower = self.entity_type.to_lowercase();
-                    let _ = write!(sql, "CREATE INDEX IF NOT EXISTS idx_{relation_table}_{entity_lower}_uuid ON {relation_table} ({entity_lower}_uuid);\n\n");
+            let _ = write!(sql, "CREATE TABLE IF NOT EXISTS {relation_table} (\n");
+            let _ = write!(
+                sql,
+                "    {entity_lower}_uuid UUID NOT NULL REFERENCES {table_name} (uuid),\n"
+            );
+            let _ = write!(sql, "    {target_lower}_uuid UUID NOT NULL,\n");
+            sql.push_str("    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n");
+            let _ = write!(
+                sql,
+                "    PRIMARY KEY ({entity_lower}_uuid, {target_lower}_uuid)\n);\n\n"
+            );
 
-                    sql.push_str("-- INDEX: Relation table target index\n");
-                    let target_lower = target_class.to_lowercase();
-                    let _ = write!(sql, "CREATE INDEX IF NOT EXISTS idx_{relation_table}_{target_lower}_uuid ON {relation_table} ({target_lower}_uuid);\n\n");
-                }
+            sql.push_str("-- INDEX: Relation table source index\n");
+            let _ = write!(sql, "CREATE INDEX IF NOT EXISTS idx_{relation_table}_{entity_lower}_uuid ON {relation_table} ({entity_lower}_uuid);\n\n");
+            sql.push_str("-- INDEX: Relation table target index\n");
+            let _ = write!(sql, "CREATE INDEX IF NOT EXISTS idx_{relation_table}_{target_lower}_uuid ON {relation_table} ({target_lower}_uuid);\n\n");
+        }
+    }
+
+    /// Generate index creation and drop statements
+    #[allow(clippy::write_with_newline)]
+    fn generate_indexes_sql(&self, sql: &mut String, table_name: &str) {
+        // Create indexes for indexed fields
+        for field in &self.fields {
+            if !field.indexed {
+                continue;
+            }
+            let field_name = &field.name;
+            if matches!(field.field_type, FieldType::ManyToOne)
+                && field.validation.target_class.is_some()
+            {
+                sql.push_str("-- INDEX: ManyToOne reference field index\n");
+                let _ = write!(sql, "CREATE INDEX IF NOT EXISTS idx_{table_name}_{field_name}_uuid ON {table_name} ({field_name}_uuid);\n\n");
+            } else if !matches!(field.field_type, FieldType::ManyToMany) {
+                sql.push_str("-- INDEX: Regular field index\n");
+                let _ = write!(sql, "CREATE INDEX IF NOT EXISTS idx_{table_name}_{field_name} ON {table_name} ({field_name});\n\n");
             }
         }
 
-        // Add indexes for fields marked as indexed, with appropriate comments
+        // Handle unique constraints
         for field in &self.fields {
-            if field.indexed {
-                let field_name = &field.name;
-
-                // For ManyToOne relations, index the reference column
-                if matches!(field.field_type, FieldType::ManyToOne) {
-                    if field.validation.target_class.is_some() {
-                        sql.push_str("-- INDEX: ManyToOne reference field index\n");
-                        let _ = write!(sql, "CREATE INDEX IF NOT EXISTS idx_{table_name}_{field_name}_uuid ON {table_name} ({field_name}_uuid);\n\n");
-                    }
-                } else if !matches!(field.field_type, FieldType::ManyToMany) {
-                    // Don't add index for ManyToMany as those are in separate tables
-                    sql.push_str("-- INDEX: Regular field index\n");
-                    let _ = write!(sql, "CREATE INDEX IF NOT EXISTS idx_{table_name}_{field_name} ON {table_name} ({field_name});\n\n");
-                }
+            let field_name = &field.name;
+            if matches!(
+                field.field_type,
+                FieldType::ManyToMany | FieldType::ManyToOne
+            ) {
+                continue;
+            }
+            if field.unique {
+                sql.push_str("-- UNIQUE: Field unique constraint\n");
+                let _ = write!(sql, "CREATE UNIQUE INDEX IF NOT EXISTS idx_{table_name}_{field_name}_unique ON {table_name} ({field_name});\n\n");
+            } else {
+                sql.push_str("-- DROP UNIQUE: Remove unique constraint if exists\n");
+                let _ = write!(
+                    sql,
+                    "DROP INDEX IF EXISTS idx_{table_name}_{field_name}_unique;\n\n"
+                );
             }
         }
 
-        sql
+        // Drop indexes for non-indexed fields
+        for field in &self.fields {
+            if field.indexed || matches!(field.field_type, FieldType::ManyToMany) {
+                continue;
+            }
+            let field_name = &field.name;
+            if matches!(field.field_type, FieldType::ManyToOne)
+                && field.validation.target_class.is_some()
+            {
+                sql.push_str("-- DROP INDEX: Remove index if exists\n");
+                let _ = write!(
+                    sql,
+                    "DROP INDEX IF EXISTS idx_{table_name}_{field_name}_uuid;\n\n"
+                );
+            } else if !matches!(field.field_type, FieldType::ManyToOne) {
+                sql.push_str("-- DROP INDEX: Remove index if exists\n");
+                let _ = write!(
+                    sql,
+                    "DROP INDEX IF EXISTS idx_{table_name}_{field_name};\n\n"
+                );
+            }
+        }
     }
 
     /// Returns the properly formatted table name for this entity definition
@@ -464,5 +509,108 @@ impl EntityDefinition {
     #[must_use]
     pub fn generate_sql_schema(&self) -> String {
         self.generate_schema_sql()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::field::ui::UiSettings;
+    use crate::field::FieldDefinition;
+
+    fn create_test_entity_definition() -> EntityDefinition {
+        EntityDefinition {
+            uuid: Uuid::now_v7(),
+            entity_type: "test".to_string(),
+            display_name: "Test Entity".to_string(),
+            description: None,
+            group_name: None,
+            allow_children: false,
+            icon: None,
+            fields: vec![FieldDefinition {
+                name: "name".to_string(),
+                display_name: "Name".to_string(),
+                field_type: FieldType::String,
+                description: None,
+                required: false,
+                indexed: false,
+                filterable: false,
+                unique: false,
+                default_value: None,
+                validation: crate::field::options::FieldValidation::default(),
+                ui_settings: UiSettings::default(),
+                constraints: std::collections::HashMap::new(),
+            }],
+            schema: Schema::default(),
+            created_at: time::OffsetDateTime::now_utc(),
+            updated_at: time::OffsetDateTime::now_utc(),
+            created_by: Uuid::nil(),
+            updated_by: None,
+            published: false,
+            version: 1,
+        }
+    }
+
+    #[test]
+    fn test_generate_schema_sql_includes_unique_index() {
+        let mut def = create_test_entity_definition();
+        def.fields[0].unique = true;
+
+        let sql = def.generate_schema_sql();
+
+        assert!(
+            sql.contains("CREATE UNIQUE INDEX IF NOT EXISTS idx_entity_test_name_unique"),
+            "SQL should contain unique index creation"
+        );
+        assert!(
+            sql.contains("ON entity_test (name)"),
+            "SQL should specify correct table and column"
+        );
+    }
+
+    #[test]
+    fn test_generate_schema_sql_no_unique_index_when_false() {
+        let def = create_test_entity_definition();
+        // unique is false by default
+
+        let sql = def.generate_schema_sql();
+
+        assert!(
+            !sql.contains("CREATE UNIQUE INDEX"),
+            "SQL should not CREATE unique index when unique is false"
+        );
+        assert!(
+            sql.contains("DROP INDEX IF EXISTS"),
+            "SQL should DROP unique index when unique is false (to clean up)"
+        );
+    }
+
+    #[test]
+    fn test_generate_schema_sql_no_unique_index_when_not_set() {
+        let def = create_test_entity_definition();
+
+        let sql = def.generate_schema_sql();
+
+        assert!(
+            !sql.contains("CREATE UNIQUE INDEX"),
+            "SQL should not CREATE unique index when unique is not set"
+        );
+        assert!(
+            sql.contains("DROP INDEX IF EXISTS"),
+            "SQL should DROP unique index when unique is not set (to clean up)"
+        );
+    }
+
+    #[test]
+    fn test_generate_schema_sql_unique_index_comment() {
+        let mut def = create_test_entity_definition();
+        def.fields[0].unique = true;
+
+        let sql = def.generate_schema_sql();
+
+        assert!(
+            sql.contains("-- UNIQUE: Field unique constraint"),
+            "SQL should contain unique constraint comment"
+        );
     }
 }

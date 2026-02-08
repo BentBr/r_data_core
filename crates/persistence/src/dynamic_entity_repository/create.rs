@@ -233,7 +233,7 @@ async fn insert_into_entity_table(
     }
 
     // Create the INSERT statement for the entity table
-    if columns.len() > 1 {
+    let result = if columns.len() > 1 {
         // If we have more than just the UUID
         let query = format!(
             "INSERT INTO {} ({}) VALUES ({})",
@@ -242,16 +242,45 @@ async fn insert_into_entity_table(
             values.join(", ")
         );
 
-        sqlx::query(&query).execute(&mut **tx).await?;
+        sqlx::query(&query).execute(&mut **tx).await
     } else {
         // If we only have the UUID, just insert that
         sqlx::query(&format!("INSERT INTO {table_name} (uuid) VALUES ($1)"))
             .bind(uuid)
             .execute(&mut **tx)
-            .await?;
-    }
+            .await
+    };
 
-    Ok(())
+    // Handle unique constraint violations
+    match result {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            if let sqlx::Error::Database(db_err) = &e {
+                // Postgres unique_violation code
+                if db_err.code().as_deref() == Some("23505") {
+                    let field_name =
+                        extract_field_from_unique_constraint(db_err.constraint(), &table_name);
+                    return Err(r_data_core_core::error::Error::ValidationFailed(format!(
+                        "Field '{field_name}' must be unique. A record with this value already exists."
+                    )));
+                }
+            }
+            Err(r_data_core_core::error::Error::Database(e))
+        }
+    }
+}
+
+/// Extract field name from unique constraint name
+/// Constraint format: idx_{table}_{field}_unique
+fn extract_field_from_unique_constraint(constraint: Option<&str>, table_name: &str) -> String {
+    if let Some(constraint_name) = constraint {
+        let prefix = format!("idx_{table_name}_");
+        let suffix = "_unique";
+        if constraint_name.starts_with(&prefix) && constraint_name.ends_with(suffix) {
+            return constraint_name[prefix.len()..constraint_name.len() - suffix.len()].to_string();
+        }
+    }
+    "unknown".to_string()
 }
 
 /// Extract timestamp from field data
@@ -401,6 +430,50 @@ mod tests {
             let value = json!([]);
             let result = format_value_for_sql(&value);
             assert_eq!(result, "'[]'::jsonb");
+        }
+    }
+
+    mod extract_field_from_unique_constraint_tests {
+        use super::*;
+
+        #[test]
+        fn test_extract_field_from_valid_constraint() {
+            let result = extract_field_from_unique_constraint(
+                Some("idx_entity_customer_email_unique"),
+                "entity_customer",
+            );
+            assert_eq!(result, "email");
+        }
+
+        #[test]
+        fn test_extract_field_from_constraint_with_underscores() {
+            let result = extract_field_from_unique_constraint(
+                Some("idx_entity_test_my_field_unique"),
+                "entity_test",
+            );
+            assert_eq!(result, "my_field");
+        }
+
+        #[test]
+        fn test_extract_field_from_none_constraint() {
+            let result = extract_field_from_unique_constraint(None, "entity_test");
+            assert_eq!(result, "unknown");
+        }
+
+        #[test]
+        fn test_extract_field_from_mismatched_prefix() {
+            let result = extract_field_from_unique_constraint(
+                Some("idx_other_table_field_unique"),
+                "entity_test",
+            );
+            assert_eq!(result, "unknown");
+        }
+
+        #[test]
+        fn test_extract_field_from_missing_suffix() {
+            let result =
+                extract_field_from_unique_constraint(Some("idx_entity_test_field"), "entity_test");
+            assert_eq!(result, "unknown");
         }
     }
 }
