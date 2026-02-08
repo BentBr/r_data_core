@@ -142,6 +142,50 @@
                 </v-col>
             </v-row>
 
+            <v-row>
+                <v-col
+                    cols="12"
+                    md="6"
+                >
+                    <v-card variant="outlined">
+                        <v-card-title class="text-subtitle-1 pa-3">
+                            {{ t('system.workflow_run_logs.section_title') }}
+                        </v-card-title>
+                        <v-card-text class="pa-3">
+                            <v-switch
+                                v-model="runLogsForm.enabled"
+                                :label="t('system.workflow_run_logs.enabled')"
+                                color="success"
+                                inset
+                            />
+                            <v-text-field
+                                v-model="runLogsForm.max_runs"
+                                :label="t('system.workflow_run_logs.max_runs')"
+                                type="number"
+                                min="0"
+                            />
+                            <v-text-field
+                                v-model="runLogsForm.max_age_days"
+                                :label="t('system.workflow_run_logs.max_age_days')"
+                                type="number"
+                                min="0"
+                            />
+                        </v-card-text>
+                        <v-card-actions>
+                            <v-spacer />
+                            <v-btn
+                                color="primary"
+                                variant="flat"
+                                :loading="savingRunLogs"
+                                @click="saveRunLogs"
+                            >
+                                {{ t('system.workflow_run_logs.save') }}
+                            </v-btn>
+                        </v-card-actions>
+                    </v-card>
+                </v-col>
+            </v-row>
+
             <SnackbarManager :snackbar="currentSnackbar" />
         </PageLayout>
     </div>
@@ -174,6 +218,18 @@
     })
     const loading = ref(false)
     const saving = ref(false)
+
+    const runLogsForm = ref<{
+        enabled: boolean
+        max_runs: number | string | null
+        max_age_days: number | string | null
+    }>({
+        enabled: true,
+        max_runs: null,
+        max_age_days: 90,
+    })
+    const loadingRunLogs = ref(false)
+    const savingRunLogs = ref(false)
 
     const load = async () => {
         loading.value = true
@@ -216,6 +272,50 @@
             handleError(err)
         } finally {
             saving.value = false
+        }
+    }
+
+    const loadRunLogs = async () => {
+        loadingRunLogs.value = true
+        try {
+            const settings = await typedHttpClient.getWorkflowRunLogSettings()
+            runLogsForm.value = {
+                enabled: settings.enabled,
+                max_runs: settings.max_runs ?? null,
+                max_age_days: settings.max_age_days ?? null,
+            }
+        } catch (err) {
+            handleError(err)
+        } finally {
+            loadingRunLogs.value = false
+        }
+    }
+
+    const saveRunLogs = async () => {
+        savingRunLogs.value = true
+        try {
+            // Convert string inputs to numbers or null
+            const payload = {
+                enabled: runLogsForm.value.enabled,
+                max_runs:
+                    runLogsForm.value.max_runs === null ||
+                    runLogsForm.value.max_runs === '' ||
+                    Number.isNaN(Number(runLogsForm.value.max_runs))
+                        ? null
+                        : Number(runLogsForm.value.max_runs),
+                max_age_days:
+                    runLogsForm.value.max_age_days === null ||
+                    runLogsForm.value.max_age_days === '' ||
+                    Number.isNaN(Number(runLogsForm.value.max_age_days))
+                        ? null
+                        : Number(runLogsForm.value.max_age_days),
+            }
+            await typedHttpClient.updateWorkflowRunLogSettings(payload)
+            showSuccess(t('system.workflow_run_logs.save_success'))
+        } catch (err) {
+            handleError(err)
+        } finally {
+            savingRunLogs.value = false
         }
     }
 
@@ -262,6 +362,7 @@
 
     onMounted(() => {
         void load()
+        void loadRunLogs()
         void licenseStore.loadLicenseStatus()
     })
 </script>

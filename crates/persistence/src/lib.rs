@@ -31,6 +31,7 @@ pub mod version_repository;
 pub mod version_repository_trait;
 pub mod workflow_repository;
 pub mod workflow_repository_trait;
+pub mod workflow_run_repository;
 pub mod workflow_versioning_repository;
 pub mod workflow_versioning_repository_trait;
 pub use r_data_core_core as core;
@@ -71,6 +72,7 @@ pub use version_repository::{EntityVersionMeta, EntityVersionPayload, VersionRep
 pub use version_repository_trait::VersionRepositoryTrait;
 pub use workflow_repository::{get_provider_config, WorkflowRepository};
 pub use workflow_repository_trait::WorkflowRepositoryTrait;
+pub use workflow_run_repository::WorkflowRunRepository;
 pub use workflow_versioning_repository::{
     WorkflowVersionMeta, WorkflowVersionPayload, WorkflowVersioningRepository,
 };

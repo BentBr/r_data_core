@@ -9,6 +9,13 @@ export const EntityVersioningSettingsSchema = z.object({
 })
 export type EntityVersioningSettings = z.infer<typeof EntityVersioningSettingsSchema>
 
+export const WorkflowRunLogSettingsSchema = z.object({
+    enabled: z.boolean(),
+    max_runs: z.number().nullable().optional(),
+    max_age_days: z.number().nullable().optional(),
+})
+export type WorkflowRunLogSettings = z.infer<typeof WorkflowRunLogSettingsSchema>
+
 export const LicenseStateSchema = z.enum(['none', 'invalid', 'error', 'valid'])
 export type LicenseState = z.infer<typeof LicenseStateSchema>
 
@@ -53,6 +60,26 @@ export class SystemClient extends BaseTypedHttpClient {
         return this.request(
             '/admin/api/v1/system/settings/entity-versioning',
             ApiResponseSchema(EntityVersioningSettingsSchema),
+            {
+                method: 'PUT',
+                body: JSON.stringify(payload),
+            }
+        )
+    }
+
+    async getWorkflowRunLogSettings(): Promise<WorkflowRunLogSettings> {
+        return this.request(
+            '/admin/api/v1/system/settings/workflow-run-logs',
+            ApiResponseSchema(WorkflowRunLogSettingsSchema)
+        )
+    }
+
+    async updateWorkflowRunLogSettings(
+        payload: WorkflowRunLogSettings
+    ): Promise<WorkflowRunLogSettings> {
+        return this.request(
+            '/admin/api/v1/system/settings/workflow-run-logs',
+            ApiResponseSchema(WorkflowRunLogSettingsSchema),
             {
                 method: 'PUT',
                 body: JSON.stringify(payload),

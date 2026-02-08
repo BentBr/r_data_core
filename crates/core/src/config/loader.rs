@@ -175,6 +175,16 @@ pub fn load_maintenance_config() -> Result<MaintenanceConfig> {
         ))
     })?;
 
+    let workflow_run_logs_purger_cron =
+        env::var("WORKFLOW_RUN_LOGS_PURGER_CRON").map_err(|_| {
+            crate::error::Error::Config("WORKFLOW_RUN_LOGS_PURGER_CRON not set".to_string())
+        })?;
+    utils::validate_cron(&workflow_run_logs_purger_cron).map_err(|e| {
+        crate::error::Error::Config(format!(
+            "Invalid WORKFLOW_RUN_LOGS_PURGER_CRON '{workflow_run_logs_purger_cron}': {e}",
+        ))
+    })?;
+
     // Prefer dedicated MAINTENANCE_*, then WORKER_*, then general DATABASE_* where sensible
     let connection_string = env::var("MAINTENANCE_DATABASE_URL")
         .map_err(|_| crate::error::Error::Config("MAINTENANCE_DATABASE_URL not set".to_string()))?;
@@ -237,6 +247,7 @@ pub fn load_maintenance_config() -> Result<MaintenanceConfig> {
     Ok(MaintenanceConfig {
         version_purger_cron,
         refresh_token_cleanup_cron,
+        workflow_run_logs_purger_cron,
         database,
         cache,
         redis_url,

@@ -849,6 +849,16 @@
             "load_failed": "Failed to load settings",
             "save_failed": "Failed to save settings"
         },
+        "workflow_run_logs": {
+            "section_title": "Workflow Run Logs",
+            "enabled": "Enabled",
+            "max_runs": "Max runs per workflow (leave empty for unlimited)",
+            "max_age_days": "Max age days (leave empty to disable age pruning)",
+            "save": "Save",
+            "save_success": "Settings saved",
+            "load_failed": "Failed to load settings",
+            "save_failed": "Failed to save settings"
+        },
         "license": {
             "section_title": "License Information",
             "state": "State",

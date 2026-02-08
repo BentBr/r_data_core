@@ -2,9 +2,7 @@
 
 use async_trait::async_trait;
 use log::{info, warn};
-use std::sync::Arc;
 
-use r_data_core_core::cache::CacheManager;
 use r_data_core_core::maintenance::task::TaskContext;
 use r_data_core_core::maintenance::MaintenanceTask;
 use r_data_core_core::versioning::purger_trait::VersionPurger;
@@ -49,17 +47,7 @@ impl MaintenanceTask for VersionPurgerTask {
         info!("[version_purger] Starting version purging task");
 
         let pool = context.pool();
-
-        // Use shared cache manager from context, or create a minimal fallback for settings lookup
-        let cache_manager: Arc<CacheManager> = context.cache_manager().unwrap_or_else(|| {
-            Arc::new(CacheManager::new(r_data_core_core::config::CacheConfig {
-                entity_definition_ttl: 3600,
-                api_key_ttl: 600,
-                enabled: true,
-                ttl: 3600,
-                max_size: 10000,
-            }))
-        });
+        let cache_manager = context.cache_manager_or_default();
         let settings_service = SettingsService::new(pool.clone(), cache_manager);
 
         let settings = match settings_service.get_entity_versioning_settings().await {

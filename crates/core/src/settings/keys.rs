@@ -5,6 +5,8 @@
 pub enum SystemSettingKey {
     /// Entity versioning configuration
     EntityVersioning,
+    /// Workflow run logs retention configuration
+    WorkflowRunLogs,
 }
 
 impl SystemSettingKey {
@@ -19,6 +21,7 @@ impl SystemSettingKey {
     pub const fn as_str(&self) -> &'static str {
         match self {
             Self::EntityVersioning => "entity_versioning",
+            Self::WorkflowRunLogs => "workflow_run_logs",
         }
     }
 

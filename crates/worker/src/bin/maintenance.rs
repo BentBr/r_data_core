@@ -13,7 +13,7 @@ use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::MaintenanceConfig;
 use r_data_core_worker::registrars::{
     LicenseVerificationRegistrar, RefreshTokenCleanupRegistrar, StatisticsCollectionRegistrar,
-    TaskRegistrar, VersionPurgerRegistrar,
+    TaskRegistrar, VersionPurgerRegistrar, WorkflowRunLogsPurgerRegistrar,
 };
 
 /// Current version from Cargo.toml
@@ -48,6 +48,9 @@ async fn init_scheduler(
         .register(&scheduler, pool.clone(), cache_manager.clone(), config)
         .await?;
     StatisticsCollectionRegistrar
+        .register(&scheduler, pool.clone(), cache_manager.clone(), config)
+        .await?;
+    WorkflowRunLogsPurgerRegistrar
         .register(&scheduler, pool.clone(), cache_manager.clone(), config)
         .await?;
 
