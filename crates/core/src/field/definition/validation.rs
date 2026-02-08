@@ -601,6 +601,7 @@ mod tests {
             required: false,
             indexed: false,
             filterable: false,
+            unique: false,
             default_value: None,
             validation: FieldValidation::default(),
             ui_settings: UiSettings::default(),

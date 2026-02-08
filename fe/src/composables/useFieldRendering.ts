@@ -51,27 +51,32 @@ export function useFieldRendering() {
 
     const getFieldRules = (field: FieldDefinition): ValidationRule[] => {
         const rules: ValidationRule[] = []
+        // API returns nested structure: constraints.constraints.{property}
+        const innerConstraints = field.constraints?.constraints as
+            | Record<string, unknown>
+            | undefined
 
         if (field.required) {
             rules.push(v => !!v || `${field.display_name || field.name} is required`)
         }
 
-        if (field.constraints?.min !== undefined) {
-            const minVal = Number(field.constraints.min)
+        // Numeric value constraints (min/max can be 0, but not null/undefined)
+        if (innerConstraints?.min != null && !Number.isNaN(Number(innerConstraints.min))) {
+            const minVal = Number(innerConstraints.min)
             rules.push(
                 v => !v || (typeof v === 'number' && v >= minVal) || `Minimum value is ${minVal}`
             )
         }
 
-        if (field.constraints?.max !== undefined) {
-            const maxVal = Number(field.constraints.max)
+        if (innerConstraints?.max != null && !Number.isNaN(Number(innerConstraints.max))) {
+            const maxVal = Number(innerConstraints.max)
             rules.push(
                 v => !v || (typeof v === 'number' && v <= maxVal) || `Maximum value is ${maxVal}`
             )
         }
 
-        if (field.constraints?.pattern) {
-            const pattern = field.constraints.pattern as string
+        if (innerConstraints?.pattern) {
+            const pattern = innerConstraints.pattern as string
             rules.push(
                 v =>
                     !v ||
@@ -80,17 +85,21 @@ export function useFieldRendering() {
             )
         }
 
-        // String length validation
-        if (field.constraints?.min_length !== undefined) {
-            const minLen = Number(field.constraints.min_length)
+        // String length validation - only apply if value is a positive number (0 or null means no constraint)
+        const minLength = Number(innerConstraints?.min_length)
+        if (minLength > 0) {
             rules.push(
-                v => !v || String(v).length >= minLen || `Minimum ${minLen} characters required`
+                v =>
+                    !v ||
+                    String(v).length >= minLength ||
+                    `Minimum ${minLength} characters required`
             )
         }
-        if (field.constraints?.max_length !== undefined) {
-            const maxLen = Number(field.constraints.max_length)
+        const maxLength = Number(innerConstraints?.max_length)
+        if (maxLength > 0) {
             rules.push(
-                v => !v || String(v).length <= maxLen || `Maximum ${maxLen} characters allowed`
+                v =>
+                    !v || String(v).length <= maxLength || `Maximum ${maxLength} characters allowed`
             )
         }
 

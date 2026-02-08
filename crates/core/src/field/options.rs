@@ -62,9 +62,6 @@ pub struct FieldValidation {
 
     /// For select fields: options source
     pub options_source: Option<OptionsSource>,
-
-    /// Whether this field must have unique values within the entity type
-    pub unique: Option<bool>,
 }
 
 #[cfg(test)]
@@ -72,52 +69,61 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_field_validation_unique_serialization() {
-        let validation = FieldValidation {
-            unique: Some(true),
-            ..Default::default()
-        };
-
-        let json = serde_json::to_string(&validation).unwrap();
-        assert!(json.contains("\"unique\":true"));
-
-        let deserialized: FieldValidation = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.unique, Some(true));
-    }
-
-    #[test]
-    fn test_field_validation_unique_defaults_to_none() {
-        let validation = FieldValidation::default();
-        assert_eq!(validation.unique, None);
-    }
-
-    #[test]
-    fn test_field_validation_with_all_string_constraints() {
+    fn test_field_validation_with_string_constraints() {
         let validation = FieldValidation {
             min_length: Some(5),
             max_length: Some(100),
             pattern: Some("^[a-z]+$".to_string()),
-            unique: Some(true),
             ..Default::default()
         };
 
         assert_eq!(validation.min_length, Some(5));
         assert_eq!(validation.max_length, Some(100));
         assert_eq!(validation.pattern, Some("^[a-z]+$".to_string()));
-        assert_eq!(validation.unique, Some(true));
     }
 
     #[test]
-    fn test_field_validation_unique_false_serialization() {
+    fn test_field_validation_defaults_to_none() {
+        let validation = FieldValidation::default();
+        assert_eq!(validation.min_length, None);
+        assert_eq!(validation.max_length, None);
+        assert_eq!(validation.pattern, None);
+        assert_eq!(validation.min_value, None);
+        assert_eq!(validation.max_value, None);
+        assert_eq!(validation.positive_only, None);
+    }
+
+    #[test]
+    fn test_field_validation_serialization() {
         let validation = FieldValidation {
-            unique: Some(false),
+            min_length: Some(5),
+            max_length: Some(100),
+            pattern: Some("^[a-z]+$".to_string()),
             ..Default::default()
         };
 
         let json = serde_json::to_string(&validation).unwrap();
-        assert!(json.contains("\"unique\":false"));
+        assert!(json.contains("\"min_length\":5"));
+        assert!(json.contains("\"max_length\":100"));
+        assert!(json.contains("\"pattern\":\"^[a-z]+$\""));
 
         let deserialized: FieldValidation = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.unique, Some(false));
+        assert_eq!(deserialized.min_length, Some(5));
+        assert_eq!(deserialized.max_length, Some(100));
+        assert_eq!(deserialized.pattern, Some("^[a-z]+$".to_string()));
+    }
+
+    #[test]
+    fn test_field_validation_numeric_constraints() {
+        let validation = FieldValidation {
+            min_value: Some(serde_json::json!(0)),
+            max_value: Some(serde_json::json!(100)),
+            positive_only: Some(true),
+            ..Default::default()
+        };
+
+        assert_eq!(validation.min_value, Some(serde_json::json!(0)));
+        assert_eq!(validation.max_value, Some(serde_json::json!(100)));
+        assert_eq!(validation.positive_only, Some(true));
     }
 }

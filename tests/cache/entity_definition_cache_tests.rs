@@ -48,6 +48,7 @@ fn create_test_entity_definition() -> EntityDefinition {
         required: true,
         indexed: true,
         filterable: true,
+        unique: false,
         default_value: None,
         ui_settings: r_data_core_core::field::ui::UiSettings::default(),
         constraints: std::collections::HashMap::default(),

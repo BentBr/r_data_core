@@ -70,6 +70,7 @@ mod dynamic_entity_tests {
             required: true,
             description: Some("User's full name".to_string()),
             filterable: true,
+            unique: false,
             indexed: true,
             default_value: None,
             validation: FieldValidation {
@@ -93,6 +94,7 @@ mod dynamic_entity_tests {
             required: true,
             description: Some("Email address".to_string()),
             filterable: true,
+            unique: false,
             indexed: true,
             default_value: None,
             validation: FieldValidation {
@@ -111,6 +113,7 @@ mod dynamic_entity_tests {
             required: false,
             description: Some("User's age".to_string()),
             filterable: true,
+            unique: false,
             indexed: false,
             default_value: None,
             validation: FieldValidation {
@@ -129,6 +132,7 @@ mod dynamic_entity_tests {
             required: false,
             description: Some("Whether the user is active".to_string()),
             filterable: true,
+            unique: false,
             indexed: false,
             default_value: Some(json!(true)),
             validation: FieldValidation::default(),

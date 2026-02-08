@@ -15,8 +15,11 @@
       "indexed": true,
       "filterable": true,
       "constraints": {
-        "pattern": "^[A-Z0-9]{2,20}$",
-        "error_message": "SKU must contain 2-20 uppercase letters and numbers only"
+        "type": "string",
+        "constraints": {
+          "pattern": "^[A-Z0-9]{2,20}$",
+          "error_message": "SKU must contain 2-20 uppercase letters and numbers only"
+        }
       },
       "ui_settings": {
         "display_order": 1,
@@ -32,8 +35,11 @@
       "indexed": true,
       "filterable": true,
       "constraints": {
-        "min_length": 3,
-        "max_length": 100
+        "type": "string",
+        "constraints": {
+          "min_length": 3,
+          "max_length": 100
+        }
       },
       "ui_settings": {
         "display_order": 2,
@@ -109,8 +115,11 @@
       "indexed": true,
       "filterable": true,
       "constraints": {
-        "min": 0,
-        "precision": 2
+        "type": "float",
+        "constraints": {
+          "min": 0,
+          "precision": 2
+        }
       },
       "ui_settings": {
         "display_order": 7,
@@ -127,8 +136,11 @@
       "indexed": true,
       "filterable": true,
       "constraints": {
-        "min": 0,
-        "precision": 2
+        "type": "float",
+        "constraints": {
+          "min": 0,
+          "precision": 2
+        }
       },
       "ui_settings": {
         "display_order": 8,
@@ -145,8 +157,11 @@
       "indexed": false,
       "filterable": true,
       "constraints": {
-        "min": 0,
-        "precision": 2
+        "type": "float",
+        "constraints": {
+          "min": 0,
+          "precision": 2
+        }
       },
       "ui_settings": {
         "display_order": 9,
@@ -164,12 +179,15 @@
       "indexed": true,
       "filterable": true,
       "constraints": {
-        "options": [
-          "standard",
-          "reduced",
-          "zero",
-          "exempt"
-        ]
+        "type": "string",
+        "constraints": {
+          "options": [
+            "standard",
+            "reduced",
+            "zero",
+            "exempt"
+          ]
+        }
       },
       "ui_settings": {
         "display_order": 10,
@@ -186,7 +204,10 @@
       "indexed": false,
       "filterable": true,
       "constraints": {
-        "min": 0
+        "type": "integer",
+        "constraints": {
+          "min": 0
+        }
       },
       "ui_settings": {
         "display_order": 11,
@@ -202,7 +223,10 @@
       "indexed": false,
       "filterable": true,
       "constraints": {
-        "min": 0
+        "type": "integer",
+        "constraints": {
+          "min": 0
+        }
       },
       "ui_settings": {
         "display_order": 12,
@@ -218,13 +242,16 @@
       "indexed": true,
       "filterable": true,
       "constraints": {
-        "options": [
-          "active",
-          "inactive",
-          "discontinued",
-          "out_of_stock",
-          "coming_soon"
-        ]
+        "type": "string",
+        "constraints": {
+          "options": [
+            "active",
+            "inactive",
+            "discontinued",
+            "out_of_stock",
+            "coming_soon"
+          ]
+        }
       },
       "ui_settings": {
         "display_order": 13,
@@ -277,8 +304,11 @@
       "indexed": false,
       "filterable": true,
       "constraints": {
-        "min": 0,
-        "precision": 3
+        "type": "float",
+        "constraints": {
+          "min": 0,
+          "precision": 3
+        }
       },
       "ui_settings": {
         "display_order": 15,
@@ -294,7 +324,10 @@
       "indexed": false,
       "filterable": true,
       "constraints": {
-        "options": ["kg", "g", "lb", "oz"]
+        "type": "string",
+        "constraints": {
+          "options": ["kg", "g", "lb", "oz"]
+        }
       },
       "ui_settings": {
         "display_order": 16,
@@ -384,7 +417,10 @@
       "indexed": true,
       "filterable": true,
       "constraints": {
-        "max_length": 70
+        "type": "string",
+        "constraints": {
+          "max_length": 70
+        }
       },
       "ui_settings": {
         "display_order": 20,
@@ -400,7 +436,10 @@
       "indexed": true,
       "filterable": true,
       "constraints": {
-        "max_length": 160
+        "type": "text",
+        "constraints": {
+          "max_length": 160
+        }
       },
       "ui_settings": {
         "display_order": 21,
@@ -464,4 +503,4 @@
       }
     }
   ]
-} 
+}

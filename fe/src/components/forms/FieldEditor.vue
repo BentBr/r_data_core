@@ -337,6 +337,7 @@
         required: false,
         indexed: false,
         filterable: false,
+        unique: false,
         default_value: undefined,
         constraints: {},
         ui_settings: {},
@@ -423,11 +424,11 @@
         },
     })
 
+    // Unique is at root level (DB-level constraint), not in constraints
     const constraintUnique = computed({
-        get: () => form.value.constraints?.unique as boolean | undefined,
-        set: (value: boolean | undefined) => {
-            ensureConstraints()
-            form.value.constraints!.unique = value
+        get: () => form.value.unique ?? false,
+        set: (value: boolean) => {
+            form.value.unique = value
         },
     })
 
@@ -440,6 +441,7 @@
             required: false,
             indexed: false,
             filterable: false,
+            unique: false,
             default_value: undefined,
             constraints: {},
             ui_settings: {},
@@ -451,6 +453,13 @@
         () => props.field,
         newField => {
             if (newField) {
+                // API returns nested constraints: { type: "string", constraints: { pattern: "..." } }
+                // Extract inner constraints for the flat form structure
+                const apiConstraints = newField.constraints as
+                    | { type?: string; constraints?: Record<string, unknown> }
+                    | undefined
+                const innerConstraints = apiConstraints?.constraints ?? {}
+
                 // Editing existing field - populate form with field data
                 form.value = {
                     name: newField.name,
@@ -460,8 +469,10 @@
                     required: newField.required,
                     indexed: newField.indexed,
                     filterable: newField.filterable,
+                    unique: newField.unique ?? false,
                     default_value: newField.default_value,
-                    constraints: newField.constraints ?? {},
+                    // Use flat structure internally (extracted from nested API structure)
+                    constraints: innerConstraints,
                     ui_settings: newField.ui_settings ?? {},
                 }
             } else {
@@ -540,6 +551,33 @@
         }
     }
 
+    // Get the constraint type based on field type
+    const getConstraintType = (fieldType: string): string => {
+        switch (fieldType) {
+            case 'String':
+            case 'Text':
+            case 'Wysiwyg':
+                return 'string'
+            case 'Integer':
+                return 'integer'
+            case 'Float':
+                return 'float'
+            case 'DateTime':
+                return 'datetime'
+            case 'Date':
+                return 'date'
+            case 'Select':
+                return 'select'
+            case 'MultiSelect':
+                return 'multiselect'
+            case 'ManyToOne':
+            case 'ManyToMany':
+                return 'relation'
+            default:
+                return 'schema'
+        }
+    }
+
     const saveField = () => {
         if (!formValid.value) {
             return
@@ -551,11 +589,20 @@
                 ? formatDefaultValue(form.value.default_value, form.value.field_type)
                 : undefined
 
+        // Format constraints back to API nested structure: { type: "string", constraints: { ... } }
+        const constraintType = getConstraintType(form.value.field_type)
+        const formattedConstraints = {
+            type: constraintType,
+            constraints: form.value.constraints ?? {},
+        }
+
         // Ensure constraints and ui_settings are always objects, not null
+        // unique is at root level (DB-level constraint)
         const sanitizedField = {
             ...form.value,
+            unique: form.value.unique ?? false,
             default_value: formattedDefaultValue,
-            constraints: form.value.constraints ?? {},
+            constraints: formattedConstraints,
             ui_settings: form.value.ui_settings ?? {},
         }
 

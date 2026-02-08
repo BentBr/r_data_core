@@ -46,6 +46,7 @@ fn create_entity_definition_with_field(
             required: false,
             indexed: false,
             filterable: false,
+            unique: false,
             default_value: None,
             validation: FieldValidation::default(),
             ui_settings: UiSettings::default(),

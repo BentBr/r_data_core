@@ -71,24 +71,81 @@
                         >
                             {{ getFieldTypeDisplayName(item.field_type) }}
                         </Badge>
-                        <SmartIcon
+                        <v-tooltip
                             v-if="item.required"
-                            icon="check-circle"
-                            size="sm"
-                            class="mr-1 text-success"
-                        />
-                        <SmartIcon
+                            :text="t('entity_definitions.fields.required')"
+                            location="top"
+                        >
+                            <template #activator="{ props: tooltipProps }">
+                                <span v-bind="tooltipProps">
+                                    <SmartIcon
+                                        icon="check-circle"
+                                        size="sm"
+                                        class="mr-1 text-success"
+                                    />
+                                </span>
+                            </template>
+                        </v-tooltip>
+                        <v-tooltip
                             v-if="item.indexed"
-                            icon="database"
-                            :size="20"
-                            class="mr-1 text-info"
-                        />
-                        <SmartIcon
+                            :text="t('entity_definitions.fields.indexed')"
+                            location="top"
+                        >
+                            <template #activator="{ props: tooltipProps }">
+                                <span v-bind="tooltipProps">
+                                    <SmartIcon
+                                        icon="database"
+                                        :size="20"
+                                        class="mr-1 text-info"
+                                    />
+                                </span>
+                            </template>
+                        </v-tooltip>
+                        <v-tooltip
+                            v-if="item.unique"
+                            :text="t('entity_definitions.fields.unique')"
+                            location="top"
+                        >
+                            <template #activator="{ props: tooltipProps }">
+                                <span v-bind="tooltipProps">
+                                    <SmartIcon
+                                        icon="key"
+                                        size="sm"
+                                        class="mr-1 text-purple"
+                                    />
+                                </span>
+                            </template>
+                        </v-tooltip>
+                        <v-tooltip
                             v-if="item.filterable"
-                            icon="filter"
-                            size="sm"
-                            class="mr-1 text-warning"
-                        />
+                            :text="t('entity_definitions.fields.filterable')"
+                            location="top"
+                        >
+                            <template #activator="{ props: tooltipProps }">
+                                <span v-bind="tooltipProps">
+                                    <SmartIcon
+                                        icon="filter"
+                                        size="sm"
+                                        class="mr-1 text-warning"
+                                    />
+                                </span>
+                            </template>
+                        </v-tooltip>
+                        <v-tooltip
+                            v-if="item.constraints?.constraints?.pattern"
+                            :text="t('entity_definitions.fields.pattern')"
+                            location="top"
+                        >
+                            <template #activator="{ props: tooltipProps }">
+                                <span v-bind="tooltipProps">
+                                    <SmartIcon
+                                        icon="regex"
+                                        size="sm"
+                                        class="mr-1 text-cyan"
+                                    />
+                                </span>
+                            </template>
+                        </v-tooltip>
                         <v-btn
                             size="x-small"
                             variant="text"

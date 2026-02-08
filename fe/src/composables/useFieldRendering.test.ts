@@ -91,7 +91,7 @@ describe('useFieldRendering', () => {
                 required: false,
                 indexed: false,
                 filterable: false,
-                constraints: { min: 5 },
+                constraints: { type: 'integer', constraints: { min: 5 } },
             }
 
             const rules = getFieldRules(field)
@@ -112,7 +112,7 @@ describe('useFieldRendering', () => {
                 required: false,
                 indexed: false,
                 filterable: false,
-                constraints: { max: 10 },
+                constraints: { type: 'integer', constraints: { max: 10 } },
             }
 
             const rules = getFieldRules(field)
@@ -132,7 +132,7 @@ describe('useFieldRendering', () => {
                 required: false,
                 indexed: false,
                 filterable: false,
-                constraints: { pattern: '^[A-Z]+$' },
+                constraints: { type: 'string', constraints: { pattern: '^[A-Z]+$' } },
             }
 
             const rules = getFieldRules(field)
@@ -152,12 +152,101 @@ describe('useFieldRendering', () => {
                 required: true,
                 indexed: false,
                 filterable: false,
-                constraints: { min: 5, max: 10 },
+                constraints: { type: 'integer', constraints: { min: 5, max: 10 } },
             }
 
             const rules = getFieldRules(field)
 
             expect(rules.length).toBe(3) // required, min, max
+        })
+
+        it('should NOT add max_length rule when max_length is null', () => {
+            const { getFieldRules } = useFieldRendering()
+            const field: FieldDefinition = {
+                name: 'test',
+                display_name: 'Test Field',
+                field_type: 'String',
+                required: false,
+                indexed: false,
+                filterable: false,
+                constraints: { type: 'string', constraints: { max_length: null } },
+            }
+
+            const rules = getFieldRules(field)
+
+            expect(rules.length).toBe(0) // no rules for null max_length
+        })
+
+        it('should NOT add max_length rule when max_length is 0', () => {
+            const { getFieldRules } = useFieldRendering()
+            const field: FieldDefinition = {
+                name: 'test',
+                display_name: 'Test Field',
+                field_type: 'String',
+                required: false,
+                indexed: false,
+                filterable: false,
+                constraints: { type: 'string', constraints: { max_length: 0 } },
+            }
+
+            const rules = getFieldRules(field)
+
+            expect(rules.length).toBe(0) // no rules for 0 max_length
+        })
+
+        it('should NOT add min_length rule when min_length is null', () => {
+            const { getFieldRules } = useFieldRendering()
+            const field: FieldDefinition = {
+                name: 'test',
+                display_name: 'Test Field',
+                field_type: 'String',
+                required: false,
+                indexed: false,
+                filterable: false,
+                constraints: { type: 'string', constraints: { min_length: null } },
+            }
+
+            const rules = getFieldRules(field)
+
+            expect(rules.length).toBe(0) // no rules for null min_length
+        })
+
+        it('should NOT add min_length rule when min_length is 0', () => {
+            const { getFieldRules } = useFieldRendering()
+            const field: FieldDefinition = {
+                name: 'test',
+                display_name: 'Test Field',
+                field_type: 'String',
+                required: false,
+                indexed: false,
+                filterable: false,
+                constraints: { type: 'string', constraints: { min_length: 0 } },
+            }
+
+            const rules = getFieldRules(field)
+
+            expect(rules.length).toBe(0) // no rules for 0 min_length
+        })
+
+        it('should add min_length and max_length rules when values are positive', () => {
+            const { getFieldRules } = useFieldRendering()
+            const field: FieldDefinition = {
+                name: 'test',
+                display_name: 'Test Field',
+                field_type: 'String',
+                required: false,
+                indexed: false,
+                filterable: false,
+                constraints: { type: 'string', constraints: { min_length: 3, max_length: 50 } },
+            }
+
+            const rules = getFieldRules(field)
+
+            expect(rules.length).toBe(2) // min_length and max_length
+            expect(rules[0]('ab')).toBe('Minimum 3 characters required')
+            expect(rules[0]('abc')).toBe(true)
+            expect(rules[1]('a'.repeat(51))).toBe('Maximum 50 characters allowed')
+            expect(rules[1]('a'.repeat(50))).toBe(true)
         })
     })
 

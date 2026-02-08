@@ -40,6 +40,7 @@ async fn create_test_entity_definition(
             required: true,
             indexed: true,
             filterable: true,
+            unique: false,
             default_value: None,
             validation: r_data_core_core::field::FieldValidation::default(),
             ui_settings: r_data_core_core::field::ui::UiSettings::default(),

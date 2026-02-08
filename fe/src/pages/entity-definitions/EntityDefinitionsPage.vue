@@ -191,6 +191,7 @@
                 currentField.required !== originalField.required ||
                 currentField.indexed !== originalField.indexed ||
                 currentField.filterable !== originalField.filterable ||
+                currentField.unique !== originalField.unique ||
                 currentField.description !== originalField.description ||
                 JSON.stringify(currentField.constraints) !==
                     JSON.stringify(originalField.constraints) ||
@@ -211,11 +212,18 @@
     }))
 
     // Methods
-    const sanitizeFields = (fields: FieldDefinition[]) => {
+    const sanitizeFields = (fields: FieldDefinition[], deepCopy = false) => {
         return fields.map(field => ({
             ...field,
-            constraints: field.constraints ?? {},
-            ui_settings: field.ui_settings ?? {},
+            // Deep copy constraints and ui_settings to avoid shared references
+            constraints:
+                deepCopy && field.constraints
+                    ? JSON.parse(JSON.stringify(field.constraints))
+                    : field.constraints,
+            ui_settings:
+                deepCopy && field.ui_settings
+                    ? JSON.parse(JSON.stringify(field.ui_settings))
+                    : field.ui_settings,
         }))
     }
 
@@ -266,7 +274,7 @@
                     // Deep copy the definition including fields with sanitization
                     originalDefinition.value = {
                         ...definition,
-                        fields: sanitizeFields(definition.fields.map(field => ({ ...field }))),
+                        fields: sanitizeFields(definition.fields, true),
                     }
                     selectedItems.value = [selectedId]
                 }
@@ -299,7 +307,7 @@
                 // Deep copy the definition including fields with sanitization
                 originalDefinition.value = {
                     ...sanitizedDefinition,
-                    fields: sanitizeFields(sanitizedDefinition.fields.map(field => ({ ...field }))),
+                    fields: sanitizeFields(sanitizedDefinition.fields, true),
                 }
                 selectedItems.value = [item.uuid]
 
@@ -349,9 +357,7 @@
                     selectedDefinition.value = sanitizedReloaded
                     originalDefinition.value = {
                         ...sanitizedReloaded,
-                        fields: sanitizeFields(
-                            sanitizedReloaded.fields.map(field => ({ ...field }))
-                        ),
+                        fields: sanitizeFields(sanitizedReloaded.fields, true),
                     }
 
                     // Update the cached version in the list
@@ -420,9 +426,7 @@
                     selectedDefinition.value = sanitizedReloaded
                     originalDefinition.value = {
                         ...sanitizedReloaded,
-                        fields: sanitizeFields(
-                            sanitizedReloaded.fields.map(field => ({ ...field }))
-                        ),
+                        fields: sanitizeFields(sanitizedReloaded.fields, true),
                     }
 
                     // Update the cached version in the list
@@ -495,10 +499,10 @@
     }
 
     const handleFieldSave = (field: FieldDefinition) => {
-        // Ensure constraints and ui_settings are always objects, not null
+        // Keep constraints and ui_settings as-is (they can be undefined)
         const sanitizedField = {
             ...field,
-            constraints: field.constraints ?? {},
+            constraints: field.constraints,
             ui_settings: field.ui_settings ?? {},
         }
 

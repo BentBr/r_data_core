@@ -1,6 +1,15 @@
 import { z } from 'zod'
 import { UuidSchema, TimestampSchema } from './base'
 
+// Field constraints - API returns nested structure: { type: string, constraints: { ... } }
+// We use a permissive type to handle various constraint shapes
+export const FieldConstraintsSchema = z
+    .object({
+        type: z.string().optional(),
+        constraints: z.record(z.string(), z.unknown()).optional(),
+    })
+    .passthrough()
+
 // Field Definition schema
 export const FieldDefinitionSchema = z.object({
     name: z.string(),
@@ -29,8 +38,9 @@ export const FieldDefinitionSchema = z.object({
     required: z.boolean(),
     indexed: z.boolean(),
     filterable: z.boolean(),
+    unique: z.boolean().optional(),
     default_value: z.unknown().nullish(),
-    constraints: z.record(z.string(), z.unknown()).nullish(),
+    constraints: FieldConstraintsSchema.nullish(),
     ui_settings: z.record(z.string(), z.unknown()).nullish(),
 })
 
@@ -100,6 +110,7 @@ export const UpdateEntityDefinitionRequestSchema = EntityDefinitionSchema.pick({
 })
 
 // Type exports
+export type FieldConstraints = z.infer<typeof FieldConstraintsSchema>
 export type FieldDefinition = z.infer<typeof FieldDefinitionSchema>
 export type EntityDefinition = z.infer<typeof EntityDefinitionSchema>
 export type DynamicEntity = z.infer<typeof DynamicEntitySchema>

@@ -36,6 +36,10 @@ pub struct FieldDefinition {
     /// Whether the field can be used in API filtering
     pub filterable: bool,
 
+    /// Whether the field must have unique values (DB-level constraint)
+    #[serde(default)]
+    pub unique: bool,
+
     /// Default value for the field as JSON
     pub default_value: Option<Value>,
 
@@ -85,6 +89,7 @@ impl FieldDefinition {
             required: false,
             indexed: false,
             filterable: false,
+            unique: false,
             default_value: None,
             validation: FieldValidation::default(),
             ui_settings: UiSettings::default(),
@@ -128,5 +133,34 @@ impl FieldDefinitionModule for FieldDefinition {
 
     fn new_with_defaults(name: String, display_name: String, field_type: FieldType) -> Self {
         Self::new(name, display_name, field_type)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_field_definition_unique_serialization() {
+        let field = FieldDefinition::new("test".to_string(), "Test".to_string(), FieldType::String);
+
+        let json = serde_json::to_string(&field).unwrap();
+        assert!(
+            json.contains("\"unique\":false"),
+            "JSON should contain unique field: {json}"
+        );
+    }
+
+    #[test]
+    fn test_field_definition_unique_true_serialization() {
+        let mut field =
+            FieldDefinition::new("test".to_string(), "Test".to_string(), FieldType::String);
+        field.unique = true;
+
+        let json = serde_json::to_string(&field).unwrap();
+        assert!(
+            json.contains("\"unique\":true"),
+            "JSON should contain unique:true: {json}"
+        );
     }
 }

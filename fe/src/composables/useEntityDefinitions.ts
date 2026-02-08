@@ -28,12 +28,18 @@ export function useEntityDefinitions() {
 
     /**
      * Sanitize fields to ensure constraints and ui_settings are always objects
+     * @param deepCopy - If true, deep copies constraints and ui_settings to avoid shared references
      */
-    const sanitizeFields = (fields: FieldDefinition[]): FieldDefinition[] => {
+    const sanitizeFields = (fields: FieldDefinition[], deepCopy = false): FieldDefinition[] => {
         return fields.map(field => ({
             ...field,
-            constraints: field.constraints ?? {},
-            ui_settings: field.ui_settings ?? {},
+            // Deep copy constraints and ui_settings to avoid shared references
+            constraints: deepCopy
+                ? JSON.parse(JSON.stringify(field.constraints ?? {}))
+                : (field.constraints ?? {}),
+            ui_settings: deepCopy
+                ? JSON.parse(JSON.stringify(field.ui_settings ?? {}))
+                : (field.ui_settings ?? {}),
         }))
     }
 
@@ -172,7 +178,7 @@ export function useEntityDefinitions() {
         selectedDefinition.value = definition
         originalDefinition.value = {
             ...definition,
-            fields: sanitizeFields(definition.fields.map(field => ({ ...field }))),
+            fields: sanitizeFields(definition.fields, true),
         }
     }
 
@@ -264,9 +270,7 @@ export function useEntityDefinitions() {
             // Update original definition to reflect saved state
             originalDefinition.value = {
                 ...selectedDefinition.value,
-                fields: sanitizeFields(
-                    selectedDefinition.value.fields.map(field => ({ ...field }))
-                ),
+                fields: sanitizeFields(selectedDefinition.value.fields, true),
             }
 
             handleSuccess(
