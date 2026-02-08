@@ -1,7 +1,7 @@
 {
     "name": "r-data-core-admin",
     "description": "Admin FE for r_data_core, the MDM with pipelines and easy data orchestration.",
-    "version": "0.4.4",
+    "version": "0.4.5",
     "private": true,
     "type": "module",
     "scripts": {

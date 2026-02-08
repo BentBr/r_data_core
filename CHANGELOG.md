@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.5](https://github.com/BentBr/r_data_core/compare/core-v0.4.4...core-v0.4.5) (2026-02-07)
+
+
+### Bug Fixes
+
+* cargo audit fix ([e549b95](https://github.com/BentBr/r_data_core/commit/e549b95f268a60336b44bd81f0fc56d078369c90))
+* making sure children are shown in tree not only directly but for folders below entities as well ([d84b036](https://github.com/BentBr/r_data_core/commit/d84b036c96c853d5f0e522549dac8bc4a4b71ed0))
+* making sure entities always have parents ([b6ed953](https://github.com/BentBr/r_data_core/commit/b6ed953ab84144c484cc08e0da7dbc6d4064c0ed))
+* making sure to resolve path resolution ([a8aa1e8](https://github.com/BentBr/r_data_core/commit/a8aa1e8579f27d8c191968d006c67a3ea517d2ee))
+* making sure to resolve path resolution ([81db593](https://github.com/BentBr/r_data_core/commit/81db59381ce9be63cd76150daff287d263b1522c))
+
 ## [0.4.4](https://github.com/BentBr/r_data_core/compare/core-v0.4.3...core-v0.4.4) (2026-02-01)
 
 
