@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.6](https://github.com/BentBr/r_data_core/compare/core-v0.4.5...core-v0.4.6) (2026-02-08)
+
+
+### Features
+
+* unique constraints + regex check on fe + be ([4667a57](https://github.com/BentBr/r_data_core/commit/4667a57f430d69aa99a602fa49324b16b4294e91))
+* workflow runs purger automatic task (and settings in system) ([7593e01](https://github.com/BentBr/r_data_core/commit/7593e018c57653baa0e39d050a36ba634a88358d))
+* workflow runs purger automatic task (and settings in system) ([b480bf1](https://github.com/BentBr/r_data_core/commit/b480bf1b8e42bb3c8bf18dcfd7197af39e5061b0))
+
 ## [0.4.5](https://github.com/BentBr/r_data_core/compare/core-v0.4.4...core-v0.4.5) (2026-02-07)
 
 
