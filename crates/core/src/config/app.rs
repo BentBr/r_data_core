@@ -51,13 +51,16 @@ pub struct WorkerConfig {
 /// Maintenance worker configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MaintenanceConfig {
-    /// Cron expression for version purger task (required)
+    /// Cron expression for the version purger task (required)
     pub version_purger_cron: String,
 
-    /// Cron expression for refresh token cleanup task (required)
+    /// Cron expression for the refresh token cleanup task (required)
     pub refresh_token_cleanup_cron: String,
 
-    /// Database configuration used by maintenance worker
+    /// Cron expression for workflow run logs purger task (required)
+    pub workflow_run_logs_purger_cron: String,
+
+    /// Database configuration used by the maintenance worker
     pub database: DatabaseConfig,
 
     /// Cache configuration

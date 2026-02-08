@@ -2,10 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import SystemPage from './SystemPage.vue'
-import type { EntityVersioningSettings } from '@/api/clients/system'
+import type { EntityVersioningSettings, WorkflowRunLogSettings } from '@/api/clients/system'
 
 const mockGetEntityVersioningSettings = vi.fn()
 const mockUpdateEntityVersioningSettings = vi.fn()
+const mockGetWorkflowRunLogSettings = vi.fn()
+const mockUpdateWorkflowRunLogSettings = vi.fn()
 const mockGetLicenseStatus = vi.fn()
 
 vi.mock('@/api/typed-client', () => {
@@ -25,6 +27,8 @@ vi.mock('@/api/typed-client', () => {
             getEntityVersioningSettings: () => mockGetEntityVersioningSettings(),
             updateEntityVersioningSettings: (data: unknown) =>
                 mockUpdateEntityVersioningSettings(data),
+            getWorkflowRunLogSettings: () => mockGetWorkflowRunLogSettings(),
+            updateWorkflowRunLogSettings: (data: unknown) => mockUpdateWorkflowRunLogSettings(data),
             getLicenseStatus: () => mockGetLicenseStatus(),
         },
         ValidationError,
@@ -79,20 +83,28 @@ vi.mock('@/composables/useTranslations', () => ({
     }),
 }))
 
+const defaultVersioningSettings: EntityVersioningSettings = {
+    enabled: true,
+    max_versions: 10,
+    max_age_days: 180,
+}
+
+const defaultRunLogSettings: WorkflowRunLogSettings = {
+    enabled: true,
+    max_runs: null,
+    max_age_days: 90,
+}
+
 describe('SystemPage', () => {
     beforeEach(() => {
         setActivePinia(createPinia())
         vi.clearAllMocks()
+        mockGetEntityVersioningSettings.mockResolvedValue(defaultVersioningSettings)
+        mockGetWorkflowRunLogSettings.mockResolvedValue(defaultRunLogSettings)
     })
 
     it('should convert string inputs to numbers when saving', async () => {
-        const settings: EntityVersioningSettings = {
-            enabled: true,
-            max_versions: 10,
-            max_age_days: 180,
-        }
-        mockGetEntityVersioningSettings.mockResolvedValue(settings)
-        mockUpdateEntityVersioningSettings.mockResolvedValue(settings)
+        mockUpdateEntityVersioningSettings.mockResolvedValue(defaultVersioningSettings)
 
         const wrapper = mount(SystemPage)
 
@@ -121,13 +133,7 @@ describe('SystemPage', () => {
     })
 
     it('should convert empty strings to null when saving', async () => {
-        const settings: EntityVersioningSettings = {
-            enabled: true,
-            max_versions: null,
-            max_age_days: null,
-        }
-        mockGetEntityVersioningSettings.mockResolvedValue(settings)
-        mockUpdateEntityVersioningSettings.mockResolvedValue(settings)
+        mockUpdateEntityVersioningSettings.mockResolvedValue(defaultVersioningSettings)
 
         const wrapper = mount(SystemPage)
 
@@ -156,14 +162,6 @@ describe('SystemPage', () => {
     })
 
     it('should handle backend returning integers as strings', async () => {
-        // Simulate backend returning string "10" instead of number 10
-        const settingsWithString: EntityVersioningSettings = {
-            enabled: true,
-            max_versions: 10 as unknown as number, // Backend should return number, but test edge case
-            max_age_days: 180 as unknown as number,
-        }
-        mockGetEntityVersioningSettings.mockResolvedValue(settingsWithString)
-
         const wrapper = mount(SystemPage)
 
         await wrapper.vm.$nextTick()
@@ -178,12 +176,6 @@ describe('SystemPage', () => {
     })
 
     it('should show error message when save fails', async () => {
-        const settings: EntityVersioningSettings = {
-            enabled: true,
-            max_versions: 10,
-            max_age_days: 180,
-        }
-        mockGetEntityVersioningSettings.mockResolvedValue(settings)
         mockUpdateEntityVersioningSettings.mockRejectedValue(
             new Error('Deserialization error: invalid type: string "10", expected i32')
         )
@@ -215,13 +207,6 @@ describe('SystemPage', () => {
     })
 
     it('should display license information when available', async () => {
-        const settings: EntityVersioningSettings = {
-            enabled: true,
-            max_versions: 10,
-            max_age_days: 180,
-        }
-        mockGetEntityVersioningSettings.mockResolvedValue(settings)
-
         const licenseStatus = {
             state: 'valid',
             company: 'Test Company',
@@ -251,13 +236,6 @@ describe('SystemPage', () => {
     })
 
     it('should display license error message when state is error', async () => {
-        const settings: EntityVersioningSettings = {
-            enabled: true,
-            max_versions: 10,
-            max_age_days: 180,
-        }
-        mockGetEntityVersioningSettings.mockResolvedValue(settings)
-
         const licenseStatus = {
             state: 'error' as const,
             company: 'Test Company',
@@ -285,12 +263,6 @@ describe('SystemPage', () => {
     })
 
     it('should handle license status loading failure gracefully', async () => {
-        const settings: EntityVersioningSettings = {
-            enabled: true,
-            max_versions: 10,
-            max_age_days: 180,
-        }
-        mockGetEntityVersioningSettings.mockResolvedValue(settings)
         mockGetLicenseStatus.mockRejectedValue(new Error('Failed to load license status'))
 
         const wrapper = mount(SystemPage, {
@@ -304,5 +276,143 @@ describe('SystemPage', () => {
 
         // Should not crash, just not show license info
         expect(wrapper.exists()).toBe(true)
+    })
+
+    // Workflow run logs card tests
+    it('should convert run logs string inputs to numbers when saving', async () => {
+        mockUpdateWorkflowRunLogSettings.mockResolvedValue(defaultRunLogSettings)
+
+        const wrapper = mount(SystemPage)
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // Set run logs form values as strings (as v-text-field would)
+        const vm = wrapper.vm as unknown as {
+            runLogsForm: {
+                max_runs: number | string | null
+                max_age_days: number | string | null
+                enabled: boolean
+            }
+            saveRunLogs: () => Promise<void>
+        }
+        vm.runLogsForm.max_runs = '5' as unknown as number
+        vm.runLogsForm.max_age_days = '90' as unknown as number
+
+        // Trigger save
+        await vm.saveRunLogs()
+        await wrapper.vm.$nextTick()
+
+        // Verify that numbers were sent, not strings
+        expect(mockUpdateWorkflowRunLogSettings).toHaveBeenCalledWith({
+            enabled: true,
+            max_runs: 5,
+            max_age_days: 90,
+        })
+        expect(showSuccess).toHaveBeenCalled()
+    })
+
+    it('should convert run logs empty strings to null when saving', async () => {
+        mockUpdateWorkflowRunLogSettings.mockResolvedValue(defaultRunLogSettings)
+
+        const wrapper = mount(SystemPage)
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // Set run logs form values as empty strings
+        const vm = wrapper.vm as unknown as {
+            runLogsForm: {
+                max_runs: number | string | null
+                max_age_days: number | string | null
+                enabled: boolean
+            }
+            saveRunLogs: () => Promise<void>
+        }
+        vm.runLogsForm.max_runs = '' as unknown as number
+        vm.runLogsForm.max_age_days = '' as unknown as number
+
+        // Trigger save
+        await vm.saveRunLogs()
+        await wrapper.vm.$nextTick()
+
+        // Verify that null was sent, not empty strings
+        expect(mockUpdateWorkflowRunLogSettings).toHaveBeenCalledWith({
+            enabled: true,
+            max_runs: null,
+            max_age_days: null,
+        })
+        expect(showSuccess).toHaveBeenCalled()
+    })
+
+    it('should populate run logs form from API response', async () => {
+        const customSettings: WorkflowRunLogSettings = {
+            enabled: false,
+            max_runs: 50,
+            max_age_days: 60,
+        }
+        mockGetWorkflowRunLogSettings.mockResolvedValue(customSettings)
+
+        const wrapper = mount(SystemPage)
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        const vm = wrapper.vm as unknown as {
+            runLogsForm: {
+                max_runs: number | string | null
+                max_age_days: number | string | null
+                enabled: boolean
+            }
+        }
+        expect(vm.runLogsForm.enabled).toBe(false)
+        expect(vm.runLogsForm.max_runs).toBe(50)
+        expect(vm.runLogsForm.max_age_days).toBe(60)
+    })
+
+    it('should show error when run logs save fails', async () => {
+        mockUpdateWorkflowRunLogSettings.mockRejectedValue(new Error('Failed to save settings'))
+
+        const wrapper = mount(SystemPage)
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        const vm = wrapper.vm as unknown as { saveRunLogs: () => Promise<void> }
+        await vm.saveRunLogs()
+        await wrapper.vm.$nextTick()
+
+        expect(showError).toHaveBeenCalled()
+    })
+
+    it('should show error when run logs load fails', async () => {
+        mockGetWorkflowRunLogSettings.mockRejectedValue(new Error('Failed to load settings'))
+
+        const wrapper = mount(SystemPage)
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        expect(showError).toHaveBeenCalled()
+    })
+
+    it('should load and save run logs independently from versioning', async () => {
+        mockUpdateWorkflowRunLogSettings.mockResolvedValue(defaultRunLogSettings)
+
+        const wrapper = mount(SystemPage)
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // Save only run logs
+        const vm = wrapper.vm as unknown as {
+            saveRunLogs: () => Promise<void>
+        }
+        await vm.saveRunLogs()
+        await wrapper.vm.$nextTick()
+
+        // Should only call run logs update, not versioning update
+        expect(mockUpdateWorkflowRunLogSettings).toHaveBeenCalledTimes(1)
+        expect(mockUpdateEntityVersioningSettings).not.toHaveBeenCalled()
     })
 })

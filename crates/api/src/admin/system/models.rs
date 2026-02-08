@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use r_data_core_core::settings::EntityVersioningSettings;
+use r_data_core_core::settings::{EntityVersioningSettings, WorkflowRunLogSettings};
 
 /// DTO for entity versioning settings (API layer wrapper)
 ///
@@ -37,6 +37,48 @@ impl From<EntityVersioningSettingsDto> for EntityVersioningSettings {
             max_age_days: dto.max_age_days,
         }
     }
+}
+
+/// DTO for workflow run log settings (API layer wrapper)
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct WorkflowRunLogSettingsDto {
+    /// Whether workflow run logs pruning is enabled
+    pub enabled: bool,
+    /// Maximum number of runs to keep per workflow
+    pub max_runs: Option<i32>,
+    /// Maximum age in days for workflow runs
+    pub max_age_days: Option<i32>,
+}
+
+impl From<WorkflowRunLogSettings> for WorkflowRunLogSettingsDto {
+    fn from(settings: WorkflowRunLogSettings) -> Self {
+        Self {
+            enabled: settings.enabled,
+            max_runs: settings.max_runs,
+            max_age_days: settings.max_age_days,
+        }
+    }
+}
+
+impl From<WorkflowRunLogSettingsDto> for WorkflowRunLogSettings {
+    fn from(dto: WorkflowRunLogSettingsDto) -> Self {
+        Self {
+            enabled: dto.enabled,
+            max_runs: dto.max_runs,
+            max_age_days: dto.max_age_days,
+        }
+    }
+}
+
+/// Request body for updating workflow run log settings
+#[derive(Deserialize, Serialize, ToSchema)]
+pub struct UpdateWorkflowRunLogSettingsBody {
+    /// Whether pruning is enabled
+    pub enabled: Option<bool>,
+    /// Maximum number of runs to keep per workflow
+    pub max_runs: Option<i32>,
+    /// Maximum age in days
+    pub max_age_days: Option<i32>,
 }
 
 /// Request body for updating settings

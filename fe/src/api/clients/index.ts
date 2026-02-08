@@ -273,6 +273,18 @@ export class TypedHttpClient extends BaseTypedHttpClient {
         return this.systemClient.updateEntityVersioningSettings(...args)
     }
 
+    async getWorkflowRunLogSettings(
+        ...args: Parameters<SystemClient['getWorkflowRunLogSettings']>
+    ) {
+        return this.systemClient.getWorkflowRunLogSettings(...args)
+    }
+
+    async updateWorkflowRunLogSettings(
+        ...args: Parameters<SystemClient['updateWorkflowRunLogSettings']>
+    ) {
+        return this.systemClient.updateWorkflowRunLogSettings(...args)
+    }
+
     async getLicenseStatus(...args: Parameters<SystemClient['getLicenseStatus']>) {
         return this.systemClient.getLicenseStatus(...args)
     }

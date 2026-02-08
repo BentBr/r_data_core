@@ -173,6 +173,7 @@ services:
             # Cron expressions for maintenance tasks (every 5 minutes)
             VERSION_PURGER_CRON: "0 */5 * * * *"
             REFRESH_TOKEN_CLEANUP_CRON: "0 */5 * * * *"
+            WORKFLOW_RUN_LOGS_PURGER_CRON: "0 */5 * * * *"
             VIRTUAL_HOST: .maintenance.rdatacore.docker
         networks:
             default:

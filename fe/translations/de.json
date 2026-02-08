@@ -849,6 +849,16 @@
             "load_failed": "Einstellungen konnten nicht geladen werden",
             "save_failed": "Einstellungen konnten nicht gespeichert werden"
         },
+        "workflow_run_logs": {
+            "section_title": "Workflow-Ausf\u00fchrungsprotokolle",
+            "enabled": "Aktiviert",
+            "max_runs": "Max. Ausf\u00fchrungen pro Workflow (leer lassen f\u00fcr unbegrenzt)",
+            "max_age_days": "Max. Alter in Tagen (leer lassen, um Altersbereinigung zu deaktivieren)",
+            "save": "Speichern",
+            "save_success": "Einstellungen gespeichert",
+            "load_failed": "Einstellungen konnten nicht geladen werden",
+            "save_failed": "Einstellungen konnten nicht gespeichert werden"
+        },
         "license": {
             "section_title": "Lizenzinformationen",
             "state": "Status",
