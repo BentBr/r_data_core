@@ -1,5 +1,5 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
-#![allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
+#![allow(clippy::future_not_send)] // Test functions use impl Service from setup_test_app() across awaits
 
 use actix_web::{http::StatusCode, test};
 use r_data_core_core::error::Result;

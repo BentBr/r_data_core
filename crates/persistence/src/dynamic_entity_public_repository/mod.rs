@@ -71,8 +71,7 @@ impl DynamicEntityPublicRepository {
                 description: row.description,
                 is_system: false,
                 entity_count,
-                #[allow(clippy::cast_possible_truncation)]
-                field_count: field_count as i32,
+                field_count: i32::try_from(field_count).unwrap_or(0),
             });
         }
 

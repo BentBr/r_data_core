@@ -104,8 +104,7 @@ pub async fn list_by_path(
         if !search_term.is_empty() {
             return match repository.search_by_path_prefix(search_term, limit).await {
                 Ok(nodes) => {
-                    #[allow(clippy::cast_possible_wrap)]
-                    let total = nodes.len() as i64;
+                    let total = i64::try_from(nodes.len()).unwrap_or(0);
                     ApiResponse::ok_paginated(nodes, total, 1, limit)
                 }
                 Err(e) => HttpResponse::InternalServerError().json(json!({

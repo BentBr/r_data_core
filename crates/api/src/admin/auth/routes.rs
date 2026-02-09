@@ -123,14 +123,16 @@ fn generate_tokens_for_user(
     })?;
 
     // Calculate expiration times
-    #[allow(clippy::cast_possible_wrap)]
     let access_expires_at = OffsetDateTime::now_utc()
-        .checked_add(Duration::seconds(ACCESS_TOKEN_EXPIRY_SECONDS as i64))
+        .checked_add(Duration::seconds(
+            i64::try_from(ACCESS_TOKEN_EXPIRY_SECONDS).unwrap_or(0),
+        ))
         .unwrap_or_else(OffsetDateTime::now_utc);
 
-    #[allow(clippy::cast_possible_wrap)]
     let refresh_expires_at = OffsetDateTime::now_utc()
-        .checked_add(Duration::seconds(REFRESH_TOKEN_EXPIRY_SECONDS as i64))
+        .checked_add(Duration::seconds(
+            i64::try_from(REFRESH_TOKEN_EXPIRY_SECONDS).unwrap_or(0),
+        ))
         .unwrap_or_else(OffsetDateTime::now_utc);
 
     Ok((
@@ -252,14 +254,16 @@ pub async fn admin_login(
     };
 
     // Calculate expiration times
-    #[allow(clippy::cast_possible_wrap)]
     let access_expires_at = OffsetDateTime::now_utc()
-        .checked_add(Duration::seconds(ACCESS_TOKEN_EXPIRY_SECONDS as i64)) // 30 minutes
+        .checked_add(Duration::seconds(
+            i64::try_from(ACCESS_TOKEN_EXPIRY_SECONDS).unwrap_or(0),
+        )) // 30 minutes
         .unwrap_or_else(OffsetDateTime::now_utc);
 
-    #[allow(clippy::cast_possible_wrap)]
     let refresh_expires_at = OffsetDateTime::now_utc()
-        .checked_add(Duration::seconds(REFRESH_TOKEN_EXPIRY_SECONDS as i64))
+        .checked_add(Duration::seconds(
+            i64::try_from(REFRESH_TOKEN_EXPIRY_SECONDS).unwrap_or(0),
+        ))
         .unwrap_or_else(OffsetDateTime::now_utc);
 
     // Store refresh token in database

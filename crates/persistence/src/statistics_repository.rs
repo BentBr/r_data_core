@@ -30,9 +30,8 @@ impl StatisticsRepositoryTrait for StatisticsRepository {
 
         let names: Vec<String> = rows.into_iter().map(|row| row.entity_type).collect();
 
-        #[allow(clippy::cast_possible_wrap)] // Entity definition count will never exceed i64::MAX
         Ok(EntityDefinitionsStats {
-            count: names.len() as i64,
+            count: i64::try_from(names.len()).unwrap_or(0),
             names,
         })
     }

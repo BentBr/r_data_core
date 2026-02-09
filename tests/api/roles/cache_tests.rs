@@ -1,5 +1,4 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
-#![allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;

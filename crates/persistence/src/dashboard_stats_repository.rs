@@ -109,8 +109,7 @@ async fn get_workflow_stats(pool: &PgPool) -> Result<WorkflowStats> {
     .await
     .map_err(r_data_core_core::error::Error::Database)?;
 
-    #[allow(clippy::cast_possible_wrap)] // Workflow count will never exceed i64::MAX
-    let total = rows.len() as i64;
+    let total = i64::try_from(rows.len()).unwrap_or(0);
     let workflows = rows
         .into_iter()
         .map(|row| WorkflowWithLatestStatus {

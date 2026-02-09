@@ -183,8 +183,9 @@ pub async fn create_api_key(
 
     // Create the API key
     let description = req.description.clone().unwrap_or_default();
-    #[allow(clippy::cast_possible_truncation)] // 365 days fits in i32
-    let expires_in_days = req.expires_in_days.unwrap_or(365) as i32;
+    let expires_in_days = req
+        .expires_in_days
+        .map_or(365, |v| i32::try_from(v).unwrap_or(365));
 
     match repo
         .create_new_api_key(&req.name, &description, creator_uuid, expires_in_days)

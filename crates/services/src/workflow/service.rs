@@ -643,8 +643,7 @@ impl WorkflowService {
                 r_data_core_core::error::Error::Entity(format!("Failed to fetch entities: {e}"))
             })?;
 
-        #[allow(clippy::cast_possible_wrap)]
-        let entity_count = entities.len() as i64;
+        let entity_count = i64::try_from(entities.len()).unwrap_or(0);
 
         let payloads: Vec<JsonValue> = entities
             .into_iter()

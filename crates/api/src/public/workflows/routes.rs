@@ -1,4 +1,5 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+#![allow(clippy::future_not_send)] // Actix handlers take HttpRequest which is !Send
 
 use actix_web::{get, post, web, HttpMessage, HttpRequest, HttpResponse, Responder};
 use serde_json::json;
@@ -196,7 +197,6 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
         ("preSharedKey" = [])
     )
 )]
-#[allow(clippy::future_not_send)] // HttpRequest is not Send, but Actix Web handles this internally
 #[get("/{uuid}")]
 pub async fn get_workflow_data(
     path: web::Path<Uuid>,
@@ -270,7 +270,6 @@ pub async fn get_workflow_data(
         ("preSharedKey" = [])
     )
 )]
-#[allow(clippy::future_not_send)] // HttpRequest is not Send, but Actix Web handles this internally
 #[get("/{uuid}/trigger")]
 pub async fn trigger_workflow(
     path: web::Path<Uuid>,
@@ -333,7 +332,6 @@ pub async fn trigger_workflow(
     handle_trigger_consumer_workflow(uuid, &req, &workflow, &state, &query).await
 }
 
-#[allow(clippy::future_not_send)]
 async fn handle_trigger_consumer_workflow(
     uuid: Uuid,
     req: &HttpRequest,
@@ -455,7 +453,6 @@ async fn handle_trigger_consumer_workflow(
     }
 }
 
-#[allow(clippy::future_not_send)]
 async fn handle_provider_workflow(
     uuid: Uuid,
     req: &HttpRequest,
@@ -574,7 +571,6 @@ async fn handle_provider_workflow(
     response
 }
 
-#[allow(clippy::future_not_send)]
 async fn validate_and_authenticate_workflow(
     req: &HttpRequest,
     workflow: &r_data_core_workflow::data::Workflow,
@@ -866,7 +862,6 @@ pub async fn get_workflow_stats(
         ("preSharedKey" = [])
     )
 )]
-#[allow(clippy::future_not_send)] // HttpRequest is not Send, but Actix Web handles this internally
 #[post("/{uuid}")]
 pub async fn post_workflow_ingest(
     path: web::Path<Uuid>,
@@ -976,7 +971,6 @@ pub async fn post_workflow_ingest(
 
 /// Validate provider authentication (JWT, API key, or pre-shared key)
 /// Sets request extension for pre-shared keys so `CombinedRequiredAuth` can pick it up
-#[allow(clippy::unused_async)] // May need async in future
 fn validate_provider_auth(
     req: &HttpRequest,
     config: &serde_json::Value,

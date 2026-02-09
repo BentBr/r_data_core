@@ -112,10 +112,13 @@ where
     /// Create a paginated success response
     ///
     /// # Panics
-    /// This function may panic if `per_page` is 0 (division by zero)
+    /// May panic if `total + per_page - 1` overflows with large values
     pub fn paginated(data: T, total: i64, page: i64, per_page: i64) -> Self {
-        #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
-        let total_pages = (total as f64 / per_page as f64).ceil() as i64;
+        let total_pages = if per_page <= 0 {
+            1
+        } else {
+            total.saturating_add(per_page - 1) / per_page
+        };
 
         let pagination = PaginationMeta {
             total,

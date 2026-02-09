@@ -23,8 +23,7 @@ use r_data_core_test_support::setup_test_db;
 
 // Force tests to run sequentially to avoid database contention
 #[cfg(test)]
-#[allow(clippy::module_inception)]
-mod dynamic_entity_tests {
+mod tests {
     use super::*;
 
     // Initialize the test framework once

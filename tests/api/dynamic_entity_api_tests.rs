@@ -19,8 +19,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 #[cfg(test)]
-#[allow(clippy::module_inception)]
-mod dynamic_entity_api_tests {
+mod tests {
     use super::*;
 
     // Helper to create a test entity definition for user entity

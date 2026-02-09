@@ -1,5 +1,6 @@
 use log::{debug, error, warn};
 use serde_json::Value as JsonValue;
+use std::fmt::Write;
 use uuid::Uuid;
 
 use crate::dynamic_entity_mapper;
@@ -200,26 +201,17 @@ fn add_filter_condition(
 
     // Special handling for path-based filters (these ignore operator)
     if field == "path_prefix" {
-        #[allow(clippy::format_push_string)]
-        {
-            query.push_str(&format!("path LIKE ${param_index} || '/%'"));
-        }
+        let _ = write!(query, "path LIKE ${param_index} || '/%'");
         return param_index + 1;
     }
     if field == "path_equals" || field == "path" {
-        #[allow(clippy::format_push_string)]
-        {
-            query.push_str(&format!("path = ${param_index}"));
-        }
+        let _ = write!(query, "path = ${param_index}");
         return param_index + 1;
     }
 
     // Handle NULL values
     if value == &JsonValue::Null {
-        #[allow(clippy::format_push_string)]
-        {
-            query.push_str(&format!("{field} IS NULL"));
-        }
+        let _ = write!(query, "{field} IS NULL");
         return param_index;
     }
 
@@ -228,44 +220,34 @@ fn add_filter_condition(
         if let Some(arr) = value.as_array() {
             if arr.is_empty() {
                 // Empty IN list means no matches
-                #[allow(clippy::format_push_string)]
-                {
-                    query.push_str(if sanitized_operator == "IN" {
-                        "1 = 0"
-                    } else {
-                        "1 = 1"
-                    });
-                }
+                query.push_str(if sanitized_operator == "IN" {
+                    "1 = 0"
+                } else {
+                    "1 = 1"
+                });
                 return param_index;
             }
             // Build IN clause with multiple parameters
-            #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
             let placeholders: Vec<String> = (0..arr.len())
-                .map(|i| format!("${}", param_index + i as i32))
+                .map(|i| {
+                    let idx = param_index + i32::try_from(i).unwrap_or(i32::MAX);
+                    format!("${idx}")
+                })
                 .collect();
-            #[allow(clippy::format_push_string)]
-            {
-                query.push_str(&format!(
-                    "{field} {sanitized_operator} ({})",
-                    placeholders.join(", ")
-                ));
-            }
-            #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-            return param_index + arr.len() as i32;
+            let _ = write!(
+                query,
+                "{field} {sanitized_operator} ({})",
+                placeholders.join(", ")
+            );
+            return param_index + i32::try_from(arr.len()).unwrap_or(i32::MAX);
         }
         // If value is not an array for IN/NOT IN, treat as single value
-        #[allow(clippy::format_push_string)]
-        {
-            query.push_str(&format!("{field} {sanitized_operator} (${param_index})"));
-        }
+        let _ = write!(query, "{field} {sanitized_operator} (${param_index})");
         return param_index + 1;
     }
 
     // Standard comparison operators (=, >, <, <=, >=)
-    #[allow(clippy::format_push_string)]
-    {
-        query.push_str(&format!("{field} {sanitized_operator} ${param_index}"));
-    }
+    let _ = write!(query, "{field} {sanitized_operator} ${param_index}");
     param_index + 1
 }
 
@@ -284,20 +266,14 @@ fn add_sort_and_pagination(
             _ => "DESC",
         };
 
-        #[allow(clippy::format_push_string)]
-        {
-            query.push_str(&format!(" ORDER BY {field} {sanitized_direction}"));
-        }
+        let _ = write!(query, " ORDER BY {field} {sanitized_direction}");
     } else {
         // Default sort
         query.push_str(" ORDER BY created_at DESC");
     }
 
     // Add pagination
-    #[allow(clippy::format_push_string)]
-    {
-        query.push_str(&format!(" LIMIT {limit} OFFSET {offset}"));
-    }
+    let _ = write!(query, " LIMIT {limit} OFFSET {offset}");
 }
 
 /// Execute the filter query with proper parameter binding and retry logic for schema changes

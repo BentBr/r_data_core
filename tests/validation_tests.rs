@@ -10,8 +10,7 @@ use std::sync::Arc;
 
 /// Test validation using JSON examples from `.example_files/json_examples` directory
 #[cfg(test)]
-#[allow(clippy::module_inception)]
-mod validation_tests {
+mod tests {
     use super::*;
 
     /// Load a JSON example file

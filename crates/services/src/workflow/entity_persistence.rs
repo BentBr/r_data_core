@@ -1,3 +1,5 @@
+#![allow(clippy::implicit_hasher)] // Functions take concrete HashMap; generalizing over BuildHasher is unnecessary here
+
 use crate::dynamic_entity::DynamicEntityService;
 use crate::workflow::value_formatting::{
     build_normalized_field_data, normalize_field_data_by_type, normalize_path,
@@ -29,12 +31,11 @@ pub enum EntityLookupResult {
 ///
 /// # Errors
 /// Returns an error if database query fails
-#[allow(clippy::future_not_send)] // HashMap with generic BuildHasher doesn't implement Send, but this is safe in practice
-pub async fn find_existing_entity<S: std::hash::BuildHasher>(
+pub async fn find_existing_entity(
     de_service: &DynamicEntityService,
     entity_type: &str,
-    normalized_field_data: &HashMap<String, Value, S>,
-    original_field_data: &HashMap<String, Value, S>,
+    normalized_field_data: &HashMap<String, Value>,
+    original_field_data: &HashMap<String, Value>,
     produced: &Value,
     update_key: Option<&str>,
 ) -> r_data_core_core::error::Result<EntityLookupResult> {
@@ -537,7 +538,6 @@ async fn lookup_entity_by_path(
 ///
 /// # Errors
 /// Returns an error if the database operation fails
-#[allow(clippy::implicit_hasher)] // Using default hasher (RandomState) is fine for this use case
 pub async fn resolve_entity_path(
     entity_type: &str,
     filters: &HashMap<String, Value>,
@@ -647,7 +647,6 @@ pub async fn resolve_entity_path(
 ///
 /// # Errors
 /// Returns an error if the database operation fails
-#[allow(clippy::implicit_hasher)] // Using default hasher (RandomState) is fine for this use case
 pub async fn get_or_create_entity_by_path(
     entity_type: &str,
     path: &str,
@@ -760,8 +759,7 @@ pub async fn get_or_create_entity_by_path(
 ///
 /// # Errors
 /// Returns an error if path building fails
-#[allow(clippy::unused_async)]
-pub async fn resolve_dynamic_path(
+pub fn resolve_dynamic_path(
     path_template: &str,
     context: &Value,
     _de_service: &DynamicEntityService,
@@ -798,8 +796,6 @@ pub async fn resolve_dynamic_path(
 ///
 /// # Errors
 /// Returns an error if the database operation fails
-#[allow(clippy::unused_async)]
-#[allow(clippy::implicit_hasher)] // Using default hasher (RandomState) is fine for this use case
 pub async fn get_or_create_parent_entity(
     entity_type: &str,
     path: &str,

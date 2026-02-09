@@ -554,8 +554,7 @@ impl WorkflowRepository {
 
         let mut count: i64 = 0;
         for (idx, payload) in payloads.into_iter().enumerate() {
-            #[allow(clippy::cast_possible_wrap)]
-            let seq_no = start_seq + (idx as i64) + 1;
+            let seq_no = start_seq + i64::try_from(idx).unwrap_or(0) + 1;
             sqlx::query(
                 "
                 INSERT INTO workflow_raw_items (workflow_run_uuid, seq_no, payload, status)

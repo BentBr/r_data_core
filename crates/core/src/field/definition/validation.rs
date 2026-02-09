@@ -268,13 +268,15 @@ impl FieldDefinition {
                 }
             } else if value.is_number() {
                 // Allow 0/1 as boolean
-                #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
                 let n = if value.is_i64() {
                     value.as_i64().unwrap()
                 } else if value.is_u64() {
-                    value.as_u64().unwrap() as i64
+                    i64::try_from(value.as_u64().unwrap()).unwrap_or(i64::MAX)
                 } else {
-                    value.as_f64().unwrap() as i64
+                    #[allow(clippy::cast_possible_truncation)]
+                    {
+                        value.as_f64().unwrap() as i64
+                    }
                 };
 
                 if n != 0 && n != 1 {

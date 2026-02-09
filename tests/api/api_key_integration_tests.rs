@@ -59,10 +59,8 @@ fn create_test_jwt_token(user_uuid: &Uuid, secret: &str) -> String {
         name: "test_user".to_string(),
         email: "test@example.com".to_string(),
         permissions,
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        exp: exp.unix_timestamp() as usize,
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        iat: now.unix_timestamp() as usize,
+        exp: usize::try_from(exp.unix_timestamp()).unwrap_or(0),
+        iat: usize::try_from(now.unix_timestamp()).unwrap_or(0),
         is_super_admin: false,
     };
 
@@ -288,7 +286,6 @@ mod tests {
                                 let repo_clone = repo_for_handler.clone();
                                 async move {
                                     // Simulate API key revocation endpoint
-                                    #[allow(clippy::option_if_let_else)]
                                     let auth_check = req.extensions().get::<ApiKeyInfo>().is_some();
                                     if auth_check {
                                         let key_uuid_str = path.into_inner();

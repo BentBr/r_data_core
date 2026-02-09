@@ -203,7 +203,7 @@ pub async fn list_entities(
         ("apiKey" = [])
     )
 )]
-#[allow(clippy::implicit_hasher)] // Actix Web extractor doesn't support generic hashers
+#[allow(clippy::implicit_hasher)] // Actix Web extractor requires concrete HashMap
 pub async fn create_entity(
     data: web::Data<ApiStateWrapper>,
     path: web::Path<String>,
@@ -400,7 +400,7 @@ pub async fn get_entity(
         ("apiKey" = [])
     )
 )]
-#[allow(clippy::implicit_hasher)] // Actix Web extractor doesn't support generic hashers
+#[allow(clippy::implicit_hasher)] // Actix Web extractor requires concrete HashMap
 pub async fn update_entity(
     data: web::Data<ApiStateWrapper>,
     path: web::Path<(String, String)>,
