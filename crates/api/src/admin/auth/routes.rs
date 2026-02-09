@@ -2,17 +2,14 @@
 
 use actix_web::{get, post, web, Responder};
 use std::sync::Arc;
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::{OptionalAuth, RequiredAuth};
-use crate::jwt::{
-    generate_access_token, ACCESS_TOKEN_EXPIRY_SECONDS, REFRESH_TOKEN_EXPIRY_SECONDS,
-};
 use crate::response::ApiResponse;
+use crate::token_service::TokenService;
 use r_data_core_core::admin_user::AdminUser;
-use r_data_core_core::permissions::role::Role;
 use r_data_core_core::refresh_token::RefreshToken;
 use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
 use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
@@ -99,49 +96,6 @@ fn build_refresh_response(
         access_expires_at,
         refresh_expires_at,
     })
-}
-
-/// Generate access and refresh tokens for a user
-fn generate_tokens_for_user(
-    user: &AdminUser,
-    data: &ApiStateWrapper,
-    roles: &[Role],
-) -> Result<(String, String, String, OffsetDateTime, OffsetDateTime), actix_web::HttpResponse> {
-    // Use short-lived expiration for access tokens
-    let mut access_token_config = data.api_config().clone();
-    access_token_config.jwt_expiration = ACCESS_TOKEN_EXPIRY_SECONDS;
-    let access_token = generate_access_token(user, &access_token_config, roles).map_err(|e| {
-        log::error!("Failed to generate access token: {e:?}");
-        ApiResponse::<()>::internal_error("Token generation failed")
-    })?;
-
-    // Generate refresh token
-    let refresh_token = RefreshToken::generate_token();
-    let refresh_token_hash = RefreshToken::hash_token(&refresh_token).map_err(|e| {
-        log::error!("Failed to hash refresh token: {e:?}");
-        ApiResponse::<()>::internal_error("Token generation failed")
-    })?;
-
-    // Calculate expiration times
-    let access_expires_at = OffsetDateTime::now_utc()
-        .checked_add(Duration::seconds(
-            i64::try_from(ACCESS_TOKEN_EXPIRY_SECONDS).unwrap_or(0),
-        ))
-        .unwrap_or_else(OffsetDateTime::now_utc);
-
-    let refresh_expires_at = OffsetDateTime::now_utc()
-        .checked_add(Duration::seconds(
-            i64::try_from(REFRESH_TOKEN_EXPIRY_SECONDS).unwrap_or(0),
-        ))
-        .unwrap_or_else(OffsetDateTime::now_utc);
-
-    Ok((
-        access_token,
-        refresh_token,
-        refresh_token_hash,
-        access_expires_at,
-        refresh_expires_at,
-    ))
 }
 
 /// Login endpoint for admin users
@@ -231,40 +185,15 @@ pub async fn admin_login(
     // Load all roles for user
     let roles = load_user_roles(&user, &data, &repo).await;
 
-    // Generate short-lived access token (30 minutes)
-    // Use short-lived expiration for access tokens, but get secret from config
-    let mut access_token_config = data.api_config().clone();
-    access_token_config.jwt_expiration = ACCESS_TOKEN_EXPIRY_SECONDS;
-    let access_token = match generate_access_token(&user, &access_token_config, &roles) {
-        Ok(token) => token,
+    // Generate token pair via TokenService
+    let token_service = TokenService::new(data.api_config());
+    let token_pair = match token_service.generate_token_pair(&user, &roles) {
+        Ok(pair) => pair,
         Err(e) => {
-            log::error!("Failed to generate access token: {e:?}");
+            log::error!("Failed to generate tokens: {e:?}");
             return ApiResponse::internal_error("Authentication failed");
         }
     };
-
-    // Generate refresh token
-    let refresh_token = RefreshToken::generate_token();
-    let refresh_token_hash = match RefreshToken::hash_token(&refresh_token) {
-        Ok(hash) => hash,
-        Err(e) => {
-            log::error!("Failed to hash refresh token: {e:?}");
-            return ApiResponse::internal_error("Authentication failed");
-        }
-    };
-
-    // Calculate expiration times
-    let access_expires_at = OffsetDateTime::now_utc()
-        .checked_add(Duration::seconds(
-            i64::try_from(ACCESS_TOKEN_EXPIRY_SECONDS).unwrap_or(0),
-        )) // 30 minutes
-        .unwrap_or_else(OffsetDateTime::now_utc);
-
-    let refresh_expires_at = OffsetDateTime::now_utc()
-        .checked_add(Duration::seconds(
-            i64::try_from(REFRESH_TOKEN_EXPIRY_SECONDS).unwrap_or(0),
-        ))
-        .unwrap_or_else(OffsetDateTime::now_utc);
 
     // Store refresh token in database
     let refresh_repo = RefreshTokenRepository::new(data.db_pool().clone());
@@ -276,10 +205,9 @@ pub async fn admin_login(
     if let Err(e) = refresh_repo
         .create(
             user.uuid,
-            refresh_token_hash,
-            refresh_expires_at,
+            token_pair.refresh_token_hash,
+            token_pair.refresh_expires_at,
             device_info,
-            // IP address would be extracted from request in real implementation
         )
         .await
     {
@@ -297,10 +225,10 @@ pub async fn admin_login(
     // Build response
     build_login_response(
         &user,
-        access_token,
-        refresh_token,
-        access_expires_at,
-        refresh_expires_at,
+        token_pair.access_token,
+        token_pair.refresh_token,
+        token_pair.access_expires_at,
+        token_pair.refresh_expires_at,
         using_default_password,
     )
 }
@@ -544,17 +472,15 @@ pub async fn admin_refresh_token(
         return ApiResponse::unauthorized("Account not active");
     }
 
-    // Load roles and generate tokens
+    // Load roles and generate tokens via TokenService
     let roles = load_user_roles(&user, &data, &admin_repo).await;
-    let (
-        new_access_token,
-        new_refresh_token_string,
-        new_refresh_token_hash,
-        access_expires_at,
-        refresh_expires_at,
-    ) = match generate_tokens_for_user(&user, &data, &roles) {
-        Ok(tokens) => tokens,
-        Err(response) => return response,
+    let token_service = TokenService::new(data.api_config());
+    let token_pair = match token_service.generate_token_pair(&user, &roles) {
+        Ok(pair) => pair,
+        Err(e) => {
+            log::error!("Failed to generate tokens: {e:?}");
+            return ApiResponse::internal_error("Token refresh failed");
+        }
     };
 
     // Update the old refresh token as used
@@ -567,8 +493,8 @@ pub async fn admin_refresh_token(
     if let Err(e) = refresh_repo
         .create(
             user.uuid,
-            new_refresh_token_hash,
-            refresh_expires_at,
+            token_pair.refresh_token_hash,
+            token_pair.refresh_expires_at,
             device_info,
         )
         .await
@@ -585,10 +511,10 @@ pub async fn admin_refresh_token(
 
     // Build response
     build_refresh_response(
-        new_access_token,
-        new_refresh_token_string,
-        access_expires_at,
-        refresh_expires_at,
+        token_pair.access_token,
+        token_pair.refresh_token,
+        token_pair.access_expires_at,
+        token_pair.refresh_expires_at,
     )
 }
 

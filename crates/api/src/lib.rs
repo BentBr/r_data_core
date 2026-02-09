@@ -12,6 +12,7 @@ pub mod models;
 pub mod public;
 pub mod query;
 pub mod response;
+pub mod token_service;
 
 // Re-export commonly used types
 pub use api_state::{

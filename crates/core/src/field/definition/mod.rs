@@ -11,6 +11,8 @@ use crate::error::Result;
 mod constraints;
 mod serialization;
 mod validation;
+#[cfg(test)]
+mod validation_tests;
 
 /// Definition of a field in a class
 #[derive(Debug, Clone, Serialize)]
