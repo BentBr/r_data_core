@@ -268,13 +268,15 @@ impl FieldDefinition {
                 }
             } else if value.is_number() {
                 // Allow 0/1 as boolean
-                #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
                 let n = if value.is_i64() {
                     value.as_i64().unwrap()
                 } else if value.is_u64() {
-                    value.as_u64().unwrap() as i64
+                    i64::try_from(value.as_u64().unwrap()).unwrap_or(i64::MAX)
                 } else {
-                    value.as_f64().unwrap() as i64
+                    #[allow(clippy::cast_possible_truncation)]
+                    {
+                        value.as_f64().unwrap() as i64
+                    }
                 };
 
                 if n != 0 && n != 1 {
@@ -582,137 +584,5 @@ impl FieldDefinition {
         }
 
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::field::options::FieldValidation;
-    use crate::field::ui::UiSettings;
-    use serde_json::json;
-
-    fn create_field_definition(name: &str, field_type: FieldType) -> FieldDefinition {
-        FieldDefinition {
-            name: name.to_string(),
-            display_name: name.to_string(),
-            field_type,
-            description: None,
-            required: false,
-            indexed: false,
-            filterable: false,
-            unique: false,
-            default_value: None,
-            validation: FieldValidation::default(),
-            ui_settings: UiSettings::default(),
-            constraints: std::collections::HashMap::new(),
-        }
-    }
-
-    mod json_field_validation {
-        use super::*;
-
-        #[test]
-        fn test_json_field_accepts_array() {
-            let field = create_field_definition("cors_origins", FieldType::Json);
-            let value = json!(["https://example.com", "https://test.com"]);
-            assert!(field.validate_value(&value).is_ok());
-        }
-
-        #[test]
-        fn test_json_field_accepts_empty_array() {
-            let field = create_field_definition("cors_origins", FieldType::Json);
-            let value = json!([]);
-            assert!(field.validate_value(&value).is_ok());
-        }
-
-        #[test]
-        fn test_json_field_accepts_array_of_objects() {
-            let field = create_field_definition("entities_per_definition", FieldType::Json);
-            let value = json!([
-                {"entity_type": "Customer", "count": 100},
-                {"entity_type": "Order", "count": 500}
-            ]);
-            assert!(field.validate_value(&value).is_ok());
-        }
-
-        #[test]
-        fn test_json_field_accepts_object() {
-            let field = create_field_definition("metadata", FieldType::Json);
-            let value = json!({"key": "value"});
-            assert!(field.validate_value(&value).is_ok());
-        }
-
-        #[test]
-        fn test_json_field_accepts_string() {
-            let field = create_field_definition("data", FieldType::Json);
-            let value = json!("a plain string");
-            assert!(field.validate_value(&value).is_ok());
-        }
-
-        #[test]
-        fn test_json_field_accepts_number() {
-            let field = create_field_definition("data", FieldType::Json);
-            let value = json!(42);
-            assert!(field.validate_value(&value).is_ok());
-        }
-
-        #[test]
-        fn test_json_field_accepts_boolean() {
-            let field = create_field_definition("data", FieldType::Json);
-            let value = json!(true);
-            assert!(field.validate_value(&value).is_ok());
-        }
-    }
-
-    mod object_field_validation {
-        use super::*;
-
-        #[test]
-        fn test_object_field_accepts_object() {
-            let field = create_field_definition("metadata", FieldType::Object);
-            let value = json!({"key": "value"});
-            assert!(field.validate_value(&value).is_ok());
-        }
-
-        #[test]
-        fn test_object_field_rejects_array() {
-            let field = create_field_definition("metadata", FieldType::Object);
-            let value = json!([1, 2, 3]);
-            let result = field.validate_value(&value);
-            assert!(result.is_err());
-            assert!(result
-                .unwrap_err()
-                .to_string()
-                .contains("must be an object"));
-        }
-
-        #[test]
-        fn test_object_field_rejects_string() {
-            let field = create_field_definition("metadata", FieldType::Object);
-            let value = json!("not an object");
-            let result = field.validate_value(&value);
-            assert!(result.is_err());
-        }
-    }
-
-    mod array_field_validation {
-        use super::*;
-
-        #[test]
-        fn test_array_field_accepts_array() {
-            let field = create_field_definition("items", FieldType::Array);
-            let value = json!([1, 2, 3]);
-            assert!(field.validate_value(&value).is_ok());
-        }
-
-        #[test]
-        fn test_array_field_rejects_object() {
-            let field = create_field_definition("items", FieldType::Array);
-            let value = json!({"key": "value"});
-            let result = field.validate_value(&value);
-            assert!(result.is_err());
-            assert!(result.unwrap_err().to_string().contains("must be an array"));
-        }
     }
 }

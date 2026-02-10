@@ -1,4 +1,5 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+#![allow(clippy::future_not_send)] // Multipart is !Send, Actix handlers handle this internally
 
 use actix_multipart::Multipart;
 use actix_web::{get, post, web, Responder};
@@ -22,7 +23,6 @@ use r_data_core_workflow::data::jobs::FetchAndStageJob;
 /// Extract file from multipart payload
 /// This function processes the multipart stream and returns the file bytes.
 /// It doesn't need to be Send since it's the only async operation on the payload.
-#[allow(clippy::future_not_send)] // Multipart is not Send, but this is the only async operation on it
 async fn extract_file_from_multipart(mut payload: Multipart) -> Result<Vec<u8>, String> {
     let mut file_bytes: Vec<u8> = Vec::new();
     while let Some(Ok(mut field)) = payload.next().await {
@@ -127,7 +127,6 @@ pub async fn run_workflow_now(
     ),
     security(("jwt" = []))
 )]
-#[allow(clippy::future_not_send)] // Calls extract_file_from_multipart which is not Send
 #[post("/{uuid}/run/upload")]
 pub async fn run_workflow_now_upload(
     state: web::Data<ApiStateWrapper>,

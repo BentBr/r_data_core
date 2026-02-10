@@ -40,10 +40,8 @@ pub fn create_test_jwt_token(user_uuid: &Uuid, secret: &str) -> String {
         name: "test_user".to_string(),
         email: "test@example.com".to_string(),
         permissions,
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        exp: exp.unix_timestamp() as usize,
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        iat: now.unix_timestamp() as usize,
+        exp: usize::try_from(exp.unix_timestamp()).unwrap_or(0),
+        iat: usize::try_from(now.unix_timestamp()).unwrap_or(0),
         is_super_admin: false,
     };
 

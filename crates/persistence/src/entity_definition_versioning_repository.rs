@@ -37,12 +37,10 @@ impl EntityDefinitionVersioningRepository {
 
         if let Some(data) = current_json {
             // Extract version and creator from JSON
-            // Cast i64 to i32 - version numbers are small enough
-            #[allow(clippy::cast_possible_truncation)]
             let ver: Option<i32> = data
                 .get("version")
                 .and_then(serde_json::Value::as_i64)
-                .map(|v| v as i32);
+                .and_then(|v| i32::try_from(v).ok());
             let Some(version) = ver else {
                 return Ok(()); // No definition to snapshot
             };
@@ -96,12 +94,10 @@ impl EntityDefinitionVersioningRepository {
 
         if let Some(data) = current_json {
             // Extract version and creator from JSON
-            // Cast i64 to i32 - version numbers are small enough
-            #[allow(clippy::cast_possible_truncation)]
             let ver: Option<i32> = data
                 .get("version")
                 .and_then(serde_json::Value::as_i64)
-                .map(|v| v as i32);
+                .and_then(|v| i32::try_from(v).ok());
             let Some(version) = ver else {
                 return Ok(()); // No definition to snapshot
             };

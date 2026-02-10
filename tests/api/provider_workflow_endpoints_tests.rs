@@ -180,7 +180,6 @@ async fn create_consumer_workflow_with_api_source(
 }
 
 #[actix_web::test]
-#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_provider_endpoint_with_jwt_auth() -> anyhow::Result<()> {
     let (app, pool, token, _) = setup_app_with_entities().await?;
 
@@ -242,7 +241,6 @@ async fn test_provider_endpoint_with_jwt_auth() -> anyhow::Result<()> {
 }
 
 #[actix_web::test]
-#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_provider_endpoint_with_api_key_auth() -> anyhow::Result<()> {
     let (app, pool, _token, api_key_value) = setup_app_with_entities().await?;
 
@@ -301,7 +299,6 @@ async fn test_provider_endpoint_with_api_key_auth() -> anyhow::Result<()> {
 }
 
 #[actix_web::test]
-#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_provider_endpoint_with_pre_shared_key() -> anyhow::Result<()> {
     let (app, pool, _token, _) = setup_app_with_entities().await?;
 
@@ -380,7 +377,6 @@ async fn test_provider_endpoint_with_pre_shared_key() -> anyhow::Result<()> {
 }
 
 #[actix_web::test]
-#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_provider_endpoint_without_auth() -> anyhow::Result<()> {
     let (app, pool, _token, _) = setup_app_with_entities().await?;
 
@@ -437,7 +433,6 @@ async fn test_provider_endpoint_without_auth() -> anyhow::Result<()> {
 }
 
 #[actix_web::test]
-#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_provider_endpoint_stats() -> anyhow::Result<()> {
     let (app, pool, token, _) = setup_app_with_entities().await?;
 
@@ -503,7 +498,6 @@ async fn test_provider_endpoint_stats() -> anyhow::Result<()> {
 }
 
 #[actix_web::test]
-#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
     let (app, pool, token, _) = setup_app_with_entities().await?;
 
@@ -578,7 +572,6 @@ async fn test_consumer_endpoint_post_with_api_source() -> anyhow::Result<()> {
 }
 
 #[actix_web::test]
-#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
     let (app, pool, token, _) = setup_app_with_entities().await?;
 
@@ -660,7 +653,6 @@ async fn test_consumer_endpoint_post_inactive_workflow() -> anyhow::Result<()> {
 }
 
 #[actix_web::test]
-#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_provider_endpoint_returns_404_for_consumer_workflow() -> anyhow::Result<()> {
     let (app, pool, token, _) = setup_app_with_entities().await?;
 
@@ -727,7 +719,6 @@ async fn test_provider_endpoint_returns_404_for_consumer_workflow() -> anyhow::R
 }
 
 #[actix_web::test]
-#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn test_consumer_endpoint_post_returns_405_for_provider_workflow() -> anyhow::Result<()> {
     let (app, pool, token, _) = setup_app_with_entities().await?;
 

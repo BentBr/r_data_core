@@ -2,6 +2,8 @@
 
 pub mod entity;
 pub mod validator;
+#[cfg(test)]
+mod validator_tests;
 
 pub use entity::DynamicEntity;
 pub use validator::{

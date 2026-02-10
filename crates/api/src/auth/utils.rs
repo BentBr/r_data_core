@@ -1,4 +1,5 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+#![allow(clippy::future_not_send)] // Functions take &HttpRequest which is !Send
 
 use actix_web::{
     error::{Error as ActixError, ErrorUnauthorized},
@@ -28,7 +29,6 @@ pub fn extract_jwt_token_string(req: &HttpRequest) -> Option<&str> {
 ///
 /// # Errors
 /// Returns an error if JWT validation fails
-#[allow(clippy::future_not_send)] // HttpRequest is not Send, but this function is only called from non-Send contexts
 pub async fn extract_and_validate_jwt(
     req: &HttpRequest,
     jwt_secret: &str,
@@ -67,7 +67,6 @@ pub async fn extract_and_validate_jwt(
 ///
 /// # Errors
 /// Returns an error if API key validation fails or if the API state is missing
-#[allow(clippy::future_not_send)] // HttpRequest is not Send, but this function is only called from non-Send contexts
 pub async fn extract_and_validate_api_key(
     req: &HttpRequest,
 ) -> StdResult<Option<(ApiKey, Uuid)>, ActixError> {

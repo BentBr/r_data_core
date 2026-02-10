@@ -1,158 +1,29 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+#![allow(clippy::future_not_send)] // Actix handlers take HttpRequest which is !Send
 
-use actix_web::{get, post, web, HttpMessage, HttpRequest, HttpResponse, Responder};
+use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use serde_json::json;
-use std::collections::HashMap;
-use std::result::Result;
 use uuid::Uuid;
 
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::CombinedRequiredAuth;
 use r_data_core_core::error::Error;
-use r_data_core_workflow::data::adapters::auth::{AuthConfig, KeyLocation};
-use r_data_core_workflow::data::adapters::format::FormatHandler;
+use r_data_core_workflow::data::adapters::auth::AuthConfig;
 use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::FetchAndStageJob;
+use r_data_core_workflow::data::WorkflowKind;
 use r_data_core_workflow::dsl::{DslProgram, FromDef, OutputMode, ToDef};
 use serde::Deserialize;
-use serde_json::Value as JsonValue;
+
+use super::helpers::{extract_provider_auth_config, validate_and_authenticate_workflow};
+use super::orchestration::{handle_provider_workflow, handle_trigger_consumer_workflow};
 
 #[derive(Deserialize)]
-struct WorkflowQuery {
+pub(super) struct WorkflowQuery {
     #[serde(default)]
-    r#async: Option<bool>,
+    pub r#async: Option<bool>,
     #[serde(default)]
-    run_uuid: Option<Uuid>,
-}
-
-/// Collect input data from entity sources in workflow steps
-async fn collect_entity_input_data(
-    program: &DslProgram,
-    state: &ApiStateWrapper,
-) -> Result<Vec<JsonValue>, HttpResponse> {
-    let mut input_data = Vec::new();
-
-    for step in &program.steps {
-        if let FromDef::Entity {
-            entity_definition,
-            filter,
-            ..
-        } = &step.from
-        {
-            let Some(entity_service) = state.dynamic_entity_service() else {
-                return Err(HttpResponse::InternalServerError()
-                    .json(json!({"error": "Entity service not available"})));
-            };
-
-            let mut filter_map = HashMap::new();
-            let mut operators_map = HashMap::new();
-
-            if let Some(filter) = filter {
-                // Handle IN/NOT IN operators - value should be an array
-                let filter_value = if filter.operator == "IN" || filter.operator == "NOT IN" {
-                    // Try to parse value as JSON array, otherwise wrap in array
-                    match serde_json::from_str::<JsonValue>(&filter.value) {
-                        Ok(JsonValue::Array(_)) => serde_json::from_str(&filter.value)
-                            .unwrap_or_else(|_| json!([filter.value])),
-                        _ => json!([filter.value]),
-                    }
-                } else {
-                    // Try to parse as a number for numeric comparisons, otherwise use as string
-                    // This allows numeric string values like "15" to be compared with integer fields
-                    filter.value.parse::<i64>().map_or_else(
-                        |_| {
-                            filter.value.parse::<f64>().map_or_else(
-                                |_| JsonValue::String(filter.value.clone()),
-                                |num| json!(num),
-                            )
-                        },
-                        |num| json!(num),
-                    )
-                };
-                filter_map.insert(filter.field.clone(), filter_value);
-                operators_map.insert(filter.field.clone(), filter.operator.clone());
-            }
-
-            let entities = entity_service
-                .filter_entities_with_operators(
-                    entity_definition,
-                    1000,
-                    0,
-                    if filter_map.is_empty() {
-                        None
-                    } else {
-                        Some(filter_map)
-                    },
-                    if operators_map.is_empty() {
-                        None
-                    } else {
-                        Some(operators_map)
-                    },
-                    None,
-                    None,
-                    None,
-                )
-                .await
-                .map_err(|e| {
-                    log::error!("Failed to query entities: {e}");
-                    HttpResponse::InternalServerError()
-                        .json(json!({"error": "Failed to query source entities"}))
-                })?;
-
-            for entity in entities {
-                let entity_json: JsonValue =
-                    serde_json::to_value(&entity.field_data).unwrap_or_else(|_| json!({}));
-                input_data.push(entity_json);
-            }
-        }
-    }
-
-    if input_data.is_empty() {
-        input_data.push(json!({}));
-    }
-
-    Ok(input_data)
-}
-
-/// Execute workflow and collect format outputs
-///
-/// # Errors
-///
-/// Returns `HttpResponse::InternalServerError` if:
-/// - Failed to execute workflow
-fn execute_workflow_and_collect_outputs(
-    program: &DslProgram,
-    input_data: Vec<JsonValue>,
-) -> Result<
-    (
-        Vec<JsonValue>,
-        Option<r_data_core_workflow::dsl::FormatConfig>,
-    ),
-    HttpResponse,
-> {
-    let mut all_outputs = Vec::new();
-    for input in input_data {
-        let outputs = program.execute(&input).map_err(|e| {
-            log::error!("Failed to execute workflow: {e}");
-            HttpResponse::InternalServerError().json(json!({"error": "Failed to execute workflow"}))
-        })?;
-        all_outputs.extend(outputs);
-    }
-
-    let mut format_outputs = Vec::new();
-    let mut format_config = None;
-    for (to_def, data) in all_outputs {
-        if let ToDef::Format { format, output, .. } = to_def {
-            if matches!(output, OutputMode::Api) {
-                if format_config.is_none() {
-                    format_config = Some(format.clone());
-                }
-                format_outputs.push(data);
-            }
-        }
-    }
-
-    Ok((format_outputs, format_config))
+    pub run_uuid: Option<Uuid>,
 }
 
 pub fn register_routes(cfg: &mut web::ServiceConfig) {
@@ -196,7 +67,6 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
         ("preSharedKey" = [])
     )
 )]
-#[allow(clippy::future_not_send)] // HttpRequest is not Send, but Actix Web handles this internally
 #[get("/{uuid}")]
 pub async fn get_workflow_data(
     path: web::Path<Uuid>,
@@ -221,7 +91,7 @@ pub async fn get_workflow_data(
     };
 
     // Only Provider workflows can be accessed via GET /api/v1/workflows/{uuid}
-    if workflow.kind != r_data_core_workflow::data::WorkflowKind::Provider {
+    if workflow.kind != WorkflowKind::Provider {
         return HttpResponse::NotFound().json(json!({"error": "Workflow not found"}));
     }
 
@@ -270,7 +140,6 @@ pub async fn get_workflow_data(
         ("preSharedKey" = [])
     )
 )]
-#[allow(clippy::future_not_send)] // HttpRequest is not Send, but Actix Web handles this internally
 #[get("/{uuid}/trigger")]
 pub async fn trigger_workflow(
     path: web::Path<Uuid>,
@@ -295,7 +164,7 @@ pub async fn trigger_workflow(
     };
 
     // Only Consumer workflows can be triggered
-    if workflow.kind != r_data_core_workflow::data::WorkflowKind::Consumer {
+    if workflow.kind != WorkflowKind::Consumer {
         return HttpResponse::NotFound().json(json!({
             "error": "Workflow not found",
             "message": "Only Consumer workflows can be triggered via this endpoint"
@@ -316,12 +185,10 @@ pub async fn trigger_workflow(
     };
 
     // Check for trigger type in first step
-    let has_trigger = program.steps.first().is_some_and(|step| {
-        matches!(
-            step.from,
-            r_data_core_workflow::dsl::FromDef::Trigger { .. }
-        )
-    });
+    let has_trigger = program
+        .steps
+        .first()
+        .is_some_and(|step| matches!(step.from, FromDef::Trigger { .. }));
 
     if !has_trigger {
         return HttpResponse::NotFound().json(json!({
@@ -331,416 +198,6 @@ pub async fn trigger_workflow(
     }
 
     handle_trigger_consumer_workflow(uuid, &req, &workflow, &state, &query).await
-}
-
-#[allow(clippy::future_not_send)]
-async fn handle_trigger_consumer_workflow(
-    uuid: Uuid,
-    req: &HttpRequest,
-    workflow: &r_data_core_workflow::data::Workflow,
-    state: &web::Data<ApiStateWrapper>,
-    query: &web::Query<WorkflowQuery>,
-) -> HttpResponse {
-    // Check if workflow is enabled
-    if !workflow.enabled {
-        return HttpResponse::ServiceUnavailable().json(json!({
-            "error": "Workflow is not enabled",
-            "message": "This workflow is currently disabled and cannot be triggered"
-        }));
-    }
-
-    // Validate authentication (required for all workflows)
-    if let Err(resp) = validate_and_authenticate_workflow(req, workflow, state).await {
-        return resp;
-    }
-
-    // Create a run
-    let run_uuid = match state.workflow_service().enqueue_run(uuid).await {
-        Ok(run_uuid) => run_uuid,
-        Err(Error::NotFound(msg)) => {
-            log::error!("Workflow not found: {msg}");
-            return HttpResponse::NotFound().json(json!({"error": "Workflow not found"}));
-        }
-        Err(e) => {
-            log::error!("Failed to enqueue run: {e}");
-            return HttpResponse::InternalServerError()
-                .json(json!({"error": "Failed to enqueue workflow run"}));
-        }
-    };
-    let _ = state.workflow_service().mark_run_running(run_uuid).await;
-
-    let async_mode = query.r#async.unwrap_or(false);
-    let run_uuid_param = query.run_uuid;
-
-    if async_mode {
-        if let Some(resp) = match handle_async_get(uuid, run_uuid_param, state).await {
-            Ok(resp_opt) => resp_opt,
-            Err(resp) => return resp,
-        } {
-            return resp;
-        }
-    }
-
-    // For trigger source, fetch and stage from config (will skip trigger source, fetch from uri/entity sources)
-    // If no items are staged, stage an empty item to trigger processing
-    let fetch_staged = match state
-        .workflow_service()
-        .fetch_and_stage_from_config(uuid, run_uuid)
-        .await
-    {
-        Ok(count) => count,
-        Err(e) => {
-            log::error!("Failed to fetch and stage from config: {e}");
-            let _ = state
-                .workflow_service()
-                .mark_run_failure(run_uuid, "Failed to fetch from config")
-                .await;
-            return HttpResponse::InternalServerError()
-                .json(json!({"error": "Failed to fetch workflow data"}));
-        }
-    };
-
-    // If no items were staged (e.g., only trigger source, no uri/entity sources), stage empty item to trigger processing
-    let staged = if fetch_staged == 0 {
-        match state
-            .workflow_service()
-            .stage_raw_items(uuid, run_uuid, vec![serde_json::json!({})])
-            .await
-        {
-            Ok(count) => count,
-            Err(e) => {
-                log::error!("Failed to stage trigger item: {e}");
-                let _ = state
-                    .workflow_service()
-                    .mark_run_failure(run_uuid, "Failed to stage trigger item")
-                    .await;
-                return HttpResponse::InternalServerError()
-                    .json(json!({"error": "Failed to stage workflow trigger"}));
-            }
-        }
-    } else {
-        0
-    };
-
-    // Process staged items
-    match state
-        .workflow_service()
-        .process_staged_items(uuid, run_uuid)
-        .await
-    {
-        Ok((processed, failed)) => {
-            let _ = state
-                .workflow_service()
-                .mark_run_success(run_uuid, processed, failed)
-                .await;
-            HttpResponse::Accepted().json(json!({
-                "run_uuid": run_uuid,
-                "staged_items": fetch_staged + staged,
-                "processed": processed,
-                "failed": failed,
-                "status": "completed"
-            }))
-        }
-        Err(e) => {
-            log::error!("Failed to process workflow: {e}");
-            let _ = state
-                .workflow_service()
-                .mark_run_failure(run_uuid, &format!("Processing failed: {e}"))
-                .await;
-            HttpResponse::InternalServerError().json(json!({
-                "error": "Failed to process workflow",
-                "run_uuid": run_uuid
-            }))
-        }
-    }
-}
-
-#[allow(clippy::future_not_send)]
-async fn handle_provider_workflow(
-    uuid: Uuid,
-    req: &HttpRequest,
-    workflow: &r_data_core_workflow::data::Workflow,
-    program: &DslProgram,
-    state: &web::Data<ApiStateWrapper>,
-    query: &web::Query<WorkflowQuery>,
-) -> HttpResponse {
-    // Existing Provider workflow behavior
-    if let Err(resp) = validate_and_authenticate_workflow(req, workflow, state).await {
-        return resp;
-    }
-
-    // Create a run and mark running for logging/history
-    let run_uuid = match state.workflow_service().enqueue_run(uuid).await {
-        Ok(run_uuid) => run_uuid,
-        Err(Error::NotFound(msg)) => {
-            log::error!("Workflow not found: {msg}");
-            return HttpResponse::NotFound().json(json!({"error": "Workflow not found"}));
-        }
-        Err(e) => {
-            log::error!("Failed to enqueue run: {e}");
-            return HttpResponse::InternalServerError()
-                .json(json!({"error": "Failed to enqueue workflow run"}));
-        }
-    };
-    let _ = state.workflow_service().mark_run_running(run_uuid).await;
-
-    let async_mode = query.r#async.unwrap_or(false);
-    let run_uuid_param = query.run_uuid;
-
-    if async_mode {
-        if let Some(resp) = match handle_async_get(uuid, run_uuid_param, state).await {
-            Ok(resp_opt) => resp_opt,
-            Err(resp) => return resp,
-        } {
-            return resp;
-        }
-    }
-
-    // Collect input data from entity sources (sync execution path)
-    let input_data = match collect_entity_input_data(program, state).await {
-        Ok(data) => data,
-        Err(resp) => {
-            let _ = state
-                .workflow_service()
-                .mark_run_failure(run_uuid, "Failed to fetch entities")
-                .await;
-            return resp;
-        }
-    };
-
-    // Log fetch result (including zero entities)
-    let entity_count = i64::try_from(input_data.len()).unwrap_or(0);
-    let _ = state
-        .workflow_service()
-        .insert_run_log(
-            run_uuid,
-            "info",
-            &format!("Fetched {entity_count} entities for API export"),
-            Some(json!({ "entity_count": entity_count })),
-        )
-        .await;
-
-    // Execute workflow and collect format outputs
-    let (format_outputs, format_config) =
-        match execute_workflow_and_collect_outputs(program, input_data) {
-            Ok(result) => result,
-            Err(resp) => {
-                let _ = state
-                    .workflow_service()
-                    .mark_run_failure(run_uuid, "Workflow execution failed")
-                    .await;
-                return resp;
-            }
-        };
-
-    // Handle empty results - return 200 with empty data instead of error
-    if format_outputs.is_empty() {
-        let format = format_config.unwrap_or_else(|| r_data_core_workflow::dsl::FormatConfig {
-            format_type: "json".to_string(),
-            options: json!({}),
-        });
-
-        // Return empty response based on format
-        let response = serialize_api_output(format, &[], run_uuid, state).await;
-
-        // Mark run success with 0 processed
-        let _ = state
-            .workflow_service()
-            .mark_run_success(run_uuid, 0, 0)
-            .await;
-
-        return response;
-    }
-
-    let Some(format) = format_config else {
-        let _ = state
-            .workflow_service()
-            .mark_run_failure(run_uuid, "No API output format found")
-            .await;
-        return HttpResponse::InternalServerError()
-            .json(json!({"error": "No API output format found"}));
-    };
-    let all_data = format_outputs;
-
-    // Serialize based on format
-    let response = serialize_api_output(format, &all_data, run_uuid, state).await;
-
-    // Mark run success with counts (processed = entity_count)
-    let _ = state
-        .workflow_service()
-        .mark_run_success(run_uuid, entity_count, 0)
-        .await;
-
-    response
-}
-
-#[allow(clippy::future_not_send)]
-async fn validate_and_authenticate_workflow(
-    req: &HttpRequest,
-    workflow: &r_data_core_workflow::data::Workflow,
-    state: &web::Data<ApiStateWrapper>,
-) -> Result<(), HttpResponse> {
-    // Authentication is required for all workflows (both Provider and Consumer)
-
-    // Validate pre-shared key if configured (sets extension for CombinedRequiredAuth)
-    if let Err(e) = validate_provider_auth(req, &workflow.config, &***state) {
-        log::debug!("Provider pre-shared key auth failed: {e}");
-        return Err(HttpResponse::Unauthorized().json(json!({"error": "Authentication required"})));
-    }
-
-    // Extract pre-shared key status and clone request before any await points
-    let has_pre_shared_key = req.extensions().get::<bool>().copied().unwrap_or(false);
-    let req_clone = req.clone(); // Clone request for use in async block
-
-    // Use CombinedRequiredAuth to validate JWT/API key (or check pre-shared key extension)
-    if !has_pre_shared_key {
-        use crate::auth::auth_enum::CombinedRequiredAuth;
-        use actix_web::FromRequest;
-        let mut payload = actix_web::dev::Payload::None;
-        if CombinedRequiredAuth::from_request(&req_clone, &mut payload)
-            .await
-            .is_err()
-        {
-            // Check if pre-shared key was required
-            if extract_provider_auth_config(&workflow.config).is_some() {
-                return Err(
-                    HttpResponse::Unauthorized().json(json!({"error": "Authentication required"}))
-                );
-            }
-            // If no pre-shared key required, still need JWT/API key
-            return Err(
-                HttpResponse::Unauthorized().json(json!({"error": "Authentication required"}))
-            );
-        }
-    }
-
-    Ok(())
-}
-
-async fn serialize_api_output(
-    format: r_data_core_workflow::dsl::FormatConfig,
-    all_data: &[JsonValue],
-    run_uuid: Uuid,
-    state: &web::Data<ApiStateWrapper>,
-) -> HttpResponse {
-    match format.format_type.as_str() {
-        "csv" => {
-            let handler =
-                r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler::new();
-            match handler.serialize(all_data, &format.options) {
-                Ok(bytes) => HttpResponse::Ok().content_type("text/csv").body(bytes),
-                Err(e) => {
-                    log::error!("Failed to serialize CSV: {e}");
-                    let _ = state
-                        .workflow_service()
-                        .mark_run_failure(run_uuid, "Failed to serialize data (csv)")
-                        .await;
-                    HttpResponse::InternalServerError()
-                        .json(json!({"error": "Failed to serialize data"}))
-                }
-            }
-        }
-        "json" => {
-            let handler =
-                r_data_core_workflow::data::adapters::format::json::JsonFormatHandler::new();
-            match handler.serialize(all_data, &format.options) {
-                Ok(bytes) => HttpResponse::Ok()
-                    .content_type("application/json")
-                    .body(bytes),
-                Err(e) => {
-                    log::error!("Failed to serialize JSON: {e}");
-                    let _ = state
-                        .workflow_service()
-                        .mark_run_failure(run_uuid, "Failed to serialize data (json)")
-                        .await;
-                    HttpResponse::InternalServerError()
-                        .json(json!({"error": "Failed to serialize data"}))
-                }
-            }
-        }
-        other => {
-            log::error!("Unsupported format: {other}");
-            let _ = state
-                .workflow_service()
-                .mark_run_failure(run_uuid, "Unsupported format")
-                .await;
-            HttpResponse::InternalServerError().json(json!({"error": "Unsupported format"}))
-        }
-    }
-}
-
-async fn enqueue_run_for_api(
-    workflow_uuid: Uuid,
-    state: &web::Data<ApiStateWrapper>,
-) -> Result<Uuid, HttpResponse> {
-    let run_uuid = match state.workflow_service().enqueue_run(workflow_uuid).await {
-        Ok(run_uuid) => run_uuid,
-        Err(e) => {
-            log::error!("Failed to enqueue run: {e}");
-            return Err(HttpResponse::InternalServerError()
-                .json(json!({"error": "Failed to enqueue workflow run"})));
-        }
-    };
-    // worker will pick it up via queue
-    if let Err(e) = state
-        .queue()
-        .enqueue_fetch(FetchAndStageJob {
-            workflow_id: workflow_uuid,
-            trigger_id: Some(run_uuid),
-        })
-        .await
-    {
-        log::error!(
-            "Failed to enqueue fetch job for workflow {workflow_uuid} (run: {run_uuid}): {e}"
-        );
-        return Err(HttpResponse::InternalServerError()
-            .json(json!({"error": "Failed to enqueue workflow job"})));
-    }
-    Ok(run_uuid)
-}
-
-async fn handle_async_get(
-    workflow_uuid: Uuid,
-    run_uuid_param: Option<Uuid>,
-    state: &web::Data<ApiStateWrapper>,
-) -> Result<Option<HttpResponse>, HttpResponse> {
-    // If no run_uuid provided, enqueue and return queued
-    let Some(run_uuid) = run_uuid_param else {
-        let run_uuid = enqueue_run_for_api(workflow_uuid, state).await?;
-        return Ok(Some(HttpResponse::Accepted().json(json!({
-            "status": "queued",
-            "run_uuid": run_uuid,
-            "message": "Workflow run enqueued"
-        }))));
-    };
-    match state.workflow_service().get_run_status(run_uuid).await {
-        Ok(Some(status)) => {
-            if status == "queued" || status == "running" {
-                return Ok(Some(HttpResponse::Ok().json(json!({
-                    "status": status,
-                    "run_uuid": run_uuid
-                }))));
-            }
-            if status == "failed" || status == "cancelled" {
-                return Ok(Some(HttpResponse::Ok().json(json!({
-                    "status": status,
-                    "run_uuid": run_uuid,
-                    "error": "Workflow run did not complete successfully"
-                }))));
-            }
-            // status == success: fall through to execute synchronously to return data, without enqueueing
-            Ok(None)
-        }
-        Ok(None) => {
-            Err(HttpResponse::NotFound()
-                .json(json!({"error": "Run not found", "run_uuid": run_uuid})))
-        }
-        Err(e) => {
-            log::error!("Failed to get run status: {e}");
-            Err(HttpResponse::InternalServerError()
-                .json(json!({"error": "Failed to get run status"})))
-        }
-    }
 }
 
 /// Get workflow stats/metadata
@@ -801,7 +258,7 @@ pub async fn get_workflow_stats(
 
     for step in &program.steps {
         // Check from format
-        if let r_data_core_workflow::dsl::FromDef::Format { format, source, .. } = &step.from {
+        if let FromDef::Format { format, source, .. } = &step.from {
             formats.push(format.format_type.clone());
             if let Some(auth_config) = &source.auth {
                 auth_required = true;
@@ -814,9 +271,9 @@ pub async fn get_workflow_stats(
             }
         }
         // Check to format
-        if let r_data_core_workflow::dsl::ToDef::Format { format, output, .. } = &step.to {
+        if let ToDef::Format { format, output, .. } = &step.to {
             formats.push(format.format_type.clone());
-            if matches!(output, r_data_core_workflow::dsl::OutputMode::Api) {
+            if matches!(output, OutputMode::Api) {
                 // Provider workflow endpoint - check for pre-shared key requirement
                 if extract_provider_auth_config(&workflow.config).is_some() {
                     auth_required = true;
@@ -866,7 +323,6 @@ pub async fn get_workflow_stats(
         ("preSharedKey" = [])
     )
 )]
-#[allow(clippy::future_not_send)] // HttpRequest is not Send, but Actix Web handles this internally
 #[post("/{uuid}")]
 pub async fn post_workflow_ingest(
     path: web::Path<Uuid>,
@@ -893,7 +349,7 @@ pub async fn post_workflow_ingest(
     }
 
     // Only consumer workflows can accept POST
-    if workflow.kind != r_data_core_workflow::data::WorkflowKind::Consumer {
+    if workflow.kind != WorkflowKind::Consumer {
         return HttpResponse::MethodNotAllowed()
             .json(json!({"error": "This endpoint only accepts POST for consumer workflows"}));
     }
@@ -921,7 +377,7 @@ pub async fn post_workflow_ingest(
 
     // Check for from.api source WITHOUT endpoint field (accepts POST)
     let has_api_source_accepting_post = program.steps.iter().any(|step| {
-        if let r_data_core_workflow::dsl::FromDef::Format { source, .. } = &step.from {
+        if let FromDef::Format { source, .. } = &step.from {
             source.source_type == "api" && source.config.get("endpoint").is_none()
         } else {
             false
@@ -972,57 +428,4 @@ pub async fn post_workflow_ingest(
         "staged_items": staged_count,
         "status": "queued"
     }))
-}
-
-/// Validate provider authentication (JWT, API key, or pre-shared key)
-/// Sets request extension for pre-shared keys so `CombinedRequiredAuth` can pick it up
-#[allow(clippy::unused_async)] // May need async in future
-fn validate_provider_auth(
-    req: &HttpRequest,
-    config: &serde_json::Value,
-    _state: &dyn ApiStateTrait,
-) -> Result<(), String> {
-    // Check for pre-shared key in config first
-    if let Some(AuthConfig::PreSharedKey {
-        key,
-        location,
-        field_name,
-    }) = extract_provider_auth_config(config)
-    {
-        let provided_key = match location {
-            KeyLocation::Header => req
-                .headers()
-                .get(&field_name)
-                .and_then(|v| v.to_str().ok())
-                .map(std::string::ToString::to_string),
-            KeyLocation::Body => {
-                // Body extraction would need to be done in the route handler
-                // For now, we'll check header only
-                None
-            }
-        };
-
-        if let Some(provided) = provided_key {
-            if provided == key {
-                // Set extension so CombinedRequiredAuth can pick it up
-                req.extensions_mut().insert(true);
-                return Ok(());
-            }
-        }
-        // Pre-shared key was required but invalid
-        return Err("Invalid pre-shared key".to_string());
-    }
-
-    // Fall back to JWT/API key via CombinedRequiredAuth
-    // We'll let CombinedRequiredAuth handle this, so return Ok here
-    // The actual validation happens in the route handler using CombinedRequiredAuth extractor
-    Ok(())
-}
-
-/// Extract provider auth config from workflow config
-fn extract_provider_auth_config(config: &serde_json::Value) -> Option<AuthConfig> {
-    // Look for auth config in provider-specific section
-    config
-        .get("provider_auth")
-        .and_then(|v| serde_json::from_value::<AuthConfig>(v.clone()).ok())
 }

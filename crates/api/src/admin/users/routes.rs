@@ -81,8 +81,7 @@ pub async fn list_users(
         Ok((users, validated)) => {
             // For now, we don't have a count method, so we'll use the length
             // In a real implementation, you'd want a separate count query
-            #[allow(clippy::cast_possible_wrap)]
-            let total = users.len() as i64;
+            let total = i64::try_from(users.len()).unwrap_or(0);
             // Load role_uuids for each user
             let pool = Arc::new(state.db_pool().clone());
             let repo = AdminUserRepository::new(pool);

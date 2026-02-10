@@ -52,8 +52,7 @@ pub async fn browse_by_path(
     check_children(db_pool, &mut all).await?;
 
     // Paginate results
-    #[allow(clippy::cast_possible_wrap)]
-    let total = all.len() as i64;
+    let total = i64::try_from(all.len()).unwrap_or(0);
     let page = paginate_results(&all, offset, limit);
 
     Ok((page, total))
@@ -356,10 +355,8 @@ async fn check_children(db_pool: &PgPool, nodes: &mut [BrowseNode]) -> Result<()
 }
 
 fn paginate_results(all: &[BrowseNode], offset: i64, limit: i64) -> Vec<BrowseNode> {
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let start = offset.max(0) as usize;
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let end = (offset + limit).max(0) as usize;
+    let start = usize::try_from(offset.max(0)).unwrap_or(0);
+    let end = usize::try_from((offset + limit).max(0)).unwrap_or(usize::MAX);
     if start >= all.len() {
         vec![]
     } else {

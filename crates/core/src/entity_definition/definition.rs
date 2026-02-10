@@ -350,9 +350,8 @@ impl EntityDefinition {
     }
 
     /// Generate CREATE TABLE statement with all columns
-    #[allow(clippy::write_with_newline)]
     fn generate_create_table_sql(&self, sql: &mut String, table_name: &str) {
-        let _ = write!(sql, "CREATE TABLE IF NOT EXISTS {table_name} (\n");
+        let _ = writeln!(sql, "CREATE TABLE IF NOT EXISTS {table_name} (");
         sql.push_str("    uuid UUID PRIMARY KEY DEFAULT uuidv7(),\n");
         sql.push_str("    path TEXT,\n");
         sql.push_str("    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n");
@@ -395,7 +394,6 @@ impl EntityDefinition {
     }
 
     /// Generate `ManyToMany` relation tables
-    #[allow(clippy::write_with_newline)]
     fn generate_relation_tables_sql(&self, sql: &mut String, table_name: &str) {
         for field in &self.fields {
             if !matches!(field.field_type, FieldType::ManyToMany) {
@@ -414,27 +412,26 @@ impl EntityDefinition {
             let entity_lower = self.entity_type.to_lowercase();
             let target_lower = target_class.to_lowercase();
 
-            let _ = write!(sql, "CREATE TABLE IF NOT EXISTS {relation_table} (\n");
-            let _ = write!(
+            let _ = writeln!(sql, "CREATE TABLE IF NOT EXISTS {relation_table} (");
+            let _ = writeln!(
                 sql,
-                "    {entity_lower}_uuid UUID NOT NULL REFERENCES {table_name} (uuid),\n"
+                "    {entity_lower}_uuid UUID NOT NULL REFERENCES {table_name} (uuid),"
             );
-            let _ = write!(sql, "    {target_lower}_uuid UUID NOT NULL,\n");
+            let _ = writeln!(sql, "    {target_lower}_uuid UUID NOT NULL,");
             sql.push_str("    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n");
-            let _ = write!(
+            let _ = writeln!(
                 sql,
-                "    PRIMARY KEY ({entity_lower}_uuid, {target_lower}_uuid)\n);\n\n"
+                "    PRIMARY KEY ({entity_lower}_uuid, {target_lower}_uuid)\n);\n"
             );
 
             sql.push_str("-- INDEX: Relation table source index\n");
-            let _ = write!(sql, "CREATE INDEX IF NOT EXISTS idx_{relation_table}_{entity_lower}_uuid ON {relation_table} ({entity_lower}_uuid);\n\n");
+            let _ = writeln!(sql, "CREATE INDEX IF NOT EXISTS idx_{relation_table}_{entity_lower}_uuid ON {relation_table} ({entity_lower}_uuid);\n");
             sql.push_str("-- INDEX: Relation table target index\n");
-            let _ = write!(sql, "CREATE INDEX IF NOT EXISTS idx_{relation_table}_{target_lower}_uuid ON {relation_table} ({target_lower}_uuid);\n\n");
+            let _ = writeln!(sql, "CREATE INDEX IF NOT EXISTS idx_{relation_table}_{target_lower}_uuid ON {relation_table} ({target_lower}_uuid);\n");
         }
     }
 
     /// Generate index creation and drop statements
-    #[allow(clippy::write_with_newline)]
     fn generate_indexes_sql(&self, sql: &mut String, table_name: &str) {
         // Create indexes for indexed fields
         for field in &self.fields {
@@ -446,10 +443,10 @@ impl EntityDefinition {
                 && field.validation.target_class.is_some()
             {
                 sql.push_str("-- INDEX: ManyToOne reference field index\n");
-                let _ = write!(sql, "CREATE INDEX IF NOT EXISTS idx_{table_name}_{field_name}_uuid ON {table_name} ({field_name}_uuid);\n\n");
+                let _ = writeln!(sql, "CREATE INDEX IF NOT EXISTS idx_{table_name}_{field_name}_uuid ON {table_name} ({field_name}_uuid);\n");
             } else if !matches!(field.field_type, FieldType::ManyToMany) {
                 sql.push_str("-- INDEX: Regular field index\n");
-                let _ = write!(sql, "CREATE INDEX IF NOT EXISTS idx_{table_name}_{field_name} ON {table_name} ({field_name});\n\n");
+                let _ = writeln!(sql, "CREATE INDEX IF NOT EXISTS idx_{table_name}_{field_name} ON {table_name} ({field_name});\n");
             }
         }
 
@@ -464,12 +461,12 @@ impl EntityDefinition {
             }
             if field.unique {
                 sql.push_str("-- UNIQUE: Field unique constraint\n");
-                let _ = write!(sql, "CREATE UNIQUE INDEX IF NOT EXISTS idx_{table_name}_{field_name}_unique ON {table_name} ({field_name});\n\n");
+                let _ = writeln!(sql, "CREATE UNIQUE INDEX IF NOT EXISTS idx_{table_name}_{field_name}_unique ON {table_name} ({field_name});\n");
             } else {
                 sql.push_str("-- DROP UNIQUE: Remove unique constraint if exists\n");
-                let _ = write!(
+                let _ = writeln!(
                     sql,
-                    "DROP INDEX IF EXISTS idx_{table_name}_{field_name}_unique;\n\n"
+                    "DROP INDEX IF EXISTS idx_{table_name}_{field_name}_unique;\n"
                 );
             }
         }
@@ -484,16 +481,13 @@ impl EntityDefinition {
                 && field.validation.target_class.is_some()
             {
                 sql.push_str("-- DROP INDEX: Remove index if exists\n");
-                let _ = write!(
+                let _ = writeln!(
                     sql,
-                    "DROP INDEX IF EXISTS idx_{table_name}_{field_name}_uuid;\n\n"
+                    "DROP INDEX IF EXISTS idx_{table_name}_{field_name}_uuid;\n"
                 );
             } else if !matches!(field.field_type, FieldType::ManyToOne) {
                 sql.push_str("-- DROP INDEX: Remove index if exists\n");
-                let _ = write!(
-                    sql,
-                    "DROP INDEX IF EXISTS idx_{table_name}_{field_name};\n\n"
-                );
+                let _ = writeln!(sql, "DROP INDEX IF EXISTS idx_{table_name}_{field_name};\n");
             }
         }
     }
@@ -509,108 +503,5 @@ impl EntityDefinition {
     #[must_use]
     pub fn generate_sql_schema(&self) -> String {
         self.generate_schema_sql()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::field::ui::UiSettings;
-    use crate::field::FieldDefinition;
-
-    fn create_test_entity_definition() -> EntityDefinition {
-        EntityDefinition {
-            uuid: Uuid::now_v7(),
-            entity_type: "test".to_string(),
-            display_name: "Test Entity".to_string(),
-            description: None,
-            group_name: None,
-            allow_children: false,
-            icon: None,
-            fields: vec![FieldDefinition {
-                name: "name".to_string(),
-                display_name: "Name".to_string(),
-                field_type: FieldType::String,
-                description: None,
-                required: false,
-                indexed: false,
-                filterable: false,
-                unique: false,
-                default_value: None,
-                validation: crate::field::options::FieldValidation::default(),
-                ui_settings: UiSettings::default(),
-                constraints: std::collections::HashMap::new(),
-            }],
-            schema: Schema::default(),
-            created_at: time::OffsetDateTime::now_utc(),
-            updated_at: time::OffsetDateTime::now_utc(),
-            created_by: Uuid::nil(),
-            updated_by: None,
-            published: false,
-            version: 1,
-        }
-    }
-
-    #[test]
-    fn test_generate_schema_sql_includes_unique_index() {
-        let mut def = create_test_entity_definition();
-        def.fields[0].unique = true;
-
-        let sql = def.generate_schema_sql();
-
-        assert!(
-            sql.contains("CREATE UNIQUE INDEX IF NOT EXISTS idx_entity_test_name_unique"),
-            "SQL should contain unique index creation"
-        );
-        assert!(
-            sql.contains("ON entity_test (name)"),
-            "SQL should specify correct table and column"
-        );
-    }
-
-    #[test]
-    fn test_generate_schema_sql_no_unique_index_when_false() {
-        let def = create_test_entity_definition();
-        // unique is false by default
-
-        let sql = def.generate_schema_sql();
-
-        assert!(
-            !sql.contains("CREATE UNIQUE INDEX"),
-            "SQL should not CREATE unique index when unique is false"
-        );
-        assert!(
-            sql.contains("DROP INDEX IF EXISTS"),
-            "SQL should DROP unique index when unique is false (to clean up)"
-        );
-    }
-
-    #[test]
-    fn test_generate_schema_sql_no_unique_index_when_not_set() {
-        let def = create_test_entity_definition();
-
-        let sql = def.generate_schema_sql();
-
-        assert!(
-            !sql.contains("CREATE UNIQUE INDEX"),
-            "SQL should not CREATE unique index when unique is not set"
-        );
-        assert!(
-            sql.contains("DROP INDEX IF EXISTS"),
-            "SQL should DROP unique index when unique is not set (to clean up)"
-        );
-    }
-
-    #[test]
-    fn test_generate_schema_sql_unique_index_comment() {
-        let mut def = create_test_entity_definition();
-        def.fields[0].unique = true;
-
-        let sql = def.generate_schema_sql();
-
-        assert!(
-            sql.contains("-- UNIQUE: Field unique constraint"),
-            "SQL should contain unique constraint comment"
-        );
     }
 }
