@@ -10,7 +10,7 @@ use serial_test::serial;
 use std::sync::Arc;
 
 use super::common::setup_test_app;
-use r_data_core_api::jwt::generate_access_token;
+use r_data_core_core::admin_jwt::generate_access_token;
 
 /// Test that user with no permissions can still authenticate
 #[tokio::test]

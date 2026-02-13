@@ -15,13 +15,8 @@ use uuid::Uuid;
 #[serial]
 async fn test_create_and_get_entity_definition() {
     // Get test repository and clear database first
-    let TestRepository {
-        repository,
-        db_pool,
-    } = get_entity_definition_repository_with_pool().await;
-    clear_test_db(&db_pool)
-        .await
-        .expect("Failed to clear database");
+    let TestRepository { repository, db } = get_entity_definition_repository_with_pool().await;
+    clear_test_db(&db).await.expect("Failed to clear database");
 
     // Create test definition
     let creator_id = Uuid::now_v7();
@@ -97,13 +92,8 @@ async fn test_create_and_get_entity_definition() {
 #[tokio::test]
 #[serial]
 async fn test_list_entity_definitions() {
-    let TestRepository {
-        repository,
-        db_pool,
-    } = get_entity_definition_repository_with_pool().await;
-    clear_test_db(&db_pool)
-        .await
-        .expect("Failed to clear database");
+    let TestRepository { repository, db } = get_entity_definition_repository_with_pool().await;
+    clear_test_db(&db).await.expect("Failed to clear database");
 
     // Create a few test definitions
     let creator_id = Uuid::now_v7();
@@ -163,13 +153,8 @@ async fn test_list_entity_definitions() {
 #[tokio::test]
 #[serial]
 async fn test_update_entity_definition() {
-    let TestRepository {
-        repository,
-        db_pool,
-    } = get_entity_definition_repository_with_pool().await;
-    clear_test_db(&db_pool)
-        .await
-        .expect("Failed to clear database");
+    let TestRepository { repository, db } = get_entity_definition_repository_with_pool().await;
+    clear_test_db(&db).await.expect("Failed to clear database");
 
     // Create a test definition
     let creator_id = Uuid::now_v7();
@@ -256,13 +241,8 @@ async fn test_update_entity_definition() {
 #[tokio::test]
 #[serial]
 async fn test_delete_entity_definition() {
-    let TestRepository {
-        repository,
-        db_pool,
-    } = get_entity_definition_repository_with_pool().await;
-    clear_test_db(&db_pool)
-        .await
-        .expect("Failed to clear database");
+    let TestRepository { repository, db } = get_entity_definition_repository_with_pool().await;
+    clear_test_db(&db).await.expect("Failed to clear database");
 
     // Create a test definition
     let creator_id = Uuid::now_v7();
@@ -316,13 +296,8 @@ async fn test_delete_entity_definition() {
 #[tokio::test]
 #[serial]
 async fn test_table_operations() {
-    let TestRepository {
-        repository,
-        db_pool,
-    } = get_entity_definition_repository_with_pool().await;
-    clear_test_db(&db_pool)
-        .await
-        .expect("Failed to clear database");
+    let TestRepository { repository, db } = get_entity_definition_repository_with_pool().await;
+    clear_test_db(&db).await.expect("Failed to clear database");
 
     // Create a test definition
     let creator_id = Uuid::now_v7();
@@ -425,13 +400,8 @@ async fn test_table_operations() {
 #[tokio::test]
 #[serial]
 async fn test_create_entity_definition_from_json_examples() {
-    let TestRepository {
-        repository,
-        db_pool,
-    } = get_entity_definition_repository_with_pool().await;
-    clear_test_db(&db_pool)
-        .await
-        .expect("Failed to clear database");
+    let TestRepository { repository, db } = get_entity_definition_repository_with_pool().await;
+    clear_test_db(&db).await.expect("Failed to clear database");
 
     let creator_id = Uuid::now_v7();
 

@@ -6,7 +6,6 @@ pub mod api_state_impl;
 pub mod auth;
 pub mod docs;
 pub mod health;
-pub mod jwt;
 pub mod middleware;
 pub mod models;
 pub mod public;

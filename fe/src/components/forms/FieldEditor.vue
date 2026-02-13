@@ -327,6 +327,7 @@
         { title: 'MultiSelect', value: 'MultiSelect' },
         { title: 'Image', value: 'Image' },
         { title: 'File', value: 'File' },
+        { title: 'Password', value: 'Password' },
     ]
 
     const form = ref<FieldDefinition>({
@@ -344,6 +345,10 @@
     })
 
     const showDefaultValue = computed(() => {
+        // Password fields should not have default values
+        if (form.value.field_type === 'Password') {
+            return false
+        }
         return ['String', 'Text', 'Integer', 'Float', 'Boolean', 'Date', 'DateTime'].includes(
             form.value.field_type
         )
@@ -353,7 +358,7 @@
     const EMAIL_REGEX = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'
 
     const isStringType = computed(() =>
-        ['String', 'Text', 'Wysiwyg'].includes(form.value.field_type)
+        ['String', 'Text', 'Wysiwyg', 'Password'].includes(form.value.field_type)
     )
     const isNumericType = computed(() => ['Integer', 'Float'].includes(form.value.field_type))
     const supportsUniqueness = computed(() =>
@@ -557,6 +562,7 @@
             case 'String':
             case 'Text':
             case 'Wysiwyg':
+            case 'Password':
                 return 'string'
             case 'Integer':
                 return 'integer'

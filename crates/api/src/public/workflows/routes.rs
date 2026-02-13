@@ -16,7 +16,10 @@ use r_data_core_workflow::dsl::{DslProgram, FromDef, OutputMode, ToDef};
 use serde::Deserialize;
 
 use super::helpers::{extract_provider_auth_config, validate_and_authenticate_workflow};
-use super::orchestration::{handle_provider_workflow, handle_trigger_consumer_workflow};
+use super::orchestration::{
+    handle_inline_auth_workflow, handle_provider_workflow, handle_trigger_consumer_workflow,
+};
+use r_data_core_workflow::dsl::Transform;
 
 #[derive(Deserialize)]
 pub(super) struct WorkflowQuery {
@@ -267,6 +270,7 @@ pub async fn get_workflow_stats(
                     AuthConfig::ApiKey { .. } => "api_key".to_string(),
                     AuthConfig::BasicAuth { .. } => "basic_auth".to_string(),
                     AuthConfig::PreSharedKey { .. } => "pre_shared_key".to_string(),
+                    AuthConfig::EntityJwt { .. } => "entity_jwt".to_string(),
                 });
             }
         }
@@ -310,9 +314,10 @@ pub async fn get_workflow_stats(
         content_type = "text/csv,application/json"
     ),
     responses(
+        (status = 200, description = "Synchronous result (auth workflows)", body = serde_json::Value),
         (status = 202, description = "Data accepted and processing started", body = serde_json::Value),
         (status = 400, description = "Bad request - workflow does not support API ingestion"),
-        (status = 401, description = "Unauthorized - authentication required"),
+        (status = 401, description = "Unauthorized - authentication required or invalid credentials"),
         (status = 404, description = "Workflow not found"),
         (status = 405, description = "Method not allowed - only consumer workflows accept POST"),
         (status = 500, description = "Internal server error")
@@ -387,6 +392,23 @@ pub async fn post_workflow_ingest(
     if !has_api_source_accepting_post {
         return HttpResponse::BadRequest()
             .json(json!({"error": "Workflow does not support API ingestion", "message": "This workflow must have a 'from.api' source type (without endpoint field) to accept POST data"}));
+    }
+
+    // Check if any step uses the Authenticate transform → process inline
+    let has_auth_transform = program
+        .steps
+        .iter()
+        .any(|step| matches!(step.transform, Transform::Authenticate(_)));
+
+    if has_auth_transform {
+        let payload: serde_json::Value = match serde_json::from_slice(&body) {
+            Ok(v) => v,
+            Err(e) => {
+                return HttpResponse::BadRequest()
+                    .json(json!({"error": format!("Invalid JSON payload: {e}")}));
+            }
+        };
+        return handle_inline_auth_workflow(uuid, &payload, &state).await;
     }
 
     // Create a run and stage items

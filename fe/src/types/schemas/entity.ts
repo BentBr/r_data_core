@@ -8,7 +8,7 @@ export const FieldConstraintsSchema = z
         type: z.string().optional(),
         constraints: z.record(z.string(), z.unknown()).optional(),
     })
-    .passthrough()
+    .loose()
 
 // Field Definition schema
 export const FieldDefinitionSchema = z.object({
@@ -33,6 +33,7 @@ export const FieldDefinitionSchema = z.object({
         'MultiSelect',
         'Image',
         'File',
+        'Password',
     ]),
     description: z.string().optional(),
     required: z.boolean(),

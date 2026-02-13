@@ -9,7 +9,8 @@ use uuid::Uuid;
 
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::{extract_and_validate_api_key, extract_jwt_token_string, ApiKeyInfo};
-use crate::jwt::AuthUserClaims;
+use r_data_core_core::admin_jwt::AuthUserClaims;
+use r_data_core_core::entity_jwt::EntityAuthClaims;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuthMethod {
@@ -19,9 +20,9 @@ pub enum AuthMethod {
 
 /// Extract and verify JWT from the Authorization header
 fn extract_jwt_from_request(req: &HttpRequest) -> Option<AuthUserClaims> {
-    if let Some(state) = req.app_data::<actix_web::web::Data<ApiStateWrapper>>() {
+    if let Some(state) = req.app_data::<web::Data<ApiStateWrapper>>() {
         if let Some(token) = extract_jwt_token_string(req) {
-            match crate::jwt::verify_jwt(token, state.jwt_secret()) {
+            match r_data_core_core::admin_jwt::verify_jwt(token, state.jwt_secret()) {
                 Ok(claims) => {
                     let name = &claims.name;
                     debug!("JWT validation successful for user: {name}");
@@ -38,12 +39,12 @@ fn extract_jwt_from_request(req: &HttpRequest) -> Option<AuthUserClaims> {
 
 /// Safely get JWT claims from request by first checking extensions
 fn get_or_validate_jwt(req: &HttpRequest) -> Option<AuthUserClaims> {
-    // First check extensions without modifying them
+    // First, check extensions without modifying them
     if let Some(claims) = req.extensions().get::<AuthUserClaims>() {
         return Some(claims.clone());
     }
 
-    // If not found in extensions, try to extract from header
+    // If not found in extensions, try to extract from the header
     extract_jwt_from_request(req)
 }
 
@@ -62,11 +63,7 @@ impl FromRequest for RequiredAuth {
         debug!("Handling required authentication FromRequest");
 
         get_or_validate_jwt(req).map_or_else(
-            || {
-                ready(Err(actix_web::error::ErrorUnauthorized(
-                    "Authentication required",
-                )))
-            },
+            || ready(Err(ErrorUnauthorized("Authentication required"))),
             |claims| ready(Ok(Self(claims))),
         )
     }
@@ -94,11 +91,12 @@ impl FromRequest for OptionalAuth {
     }
 }
 
-/// Extractor for combined required authentication (JWT, API key, or pre-shared key)
+/// Extractor for combined required authentication (JWT, API key, pre-shared key, or entity JWT)
 pub struct CombinedRequiredAuth {
     pub jwt_claims: Option<AuthUserClaims>,
     pub api_key_info: Option<ApiKeyInfo>,
     pub pre_shared_key_valid: bool,
+    pub entity_jwt_claims: Option<EntityAuthClaims>,
 }
 
 impl FromRequest for CombinedRequiredAuth {
@@ -120,15 +118,17 @@ impl FromRequest for CombinedRequiredAuth {
                     jwt_claims: Some(jwt_claims),
                     api_key_info: None,
                     pre_shared_key_valid: false,
+                    entity_jwt_claims: None,
                 });
             }
 
-            // Check for API key in extensions
+            // Check for the API key in extensions
             if let Some(api_key_info) = req.extensions().get::<ApiKeyInfo>() {
                 return Ok(Self {
                     jwt_claims: None,
                     api_key_info: Some(api_key_info.clone()),
                     pre_shared_key_valid: false,
+                    entity_jwt_claims: None,
                 });
             }
 
@@ -162,6 +162,7 @@ impl FromRequest for CombinedRequiredAuth {
                                     expires_at: key.expires_at,
                                 }),
                                 pre_shared_key_valid: false,
+                                entity_jwt_claims: None,
                             });
                         }
                         Ok(None) => {
@@ -174,13 +175,16 @@ impl FromRequest for CombinedRequiredAuth {
                 }
             }
 
-            // Check for pre-shared key in extensions (set by middleware or route handler)
+            // Check for pre-shared key or entity JWT in extensions (set by middleware or route handler)
             if let Some(valid) = req.extensions().get::<bool>() {
                 if *valid {
+                    // Check if entity JWT claims were stored by validate_provider_auth
+                    let entity_claims = req.extensions().get::<EntityAuthClaims>().cloned();
                     return Ok(Self {
                         jwt_claims: None,
                         api_key_info: None,
                         pre_shared_key_valid: true,
+                        entity_jwt_claims: entity_claims,
                     });
                 }
             }

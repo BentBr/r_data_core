@@ -1,6 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use r_data_core_services::workflow::transform_execution::execute_async_transform;
+use r_data_core_services::workflow::transform_execution::{execute_async_transform, JwtConfig};
 use r_data_core_test_support::setup_test_db;
 use r_data_core_workflow::dsl::{DslProgram, Transform};
 use serde_json::json;
@@ -149,7 +149,17 @@ async fn test_execute_async_transform_resolve_entity_path() -> r_data_core_core:
     let run_uuid = Uuid::now_v7();
 
     // Execute async transform
-    execute_async_transform(&transform, &mut normalized, &de_service, run_uuid).await?;
+    execute_async_transform(
+        &transform,
+        &mut normalized,
+        &de_service,
+        run_uuid,
+        &JwtConfig {
+            secret: None,
+            expiration: 86400,
+        },
+    )
+    .await?;
 
     // Check that path was set
     assert_eq!(
@@ -225,7 +235,17 @@ async fn test_execute_async_transform_resolve_entity_path_not_found(
     let run_uuid = Uuid::now_v7();
 
     // Execute async transform - should use fallback entity
-    execute_async_transform(&transform, &mut normalized, &de_service, run_uuid).await?;
+    execute_async_transform(
+        &transform,
+        &mut normalized,
+        &de_service,
+        run_uuid,
+        &JwtConfig {
+            secret: None,
+            expiration: 86400,
+        },
+    )
+    .await?;
 
     // Check that fallback path and UUID were set
     assert_eq!(
@@ -276,7 +296,17 @@ async fn test_execute_async_transform_get_or_create_entity() -> r_data_core_core
     let run_uuid = Uuid::now_v7();
 
     // Execute async transform
-    execute_async_transform(&transform, &mut normalized, &de_service, run_uuid).await?;
+    execute_async_transform(
+        &transform,
+        &mut normalized,
+        &de_service,
+        run_uuid,
+        &JwtConfig {
+            secret: None,
+            expiration: 86400,
+        },
+    )
+    .await?;
 
     // Check that path was set
     let path = normalized.get("instance_path").and_then(|v| v.as_str());
@@ -295,7 +325,17 @@ async fn test_execute_async_transform_get_or_create_entity() -> r_data_core_core
         "license_key_id": "LICENSE-456"
     });
 
-    execute_async_transform(&transform, &mut normalized2, &de_service, run_uuid).await?;
+    execute_async_transform(
+        &transform,
+        &mut normalized2,
+        &de_service,
+        run_uuid,
+        &JwtConfig {
+            secret: None,
+            expiration: 86400,
+        },
+    )
+    .await?;
 
     // Should have same path
     let path2 = normalized2.get("instance_path").and_then(|v| v.as_str());
@@ -373,7 +413,17 @@ async fn test_step_by_step_execution_resolve_then_build_path() -> r_data_core_co
 
     // Step 0: Execute async transform (ResolveEntityPath)
     assert!(matches!(transform_0, Transform::ResolveEntityPath(_)));
-    execute_async_transform(transform_0, &mut normalized_0, &de_service, run_uuid).await?;
+    execute_async_transform(
+        transform_0,
+        &mut normalized_0,
+        &de_service,
+        run_uuid,
+        &JwtConfig {
+            secret: None,
+            expiration: 86400,
+        },
+    )
+    .await?;
 
     // Verify instance_path was set by async transform
     let instance_path_after_async = normalized_0

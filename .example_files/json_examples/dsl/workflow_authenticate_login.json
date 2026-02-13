@@ -1,0 +1,47 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "format",
+        "source": {
+          "source_type": "api",
+          "config": {}
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {
+          "email": "identifier",
+          "password": "password"
+        }
+      },
+      "transform": {
+        "type": "authenticate",
+        "entity_type": "user",
+        "identifier_field": "email",
+        "password_field": "password",
+        "input_identifier": "identifier",
+        "input_password": "password",
+        "target_token": "token",
+        "extra_claims": {
+          "role": "role"
+        },
+        "token_expiry_seconds": 3600
+      },
+      "to": {
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {
+          "token": "access_token"
+        }
+      }
+    }
+  ]
+}

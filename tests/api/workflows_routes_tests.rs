@@ -117,7 +117,7 @@ async fn setup_app_and_token() -> anyhow::Result<(
         cors_origins: vec![],
         check_default_admin_password: true,
     };
-    let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, &[])?;
+    let token = r_data_core_core::admin_jwt::generate_access_token(&user, &api_config, &[])?;
 
     Ok((app, pool.pool.clone(), token))
 }

@@ -7,13 +7,13 @@ use uuid::Uuid;
 use super::DynamicEntityService;
 
 impl DynamicEntityService {
-    /// Check if the entity type exists and is published - common check for all operations
+    /// Check if the entity type exists and is published - a common check for all operations
     ///
     /// # Arguments
     /// * `entity_type` - Entity type string
     ///
     /// # Errors
-    /// Returns an error if entity type is not found or not published
+    /// Returns an error if the entity type is not found or not published
     pub(crate) async fn check_entity_type_exists_and_published(
         &self,
         entity_type: &str,
@@ -35,7 +35,7 @@ impl DynamicEntityService {
     /// List entities with pagination
     ///
     /// # Errors
-    /// Returns an error if entity type is not found, not published, or database query fails
+    /// Returns an error if the entity type is not found, not published, or the database query fails
     pub async fn list_entities(
         &self,
         entity_type: &str,
@@ -55,7 +55,7 @@ impl DynamicEntityService {
     /// Count entities of a specific type
     ///
     /// # Errors
-    /// Returns an error if entity type is not found, not published, or database query fails
+    /// Returns an error if the entity type is not found, not published, or the database query fails
     pub async fn count_entities(&self, entity_type: &str) -> Result<i64> {
         // Verify the entity type exists and is published
         self.check_entity_type_exists_and_published(entity_type)
@@ -67,7 +67,7 @@ impl DynamicEntityService {
     /// Get an entity by UUID
     ///
     /// # Errors
-    /// Returns an error if entity type is not found, not published, or database query fails
+    /// Returns an error if the entity type is not found, not published, or the database query fails
     pub async fn get_entity_by_uuid(
         &self,
         entity_type: &str,
@@ -86,7 +86,7 @@ impl DynamicEntityService {
     /// Get an entity by UUID with optional children count
     ///
     /// # Errors
-    /// Returns an error if entity type is not found, not published, or database query fails
+    /// Returns an error if the entity type is not found, not published, or the database query fails
     pub async fn get_entity_by_uuid_with_children_count(
         &self,
         entity_type: &str,
@@ -118,7 +118,7 @@ impl DynamicEntityService {
     /// but don't know which entity type it belongs to (e.g., `parent_uuid` lookup).
     ///
     /// # Errors
-    /// Returns an error if entity is not found or database query fails
+    /// Returns an error if the entity is not found or the database query fails
     pub async fn get_entity_by_uuid_any_type(&self, uuid: Uuid) -> Result<DynamicEntity> {
         self.repository
             .get_by_uuid_any_type(&uuid)
@@ -133,7 +133,7 @@ impl DynamicEntityService {
     /// Create a new entity with validation
     ///
     /// # Errors
-    /// Returns an error if validation fails, entity type is not found/not published, or creation fails
+    /// Returns an error if the validation fails, the entity type is not found/not published, or creation fails
     /// Returns the UUID
     pub async fn create_entity(&self, entity: &DynamicEntity) -> Result<Uuid> {
         // Check if the entity type is published
@@ -203,5 +203,35 @@ impl DynamicEntityService {
             .await?;
 
         self.repository.delete_by_type(entity_type, uuid).await
+    }
+
+    /// Find a single entity by field filters
+    ///
+    /// # Errors
+    /// Returns an error if the query fails
+    pub async fn find_one_by_filters(
+        &self,
+        entity_type: &str,
+        filters: &std::collections::HashMap<String, serde_json::Value>,
+    ) -> Result<Option<DynamicEntity>> {
+        self.repository
+            .find_one_by_filters(entity_type, filters)
+            .await
+    }
+
+    /// Read a single raw field value, bypassing mapper redaction.
+    /// Used for password verification.
+    ///
+    /// # Errors
+    /// Returns an error if the query fails
+    pub async fn get_raw_field_value(
+        &self,
+        entity_type: &str,
+        uuid: &Uuid,
+        field_name: &str,
+    ) -> Result<Option<String>> {
+        self.repository
+            .get_raw_field_value(entity_type, uuid, field_name)
+            .await
     }
 }

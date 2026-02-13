@@ -111,7 +111,9 @@ impl DynamicEntityValidator {
 
         // Validate based on a field type
         match field_def.field_type {
-            FieldType::String | FieldType::Text | FieldType::Wysiwyg => Self::validate_string(&ctx),
+            FieldType::String | FieldType::Text | FieldType::Wysiwyg | FieldType::Password => {
+                Self::validate_string(&ctx)
+            }
             FieldType::Integer => Self::validate_integer(&ctx),
             FieldType::Float => Self::validate_float(&ctx),
             FieldType::Boolean => Self::validate_boolean(&ctx),

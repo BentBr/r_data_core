@@ -251,6 +251,11 @@ async fn main() -> r_data_core_core::error::Result<()> {
         let pool_for_consumer = pool.clone();
         let queue_cfg = queue_cfg.clone();
         let cache_manager_for_consumer = cache_manager.clone();
+        let jwt_secret_for_consumer: Option<String> = std::env::var("JWT_SECRET").ok();
+        let jwt_expiration_for_consumer: u64 = std::env::var("JWT_EXPIRATION")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(86_400);
         tokio::spawn(async move {
             let queue = match ApalisRedisQueue::from_parts(
                 &queue_cfg.redis_url,
@@ -353,6 +358,10 @@ async fn main() -> r_data_core_core::error::Result<()> {
                         let service = WorkflowService::new_with_entities(
                             Arc::new(wf_adapter),
                             Arc::new(de_service),
+                        )
+                        .with_jwt_config(
+                            jwt_secret_for_consumer.clone(),
+                            jwt_expiration_for_consumer,
                         );
                         // Process
                         if let Ok(Some(wf_uuid)) = repo.get_workflow_uuid_for_run(run_uuid).await {

@@ -624,7 +624,7 @@ async fn post_to_workflow_endpoint_enqueues_fetch_job() -> anyhow::Result<()> {
         .bind(admin_uuid)
         .fetch_one(&pool.pool)
         .await?;
-    let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, &[])?;
+    let token = r_data_core_core::admin_jwt::generate_access_token(&user, &api_config, &[])?;
 
     // Create workflow with from.api source (accepts POST data)
     // Uses example file from .example_files/json_examples/dsl/

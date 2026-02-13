@@ -13,19 +13,9 @@ pub struct AdminUserRepository {
     pool: Arc<Pool<Postgres>>,
 }
 
-/// Hash a password using Argon2
+/// Hash a password using the shared Argon2id utility
 fn hash_password(password: &str) -> Result<String> {
-    use argon2::password_hash::{rand_core::OsRng, PasswordHasher, SaltString};
-    use argon2::Argon2;
-
-    let salt = SaltString::generate(&mut OsRng);
-    let argon2 = Argon2::default();
-    argon2
-        .hash_password(password.as_bytes(), &salt)
-        .map_err(|e| {
-            r_data_core_core::error::Error::PasswordHash(format!("Failed to hash password: {e}"))
-        })
-        .map(|hash| hash.to_string())
+    r_data_core_core::crypto::hash_password_argon2(password)
 }
 
 impl AdminUserRepository {

@@ -1,7 +1,7 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use crate::jwt::AuthUserClaims;
 use log::debug;
+use r_data_core_core::admin_jwt::AuthUserClaims;
 use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 
 /// Check if a user has permission to perform an action

@@ -255,7 +255,8 @@ async fn test_users_namespace_permissions() -> Result<()> {
         cors_origins: vec![],
         check_default_admin_password: true,
     };
-    let read_token = r_data_core_api::jwt::generate_access_token(&read_user, &api_config, &roles)?;
+    let read_token =
+        r_data_core_core::admin_jwt::generate_access_token(&read_user, &api_config, &roles)?;
 
     // User with Users:Read should be able to list users
     let req = test::TestRequest::get()
@@ -341,7 +342,7 @@ async fn test_users_namespace_permissions() -> Result<()> {
         .get_roles_for_user(create_user_uuid, &user_repo)
         .await?;
     let create_token =
-        r_data_core_api::jwt::generate_access_token(&create_user, &api_config, &roles)?;
+        r_data_core_core::admin_jwt::generate_access_token(&create_user, &api_config, &roles)?;
 
     // User with Users:Create should be able to create users
     let req = test::TestRequest::post()
@@ -401,7 +402,7 @@ async fn test_users_namespace_permissions() -> Result<()> {
         .get_roles_for_user(admin_user_uuid2, &user_repo)
         .await?;
     let admin_token2 =
-        r_data_core_api::jwt::generate_access_token(&admin_user2, &api_config, &roles)?;
+        r_data_core_core::admin_jwt::generate_access_token(&admin_user2, &api_config, &roles)?;
 
     // User with Users:Admin should be able to do all operations
     // Read
@@ -520,7 +521,7 @@ async fn test_users_namespace_permissions() -> Result<()> {
         .get_roles_for_user(roles_admin_user_uuid, &user_repo)
         .await?;
     let roles_admin_token =
-        r_data_core_api::jwt::generate_access_token(&roles_admin_user, &api_config, &roles)?;
+        r_data_core_core::admin_jwt::generate_access_token(&roles_admin_user, &api_config, &roles)?;
 
     // User with Roles:Admin should NOT be able to list users
     let req = test::TestRequest::get()

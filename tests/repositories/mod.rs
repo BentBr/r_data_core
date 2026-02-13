@@ -12,14 +12,14 @@ pub mod refresh_token_repository_tests;
 pub mod version_repository_tests;
 
 use r_data_core_persistence::EntityDefinitionRepository;
-use r_data_core_test_support::setup_test_db;
-use sqlx::PgPool;
+use r_data_core_test_support::{setup_test_db, TestDatabase};
 use std::sync::Arc;
 
-/// Test repository structure that provides both repository and pool access
+/// Test repository structure that provides both repository and pool access.
+/// Keeps `TestDatabase` alive to prevent premature schema cleanup.
 pub struct TestRepository {
     pub repository: Arc<EntityDefinitionRepository>,
-    pub db_pool: PgPool,
+    pub db: TestDatabase,
 }
 
 pub async fn get_entity_definition_repository_with_pool() -> TestRepository {
@@ -27,6 +27,6 @@ pub async fn get_entity_definition_repository_with_pool() -> TestRepository {
     let repository = Arc::new(EntityDefinitionRepository::new(pool.pool.clone()));
     TestRepository {
         repository,
-        db_pool: pool.pool.clone(),
+        db: pool,
     }
 }
