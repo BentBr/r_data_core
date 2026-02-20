@@ -209,6 +209,7 @@
             "auth_identifier_field_hint": "Entity field to match identifier against (e.g. email)",
             "auth_password_field": "Password Field",
             "auth_password_field_hint": "Entity field containing the password hash",
+            "auth_password_field_no_password_type": "No Password-type fields found — showing all fields. Add a Password-type field to the entity definition for proper hash storage.",
             "auth_input_identifier": "Input Identifier",
             "auth_input_identifier_hint": "Normalized input field with the submitted identifier",
             "auth_input_password": "Input Password",

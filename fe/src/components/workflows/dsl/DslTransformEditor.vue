@@ -1,6 +1,6 @@
 <template>
     <div>
-        <div class="text-caption mb-1">{{ t('workflows.dsl.transform') }}</div>
+        <div class="text-subtitle-2 font-weight-bold mb-2">{{ t('workflows.dsl.transform') }}</div>
         <v-select
             :model-value="transformType"
             :items="transformTypes"

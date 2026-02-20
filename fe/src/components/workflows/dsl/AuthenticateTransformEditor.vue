@@ -25,13 +25,13 @@
         />
         <v-select
             :model-value="authPasswordField"
-            :items="passwordFields"
+            :items="passwordFieldItems"
             :label="t('workflows.dsl.auth_password_field')"
             density="comfortable"
             class="mb-2"
-            :hint="t('workflows.dsl.auth_password_field_hint')"
+            :hint="passwordFieldHint"
             persistent-hint
-            :disabled="passwordFields.length === 0"
+            :disabled="entityFields.length === 0"
             @update:model-value="updateField('password_field', $event)"
         />
         <v-text-field
@@ -158,6 +158,18 @@
         return ''
     })
 
+    // If dedicated Password-type fields exist, show only those; otherwise fall back to all fields
+    const passwordFieldItems = computed(() =>
+        passwordFields.value.length > 0 ? passwordFields.value : entityFields.value
+    )
+
+    const passwordFieldHint = computed(() => {
+        if (entityFields.value.length > 0 && passwordFields.value.length === 0) {
+            return t('workflows.dsl.auth_password_field_no_password_type')
+        }
+        return t('workflows.dsl.auth_password_field_hint')
+    })
+
     const extraClaimPairs = computed(() => {
         if (props.modelValue.type === 'authenticate') {
             const claims = props.modelValue.extra_claims ?? {}
@@ -212,7 +224,7 @@
             entityFields.value = fields
                 .map(f => f.name)
                 .filter(name => !systemFields.includes(name))
-            passwordFields.value = fields.filter(f => f.type === 'password').map(f => f.name)
+            passwordFields.value = fields.filter(f => f.type === 'Password').map(f => f.name)
         } catch {
             entityFields.value = []
             passwordFields.value = []

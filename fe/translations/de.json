@@ -209,6 +209,7 @@
             "auth_identifier_field_hint": "Entity-Feld zum Abgleich des Identifikators (z.B. email)",
             "auth_password_field": "Passwort-Feld",
             "auth_password_field_hint": "Entity-Feld mit dem Passwort-Hash",
+            "auth_password_field_no_password_type": "Keine Password-Typ-Felder gefunden — alle Felder werden angezeigt. Erstellen Sie ein Password-Typ-Feld in der Entity-Definition.",
             "auth_input_identifier": "Eingabe-Identifikator",
             "auth_input_identifier_hint": "Normalisiertes Eingabefeld mit dem übermittelten Identifikator",
             "auth_input_password": "Eingabe-Passwort",

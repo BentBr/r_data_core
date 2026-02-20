@@ -1,6 +1,6 @@
 <template>
     <div>
-        <div class="text-caption mb-1">{{ t('workflows.dsl.from') }}</div>
+        <div class="text-subtitle-2 font-weight-bold mb-2">{{ t('workflows.dsl.from') }}</div>
         <v-select
             :model-value="modelValue.type"
             :items="fromTypes"
