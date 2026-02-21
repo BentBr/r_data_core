@@ -8,6 +8,7 @@
             :temporary="isMobile"
             :scrim="isMobile"
             width="280"
+            data-testid="nav-sidebar"
         >
             <!-- App Title -->
             <v-list-item
@@ -34,6 +35,7 @@
                     :title="item.title"
                     :value="item.path"
                     :to="item.path"
+                    :data-testid="`nav-item-${item.path}`"
                     router
                 >
                     <template #prepend>
