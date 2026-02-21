@@ -5,7 +5,10 @@
                 v-model="activeTab"
                 color="primary"
             >
-                <v-tab value="users">
+                <v-tab
+                    value="users"
+                    data-testid="permissions-users-tab"
+                >
                     <template #prepend>
                         <SmartIcon
                             icon="users"
@@ -15,7 +18,10 @@
                     </template>
                     {{ t('permissions.page.tabs.users') || 'Users' }}
                 </v-tab>
-                <v-tab value="roles">
+                <v-tab
+                    value="roles"
+                    data-testid="permissions-roles-tab"
+                >
                     <template #prepend>
                         <SmartIcon
                             icon="shield"
@@ -36,6 +42,7 @@
                         <v-btn
                             v-if="canCreateUser"
                             color="primary"
+                            data-testid="users-create-btn"
                             @click="openCreateUserDialog"
                         >
                             <template #prepend>
@@ -48,6 +55,7 @@
                         </v-btn>
                     </div>
                     <PaginatedDataTable
+                        data-testid="users-table"
                         :items="users"
                         :headers="userTableHeaders"
                         :loading="usersLoading"
@@ -155,6 +163,7 @@
                         <v-btn
                             v-if="canCreateRole"
                             color="primary"
+                            data-testid="roles-create-btn"
                             @click="openCreateDialog"
                         >
                             <template #prepend>
@@ -168,6 +177,7 @@
                     </div>
 
                     <PaginatedDataTable
+                        data-testid="roles-table"
                         :items="roles"
                         :headers="tableHeaders"
                         :loading="loading"

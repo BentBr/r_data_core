@@ -233,7 +233,7 @@ describe('DslToEditor', () => {
         const textFields = wrapper.findAllComponents({ name: 'VTextField' })
         const hasUpdateKeyField = textFields.some(tf => {
             const label = tf.props('label') as string
-            return label?.includes('update_key')
+            return label.includes('update_key')
         })
 
         expect(hasUpdateKeyField).toBe(true)
@@ -259,7 +259,7 @@ describe('DslToEditor', () => {
         const textFields = wrapper.findAllComponents({ name: 'VTextField' })
         const hasUpdateKeyField = textFields.some(tf => {
             const label = tf.props('label') as string
-            return label?.includes('update_key')
+            return label.includes('update_key')
         })
 
         expect(hasUpdateKeyField).toBe(true)
@@ -550,7 +550,7 @@ describe('DslToEditor', () => {
         const textFields = wrapper.findAllComponents({ name: 'VTextField' })
         const uriField = textFields.find(tf => {
             const label = tf.props('label') as string
-            return label?.includes('uri')
+            return label.includes('uri')
         })
 
         if (uriField) {

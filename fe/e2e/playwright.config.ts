@@ -12,8 +12,22 @@ export default defineConfig({
     workers: 1,
     retries: process.env.CI ? 1 : 0,
     reporter: process.env.CI
-        ? [['html', { outputFolder: path.resolve(__dirname, 'playwright-report'), open: 'never' }], ['github']]
-        : [['html', { outputFolder: path.resolve(__dirname, 'playwright-report'), open: 'on-failure' }]],
+        ? [
+              [
+                  'html',
+                  { outputFolder: path.resolve(__dirname, 'playwright-report'), open: 'never' },
+              ],
+              ['github'],
+          ]
+        : [
+              [
+                  'html',
+                  {
+                      outputFolder: path.resolve(__dirname, 'playwright-report'),
+                      open: 'on-failure',
+                  },
+              ],
+          ],
     globalSetup: path.resolve(__dirname, 'global-setup.ts'),
     globalTeardown: path.resolve(__dirname, 'global-teardown.ts'),
     use: {

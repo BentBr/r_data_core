@@ -66,7 +66,7 @@ describe('AuthConfigEditor', () => {
         // Find username field (first non-password field, or by label)
         const usernameField = textFields.find(tf => {
             const label = tf.props('label') as string
-            return label?.includes('username')
+            return label.includes('username')
         })
         const passwordField = textFields.find(tf => tf.props('type') === 'password')
 

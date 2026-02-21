@@ -1,5 +1,4 @@
 import { test, expect } from '../fixtures/auth.fixture'
-import { LoginPage } from '../page-objects/login.page'
 
 const ADMIN_USERNAME = process.env.E2E_ADMIN_USERNAME ?? 'admin'
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? 'adminadmin'

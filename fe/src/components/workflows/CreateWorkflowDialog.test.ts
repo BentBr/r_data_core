@@ -96,7 +96,7 @@ describe('CreateWorkflowDialog', () => {
         await vm.submit()
 
         // Expect validation state set
-        expect(vm.configError?.toLowerCase()?.includes('dsl_required')).toBe(true)
+        expect(vm.configError?.toLowerCase().includes('dsl_required')).toBe(true)
     })
 
     it('disables cron field when from.api source is used', async () => {
@@ -505,15 +505,11 @@ describe('CreateWorkflowDialog', () => {
             expect(vm.steps.length).not.toBe(initialStepsLength)
             expect(vm.steps.length).toBe(1)
             const step = vm.steps[0]
-            if (
-                step.from &&
-                'type' in step.from &&
-                step.from.type === 'format' &&
-                'source' in step.from
-            ) {
-                const formatFrom = step.from as { type: 'format'; source: { source_type: string } }
-                expect(formatFrom.source.source_type).toBe('api')
+            const formatFrom = step.from as unknown as {
+                type: 'format'
+                source: { source_type: string }
             }
+            expect(formatFrom.source.source_type).toBe('api')
         })
 
         it('prevents circular updates when syncing steps → JSON → steps', async () => {
@@ -702,15 +698,13 @@ describe('CreateWorkflowDialog', () => {
             // Steps should be sanitized (options should be added)
             expect(vm.steps.length).toBe(1)
             const step = vm.steps[0]
-            if (step.from && 'type' in step.from && step.from.type === 'format') {
-                const formatFrom = step.from as {
-                    type: 'format'
-                    format: { format_type: string; options?: unknown }
-                }
-                if (formatFrom.format?.format_type === 'csv') {
-                    // CSV options should be ensured by sanitization
-                    expect(formatFrom.format.options).toBeDefined()
-                }
+            const formatFrom = step.from as unknown as {
+                type: 'format'
+                format: { format_type: string; options?: unknown }
+            }
+            if (formatFrom.format.format_type === 'csv') {
+                // CSV options should be ensured by sanitization
+                expect(formatFrom.format.options).toBeDefined()
             }
         })
 

@@ -13,13 +13,15 @@ export interface TestDataIds {
     entityDefinitionUuid?: string
     roleUuid?: string
     userUuid?: string
+    workflowUuid?: string
+    apiKeyUuid?: string
 }
 
 async function apiRequest(
     method: string,
     path: string,
     token: string,
-    body?: Record<string, unknown>,
+    body?: Record<string, unknown>
 ): Promise<Response> {
     const url = `${API_BASE_URL}/admin/api/v1${path}`
     const headers: Record<string, string> = {
@@ -35,7 +37,7 @@ async function apiRequest(
 
 export async function login(
     username: string = ADMIN_USERNAME,
-    password: string = ADMIN_PASSWORD,
+    password: string = ADMIN_PASSWORD
 ): Promise<string> {
     const url = `${API_BASE_URL}/admin/api/v1/auth/login`
     const res = await fetch(url, {
@@ -54,6 +56,7 @@ export async function createEntityDefinition(token: string): Promise<string> {
     const res = await apiRequest('POST', '/entity-definitions', token, {
         entity_type: 'e2e_test_product',
         display_name: 'E2E Test Product',
+        published: true,
         allow_children: false,
         fields: [
             {
@@ -93,9 +96,24 @@ export async function createRole(token: string): Promise<string> {
         name: 'e2e_viewer',
         description: 'E2E test role with read-only permissions',
         permissions: [
-            { resource_type: 'DashboardStats', permission_type: 'Read', access_level: 'All', resource_uuids: [] },
-            { resource_type: 'EntityDefinitions', permission_type: 'Read', access_level: 'All', resource_uuids: [] },
-            { resource_type: 'Entities', permission_type: 'Read', access_level: 'All', resource_uuids: [] },
+            {
+                resource_type: 'DashboardStats',
+                permission_type: 'Read',
+                access_level: 'All',
+                resource_uuids: [],
+            },
+            {
+                resource_type: 'EntityDefinitions',
+                permission_type: 'Read',
+                access_level: 'All',
+                resource_uuids: [],
+            },
+            {
+                resource_type: 'Entities',
+                permission_type: 'Read',
+                access_level: 'All',
+                resource_uuids: [],
+            },
         ],
     })
     if (!res.ok) {
@@ -131,12 +149,72 @@ export async function createUser(token: string, roleUuid: string): Promise<strin
     return body.data.uuid
 }
 
-export async function deleteByPrefix(token: string, endpoint: string, prefix: string): Promise<void> {
+export async function createWorkflow(token: string): Promise<string> {
+    const res = await apiRequest('POST', '/workflows', token, {
+        name: 'e2e_test_workflow',
+        kind: 'consumer',
+        enabled: false,
+        config: {
+            steps: [
+                {
+                    from: {
+                        type: 'format',
+                        source: { source_type: 'api', config: {} },
+                        format: { format_type: 'json', options: {} },
+                        mapping: { title: 'title' },
+                    },
+                    transform: { type: 'none' },
+                    to: {
+                        type: 'format',
+                        output: { mode: 'api' },
+                        format: { format_type: 'json', options: {} },
+                        mapping: { title: 'title' },
+                    },
+                },
+            ],
+        },
+    })
+    if (!res.ok) {
+        const text = await res.text()
+        if (res.status === 409) {
+            console.log('[E2E Setup] Workflow e2e_test_workflow already exists, skipping')
+            return ''
+        }
+        throw new Error(`Create workflow failed (${res.status}): ${text}`)
+    }
+    const body = (await res.json()) as ApiResponse<{ uuid: string }>
+    return body.data.uuid
+}
+
+export async function createApiKey(token: string): Promise<string> {
+    const res = await apiRequest('POST', '/api-keys', token, {
+        name: 'e2e_test_key',
+        description: 'E2E test API key',
+    })
+    if (!res.ok) {
+        const text = await res.text()
+        if (res.status === 409) {
+            console.log('[E2E Setup] API key e2e_test_key already exists, skipping')
+            return ''
+        }
+        throw new Error(`Create API key failed (${res.status}): ${text}`)
+    }
+    const body = (await res.json()) as ApiResponse<{ uuid: string }>
+    return body.data.uuid
+}
+
+export async function deleteByPrefix(
+    token: string,
+    endpoint: string,
+    prefix: string
+): Promise<void> {
     const res = await apiRequest('GET', `/${endpoint}`, token)
     if (!res.ok) return
 
-    const body = (await res.json()) as ApiResponse<Array<{ uuid: string; name?: string; username?: string; entity_type?: string }>>
-    const items = body.data ?? []
+    const body = (await res.json()) as ApiResponse<
+        Array<{ uuid: string; name?: string; username?: string; entity_type?: string }>
+    >
+    const items = body.data
 
     for (const item of items) {
         const name = item.name ?? item.username ?? item.entity_type ?? ''

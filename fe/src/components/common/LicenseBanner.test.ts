@@ -14,7 +14,7 @@ vi.mock('@/api/typed-client', () => ({
 
 vi.mock('@/composables/useTranslations', () => ({
     useTranslations: () => ({
-        t: (key: string) => key.split('.').pop() || key,
+        t: (key: string) => key.split('.').pop() ?? key,
     }),
 }))
 

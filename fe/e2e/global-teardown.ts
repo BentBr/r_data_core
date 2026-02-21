@@ -13,6 +13,8 @@ export default async function globalTeardown(): Promise<void> {
         const token = await login()
 
         // Delete all e2e_ prefixed test data
+        await deleteByPrefix(token, 'api-keys', 'e2e_')
+        await deleteByPrefix(token, 'workflows', 'e2e_')
         await deleteByPrefix(token, 'users', 'e2e_')
         await deleteByPrefix(token, 'roles', 'e2e_')
         await deleteByPrefix(token, 'entity-definitions', 'e2e_')

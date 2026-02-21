@@ -40,9 +40,7 @@ describe('Router Permission Guards', () => {
 
     afterEach(async () => {
         // Clean up - reset to dashboard
-        if (router) {
-            await router.push('/dashboard')
-        }
+        await router.push('/dashboard')
     })
 
     it('should redirect to dashboard when user lacks permission for a route', async () => {

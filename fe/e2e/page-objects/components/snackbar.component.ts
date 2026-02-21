@@ -8,7 +8,9 @@ export class SnackbarComponent {
     }
 
     async expectSuccess(message?: string): Promise<void> {
-        const snackbar = this.snackbar.filter({ has: this.page.locator('.bg-success, .text-success') })
+        const snackbar = this.snackbar.filter({
+            has: this.page.locator('.bg-success, .text-success'),
+        })
         await expect(snackbar).toBeVisible({ timeout: 10_000 })
         if (message) {
             await expect(snackbar).toContainText(message)
