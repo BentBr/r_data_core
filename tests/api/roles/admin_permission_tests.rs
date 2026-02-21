@@ -16,7 +16,7 @@ use serial_test::serial;
 use std::sync::Arc;
 
 use super::common::setup_test_app;
-use r_data_core_api::jwt::generate_access_token;
+use r_data_core_core::admin_jwt::generate_access_token;
 
 /// Integration test for Admin permission granting all permissions for a namespace
 #[tokio::test]

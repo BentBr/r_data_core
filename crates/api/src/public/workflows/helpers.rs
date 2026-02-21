@@ -9,6 +9,7 @@ use std::result::Result;
 
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::CombinedRequiredAuth;
+use r_data_core_core::entity_jwt;
 use r_data_core_workflow::data::adapters::auth::{AuthConfig, KeyLocation};
 use r_data_core_workflow::dsl::{DslProgram, FormatConfig, FromDef, OutputMode, ToDef};
 
@@ -181,48 +182,89 @@ pub(super) async fn validate_and_authenticate_workflow(
 fn validate_provider_auth(
     req: &HttpRequest,
     config: &serde_json::Value,
-    _state: &dyn ApiStateTrait,
+    state: &dyn ApiStateTrait,
 ) -> Result<(), String> {
-    // Check for pre-shared key in config first
-    if let Some(AuthConfig::PreSharedKey {
-        key,
-        location,
-        field_name,
-    }) = extract_provider_auth_config(config)
-    {
-        let provided_key = match location {
-            KeyLocation::Header => req
-                .headers()
-                .get(&field_name)
-                .and_then(|v| v.to_str().ok())
-                .map(std::string::ToString::to_string),
-            KeyLocation::Body => {
-                // Body extraction would need to be done in the route handler
-                // For now, we'll check header only
-                None
-            }
-        };
+    match extract_provider_auth_config(config) {
+        Some(AuthConfig::PreSharedKey {
+            key,
+            location,
+            field_name,
+        }) => {
+            let provided_key = match location {
+                KeyLocation::Header => req
+                    .headers()
+                    .get(&field_name)
+                    .and_then(|v| v.to_str().ok())
+                    .map(std::string::ToString::to_string),
+                KeyLocation::Body => None,
+            };
 
-        if let Some(provided) = provided_key {
-            if provided == key {
-                // Set extension so CombinedRequiredAuth can pick it up
-                req.extensions_mut().insert(true);
-                return Ok(());
+            if let Some(provided) = provided_key {
+                if provided == key {
+                    req.extensions_mut().insert(true);
+                    return Ok(());
+                }
             }
+            Err("Invalid pre-shared key".to_string())
         }
-        // Pre-shared key was required but invalid
-        return Err("Invalid pre-shared key".to_string());
-    }
+        Some(AuthConfig::EntityJwt { required_claims }) => {
+            // Extract Bearer token
+            let token = req
+                .headers()
+                .get("Authorization")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.strip_prefix("Bearer "))
+                .ok_or_else(|| "Missing entity JWT Bearer token".to_string())?;
 
-    // Fall back to JWT/API key via CombinedRequiredAuth
-    // We'll let CombinedRequiredAuth handle this, so return Ok here
-    // The actual validation happens in the route handler using CombinedRequiredAuth extractor
-    Ok(())
+            // Verify entity JWT
+            let claims = entity_jwt::verify_entity_jwt(token, state.jwt_secret()).map_err(|e| {
+                log::debug!("Entity JWT verification failed: {e}");
+                "Invalid entity JWT".to_string()
+            })?;
+
+            // Check required claims if configured
+            if let Some(ref required) = required_claims {
+                for (claim_path, expected_value) in required {
+                    let actual = resolve_claim_path(&claims, claim_path);
+                    if actual.as_ref() != Some(expected_value) {
+                        return Err(format!("Required claim '{claim_path}' mismatch"));
+                    }
+                }
+            }
+
+            // Store claims in request extensions and mark as authenticated
+            req.extensions_mut().insert(claims);
+            req.extensions_mut().insert(true);
+            Ok(())
+        }
+        _ => {
+            // No provider-specific auth, fall through to JWT/API key via CombinedRequiredAuth
+            Ok(())
+        }
+    }
+}
+
+/// Resolve a dotted claim path against `EntityAuthClaims`.
+/// Supports `entity_type`, `sub`, and `extra.{key}` paths.
+fn resolve_claim_path(
+    claims: &entity_jwt::EntityAuthClaims,
+    path: &str,
+) -> Option<serde_json::Value> {
+    match path {
+        "sub" => Some(serde_json::Value::String(claims.sub.clone())),
+        "entity_type" => Some(serde_json::Value::String(claims.entity_type.clone())),
+        "iss" => Some(serde_json::Value::String(claims.iss.clone())),
+        _ if path.starts_with("extra.") => {
+            let key = &path["extra.".len()..];
+            claims.extra.get(key).cloned()
+        }
+        _ => None,
+    }
 }
 
 /// Extract provider auth config from workflow config
 pub(super) fn extract_provider_auth_config(config: &serde_json::Value) -> Option<AuthConfig> {
-    // Look for auth config in provider-specific section
+    // Look for auth config in the provider-specific section
     config
         .get("provider_auth")
         .and_then(|v| serde_json::from_value::<AuthConfig>(v.clone()).ok())

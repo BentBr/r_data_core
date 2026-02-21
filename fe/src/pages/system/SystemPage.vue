@@ -6,7 +6,10 @@
                     cols="12"
                     md="6"
                 >
-                    <v-card variant="outlined">
+                    <v-card
+                        variant="outlined"
+                        data-testid="system-license-card"
+                    >
                         <v-card-title class="text-subtitle-1 pa-3">
                             {{ t('system.license.section_title') }}
                         </v-card-title>
@@ -103,7 +106,10 @@
                     cols="12"
                     md="6"
                 >
-                    <v-card variant="outlined">
+                    <v-card
+                        variant="outlined"
+                        data-testid="system-versioning-card"
+                    >
                         <v-card-title class="text-subtitle-1 pa-3">
                             {{ t('system.versioning.section_title') }}
                         </v-card-title>
@@ -133,6 +139,7 @@
                                 color="primary"
                                 variant="flat"
                                 :loading="saving"
+                                data-testid="system-versioning-save"
                                 @click="save"
                             >
                                 {{ t('system.versioning.save') }}
@@ -147,7 +154,10 @@
                     cols="12"
                     md="6"
                 >
-                    <v-card variant="outlined">
+                    <v-card
+                        variant="outlined"
+                        data-testid="system-run-logs-card"
+                    >
                         <v-card-title class="text-subtitle-1 pa-3">
                             {{ t('system.workflow_run_logs.section_title') }}
                         </v-card-title>
@@ -177,6 +187,7 @@
                                 color="primary"
                                 variant="flat"
                                 :loading="savingRunLogs"
+                                data-testid="system-run-logs-save"
                                 @click="saveRunLogs"
                             >
                                 {{ t('system.workflow_run_logs.save') }}

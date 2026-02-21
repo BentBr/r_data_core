@@ -6,8 +6,46 @@ import vueParser from 'vue-eslint-parser'
 import typescriptParser from '@typescript-eslint/parser'
 import typescriptPlugin from '@typescript-eslint/eslint-plugin'
 
+// Shared rule constants
+const sharedTypescriptRules = {
+    ...typescriptPlugin.configs.recommended.rules,
+    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    '@typescript-eslint/explicit-function-return-type': 'off',
+    '@typescript-eslint/explicit-module-boundary-types': 'off',
+    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-inferrable-types': 'error',
+    '@typescript-eslint/no-misused-promises': 'error',
+    '@typescript-eslint/no-floating-promises': 'error',
+    '@typescript-eslint/prefer-nullish-coalescing': 'error',
+    '@typescript-eslint/prefer-optional-chain': 'error',
+    '@typescript-eslint/no-unnecessary-condition': 'error',
+}
+
+const sharedBaseRules = {
+    curly: ['error', 'all'],
+    eqeqeq: ['error', 'smart'],
+    quotes: ['error', 'single'],
+    semi: ['error', 'never'],
+    'no-unused-vars': 'off',
+    'no-undef': 'off',
+    'prefer-const': 'error',
+}
+
+const prettierRules = {
+    ...prettierConfig.rules,
+    'prettier/prettier': [
+        'error',
+        {
+            tabWidth: 4,
+            singleAttributePerLine: true,
+            vueIndentScriptAndStyle: true,
+            bracketSameLine: false,
+        },
+    ],
+}
+
 export default [
-    // For config files and src files (excluding test files)
+    // Source files (excluding test files)
     {
         files: ['src/**/*.{js,vue,ts}'],
         ignores: ['**/*.test.{js,ts}', '**/*.spec.{js,ts}'],
@@ -34,21 +72,13 @@ export default [
             '@typescript-eslint': typescriptPlugin,
         },
         rules: {
-            // ESLint recommended rules
             ...recommended.rules,
-
-            // TypeScript ESLint recommended rules
-            ...typescriptPlugin.configs.recommended.rules,
-
-            // Prettier plugin recommended rules
-            ...prettierConfig.rules,
-
-            // Vue.js plugin recommended rules
+            ...sharedTypescriptRules,
+            ...sharedBaseRules,
+            ...prettierRules,
             ...vue.configs['vue3-recommended'].rules,
-
-            // Custom rules
-            'vue/html-indent': 'off', // Let prettier handle indentation
-            indent: 'off', // Prettier handles indentation
+            'vue/html-indent': 'off',
+            indent: 'off',
             'no-alert': 0,
             'vue/html-self-closing': [
                 'error',
@@ -66,65 +96,78 @@ export default [
             'vue/require-prop-types': 'off',
             'vue/require-default-prop': 'off',
             'vue/multi-word-component-names': 'off',
-            curly: ['error', 'all'],
-            eqeqeq: ['error', 'smart'],
-            quotes: ['error', 'single'],
-            semi: ['error', 'never'],
-
-            // TypeScript-specific rules for best practices
-            '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-            '@typescript-eslint/explicit-function-return-type': 'off',
-            '@typescript-eslint/explicit-module-boundary-types': 'off',
-            '@typescript-eslint/no-explicit-any': 'warn',
-            '@typescript-eslint/no-inferrable-types': 'error',
-            '@typescript-eslint/no-misused-promises': 'error',
-            '@typescript-eslint/no-floating-promises': 'error',
-            '@typescript-eslint/prefer-nullish-coalescing': 'error',
-            '@typescript-eslint/prefer-optional-chain': 'error',
-            '@typescript-eslint/no-unnecessary-condition': 'error',
-
-            // Disable conflicting ESLint rules in favor of TypeScript equivalents
-            'no-unused-vars': 'off',
-            'no-undef': 'off', // TypeScript compiler handles this
-            'prefer-const': 'error', // Use the base ESLint rule instead
-            'prettier/prettier': [
-                'error',
-                {
-                    tabWidth: 4,
-                    singleAttributePerLine: true,
-                    vueIndentScriptAndStyle: true,
-                    bracketSameLine: false,
-                },
-            ],
         },
     },
-    // For test files - allow any types (common practice for test utilities)
+    // Unit test spec files (src/**/*.test.ts) — relaxed any, type-aware
     {
-        files: ['**/*.test.{js,ts}', '**/*.spec.{js,ts}'],
+        files: ['src/**/*.test.{js,ts}'],
         languageOptions: {
             parser: typescriptParser,
-            ecmaVersion: 'latest',
-            sourceType: 'module',
+            parserOptions: {
+                ecmaVersion: 'latest',
+                sourceType: 'module',
+                project: ['./tsconfig.json'],
+                tsconfigRootDir: import.meta.dirname,
+            },
         },
         plugins: {
             '@typescript-eslint': typescriptPlugin,
             prettier,
         },
         rules: {
-            ...prettierConfig.rules,
-            '@typescript-eslint/no-explicit-any': 'off', // Allow any in tests
-            'prettier/prettier': [
-                'error',
-                {
-                    tabWidth: 4,
-                    singleAttributePerLine: true,
-                    vueIndentScriptAndStyle: true,
-                    bracketSameLine: false,
-                },
-            ],
+            ...sharedTypescriptRules,
+            ...sharedBaseRules,
+            ...prettierRules,
+            '@typescript-eslint/no-explicit-any': 'off',
         },
     },
-    // For config files (without type-checking)
+    // E2E non-test files (helpers, page objects, fixtures, setup/teardown)
+    {
+        files: ['e2e/**/*.ts'],
+        ignores: ['e2e/**/*.test.ts'],
+        languageOptions: {
+            parser: typescriptParser,
+            parserOptions: {
+                ecmaVersion: 'latest',
+                sourceType: 'module',
+                project: ['./e2e/tsconfig.json'],
+                tsconfigRootDir: import.meta.dirname,
+            },
+        },
+        plugins: {
+            '@typescript-eslint': typescriptPlugin,
+            prettier,
+        },
+        rules: {
+            ...sharedTypescriptRules,
+            ...sharedBaseRules,
+            ...prettierRules,
+        },
+    },
+    // E2E test files — relaxed any
+    {
+        files: ['e2e/**/*.test.ts'],
+        languageOptions: {
+            parser: typescriptParser,
+            parserOptions: {
+                ecmaVersion: 'latest',
+                sourceType: 'module',
+                project: ['./e2e/tsconfig.json'],
+                tsconfigRootDir: import.meta.dirname,
+            },
+        },
+        plugins: {
+            '@typescript-eslint': typescriptPlugin,
+            prettier,
+        },
+        rules: {
+            ...sharedTypescriptRules,
+            ...sharedBaseRules,
+            ...prettierRules,
+            '@typescript-eslint/no-explicit-any': 'off',
+        },
+    },
+    // Config files (without type-checking)
     {
         files: ['*.config.{js,ts}', 'eslint.config.js'],
         languageOptions: {
@@ -137,17 +180,8 @@ export default [
             prettier,
         },
         rules: {
-            ...prettierConfig.rules,
+            ...prettierRules,
             '@typescript-eslint/no-explicit-any': 'warn',
-            'prettier/prettier': [
-                'error',
-                {
-                    tabWidth: 4,
-                    singleAttributePerLine: true,
-                    vueIndentScriptAndStyle: true,
-                    bracketSameLine: false,
-                },
-            ],
         },
     },
 ]

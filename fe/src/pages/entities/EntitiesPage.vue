@@ -20,6 +20,7 @@
                     v-if="canCreateEntity"
                     color="primary"
                     variant="flat"
+                    data-testid="entities-create-btn"
                     @click="showCreateDialog = true"
                 >
                     <template #prepend>
@@ -36,6 +37,7 @@
                 <v-col cols="4">
                     <EntityTree
                         ref="entityTreeRef"
+                        data-testid="entities-tree"
                         :root-path="'/'"
                         :loading="loading"
                         :expanded-items="expandedItems"
@@ -50,6 +52,7 @@
                 <!-- Details Panel -->
                 <v-col cols="8">
                     <EntityDetails
+                        data-testid="entities-details"
                         :entity="selectedEntity"
                         :entity-definition="selectedEntityDefinition"
                         @edit="editEntity"

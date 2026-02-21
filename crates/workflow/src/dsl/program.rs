@@ -57,7 +57,7 @@ impl DslProgram {
                 "DSL must contain at least one step".to_string(),
             ));
         }
-        let safe_field = Regex::new(r"^[A-Za-z_][A-Za-z0-9_\.]*$").map_err(|e| {
+        let safe_field = Regex::new(r"^[A-Za-z_][A-Za-z0-9_.]*$").map_err(|e| {
             r_data_core_core::error::Error::Config(format!(
                 "Failed to compile field validation regex: {e}"
             ))
@@ -221,9 +221,10 @@ impl DslProgram {
                 }
                 Transform::ResolveEntityPath(_)
                 | Transform::GetOrCreateEntity(_)
+                | Transform::Authenticate(_)
                 | Transform::None => {
-                    // ResolveEntityPath and GetOrCreateEntity require async database access
-                    // and are handled in the services layer during workflow execution.
+                    // ResolveEntityPath, GetOrCreateEntity, and Authenticate require async database
+                    // access and are handled in the services layer during workflow execution.
                     // They are validated here but execution happens in services.
                     // Transform::None is a no-op.
                 }
@@ -408,9 +409,10 @@ impl DslProgram {
                 }
                 Transform::ResolveEntityPath(_)
                 | Transform::GetOrCreateEntity(_)
+                | Transform::Authenticate(_)
                 | Transform::None => {
-                    // ResolveEntityPath and GetOrCreateEntity require async database access
-                    // and are handled in the services layer during workflow execution.
+                    // ResolveEntityPath, GetOrCreateEntity, and Authenticate require async database
+                    // access and are handled in the services layer during workflow execution.
                     // They are validated here but execution happens in services.
                     // Transform::None is a no-op.
                 }
@@ -576,6 +578,7 @@ impl DslProgram {
             // Async transforms are NOT executed here - caller must handle them
             Transform::ResolveEntityPath(_)
             | Transform::GetOrCreateEntity(_)
+            | Transform::Authenticate(_)
             | Transform::BuildPath(_)
             | Transform::None => {}
         }

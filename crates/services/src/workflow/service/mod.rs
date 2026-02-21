@@ -13,13 +13,22 @@ use uuid::Uuid;
 pub struct WorkflowService {
     pub(super) repo: Arc<dyn WorkflowRepositoryTrait>,
     pub(super) dynamic_entity_service: Option<Arc<DynamicEntityService>>,
+    /// JWT signing secret (base, before entity suffix) for authenticate transforms
+    pub jwt_secret: Option<String>,
+    /// Default JWT expiration in seconds (from `JWT_EXPIRATION` env)
+    pub jwt_expiration: u64,
 }
+
+/// Default JWT expiration: 24 hours
+const DEFAULT_JWT_EXPIRATION: u64 = 86_400;
 
 impl WorkflowService {
     pub fn new(repo: Arc<dyn WorkflowRepositoryTrait>) -> Self {
         Self {
             repo,
             dynamic_entity_service: None,
+            jwt_secret: None,
+            jwt_expiration: DEFAULT_JWT_EXPIRATION,
         }
     }
 
@@ -30,7 +39,17 @@ impl WorkflowService {
         Self {
             repo,
             dynamic_entity_service: Some(dynamic_entity_service),
+            jwt_secret: None,
+            jwt_expiration: DEFAULT_JWT_EXPIRATION,
         }
+    }
+
+    /// Set JWT configuration for authenticate transforms
+    #[must_use]
+    pub fn with_jwt_config(mut self, secret: Option<String>, expiration: u64) -> Self {
+        self.jwt_secret = secret;
+        self.jwt_expiration = expiration;
+        self
     }
 
     /// List all workflows

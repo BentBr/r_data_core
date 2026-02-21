@@ -64,7 +64,7 @@ describe('DslTransformEditor', () => {
 
             const emitted = wrapper.emitted('update:modelValue')
             expect(emitted).toBeTruthy()
-            if (emitted && emitted[0]) {
+            if (emitted?.[0]) {
                 const updated = emitted[0][0] as Transform
                 expect(updated.type).toBe('build_path')
                 if (updated.type === 'build_path') {
@@ -126,7 +126,7 @@ describe('DslTransformEditor', () => {
 
             const emitted = wrapper.emitted('update:modelValue')
             expect(emitted).toBeTruthy()
-            if (emitted && emitted[0]) {
+            if (emitted?.[0]) {
                 const updated = emitted[0][0] as Transform
                 expect(updated.type).toBe('resolve_entity_path')
                 if (updated.type === 'resolve_entity_path') {
@@ -180,8 +180,8 @@ describe('DslTransformEditor', () => {
 
             // Find and update entity_type field
             const inputs = wrapper.findAll('input[type="text"]')
-            const entityTypeInput = inputs.find(
-                input => input.attributes('label')?.includes('Entity Type') || false
+            const entityTypeInput = inputs.find(input =>
+                input.attributes('label')?.includes('Entity Type')
             )
 
             if (entityTypeInput) {
@@ -214,7 +214,7 @@ describe('DslTransformEditor', () => {
 
             const emitted = wrapper.emitted('update:modelValue')
             expect(emitted).toBeTruthy()
-            if (emitted && emitted[0]) {
+            if (emitted?.[0]) {
                 const updated = emitted[0][0] as Transform
                 expect(updated.type).toBe('build_path')
             }

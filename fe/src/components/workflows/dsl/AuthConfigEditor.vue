@@ -64,11 +64,63 @@
                 @update:model-value="updateField('field_name', $event)"
             />
         </template>
+        <template v-else-if="authType === 'entity_jwt'">
+            <div class="text-subtitle-2 mb-2">
+                {{ t('workflows.dsl.required_claims') }}
+            </div>
+            <div
+                v-for="(value, key) in requiredClaims"
+                :key="key"
+                class="d-flex align-center mb-2"
+            >
+                <v-text-field
+                    :model-value="key"
+                    :label="t('workflows.dsl.claim_path')"
+                    density="comfortable"
+                    class="mr-2"
+                    readonly
+                />
+                <v-text-field
+                    :model-value="String(value)"
+                    :label="t('workflows.dsl.claim_value')"
+                    density="comfortable"
+                    class="mr-2"
+                    @update:model-value="updateRequiredClaim(String(key), $event)"
+                />
+                <v-btn
+                    icon="$delete"
+                    size="small"
+                    variant="text"
+                    @click="removeRequiredClaim(String(key))"
+                />
+            </div>
+            <div class="d-flex align-center">
+                <v-text-field
+                    v-model="newClaimKey"
+                    :label="t('workflows.dsl.claim_path')"
+                    density="comfortable"
+                    class="mr-2"
+                />
+                <v-text-field
+                    v-model="newClaimValue"
+                    :label="t('workflows.dsl.claim_value')"
+                    density="comfortable"
+                    class="mr-2"
+                />
+                <v-btn
+                    icon="$plus"
+                    size="small"
+                    variant="text"
+                    :disabled="!newClaimKey"
+                    @click="addRequiredClaim"
+                />
+            </div>
+        </template>
     </div>
 </template>
 
 <script setup lang="ts">
-    import { computed } from 'vue'
+    import { computed, ref } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import type { AuthConfig } from './dsl-utils'
 
@@ -89,12 +141,51 @@
         { title: t('workflows.dsl.auth_api_key'), value: 'api_key' },
         { title: t('workflows.dsl.auth_basic'), value: 'basic_auth' },
         { title: t('workflows.dsl.auth_pre_shared_key'), value: 'pre_shared_key' },
+        { title: t('workflows.dsl.auth_entity_jwt'), value: 'entity_jwt' },
     ]
 
     const keyLocations = [
         { title: t('workflows.dsl.key_location_header'), value: 'header' },
         { title: t('workflows.dsl.key_location_body'), value: 'body' },
     ]
+
+    // Entity JWT required claims
+    const newClaimKey = ref('')
+    const newClaimValue = ref('')
+
+    const requiredClaims = computed(() => {
+        if (props.modelValue.type === 'entity_jwt') {
+            return (
+                (props.modelValue as { required_claims?: Record<string, unknown> })
+                    .required_claims ?? {}
+            )
+        }
+        return {}
+    })
+
+    function addRequiredClaim() {
+        if (!newClaimKey.value) {
+            return
+        }
+        const claims = { ...requiredClaims.value, [newClaimKey.value]: newClaimValue.value }
+        emit('update:modelValue', { type: 'entity_jwt', required_claims: claims } as AuthConfig)
+        newClaimKey.value = ''
+        newClaimValue.value = ''
+    }
+
+    function removeRequiredClaim(key: string) {
+        const claims = { ...requiredClaims.value }
+        delete claims[key]
+        emit('update:modelValue', {
+            type: 'entity_jwt',
+            required_claims: Object.keys(claims).length > 0 ? claims : undefined,
+        } as AuthConfig)
+    }
+
+    function updateRequiredClaim(key: string, value: string) {
+        const claims = { ...requiredClaims.value, [key]: value }
+        emit('update:modelValue', { type: 'entity_jwt', required_claims: claims } as AuthConfig)
+    }
 
     function onAuthTypeChange(newType: string) {
         let newAuth: AuthConfig
@@ -123,6 +214,11 @@
                     location: 'header',
                     field_name: '',
                 }
+                break
+            case 'entity_jwt':
+                newAuth = {
+                    type: 'entity_jwt',
+                } as AuthConfig
                 break
             default:
                 newAuth = { type: 'none' }

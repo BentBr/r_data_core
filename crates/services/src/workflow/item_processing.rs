@@ -2,12 +2,20 @@
 
 use crate::dynamic_entity::DynamicEntityService;
 use crate::workflow::output_handling::{handle_entity_output, handle_format_push_output};
-use crate::workflow::transform_execution::execute_async_transform;
+use crate::workflow::transform_execution::{execute_async_transform, JwtConfig};
 use r_data_core_persistence::WorkflowRepositoryTrait;
 use r_data_core_workflow::dsl::{DslProgram, ToDef, Transform};
 use serde_json::Value as JsonValue;
 use std::sync::Arc;
 use uuid::Uuid;
+
+/// Shared context for workflow item processing
+pub struct WorkflowItemContext<'a> {
+    pub dynamic_entity_service: Option<&'a DynamicEntityService>,
+    pub repo: &'a Arc<dyn WorkflowRepositoryTrait>,
+    pub jwt: &'a JwtConfig<'a>,
+    pub versioning_disabled: bool,
+}
 
 /// Process a single item through the workflow DSL
 ///
@@ -21,34 +29,31 @@ pub async fn process_single_item(
     payload: &JsonValue,
     item_uuid: Uuid,
     run_uuid: Uuid,
-    versioning_disabled: bool,
-    dynamic_entity_service: Option<&DynamicEntityService>,
-    repo: &Arc<dyn WorkflowRepositoryTrait>,
+    ctx: &WorkflowItemContext<'_>,
 ) -> r_data_core_core::error::Result<bool> {
-    match execute_steps_with_async_transforms(
-        program,
-        payload,
-        item_uuid,
-        run_uuid,
-        dynamic_entity_service,
-        repo,
-    )
-    .await
+    match execute_steps_with_async_transforms(program, payload, item_uuid, run_uuid, ctx, false)
+        .await
     {
-        Ok(outputs) => {
-            process_outputs(
-                outputs,
-                payload,
-                item_uuid,
-                run_uuid,
-                versioning_disabled,
-                dynamic_entity_service,
-                repo,
-            )
-            .await
-        }
-        Err(e) => handle_execution_error(e, item_uuid, run_uuid, repo).await,
+        Ok(outputs) => process_outputs(outputs, payload, item_uuid, run_uuid, ctx).await,
+        Err(e) => handle_execution_error(e, item_uuid, run_uuid, ctx.repo).await,
     }
+}
+
+/// Execute the workflow pipeline inline (synchronously) and return outputs.
+///
+/// Unlike `process_single_item`, this does **not** write to the database or mark items.
+/// It runs with `fail_fast: true` so auth errors propagate immediately.
+///
+/// # Errors
+/// Returns an error if any pipeline step fails
+pub async fn execute_pipeline_inline(
+    program: &DslProgram,
+    payload: &JsonValue,
+    run_uuid: Uuid,
+    ctx: &WorkflowItemContext<'_>,
+) -> r_data_core_core::error::Result<Vec<(ToDef, JsonValue)>> {
+    let item_uuid = Uuid::now_v7();
+    execute_steps_with_async_transforms(program, payload, item_uuid, run_uuid, ctx, true).await
 }
 
 /// Execute workflow steps one at a time, running async transforms between steps.
@@ -56,13 +61,16 @@ pub async fn process_single_item(
 /// This ensures that async transforms (like `ResolveEntityPath`) complete and inject
 /// their results into the data context before subsequent steps that depend on them
 /// (like `BuildPath`) execute.
+///
+/// When `fail_fast` is true, async transform errors propagate immediately instead of
+/// being swallowed by zero-impact resilience. Used for inline auth workflows.
 async fn execute_steps_with_async_transforms(
     program: &DslProgram,
     payload: &JsonValue,
     item_uuid: Uuid,
     run_uuid: Uuid,
-    dynamic_entity_service: Option<&DynamicEntityService>,
-    repo: &Arc<dyn WorkflowRepositoryTrait>,
+    ctx: &WorkflowItemContext<'_>,
+    fail_fast: bool,
 ) -> r_data_core_core::error::Result<Vec<(ToDef, JsonValue)>> {
     let mut results: Vec<(ToDef, JsonValue)> = Vec::new();
     let mut previous_step_output: Option<JsonValue> = None;
@@ -72,21 +80,30 @@ async fn execute_steps_with_async_transforms(
         let (mut normalized, transform) =
             program.prepare_step(step_idx, payload, previous_step_output.as_ref())?;
 
-        // Step 2: Execute async transforms if needed (ResolveEntityPath, GetOrCreateEntity)
+        // Step 2: Execute async transforms if needed
         if matches!(
             transform,
-            Transform::ResolveEntityPath(_) | Transform::GetOrCreateEntity(_)
+            Transform::ResolveEntityPath(_)
+                | Transform::GetOrCreateEntity(_)
+                | Transform::Authenticate(_)
         ) {
-            if let Some(de_service) = dynamic_entity_service {
-                if let Err(e) =
-                    execute_async_transform(transform, &mut normalized, de_service, run_uuid).await
+            if let Some(de_service) = ctx.dynamic_entity_service {
+                if let Err(e) = execute_async_transform(
+                    transform,
+                    &mut normalized,
+                    de_service,
+                    run_uuid,
+                    ctx.jwt,
+                )
+                .await
                 {
                     // Log error - use "error" level so it's visible in logs UI
                     let error_msg = e.to_string();
                     log::error!(
                         "[workflow] Async transform failed for item {item_uuid} at step {step_idx}: {error_msg}"
                     );
-                    if let Err(log_err) = repo
+                    if let Err(log_err) = ctx
+                        .repo
                         .insert_run_log(
                             run_uuid,
                             "error",
@@ -101,6 +118,9 @@ async fn execute_steps_with_async_transforms(
                         .await
                     {
                         log::error!("[workflow] Failed to insert run log: {log_err}");
+                    }
+                    if fail_fast {
+                        return Err(e);
                     }
                     // Continue without the async transform results (zero-impact resilience)
                 }
@@ -130,30 +150,28 @@ async fn process_outputs(
     payload: &JsonValue,
     item_uuid: Uuid,
     run_uuid: Uuid,
-    versioning_disabled: bool,
-    dynamic_entity_service: Option<&DynamicEntityService>,
-    repo: &Arc<dyn WorkflowRepositoryTrait>,
+    ctx: &WorkflowItemContext<'_>,
 ) -> r_data_core_core::error::Result<bool> {
     let mut entity_ops_ok = true;
     for (to_def, produced) in processed_outputs {
         // Handle Format outputs with Push mode
         let push_ok =
-            handle_format_push_output(&to_def, &produced, item_uuid, run_uuid, repo).await?;
+            handle_format_push_output(&to_def, &produced, item_uuid, run_uuid, ctx.repo).await?;
         if !push_ok {
             entity_ops_ok = false;
             break;
         }
 
         // Handle Entity outputs
-        if let Some(de_service) = dynamic_entity_service {
+        if let Some(de_service) = ctx.dynamic_entity_service {
             let entity_params = crate::workflow::output_handling::EntityOutputParams {
                 produced: produced.clone(),
                 payload: payload.clone(),
                 item_uuid,
                 run_uuid,
-                versioning_disabled,
+                versioning_disabled: ctx.versioning_disabled,
                 dynamic_entity_service: de_service,
-                repo,
+                repo: ctx.repo,
             };
             let entity_ok = handle_entity_output(&to_def, entity_params).await?;
             if !entity_ok {
@@ -164,11 +182,12 @@ async fn process_outputs(
     }
 
     if entity_ops_ok {
-        mark_item_processed(item_uuid, run_uuid, repo).await
+        mark_item_processed(item_uuid, run_uuid, ctx.repo).await
     } else {
         // Entity op failed, mark item failed
         log::error!("[workflow] Item {item_uuid} failed: entity operation failed");
-        if let Err(e) = repo
+        if let Err(e) = ctx
+            .repo
             .set_raw_item_status(item_uuid, "failed", Some("entity operation failed"))
             .await
         {

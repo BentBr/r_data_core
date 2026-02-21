@@ -66,7 +66,7 @@ describe('AuthConfigEditor', () => {
         // Find username field (first non-password field, or by label)
         const usernameField = textFields.find(tf => {
             const label = tf.props('label') as string
-            return label?.includes('username')
+            return label.includes('username')
         })
         const passwordField = textFields.find(tf => tf.props('type') === 'password')
 
@@ -300,6 +300,41 @@ describe('AuthConfigEditor', () => {
             expect(updated.username).toBe('')
             expect(updated.password).toBe('')
         }
+    })
+
+    it('renders entity JWT auth type correctly', () => {
+        const authConfig: AuthConfig = {
+            type: 'entity_jwt',
+            required_claims: { 'extra.role': 'member' },
+        }
+        const wrapper = mount(AuthConfigEditor, {
+            props: {
+                modelValue: authConfig,
+            },
+        })
+
+        // Should show required claims key-value pairs
+        const textFields = wrapper.findAllComponents({ name: 'VTextField' })
+        // Should have at least the claim fields + new claim inputs
+        expect(textFields.length).toBeGreaterThanOrEqual(2)
+    })
+
+    it('initializes with correct defaults when switching to entity_jwt', async () => {
+        const authConfig: AuthConfig = { type: 'none' }
+        const wrapper = mount(AuthConfigEditor, {
+            props: {
+                modelValue: authConfig,
+            },
+        })
+
+        const select = wrapper.findComponent({ name: 'VSelect' })
+        await select.vm.$emit('update:modelValue', 'entity_jwt')
+        await nextTick()
+
+        const emitted = wrapper.emitted('update:modelValue')
+        expect(emitted?.length).toBeGreaterThan(0)
+        const updated = emitted![emitted!.length - 1][0] as AuthConfig
+        expect(updated.type).toBe('entity_jwt')
     })
 
     it('initializes with correct defaults when switching to pre_shared_key', async () => {

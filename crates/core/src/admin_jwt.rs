@@ -3,22 +3,29 @@
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
-
-use r_data_core_core::admin_user::AdminUser;
-use r_data_core_core::config::ApiConfig;
-use r_data_core_core::error::Result;
-use r_data_core_core::permissions::role::{ResourceNamespace, Role};
 use utoipa::ToSchema;
 
-// Token expiry constants
-pub const ACCESS_TOKEN_EXPIRY_SECONDS: u64 = 1_800; // 30 minutes (short-lived access token)
-pub const REFRESH_TOKEN_EXPIRY_SECONDS: u64 = 2_592_000; // 30 days
+use crate::admin_user::AdminUser;
+use crate::config::ApiConfig;
+use crate::error::Result;
+use crate::permissions::role::{ResourceNamespace, Role};
+
+/// Short-lived access token expiry (30 minutes)
+pub const ACCESS_TOKEN_EXPIRY_SECONDS: u64 = 1_800;
+/// Refresh token expiry (30 days)
+pub const REFRESH_TOKEN_EXPIRY_SECONDS: u64 = 2_592_000;
+
+/// Issuer claim for admin JWTs
+pub const ADMIN_JWT_ISSUER: &str = "r_data_core_admin";
 
 /// Claims for authentication
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AuthUserClaims {
     /// User UUID as string
     pub sub: String,
+    /// Issuer
+    #[serde(default)]
+    pub iss: String,
     /// Username
     pub name: String,
     /// Email
@@ -78,10 +85,10 @@ pub fn generate_jwt(
             i64::try_from(expiration_seconds).unwrap_or(i64::MAX),
         ))
         .ok_or_else(|| {
-            r_data_core_core::error::Error::Auth("Could not create token expiration".to_string())
+            crate::error::Error::Auth("Could not create token expiration".to_string())
         })?;
 
-    // Check super_admin flag first, then role super_admin flags
+    // Check the super_admin flag first, then role super_admin flags
     let user_is_super_admin = user.super_admin;
     let role_is_super_admin = roles.iter().any(|role| role.super_admin);
     let is_super_admin = user_is_super_admin || role_is_super_admin;
@@ -94,13 +101,14 @@ pub fn generate_jwt(
         // Merge permissions from all roles
         merge_permissions_from_roles(roles)
     } else {
-        // No roles means no permissions
+        // No roles mean no permissions
         Vec::new()
     };
 
     // Create claims
     let claims = AuthUserClaims {
         sub: user_uuid.to_string(),
+        iss: ADMIN_JWT_ISSUER.to_string(),
         name: user.username.clone(),
         email: user.email.clone(),
         is_super_admin,
@@ -115,7 +123,7 @@ pub fn generate_jwt(
         &claims,
         &EncodingKey::from_secret(config.jwt_secret.as_bytes()),
     )
-    .map_err(|e| r_data_core_core::error::Error::Auth(format!("Token generation error: {e}")))?;
+    .map_err(|e| crate::error::Error::Auth(format!("Token generation error: {e}")))?;
 
     Ok(token)
 }
@@ -124,12 +132,6 @@ pub fn generate_jwt(
 ///
 /// This combines all permissions from all roles,
 /// converting them to permission strings and deduplicating.
-///
-/// # Arguments
-/// * `roles` - Vector of roles
-///
-/// # Returns
-/// Vector of merged permission strings (deduplicated)
 #[must_use]
 fn merge_permissions_from_roles(roles: &[Role]) -> Vec<String> {
     use std::collections::HashSet;
@@ -155,9 +157,6 @@ fn merge_permissions_from_roles(roles: &[Role]) -> Vec<String> {
     merged_permissions
 }
 
-/// Generate all permissions for `SuperAdmin`
-///
-/// # Returns
 /// Generate permission strings for workflows namespace (includes execute)
 #[must_use]
 fn generate_workflow_permissions() -> Vec<String> {
@@ -217,24 +216,31 @@ pub fn verify_jwt(token: &str, secret: &str) -> Result<AuthUserClaims> {
         &DecodingKey::from_secret(secret.as_bytes()),
         &validation,
     ) {
-        Ok(token_data) => Ok(token_data.claims),
+        Ok(token_data) => {
+            // Reject tokens with non-admin issuer (defense-in-depth against entity JWT cross-use)
+            let iss = &token_data.claims.iss;
+            if !iss.is_empty() && iss != ADMIN_JWT_ISSUER {
+                log::error!("JWT has unexpected issuer: {iss}");
+                return Err(crate::error::Error::Auth(
+                    "Token has unexpected issuer".to_string(),
+                ));
+            }
+            Ok(token_data.claims)
+        }
         Err(e) => {
             log::error!("JWT validation error: {e}");
-            Err(r_data_core_core::error::Error::Auth(format!(
+            Err(crate::error::Error::Auth(format!(
                 "Token validation error: {e}"
             )))
         }
     }
 }
 
-// Add AdminOnly extractor if needed
-pub struct AdminOnly(pub AuthUserClaims);
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use r_data_core_core::admin_user::UserStatus;
-    use r_data_core_core::domain::AbstractRDataEntity;
+    use crate::admin_user::UserStatus;
+    use crate::domain::AbstractRDataEntity;
     use std::collections::HashMap;
     use uuid::Uuid;
 
@@ -321,9 +327,7 @@ mod tests {
         assert_eq!(claims.sub, user.uuid.to_string());
         assert_eq!(claims.name, user.username);
         assert_eq!(claims.email, user.email);
-        // User has super_admin flag set to true, so is_super_admin should be true
         assert!(claims.is_super_admin);
-        // SuperAdmin should have all permissions
         assert!(!claims.permissions.is_empty());
     }
 
@@ -353,12 +357,12 @@ mod tests {
         let user = create_test_user();
         let config = create_test_config();
 
-        // Create a token that's already expired (expired 1 hour ago)
         let now = OffsetDateTime::now_utc();
         let expired_time = now - Duration::hours(1);
 
         let claims = AuthUserClaims {
             sub: user.uuid.to_string(),
+            iss: ADMIN_JWT_ISSUER.to_string(),
             name: user.username.clone(),
             email: user.email,
             is_super_admin: false,
@@ -383,6 +387,7 @@ mod tests {
         let now_ts = OffsetDateTime::now_utc().unix_timestamp();
         let claims = AuthUserClaims {
             sub: "test-uuid".to_string(),
+            iss: ADMIN_JWT_ISSUER.to_string(),
             name: "test_user".to_string(),
             email: "test@example.com".to_string(),
             is_super_admin: false,
@@ -407,9 +412,34 @@ mod tests {
         let user = create_test_user();
         let config = create_test_config();
 
-        // This should fail because we can't add 0 seconds to now
         let result = generate_jwt(&user, &config, 0, &[]);
-        assert!(result.is_ok()); // Actually this might work, let's see
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_entity_jwt_rejected_by_admin_verify() {
+        let config = create_test_config();
+        let token = crate::entity_jwt::generate_entity_jwt(
+            "entity-uuid",
+            "user",
+            std::collections::HashMap::new(),
+            &config.jwt_secret,
+            3600,
+        )
+        .unwrap();
+
+        let result = verify_jwt(&token, &config.jwt_secret);
+        assert!(result.is_err(), "Entity JWT should not verify as admin JWT");
+    }
+
+    #[test]
+    fn test_admin_jwt_has_correct_issuer() {
+        let user = create_test_user();
+        let config = create_test_config();
+
+        let token = generate_jwt(&user, &config, 3600, &[]).unwrap();
+        let claims = verify_jwt(&token, &config.jwt_secret).unwrap();
+        assert_eq!(claims.iss, ADMIN_JWT_ISSUER);
     }
 
     #[test]
@@ -417,7 +447,6 @@ mod tests {
         let user = create_test_user();
         let config = create_test_config();
 
-        // Test with a very long expiry (100 years)
         let result = generate_jwt(&user, &config, 3_153_600_000, &[]);
         assert!(result.is_ok());
 

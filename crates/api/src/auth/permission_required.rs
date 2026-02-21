@@ -20,7 +20,7 @@ use crate::response::ApiResponse;
 /// ```
 /// use r_data_core_api::auth::permission_required::PermissionRequired;
 /// use r_data_core_api::auth::auth_enum::RequiredAuth;
-/// use r_data_core_api::jwt::AuthUserClaims;
+/// use r_data_core_core::admin_jwt::AuthUserClaims;
 /// use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 /// use uuid::Uuid;
 ///
@@ -28,6 +28,7 @@ use crate::response::ApiResponse;
 /// let user_uuid = Uuid::now_v7();
 /// let auth = RequiredAuth(AuthUserClaims {
 ///     sub: user_uuid.to_string(),
+///     iss: String::new(),
 ///     name: "test_user".to_string(),
 ///     email: "test@example.com".to_string(),
 ///     is_super_admin: false,
@@ -91,7 +92,7 @@ impl FromRequest for PermissionRequired {
 /// use r_data_core_api::permission_required;
 /// use r_data_core_api::auth::permission_required::PermissionRequired;
 /// use r_data_core_api::auth::auth_enum::RequiredAuth;
-/// use r_data_core_api::jwt::AuthUserClaims;
+/// use r_data_core_core::admin_jwt::AuthUserClaims;
 /// use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 ///
 /// // The macro expands to the PermissionRequired type
@@ -110,6 +111,7 @@ impl FromRequest for PermissionRequired {
 /// let _type_check: WorkflowsRead = PermissionRequired {
 ///     auth: RequiredAuth(AuthUserClaims {
 ///         sub: "".to_string(),
+///         iss: String::new(),
 ///         name: "".to_string(),
 ///         email: "".to_string(),
 ///         is_super_admin: false,

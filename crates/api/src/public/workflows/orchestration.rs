@@ -260,6 +260,32 @@ pub(super) async fn handle_trigger_consumer_workflow(
     }
 }
 
+/// Handle an inline auth workflow: process the payload synchronously and return the result.
+///
+/// Maps domain errors to HTTP status codes:
+/// - `Error::Auth` → 401 Unauthorized
+/// - `Error::Validation` → 400 Bad Request
+/// - other → 500 Internal Server Error
+pub(super) async fn handle_inline_auth_workflow(
+    uuid: Uuid,
+    payload: &JsonValue,
+    state: &web::Data<ApiStateWrapper>,
+) -> HttpResponse {
+    match state
+        .workflow_service()
+        .process_payload_inline(uuid, payload)
+        .await
+    {
+        Ok(output) => HttpResponse::Ok().json(output),
+        Err(Error::Auth(msg)) => HttpResponse::Unauthorized().json(json!({"error": msg})),
+        Err(Error::Validation(msg)) => HttpResponse::BadRequest().json(json!({"error": msg})),
+        Err(e) => {
+            log::error!("Inline auth workflow {uuid} failed: {e}");
+            HttpResponse::InternalServerError().json(json!({"error": "Internal server error"}))
+        }
+    }
+}
+
 async fn serialize_api_output(
     format: FormatConfig,
     all_data: &[JsonValue],

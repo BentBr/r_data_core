@@ -66,7 +66,7 @@ describe('DslFromEditor', () => {
         // Filter field should also be a dropdown
         const filterFieldSelect = selects.find(s => {
             const label = s.props('label') as string
-            return label?.includes('filter_field')
+            return label.includes('filter_field')
         })
         expect(filterFieldSelect).toBeTruthy()
     })
@@ -90,7 +90,7 @@ describe('DslFromEditor', () => {
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const entityDefSelect = selects.find(s => {
             const label = s.props('label') as string
-            return label?.includes('entity_definition')
+            return label.includes('entity_definition')
         })
 
         expect(entityDefSelect).toBeTruthy()
@@ -116,7 +116,7 @@ describe('DslFromEditor', () => {
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const filterFieldSelect = selects.find(s => {
             const label = s.props('label') as string
-            return label?.includes('filter_field')
+            return label.includes('filter_field')
         })
 
         expect(filterFieldSelect).toBeTruthy()
@@ -149,19 +149,19 @@ describe('DslFromEditor', () => {
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const operatorSelect = selects.find(s => {
             const label = s.props('label') as string
-            return label?.includes('filter_operator')
+            return label.includes('filter_operator')
         })
 
         expect(operatorSelect).toBeTruthy()
         const items = operatorSelect?.props('items') as Array<{ title: string; value: string }>
         expect(items).toHaveLength(7)
-        expect(items?.map(i => i.value)).toContain('=')
-        expect(items?.map(i => i.value)).toContain('>')
-        expect(items?.map(i => i.value)).toContain('<')
-        expect(items?.map(i => i.value)).toContain('<=')
-        expect(items?.map(i => i.value)).toContain('>=')
-        expect(items?.map(i => i.value)).toContain('IN')
-        expect(items?.map(i => i.value)).toContain('NOT IN')
+        expect(items.map(i => i.value)).toContain('=')
+        expect(items.map(i => i.value)).toContain('>')
+        expect(items.map(i => i.value)).toContain('<')
+        expect(items.map(i => i.value)).toContain('<=')
+        expect(items.map(i => i.value)).toContain('>=')
+        expect(items.map(i => i.value)).toContain('IN')
+        expect(items.map(i => i.value)).toContain('NOT IN')
     })
 
     it('selecting filter operator updates filter structure', async () => {
@@ -183,7 +183,7 @@ describe('DslFromEditor', () => {
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         const operatorSelect = selects.find(s => {
             const label = s.props('label') as string
-            return label?.includes('filter_operator')
+            return label.includes('filter_operator')
         })
 
         if (operatorSelect) {
@@ -219,7 +219,7 @@ describe('DslFromEditor', () => {
         // Find the filter field select (should be a dropdown now)
         const filterFieldSelect = selects.find(s => {
             const label = s.props('label') as string
-            return label?.includes('filter_field')
+            return label.includes('filter_field')
         })
 
         if (filterFieldSelect) {
@@ -573,9 +573,7 @@ describe('DslFromEditor', () => {
         // AuthConfigEditor might be inside collapsed expansion panel, so check if it exists in the component tree
         // We can check if the expansion panel exists with the auth title
         const expansionPanel = expansionPanels[0]
-        if (expansionPanel) {
-            expect(expansionPanel.exists()).toBe(true)
-        }
+        expect(expansionPanel.exists()).toBe(true)
     })
 
     it('uses filter_operator translation key', () => {

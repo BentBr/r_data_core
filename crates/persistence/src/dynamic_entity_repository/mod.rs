@@ -1,8 +1,9 @@
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::dynamic_entity_repository_trait::{DynamicEntityRepositoryTrait, FilterEntitiesParams};
+use crate::dynamic_entity_utils;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::error::Result;
 use r_data_core_core::DynamicEntity;
@@ -11,6 +12,10 @@ mod create;
 mod filter;
 mod query;
 mod update;
+
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::field::types::FieldType;
+use serde_json::Value as JsonValue;
 
 use create::create_entity;
 use filter::filter_entities_impl;
@@ -132,16 +137,79 @@ impl DynamicEntityRepository {
     ) -> Result<Option<DynamicEntity>> {
         find_one_by_filters_impl(self, entity_type, filters).await
     }
+
+    /// Read a single raw field value from the entity table, bypassing mapper redaction.
+    /// Used internally for password verification in the authenticate transform.
+    ///
+    /// # Errors
+    /// Returns an error if the query fails or the entity type/field is invalid.
+    pub async fn get_raw_field_value(
+        &self,
+        entity_type: &str,
+        uuid: &Uuid,
+        field_name: &str,
+    ) -> Result<Option<String>> {
+        let table_name = dynamic_entity_utils::get_table_name(entity_type);
+        let field_lower = field_name.to_lowercase();
+
+        // Validate the field name is a valid column
+        let valid_columns =
+            dynamic_entity_utils::fetch_valid_columns(&self.pool, &table_name).await?;
+        if !valid_columns.contains(&field_lower) {
+            return Err(r_data_core_core::error::Error::FieldNotFound(
+                field_name.to_string(),
+            ));
+        }
+
+        let query = format!("SELECT {field_lower} FROM {table_name} WHERE uuid = $1");
+
+        let row = sqlx::query(&query)
+            .bind(uuid)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(r_data_core_core::error::Error::Database)?;
+
+        Ok(row.and_then(|r| {
+            r.try_get::<Option<String>, _>(field_lower.as_str())
+                .ok()
+                .flatten()
+        }))
+    }
+}
+
+/// If the field is a Password type, hash the plaintext value before storing.
+pub(crate) fn hash_if_password_field(
+    field_name: &str,
+    value: &JsonValue,
+    entity_def: &EntityDefinition,
+) -> r_data_core_core::error::Result<JsonValue> {
+    let is_password = entity_def
+        .fields
+        .iter()
+        .any(|f| f.name.eq_ignore_ascii_case(field_name) && f.field_type == FieldType::Password);
+
+    if is_password {
+        if let Some(plaintext) = value.as_str() {
+            if !plaintext.is_empty() {
+                let hash = r_data_core_core::crypto::hash_password_argon2(plaintext)?;
+                return Ok(JsonValue::String(hash));
+            }
+        }
+    }
+
+    Ok(value.clone())
 }
 
 #[async_trait::async_trait]
 impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
-    async fn create(&self, entity: &DynamicEntity) -> Result<Uuid> {
-        self.create(entity).await
-    }
-
-    async fn update(&self, entity: &DynamicEntity) -> Result<()> {
-        self.update(entity).await
+    async fn get_all_by_type(
+        &self,
+        entity_type: &str,
+        limit: i64,
+        offset: i64,
+        exclusive_fields: Option<Vec<String>>,
+    ) -> Result<Vec<DynamicEntity>> {
+        get_all_by_type_impl(self, entity_type, limit, offset, exclusive_fields).await
     }
 
     async fn get_by_type(
@@ -153,14 +221,12 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
         get_by_type_impl(self, entity_type, uuid, exclusive_fields).await
     }
 
-    async fn get_all_by_type(
-        &self,
-        entity_type: &str,
-        limit: i64,
-        offset: i64,
-        exclusive_fields: Option<Vec<String>>,
-    ) -> Result<Vec<DynamicEntity>> {
-        get_all_by_type_impl(self, entity_type, limit, offset, exclusive_fields).await
+    async fn create(&self, entity: &DynamicEntity) -> Result<Uuid> {
+        self.create(entity).await
+    }
+
+    async fn update(&self, entity: &DynamicEntity) -> Result<()> {
+        self.update(entity).await
     }
 
     async fn delete_by_type(&self, entity_type: &str, uuid: &Uuid) -> Result<()> {
@@ -185,5 +251,23 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepository {
 
     async fn get_by_uuid_any_type(&self, uuid: &Uuid) -> Result<Option<DynamicEntity>> {
         get_by_uuid_any_type_impl(self, uuid).await
+    }
+
+    async fn find_one_by_filters(
+        &self,
+        entity_type: &str,
+        filters: &std::collections::HashMap<String, serde_json::Value>,
+    ) -> Result<Option<DynamicEntity>> {
+        find_one_by_filters_impl(self, entity_type, filters).await
+    }
+
+    async fn get_raw_field_value(
+        &self,
+        entity_type: &str,
+        uuid: &Uuid,
+        field_name: &str,
+    ) -> Result<Option<String>> {
+        self.get_raw_field_value(entity_type, uuid, field_name)
+            .await
     }
 }

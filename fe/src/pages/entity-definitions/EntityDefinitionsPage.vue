@@ -6,6 +6,7 @@
                     v-if="canCreateEntityDefinition"
                     color="primary"
                     variant="flat"
+                    data-testid="entity-def-create-btn"
                     @click="showCreateDialog = true"
                 >
                     <template #prepend>
@@ -21,6 +22,7 @@
                 <!-- Tree View -->
                 <v-col cols="4">
                     <EntityDefinitionTree
+                        data-testid="entity-def-tree"
                         :entity-definitions="entityDefinitions"
                         :loading="loading"
                         :expanded-groups="expandedGroups"
@@ -33,6 +35,7 @@
                 <!-- Details Panel -->
                 <v-col cols="8">
                     <EntityDefinitionDetails
+                        data-testid="entity-def-details"
                         :definition="selectedDefinition"
                         :has-unsaved-changes="hasUnsavedChanges"
                         :saving-changes="savingChanges"

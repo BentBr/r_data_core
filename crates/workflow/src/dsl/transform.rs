@@ -1,5 +1,6 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -8,14 +9,16 @@ pub enum Transform {
     Arithmetic(ArithmeticTransform),
     /// No-op transform (optional step)
     None,
-    /// Concatenate two string operands (optionally with a separator) into target
+    /// Concatenate two string operands (optionally with a separator) into the target
     Concat(ConcatTransform),
     /// Resolve entity path by filters with optional value transformation
     ResolveEntityPath(ResolveEntityPathTransform),
-    /// Build path from input fields with placeholders
+    /// Build the path from input fields with placeholders
     BuildPath(BuildPathTransform),
-    /// Get or create entity by path
+    /// Get or create the entity by path
     GetOrCreateEntity(GetOrCreateEntityTransform),
+    /// Authenticate credentials against entity data and issue an entity JWT
+    Authenticate(AuthenticateTransform),
 }
 
 /// Arithmetic transform allows setting a target field to the result of left (op) right.
@@ -132,6 +135,29 @@ pub struct GetOrCreateEntityTransform {
     pub path_separator: Option<String>,
 }
 
+/// Authenticate transform — verifies credentials against entity data and issues a JWT.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct AuthenticateTransform {
+    /// Entity type holding user records (e.g. "user")
+    pub entity_type: String,
+    /// Entity field to match the submitted identifier against (e.g. "email")
+    pub identifier_field: String,
+    /// Entity field containing the password hash
+    pub password_field: String,
+    /// Normalized input field with the submitted identifier
+    pub input_identifier: String,
+    /// Normalized input field with the submitted password
+    pub input_password: String,
+    /// Output field name for the issued JWT token
+    pub target_token: String,
+    /// Extra JWT claims: claim name → entity field name
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub extra_claims: HashMap<String, String>,
+    /// Override the default token expiry (seconds). Falls back to `JWT_EXPIRATION` env.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token_expiry_seconds: Option<u64>,
+}
+
 pub(crate) fn validate_transform(
     idx: usize,
     t: &Transform,
@@ -146,6 +172,9 @@ pub(crate) fn validate_transform(
         Transform::BuildPath(bp) => validate_build_path_transform(idx, bp, safe_field)?,
         Transform::GetOrCreateEntity(goc) => {
             validate_get_or_create_entity_transform(idx, goc, safe_field)?;
+        }
+        Transform::Authenticate(auth) => {
+            validate_authenticate_transform(idx, auth, safe_field)?;
         }
         Transform::None => {}
     }
@@ -291,6 +320,49 @@ fn validate_get_or_create_entity_transform(
                     )));
                 }
             }
+        }
+    }
+    Ok(())
+}
+
+fn validate_authenticate_transform(
+    idx: usize,
+    auth: &AuthenticateTransform,
+    safe_field: &Regex,
+) -> r_data_core_core::error::Result<()> {
+    if auth.entity_type.trim().is_empty() {
+        return Err(r_data_core_core::error::Error::Validation(format!(
+            "DSL step {idx}: transform.authenticate.entity_type must not be empty"
+        )));
+    }
+    if !safe_field.is_match(&auth.entity_type) {
+        return Err(r_data_core_core::error::Error::Validation(format!(
+            "DSL step {idx}: transform.authenticate.entity_type must be a safe identifier"
+        )));
+    }
+    for (label, value) in [
+        ("identifier_field", &auth.identifier_field),
+        ("password_field", &auth.password_field),
+        ("input_identifier", &auth.input_identifier),
+        ("input_password", &auth.input_password),
+        ("target_token", &auth.target_token),
+    ] {
+        if !safe_field.is_match(value) {
+            return Err(r_data_core_core::error::Error::Validation(format!(
+                "DSL step {idx}: transform.authenticate.{label} must be a safe identifier"
+            )));
+        }
+    }
+    for (claim_name, entity_field) in &auth.extra_claims {
+        if claim_name.trim().is_empty() {
+            return Err(r_data_core_core::error::Error::Validation(format!(
+                "DSL step {idx}: transform.authenticate.extra_claims key must not be empty"
+            )));
+        }
+        if !safe_field.is_match(entity_field) {
+            return Err(r_data_core_core::error::Error::Validation(format!(
+                "DSL step {idx}: transform.authenticate.extra_claims.{claim_name} field must be a safe identifier"
+            )));
         }
     }
     Ok(())

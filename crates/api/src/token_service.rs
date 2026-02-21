@@ -7,7 +7,7 @@ use r_data_core_core::permissions::role::Role;
 use r_data_core_core::refresh_token::RefreshToken;
 use time::{Duration, OffsetDateTime};
 
-use crate::jwt::{
+use r_data_core_core::admin_jwt::{
     generate_access_token, ACCESS_TOKEN_EXPIRY_SECONDS, REFRESH_TOKEN_EXPIRY_SECONDS,
 };
 

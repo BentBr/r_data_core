@@ -8,7 +8,7 @@ export const FieldConstraintsSchema = z
         type: z.string().optional(),
         constraints: z.record(z.string(), z.unknown()).optional(),
     })
-    .passthrough()
+    .loose()
 
 // Field Definition schema
 export const FieldDefinitionSchema = z.object({
@@ -33,12 +33,13 @@ export const FieldDefinitionSchema = z.object({
         'MultiSelect',
         'Image',
         'File',
+        'Password',
     ]),
-    description: z.string().optional(),
+    description: z.string().nullish(),
     required: z.boolean(),
     indexed: z.boolean(),
     filterable: z.boolean(),
-    unique: z.boolean().optional(),
+    unique: z.boolean().nullish(),
     default_value: z.unknown().nullish(),
     constraints: FieldConstraintsSchema.nullish(),
     ui_settings: z.record(z.string(), z.unknown()).nullish(),
@@ -49,17 +50,17 @@ export const EntityDefinitionSchema = z.object({
     uuid: UuidSchema.optional(),
     entity_type: z.string(),
     display_name: z.string(),
-    description: z.string().optional(),
-    group_name: z.string().optional(),
+    description: z.string().nullish(),
+    group_name: z.string().nullish(),
     allow_children: z.boolean(),
-    icon: z.string().optional(),
+    icon: z.string().nullish(),
     fields: z.array(FieldDefinitionSchema),
-    published: z.boolean().optional(),
-    created_at: TimestampSchema.optional(),
-    updated_at: TimestampSchema.optional(),
-    created_by: UuidSchema.optional(),
-    updated_by: UuidSchema.optional(),
-    version: z.number().int().positive().optional(),
+    published: z.boolean().nullish(),
+    created_at: TimestampSchema.nullish(),
+    updated_at: TimestampSchema.nullish(),
+    created_by: UuidSchema.nullish(),
+    updated_by: UuidSchema.nullish(),
+    version: z.number().int().positive().nullish(),
 })
 
 // Dynamic Entity schema

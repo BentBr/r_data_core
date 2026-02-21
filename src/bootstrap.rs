@@ -157,7 +157,10 @@ pub async fn build_api_state(
 
     let workflow_repo = WorkflowRepository::new(pool.clone());
     let workflow_adapter = WorkflowRepositoryAdapter::new(workflow_repo);
-    let workflow_service = WorkflowService::new(Arc::new(workflow_adapter));
+    let workflow_service = WorkflowService::new(Arc::new(workflow_adapter)).with_jwt_config(
+        Some(config.api.jwt_secret.clone()),
+        config.api.jwt_expiration,
+    );
 
     let role_service = RoleService::new(
         pool.clone(),

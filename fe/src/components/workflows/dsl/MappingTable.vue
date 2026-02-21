@@ -21,6 +21,7 @@
                             v-model="localPairs[idx].k"
                             density="comfortable"
                             variant="outlined"
+                            hide-details
                             @update:model-value="emitUpdate(idx)"
                         />
                     </td>
@@ -31,6 +32,7 @@
                             :items="rightItems || []"
                             density="comfortable"
                             variant="outlined"
+                            hide-details
                             @update:model-value="emitUpdate(idx)"
                         />
                         <v-text-field
@@ -38,10 +40,11 @@
                             v-model="localPairs[idx].v"
                             density="comfortable"
                             variant="outlined"
+                            hide-details
                             @update:model-value="emitUpdate(idx)"
                         />
                     </td>
-                    <td class="text-right">
+                    <td class="delete-cell">
                         <v-btn
                             size="x-small"
                             :variant="buttonConfigs.text.variant"
@@ -63,6 +66,7 @@
 <script setup lang="ts">
     import { ref, watch } from 'vue'
     import { buttonConfigs } from '@/design-system/components'
+    import SmartIcon from '@/components/common/SmartIcon.vue'
 
     type Pair = { k: string; v: string }
     const props = defineProps<{
@@ -100,5 +104,14 @@
 
     .mapping-table {
         min-width: 560px;
+    }
+
+    .mapping-table :deep(thead th) {
+        padding-bottom: 12px;
+    }
+
+    .delete-cell {
+        vertical-align: middle;
+        text-align: right;
     }
 </style>

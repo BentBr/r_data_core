@@ -1,6 +1,6 @@
 <template>
     <div>
-        <div class="text-caption mb-1">{{ t('workflows.dsl.transform') }}</div>
+        <div class="text-subtitle-2 font-weight-bold mb-2">{{ t('workflows.dsl.transform') }}</div>
         <v-select
             :model-value="transformType"
             :items="transformTypes"
@@ -386,6 +386,12 @@
                 @update:model-value="updateGetOrCreateField('path_separator', $event)"
             />
         </template>
+        <AuthenticateTransformEditor
+            v-else-if="transformType === 'authenticate'"
+            :model-value="props.modelValue"
+            :available-fields="availableFields"
+            @update:model-value="emit('update:modelValue', $event)"
+        />
     </div>
 </template>
 
@@ -394,6 +400,7 @@
     import { useTranslations } from '@/composables/useTranslations'
     import SmartIcon from '@/components/common/SmartIcon.vue'
     import MappingTable from './MappingTable.vue'
+    import AuthenticateTransformEditor from './AuthenticateTransformEditor.vue'
     import type { Transform, Operand, StringOperand } from './dsl-utils'
 
     const props = defineProps<{
@@ -423,6 +430,7 @@
         { title: 'Build Path', value: 'build_path' },
         { title: 'Resolve Entity Path', value: 'resolve_entity_path' },
         { title: 'Get or Create Entity', value: 'get_or_create_entity' },
+        { title: 'Authenticate', value: 'authenticate' },
     ]
 
     const transformType = ref<
@@ -432,6 +440,7 @@
         | 'build_path'
         | 'resolve_entity_path'
         | 'get_or_create_entity'
+        | 'authenticate'
     >(props.modelValue.type)
 
     // Computed properties to avoid 'as any' in templates
@@ -774,6 +783,7 @@
             | 'build_path'
             | 'resolve_entity_path'
             | 'get_or_create_entity'
+            | 'authenticate'
     ) {
         transformType.value = newType
         let newTransform: Transform
@@ -813,13 +823,23 @@
                 entity_type: '',
                 filters: {},
             }
-        } else {
-            // newType is 'get_or_create_entity' at this point
+        } else if (newType === 'get_or_create_entity') {
             newTransform = {
                 type: 'get_or_create_entity',
                 target_path: '',
                 entity_type: '',
                 path_template: '',
+            }
+        } else {
+            // newType is 'authenticate' at this point
+            newTransform = {
+                type: 'authenticate',
+                entity_type: '',
+                identifier_field: '',
+                password_field: '',
+                input_identifier: '',
+                input_password: '',
+                target_token: '',
             }
         }
         emit('update:modelValue', newTransform)

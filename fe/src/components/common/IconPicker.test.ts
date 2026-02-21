@@ -11,8 +11,9 @@ const vuetify = createVuetify({
     directives,
 })
 
-describe('IconPicker', () => {
-    it('renders correctly', () => {
+// IconPicker renders 500+ Lucide icon buttons — mounting is slow in CI/Docker
+describe('IconPicker', { timeout: 30_000 }, () => {
+    it('renders correctly', async () => {
         const wrapper = mount(IconPicker, {
             props: {
                 modelValue: '',
@@ -22,6 +23,8 @@ describe('IconPicker', () => {
                 plugins: [vuetify],
             },
         })
+
+        await wrapper.vm.$nextTick()
 
         expect(wrapper.find('input').exists()).toBe(true)
         expect(wrapper.find('.v-card').exists()).toBe(true)
@@ -38,8 +41,12 @@ describe('IconPicker', () => {
             },
         })
 
+        await wrapper.vm.$nextTick()
+
         const iconButton = wrapper.find('.v-btn')
+        expect(iconButton.exists()).toBe(true)
         await iconButton.trigger('click')
+        await wrapper.vm.$nextTick()
 
         expect(wrapper.emitted('update:modelValue')).toBeTruthy()
         expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['file'])
@@ -56,8 +63,11 @@ describe('IconPicker', () => {
             },
         })
 
+        await wrapper.vm.$nextTick()
+
         const searchInput = wrapper.find('input')
         await searchInput.setValue('folder')
+        await wrapper.vm.$nextTick()
 
         // Should show filtered results
         const iconButtons = wrapper.findAll('.v-btn')

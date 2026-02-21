@@ -100,7 +100,7 @@ describe('useTranslations', () => {
     describe('availableLanguages', () => {
         it('should return available languages', () => {
             const instance = useTranslations()
-            if ('availableLanguages' in instance && instance.availableLanguages) {
+            if ('availableLanguages' in instance) {
                 expect(Array.isArray(instance.availableLanguages.value)).toBe(true)
                 expect(instance.availableLanguages.value).toContain('en')
                 expect(instance.availableLanguages.value).toContain('de')
