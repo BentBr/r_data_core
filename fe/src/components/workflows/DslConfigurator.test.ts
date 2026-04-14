@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import DslConfigurator from './DslConfigurator.vue'
-import type { DslStep } from './dsl/dsl-utils'
+import type { DslStep } from './dsl/contracts'
 
 vi.mock('@/api/typed-client', () => ({
     typedHttpClient: {
@@ -37,7 +37,10 @@ describe('DslConfigurator', () => {
             props: { modelValue: [] },
         })
         // add step
-        await wrapper.find('button').trigger('click')
+        const buttons = wrapper.findAll('button')
+        const addButton = buttons.find(button => button.text().includes('workflows.dsl.add_step'))
+        expect(addButton).toBeTruthy()
+        await addButton!.trigger('click')
         // expect one step
         const emitted = wrapper.emitted('update:modelValue') as Array<[DslStep[]]> | undefined
         expect(emitted?.length).toBeGreaterThan(0)
@@ -51,7 +54,10 @@ describe('DslConfigurator', () => {
             props: { modelValue: [] },
         })
         // add step
-        await wrapper.find('button').trigger('click')
+        const buttons = wrapper.findAll('button')
+        const addButton = buttons.find(button => button.text().includes('workflows.dsl.add_step'))
+        expect(addButton).toBeTruthy()
+        await addButton!.trigger('click')
         // pick concat transform
         const selects = wrapper.findAllComponents({ name: 'VSelect' })
         // first select is 'from type', second is 'transform type'
@@ -67,7 +73,10 @@ describe('DslConfigurator', () => {
             props: { modelValue: [] },
         })
         // add step
-        await wrapper.find('button').trigger('click')
+        const buttons = wrapper.findAll('button')
+        const addButton = buttons.find(button => button.text().includes('workflows.dsl.add_step'))
+        expect(addButton).toBeTruthy()
+        await addButton!.trigger('click')
         await nextTick()
 
         const emitted = wrapper.emitted('update:modelValue') as Array<[DslStep[]]> | undefined
@@ -223,6 +232,24 @@ describe('DslConfigurator', () => {
             // Panel should still be open
             expect(vm.openPanels).toContain(0)
         }
+    })
+
+    it('shows workflow templates in the empty state and can apply one', async () => {
+        const wrapper = mount(DslConfigurator, {
+            props: { modelValue: [] },
+        })
+
+        expect(wrapper.text()).toContain('workflows.dsl.templates.title')
+        expect(wrapper.text()).toContain('workflows.dsl.templates.items.api_ingest.title')
+
+        await wrapper.find('.template-card').trigger('click')
+        await nextTick()
+
+        const emitted = wrapper.emitted('update:modelValue') as Array<[DslStep[]]> | undefined
+        expect(emitted?.length).toBeGreaterThan(0)
+        const steps = emitted![emitted!.length - 1][0]
+        expect(steps).toHaveLength(1)
+        expect(steps[0].from.type).toBe('format')
     })
 
     describe('isLastStep prop', () => {

@@ -394,7 +394,7 @@
     import { useTranslations } from '@/composables/useTranslations'
     import SmartIcon from '@/components/common/SmartIcon.vue'
     import MappingTable from './MappingTable.vue'
-    import type { Transform, Operand, StringOperand } from './dsl-utils'
+    import type { Transform, Operand, StringOperand } from './contracts'
 
     const props = defineProps<{
         modelValue: Transform

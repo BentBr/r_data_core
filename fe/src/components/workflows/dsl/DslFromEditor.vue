@@ -235,7 +235,7 @@
     import { useEntityDefinitions } from '@/composables/useEntityDefinitions'
     import { typedHttpClient } from '@/api/typed-client'
     import { buildApiUrl } from '@/env-check'
-    import type { FromDef, AuthConfig } from './dsl-utils'
+    import type { FromDef, AuthConfig } from './contracts'
     import { defaultCsvOptions } from './dsl-utils'
     import CsvOptionsEditor from './CsvOptionsEditor.vue'
     import MappingEditor from './MappingEditor.vue'

@@ -1,5 +1,39 @@
 <template>
     <div class="dsl-config">
+        <v-alert
+            type="info"
+            variant="tonal"
+            density="comfortable"
+            class="mb-4"
+        >
+            {{ t('workflows.dsl.guidance.pipeline_intro') }}
+        </v-alert>
+
+        <div
+            v-if="stepsLocal.length === 0"
+            class="mb-4"
+        >
+            <div class="text-subtitle-2 mb-2">
+                {{ t('workflows.dsl.templates.title') }}
+            </div>
+            <div class="template-grid">
+                <v-card
+                    v-for="template in workflowTemplates"
+                    :key="template.id"
+                    variant="outlined"
+                    class="template-card"
+                    @click="applyTemplate(template.id)"
+                >
+                    <v-card-title class="text-body-1">
+                        {{ t(`workflows.dsl.templates.items.${template.id}.title`) }}
+                    </v-card-title>
+                    <v-card-text class="text-body-2 text-medium-emphasis">
+                        {{ t(`workflows.dsl.templates.items.${template.id}.description`) }}
+                    </v-card-text>
+                </v-card>
+            </div>
+        </div>
+
         <div class="d-flex align-center justify-space-between mb-2">
             <div class="text-subtitle-2">{{ t('workflows.dsl.steps_title') }}</div>
             <v-btn
@@ -31,21 +65,50 @@
                 :key="`step-${idx}`"
             >
                 <v-expansion-panel-title>
-                    {{ t('workflows.dsl.step_label', { n: String(idx + 1) }) }} — from:
-                    {{ step.from?.type || '-' }}, transform: {{ step.transform?.type || '-' }}, to:
-                    {{ step.to?.type || '-' }}
-                    <v-spacer />
-                    <v-btn
-                        size="x-small"
-                        variant="text"
-                        color="error"
-                        @click.stop="removeStep(idx)"
-                    >
-                        <SmartIcon
-                            icon="trash-2"
-                            :size="16"
-                        />
-                    </v-btn>
+                    <div class="step-title-wrap">
+                        <div class="text-subtitle-2">
+                            {{ t('workflows.dsl.step_label', { n: String(idx + 1) }) }}
+                        </div>
+                        <div class="text-body-2 text-medium-emphasis">
+                            {{ buildStepSummary(step, t) }}
+                        </div>
+                        <div class="step-stats">
+                            <v-chip
+                                v-for="stat in getStepStats(step, t)"
+                                :key="`${idx}-${stat.label}`"
+                                size="small"
+                                variant="tonal"
+                            >
+                                {{ stat.label }}: {{ stat.value }}
+                            </v-chip>
+                        </div>
+                    </div>
+                    <template #actions>
+                        <div class="d-flex align-center ga-1">
+                            <v-btn
+                                size="x-small"
+                                variant="text"
+                                color="primary"
+                                @click.stop="duplicateStep(idx)"
+                            >
+                                <SmartIcon
+                                    icon="copy"
+                                    :size="16"
+                                />
+                            </v-btn>
+                            <v-btn
+                                size="x-small"
+                                variant="text"
+                                color="error"
+                                @click.stop="removeStep(idx)"
+                            >
+                                <SmartIcon
+                                    icon="trash-2"
+                                    :size="16"
+                                />
+                            </v-btn>
+                        </div>
+                    </template>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
                     <DslStepEditor
@@ -77,6 +140,8 @@
         ensureCsvOptions,
         ensureEntityFilter,
     } from './dsl/dsl-utils'
+    import { createWorkflowTemplates } from './dsl/templates'
+    import { buildStepSummary, getStepStats } from './dsl/summary'
     import DslStepEditor from './dsl/DslStepEditor.vue'
 
     const props = defineProps<{
@@ -91,6 +156,7 @@
     const stepsLocal = shallowRef<DslStep[]>([])
     const openPanels = ref<number[]>([])
     const { t } = useTranslations()
+    const workflowTemplates = createWorkflowTemplates()
 
     const { loadEntityDefinitions } = useEntityDefinitions()
 
@@ -136,6 +202,40 @@
         const newStep = defaultStep()
         stepsLocal.value = [...stepsLocal.value, newStep]
         openPanels.value = [stepsLocal.value.length - 1]
+        void nextTick(() => {
+            emit('update:modelValue', [...stepsLocal.value])
+        })
+    }
+
+    function applyTemplate(templateId: (typeof workflowTemplates)[number]['id']) {
+        const template = workflowTemplates.find(item => item.id === templateId)
+        if (!template) {
+            return
+        }
+        const steps = sanitizeDslSteps(template.steps)
+        steps.forEach(step => {
+            ensureCsvOptions(step)
+            ensureEntityFilter(step)
+        })
+        stepsLocal.value = steps
+        openPanels.value = [0]
+        void nextTick(() => {
+            emit('update:modelValue', [...stepsLocal.value])
+        })
+    }
+
+    function duplicateStep(idx: number) {
+        const original = stepsLocal.value[idx]
+        if (!original) {
+            return
+        }
+        const duplicated = sanitizeDslSteps([structuredClone(original)])[0]
+        ensureCsvOptions(duplicated)
+        ensureEntityFilter(duplicated)
+        const updated = [...stepsLocal.value]
+        updated.splice(idx + 1, 0, duplicated)
+        stepsLocal.value = updated
+        openPanels.value = [idx + 1]
         void nextTick(() => {
             emit('update:modelValue', [...stepsLocal.value])
         })
@@ -211,7 +311,40 @@
 </script>
 
 <style scoped>
-    .dsl-config {
+.dsl-config {
         width: 100%;
     }
+
+.template-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.template-card {
+    cursor: pointer;
+    transition:
+        border-color 0.18s ease,
+        transform 0.18s ease,
+        box-shadow 0.18s ease;
+}
+
+.template-card:hover {
+    border-color: rgba(var(--v-theme-primary), 0.55);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.step-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.step-stats {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
 </style>

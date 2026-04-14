@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import DslTransformEditor from './DslTransformEditor.vue'
-import type { Transform } from './dsl-utils'
+import type { Transform } from './contracts'
 
 vi.mock('@/composables/useTranslations', () => ({
     useTranslations: () => ({ t: (k: string) => k }),

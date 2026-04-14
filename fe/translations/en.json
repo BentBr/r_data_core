@@ -115,6 +115,82 @@
         "dsl": {
             "steps_title": "DSL Steps",
             "add_step": "Add step",
+            "guidance": {
+                "pipeline_intro": "Build this workflow as a small pipeline: choose where data comes from, define optional transformations, then decide where the result should go.",
+                "step_summary_title": "What this step does",
+                "sections": {
+                    "input_title": "1. Choose the input",
+                    "input_description": "Define where this step gets data from and how the incoming fields should be normalized.",
+                    "transform_title": "2. Apply transformations",
+                    "transform_description": "Transformations are optional. Use them to enrich, calculate, or reshape normalized fields before writing the result.",
+                    "output_title": "3. Define the result",
+                    "output_description": "Choose whether this step stores data, forwards it to the next step, or exposes it through an API or remote push target."
+                }
+            },
+            "templates": {
+                "title": "Start from a common integration pattern",
+                "items": {
+                    "api_ingest": {
+                        "title": "Receive API data",
+                        "description": "Expose an endpoint, accept JSON payloads, and map them into entities."
+                    },
+                    "remote_pull": {
+                        "title": "Pull remote API",
+                        "description": "Fetch data from an external API and normalize it before saving."
+                    },
+                    "entity_export": {
+                        "title": "Export entities",
+                        "description": "Read existing entities and push them to an external API endpoint."
+                    }
+                }
+            },
+            "stats": {
+                "input_mappings": "Input mappings",
+                "output_mappings": "Output mappings",
+                "transform": "Transform"
+            },
+            "transform_names": {
+                "none": "none",
+                "arithmetic": "arithmetic",
+                "concat": "concat",
+                "build_path": "build path",
+                "resolve_entity_path": "resolve entity path",
+                "get_or_create_entity": "get or create entity"
+            },
+            "summary": {
+                "step": "{from}. {transform}. {to}.",
+                "placeholders": {
+                    "remote_url": "a remote URL",
+                    "numeric_field": "a numeric field",
+                    "text_field": "a text field",
+                    "target_field": "a target field"
+                },
+                "from": {
+                    "api": "Receives {format} data through this workflow endpoint",
+                    "uri": "Fetches {format} data from {uri}",
+                    "generic": "Reads {format} data from a {sourceType} source",
+                    "entity": "Loads existing entities from the platform",
+                    "entity_named": "Loads existing {entityDefinition} entities",
+                    "previous_step": "Uses the normalized output of the previous step",
+                    "trigger": "Starts when the trigger endpoint is called"
+                },
+                "transform": {
+                    "none": "Passes data through without changes",
+                    "arithmetic": "Calculates {target}",
+                    "concat": "Builds {target} by concatenating values",
+                    "build_path": "Builds a path into {target}",
+                    "resolve_entity_path": "Looks up an existing {entityType} entity path",
+                    "get_or_create_entity": "Finds or creates a {entityType} entity"
+                },
+                "to": {
+                    "entity": "Writes results into platform entities",
+                    "entity_named": "Writes results into {entityDefinition} entities",
+                    "next_step": "Passes normalized fields to the next workflow step",
+                    "api": "Exposes the result as {format} through the workflow API",
+                    "download": "Produces a {format} download",
+                    "push": "Pushes {format} to {uri}"
+                }
+            },
             "from": "From",
             "from_type": "From type",
             "uri": "URI",

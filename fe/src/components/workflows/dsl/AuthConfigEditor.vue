@@ -70,7 +70,7 @@
 <script setup lang="ts">
     import { computed } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
-    import type { AuthConfig } from './dsl-utils'
+    import type { AuthConfig } from './contracts'
 
     const props = defineProps<{
         modelValue: AuthConfig
