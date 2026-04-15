@@ -17,3 +17,4 @@ pub mod numeric_constraints_tests;
 pub mod string_constraints_tests;
 pub mod unique_field_tests;
 pub mod update_constraints_tests;
+pub mod update_field_mutability_tests;
