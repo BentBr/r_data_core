@@ -81,10 +81,9 @@ pub async fn call_verification_api(
         .map_err(|e| format!("Failed to read API response body: {e}"))?;
 
     if !status.is_success() {
-        return Err(format!(
-            "License API returned HTTP {status}. Response body: {response_text}"
-        )
-        .into());
+        return Err(
+            format!("License API returned HTTP {status}. Response body: {response_text}").into(),
+        );
     }
 
     // Parse response text as JSON
@@ -104,13 +103,9 @@ pub async fn call_verification_api(
         })?
     } else {
         // Fall back to unwrapped format (external API format)
-        serde_json::from_value::<LicenseVerificationResponse>(verification_result).map_err(
-            |e| {
-                format!(
-                    "Failed to parse verification response: {e}. Response body: {response_text}"
-                )
-            },
-        )?
+        serde_json::from_value::<LicenseVerificationResponse>(verification_result).map_err(|e| {
+            format!("Failed to parse verification response: {e}. Response body: {response_text}")
+        })?
     };
 
     Ok(LicenseVerificationApiResult {
