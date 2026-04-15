@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import DslToEditor from './DslToEditor.vue'
-import type { ToDef } from './dsl-utils'
+import type { ToDef } from './contracts'
 
 const mockGetEntityFields = vi.fn()
 

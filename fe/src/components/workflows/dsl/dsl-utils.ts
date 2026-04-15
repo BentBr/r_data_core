@@ -16,7 +16,7 @@ import type {
     SourceConfig,
     FormatConfig,
     DestinationConfig,
-} from '@/types/schemas/dsl'
+} from './contracts'
 
 // Re-export all schema types
 export type {
@@ -80,6 +80,7 @@ export function sanitizeDslStep(step: unknown): DslStep {
             // Ensure source and format exist
             fromDef.source ??= { source_type: 'uri', config: {} }
             fromDef.format ??= { format_type: 'csv', options: {} }
+
             // Remove endpoint field from api source type
             // from.api accepts POST - no endpoint needed
             const source = fromDef.source as Record<string, unknown> | undefined
@@ -173,8 +174,7 @@ export function ensureEntityFilter(step: DslStep) {
  * Converts mapping object to pairs array
  */
 export function getMappingPairs(mapping: Mapping): Array<{ k: string; v: string }> {
-    const entries = Object.entries(mapping)
-    return entries.map(([k, v]) => ({ k, v }))
+    return Object.entries(mapping).map(([k, v]) => ({ k, v }))
 }
 
 /**
