@@ -19,6 +19,7 @@ export const useAuthStore = defineStore('auth', () => {
     const isLoading = ref(false)
     const error = ref<string | null>(null)
     const isRefreshing = ref(false) // Flag to prevent concurrent refresh attempts
+    let refreshPromise: Promise<void> | null = null // Shared promise for concurrent callers
     const permissions = ref<string[]>([])
     const isSuperAdmin = ref(false)
     const allowedRoutes = ref<string[]>([])
@@ -302,12 +303,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     const refreshTokens = async (): Promise<void> => {
-        // Prevent concurrent refresh attempts
-        if (isRefreshing.value) {
+        // If a refresh is already in progress, wait for it instead of skipping
+        if (isRefreshing.value && refreshPromise) {
             if (env.enableApiLogging) {
-                console.log('[Auth] Refresh already in progress, skipping')
+                console.log('[Auth] Refresh already in progress, waiting for it to complete')
             }
-            return
+            return refreshPromise
         }
 
         const refreshToken = getRefreshToken()
@@ -321,68 +322,73 @@ export const useAuthStore = defineStore('auth', () => {
 
         isRefreshing.value = true
 
-        try {
-            if (env.enableApiLogging) {
-                console.log('[Auth] Refreshing access token...')
-            }
-
-            const response = await typedHttpClient.refreshToken({
-                refresh_token: refreshToken,
-            })
-
-            // Update tokens
-            access_token.value = response.access_token
-
-            // Update refresh token in secure cookie
-            const refreshExpiresAt = new Date(
-                response.refresh_expires_at || Date.now() + 30 * 24 * 60 * 60 * 1000
-            )
-            setRefreshToken(response.refresh_token, refreshExpiresAt)
-
-            // Restore user data from the new access token
+        refreshPromise = (async () => {
             try {
-                const payload = JSON.parse(atob(response.access_token.split('.')[1]))
-                user.value = {
-                    uuid: payload.sub ?? '',
-                    username: payload.name ?? payload.username ?? '',
-                    role_uuids: [], // Roles are not stored in JWT
-                    email: payload.email ?? '',
-                    first_name: '',
-                    last_name: '',
-                    is_active: true,
-                    is_admin: false,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
+                if (env.enableApiLogging) {
+                    console.log('[Auth] Refreshing access token...')
+                }
+
+                const response = await typedHttpClient.refreshToken({
+                    refresh_token: refreshToken,
+                })
+
+                // Update tokens
+                access_token.value = response.access_token
+
+                // Update refresh token in secure cookie
+                const refreshExpiresAt = new Date(
+                    response.refresh_expires_at || Date.now() + 30 * 24 * 60 * 60 * 1000
+                )
+                setRefreshToken(response.refresh_token, refreshExpiresAt)
+
+                // Restore user data from the new access token
+                try {
+                    const payload = JSON.parse(atob(response.access_token.split('.')[1]))
+                    user.value = {
+                        uuid: payload.sub ?? '',
+                        username: payload.name ?? payload.username ?? '',
+                        role_uuids: [], // Roles are not stored in JWT
+                        email: payload.email ?? '',
+                        first_name: '',
+                        last_name: '',
+                        is_active: true,
+                        is_admin: false,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                    }
+                } catch (err) {
+                    if (env.enableApiLogging) {
+                        console.error('[Auth] Failed to parse user data from token:', err)
+                    }
+                    // If we can't parse the token, we should logout
+                    await logout()
+                    return
+                }
+
+                // Decode and store permissions from new token
+                decodeAndStorePermissions(response.access_token)
+
+                // Load permissions and allowed routes from API
+                await loadUserPermissions()
+
+                // Set up next refresh
+                setupTokenRefresh(response.access_expires_at)
+
+                if (env.enableApiLogging) {
+                    console.log('[Auth] Token refresh successful')
                 }
             } catch (err) {
                 if (env.enableApiLogging) {
-                    console.error('[Auth] Failed to parse user data from token:', err)
+                    console.error('[Auth] Token refresh failed:', err)
                 }
-                // If we can't parse the token, we should logout
                 await logout()
-                return
+            } finally {
+                isRefreshing.value = false
+                refreshPromise = null
             }
+        })()
 
-            // Decode and store permissions from new token
-            decodeAndStorePermissions(response.access_token)
-
-            // Load permissions and allowed routes from API
-            await loadUserPermissions()
-
-            // Set up next refresh
-            setupTokenRefresh(response.access_expires_at)
-
-            if (env.enableApiLogging) {
-                console.log('[Auth] Token refresh successful')
-            }
-        } catch (err) {
-            if (env.enableApiLogging) {
-                console.error('[Auth] Token refresh failed:', err)
-            }
-            await logout()
-        } finally {
-            isRefreshing.value = false
-        }
+        return refreshPromise
     }
 
     const checkAuthStatus = async (): Promise<void> => {
