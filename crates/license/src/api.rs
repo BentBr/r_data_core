@@ -72,11 +72,26 @@ pub async fn call_verification_api(
         .await
         .map_err(|e| format!("Network error: {e}"))?;
 
-    // Parse response - handle both wrapped (ApiResponse) and unwrapped formats
-    let verification_result = response
-        .json::<serde_json::Value>()
+    let status = response.status();
+
+    // Read response body as text first so we can log it on parse failure
+    let response_text = response
+        .text()
         .await
-        .map_err(|e| format!("Failed to parse API response: {e}"))?;
+        .map_err(|e| format!("Failed to read API response body: {e}"))?;
+
+    if !status.is_success() {
+        return Err(format!(
+            "License API returned HTTP {status}. Response body: {response_text}"
+        )
+        .into());
+    }
+
+    // Parse response text as JSON
+    let verification_result: serde_json::Value =
+        serde_json::from_str(&response_text).map_err(|e| {
+            format!("Failed to parse API response as JSON: {e}. Response body: {response_text}")
+        })?;
 
     // Try to parse as ApiResponse wrapper first (internal endpoint format)
     let api_result = if let Ok(wrapped) = serde_json::from_value::<
@@ -84,13 +99,18 @@ pub async fn call_verification_api(
     >(verification_result.clone())
     {
         // Extract data from wrapped response
-        wrapped
-            .data
-            .ok_or_else(|| "ApiResponse data field is missing".to_string())?
+        wrapped.data.ok_or_else(|| {
+            format!("ApiResponse data field is missing. Response body: {response_text}")
+        })?
     } else {
         // Fall back to unwrapped format (external API format)
-        serde_json::from_value::<LicenseVerificationResponse>(verification_result)
-            .map_err(|e| format!("Failed to parse verification response: {e}"))?
+        serde_json::from_value::<LicenseVerificationResponse>(verification_result).map_err(
+            |e| {
+                format!(
+                    "Failed to parse verification response: {e}. Response body: {response_text}"
+                )
+            },
+        )?
     };
 
     Ok(LicenseVerificationApiResult {

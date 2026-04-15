@@ -48,8 +48,7 @@ test.describe('Entities', () => {
         const [createResponse] = await Promise.all([
             authenticatedPage.waitForResponse(
                 resp =>
-                    resp.url().includes('/e2e_test_product') &&
-                    resp.request().method() === 'POST'
+                    resp.url().includes('/e2e_test_product') && resp.request().method() === 'POST'
             ),
             (async () => {
                 const createBtn = dialog.getByRole('button', { name: /create/i })

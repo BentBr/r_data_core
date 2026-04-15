@@ -69,8 +69,7 @@ test.describe('Entity Definitions', () => {
         const [updateResp] = await Promise.all([
             authenticatedPage.waitForResponse(
                 resp =>
-                    resp.url().includes('/entity-definitions/') &&
-                    resp.request().method() === 'PUT'
+                    resp.url().includes('/entity-definitions/') && resp.request().method() === 'PUT'
             ),
             (async () => {
                 const saveBtn = dialog.getByRole('button', { name: /save/i })
@@ -103,8 +102,7 @@ test.describe('Entity Definitions', () => {
         const [revertResp] = await Promise.all([
             authenticatedPage.waitForResponse(
                 resp =>
-                    resp.url().includes('/entity-definitions/') &&
-                    resp.request().method() === 'PUT'
+                    resp.url().includes('/entity-definitions/') && resp.request().method() === 'PUT'
             ),
             (async () => {
                 const revertBtn = revertDialog.getByRole('button', { name: /save/i })

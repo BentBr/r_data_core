@@ -50,17 +50,47 @@ export const EntityDefinitionSchema = z.object({
     uuid: UuidSchema.optional(),
     entity_type: z.string(),
     display_name: z.string(),
-    description: z.string().nullish(),
-    group_name: z.string().nullish(),
+    description: z
+        .string()
+        .nullable()
+        .transform(v => v ?? undefined)
+        .optional(),
+    group_name: z
+        .string()
+        .nullable()
+        .transform(v => v ?? undefined)
+        .optional(),
     allow_children: z.boolean(),
-    icon: z.string().nullish(),
+    icon: z
+        .string()
+        .nullable()
+        .transform(v => v ?? undefined)
+        .optional(),
     fields: z.array(FieldDefinitionSchema),
-    published: z.boolean().nullish(),
-    created_at: TimestampSchema.nullish(),
-    updated_at: TimestampSchema.nullish(),
-    created_by: UuidSchema.nullish(),
-    updated_by: UuidSchema.nullish(),
-    version: z.number().int().positive().nullish(),
+    published: z
+        .boolean()
+        .nullable()
+        .transform(v => v ?? undefined)
+        .optional(),
+    created_at: TimestampSchema.nullable()
+        .transform(v => v ?? undefined)
+        .optional(),
+    updated_at: TimestampSchema.nullable()
+        .transform(v => v ?? undefined)
+        .optional(),
+    created_by: UuidSchema.nullable()
+        .transform(v => v ?? undefined)
+        .optional(),
+    updated_by: UuidSchema.nullable()
+        .transform(v => v ?? undefined)
+        .optional(),
+    version: z
+        .number()
+        .int()
+        .positive()
+        .nullable()
+        .transform(v => v ?? undefined)
+        .optional(),
 })
 
 // Dynamic Entity schema

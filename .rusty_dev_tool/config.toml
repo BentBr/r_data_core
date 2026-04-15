@@ -25,7 +25,7 @@ no_docker_compose = true
         "description" = "Runs ESLint (with prettier) and fixes it's findings"
     [commands.test-e2e]
         "alias" = "test-e2e"
-        "execution" = "docker compose --profile e2e exec playwright sh -c 'npm install && npx playwright test --config=e2e/playwright.config.ts'"
+        "execution" = "docker compose --profile e2e up -d && sleep 3 && docker compose --profile e2e exec playwright sh -c 'npm install && npx playwright test --config=e2e/playwright.config.ts'"
         "description" = "Runs Playwright E2E browser tests"
     [commands.test-e2e-report]
         "alias" = "test-e2e-report"
