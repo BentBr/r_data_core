@@ -56,7 +56,7 @@ export default [
                 ecmaVersion: 'latest',
                 sourceType: 'module',
                 extraFileExtensions: ['.vue'],
-                project: ['./tsconfig.json'],
+                project: true,
                 tsconfigRootDir: import.meta.dirname,
             },
             globals: {
@@ -106,7 +106,7 @@ export default [
             parserOptions: {
                 ecmaVersion: 'latest',
                 sourceType: 'module',
-                project: ['./tsconfig.json'],
+                project: true,
                 tsconfigRootDir: import.meta.dirname,
             },
         },
@@ -130,7 +130,7 @@ export default [
             parserOptions: {
                 ecmaVersion: 'latest',
                 sourceType: 'module',
-                project: ['./e2e/tsconfig.json'],
+                project: true,
                 tsconfigRootDir: import.meta.dirname,
             },
         },
@@ -152,7 +152,7 @@ export default [
             parserOptions: {
                 ecmaVersion: 'latest',
                 sourceType: 'module',
-                project: ['./e2e/tsconfig.json'],
+                project: true,
                 tsconfigRootDir: import.meta.dirname,
             },
         },
