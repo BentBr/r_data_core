@@ -460,11 +460,11 @@ jobs:
           retention-days: 7
 
   # ============================================================================
-  # Frontend E2E Tests - Non-blocking, runs when frontend changes
+  # Frontend E2E Tests - Runs in parallel with other frontend/backend jobs
   # ============================================================================
   frontend-e2e:
-    needs: [changes, frontend-build, backend-tests]
-    if: ${{ needs.changes.outputs.frontend == 'true' && needs.changes.outputs.backend == 'true' }}
+    needs: [changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -649,6 +649,15 @@ jobs:
             exit 1
           fi
           echo "All frontend checks passed"
+
+      - name: Check E2E results
+        if: ${{ needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true' }}
+        run: |
+          if [[ "${{ needs.frontend-e2e.result }}" != "success" ]]; then
+            echo "E2E checks failed"
+            exit 1
+          fi
+          echo "E2E checks passed"
 
       - name: Verify at least one component was checked
         run: |
