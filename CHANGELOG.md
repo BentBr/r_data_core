@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.8](https://github.com/BentBr/r_data_core/compare/core-v0.4.7...core-v0.4.8) (2026-04-15)
+
+
+### Bug Fixes
+
+* adding tests and making code complying with our codebase ([df611ba](https://github.com/BentBr/r_data_core/commit/df611baf61543d9f803afec739be4e53c4b3b94b))
+
 ## [0.4.7](https://github.com/BentBr/r_data_core/compare/core-v0.4.6...core-v0.4.7) (2026-04-15)
 
 
