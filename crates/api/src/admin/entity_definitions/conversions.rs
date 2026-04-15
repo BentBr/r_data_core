@@ -165,6 +165,7 @@ pub const fn field_type_to_schema(field_type: &FieldType) -> FieldTypeSchema {
         FieldType::MultiSelect => FieldTypeSchema::MultiSelect,
         FieldType::Image => FieldTypeSchema::Image,
         FieldType::File => FieldTypeSchema::File,
+        FieldType::Password => FieldTypeSchema::Password,
     }
 }
 

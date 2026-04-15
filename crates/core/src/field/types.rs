@@ -37,6 +37,9 @@ pub enum FieldType {
     // Asset types
     Image,
     File,
+
+    // Auth types
+    Password,
 }
 
 impl FieldType {
@@ -44,6 +47,12 @@ impl FieldType {
     #[must_use]
     pub const fn is_relation(&self) -> bool {
         matches!(self, Self::ManyToOne | Self::ManyToMany)
+    }
+
+    /// Check if this field type is write-only (never returned in API responses)
+    #[must_use]
+    pub const fn is_write_only(&self) -> bool {
+        matches!(self, Self::Password)
     }
 }
 
@@ -69,6 +78,7 @@ impl fmt::Display for FieldType {
             Self::MultiSelect => write!(f, "MultiSelect"),
             Self::Image => write!(f, "Image"),
             Self::File => write!(f, "File"),
+            Self::Password => write!(f, "Password"),
         }
     }
 }
@@ -129,5 +139,6 @@ pub fn is_valid_field_type(field_type: &str) -> bool {
             | "MultiSelect"
             | "Image"
             | "File"
+            | "Password"
     )
 }

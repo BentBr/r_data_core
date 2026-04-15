@@ -122,4 +122,20 @@ pub trait DynamicEntityRepositoryTrait: Send + Sync {
     /// Get an entity by UUID regardless of entity type
     /// Searches the `entities_registry` table directly
     async fn get_by_uuid_any_type(&self, uuid: &Uuid) -> Result<Option<DynamicEntity>>;
+
+    /// Find a single entity matching the given field filters
+    async fn find_one_by_filters(
+        &self,
+        entity_type: &str,
+        filters: &HashMap<String, JsonValue>,
+    ) -> Result<Option<DynamicEntity>>;
+
+    /// Read a single raw field value from the entity table, bypassing mapper redaction.
+    /// Used internally for password verification in the authenticate transform.
+    async fn get_raw_field_value(
+        &self,
+        entity_type: &str,
+        uuid: &Uuid,
+        field_name: &str,
+    ) -> Result<Option<String>>;
 }

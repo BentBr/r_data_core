@@ -206,6 +206,32 @@ services:
             - VITE_ENABLE_API_LOGGING=true
             - VITE_ENABLE_PRODUCTION_SOURCEMAPS=false
 
+    playwright:
+        container_name: rdata_playwright
+        image: mcr.microsoft.com/playwright:v1.58.2-noble
+        volumes:
+            - ./fe:/var/www/html
+            - playwright_node_modules:/var/www/html/node_modules
+        working_dir: /var/www/html
+        depends_on:
+            - app
+            - node
+        command: sh -c "npm install && tail -f /dev/null"
+        environment:
+            - VIRTUAL_HOST=.playwright.rdatacore.docker
+            - VIRTUAL_PORT=9323
+            - E2E_BASE_URL=http://admin.rdatacore.docker
+            - E2E_API_BASE_URL=http://rdatacore.docker
+        profiles:
+            - e2e
+        networks:
+            default:
+                aliases:
+                    - playwright.rdatacore.docker
+        ports:
+            - '9323'
+
+
     # For local testing if you want to use an api key and push data from the outside
     # (so you have a public endpoint without exposing everything)
     nginx-proxy:
@@ -227,3 +253,4 @@ volumes:
     postgres_data:
     postgres_test_data:
     redis_data:
+    playwright_node_modules:

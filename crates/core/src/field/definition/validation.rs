@@ -31,7 +31,7 @@ impl FieldDefinition {
 
         // Perform type-specific validations
         match self.field_type {
-            FieldType::String | FieldType::Text | FieldType::Wysiwyg => {
+            FieldType::String | FieldType::Text | FieldType::Wysiwyg | FieldType::Password => {
                 self.validate_string_value(value)?;
             }
             FieldType::Integer => {
@@ -255,42 +255,21 @@ impl FieldDefinition {
     }
 
     /// Validate a boolean value
+    ///
+    /// Only accepts actual JSON booleans (`true` / `false`).
+    /// Strings like `"true"` or numbers like `1` are rejected — callers must
+    /// send the correct JSON type.
     fn validate_boolean_value(&self, value: &Value) -> Result<()> {
         if !value.is_boolean() {
-            if value.is_string() {
-                // Allow string booleans
-                let s = value.as_str().unwrap().to_lowercase();
-                if s != "true" && s != "false" && s != "1" && s != "0" {
-                    return Err(Error::Validation(format!(
-                        "Field '{}' must be a boolean",
-                        self.name
-                    )));
+            return Err(Error::Validation(format!(
+                "Field '{}' must be a boolean (true/false), got {}",
+                self.name,
+                match value {
+                    Value::String(s) => format!("string \"{s}\""),
+                    Value::Number(n) => format!("number {n}"),
+                    _ => format!("{value}"),
                 }
-            } else if value.is_number() {
-                // Allow 0/1 as boolean
-                let n = if value.is_i64() {
-                    value.as_i64().unwrap()
-                } else if value.is_u64() {
-                    i64::try_from(value.as_u64().unwrap()).unwrap_or(i64::MAX)
-                } else {
-                    #[allow(clippy::cast_possible_truncation)]
-                    {
-                        value.as_f64().unwrap() as i64
-                    }
-                };
-
-                if n != 0 && n != 1 {
-                    return Err(Error::Validation(format!(
-                        "Field '{}' must be a boolean",
-                        self.name
-                    )));
-                }
-            } else {
-                return Err(Error::Validation(format!(
-                    "Field '{}' must be a boolean",
-                    self.name
-                )));
-            }
+            )));
         }
 
         Ok(())

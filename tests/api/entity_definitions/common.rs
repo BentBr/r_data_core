@@ -3,8 +3,8 @@
 //! Common test utilities for entity definition constraint tests.
 
 use actix_web::{test, web, App};
-use r_data_core_api::jwt::AuthUserClaims;
 use r_data_core_api::ApiState;
+use r_data_core_core::admin_jwt::AuthUserClaims;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::{CacheConfig, LicenseConfig};
 use r_data_core_persistence::{AdminUserRepository, ApiKeyRepository, EntityDefinitionRepository};
@@ -37,6 +37,7 @@ pub fn create_test_jwt_token(user_uuid: &Uuid, secret: &str) -> String {
 
     let claims = AuthUserClaims {
         sub: user_uuid.to_string(),
+        iss: r_data_core_core::admin_jwt::ADMIN_JWT_ISSUER.to_string(),
         name: "test_user".to_string(),
         email: "test@example.com".to_string(),
         permissions,

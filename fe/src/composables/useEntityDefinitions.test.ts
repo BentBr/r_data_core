@@ -209,7 +209,7 @@ describe('useEntityDefinitions', () => {
 
             expect(updating.value).toBe(false)
             expect(result).toBe(true)
-            expect(selectedDefinition.value?.display_name).toBe('Updated Customer')
+            expect(selectedDefinition.value.display_name).toBe('Updated Customer')
             expect(mockHandleSuccess).toHaveBeenCalled()
         })
 

@@ -4,11 +4,11 @@ use actix_web::{
     http::{header, StatusCode},
     test, web, App, HttpMessage, HttpRequest, HttpResponse,
 };
-use r_data_core_api::jwt::AuthUserClaims;
 use r_data_core_api::{
     middleware::{ApiAuth, ApiKeyInfo},
     ApiState,
 };
+use r_data_core_core::admin_jwt::AuthUserClaims;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::{CacheConfig, LicenseConfig};
 use r_data_core_core::error::Result;
@@ -841,7 +841,7 @@ mod tests {
             cors_origins: vec![],
             check_default_admin_password: true,
         };
-        let token = r_data_core_api::jwt::generate_access_token(&user, &api_config, &[])
+        let token = r_data_core_core::admin_jwt::generate_access_token(&user, &api_config, &[])
             .expect("Failed to generate JWT token");
 
         let license_config = LicenseConfig::default();

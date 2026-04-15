@@ -236,6 +236,13 @@ pub fn map_row_to_entity(
         }
     }
 
+    // Redact write-only fields (e.g. Password) so hashes are never exposed via API
+    for field_def in &entity_def.fields {
+        if field_def.field_type.is_write_only() {
+            mapped_field_data.insert(field_def.name.clone(), JsonValue::Null);
+        }
+    }
+
     create_entity(
         entity_type.to_string(),
         mapped_field_data,

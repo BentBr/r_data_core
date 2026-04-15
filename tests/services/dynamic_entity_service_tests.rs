@@ -34,6 +34,8 @@ mockall::mock! {
         async fn count_entities(&self, entity_type: &str) -> Result<i64>;
         async fn count_children(&self, parent_uuid: &Uuid) -> Result<i64>;
         async fn get_by_uuid_any_type(&self, uuid: &Uuid) -> Result<Option<DynamicEntity>>;
+        async fn find_one_by_filters(&self, entity_type: &str, filters: &std::collections::HashMap<String, serde_json::Value>) -> Result<Option<DynamicEntity>>;
+        async fn get_raw_field_value(&self, entity_type: &str, uuid: &Uuid, field_name: &str) -> Result<Option<String>>;
     }
 }
 

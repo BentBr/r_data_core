@@ -64,6 +64,7 @@
                                     :error-messages="fieldErrors.username"
                                     :disabled="authStore.isLoading"
                                     class="mb-4"
+                                    data-testid="login-username"
                                     autofocus
                                     @input="clearFieldError('username')"
                                 >
@@ -86,6 +87,7 @@
                                     :error-messages="fieldErrors.password"
                                     :disabled="authStore.isLoading"
                                     class="mb-4"
+                                    data-testid="login-password"
                                     @input="clearFieldError('password')"
                                     @keyup.enter="handleLogin"
                                 >
@@ -112,6 +114,7 @@
                                     type="error"
                                     variant="tonal"
                                     class="mb-4"
+                                    data-testid="login-error"
                                     :text="authStore.error"
                                     closable
                                     @click:close="authStore.clearError"
@@ -126,6 +129,7 @@
                                     :loading="authStore.isLoading"
                                     :disabled="!formValid"
                                     class="mb-4"
+                                    data-testid="login-submit"
                                 >
                                     <template #prepend>
                                         <SmartIcon

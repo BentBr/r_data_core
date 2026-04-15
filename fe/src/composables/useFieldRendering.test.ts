@@ -281,6 +281,11 @@ describe('useFieldRendering', () => {
             expect(getFieldIcon('Array')).toBe('list')
         })
 
+        it('should return correct icon for Password field', () => {
+            const { getFieldIcon } = useFieldRendering()
+            expect(getFieldIcon('Password')).toBe('lock')
+        })
+
         it('should return default icon for unknown field type', () => {
             const { getFieldIcon } = useFieldRendering()
             expect(getFieldIcon('UnknownType')).toBe('type')
@@ -471,6 +476,33 @@ describe('useFieldRendering', () => {
             const result = parseJsonFieldValue('hello', 'String')
             expect(result.parsed).toBe('hello')
             expect(result.error).toBeNull()
+        })
+
+        it('should coerce string "true" to boolean true for Boolean fields', () => {
+            const { parseJsonFieldValue } = useFieldRendering()
+            const result = parseJsonFieldValue('true', 'Boolean')
+            expect(result.parsed).toBe(true)
+            expect(result.error).toBeNull()
+        })
+
+        it('should coerce string "false" to boolean false for Boolean fields', () => {
+            const { parseJsonFieldValue } = useFieldRendering()
+            const result = parseJsonFieldValue('false', 'Boolean')
+            expect(result.parsed).toBe(false)
+            expect(result.error).toBeNull()
+        })
+
+        it('should coerce string "TRUE" (uppercase) to boolean true for Boolean fields', () => {
+            const { parseJsonFieldValue } = useFieldRendering()
+            const result = parseJsonFieldValue('TRUE', 'Boolean')
+            expect(result.parsed).toBe(true)
+            expect(result.error).toBeNull()
+        })
+
+        it('should pass through actual boolean values for Boolean fields', () => {
+            const { parseJsonFieldValue } = useFieldRendering()
+            expect(parseJsonFieldValue(true, 'Boolean').parsed).toBe(true)
+            expect(parseJsonFieldValue(false, 'Boolean').parsed).toBe(false)
         })
 
         it('should return object unchanged if already an object', () => {

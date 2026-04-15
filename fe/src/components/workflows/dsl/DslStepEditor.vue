@@ -1,25 +1,38 @@
 <template>
-    <div>
-        <DslFromEditor
-            :model-value="modelValue.from"
-            :workflow-uuid="workflowUuid"
-            :step-index="stepIndex"
-            :previous-step-fields="previousStepFields"
-            @update:model-value="updateFrom"
-        />
-        <div class="mb-4" />
-        <DslTransformEditor
-            :model-value="modelValue.transform"
-            :available-fields="normalizedFields"
-            @update:model-value="updateTransform"
-        />
-        <div class="mb-4" />
-        <DslToEditor
-            :model-value="modelValue.to"
-            :workflow-uuid="workflowUuid"
-            :is-last-step="isLastStep"
-            @update:model-value="updateTo"
-        />
+    <div class="dsl-step-editor">
+        <v-card
+            variant="outlined"
+            class="mb-4 pa-4"
+        >
+            <DslFromEditor
+                :model-value="modelValue.from"
+                :workflow-uuid="workflowUuid"
+                :step-index="stepIndex"
+                :previous-step-fields="previousStepFields"
+                @update:model-value="updateFrom"
+            />
+        </v-card>
+        <v-card
+            variant="outlined"
+            class="mb-4 pa-4"
+        >
+            <DslTransformEditor
+                :model-value="modelValue.transform"
+                :available-fields="normalizedFields"
+                @update:model-value="updateTransform"
+            />
+        </v-card>
+        <v-card
+            variant="outlined"
+            class="pa-4"
+        >
+            <DslToEditor
+                :model-value="modelValue.to"
+                :workflow-uuid="workflowUuid"
+                :is-last-step="isLastStep"
+                @update:model-value="updateTo"
+            />
+        </v-card>
     </div>
 </template>
 

@@ -348,7 +348,6 @@ async fn update_entity_definition(
     let mut updated_def = definition.into_inner();
     updated_def.uuid = path.uuid; // Ensure UUID matches the path
     updated_def.entity_type = existing_def.entity_type;
-    updated_def.display_name = existing_def.display_name;
     updated_def.created_at = existing_def.created_at;
     updated_def.created_by = existing_def.created_by;
     updated_def.updated_at = OffsetDateTime::now_utc();

@@ -194,7 +194,7 @@ async fn test_super_admin_has_all_permissions_from_permission() {
 async fn test_super_admin_flag_on_scheme_grants_all_permissions() {
     // Decode JWT to verify is_super_admin is set
     use jsonwebtoken::{decode, DecodingKey, Validation};
-    use r_data_core_api::jwt::AuthUserClaims;
+    use r_data_core_core::admin_jwt::AuthUserClaims;
 
     let (app, pool, user_uuid) = setup_test_app().await.unwrap();
 

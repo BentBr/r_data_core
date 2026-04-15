@@ -416,11 +416,16 @@
             ManyToMany: 'link-2',
             Select: 'list-checks',
             MultiSelect: 'list-checks',
+            Password: 'lock',
         }
         return iconMap[fieldType] || 'type'
     }
 
     const formatFieldValue = (value: unknown, fieldType: string): string => {
+        if (fieldType === 'Password') {
+            return '******'
+        }
+
         if (value === null || value === undefined) {
             return t('common.empty')
         }

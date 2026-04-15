@@ -5,10 +5,11 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::dynamic_entity_utils;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::error::Result;
 use r_data_core_core::DynamicEntity;
 
-use super::DynamicEntityRepository;
+use super::{hash_if_password_field, DynamicEntityRepository};
 
 /// Create a new dynamic entity
 ///
@@ -17,7 +18,7 @@ use super::DynamicEntityRepository;
 /// Returns the UUID
 pub async fn create_entity(repo: &DynamicEntityRepository, entity: &DynamicEntity) -> Result<Uuid> {
     // Get the entity definition to validate against
-    let _entity_def = dynamic_entity_utils::get_entity_definition(
+    let entity_def = dynamic_entity_utils::get_entity_definition(
         &repo.pool,
         &entity.entity_type,
         repo.cache_manager.clone(),
@@ -96,8 +97,8 @@ pub async fn create_entity(repo: &DynamicEntityRepository, entity: &DynamicEntit
     // Insert into entities_registry and get UUID
     let uuid = insert_into_registry(&mut tx, entity, &path, &key, resolved_parent_uuid).await?;
 
-    // Insert into entity-specific table using the UUID
-    insert_into_entity_table(&mut tx, entity, &uuid).await?;
+    // Insert into the entity-specific table using the UUID
+    insert_into_entity_table(&mut tx, entity, &uuid, &entity_def).await?;
 
     // Commit the transaction
     tx.commit().await?;
@@ -163,6 +164,7 @@ async fn insert_into_entity_table(
     tx: &mut Transaction<'_, Postgres>,
     entity: &DynamicEntity,
     uuid: &Uuid,
+    entity_def: &EntityDefinition,
 ) -> Result<()> {
     let table_name = dynamic_entity_utils::get_table_name(&entity.entity_type);
 
@@ -184,8 +186,11 @@ async fn insert_into_entity_table(
             // Database columns are lowercase, so use lowercase for column name
             columns.push(key_lower);
 
+            // Hash Password fields before storing
+            let store_value = hash_if_password_field(key, value, entity_def)?;
+
             // Format the value appropriately based on its type
-            let value_str = format_value_for_sql(value);
+            let value_str = format_value_for_sql(&store_value);
             values.push(value_str);
         }
     }

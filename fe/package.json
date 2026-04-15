@@ -15,6 +15,11 @@
         "test:ui": "vitest --ui",
         "test:run": "vue-tsc --noEmit && vitest run",
         "test:coverage": "vue-tsc --noEmit && vitest run --coverage",
+        "test:e2e": "npx playwright test --config=e2e/playwright.config.ts",
+        "test:e2e:headed": "npx playwright test --config=e2e/playwright.config.ts --headed",
+        "test:e2e:debug": "npx playwright test --config=e2e/playwright.config.ts --debug",
+        "test:e2e:report": "npx playwright show-report e2e/playwright-report --host 0.0.0.0 --port 9323",
+        "lint:e2e": "eslint e2e/",
         "generate:favicons": "node scripts/generate-favicons.js"
     },
     "dependencies": {
@@ -27,6 +32,7 @@
         "zod": "^4.0.13"
     },
     "devDependencies": {
+        "@playwright/test": "^1.58.2",
         "sharp": "^0.33.5",
         "@eslint/js": "^9.9.0",
         "@types/node": "^20.11.30",

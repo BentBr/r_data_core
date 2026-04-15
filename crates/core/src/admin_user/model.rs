@@ -1,11 +1,8 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
+use crate::crypto;
 use crate::domain::AbstractRDataEntity;
 use crate::error::{Error, Result};
-use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
-    Argon2, Params,
-};
 use base64::engine::Engine as _;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
@@ -270,22 +267,7 @@ impl AdminUser {
             ));
         }
 
-        // Use standardized Argon2id parameters:
-        // - m=19456 (19 MB memory cost - good balance for modern systems)
-        // - t=2 (2 iterations - recommended minimum)
-        // - p=1 (1 parallelism - good for most systems)
-        // Note: These parameters balance security and performance
-        let params = Params::new(19456, 2, 1, None)
-            .map_err(|e| Error::PasswordHash(format!("Invalid parameters: {e}")))?;
-
-        // Hash the password using the Argon2id algorithm with standard params
-        let salt = SaltString::generate(&mut OsRng);
-        let argon2 = Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
-
-        self.password_hash = argon2
-            .hash_password(password.as_bytes(), &salt)
-            .map_err(|e| Error::PasswordHash(format!("Failed to hash password: {e}")))?
-            .to_string();
+        self.password_hash = crypto::hash_password_argon2(password)?;
 
         Ok(())
     }
@@ -293,15 +275,7 @@ impl AdminUser {
     /// Verify a password against the stored hash
     #[must_use]
     pub fn verify_password(&self, password: &str) -> bool {
-        // Parse the stored hash
-        let Ok(parsed_hash) = PasswordHash::new(&self.password_hash) else {
-            return false;
-        };
-
-        // Verify the password using Argon2id
-        Argon2::default()
-            .verify_password(password.as_bytes(), &parsed_hash)
-            .is_ok()
+        crypto::verify_password_argon2(password, &self.password_hash)
     }
 
     /// Check if the user has a specific permission using roles
@@ -438,23 +412,5 @@ impl ApiKey {
         }
 
         true
-    }
-
-    /// Update the `last_used_at` timestamp
-    ///
-    /// # Errors
-    /// Returns `Error::Database` if the database update fails.
-    pub async fn update_last_used(&mut self, pool: &sqlx::PgPool) -> Result<()> {
-        let now = OffsetDateTime::now_utc();
-        self.last_used_at = Some(now);
-
-        sqlx::query("UPDATE api_keys SET last_used_at = $1 WHERE uuid = $2")
-            .bind(now)
-            .bind(self.uuid)
-            .execute(pool)
-            .await
-            .map_err(Error::Database)?;
-
-        Ok(())
     }
 }

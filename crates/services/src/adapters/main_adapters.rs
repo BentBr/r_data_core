@@ -148,15 +148,17 @@ impl DynamicEntityRepositoryAdapter {
 
 #[async_trait]
 impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
-    /// Create a new entity
-    /// Returns the UUID
-    async fn create(&self, entity: &DynamicEntity) -> r_data_core_core::error::Result<Uuid> {
-        self.inner.create(entity).await
-    }
-
-    /// Update an existing entity
-    async fn update(&self, entity: &DynamicEntity) -> r_data_core_core::error::Result<()> {
-        self.inner.update(entity).await
+    /// Get all entities of a specific type with pagination
+    async fn get_all_by_type(
+        &self,
+        entity_type: &str,
+        limit: i64,
+        offset: i64,
+        exclusive_fields: Option<Vec<String>>,
+    ) -> Result<Vec<DynamicEntity>> {
+        self.inner
+            .get_all_by_type(entity_type, limit, offset, exclusive_fields)
+            .await
     }
 
     /// Get a dynamic entity by type and UUID
@@ -165,31 +167,25 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
         entity_type: &str,
         uuid: &Uuid,
         exclusive_fields: Option<Vec<String>>,
-    ) -> r_data_core_core::error::Result<Option<DynamicEntity>> {
+    ) -> Result<Option<DynamicEntity>> {
         self.inner
             .get_by_type(entity_type, uuid, exclusive_fields)
             .await
     }
 
-    /// Get all entities of a specific type with pagination
-    async fn get_all_by_type(
-        &self,
-        entity_type: &str,
-        limit: i64,
-        offset: i64,
-        exclusive_fields: Option<Vec<String>>,
-    ) -> r_data_core_core::error::Result<Vec<DynamicEntity>> {
-        self.inner
-            .get_all_by_type(entity_type, limit, offset, exclusive_fields)
-            .await
+    /// Create a new entity
+    /// Returns the UUID
+    async fn create(&self, entity: &DynamicEntity) -> Result<Uuid> {
+        self.inner.create(entity).await
+    }
+
+    /// Update an existing entity
+    async fn update(&self, entity: &DynamicEntity) -> Result<()> {
+        self.inner.update(entity).await
     }
 
     /// Delete an entity by type and UUID
-    async fn delete_by_type(
-        &self,
-        entity_type: &str,
-        uuid: &Uuid,
-    ) -> r_data_core_core::error::Result<()> {
+    async fn delete_by_type(&self, entity_type: &str, uuid: &Uuid) -> Result<()> {
         self.inner.delete_by_type(entity_type, uuid).await
     }
 
@@ -198,26 +194,42 @@ impl DynamicEntityRepositoryTrait for DynamicEntityRepositoryAdapter {
         &self,
         entity_type: &str,
         params: &r_data_core_persistence::FilterEntitiesParams,
-    ) -> r_data_core_core::error::Result<Vec<DynamicEntity>> {
+    ) -> Result<Vec<DynamicEntity>> {
         self.inner.filter_entities(entity_type, params).await
     }
 
     /// Count entities of a specific type
-    async fn count_entities(&self, entity_type: &str) -> r_data_core_core::error::Result<i64> {
+    async fn count_entities(&self, entity_type: &str) -> Result<i64> {
         self.inner.count_entities(entity_type).await
     }
 
     /// Count children for an entity
-    async fn count_children(&self, parent_uuid: &Uuid) -> r_data_core_core::error::Result<i64> {
+    async fn count_children(&self, parent_uuid: &Uuid) -> Result<i64> {
         self.inner.count_children(parent_uuid).await
     }
 
     /// Get an entity by UUID regardless of entity type
-    async fn get_by_uuid_any_type(
-        &self,
-        uuid: &Uuid,
-    ) -> r_data_core_core::error::Result<Option<DynamicEntity>> {
+    async fn get_by_uuid_any_type(&self, uuid: &Uuid) -> Result<Option<DynamicEntity>> {
         self.inner.get_by_uuid_any_type(uuid).await
+    }
+
+    async fn find_one_by_filters(
+        &self,
+        entity_type: &str,
+        filters: &HashMap<String, serde_json::Value>,
+    ) -> Result<Option<DynamicEntity>> {
+        self.inner.find_one_by_filters(entity_type, filters).await
+    }
+
+    async fn get_raw_field_value(
+        &self,
+        entity_type: &str,
+        uuid: &Uuid,
+        field_name: &str,
+    ) -> Result<Option<String>> {
+        self.inner
+            .get_raw_field_value(entity_type, uuid, field_name)
+            .await
     }
 }
 
@@ -239,7 +251,7 @@ impl r_data_core_persistence::AdminUserRepositoryTrait for AdminUserRepositoryAd
     async fn find_by_username_or_email(
         &self,
         username_or_email: &str,
-    ) -> r_data_core_core::error::Result<Option<r_data_core_core::admin_user::AdminUser>> {
+    ) -> Result<Option<r_data_core_core::admin_user::AdminUser>> {
         log::debug!("AdminUserRepositoryAdapter::find_by_username_or_email called with username_or_email: {username_or_email}");
         self.inner
             .find_by_username_or_email(username_or_email)
@@ -249,12 +261,12 @@ impl r_data_core_persistence::AdminUserRepositoryTrait for AdminUserRepositoryAd
     async fn find_by_uuid(
         &self,
         uuid: &Uuid,
-    ) -> r_data_core_core::error::Result<Option<r_data_core_core::admin_user::AdminUser>> {
+    ) -> Result<Option<r_data_core_core::admin_user::AdminUser>> {
         log::debug!("AdminUserRepositoryAdapter::find_by_uuid called with uuid: {uuid}");
         self.inner.find_by_uuid(uuid).await
     }
 
-    async fn update_last_login(&self, uuid: &Uuid) -> r_data_core_core::error::Result<()> {
+    async fn update_last_login(&self, uuid: &Uuid) -> Result<()> {
         log::debug!("AdminUserRepositoryAdapter::update_last_login called with uuid: {uuid}");
         self.inner.update_last_login(uuid).await
     }
@@ -262,7 +274,7 @@ impl r_data_core_persistence::AdminUserRepositoryTrait for AdminUserRepositoryAd
     async fn create_admin_user<'a>(
         &self,
         params: &r_data_core_persistence::CreateAdminUserParams<'a>,
-    ) -> r_data_core_core::error::Result<Uuid> {
+    ) -> Result<Uuid> {
         log::debug!(
             "AdminUserRepositoryAdapter::create_admin_user called with username: {}",
             params.username
@@ -292,7 +304,7 @@ impl r_data_core_persistence::AdminUserRepositoryTrait for AdminUserRepositoryAd
         offset: i64,
         sort_by: Option<String>,
         sort_order: Option<String>,
-    ) -> r_data_core_core::error::Result<Vec<r_data_core_core::admin_user::AdminUser>> {
+    ) -> Result<Vec<r_data_core_core::admin_user::AdminUser>> {
         log::debug!(
             "AdminUserRepositoryAdapter::list_admin_users called with limit: {limit}, offset: {offset}, sort_by: {sort_by:?}, sort_order: {sort_order:?}",
         );

@@ -466,6 +466,76 @@ describe('FieldEditor', () => {
         })
     })
 
+    describe('Password field type', () => {
+        it('should show string validation options for Password fields', async () => {
+            const wrapper = mount(FieldEditor, {
+                props: {
+                    modelValue: true,
+                    field: undefined,
+                },
+                global: {
+                    plugins: [vuetify],
+                },
+            })
+
+            await wrapper.vm.$nextTick()
+
+            const vm = wrapper.vm as unknown as {
+                form: FieldDefinition
+                isStringType: boolean
+                showDefaultValue: boolean
+                showValidationSection: boolean
+            }
+
+            // Set field type to Password
+            vm.form.field_type = 'Password'
+            await wrapper.vm.$nextTick()
+
+            // Password should be treated as a string type for validation
+            expect(vm.isStringType).toBe(true)
+            expect(vm.showValidationSection).toBe(true)
+            // Password fields should not show default value
+            expect(vm.showDefaultValue).toBe(false)
+        })
+
+        it('should format Password constraints back to string type on save', async () => {
+            const wrapper = mount(FieldEditor, {
+                props: {
+                    modelValue: true,
+                    field: undefined,
+                },
+                global: {
+                    plugins: [vuetify],
+                },
+            })
+
+            await wrapper.vm.$nextTick()
+
+            const vm = wrapper.vm as unknown as {
+                form: FieldDefinition
+                formValid: boolean
+                saveField: () => void
+            }
+
+            vm.form.name = 'password'
+            vm.form.display_name = 'Password'
+            vm.form.field_type = 'Password'
+            vm.form.constraints = { min_length: 8 }
+            vm.formValid = true
+
+            vm.saveField()
+
+            const saveEvents = wrapper.emitted('save')
+            expect(saveEvents).toBeTruthy()
+
+            const savedField = saveEvents?.[0]?.[0] as FieldDefinition
+            expect(savedField.constraints).toEqual({
+                type: 'string',
+                constraints: { min_length: 8 },
+            })
+        })
+    })
+
     describe('Combined constraints', () => {
         it('should handle field with both unique and pattern constraints', async () => {
             const EMAIL_REGEX = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'

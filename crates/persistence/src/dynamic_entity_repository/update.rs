@@ -6,10 +6,11 @@ use uuid::Uuid;
 
 use crate::dynamic_entity_utils;
 use crate::dynamic_entity_versioning;
+use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::error::Result;
 use r_data_core_core::DynamicEntity;
 
-use super::DynamicEntityRepository;
+use super::{hash_if_password_field, DynamicEntityRepository};
 
 /// Try to parse a string as an ISO 8601 / RFC 3339 timestamp
 /// Returns Some(OffsetDateTime) if successful, None otherwise
@@ -22,6 +23,14 @@ fn try_parse_timestamp(s: &str) -> Option<OffsetDateTime> {
 /// # Errors
 /// Returns an error if the database operation fails or validation fails
 pub async fn update_entity(repo: &DynamicEntityRepository, entity: &DynamicEntity) -> Result<()> {
+    // Get the entity definition for password field detection
+    let entity_def = dynamic_entity_utils::get_entity_definition(
+        &repo.pool,
+        &entity.entity_type,
+        repo.cache_manager.clone(),
+    )
+    .await?;
+
     // Validate the entity against the entity definition
     entity.validate()?;
 
@@ -63,7 +72,7 @@ pub async fn update_entity(repo: &DynamicEntityRepository, entity: &DynamicEntit
     update_registry(&mut tx, entity, uuid).await?;
 
     // Update entity-specific table
-    update_entity_table(&mut tx, entity, uuid, current_entity_type).await?;
+    update_entity_table(&mut tx, entity, uuid, current_entity_type, &entity_def).await?;
 
     // Commit the transaction
     tx.commit().await?;
@@ -170,6 +179,7 @@ async fn update_entity_table(
     entity: &DynamicEntity,
     uuid: Uuid,
     current_entity_type: Option<String>,
+    entity_def: &EntityDefinition,
 ) -> Result<()> {
     // Use current_entity_type from the registry, not entity.entity_type
     // This ensures we're updating the correct table even if entity was created as different type
@@ -199,9 +209,12 @@ async fn update_entity_table(
 
         let key_lower = key.to_lowercase();
         if valid_columns.contains(&key_lower) {
+            // Hash Password fields before storing
+            let store_value = hash_if_password_field(key, value, entity_def)?;
+
             // Database columns are lowercase, so use lowercase for column name
             set_clauses.push(format!("{key_lower} = ${param_index}"));
-            entity_params.push((param_index, value.clone()));
+            entity_params.push((param_index, store_value));
             param_index += 1;
         }
     }

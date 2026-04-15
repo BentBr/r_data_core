@@ -16,7 +16,7 @@ use serial_test::serial;
 use std::sync::Arc;
 
 use crate::api::roles::common::setup_test_app;
-use r_data_core_api::jwt::generate_access_token;
+use r_data_core_core::admin_jwt::generate_access_token;
 
 /// Test that users without `dashboard_stats:read` permission get 403 Forbidden
 #[tokio::test]

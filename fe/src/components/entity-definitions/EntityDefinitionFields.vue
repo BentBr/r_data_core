@@ -231,6 +231,7 @@
             MultiSelect: 'list-checks',
             Image: 'image',
             File: 'file',
+            Password: 'lock',
         }
         return iconMap[fieldType] || 'type'
     }
@@ -255,6 +256,7 @@
             MultiSelect: 'green',
             Image: 'pink',
             File: 'brown',
+            Password: 'red',
         }
         return colorMap[fieldType] || 'primary'
     }

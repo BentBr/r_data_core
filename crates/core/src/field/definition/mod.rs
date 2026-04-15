@@ -9,6 +9,8 @@ use crate::error::Result;
 
 // Module re-exports
 mod constraints;
+#[cfg(test)]
+mod constraints_tests;
 mod serialization;
 mod validation;
 #[cfg(test)]
@@ -120,7 +122,8 @@ impl FieldDefinitionModule for FieldDefinition {
             | FieldType::Select
             | FieldType::Wysiwyg
             | FieldType::File
-            | FieldType::Image => "TEXT".to_string(),
+            | FieldType::Image
+            | FieldType::Password => "TEXT".to_string(),
             FieldType::Integer => "INTEGER".to_string(),
             FieldType::Float => "DOUBLE PRECISION".to_string(),
             FieldType::Boolean => "BOOLEAN".to_string(),

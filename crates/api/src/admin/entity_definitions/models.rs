@@ -214,6 +214,8 @@ pub enum FieldTypeSchema {
     Image,
     /// File upload field (stores file reference)
     File,
+    /// Password field (hashed on write, redacted on read)
+    Password,
 }
 
 /// Schema for field definitions in `OpenAPI` docs

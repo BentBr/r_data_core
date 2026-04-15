@@ -29,6 +29,10 @@ const AuthConfigSchema = z.discriminatedUnion('type', [
         location: KeyLocationSchema,
         field_name: z.string(),
     }),
+    z.object({
+        type: z.literal('entity_jwt'),
+        required_claims: z.record(z.string(), z.any()).optional(),
+    }),
 ])
 
 // Source configuration
@@ -214,6 +218,17 @@ export const DslTransformGetOrCreateEntitySchema = z.object({
     create_field_data: z.record(z.string(), DslStringOperandSchema).optional(),
     path_separator: z.string().optional(),
 })
+export const DslTransformAuthenticateSchema = z.object({
+    type: z.literal('authenticate'),
+    entity_type: z.string(),
+    identifier_field: z.string(),
+    password_field: z.string(),
+    input_identifier: z.string(),
+    input_password: z.string(),
+    target_token: z.string(),
+    extra_claims: z.record(z.string(), z.string()).optional(),
+    token_expiry_seconds: z.number().optional(),
+})
 export const DslTransformSchema = z.discriminatedUnion('type', [
     DslTransformNoneSchema,
     DslTransformArithmeticSchema,
@@ -221,6 +236,7 @@ export const DslTransformSchema = z.discriminatedUnion('type', [
     DslTransformResolveEntityPathSchema,
     DslTransformBuildPathSchema,
     DslTransformGetOrCreateEntitySchema,
+    DslTransformAuthenticateSchema,
 ])
 
 export const DslStepSchema = z.object({

@@ -23,6 +23,7 @@
                             :items="leftItems || []"
                             density="comfortable"
                             variant="outlined"
+                            hide-details
                             @update:model-value="(v: string) => updatePair(idx, { ...pair, k: v })"
                         />
                         <v-text-field
@@ -30,6 +31,7 @@
                             :model-value="pair.k"
                             density="comfortable"
                             variant="outlined"
+                            hide-details
                             @update:model-value="(v: string) => updatePair(idx, { ...pair, k: v })"
                         />
                     </td>
@@ -40,6 +42,7 @@
                             :items="rightItems || []"
                             density="comfortable"
                             variant="outlined"
+                            hide-details
                             @update:model-value="(v: string) => updatePair(idx, { ...pair, v })"
                         />
                         <v-text-field
@@ -47,10 +50,11 @@
                             :model-value="pair.v"
                             density="comfortable"
                             variant="outlined"
+                            hide-details
                             @update:model-value="(v: string) => updatePair(idx, { ...pair, v })"
                         />
                     </td>
-                    <td class="text-right">
+                    <td class="delete-cell">
                         <v-btn
                             size="x-small"
                             variant="text"
@@ -155,5 +159,14 @@
 
     .mapping-table {
         min-width: 560px;
+    }
+
+    .mapping-table :deep(thead th) {
+        padding-bottom: 12px;
+    }
+
+    .delete-cell {
+        vertical-align: middle;
+        text-align: right;
     }
 </style>

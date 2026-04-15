@@ -86,9 +86,7 @@ describe('EntityCreateDialog', () => {
 
     afterEach(() => {
         vi.useRealTimers()
-        if (wrapper) {
-            wrapper.unmount()
-        }
+        wrapper.unmount()
     })
 
     const mountComponent = (props = {}) => {

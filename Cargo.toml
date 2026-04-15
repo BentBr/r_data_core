@@ -5,6 +5,7 @@ edition = "2021"
 description = "A Master Data Managebent backend providing efficient data handling and distribution with custom entities and workflows"
 authors = ["Bent Brüggemann <mail@bent-brueggemann.de>"]
 license = "Business"
+repository = "https://github.com/BentBr/r_data_core"
 
 # Force single-threaded test execution
 [lib]

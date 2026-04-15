@@ -208,11 +208,9 @@ impl DynamicEntity {
 
         // Special handling for system fields
         match field {
-            "uuid" | "created_at" => {
+            "uuid" | "created_at" if self.field_data.contains_key(field) => {
                 // These fields are read-only after creation
-                if self.field_data.contains_key(field) {
-                    return Err(crate::error::Error::ReadOnlyField(field.to_string()));
-                }
+                return Err(crate::error::Error::ReadOnlyField(field.to_string()));
             }
             "updated_at" => {
                 // Auto-update timestamp

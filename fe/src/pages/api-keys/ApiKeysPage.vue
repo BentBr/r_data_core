@@ -6,6 +6,7 @@
                     v-if="canCreateApiKey"
                     color="primary"
                     variant="flat"
+                    data-testid="api-keys-create-btn"
                     @click="showCreateDialog = true"
                 >
                     <template #prepend>
@@ -18,6 +19,7 @@
                 </v-btn>
             </template>
             <PaginatedDataTable
+                data-testid="api-keys-table"
                 :items="apiKeys"
                 :headers="tableHeaders"
                 :loading="loading"

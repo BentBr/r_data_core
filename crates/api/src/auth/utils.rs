@@ -10,7 +10,7 @@ use log::{debug, error};
 use uuid::Uuid;
 
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
-use crate::jwt::{verify_jwt, AuthUserClaims};
+use r_data_core_core::admin_jwt::{verify_jwt, AuthUserClaims};
 use r_data_core_core::admin_user::ApiKey;
 
 use std::result::Result as StdResult;

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use actix_web::HttpRequest;
 use async_trait::async_trait;
 use reqwest::RequestBuilder;
@@ -69,6 +71,12 @@ pub enum AuthConfig {
         key: String,
         location: KeyLocation,
         field_name: String,
+    },
+    /// Entity JWT authentication (for headless CMS endpoints)
+    EntityJwt {
+        /// Optional required claims: claim path → expected value
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        required_claims: Option<HashMap<String, serde_json::Value>>,
     },
 }
 
@@ -235,6 +243,51 @@ impl AuthProvider for PreSharedKeyAuthProvider {
     }
 }
 
+/// Entity JWT auth provider (verification is done in the API layer, not here)
+pub struct EntityJwtAuthProvider {
+    required_claims: Option<HashMap<String, serde_json::Value>>,
+}
+
+impl EntityJwtAuthProvider {
+    #[must_use]
+    pub const fn new(required_claims: Option<HashMap<String, serde_json::Value>>) -> Self {
+        Self { required_claims }
+    }
+
+    /// Get the required claims configuration
+    #[must_use]
+    pub const fn required_claims(&self) -> &Option<HashMap<String, serde_json::Value>> {
+        &self.required_claims
+    }
+}
+
+#[async_trait]
+impl AuthProvider for EntityJwtAuthProvider {
+    fn apply_to_request(
+        &self,
+        builder: RequestBuilder,
+    ) -> r_data_core_core::error::Result<RequestBuilder> {
+        // Entity JWT is validated on incoming requests, not applied to outgoing ones
+        Ok(builder)
+    }
+
+    fn extract_from_request(
+        &self,
+        req: &HttpRequest,
+    ) -> r_data_core_core::error::Result<Option<String>> {
+        // Extract Bearer token from Authorization header
+        req.headers()
+            .get("Authorization")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|s| s.strip_prefix("Bearer "))
+            .map_or(Ok(None), |token| Ok(Some(token.to_string())))
+    }
+
+    fn auth_type(&self) -> &'static str {
+        "entity_jwt"
+    }
+}
+
 /// Create auth provider from config
 ///
 /// # Errors
@@ -261,5 +314,67 @@ pub fn create_auth_provider(
             location.clone(),
             field_name.clone(),
         ))),
+        AuthConfig::EntityJwt { required_claims } => Ok(Box::new(EntityJwtAuthProvider::new(
+            required_claims.clone(),
+        ))),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_entity_jwt_config_serialization() {
+        let config = AuthConfig::EntityJwt {
+            required_claims: None,
+        };
+        let json = serde_json::to_value(&config).unwrap();
+        assert_eq!(json["type"], "entity_jwt");
+
+        let deserialized: AuthConfig = serde_json::from_value(json).unwrap();
+        match deserialized {
+            AuthConfig::EntityJwt { required_claims } => {
+                assert!(required_claims.is_none());
+            }
+            _ => panic!("Expected EntityJwt variant"),
+        }
+    }
+
+    #[test]
+    fn test_entity_jwt_config_with_required_claims() {
+        let mut claims = HashMap::new();
+        claims.insert(
+            "extra.role".to_string(),
+            serde_json::Value::String("admin".to_string()),
+        );
+        let config = AuthConfig::EntityJwt {
+            required_claims: Some(claims),
+        };
+        let json = serde_json::to_value(&config).unwrap();
+        assert_eq!(json["type"], "entity_jwt");
+        assert_eq!(json["required_claims"]["extra.role"], "admin");
+
+        let deserialized: AuthConfig = serde_json::from_value(json).unwrap();
+        match deserialized {
+            AuthConfig::EntityJwt { required_claims } => {
+                let claims = required_claims.unwrap();
+                assert_eq!(
+                    claims.get("extra.role"),
+                    Some(&serde_json::Value::String("admin".to_string()))
+                );
+            }
+            _ => panic!("Expected EntityJwt variant"),
+        }
+    }
+
+    #[test]
+    fn test_entity_jwt_config_without_required_claims_omits_field() {
+        let config = AuthConfig::EntityJwt {
+            required_claims: None,
+        };
+        let json = serde_json::to_value(&config).unwrap();
+        // required_claims should be omitted when None (skip_serializing_if)
+        assert!(!json.as_object().unwrap().contains_key("required_claims"));
     }
 }

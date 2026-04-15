@@ -170,7 +170,7 @@ impl CacheManager {
         // Delete from Redis if available
         if let Some(redis) = &self.redis {
             match redis.delete_by_prefix(prefix).await {
-                Ok(count) => deleted_count += count,
+                Ok(count) => deleted_count = count,
                 Err(e) => {
                     log::warn!("Redis cache error during prefix deletion: {e}");
                 }
@@ -179,7 +179,11 @@ impl CacheManager {
 
         // Delete from in-memory cache
         match self.in_memory.delete_by_prefix(prefix).await {
-            Ok(count) => deleted_count += count,
+            Ok(count) => {
+                // Both backends store the same keys, so report the higher count
+                // rather than summing (which would double-count)
+                deleted_count = deleted_count.max(count);
+            }
             Err(e) => {
                 log::warn!("In-memory cache error during prefix deletion: {e}");
             }

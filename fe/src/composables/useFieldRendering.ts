@@ -37,6 +37,7 @@ export function useFieldRendering() {
             ManyToMany: 'v-combobox',
             Select: 'v-select',
             MultiSelect: 'v-combobox',
+            Password: 'v-text-field',
         }
         return componentMap[fieldType] || 'v-text-field'
     }
@@ -133,6 +134,7 @@ export function useFieldRendering() {
             ManyToMany: 'link-2',
             Select: 'list-checks',
             MultiSelect: 'list-checks',
+            Password: 'lock',
         }
         return iconMap[fieldType] || 'type'
     }
@@ -144,6 +146,11 @@ export function useFieldRendering() {
     const formatFieldValue = (value: unknown, fieldType: string): string => {
         if (value === null || value === undefined) {
             return t('common.empty')
+        }
+
+        // Password fields are always redacted
+        if (fieldType === 'Password') {
+            return '******'
         }
 
         switch (fieldType) {
@@ -187,6 +194,7 @@ export function useFieldRendering() {
             Url: 'url',
             File: 'file',
             Image: 'file',
+            Password: 'password',
         }
         return typeMap[fieldType] || 'text'
     }
@@ -206,6 +214,20 @@ export function useFieldRendering() {
         value: unknown,
         fieldType: string
     ): { parsed: unknown; error: string | null } => {
+        // Coerce Boolean fields: string "true"/"false" → actual boolean
+        if (fieldType === 'Boolean') {
+            if (typeof value === 'string') {
+                const lower = value.toLowerCase()
+                if (lower === 'true') {
+                    return { parsed: true, error: null }
+                }
+                if (lower === 'false') {
+                    return { parsed: false, error: null }
+                }
+            }
+            return { parsed: value, error: null }
+        }
+
         if (!isJsonFieldType(fieldType)) {
             return { parsed: value, error: null }
         }

@@ -253,6 +253,17 @@ fn validate_auth_config(
                 )));
             }
         }
+        AuthConfig::EntityJwt { required_claims } => {
+            if let Some(claims) = required_claims {
+                for key in claims.keys() {
+                    if key.trim().is_empty() {
+                        return Err(r_data_core_core::error::Error::Validation(format!(
+                            "DSL step {idx}: {context}.auth.entity_jwt.required_claims keys must not be empty"
+                        )));
+                    }
+                }
+            }
+        }
     }
     Ok(())
 }

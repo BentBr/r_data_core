@@ -7,9 +7,9 @@ use crate::auth::permission_check;
 use crate::response::{ApiResponse, ValidationViolation};
 use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 use r_data_core_workflow::dsl::{
-    ArithmeticOp, ArithmeticTransform, ConcatTransform, DslProgram, DslStep, EntityFilter,
-    EntityWriteMode, FormatConfig, FromDef, Operand, OutputMode, SourceConfig, StringOperand,
-    ToDef, Transform,
+    ArithmeticOp, ArithmeticTransform, AuthenticateTransform, ConcatTransform, DslProgram, DslStep,
+    EntityFilter, EntityWriteMode, FormatConfig, FromDef, Operand, OutputMode, SourceConfig,
+    StringOperand, ToDef, Transform,
 };
 
 use crate::admin::dsl::models::{
@@ -385,6 +385,60 @@ fn build_concat_transform_fields() -> Vec<DslFieldSpec> {
     ]
 }
 
+/// Build field specifications for the authenticate transform type
+fn build_authenticate_transform_fields() -> Vec<DslFieldSpec> {
+    vec![
+        DslFieldSpec {
+            name: "entity_type".into(),
+            r#type: "string".into(),
+            required: true,
+            options: None,
+        },
+        DslFieldSpec {
+            name: "identifier_field".into(),
+            r#type: "string".into(),
+            required: true,
+            options: None,
+        },
+        DslFieldSpec {
+            name: "password_field".into(),
+            r#type: "string".into(),
+            required: true,
+            options: None,
+        },
+        DslFieldSpec {
+            name: "input_identifier".into(),
+            r#type: "string".into(),
+            required: true,
+            options: None,
+        },
+        DslFieldSpec {
+            name: "input_password".into(),
+            r#type: "string".into(),
+            required: true,
+            options: None,
+        },
+        DslFieldSpec {
+            name: "target_token".into(),
+            r#type: "string".into(),
+            required: true,
+            options: None,
+        },
+        DslFieldSpec {
+            name: "extra_claims".into(),
+            r#type: "object<string, string>".into(),
+            required: false,
+            options: None,
+        },
+        DslFieldSpec {
+            name: "token_expiry_seconds".into(),
+            r#type: "number".into(),
+            required: false,
+            options: None,
+        },
+    ]
+}
+
 /// Build transform type specifications
 fn build_transform_type_specs() -> Vec<DslTypeSpec> {
     vec![
@@ -399,6 +453,10 @@ fn build_transform_type_specs() -> Vec<DslTypeSpec> {
         DslTypeSpec {
             r#type: "concat".to_string(),
             fields: build_concat_transform_fields(),
+        },
+        DslTypeSpec {
+            r#type: "authenticate".to_string(),
+            fields: build_authenticate_transform_fields(),
         },
     ]
 }
@@ -635,9 +693,22 @@ pub async fn list_transform_options(auth: RequiredAuth) -> impl Responder {
         },
     }))
     .unwrap();
+    let mut extra_claims = std::collections::HashMap::new();
+    extra_claims.insert("role".to_string(), "role".to_string());
+    let ex_auth = serde_json::to_value(Transform::Authenticate(AuthenticateTransform {
+        entity_type: "user".to_string(),
+        identifier_field: "email".to_string(),
+        password_field: "password".to_string(),
+        input_identifier: "identifier".to_string(),
+        input_password: "password".to_string(),
+        target_token: "token".to_string(),
+        extra_claims,
+        token_expiry_seconds: None,
+    }))
+    .unwrap();
     let resp = DslOptionsAndExamplesResponse {
         types: types.types,
-        examples: vec![ex_arith, ex_concat],
+        examples: vec![ex_arith, ex_concat, ex_auth],
     };
     ApiResponse::ok(resp)
 }

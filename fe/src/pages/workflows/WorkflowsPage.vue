@@ -316,6 +316,7 @@
                     v-if="canCreateWorkflow"
                     color="primary"
                     variant="flat"
+                    data-testid="workflows-create-btn"
                     @click="showCreate = true"
                 >
                     <template #prepend>
@@ -332,7 +333,11 @@
                 color="primary"
             >
                 <v-tab value="list">{{ t('table.list') ?? 'List' }}</v-tab>
-                <v-tab value="history">{{ t('workflows.history.tab') ?? 'History' }}</v-tab>
+                <v-tab
+                    value="history"
+                    data-testid="workflows-history-tab"
+                    >{{ t('workflows.history.tab') ?? 'History' }}</v-tab
+                >
             </v-tabs>
 
             <v-window
@@ -342,6 +347,7 @@
                 <v-window-item value="list">
                     <div>
                         <PaginatedDataTable
+                            data-testid="workflows-table"
                             :items="items"
                             :headers="[
                                 {

@@ -15,7 +15,8 @@ pub use path_resolution::{
 pub use program::DslProgram;
 pub use to::{EntityWriteMode, OutputMode, ToDef};
 pub use transform::{
-    ArithmeticOp, ArithmeticTransform, ConcatTransform, Operand, StringOperand, Transform,
+    ArithmeticOp, ArithmeticTransform, AuthenticateTransform, ConcatTransform, Operand,
+    StringOperand, Transform,
 };
 pub use validation::validate_mapping;
 
@@ -387,6 +388,133 @@ mod tests {
         // Both email and entity_key should have the same value
         assert_eq!(produced["email"], json!("test@example.com"));
         assert_eq!(produced["entity_key"], json!("test@example.com"));
+    }
+
+    #[test]
+    fn test_validate_authenticate_transform_ok() {
+        let config = json!({
+            "steps": [{
+                "from": {
+                    "type": "format",
+                    "source": {
+                        "source_type": "api",
+                        "config": {},
+                        "auth": null
+                    },
+                    "format": {
+                        "format_type": "json",
+                        "options": {}
+                    },
+                    "mapping": {
+                        "identifier": "email",
+                        "password": "password"
+                    }
+                },
+                "transform": {
+                    "type": "authenticate",
+                    "entity_type": "user",
+                    "identifier_field": "email",
+                    "password_field": "password",
+                    "input_identifier": "identifier",
+                    "input_password": "password",
+                    "target_token": "token",
+                    "extra_claims": { "role": "role" }
+                },
+                "to": {
+                    "type": "format",
+                    "output": { "mode": "api" },
+                    "format": {
+                        "format_type": "json",
+                        "options": {}
+                    },
+                    "mapping": { "token": "token" }
+                }
+            }]
+        });
+        let prog = DslProgram::from_config(&config).unwrap();
+        prog.validate().unwrap();
+    }
+
+    #[test]
+    fn test_validate_authenticate_transform_empty_entity_type() {
+        let config = json!({
+            "steps": [{
+                "from": {
+                    "type": "format",
+                    "source": {
+                        "source_type": "api",
+                        "config": {},
+                        "auth": null
+                    },
+                    "format": { "format_type": "json", "options": {} },
+                    "mapping": { "identifier": "email", "password": "password" }
+                },
+                "transform": {
+                    "type": "authenticate",
+                    "entity_type": "",
+                    "identifier_field": "email",
+                    "password_field": "password",
+                    "input_identifier": "identifier",
+                    "input_password": "password",
+                    "target_token": "token"
+                },
+                "to": {
+                    "type": "format",
+                    "output": { "mode": "api" },
+                    "format": { "format_type": "json", "options": {} },
+                    "mapping": { "token": "token" }
+                }
+            }]
+        });
+        let prog = DslProgram::from_config(&config).unwrap();
+        let result = prog.validate();
+        assert!(
+            result.is_err(),
+            "Expected validation to fail for empty entity_type"
+        );
+        assert!(
+            result.unwrap_err().to_string().contains("entity_type"),
+            "Error message should mention entity_type"
+        );
+    }
+
+    #[test]
+    fn test_validate_authenticate_transform_unsafe_field() {
+        let config = json!({
+            "steps": [{
+                "from": {
+                    "type": "format",
+                    "source": {
+                        "source_type": "api",
+                        "config": {},
+                        "auth": null
+                    },
+                    "format": { "format_type": "json", "options": {} },
+                    "mapping": { "identifier": "email", "password": "password" }
+                },
+                "transform": {
+                    "type": "authenticate",
+                    "entity_type": "user; DROP TABLE users",
+                    "identifier_field": "email",
+                    "password_field": "password",
+                    "input_identifier": "identifier",
+                    "input_password": "password",
+                    "target_token": "token"
+                },
+                "to": {
+                    "type": "format",
+                    "output": { "mode": "api" },
+                    "format": { "format_type": "json", "options": {} },
+                    "mapping": { "token": "token" }
+                }
+            }]
+        });
+        let prog = DslProgram::from_config(&config).unwrap();
+        let result = prog.validate();
+        assert!(
+            result.is_err(),
+            "Expected validation to fail for unsafe field name"
+        );
     }
 
     #[test]

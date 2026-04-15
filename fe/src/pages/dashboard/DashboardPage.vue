@@ -10,6 +10,7 @@
                     <v-card
                         color="primary"
                         variant="tonal"
+                        data-testid="dashboard-stat-tile"
                     >
                         <v-card-text>
                             <div class="text-h6">
@@ -42,6 +43,7 @@
                     <v-card
                         color="success"
                         variant="tonal"
+                        data-testid="dashboard-stat-tile"
                     >
                         <v-card-text>
                             <div class="text-h6">
@@ -84,6 +86,7 @@
                     <v-card
                         color="info"
                         variant="tonal"
+                        data-testid="dashboard-stat-tile"
                     >
                         <v-card-text>
                             <div class="text-h6">
@@ -127,6 +130,7 @@
                     <v-card
                         color="warning"
                         variant="tonal"
+                        data-testid="dashboard-stat-tile"
                     >
                         <v-card-text>
                             <div class="text-h6">
@@ -155,7 +159,10 @@
             <!-- Quick Actions -->
             <v-row class="mt-4">
                 <v-col cols="12">
-                    <v-card variant="outlined">
+                    <v-card
+                        variant="outlined"
+                        data-testid="dashboard-quick-actions"
+                    >
                         <v-card-title>{{ t('dashboard.quick_actions.title') }}</v-card-title>
                         <v-card-text>
                             <v-row>

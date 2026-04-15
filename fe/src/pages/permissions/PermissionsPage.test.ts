@@ -89,14 +89,14 @@ vi.mock('@/composables/useTranslations', () => ({
     useTranslations: () => ({
         t: (k: string) => {
             // Return a more readable translation for common keys
-            const translations: Record<string, string> = {
+            const translations: Record<string, string | undefined> = {
                 'permissions.page.title': 'Users and Roles',
                 'permissions.page.tabs.roles': 'Roles',
                 'permissions.page.tabs.users': 'Users and Roles',
                 'permissions.page.roles.title': 'Roles',
                 'permissions.page.roles.new_button': 'New Role',
             }
-            return translations[k] || k.split('.').pop() || k
+            return translations[k] ?? k.split('.').pop() ?? k
         },
     }),
 }))

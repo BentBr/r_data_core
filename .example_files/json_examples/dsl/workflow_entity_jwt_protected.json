@@ -1,0 +1,37 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "entity",
+        "entity_definition": "${ENTITY_TYPE}",
+        "mapping": {
+          "name": "name",
+          "price": "price"
+        }
+      },
+      "transform": {
+        "type": "none"
+      },
+      "to": {
+        "type": "format",
+        "output": {
+          "mode": "api"
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {
+          "name": "name",
+          "price": "price"
+        }
+      }
+    }
+  ],
+  "provider_auth": {
+    "type": "entity_jwt",
+    "required_claims": {
+      "extra.role": "member"
+    }
+  }
+}

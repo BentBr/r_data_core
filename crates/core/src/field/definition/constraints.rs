@@ -17,7 +17,6 @@ impl FieldDefinition {
     pub fn handle_constraint(&self, constraint_type: &str, constraint_value: &Value) -> Result<()> {
         match self.field_type {
             FieldType::String | FieldType::Text | FieldType::Wysiwyg => {
-                // String constraints
                 match constraint_type {
                     "min_length" | "max_length" => {
                         validate_number_constraint(constraint_value)?;
@@ -34,41 +33,30 @@ impl FieldDefinition {
                     _ => {}
                 }
             }
-            FieldType::Integer | FieldType::Float => {
-                // Numeric constraints
-                match constraint_type {
-                    "min" | "max" | "precision" => {
-                        validate_number_constraint(constraint_value)?;
-                    }
-                    "positive_only" => {
-                        validate_boolean_constraint(constraint_value)?;
-                    }
-                    _ => {}
+            FieldType::Integer | FieldType::Float => match constraint_type {
+                "min" | "max" | "precision" => {
+                    validate_number_constraint(constraint_value)?;
                 }
+                "positive_only" => {
+                    validate_boolean_constraint(constraint_value)?;
+                }
+                _ => {}
+            },
+            FieldType::DateTime | FieldType::Date
+                if constraint_type == "min_date" || constraint_type == "max_date" =>
+            {
+                validate_string_constraint(constraint_value)?;
             }
-            FieldType::DateTime | FieldType::Date => {
-                // Date constraints
-                if constraint_type == "min_date" || constraint_type == "max_date" {
-                    validate_string_constraint(constraint_value)?;
-                }
+            FieldType::Select | FieldType::MultiSelect if constraint_type == "options" => {
+                validate_array_constraint(constraint_value)?;
             }
-            FieldType::Select | FieldType::MultiSelect => {
-                // Select constraints
-                if constraint_type == "options" {
-                    validate_array_constraint(constraint_value)?;
-                }
+            FieldType::ManyToOne | FieldType::ManyToMany if constraint_type == "target_class" => {
+                validate_string_constraint(constraint_value)?;
             }
-            FieldType::ManyToOne | FieldType::ManyToMany => {
-                // Relation constraints
-                if constraint_type == "target_class" {
-                    validate_string_constraint(constraint_value)?;
-                }
-            }
-            FieldType::Object | FieldType::Array | FieldType::Json => {
-                // Schema constraints
-                if constraint_type == "schema" {
-                    validate_object_constraint(constraint_value)?;
-                }
+            FieldType::Object | FieldType::Array | FieldType::Json
+                if constraint_type == "schema" =>
+            {
+                validate_object_constraint(constraint_value)?;
             }
             _ => {}
         }

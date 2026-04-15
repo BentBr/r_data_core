@@ -196,20 +196,11 @@ describe('EditWorkflowDialog', () => {
             // Steps should be updated
             expect(vm.steps.length).toBe(1)
             const step = vm.steps[0]
-            if (
-                step.from &&
-                'type' in step.from &&
-                step.from.type === 'format' &&
-                'source' in step.from
-            ) {
-                const formatFrom = step.from as {
-                    type: 'format'
-                    source: { config: { uri?: string } }
-                }
-                expect(formatFrom.source.config.uri).toBe('http://manually-edited.com/data.csv')
-            } else {
-                throw new Error('Expected format from type with source')
+            const formatFrom = step.from as unknown as {
+                type: 'format'
+                source: { config: { uri?: string } }
             }
+            expect(formatFrom.source.config.uri).toBe('http://manually-edited.com/data.csv')
         })
 
         it('prevents circular updates when syncing steps → JSON → steps', async () => {
@@ -379,15 +370,13 @@ describe('EditWorkflowDialog', () => {
             // Steps should be sanitized
             expect(vm.steps.length).toBe(1)
             const step = vm.steps[0]
-            if (step.from && 'type' in step.from && step.from.type === 'format') {
-                const formatFrom = step.from as {
-                    type: 'format'
-                    format: { format_type: string; options?: unknown }
-                }
-                if (formatFrom.format?.format_type === 'csv') {
-                    // CSV options should be ensured by sanitization
-                    expect(formatFrom.format.options).toBeDefined()
-                }
+            const formatFrom = step.from as unknown as {
+                type: 'format'
+                format: { format_type: string; options?: unknown }
+            }
+            if (formatFrom.format.format_type === 'csv') {
+                // CSV options should be ensured by sanitization
+                expect(formatFrom.format.options).toBeDefined()
             }
         })
 

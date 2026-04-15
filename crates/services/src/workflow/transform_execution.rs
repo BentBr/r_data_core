@@ -1,8 +1,18 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
+use std::collections::HashMap;
+
 use r_data_core_core::error::Result;
 use r_data_core_workflow::dsl::{build_path_from_fields, transform::Transform, StringOperand};
 use serde_json::Value;
+
+/// JWT configuration for authenticate transforms
+pub struct JwtConfig<'a> {
+    /// Base JWT secret (entity tokens use `{secret}_entity` suffix)
+    pub secret: Option<&'a str>,
+    /// Default token expiration in seconds
+    pub expiration: u64,
+}
 
 // Helper functions to access nested values (re-implementing execution module functions)
 fn get_nested(input: &Value, path: &str) -> Option<Value> {
@@ -60,6 +70,7 @@ use uuid::Uuid;
 /// * `normalized` - Normalized data context
 /// * `de_service` - Dynamic entity service
 /// * `run_uuid` - Workflow run UUID
+/// * `jwt` - JWT configuration for authenticate transforms
 ///
 /// # Returns
 /// Modified normalized data with transform results
@@ -71,6 +82,7 @@ pub async fn execute_async_transform(
     normalized: &mut Value,
     de_service: &DynamicEntityService,
     run_uuid: Uuid,
+    jwt: &JwtConfig<'_>,
 ) -> Result<()> {
     match transform {
         Transform::ResolveEntityPath(rep) => {
@@ -78,6 +90,9 @@ pub async fn execute_async_transform(
         }
         Transform::GetOrCreateEntity(goc) => {
             handle_get_or_create_entity(goc, normalized, de_service, run_uuid).await
+        }
+        Transform::Authenticate(auth) => {
+            handle_authenticate(auth, normalized, de_service, jwt).await
         }
         _ => {
             // Other transforms are handled synchronously in DSL execution
@@ -208,4 +223,76 @@ fn prepare_create_field_data(
         }
         Ok(Some(field_data))
     })
+}
+
+async fn handle_authenticate(
+    auth: &r_data_core_workflow::dsl::transform::AuthenticateTransform,
+    normalized: &mut Value,
+    de_service: &DynamicEntityService,
+    jwt: &JwtConfig<'_>,
+) -> Result<()> {
+    let base_secret = jwt.secret.ok_or_else(|| {
+        r_data_core_core::error::Error::Config(
+            "JWT secret not configured — cannot issue entity tokens".to_string(),
+        )
+    })?;
+
+    // 1. Extract identifier and password from normalized data
+    let identifier = get_nested(normalized, &auth.input_identifier)
+        .and_then(|v| v.as_str().map(String::from))
+        .ok_or_else(|| r_data_core_core::error::Error::Auth("Invalid credentials".to_string()))?;
+    let password = get_nested(normalized, &auth.input_password)
+        .and_then(|v| v.as_str().map(String::from))
+        .ok_or_else(|| r_data_core_core::error::Error::Auth("Invalid credentials".to_string()))?;
+
+    // 2. Look up the entity by the identifier field
+    let mut filters = HashMap::new();
+    filters.insert(auth.identifier_field.clone(), Value::String(identifier));
+    let entity = de_service
+        .find_one_by_filters(&auth.entity_type, &filters)
+        .await?
+        .ok_or_else(|| r_data_core_core::error::Error::Auth("Invalid credentials".to_string()))?;
+
+    // 3. Read the raw password hash (bypasses redaction)
+    let entity_uuid = entity
+        .field_data
+        .get("uuid")
+        .and_then(|v| v.as_str())
+        .and_then(|s| uuid::Uuid::parse_str(s).ok())
+        .ok_or_else(|| r_data_core_core::error::Error::Auth("Invalid credentials".to_string()))?;
+
+    let password_hash = de_service
+        .get_raw_field_value(&auth.entity_type, &entity_uuid, &auth.password_field)
+        .await?
+        .ok_or_else(|| r_data_core_core::error::Error::Auth("Invalid credentials".to_string()))?;
+
+    // 4. Verify the password
+    if !r_data_core_core::crypto::verify_password_argon2(&password, &password_hash) {
+        return Err(r_data_core_core::error::Error::Auth(
+            "Invalid credentials".to_string(),
+        ));
+    }
+
+    // 5. Collect extra claims from entity data
+    let mut extra = HashMap::new();
+    for (claim_name, entity_field) in &auth.extra_claims {
+        if let Some(val) = entity.field_data.get(entity_field) {
+            extra.insert(claim_name.clone(), val.clone());
+        }
+    }
+
+    // 6. Generate entity JWT
+    let expiry = auth.token_expiry_seconds.unwrap_or(jwt.expiration);
+    let token = r_data_core_core::entity_jwt::generate_entity_jwt(
+        &entity_uuid.to_string(),
+        &auth.entity_type,
+        extra,
+        base_secret,
+        expiry,
+    )?;
+
+    // 7. Set the token in normalized data
+    set_nested(normalized, &auth.target_token, Value::String(token));
+
+    Ok(())
 }

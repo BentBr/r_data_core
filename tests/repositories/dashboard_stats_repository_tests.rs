@@ -5,15 +5,14 @@ use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepos
 use r_data_core_persistence::{
     DashboardStatsRepository, DashboardStatsRepositoryTrait, EntityDefinitionRepository,
 };
-use r_data_core_test_support::{create_test_admin_user, setup_test_db};
-use sqlx::PgPool;
+use r_data_core_test_support::{create_test_admin_user, setup_test_db, TestDatabase};
 use std::sync::Arc;
 use uuid::Uuid;
 
-async fn setup_test_repository() -> (Arc<DashboardStatsRepository>, PgPool) {
+async fn setup_test_repository() -> (Arc<DashboardStatsRepository>, TestDatabase) {
     let pool = setup_test_db().await;
     let repository = Arc::new(DashboardStatsRepository::new(pool.pool.clone()));
-    (repository, pool.pool.clone())
+    (repository, pool)
 }
 
 #[tokio::test]
@@ -38,7 +37,7 @@ async fn test_get_dashboard_stats_with_data() {
     let admin_user_uuid = create_test_admin_user(&pool).await.unwrap();
 
     // Create entity definition
-    let entity_def_repo = EntityDefinitionRepository::new(pool.clone());
+    let entity_def_repo = EntityDefinitionRepository::new(pool.pool.clone());
     let entity_def = EntityDefinition::from_params(EntityDefinitionParams {
         entity_type: "test_entity".to_string(),
         display_name: "Test Entity".to_string(),
@@ -66,7 +65,7 @@ async fn test_get_dashboard_stats_with_data() {
         format!("test-entity-{}", entity_uuid.simple()),
         admin_user_uuid
     )
-    .execute(&pool)
+    .execute(&*pool)
     .await
     .unwrap();
 
@@ -82,7 +81,7 @@ async fn test_get_dashboard_stats_with_data() {
     .bind("consumer")
     .bind(true)
     .bind(admin_user_uuid)
-    .execute(&pool)
+    .execute(&*pool)
     .await
     .unwrap();
 
@@ -95,7 +94,7 @@ async fn test_get_dashboard_stats_with_data() {
         admin_user_uuid,
         "test_hash"
     )
-    .execute(&pool)
+    .execute(&*pool)
     .await
     .unwrap();
 
