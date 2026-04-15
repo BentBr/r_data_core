@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import AuthConfigEditor from './AuthConfigEditor.vue'
-import type { AuthConfig } from './dsl-utils'
+import type { AuthConfig } from './contracts'
 
 vi.mock('@/composables/useTranslations', () => ({
     useTranslations: () => ({ t: (k: string) => k }),

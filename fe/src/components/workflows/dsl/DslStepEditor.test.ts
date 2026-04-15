@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import DslStepEditor from './DslStepEditor.vue'
-import type { DslStep } from './dsl-utils'
+import type { DslStep } from './contracts'
 
 vi.mock('@/composables/useTranslations', () => ({
     useTranslations: () => ({ t: (k: string) => k }),
@@ -68,6 +68,10 @@ describe('DslStepEditor', () => {
         expect(fromEditor.exists()).toBe(true)
         expect(transformEditor.exists()).toBe(true)
         expect(toEditor.exists()).toBe(true)
+        expect(wrapper.text()).toContain('workflows.dsl.guidance.step_summary_title')
+        expect(wrapper.text()).toContain('workflows.dsl.guidance.sections.input_title')
+        expect(wrapper.text()).toContain('workflows.dsl.guidance.sections.transform_title')
+        expect(wrapper.text()).toContain('workflows.dsl.guidance.sections.output_title')
     })
 
     it('passes isLastStep prop to DslToEditor when provided', async () => {

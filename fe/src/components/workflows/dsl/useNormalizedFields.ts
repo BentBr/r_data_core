@@ -1,5 +1,5 @@
 import { computed, type Ref, isRef } from 'vue'
-import type { FromDef, DslStep } from './dsl-utils'
+import type { FromDef, DslStep } from './contracts'
 
 /**
  * Composable to extract normalized field names from a FromDef or DslStep

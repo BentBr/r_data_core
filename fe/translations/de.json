@@ -115,6 +115,84 @@
         "dsl": {
             "steps_title": "DSL Schritte",
             "add_step": "Schritt hinzufügen",
+            "guidance": {
+                "pipeline_intro": "Bauen Sie diesen Workflow als kleine Pipeline auf: Quelle wählen, optionale Transformationen definieren und anschließend das Ergebnisziel festlegen.",
+                "step_summary_title": "Was dieser Schritt macht",
+                "sections": {
+                    "input_title": "1. Eingabe wählen",
+                    "input_description": "Definieren Sie, woher die Daten kommen und wie die eingehenden Felder normalisiert werden.",
+                    "transform_title": "2. Transformationen anwenden",
+                    "transform_description": "Transformationen sind optional. Nutzen Sie sie, um normalisierte Felder anzureichern, zu berechnen oder umzustrukturieren.",
+                    "output_title": "3. Ergebnis festlegen",
+                    "output_description": "Bestimmen Sie, ob dieser Schritt Daten speichert, an den nächsten Schritt weitergibt oder per API bzw. Remote Push bereitstellt."
+                }
+            },
+            "templates": {
+                "title": "Mit einem typischen Integrationsmuster starten",
+                "items": {
+                    "api_ingest": {
+                        "title": "API-Daten empfangen",
+                        "description": "Stellt einen Endpunkt bereit, akzeptiert JSON-Payloads und ordnet sie Entitäten zu."
+                    },
+                    "remote_pull": {
+                        "title": "Remote-API abrufen",
+                        "description": "Lädt Daten von einer externen API und normalisiert sie vor dem Speichern."
+                    },
+                    "entity_export": {
+                        "title": "Entitäten exportieren",
+                        "description": "Liest bestehende Entitäten und sendet sie an einen externen API-Endpunkt."
+                    }
+                }
+            },
+            "stats": {
+                "input_mappings": "Input-Mappings",
+                "output_mappings": "Output-Mappings",
+                "transform": "Transformation"
+            },
+            "transform_names": {
+                "none": "keine",
+                "arithmetic": "Arithmetik",
+                "concat": "Verkettung",
+                "build_path": "Pfad aufbauen",
+                "resolve_entity_path": "Entitätspfad auflösen",
+                "get_or_create_entity": "Entität finden oder anlegen",
+                "authenticate": "Authentifizieren"
+            },
+            "summary": {
+                "step": "{from}. {transform}. {to}.",
+                "placeholders": {
+                    "remote_url": "eine entfernte URL",
+                    "numeric_field": "ein Zahlenfeld",
+                    "text_field": "ein Textfeld",
+                    "target_field": "ein Zielfeld"
+                },
+                "from": {
+                    "api": "Empfängt {format}-Daten über diesen Workflow-Endpunkt",
+                    "uri": "Lädt {format}-Daten von {uri}",
+                    "generic": "Liest {format}-Daten aus einer {sourceType}-Quelle",
+                    "entity": "Lädt bestehende Entitäten aus der Plattform",
+                    "entity_named": "Lädt bestehende {entityDefinition}-Entitäten",
+                    "previous_step": "Verwendet die normalisierte Ausgabe des vorherigen Schritts",
+                    "trigger": "Startet, wenn der Trigger-Endpunkt aufgerufen wird"
+                },
+                "transform": {
+                    "none": "Leitet die Daten unverändert weiter",
+                    "arithmetic": "Berechnet {target}",
+                    "concat": "Erzeugt {target} durch Verkettung von Werten",
+                    "build_path": "Erstellt einen Pfad in {target}",
+                    "resolve_entity_path": "Sucht einen bestehenden Pfad für die Entität {entityType}",
+                    "get_or_create_entity": "Findet oder erstellt eine Entität vom Typ {entityType}",
+                    "authenticate": "Authentifiziert gegen {entityType}-Entitäten"
+                },
+                "to": {
+                    "entity": "Schreibt das Ergebnis in Plattform-Entitäten",
+                    "entity_named": "Schreibt das Ergebnis in {entityDefinition}-Entitäten",
+                    "next_step": "Gibt normalisierte Felder an den nächsten Workflow-Schritt weiter",
+                    "api": "Stellt das Ergebnis als {format} über die Workflow-API bereit",
+                    "download": "Erzeugt einen {format}-Download",
+                    "push": "Sendet {format} an {uri}"
+                }
+            },
             "from": "Von",
             "from_type": "Von Typ",
             "uri": "URI",
