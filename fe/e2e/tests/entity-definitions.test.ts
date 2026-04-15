@@ -65,27 +65,29 @@ test.describe('Entity Definitions', () => {
         const displayNameInput = dialog.getByLabel(/display.name/i)
         await displayNameInput.fill('E2E Test Product Updated')
 
-        // Wait for API response when clicking save
+        // Click save and wait for both the PUT and the subsequent GET refetch
+        const saveBtn = dialog.getByRole('button', { name: /save/i })
+        await saveBtn.scrollIntoViewIfNeeded()
+
         const [updateResp] = await Promise.all([
             authenticatedPage.waitForResponse(
                 resp =>
                     resp.url().includes('/entity-definitions/') && resp.request().method() === 'PUT'
             ),
-            (async () => {
-                const saveBtn = dialog.getByRole('button', { name: /save/i })
-                await saveBtn.scrollIntoViewIfNeeded()
-                await saveBtn.click()
-            })(),
+            saveBtn.click(),
         ])
         expect(updateResp.status()).toBeLessThan(300)
 
-        // Wait for dialog to close
-        await expect(dialog).not.toBeVisible({ timeout: 15_000 })
-        await authenticatedPage.waitForLoadState('networkidle')
+        // Wait for the refetch GET that happens after the PUT (the component reloads the definition)
+        await authenticatedPage.waitForResponse(
+            resp =>
+                resp.url().includes('/entity-definitions/') &&
+                resp.request().method() === 'GET' &&
+                resp.status() === 200
+        )
 
-        // Reload page to ensure tree picks up updated data from server
-        await authenticatedPage.reload()
-        await authenticatedPage.waitForLoadState('networkidle')
+        // Wait for dialogue to close and UI to settle
+        await expect(dialog).not.toBeVisible({ timeout: 15_000 })
 
         // Verify the updated name is shown in the tree
         await edPage.expectInTree('E2E Test Product Updated')

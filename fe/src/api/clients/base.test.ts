@@ -520,6 +520,80 @@ describe('BaseTypedHttpClient', () => {
             consoleLogSpy.mockRestore()
         })
 
+        it('should wait for ongoing refresh instead of logging out on concurrent 401', async () => {
+            const schema = z.object({
+                status: z.literal('Success'),
+                message: z.string(),
+                data: z.object({ id: z.number() }),
+            })
+
+            const mockResponse = {
+                status: 'Success',
+                message: 'OK',
+                data: { id: 1 },
+            }
+
+            // Simulate isRefreshing already being true (another request is refreshing)
+            // Access the private field to simulate the concurrent state
+
+            ;(client as any).isRefreshing = true
+
+            // First call returns 401, retry (second call) returns success
+            fetchSpy
+                .mockResolvedValueOnce({
+                    ok: false,
+                    status: 401,
+                    json: async () => ({}),
+                })
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: async () => mockResponse,
+                })
+
+            const result = await client.testRequest('/test', schema)
+
+            expect(result).toEqual(mockResponse.data)
+            // Should still call refreshTokens (waits via auth store's shared promise)
+            expect(mockRefreshTokens).toHaveBeenCalledTimes(1)
+            // Should NOT call logout — the old behavior would skip refresh and logout
+            expect(mockLogout).not.toHaveBeenCalled()
+            // Should have retried the request (2 fetch calls total)
+            expect(fetchSpy).toHaveBeenCalledTimes(2)
+        })
+
+        it('should throw HttpError with 404 status code', async () => {
+            const schema = z.object({
+                status: z.literal('Success'),
+                message: z.string(),
+                data: z.object({ id: z.number() }),
+            })
+
+            const errorResponse = {
+                status: 'Error',
+                message: 'Entity not found',
+            }
+
+            fetchSpy.mockResolvedValueOnce({
+                ok: false,
+                status: 404,
+                statusText: 'Not Found',
+                json: async () => errorResponse,
+            })
+
+            let caughtError: unknown
+            try {
+                await client.testRequest('/admin/api/v1/entities/123', schema, { method: 'GET' })
+            } catch (error) {
+                caughtError = error
+            }
+
+            expect(caughtError).toBeInstanceOf(HttpError)
+            expect((caughtError as HttpError).statusCode).toBe(404)
+            expect((caughtError as HttpError).namespace).toBe('entity')
+            expect((caughtError as HttpError).action).toBe('read')
+            expect((caughtError as HttpError).message).toBe('Entity not found')
+        })
+
         it('should handle DSL validate endpoint with fast-path', async () => {
             const schema = z.object({
                 status: z.literal('Success'),
@@ -589,7 +663,7 @@ describe('BaseTypedHttpClient', () => {
             expect(result.meta).toEqual(mockResponse.meta)
         })
 
-        it('should handle 401 in paginated request', async () => {
+        it('should handle 401 in paginated request with token refresh', async () => {
             const schema = z.object({
                 status: z.literal('Success'),
                 message: z.string(),
@@ -616,7 +690,187 @@ describe('BaseTypedHttpClient', () => {
             const result = await client.testPaginatedRequest('/test', schema)
 
             expect(mockRefreshTokens).toHaveBeenCalled()
+            expect(mockLogout).not.toHaveBeenCalled()
             expect(result.data).toEqual(mockResponse.data)
+        })
+
+        it('should handle 401 and logout if refresh fails in paginated request', async () => {
+            const schema = z.object({
+                status: z.literal('Success'),
+                message: z.string(),
+                data: z.array(z.object({ id: z.number() })),
+            })
+
+            mockRefreshTokens.mockRejectedValueOnce(new Error('Refresh failed'))
+
+            fetchSpy.mockResolvedValueOnce({
+                ok: false,
+                status: 401,
+                json: async () => ({}),
+            })
+
+            await expect(client.testPaginatedRequest('/test', schema)).rejects.toThrow(
+                'Authentication required'
+            )
+            expect(mockLogout).toHaveBeenCalled()
+        })
+
+        it('should wait for ongoing refresh on concurrent 401 in paginated request', async () => {
+            const schema = z.object({
+                status: z.literal('Success'),
+                message: z.string(),
+                data: z.array(z.object({ id: z.number() })),
+            })
+
+            const mockResponse = {
+                status: 'Success',
+                message: 'OK',
+                data: [{ id: 1 }],
+            }
+
+            // Simulate isRefreshing already being true
+
+            ;(client as any).isRefreshing = true
+
+            fetchSpy
+                .mockResolvedValueOnce({
+                    ok: false,
+                    status: 401,
+                    json: async () => ({}),
+                })
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: async () => mockResponse,
+                })
+
+            const result = await client.testPaginatedRequest('/test', schema)
+
+            expect(result.data).toEqual(mockResponse.data)
+            expect(mockRefreshTokens).toHaveBeenCalledTimes(1)
+            expect(mockLogout).not.toHaveBeenCalled()
+            expect(fetchSpy).toHaveBeenCalledTimes(2)
+        })
+
+        it('should handle 404 error in paginated request', async () => {
+            const schema = z.object({
+                status: z.literal('Success'),
+                message: z.string(),
+                data: z.array(z.object({ id: z.number() })),
+            })
+
+            const errorResponse = {
+                status: 'Error',
+                message: 'Resource not found',
+            }
+
+            fetchSpy.mockResolvedValueOnce({
+                ok: false,
+                status: 404,
+                statusText: 'Not Found',
+                json: async () => errorResponse,
+            })
+
+            await expect(client.testPaginatedRequest('/test', schema)).rejects.toThrow(
+                'Resource not found'
+            )
+            expect(mockLogout).not.toHaveBeenCalled()
+        })
+
+        it('should handle 403 error in paginated request', async () => {
+            const schema = z.object({
+                status: z.literal('Success'),
+                message: z.string(),
+                data: z.array(z.object({ id: z.number() })),
+            })
+
+            const errorResponse = {
+                status: 'Error',
+                message: 'Insufficient permissions',
+            }
+
+            fetchSpy.mockResolvedValueOnce({
+                ok: false,
+                status: 403,
+                statusText: 'Forbidden',
+                json: async () => errorResponse,
+            })
+
+            await expect(client.testPaginatedRequest('/test', schema)).rejects.toThrow(
+                'Insufficient permissions'
+            )
+            expect(mockLogout).not.toHaveBeenCalled()
+        })
+
+        it('should handle 500 error in paginated request', async () => {
+            const schema = z.object({
+                status: z.literal('Success'),
+                message: z.string(),
+                data: z.array(z.object({ id: z.number() })),
+            })
+
+            const errorResponse = {
+                status: 'Error',
+                message: 'Internal server error',
+            }
+
+            fetchSpy.mockResolvedValueOnce({
+                ok: false,
+                status: 500,
+                statusText: 'Internal Server Error',
+                json: async () => errorResponse,
+            })
+
+            await expect(client.testPaginatedRequest('/test', schema)).rejects.toThrow(
+                'Internal server error'
+            )
+        })
+
+        it('should handle 422 validation error in paginated request', async () => {
+            const schema = z.object({
+                status: z.literal('Success'),
+                message: z.string(),
+                data: z.array(z.object({ id: z.number() })),
+            })
+
+            const errorResponse = {
+                status: 'Error',
+                message: 'Validation failed',
+                violations: [{ field: 'page', message: 'Must be positive', code: 'INVALID' }],
+            }
+
+            fetchSpy.mockResolvedValueOnce({
+                ok: false,
+                status: 422,
+                statusText: 'Unprocessable Entity',
+                json: async () => errorResponse,
+            })
+
+            await expect(client.testPaginatedRequest('/test', schema)).rejects.toThrow(
+                ValidationError
+            )
+        })
+
+        it('should handle response validation errors in paginated request', async () => {
+            const schema = z.object({
+                status: z.literal('Success'),
+                message: z.string(),
+                data: z.array(z.object({ id: z.number() })),
+            })
+
+            const invalidResponse = {
+                status: 'Success',
+                message: 'OK',
+                data: [{ id: 'not-a-number' }], // Invalid type
+            }
+
+            fetchSpy.mockResolvedValueOnce({
+                ok: true,
+                json: async () => invalidResponse,
+            })
+
+            await expect(client.testPaginatedRequest('/test', schema)).rejects.toThrow(
+                'Response validation failed'
+            )
         })
     })
 

@@ -16,13 +16,13 @@ test.describe('Dashboard', () => {
         const dashboard = new DashboardPage(authenticatedPage)
         await dashboard.expectQuickActionsVisible()
 
-        // Click the first quick action button
+        // Click the first quick action button (New Entity Definition)
         const quickActions = authenticatedPage.getByTestId('dashboard-quick-actions')
         const firstButton = quickActions.locator('button').first()
         await firstButton.click()
 
-        // Should navigate away from dashboard (URL includes ?create=true)
-        await authenticatedPage.waitForURL(/create=true/, { timeout: 10_000 })
-        await expect(authenticatedPage).toHaveURL(/create=true/)
+        // Should navigate away from dashboard to entity-definitions
+        await authenticatedPage.waitForURL('**/entity-definitions**', { timeout: 10_000 })
+        await expect(authenticatedPage).not.toHaveURL(/\/dashboard/)
     })
 })

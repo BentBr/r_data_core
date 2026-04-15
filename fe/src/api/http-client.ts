@@ -31,7 +31,7 @@ export type ApiResponse<T> = {
 export class HttpClient {
     protected enableLogging = env.enableApiLogging
     protected devMode = env.devMode
-    private isRefreshing = false // Flag to prevent concurrent refresh attempts
+    private isRefreshing = false // Re-entrancy guard for token refresh
 
     async request<T>(
         endpoint: string,
@@ -90,43 +90,75 @@ export class HttpClient {
                 if (response.status === 401) {
                     // Handle unauthorized - try refresh first, then clear auth
                     const refreshToken = getRefreshToken()
-                    if (refreshToken && !endpoint.includes('/auth/refresh') && !this.isRefreshing) {
-                        // Try to refresh the token once
-                        try {
-                            if (this.enableLogging) {
-                                console.log('[API] 401 received, attempting token refresh')
-                            }
-
-                            this.isRefreshing = true
-                            // Trigger refresh through auth store
-                            await authStore.refreshTokens()
-                            const newToken = authStore.token
-
-                            if (newToken) {
-                                // Retry the original request with new token
-                                const retryConfig = {
-                                    ...config,
-                                    headers: {
-                                        ...config.headers,
-                                        Authorization: `Bearer ${newToken}`,
-                                    },
+                    if (refreshToken && !endpoint.includes('/auth/refresh')) {
+                        if (this.isRefreshing) {
+                            // Another request is already refreshing — wait for it via
+                            // the auth store's shared promise instead of skipping to logout
+                            try {
+                                await authStore.refreshTokens()
+                                const newToken = authStore.token
+                                if (newToken) {
+                                    const retryConfig = {
+                                        ...config,
+                                        headers: {
+                                            ...config.headers,
+                                            Authorization: `Bearer ${newToken}`,
+                                        },
+                                    }
+                                    const retryResponse = await fetch(
+                                        buildApiUrl(endpoint),
+                                        retryConfig
+                                    )
+                                    if (retryResponse.ok) {
+                                        const retryData = await retryResponse.json()
+                                        return this.validateResponse(retryData, schema)
+                                    }
                                 }
-                                const retryResponse = await fetch(
-                                    buildApiUrl(endpoint),
-                                    retryConfig
-                                )
-
-                                if (retryResponse.ok) {
-                                    const retryData = await retryResponse.json()
-                                    return this.validateResponse(retryData, schema)
+                            } catch (refreshError) {
+                                if (this.enableLogging) {
+                                    console.error(
+                                        '[API] Token refresh failed (concurrent):',
+                                        refreshError
+                                    )
                                 }
                             }
-                        } catch (refreshError) {
-                            if (this.enableLogging) {
-                                console.error('[API] Token refresh failed:', refreshError)
+                        } else {
+                            // Primary refresh path — we own the refresh
+                            try {
+                                if (this.enableLogging) {
+                                    console.log('[API] 401 received, attempting token refresh')
+                                }
+
+                                this.isRefreshing = true
+                                await authStore.refreshTokens()
+                                const newToken = authStore.token
+
+                                if (newToken) {
+                                    // Retry the original request with new token
+                                    const retryConfig = {
+                                        ...config,
+                                        headers: {
+                                            ...config.headers,
+                                            Authorization: `Bearer ${newToken}`,
+                                        },
+                                    }
+                                    const retryResponse = await fetch(
+                                        buildApiUrl(endpoint),
+                                        retryConfig
+                                    )
+
+                                    if (retryResponse.ok) {
+                                        const retryData = await retryResponse.json()
+                                        return this.validateResponse(retryData, schema)
+                                    }
+                                }
+                            } catch (refreshError) {
+                                if (this.enableLogging) {
+                                    console.error('[API] Token refresh failed:', refreshError)
+                                }
+                            } finally {
+                                this.isRefreshing = false
                             }
-                        } finally {
-                            this.isRefreshing = false
                         }
                     }
 
