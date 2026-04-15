@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.4.7](https://github.com/BentBr/r_data_core/compare/core-v0.4.6...core-v0.4.7) (2026-04-15)
+
+
+### Features
+
+* adding and fixing playwright tests ([004b0db](https://github.com/BentBr/r_data_core/commit/004b0db9e25d850d1c5f1ba4aef1a5b4e91d00ef))
+* claude skills and commands with clean CLAUDE.md file ([29cf0a5](https://github.com/BentBr/r_data_core/commit/29cf0a5d2af7283a62d3ca739aa78bd61fff5f2e))
+* password field + auth workflows ([76c405c](https://github.com/BentBr/r_data_core/commit/76c405c64c09310bdf91a9b5cc41d1e8ce6a9fd7))
+* **tests:** End-to-end tests via playwright ([bd2d223](https://github.com/BentBr/r_data_core/commit/bd2d2230e920453326a170f85e516e8300bb9552))
+
+
+### Bug Fixes
+
+* making sure auth process properly ends via holding promise ([a236b0c](https://github.com/BentBr/r_data_core/commit/a236b0c609f4f043c35ea682716d7bb2ed4ecf6e))
+* making sure mapping etc. works in FE ([55218c8](https://github.com/BentBr/r_data_core/commit/55218c892ef8696df54baa7e222f5ab8c0a7bf7e))
+* making sure tests are not flaky. removing overriden entity definion display name ([905098d](https://github.com/BentBr/r_data_core/commit/905098d6499a5adb624d545dde2d6f779ba4f623))
+* **security:** cargo audit fix ([72b6269](https://github.com/BentBr/r_data_core/commit/72b626979191cfaded4d9b7d5cb5dff0bdbc869e))
+* **security:** npm audit fix ([ba49f70](https://github.com/BentBr/r_data_core/commit/ba49f700c727d6f89b05a678e3f25db646d9b767))
+* **tests:** making sure our e2e tests are running properly ([f117db5](https://github.com/BentBr/r_data_core/commit/f117db53e730bd2c6da664f4437f06c6c4085c45))
+
 ## [0.4.6](https://github.com/BentBr/r_data_core/compare/core-v0.4.5...core-v0.4.6) (2026-02-08)
 
 
