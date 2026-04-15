@@ -22,22 +22,35 @@ export type ApiResponse<T> = {
 export class BaseTypedHttpClient {
     protected enableLogging = env.enableApiLogging
     protected devMode = env.devMode
-    private isRefreshing = false // Flag to prevent concurrent refresh attempts
+    private isRefreshing = false // Re-entrancy guard for token refresh
 
     protected getDefaultPageSize(): number {
         return env.defaultPageSize
     }
 
-    protected async request<T>(
-        endpoint: string,
-        schema: z.ZodType<ApiResponse<T>>,
-        options: RequestInit = {}
-    ): Promise<T> {
-        // Get auth token from auth store
+    /**
+     * Build request config with auth header
+     */
+    private buildConfig(authToken: string | null, options: RequestInit): RequestInit {
+        return {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...(authToken && {
+                    Authorization: `Bearer ${authToken}`,
+                }),
+                ...options.headers,
+            },
+        }
+    }
+
+    /**
+     * Attempt pre-request token refresh when no access token exists but a refresh token is available
+     */
+    private async ensureToken(endpoint: string): Promise<string | null> {
         const authStore = useAuthStore()
         let authToken = authStore.token
 
-        // If no token in store but refresh token exists, try to refresh
         if (!authToken) {
             const refreshToken = getRefreshToken()
             if (refreshToken && !endpoint.includes('/auth/refresh') && !this.isRefreshing) {
@@ -48,30 +61,91 @@ export class BaseTypedHttpClient {
                 }
                 try {
                     this.isRefreshing = true
-                    // Trigger refresh through auth store
                     await authStore.refreshTokens()
                     authToken = authStore.token
                 } catch (refreshError) {
                     if (this.enableLogging) {
                         console.error('[API] Automatic token refresh failed:', refreshError)
                     }
-                    // Don't logout here, let the 401 handler deal with it
                 } finally {
                     this.isRefreshing = false
                 }
             }
         }
 
-        const config: RequestInit = {
-            ...options,
+        return authToken
+    }
+
+    /**
+     * Handle 401 response by refreshing the token and retrying the request.
+     * Returns the successful retry Response, or null if retry failed.
+     *
+     * When isRefreshing is true (another request owns the refresh), we wait for
+     * the auth store's shared refresh promise instead of skipping to logout.
+     */
+    private async handleUnauthorized(
+        config: RequestInit,
+        endpoint: string
+    ): Promise<Response | null> {
+        const refreshToken = getRefreshToken()
+        if (!refreshToken || endpoint.includes('/auth/refresh')) {
+            return null
+        }
+
+        const authStore = useAuthStore()
+
+        if (this.isRefreshing) {
+            // Another request is already refreshing — wait via the auth store's shared promise
+            try {
+                await authStore.refreshTokens()
+            } catch (refreshError) {
+                if (this.enableLogging) {
+                    console.error('[API] Token refresh failed (concurrent):', refreshError)
+                }
+                return null
+            }
+        } else {
+            // Primary refresh path — we own the refresh
+            try {
+                if (this.enableLogging) {
+                    console.log('[API] 401 received, attempting token refresh')
+                }
+                this.isRefreshing = true
+                await authStore.refreshTokens()
+            } catch (refreshError) {
+                if (this.enableLogging) {
+                    console.error('[API] Token refresh failed:', refreshError)
+                }
+                return null
+            } finally {
+                this.isRefreshing = false
+            }
+        }
+
+        const newToken = authStore.token
+        if (!newToken) {
+            return null
+        }
+
+        // Retry the original request with the new token
+        const retryConfig = {
+            ...config,
             headers: {
-                'Content-Type': 'application/json',
-                ...(authToken && {
-                    Authorization: `Bearer ${authToken}`,
-                }),
-                ...options.headers,
+                ...config.headers,
+                Authorization: `Bearer ${newToken}`,
             },
         }
+        const retryResponse = await fetch(buildApiUrl(endpoint), retryConfig)
+        return retryResponse.ok ? retryResponse : null
+    }
+
+    protected async request<T>(
+        endpoint: string,
+        schema: z.ZodType<ApiResponse<T>>,
+        options: RequestInit = {}
+    ): Promise<T> {
+        const authToken = await this.ensureToken(endpoint)
+        const config = this.buildConfig(authToken, options)
 
         try {
             const fullUrl = buildApiUrl(endpoint)
@@ -83,49 +157,14 @@ export class BaseTypedHttpClient {
 
             if (!response.ok) {
                 if (response.status === 401) {
-                    // Handle unauthorized - try refresh first, then clear auth
-                    const refreshToken = getRefreshToken()
-                    if (refreshToken && !endpoint.includes('/auth/refresh') && !this.isRefreshing) {
-                        // Try to refresh the token once
-                        try {
-                            if (this.enableLogging) {
-                                console.log('[API] 401 received, attempting token refresh')
-                            }
-
-                            this.isRefreshing = true
-                            // Trigger refresh through auth store
-                            await authStore.refreshTokens()
-                            const newToken = authStore.token
-
-                            if (newToken) {
-                                // Retry the original request with new token
-                                const retryConfig = {
-                                    ...config,
-                                    headers: {
-                                        ...config.headers,
-                                        Authorization: `Bearer ${newToken}`,
-                                    },
-                                }
-                                const retryResponse = await fetch(
-                                    buildApiUrl(endpoint),
-                                    retryConfig
-                                )
-
-                                if (retryResponse.ok) {
-                                    const retryData = await retryResponse.json()
-                                    return this.validateResponse(retryData, schema)
-                                }
-                            }
-                        } catch (refreshError) {
-                            if (this.enableLogging) {
-                                console.error('[API] Token refresh failed:', refreshError)
-                            }
-                        } finally {
-                            this.isRefreshing = false
-                        }
+                    const retryResponse = await this.handleUnauthorized(config, endpoint)
+                    if (retryResponse) {
+                        const retryData = await retryResponse.json()
+                        return this.validateResponse(retryData, schema)
                     }
 
-                    // Clear auth and redirect to login
+                    // All refresh attempts failed — clear auth
+                    const authStore = useAuthStore()
                     await authStore.logout()
                     const namespace = extractNamespaceFromEndpoint(endpoint)
                     const action = extractActionFromMethod(options.method)
@@ -329,45 +368,8 @@ export class BaseTypedHttpClient {
             custom?: unknown
         }
     }> {
-        // Get auth token from auth store
-        const authStore = useAuthStore()
-        let authToken = authStore.token
-
-        // If no token in store but refresh token exists, try to refresh
-        if (!authToken) {
-            const refreshToken = getRefreshToken()
-            if (refreshToken && !endpoint.includes('/auth/refresh') && !this.isRefreshing) {
-                if (this.enableLogging) {
-                    console.log(
-                        '[API] No access token but refresh token exists, attempting refresh'
-                    )
-                }
-                try {
-                    this.isRefreshing = true
-                    // Trigger refresh through auth store
-                    await authStore.refreshTokens()
-                    authToken = authStore.token
-                } catch (refreshError) {
-                    if (this.enableLogging) {
-                        console.error('[API] Automatic token refresh failed:', refreshError)
-                    }
-                    // Don't logout here, let the 401 handler deal with it
-                } finally {
-                    this.isRefreshing = false
-                }
-            }
-        }
-
-        const config: RequestInit = {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...(authToken && {
-                    Authorization: `Bearer ${authToken}`,
-                }),
-                ...options.headers,
-            },
-        }
+        const authToken = await this.ensureToken(endpoint)
+        const config = this.buildConfig(authToken, options)
 
         try {
             const fullUrl = buildApiUrl(endpoint)
@@ -379,49 +381,14 @@ export class BaseTypedHttpClient {
 
             if (!response.ok) {
                 if (response.status === 401) {
-                    // Handle unauthorized - try refresh first, then clear auth
-                    const refreshToken = getRefreshToken()
-                    if (refreshToken && !endpoint.includes('/auth/refresh') && !this.isRefreshing) {
-                        // Try to refresh the token once
-                        try {
-                            if (this.enableLogging) {
-                                console.log('[API] 401 received, attempting token refresh')
-                            }
-
-                            this.isRefreshing = true
-                            // Trigger refresh through auth store
-                            await authStore.refreshTokens()
-                            const newToken = authStore.token
-
-                            if (newToken) {
-                                // Retry the original request with new token
-                                const retryConfig = {
-                                    ...config,
-                                    headers: {
-                                        ...config.headers,
-                                        Authorization: `Bearer ${newToken}`,
-                                    },
-                                }
-                                const retryResponse = await fetch(
-                                    buildApiUrl(endpoint),
-                                    retryConfig
-                                )
-
-                                if (retryResponse.ok) {
-                                    const retryData = await retryResponse.json()
-                                    return this.validatePaginatedResponse(retryData, schema)
-                                }
-                            }
-                        } catch (refreshError) {
-                            if (this.enableLogging) {
-                                console.error('[API] Token refresh failed:', refreshError)
-                            }
-                        } finally {
-                            this.isRefreshing = false
-                        }
+                    const retryResponse = await this.handleUnauthorized(config, endpoint)
+                    if (retryResponse) {
+                        const retryData = await retryResponse.json()
+                        return this.validatePaginatedResponse(retryData, schema)
                     }
 
-                    // Clear auth and redirect to login
+                    // All refresh attempts failed — clear auth
+                    const authStore = useAuthStore()
                     await authStore.logout()
                     throw new Error('Authentication required')
                 }
@@ -452,6 +419,9 @@ export class BaseTypedHttpClient {
                         })
                     }
 
+                    const namespace = extractNamespaceFromEndpoint(endpoint)
+                    const action = extractActionFromMethod(options.method)
+
                     // Handle validation errors (422) with structured violations
                     if (statusCode === 422 && errorData.violations) {
                         try {
@@ -465,34 +435,46 @@ export class BaseTypedHttpClient {
                             if (parseError instanceof ValidationError) {
                                 throw parseError
                             }
-                            // If parsing fails, treat as regular error
-                            throw new Error(
-                                errorData.message ?? `HTTP ${statusCode}: ${response.statusText}`
-                            )
+                            // If parsing fails, log and treat as regular error
+                            if (this.enableLogging) {
+                                console.error('[API] Failed to parse validation error:', parseError)
+                            }
+                            const message = errorData.message ?? response.statusText
+                            throw new HttpError(statusCode, namespace, action, message, message)
                         }
                     }
 
                     // Handle backend API response format
                     if (errorData.status === 'Error' && errorData.message) {
-                        throw new Error(errorData.message)
+                        const message = errorData.message
+                        throw new HttpError(statusCode, namespace, action, message, message)
                     }
 
                     // Handle other error formats
-                    const errorMessage =
-                        errorData.message ??
-                        errorData.error ??
-                        `HTTP ${statusCode}: ${response.statusText}`
-                    throw new Error(errorMessage)
+                    const message = errorData.message ?? errorData.error ?? response.statusText
+                    throw new HttpError(statusCode, namespace, action, message, message)
                 } catch (parseError) {
                     // Re-throw validation errors as-is silently
                     if (parseError instanceof ValidationError) {
+                        throw parseError
+                    }
+                    // Re-throw HttpError as-is
+                    if (parseError instanceof HttpError) {
                         throw parseError
                     }
                     // Only log non-validation errors
                     if (this.enableLogging) {
                         console.error('[API] Failed to parse error response:', parseError)
                     }
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+                    const namespace = extractNamespaceFromEndpoint(endpoint)
+                    const action = extractActionFromMethod(options.method)
+                    throw new HttpError(
+                        response.status,
+                        namespace,
+                        action,
+                        response.statusText,
+                        response.statusText
+                    )
                 }
             }
 

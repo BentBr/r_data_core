@@ -1,0 +1,16 @@
+{
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "Read|Grep|Write|Edit|Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node .claude/hooks/protect_secrets.js",
+                        "timeout": 5000
+                    }
+                ]
+            }
+        ]
+    }
+}

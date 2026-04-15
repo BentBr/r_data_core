@@ -18,6 +18,9 @@ export const test = base.extend<AuthFixtures>({
         await loginPage.goto()
         await loginPage.login(ADMIN_USERNAME, ADMIN_PASSWORD)
         await loginPage.expectRedirectToDashboard()
+        // Wait for auth state to fully settle before tests interact with the page
+        await page.waitForLoadState('networkidle')
+        await page.getByTestId('nav-sidebar').waitFor({ state: 'visible', timeout: 15_000 })
         await use(page)
     },
 
@@ -28,6 +31,8 @@ export const test = base.extend<AuthFixtures>({
         await loginPage.goto()
         await loginPage.login(VIEWER_USERNAME, VIEWER_PASSWORD)
         await loginPage.expectRedirectToDashboard()
+        await page.waitForLoadState('networkidle')
+        await page.getByTestId('nav-sidebar').waitFor({ state: 'visible', timeout: 15_000 })
         await use(page)
         await context.close()
     },
