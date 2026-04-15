@@ -1,6 +1,8 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 pub mod entity;
+#[cfg(test)]
+mod entity_tests;
 pub mod validator;
 #[cfg(test)]
 mod validator_tests;

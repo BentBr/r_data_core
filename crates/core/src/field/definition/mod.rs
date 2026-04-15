@@ -9,6 +9,8 @@ use crate::error::Result;
 
 // Module re-exports
 mod constraints;
+#[cfg(test)]
+mod constraints_tests;
 mod serialization;
 mod validation;
 #[cfg(test)]
