@@ -72,6 +72,10 @@ Each crate has a dedicated skill under `crates/` with module breakdowns, key exp
 - File length: 300 lines soft cap, 500 lines hard cap
 - See `conventions/rust-conventions` skill for full policy
 
+## Workflow Rules
+
+- **Never commit unless explicitly asked.** Do not auto-commit, stage, or create commits after completing work. The user reviews all changes before committing.
+
 ## Security Hooks
 
 `.claude/settings.json` blocks access to `.env`, `.pem`, `.key`, `credentials/`, `secrets/` directories.
