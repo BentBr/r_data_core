@@ -40,12 +40,16 @@ pub enum Status {
 #[ts(export)]
 pub struct PaginationMeta {
     /// Total number of items available
+    #[ts(type = "number")]
     pub total: i64,
     /// Current page number
+    #[ts(type = "number")]
     pub page: i64,
     /// Items per page
+    #[ts(type = "number")]
     pub per_page: i64,
     /// Total number of pages
+    #[ts(type = "number")]
     pub total_pages: i64,
     /// If there is a previous page
     pub has_previous: bool,

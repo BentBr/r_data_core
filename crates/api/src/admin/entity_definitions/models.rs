@@ -302,6 +302,7 @@ pub struct EntityDefinitionListResponse {
     /// List of entity definitions
     pub items: Vec<EntityDefinitionSchema>,
     /// Total number of items
+    #[ts(type = "number")]
     pub total: i64,
 }
 

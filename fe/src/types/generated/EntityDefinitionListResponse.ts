@@ -12,4 +12,4 @@ items: Array<EntityDefinitionSchema>,
 /**
  * Total number of items
  */
-total: bigint, };
+total: number, };

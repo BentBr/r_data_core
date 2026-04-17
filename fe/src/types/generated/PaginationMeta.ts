@@ -7,19 +7,19 @@ export type PaginationMeta = {
 /**
  * Total number of items available
  */
-total: bigint, 
+total: number, 
 /**
  * Current page number
  */
-page: bigint, 
+page: number, 
 /**
  * Items per page
  */
-per_page: bigint, 
+per_page: number, 
 /**
  * Total number of pages
  */
-total_pages: bigint, 
+total_pages: number, 
 /**
  * If there is a previous page
  */

@@ -16,6 +16,7 @@ pub struct CreateApiKeyRequest {
     pub description: Option<String>,
     /// Number of days until expiration (default: 365)
     #[serde(default)]
+    #[ts(type = "number | null")]
     pub expires_in_days: Option<i64>,
 }
 

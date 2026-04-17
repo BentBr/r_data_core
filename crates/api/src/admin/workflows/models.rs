@@ -63,7 +63,9 @@ pub struct WorkflowRunSummary {
     pub queued_at: Option<String>,
     pub started_at: Option<String>,
     pub finished_at: Option<String>,
+    #[ts(type = "number | null")]
     pub processed_items: Option<i64>,
+    #[ts(type = "number | null")]
     pub failed_items: Option<i64>,
 }
 

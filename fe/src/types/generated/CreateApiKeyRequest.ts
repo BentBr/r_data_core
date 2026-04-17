@@ -15,4 +15,4 @@ description: string | null,
 /**
  * Number of days until expiration (default: 365)
  */
-expires_in_days: bigint | null, };
+expires_in_days: number | null, };
