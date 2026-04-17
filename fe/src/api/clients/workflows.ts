@@ -7,9 +7,8 @@ import { useAuthStore } from '@/stores/auth'
 import { buildApiUrl } from '@/env-check'
 
 export class WorkflowsClient extends BaseTypedHttpClient {
-    async listWorkflows(): Promise<Array<WorkflowDetail & { kind: 'consumer' | 'provider' }>> {
-        const data = await this.request<WorkflowDetail[]>('/admin/api/v1/workflows')
-        return data.map(w => ({ ...w, kind: w.kind.toLowerCase() as 'consumer' | 'provider' }))
+    async listWorkflows(): Promise<WorkflowSummary[]> {
+        return this.request<WorkflowSummary[]>('/admin/api/v1/workflows')
     }
 
     async getWorkflows(
@@ -18,13 +17,7 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         sortBy?: string | null,
         sortOrder?: 'asc' | 'desc' | null
     ): Promise<{
-        data: Array<{
-            uuid: string
-            name: string
-            kind: 'consumer' | 'provider'
-            enabled: boolean
-            schedule_cron?: string | null
-        }>
+        data: WorkflowSummary[]
         meta?: {
             pagination?: {
                 total: number
@@ -40,19 +33,11 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         if (sortBy && sortOrder) {
             url += `&sort_by=${sortBy}&sort_order=${sortOrder}`
         }
-        const result = await this.paginatedRequest<WorkflowSummary[]>(url)
-        return {
-            ...result,
-            data: result.data.map(w => ({
-                ...w,
-                kind: w.kind.toLowerCase() as 'consumer' | 'provider',
-            })),
-        }
+        return this.paginatedRequest<WorkflowSummary[]>(url)
     }
 
-    async getWorkflow(uuid: string): Promise<WorkflowDetail & { kind: 'consumer' | 'provider' }> {
-        const data = await this.request<WorkflowDetail>(`/admin/api/v1/workflows/${uuid}`)
-        return { ...data, kind: data.kind.toLowerCase() as 'consumer' | 'provider' }
+    async getWorkflow(uuid: string): Promise<WorkflowDetail> {
+        return this.request<WorkflowDetail>(`/admin/api/v1/workflows/${uuid}`)
     }
 
     async createWorkflow(data: {

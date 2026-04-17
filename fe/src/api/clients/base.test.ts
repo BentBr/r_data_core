@@ -682,4 +682,128 @@ describe('BaseTypedHttpClient', () => {
             expect(result).toEqual({ message: 'OK' })
         })
     })
+
+    describe('validateResponse edge cases (post-refactor)', () => {
+        // After removing Zod, validateResponse uses `as` cast.
+        // These tests document what actually happens with unexpected shapes.
+
+        it('should throw when response has status Error', async () => {
+            fetchSpy.mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({
+                    status: 'Error',
+                    message: 'Something went wrong',
+                    data: null,
+                }),
+            })
+
+            await expect(client.testRequest('/test')).rejects.toThrow('Something went wrong')
+        })
+
+        it('should throw when response has no data and status is Success', async () => {
+            fetchSpy.mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({
+                    status: 'Success',
+                    message: 'OK',
+                    // data field missing entirely
+                }),
+            })
+
+            await expect(client.testRequest('/test')).rejects.toThrow(
+                'No data in successful response'
+            )
+        })
+
+        it('should throw when response has undefined data', async () => {
+            fetchSpy.mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({
+                    status: 'Success',
+                    message: 'OK',
+                    data: undefined,
+                }),
+            })
+
+            await expect(client.testRequest('/test')).rejects.toThrow(
+                'No data in successful response'
+            )
+        })
+
+        it('should pass through data even if shape is unexpected (no runtime validation)', async () => {
+            // With Zod removed, the client trusts the backend. If the shape is wrong,
+            // it passes through — the error surfaces later in the UI, not here.
+            const weirdData = { unexpected_field: 42, nested: { deep: true } }
+
+            fetchSpy.mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({
+                    status: 'Success',
+                    message: 'OK',
+                    data: weirdData,
+                }),
+            })
+
+            const result = await client.testRequest('/test')
+            expect(result).toEqual(weirdData)
+        })
+
+        it('should handle response with missing status field gracefully', async () => {
+            // When status is undefined, `response.status === 'Error'` is false,
+            // and the code falls through to check data.
+            fetchSpy.mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({
+                    message: 'OK',
+                    data: { id: 1 },
+                }),
+            })
+
+            const result = await client.testRequest('/test')
+            expect(result).toEqual({ id: 1 })
+        })
+
+        it('should handle empty object response', async () => {
+            fetchSpy.mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({}),
+            })
+
+            await expect(client.testRequest('/test')).rejects.toThrow(
+                'No data in successful response'
+            )
+        })
+
+        it('should handle paginated response with missing meta', async () => {
+            fetchSpy.mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({
+                    status: 'Success',
+                    message: 'OK',
+                    data: [{ id: 1 }],
+                    // meta missing
+                }),
+            })
+
+            const result = await client.testPaginatedRequest('/test')
+            expect(result.data).toEqual([{ id: 1 }])
+            expect(result.meta).toBeUndefined()
+        })
+
+        it('should handle paginated response with null meta', async () => {
+            fetchSpy.mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({
+                    status: 'Success',
+                    message: 'OK',
+                    data: [{ id: 1 }],
+                    meta: null,
+                }),
+            })
+
+            const result = await client.testPaginatedRequest('/test')
+            expect(result.data).toEqual([{ id: 1 }])
+            expect(result.meta).toBeUndefined()
+        })
+    })
 })
