@@ -1,16 +1,6 @@
-import { z } from 'zod'
-import {
-    ApiResponseSchema,
-    PaginatedApiResponseSchema,
-    ApiKeySchema,
-    ApiKeyCreatedResponseSchema,
-} from '@/types/schemas'
-import type {
-    ApiKey,
-    CreateApiKeyRequest,
-    ApiKeyCreatedResponse,
-    ReassignApiKeyRequest,
-} from '@/types/schemas'
+import type { ApiKeyResponse } from '@/types/generated/ApiKeyResponse'
+import type { ApiKeyCreatedResponse } from '@/types/generated/ApiKeyCreatedResponse'
+import type { CreateApiKeyRequest, ReassignApiKeyRequest } from '@/types/schemas'
 import { BaseTypedHttpClient } from './base'
 
 export class ApiKeysClient extends BaseTypedHttpClient {
@@ -20,7 +10,7 @@ export class ApiKeysClient extends BaseTypedHttpClient {
         sortBy?: string | null,
         sortOrder?: 'asc' | 'desc' | null
     ): Promise<{
-        data: ApiKey[]
+        data: ApiKeyResponse[]
         meta?: {
             pagination?: {
                 total: number
@@ -39,42 +29,26 @@ export class ApiKeysClient extends BaseTypedHttpClient {
         if (sortBy && sortOrder) {
             url += `&sort_by=${sortBy}&sort_order=${sortOrder}`
         }
-        const response = await this.paginatedRequest(
-            url,
-            PaginatedApiResponseSchema(z.array(ApiKeySchema))
-        )
-        return response
+        return this.paginatedRequest<ApiKeyResponse[]>(url)
     }
 
     async createApiKey(data: CreateApiKeyRequest): Promise<ApiKeyCreatedResponse> {
-        return this.request(
-            '/admin/api/v1/api-keys',
-            ApiResponseSchema(ApiKeyCreatedResponseSchema),
-            {
-                method: 'POST',
-                body: JSON.stringify(data),
-            }
-        )
+        return this.request<ApiKeyCreatedResponse>('/admin/api/v1/api-keys', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
     }
 
     async revokeApiKey(uuid: string): Promise<{ message: string }> {
-        return this.request(
-            `/admin/api/v1/api-keys/${uuid}`,
-            ApiResponseSchema(z.object({ message: z.string() })),
-            {
-                method: 'DELETE',
-            }
-        )
+        return this.request<{ message: string }>(`/admin/api/v1/api-keys/${uuid}`, {
+            method: 'DELETE',
+        })
     }
 
     async reassignApiKey(uuid: string, data: ReassignApiKeyRequest): Promise<{ message: string }> {
-        return this.request(
-            `/admin/api/v1/api-keys/${uuid}/reassign`,
-            ApiResponseSchema(z.object({ message: z.string() })),
-            {
-                method: 'PUT',
-                body: JSON.stringify(data),
-            }
-        )
+        return this.request<{ message: string }>(`/admin/api/v1/api-keys/${uuid}/reassign`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        })
     }
 }

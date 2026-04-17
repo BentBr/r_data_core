@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { UuidSchema, NullableUuidSchema } from './base'
+import { UuidSchema } from './base'
 
 // Enums
 export const ResourceNamespaceSchema = z.enum([
@@ -33,23 +33,7 @@ export const PermissionSchema = z.object({
     constraints: z.record(z.string(), z.unknown()).nullish(),
 })
 
-// Role schema
-export const RoleSchema = z.object({
-    uuid: UuidSchema,
-    name: z.string(),
-    description: z.string().nullable(),
-    is_system: z.boolean(),
-    super_admin: z.boolean(),
-    permissions: z.array(PermissionSchema),
-    created_at: z.string(),
-    updated_at: z.string(),
-    created_by: NullableUuidSchema,
-    updated_by: NullableUuidSchema,
-    published: z.boolean(),
-    version: z.number(),
-})
-
-// Request/Response schemas
+// Request schemas
 export const CreateRoleRequestSchema = z.object({
     name: z.string(),
     description: z.string().nullable().optional(),
@@ -73,7 +57,8 @@ export type ResourceNamespace = z.infer<typeof ResourceNamespaceSchema>
 export type PermissionType = z.infer<typeof PermissionTypeSchema>
 export type AccessLevel = z.infer<typeof AccessLevelSchema>
 export type Permission = z.infer<typeof PermissionSchema>
-export type Role = z.infer<typeof RoleSchema>
+// Role type re-exported from generated
+export type { RoleResponse as Role } from '../generated/RoleResponse'
 export type CreateRoleRequest = z.infer<typeof CreateRoleRequestSchema>
 export type UpdateRoleRequest = z.infer<typeof UpdateRoleRequestSchema>
 export type AssignRolesRequest = z.infer<typeof AssignRolesRequestSchema>

@@ -1,41 +1,24 @@
 import { z } from 'zod'
-import { UuidSchema, TimestampSchema } from './base'
+import type { AdminLoginRequest } from '../generated/AdminLoginRequest'
+import { USERNAME_MIN_LENGTH, PASSWORD_MIN_LENGTH } from '../generated/validation'
 
-// Auth schemas
+// Auth schemas (form validation — kept as Zod for runtime validation)
 export const LoginRequestSchema = z.object({
-    username: z.string().min(3),
-    password: z.string().min(8),
-})
+    username: z.string().min(USERNAME_MIN_LENGTH),
+    password: z.string().min(PASSWORD_MIN_LENGTH),
+}) satisfies z.ZodType<AdminLoginRequest>
 
-export const LoginResponseSchema = z.object({
-    access_token: z.string(),
-    refresh_token: z.string(),
-    user_uuid: UuidSchema,
-    username: z.string(),
-    access_expires_at: TimestampSchema,
-    refresh_expires_at: TimestampSchema,
-    using_default_password: z.boolean(),
-})
-
-// Refresh token schemas
 export const RefreshTokenRequestSchema = z.object({
     refresh_token: z.string(),
-})
-
-export const RefreshTokenResponseSchema = z.object({
-    access_token: z.string(),
-    refresh_token: z.string(),
-    access_expires_at: TimestampSchema,
-    refresh_expires_at: TimestampSchema,
 })
 
 export const LogoutRequestSchema = z.object({
     refresh_token: z.string(),
 })
 
-// Type exports
+// Type exports — response types re-exported from generated for consumers that only need types
 export type LoginRequest = z.infer<typeof LoginRequestSchema>
-export type LoginResponse = z.infer<typeof LoginResponseSchema>
+export type { AdminLoginResponse as LoginResponse } from '../generated/AdminLoginResponse'
+export type { RefreshTokenResponse } from '../generated/RefreshTokenResponse'
 export type RefreshTokenRequest = z.infer<typeof RefreshTokenRequestSchema>
-export type RefreshTokenResponse = z.infer<typeof RefreshTokenResponseSchema>
 export type LogoutRequest = z.infer<typeof LogoutRequestSchema>

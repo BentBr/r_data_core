@@ -1,28 +1,14 @@
 import { z } from 'zod'
-import { UuidSchema, TimestampSchema, NullableTimestampSchema, NullableUuidSchema } from './base'
+import { UuidSchema } from './base'
+import { API_KEY_NAME_MIN_LENGTH } from '../generated/validation'
 
-// API Key schema
-export const ApiKeySchema = z.object({
-    uuid: UuidSchema,
-    name: z.string(),
-    description: z.string().optional(),
-    is_active: z.boolean(),
-    created_at: TimestampSchema,
-    expires_at: NullableTimestampSchema,
-    last_used_at: NullableTimestampSchema,
-    created_by: NullableUuidSchema,
-    user_uuid: UuidSchema,
-    published: z.boolean(),
-})
-
+// Create API key request schema (form validation)
+// Note: satisfies z.ZodType<GeneratedCreateApiKeyRequest> not applied because the generated
+// type uses `bigint | null` for expires_in_days whereas Zod uses `number` (JS has no bigint in Zod).
 export const CreateApiKeyRequestSchema = z.object({
-    name: z.string().min(1),
+    name: z.string().min(API_KEY_NAME_MIN_LENGTH),
     description: z.string().optional(),
     expires_in_days: z.number().int().positive().optional(),
-})
-
-export const ApiKeyCreatedResponseSchema = ApiKeySchema.extend({
-    api_key: z.string(),
 })
 
 export const ReassignApiKeyRequestSchema = z.object({
@@ -33,10 +19,10 @@ export const ReassignApiKeyResponseSchema = z.object({
     message: z.string(),
 })
 
-// Type exports
-export type ApiKey = z.infer<typeof ApiKeySchema>
+// Type exports — re-exported from generated for consumers that only need types
+export type { ApiKeyResponse as ApiKey } from '../generated/ApiKeyResponse'
+export type { ApiKeyCreatedResponse } from '../generated/ApiKeyCreatedResponse'
 export type CreateApiKeyRequest = z.infer<typeof CreateApiKeyRequestSchema>
-export type ApiKeyCreatedResponse = z.infer<typeof ApiKeyCreatedResponseSchema>
 export type ReassignApiKeyRequest = z.infer<typeof ReassignApiKeyRequestSchema>
 export type ReassignApiKeyResponse = z.infer<typeof ReassignApiKeyResponseSchema>
 

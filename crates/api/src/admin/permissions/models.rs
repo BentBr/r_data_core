@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use ts_rs::TS;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -10,7 +11,8 @@ use r_data_core_core::permissions::role::{
 };
 
 /// Permission response DTO (for API serialization)
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct PermissionResponse {
     /// Resource type (as string for API compatibility)
     pub resource_type: String,
@@ -19,8 +21,10 @@ pub struct PermissionResponse {
     /// Access level
     pub access_level: AccessLevel,
     /// Resource UUIDs this permission applies to
+    #[ts(type = "string[]")]
     pub resource_uuids: Vec<Uuid>,
     /// Additional constraints
+    #[ts(type = "unknown")]
     pub constraints: Option<serde_json::Value>,
 }
 
@@ -70,9 +74,11 @@ pub(crate) fn pascal_to_snake_case(s: &str) -> String {
 }
 
 /// Role response DTO
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct RoleResponse {
     /// UUID of the role
+    #[ts(type = "string")]
     pub uuid: Uuid,
     /// Name of the role
     pub name: String,
@@ -86,13 +92,17 @@ pub struct RoleResponse {
     pub permissions: Vec<PermissionResponse>,
     /// When the role was created
     #[serde(with = "time::serde::rfc3339")]
+    #[ts(type = "string")]
     pub created_at: OffsetDateTime,
     /// When the role was last updated
     #[serde(with = "time::serde::rfc3339")]
+    #[ts(type = "string")]
     pub updated_at: OffsetDateTime,
     /// UUID of the user who created the role
+    #[ts(type = "string")]
     pub created_by: Uuid,
     /// UUID of the user who last updated the role
+    #[ts(type = "string | null")]
     pub updated_by: Option<Uuid>,
     /// Whether the role is published
     pub published: bool,
@@ -124,7 +134,8 @@ impl From<&Role> for RoleResponse {
 }
 
 /// Request to create a new role
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct CreateRoleRequest {
     /// Name of the role
     pub name: String,
@@ -137,7 +148,8 @@ pub struct CreateRoleRequest {
 }
 
 /// Request to update an existing role
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct UpdateRoleRequest {
     /// Name of the role
     pub name: String,
@@ -150,9 +162,11 @@ pub struct UpdateRoleRequest {
 }
 
 /// Request to assign roles to a user or API key
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct AssignRolesRequest {
     /// UUIDs of roles to assign
+    #[ts(type = "string[]")]
     pub role_uuids: Vec<Uuid>,
 }
 

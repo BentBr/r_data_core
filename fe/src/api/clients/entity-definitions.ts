@@ -1,10 +1,3 @@
-import { z } from 'zod'
-import {
-    ApiResponseSchema,
-    PaginatedApiResponseSchema,
-    EntityDefinitionSchema,
-    UuidSchema,
-} from '@/types/schemas'
 import type {
     EntityDefinition,
     CreateEntityDefinitionRequest,
@@ -33,58 +26,41 @@ export class EntityDefinitionsClient extends BaseTypedHttpClient {
         }
     }> {
         const pageSize = limit ?? this.getDefaultPageSize()
-        const response = await this.paginatedRequest(
-            `/admin/api/v1/entity-definitions?limit=${pageSize}&offset=${offset}`,
-            PaginatedApiResponseSchema(z.array(EntityDefinitionSchema))
+        return this.paginatedRequest<EntityDefinition[]>(
+            `/admin/api/v1/entity-definitions?limit=${pageSize}&offset=${offset}`
         )
-        return response
     }
 
     async getEntityDefinition(uuid: string): Promise<EntityDefinition> {
-        return this.request(
-            `/admin/api/v1/entity-definitions/${uuid}`,
-            ApiResponseSchema(EntityDefinitionSchema)
-        )
+        return this.request<EntityDefinition>(`/admin/api/v1/entity-definitions/${uuid}`)
     }
 
     async createEntityDefinition(data: CreateEntityDefinitionRequest): Promise<{ uuid: string }> {
-        return this.request(
-            '/admin/api/v1/entity-definitions',
-            ApiResponseSchema(z.object({ uuid: UuidSchema })),
-            {
-                method: 'POST',
-                body: JSON.stringify(data),
-            }
-        )
+        return this.request<{ uuid: string }>('/admin/api/v1/entity-definitions', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
     }
 
     async updateEntityDefinition(
         uuid: string,
         data: UpdateEntityDefinitionRequest
     ): Promise<{ uuid: string }> {
-        return this.request(
-            `/admin/api/v1/entity-definitions/${uuid}`,
-            ApiResponseSchema(z.object({ uuid: UuidSchema })),
-            {
-                method: 'PUT',
-                body: JSON.stringify(data),
-            }
-        )
+        return this.request<{ uuid: string }>(`/admin/api/v1/entity-definitions/${uuid}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        })
     }
 
     async deleteEntityDefinition(uuid: string): Promise<{ message: string }> {
-        return this.request(
-            `/admin/api/v1/entity-definitions/${uuid}`,
-            ApiResponseSchema(z.object({ message: z.string() })),
-            {
-                method: 'DELETE',
-            }
-        )
+        return this.request<{ message: string }>(`/admin/api/v1/entity-definitions/${uuid}`, {
+            method: 'DELETE',
+        })
     }
 
     async applyEntityDefinitionSchema(uuid?: string): Promise<{ message: string }> {
         const endpoint = '/admin/api/v1/entity-definitions/apply-schema'
-        return this.request(endpoint, ApiResponseSchema(z.object({ message: z.string() })), {
+        return this.request<{ message: string }>(endpoint, {
             method: 'POST',
             body: JSON.stringify({ uuid }),
         })
@@ -93,18 +69,9 @@ export class EntityDefinitionsClient extends BaseTypedHttpClient {
     async getEntityFields(
         entityType: string
     ): Promise<Array<{ name: string; type: string; required: boolean; system: boolean }>> {
-        const Schema = z.array(
-            z.object({
-                name: z.string(),
-                type: z.string(),
-                required: z.boolean(),
-                system: z.boolean(),
-            })
-        )
-        return this.request(
-            `/admin/api/v1/entity-definitions/${encodeURIComponent(entityType)}/fields`,
-            ApiResponseSchema(Schema)
-        )
+        return this.request<
+            Array<{ name: string; type: string; required: boolean; system: boolean }>
+        >(`/admin/api/v1/entity-definitions/${encodeURIComponent(entityType)}/fields`)
     }
 
     async listEntityDefinitionVersions(uuid: string): Promise<
@@ -115,19 +82,14 @@ export class EntityDefinitionsClient extends BaseTypedHttpClient {
             created_by_name?: string | null
         }>
     > {
-        return this.request(
-            `/admin/api/v1/entity-definitions/${uuid}/versions`,
-            ApiResponseSchema(
-                z.array(
-                    z.object({
-                        version_number: z.number(),
-                        created_at: z.string(),
-                        created_by: UuidSchema.nullable().optional(),
-                        created_by_name: z.string().nullable().optional(),
-                    })
-                )
-            )
-        )
+        return this.request<
+            Array<{
+                version_number: number
+                created_at: string
+                created_by?: string | null
+                created_by_name?: string | null
+            }>
+        >(`/admin/api/v1/entity-definitions/${uuid}/versions`)
     }
 
     async getEntityDefinitionVersion(
@@ -139,16 +101,11 @@ export class EntityDefinitionsClient extends BaseTypedHttpClient {
         created_by?: string | null
         data: Record<string, unknown>
     }> {
-        return this.request(
-            `/admin/api/v1/entity-definitions/${uuid}/versions/${versionNumber}`,
-            ApiResponseSchema(
-                z.object({
-                    version_number: z.number(),
-                    created_at: z.string(),
-                    created_by: UuidSchema.nullable().optional(),
-                    data: z.any(),
-                })
-            )
-        )
+        return this.request<{
+            version_number: number
+            created_at: string
+            created_by?: string | null
+            data: Record<string, unknown>
+        }>(`/admin/api/v1/entity-definitions/${uuid}/versions/${versionNumber}`)
     }
 }

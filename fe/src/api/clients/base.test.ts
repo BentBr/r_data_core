@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { BaseTypedHttpClient } from './base'
 import { ValidationError } from '../http-client'
 import { HttpError } from '../errors'
-import { z } from 'zod'
 
 // Mock dependencies
 const mockToken = 'test-token'
@@ -32,25 +31,14 @@ vi.mock('@/env-check', () => ({
     buildApiUrl: (endpoint: string) => `http://localhost:3000${endpoint}`,
 }))
 
-// Import ApiResponse type from base for typing
-import type { ApiResponse } from './base'
-
 // Create a test client class
 class TestClient extends BaseTypedHttpClient {
-    async testRequest<T>(
-        endpoint: string,
-        schema: z.ZodType<ApiResponse<T>>,
-        options?: RequestInit
-    ) {
-        return this.request(endpoint, schema, options)
+    async testRequest<T>(endpoint: string, options?: RequestInit) {
+        return this.request<T>(endpoint, options)
     }
 
-    async testPaginatedRequest<T>(
-        endpoint: string,
-        schema: z.ZodType<ApiResponse<T>>,
-        options?: RequestInit
-    ) {
-        return this.paginatedRequest(endpoint, schema, options)
+    async testPaginatedRequest<T>(endpoint: string, options?: RequestInit) {
+        return this.paginatedRequest<T>(endpoint, options)
     }
 }
 
@@ -72,12 +60,6 @@ describe('BaseTypedHttpClient', () => {
 
     describe('request', () => {
         it('should make successful request with authentication', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ id: z.number(), name: z.string() }),
-            })
-
             const mockResponse = {
                 status: 'Success',
                 message: 'OK',
@@ -89,7 +71,7 @@ describe('BaseTypedHttpClient', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.testRequest('/test', schema)
+            const result = await client.testRequest<{ id: number; name: string }>('/test')
 
             expect(fetchSpy).toHaveBeenCalledWith(
                 'http://localhost:3000/test',
@@ -104,12 +86,6 @@ describe('BaseTypedHttpClient', () => {
         })
 
         it('should handle 401 unauthorized with token refresh', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ id: z.number() }),
-            })
-
             const mockResponse = {
                 status: 'Success',
                 message: 'OK',
@@ -129,7 +105,7 @@ describe('BaseTypedHttpClient', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.testRequest('/test', schema)
+            const result = await client.testRequest<{ id: number }>('/test')
 
             expect(mockRefreshTokens).toHaveBeenCalled()
             expect(fetchSpy).toHaveBeenCalledTimes(2)
@@ -137,12 +113,6 @@ describe('BaseTypedHttpClient', () => {
         })
 
         it('should handle 401 and logout if refresh fails', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ id: z.number() }),
-            })
-
             mockRefreshTokens.mockRejectedValueOnce(new Error('Refresh failed'))
 
             fetchSpy.mockResolvedValueOnce({
@@ -151,19 +121,11 @@ describe('BaseTypedHttpClient', () => {
                 json: async () => ({}),
             })
 
-            await expect(client.testRequest('/test', schema)).rejects.toThrow(
-                'Authentication required'
-            )
+            await expect(client.testRequest('/test')).rejects.toThrow('Authentication required')
             expect(mockLogout).toHaveBeenCalled()
         })
 
         it('should handle validation errors (422)', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ id: z.number() }),
-            })
-
             const errorResponse = {
                 status: 'Error',
                 message: 'Validation failed',
@@ -176,16 +138,10 @@ describe('BaseTypedHttpClient', () => {
                 json: async () => errorResponse,
             })
 
-            await expect(client.testRequest('/test', schema)).rejects.toThrow(ValidationError)
+            await expect(client.testRequest('/test')).rejects.toThrow(ValidationError)
         })
 
         it('should handle 400 errors with validation-like structure', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ id: z.number() }),
-            })
-
             const errorResponse = {
                 message: 'Json deserialize error: unknown variant `invalid`',
             }
@@ -196,16 +152,10 @@ describe('BaseTypedHttpClient', () => {
                 json: async () => errorResponse,
             })
 
-            await expect(client.testRequest('/test', schema)).rejects.toThrow(ValidationError)
+            await expect(client.testRequest('/test')).rejects.toThrow(ValidationError)
         })
 
         it('should handle generic HTTP errors', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ id: z.number() }),
-            })
-
             const errorResponse = {
                 status: 'Error',
                 message: 'Server error',
@@ -221,39 +171,10 @@ describe('BaseTypedHttpClient', () => {
             // The code checks errorData.status === 'Error' and errorData.message first
             // But if statusText is provided, it falls back to that
             // Since we're providing statusText, it will use the fallback format
-            await expect(client.testRequest('/test', schema)).rejects.toThrow()
-        })
-
-        it('should handle response validation errors', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ id: z.number() }),
-            })
-
-            const invalidResponse = {
-                status: 'Success',
-                message: 'OK',
-                data: { id: 'not-a-number' }, // Invalid type
-            }
-
-            fetchSpy.mockResolvedValueOnce({
-                ok: true,
-                json: async () => invalidResponse,
-            })
-
-            await expect(client.testRequest('/test', schema)).rejects.toThrow(
-                'Response validation failed'
-            )
+            await expect(client.testRequest('/test')).rejects.toThrow()
         })
 
         it('should throw HttpError with 403 status code and context', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ id: z.number() }),
-            })
-
             const errorResponse = {
                 status: 'Error',
                 message: 'Insufficient permissions',
@@ -268,7 +189,7 @@ describe('BaseTypedHttpClient', () => {
 
             let caughtError: unknown
             try {
-                await client.testRequest('/admin/api/v1/users', schema, { method: 'POST' })
+                await client.testRequest('/admin/api/v1/users', { method: 'POST' })
             } catch (error) {
                 caughtError = error
             }
@@ -281,12 +202,6 @@ describe('BaseTypedHttpClient', () => {
         })
 
         it('should throw HttpError with correct namespace extraction', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ id: z.number() }),
-            })
-
             const errorResponse = {
                 status: 'Error',
                 message: 'Permission denied',
@@ -301,7 +216,7 @@ describe('BaseTypedHttpClient', () => {
 
             let caughtError: unknown
             try {
-                await client.testRequest('/admin/api/v1/roles', schema, { method: 'GET' })
+                await client.testRequest('/admin/api/v1/roles', { method: 'GET' })
             } catch (error) {
                 caughtError = error
             }
@@ -313,12 +228,6 @@ describe('BaseTypedHttpClient', () => {
         })
 
         it('should throw HttpError with fallback message when error format is different', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ id: z.number() }),
-            })
-
             const errorResponse = {
                 error: 'Access denied',
             }
@@ -332,7 +241,7 @@ describe('BaseTypedHttpClient', () => {
 
             let caughtError: unknown
             try {
-                await client.testRequest('/admin/api/v1/api-keys', schema, { method: 'PUT' })
+                await client.testRequest('/admin/api/v1/api-keys', { method: 'PUT' })
             } catch (error) {
                 caughtError = error
             }
@@ -345,12 +254,6 @@ describe('BaseTypedHttpClient', () => {
         })
 
         it('should throw HttpError when response parsing fails', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ id: z.number() }),
-            })
-
             fetchSpy.mockResolvedValueOnce({
                 ok: false,
                 status: 403,
@@ -362,7 +265,7 @@ describe('BaseTypedHttpClient', () => {
 
             let caughtError: unknown
             try {
-                await client.testRequest('/admin/api/v1/workflows', schema, { method: 'DELETE' })
+                await client.testRequest('/admin/api/v1/workflows', { method: 'DELETE' })
             } catch (error) {
                 caughtError = error
             }
@@ -375,12 +278,6 @@ describe('BaseTypedHttpClient', () => {
         })
 
         it('should throw HttpError with 409 conflict status code and context', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ id: z.number() }),
-            })
-
             const errorResponse = {
                 status: 'Error',
                 message: 'A user with this username already exists',
@@ -395,7 +292,7 @@ describe('BaseTypedHttpClient', () => {
 
             let caughtError: unknown
             try {
-                await client.testRequest('/admin/api/v1/users', schema, { method: 'POST' })
+                await client.testRequest('/admin/api/v1/users', { method: 'POST' })
             } catch (error) {
                 caughtError = error
             }
@@ -410,12 +307,6 @@ describe('BaseTypedHttpClient', () => {
         })
 
         it('should throw HttpError with 409 conflict for entity definitions', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ id: z.number() }),
-            })
-
             const errorResponse = {
                 status: 'Error',
                 message: 'An entity definition with this type already exists',
@@ -430,7 +321,7 @@ describe('BaseTypedHttpClient', () => {
 
             let caughtError: unknown
             try {
-                await client.testRequest('/admin/api/v1/entity-definitions', schema, {
+                await client.testRequest('/admin/api/v1/entity-definitions', {
                     method: 'POST',
                 })
             } catch (error) {
@@ -447,12 +338,6 @@ describe('BaseTypedHttpClient', () => {
         })
 
         it('should throw HttpError with 409 conflict for API keys', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ id: z.number() }),
-            })
-
             const errorResponse = {
                 status: 'Error',
                 message: 'An API key with this name already exists',
@@ -467,7 +352,7 @@ describe('BaseTypedHttpClient', () => {
 
             let caughtError: unknown
             try {
-                await client.testRequest('/admin/api/v1/api-keys', schema, { method: 'POST' })
+                await client.testRequest('/admin/api/v1/api-keys', { method: 'POST' })
             } catch (error) {
                 caughtError = error
             }
@@ -482,12 +367,6 @@ describe('BaseTypedHttpClient', () => {
         })
 
         it('should not log 409 errors as console.error (only in devMode as console.log)', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ id: z.number() }),
-            })
-
             const errorResponse = {
                 status: 'Error',
                 message: 'Conflict',
@@ -504,7 +383,7 @@ describe('BaseTypedHttpClient', () => {
             })
 
             try {
-                await client.testRequest('/admin/api/v1/users', schema, { method: 'POST' })
+                await client.testRequest('/admin/api/v1/users', { method: 'POST' })
             } catch {
                 // Expected
             }
@@ -521,12 +400,6 @@ describe('BaseTypedHttpClient', () => {
         })
 
         it('should wait for ongoing refresh instead of logging out on concurrent 401', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ id: z.number() }),
-            })
-
             const mockResponse = {
                 status: 'Success',
                 message: 'OK',
@@ -550,7 +423,7 @@ describe('BaseTypedHttpClient', () => {
                     json: async () => mockResponse,
                 })
 
-            const result = await client.testRequest('/test', schema)
+            const result = await client.testRequest<{ id: number }>('/test')
 
             expect(result).toEqual(mockResponse.data)
             // Should still call refreshTokens (waits via auth store's shared promise)
@@ -562,12 +435,6 @@ describe('BaseTypedHttpClient', () => {
         })
 
         it('should throw HttpError with 404 status code', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ id: z.number() }),
-            })
-
             const errorResponse = {
                 status: 'Error',
                 message: 'Entity not found',
@@ -582,7 +449,7 @@ describe('BaseTypedHttpClient', () => {
 
             let caughtError: unknown
             try {
-                await client.testRequest('/admin/api/v1/entities/123', schema, { method: 'GET' })
+                await client.testRequest('/admin/api/v1/entities/123', { method: 'GET' })
             } catch (error) {
                 caughtError = error
             }
@@ -594,14 +461,10 @@ describe('BaseTypedHttpClient', () => {
             expect((caughtError as HttpError).message).toBe('Entity not found')
         })
 
-        it('should handle DSL validate endpoint with fast-path', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.object({ valid: z.boolean() }),
-            })
-
+        it('should handle DSL validate endpoint', async () => {
             const mockResponse = {
+                status: 'Success',
+                message: 'OK',
                 data: { valid: true },
             }
 
@@ -610,7 +473,7 @@ describe('BaseTypedHttpClient', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.testRequest('/dsl/validate', schema)
+            const result = await client.testRequest<{ valid: boolean }>('/dsl/validate')
 
             expect(result).toEqual(mockResponse.data)
         })
@@ -618,24 +481,6 @@ describe('BaseTypedHttpClient', () => {
 
     describe('paginatedRequest', () => {
         it('should make successful paginated request', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.array(z.object({ id: z.number() })),
-                meta: z
-                    .object({
-                        pagination: z.object({
-                            total: z.number(),
-                            page: z.number(),
-                            per_page: z.number(),
-                            total_pages: z.number(),
-                            has_previous: z.boolean(),
-                            has_next: z.boolean(),
-                        }),
-                    })
-                    .optional(),
-            })
-
             const mockResponse = {
                 status: 'Success',
                 message: 'OK',
@@ -657,19 +502,13 @@ describe('BaseTypedHttpClient', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.testPaginatedRequest('/test', schema)
+            const result = await client.testPaginatedRequest<Array<{ id: number }>>('/test')
 
             expect(result.data).toEqual(mockResponse.data)
             expect(result.meta).toEqual(mockResponse.meta)
         })
 
         it('should handle 401 in paginated request with token refresh', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.array(z.object({ id: z.number() })),
-            })
-
             const mockResponse = {
                 status: 'Success',
                 message: 'OK',
@@ -687,7 +526,7 @@ describe('BaseTypedHttpClient', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.testPaginatedRequest('/test', schema)
+            const result = await client.testPaginatedRequest<Array<{ id: number }>>('/test')
 
             expect(mockRefreshTokens).toHaveBeenCalled()
             expect(mockLogout).not.toHaveBeenCalled()
@@ -695,12 +534,6 @@ describe('BaseTypedHttpClient', () => {
         })
 
         it('should handle 401 and logout if refresh fails in paginated request', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.array(z.object({ id: z.number() })),
-            })
-
             mockRefreshTokens.mockRejectedValueOnce(new Error('Refresh failed'))
 
             fetchSpy.mockResolvedValueOnce({
@@ -709,19 +542,13 @@ describe('BaseTypedHttpClient', () => {
                 json: async () => ({}),
             })
 
-            await expect(client.testPaginatedRequest('/test', schema)).rejects.toThrow(
+            await expect(client.testPaginatedRequest('/test')).rejects.toThrow(
                 'Authentication required'
             )
             expect(mockLogout).toHaveBeenCalled()
         })
 
         it('should wait for ongoing refresh on concurrent 401 in paginated request', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.array(z.object({ id: z.number() })),
-            })
-
             const mockResponse = {
                 status: 'Success',
                 message: 'OK',
@@ -743,7 +570,7 @@ describe('BaseTypedHttpClient', () => {
                     json: async () => mockResponse,
                 })
 
-            const result = await client.testPaginatedRequest('/test', schema)
+            const result = await client.testPaginatedRequest<Array<{ id: number }>>('/test')
 
             expect(result.data).toEqual(mockResponse.data)
             expect(mockRefreshTokens).toHaveBeenCalledTimes(1)
@@ -752,12 +579,6 @@ describe('BaseTypedHttpClient', () => {
         })
 
         it('should handle 404 error in paginated request', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.array(z.object({ id: z.number() })),
-            })
-
             const errorResponse = {
                 status: 'Error',
                 message: 'Resource not found',
@@ -770,19 +591,11 @@ describe('BaseTypedHttpClient', () => {
                 json: async () => errorResponse,
             })
 
-            await expect(client.testPaginatedRequest('/test', schema)).rejects.toThrow(
-                'Resource not found'
-            )
+            await expect(client.testPaginatedRequest('/test')).rejects.toThrow('Resource not found')
             expect(mockLogout).not.toHaveBeenCalled()
         })
 
         it('should handle 403 error in paginated request', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.array(z.object({ id: z.number() })),
-            })
-
             const errorResponse = {
                 status: 'Error',
                 message: 'Insufficient permissions',
@@ -795,19 +608,13 @@ describe('BaseTypedHttpClient', () => {
                 json: async () => errorResponse,
             })
 
-            await expect(client.testPaginatedRequest('/test', schema)).rejects.toThrow(
+            await expect(client.testPaginatedRequest('/test')).rejects.toThrow(
                 'Insufficient permissions'
             )
             expect(mockLogout).not.toHaveBeenCalled()
         })
 
         it('should handle 500 error in paginated request', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.array(z.object({ id: z.number() })),
-            })
-
             const errorResponse = {
                 status: 'Error',
                 message: 'Internal server error',
@@ -820,18 +627,12 @@ describe('BaseTypedHttpClient', () => {
                 json: async () => errorResponse,
             })
 
-            await expect(client.testPaginatedRequest('/test', schema)).rejects.toThrow(
+            await expect(client.testPaginatedRequest('/test')).rejects.toThrow(
                 'Internal server error'
             )
         })
 
         it('should handle 422 validation error in paginated request', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.array(z.object({ id: z.number() })),
-            })
-
             const errorResponse = {
                 status: 'Error',
                 message: 'Validation failed',
@@ -845,43 +646,12 @@ describe('BaseTypedHttpClient', () => {
                 json: async () => errorResponse,
             })
 
-            await expect(client.testPaginatedRequest('/test', schema)).rejects.toThrow(
-                ValidationError
-            )
-        })
-
-        it('should handle response validation errors in paginated request', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.array(z.object({ id: z.number() })),
-            })
-
-            const invalidResponse = {
-                status: 'Success',
-                message: 'OK',
-                data: [{ id: 'not-a-number' }], // Invalid type
-            }
-
-            fetchSpy.mockResolvedValueOnce({
-                ok: true,
-                json: async () => invalidResponse,
-            })
-
-            await expect(client.testPaginatedRequest('/test', schema)).rejects.toThrow(
-                'Response validation failed'
-            )
+            await expect(client.testPaginatedRequest('/test')).rejects.toThrow(ValidationError)
         })
     })
 
     describe('validateResponse', () => {
         it('should throw error for Error status responses', async () => {
-            const schema = z.object({
-                status: z.enum(['Success', 'Error']),
-                message: z.string(),
-                data: z.object({ id: z.number() }).optional(),
-            })
-
             const errorResponse = {
                 status: 'Error',
                 message: 'Something went wrong',
@@ -892,18 +662,10 @@ describe('BaseTypedHttpClient', () => {
                 json: async () => errorResponse,
             })
 
-            await expect(client.testRequest('/test', schema)).rejects.toThrow(
-                'Something went wrong'
-            )
+            await expect(client.testRequest('/test')).rejects.toThrow('Something went wrong')
         })
 
         it('should handle null data responses', async () => {
-            const schema = z.object({
-                status: z.literal('Success'),
-                message: z.string(),
-                data: z.null(),
-            })
-
             const response = {
                 status: 'Success',
                 message: 'OK',
@@ -915,7 +677,7 @@ describe('BaseTypedHttpClient', () => {
                 json: async () => response,
             })
 
-            const result = await client.testRequest('/test', schema)
+            const result = await client.testRequest('/test')
 
             expect(result).toEqual({ message: 'OK' })
         })

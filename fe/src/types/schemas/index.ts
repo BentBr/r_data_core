@@ -12,8 +12,6 @@ export * from './dsl'
 export * from './role'
 
 // Re-export types that are commonly used
-import type { z } from 'zod'
-import { ApiResponseSchema, MetaSchema, PaginationSchema } from './base'
 import type {
     TableAction,
     TableColumn,
@@ -60,11 +58,6 @@ import type {
     AccessLevel,
     RoleCustomData,
 } from './role'
-
-// Common type exports
-export type Pagination = z.infer<typeof PaginationSchema>
-export type Meta = z.infer<typeof MetaSchema>
-export type ApiResponse<T> = z.infer<ReturnType<typeof ApiResponseSchema<z.ZodType<T>>>>
 
 // Re-export all types
 export type {

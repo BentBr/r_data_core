@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { UuidSchema, NullableUuidSchema } from './base'
+import { UuidSchema } from './base'
 
-// Enums
+// Enums — aligned with generated AccessLevel and PermissionType
 export const ResourceNamespaceSchema = z.enum([
     'Workflows',
     'Entities',
@@ -25,7 +25,7 @@ export const PermissionTypeSchema = z.enum([
 
 export const AccessLevelSchema = z.enum(['None', 'Own', 'Group', 'All'])
 
-// Permission schema
+// Permission schema — used by form components for creating/updating roles
 export const PermissionSchema = z.object({
     resource_type: z.string(), // ResourceNamespace as string
     permission_type: PermissionTypeSchema,
@@ -34,23 +34,10 @@ export const PermissionSchema = z.object({
     constraints: z.record(z.string(), z.unknown()).nullish(),
 })
 
-// Role schema
-export const RoleSchema = z.object({
-    uuid: UuidSchema,
-    name: z.string(),
-    description: z.string().nullable(),
-    is_system: z.boolean(),
-    super_admin: z.boolean(),
-    permissions: z.array(PermissionSchema),
-    created_at: z.string(),
-    updated_at: z.string(),
-    created_by: NullableUuidSchema,
-    updated_by: NullableUuidSchema,
-    published: z.boolean(),
-    version: z.number(),
-})
-
-// Request/Response schemas
+// Request schemas (form validation)
+// Note: satisfies z.ZodType<GeneratedCreateRoleRequest> not applied because the generated
+// type uses `PermissionResponse` (with `constraints: unknown`) while the Zod schema uses
+// `constraints: Record<string,unknown> | null | undefined` — structurally different.
 export const CreateRoleRequestSchema = z.object({
     name: z.string(),
     description: z.string().nullable().optional(),
@@ -74,7 +61,8 @@ export type ResourceNamespace = z.infer<typeof ResourceNamespaceSchema>
 export type PermissionType = z.infer<typeof PermissionTypeSchema>
 export type AccessLevel = z.infer<typeof AccessLevelSchema>
 export type Permission = z.infer<typeof PermissionSchema>
-export type Role = z.infer<typeof RoleSchema>
+// Role type re-exported from generated
+export type { RoleResponse as Role } from '../generated/RoleResponse'
 export type CreateRoleRequest = z.infer<typeof CreateRoleRequestSchema>
 export type UpdateRoleRequest = z.infer<typeof UpdateRoleRequestSchema>
 export type AssignRolesRequest = z.infer<typeof AssignRolesRequestSchema>

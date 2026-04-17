@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use ts_rs::TS;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -9,7 +10,7 @@ use crate::domain::AbstractRDataEntity;
 use crate::error::{Error, Result};
 
 /// Permission types that can be granted
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, ToSchema, TS)]
 pub enum PermissionType {
     /// Read data
     Read,
@@ -48,7 +49,7 @@ impl Display for PermissionType {
 }
 
 /// Access level for a permission
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, ToSchema, TS)]
 pub enum AccessLevel {
     /// No access granted
     None,
@@ -66,7 +67,7 @@ pub enum AccessLevel {
 /// Resource namespace for permissions
 ///
 /// Each namespace represents a different resource type that can have permissions.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, TS)]
 pub enum ResourceNamespace {
     /// Workflows namespace
     Workflows,

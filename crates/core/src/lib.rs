@@ -16,6 +16,7 @@ pub mod public_api;
 pub mod refresh_token;
 pub mod settings;
 pub mod utils;
+pub mod validation;
 pub mod versioning;
 
 // Re-export DynamicEntity from domain

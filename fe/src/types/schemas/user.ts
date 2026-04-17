@@ -1,51 +1,26 @@
 import { z } from 'zod'
-import { UuidSchema, TimestampSchema, NullableUuidSchema } from './base'
+import { UuidSchema } from './base'
+import {
+    EMAIL_PATTERN,
+    USERNAME_MIN_LENGTH,
+    USERNAME_MAX_LENGTH,
+    PASSWORD_MIN_LENGTH,
+} from '../generated/validation'
 
-// Email validation helper
+// Email validation helper (uses constant from generated/validation)
 const emailValidation = z
     .string()
     .min(1, 'Email is required')
-    .refine(val => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), 'Invalid email format')
+    .refine(val => EMAIL_PATTERN.test(val), 'Invalid email format')
 
-// User schema (for login response)
-export const UserSchema = z.object({
-    uuid: UuidSchema,
-    username: z.string(),
-    email: emailValidation,
-    first_name: z.string(),
-    last_name: z.string(),
-    role_uuids: z.array(UuidSchema),
-    is_active: z.boolean(),
-    is_admin: z.boolean(),
-    created_at: TimestampSchema,
-    updated_at: TimestampSchema,
-})
-
-// User response schema (for admin user management)
-export const UserResponseSchema = z.object({
-    uuid: UuidSchema,
-    username: z.string(),
-    email: emailValidation,
-    full_name: z.string(),
-    first_name: z.string().nullable(),
-    last_name: z.string().nullable(),
-    role_uuids: z.array(UuidSchema),
-    status: z.string(),
-    is_active: z.boolean(),
-    is_admin: z.boolean(),
-    super_admin: z.boolean(),
-    last_login: TimestampSchema.nullable(),
-    failed_login_attempts: z.number(),
-    created_at: TimestampSchema,
-    updated_at: TimestampSchema,
-    created_by: NullableUuidSchema,
-})
-
-// Create user request schema
+// Create user request schema (form validation)
+// Note: satisfies z.ZodType<GeneratedCreateUserRequest> not applied because the generated
+// type uses `string[] | null` for optional fields whereas Zod uses `.optional()` —
+// the Rust-side serialisation sends null for absent fields; the FE omits them entirely.
 export const CreateUserRequestSchema = z.object({
-    username: z.string().min(3).max(50),
+    username: z.string().min(USERNAME_MIN_LENGTH).max(USERNAME_MAX_LENGTH),
     email: emailValidation,
-    password: z.string().min(8),
+    password: z.string().min(PASSWORD_MIN_LENGTH),
     first_name: z.string(),
     last_name: z.string(),
     role_uuids: z.array(UuidSchema).optional(),
@@ -53,10 +28,10 @@ export const CreateUserRequestSchema = z.object({
     super_admin: z.boolean().optional(),
 })
 
-// Update user request schema
+// Update user request schema (form validation)
 export const UpdateUserRequestSchema = z.object({
     email: emailValidation.optional(),
-    password: z.string().min(8).optional(),
+    password: z.string().min(PASSWORD_MIN_LENGTH).optional(),
     first_name: z.string().optional(),
     last_name: z.string().optional(),
     role_uuids: z.array(UuidSchema).optional(),
@@ -64,11 +39,24 @@ export const UpdateUserRequestSchema = z.object({
     super_admin: z.boolean().optional(),
 })
 
-// Type exports
-export type User = z.infer<typeof UserSchema>
-export type UserResponse = z.infer<typeof UserResponseSchema>
+// Type exports — re-exported from generated for consumers that only need types
+export type { UserResponse } from '../generated/UserResponse'
 export type CreateUserRequest = z.infer<typeof CreateUserRequestSchema>
 export type UpdateUserRequest = z.infer<typeof UpdateUserRequestSchema>
+
+// Legacy User type — FE-only shape used in auth store
+export interface User {
+    uuid: string
+    username: string
+    email: string
+    first_name: string
+    last_name: string
+    role_uuids: string[]
+    is_active: boolean
+    is_admin: boolean
+    created_at: string
+    updated_at: string
+}
 
 /**
  * User custom data/metadata

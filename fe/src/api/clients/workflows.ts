@@ -1,19 +1,15 @@
-import { z } from 'zod'
-import {
-    ApiResponseSchema,
-    PaginatedApiResponseSchema,
-    WorkflowSchema,
-    WorkflowRunSchema,
-    WorkflowRunLogSchema,
-    UuidSchema,
-} from '@/types/schemas'
+import type { WorkflowDetail } from '@/types/generated/WorkflowDetail'
+import type { WorkflowSummary } from '@/types/generated/WorkflowSummary'
+import type { WorkflowRunLogDto } from '@/types/generated/WorkflowRunLogDto'
+import type { DslOptionsResponse, WorkflowRun, WorkflowConfig } from '@/types/schemas'
 import { BaseTypedHttpClient } from './base'
 import { useAuthStore } from '@/stores/auth'
 import { buildApiUrl } from '@/env-check'
 
 export class WorkflowsClient extends BaseTypedHttpClient {
-    async listWorkflows(): Promise<Array<z.infer<typeof WorkflowSchema>>> {
-        return this.request('/admin/api/v1/workflows', ApiResponseSchema(z.array(WorkflowSchema)))
+    async listWorkflows(): Promise<Array<WorkflowDetail & { kind: 'consumer' | 'provider' }>> {
+        const data = await this.request<WorkflowDetail[]>('/admin/api/v1/workflows')
+        return data.map(w => ({ ...w, kind: w.kind.toLowerCase() as 'consumer' | 'provider' }))
     }
 
     async getWorkflows(
@@ -40,28 +36,23 @@ export class WorkflowsClient extends BaseTypedHttpClient {
             }
         }
     }> {
-        const Schema = z.array(
-            z.object({
-                uuid: UuidSchema,
-                name: z.string(),
-                kind: z
-                    .string()
-                    .transform(val => val.toLowerCase())
-                    .pipe(z.enum(['consumer', 'provider'])),
-                enabled: z.boolean(),
-                schedule_cron: z.string().nullable().optional(),
-                has_api_endpoint: z.boolean().optional().default(false),
-            })
-        )
         let url = `/admin/api/v1/workflows?page=${page}&per_page=${itemsPerPage}`
         if (sortBy && sortOrder) {
             url += `&sort_by=${sortBy}&sort_order=${sortOrder}`
         }
-        return this.paginatedRequest(url, PaginatedApiResponseSchema(Schema))
+        const result = await this.paginatedRequest<WorkflowSummary[]>(url)
+        return {
+            ...result,
+            data: result.data.map(w => ({
+                ...w,
+                kind: w.kind.toLowerCase() as 'consumer' | 'provider',
+            })),
+        }
     }
 
-    async getWorkflow(uuid: string): Promise<z.infer<typeof WorkflowSchema>> {
-        return this.request(`/admin/api/v1/workflows/${uuid}`, ApiResponseSchema(WorkflowSchema))
+    async getWorkflow(uuid: string): Promise<WorkflowDetail & { kind: 'consumer' | 'provider' }> {
+        const data = await this.request<WorkflowDetail>(`/admin/api/v1/workflows/${uuid}`)
+        return { ...data, kind: data.kind.toLowerCase() as 'consumer' | 'provider' }
     }
 
     async createWorkflow(data: {
@@ -70,11 +61,10 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         kind: 'consumer' | 'provider'
         enabled: boolean
         schedule_cron?: string | null
-        config: import('@/types/schemas').WorkflowConfig
+        config: WorkflowConfig
         versioning_disabled?: boolean
     }): Promise<{ uuid: string }> {
-        const Schema = z.object({ uuid: UuidSchema })
-        return this.request('/admin/api/v1/workflows', ApiResponseSchema(Schema), {
+        return this.request<{ uuid: string }>('/admin/api/v1/workflows', {
             method: 'POST',
             body: JSON.stringify(data),
         })
@@ -88,36 +78,31 @@ export class WorkflowsClient extends BaseTypedHttpClient {
             kind: 'consumer' | 'provider'
             enabled: boolean
             schedule_cron?: string | null
-            config: import('@/types/schemas').WorkflowConfig
+            config: WorkflowConfig
             versioning_disabled?: boolean
         }
     ): Promise<{ message: string }> {
-        const Schema = z.object({ message: z.string() })
-        return this.request(`/admin/api/v1/workflows/${uuid}`, ApiResponseSchema(Schema), {
+        return this.request<{ message: string }>(`/admin/api/v1/workflows/${uuid}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         })
     }
 
     async deleteWorkflow(uuid: string): Promise<{ message: string }> {
-        const Schema = z.object({ message: z.string() })
-        return this.request(`/admin/api/v1/workflows/${uuid}`, ApiResponseSchema(Schema), {
+        return this.request<{ message: string }>(`/admin/api/v1/workflows/${uuid}`, {
             method: 'DELETE',
         })
     }
 
     async runWorkflow(uuid: string): Promise<{ message: string }> {
-        const Schema = z.object({ message: z.string() })
-        return this.request(`/admin/api/v1/workflows/${uuid}/run`, ApiResponseSchema(Schema), {
+        return this.request<{ message: string }>(`/admin/api/v1/workflows/${uuid}/run`, {
             method: 'POST',
         })
     }
 
     async previewCron(expr: string): Promise<string[]> {
-        const Schema = z.array(z.string())
-        return this.request(
-            `/admin/api/v1/workflows/cron/preview?expr=${encodeURIComponent(expr)}`,
-            ApiResponseSchema(Schema)
+        return this.request<string[]>(
+            `/admin/api/v1/workflows/cron/preview?expr=${encodeURIComponent(expr)}`
         )
     }
 
@@ -126,7 +111,7 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         page = 1,
         perPage = 20
     ): Promise<{
-        data: Array<z.infer<typeof WorkflowRunSchema>>
+        data: WorkflowRun[]
         meta?: {
             pagination?: {
                 total: number
@@ -138,9 +123,8 @@ export class WorkflowsClient extends BaseTypedHttpClient {
             }
         }
     }> {
-        return this.paginatedRequest(
-            `/admin/api/v1/workflows/${workflowUuid}/runs?page=${page}&per_page=${perPage}`,
-            PaginatedApiResponseSchema(z.array(WorkflowRunSchema))
+        return this.paginatedRequest<WorkflowRun[]>(
+            `/admin/api/v1/workflows/${workflowUuid}/runs?page=${page}&per_page=${perPage}`
         )
     }
 
@@ -149,7 +133,7 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         page = 1,
         perPage = 50
     ): Promise<{
-        data: Array<z.infer<typeof WorkflowRunLogSchema>>
+        data: WorkflowRunLogDto[]
         meta?: {
             pagination?: {
                 total: number
@@ -161,9 +145,8 @@ export class WorkflowsClient extends BaseTypedHttpClient {
             }
         }
     }> {
-        return this.paginatedRequest(
-            `/admin/api/v1/workflows/runs/${runUuid}/logs?page=${page}&per_page=${perPage}`,
-            PaginatedApiResponseSchema(z.array(WorkflowRunLogSchema))
+        return this.paginatedRequest<WorkflowRunLogDto[]>(
+            `/admin/api/v1/workflows/runs/${runUuid}/logs?page=${page}&per_page=${perPage}`
         )
     }
 
@@ -171,7 +154,7 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         page = 1,
         perPage = 20
     ): Promise<{
-        data: Array<z.infer<typeof WorkflowRunSchema>>
+        data: WorkflowRun[]
         meta?: {
             pagination?: {
                 total: number
@@ -183,9 +166,8 @@ export class WorkflowsClient extends BaseTypedHttpClient {
             }
         }
     }> {
-        return this.paginatedRequest(
-            `/admin/api/v1/workflows/runs?page=${page}&per_page=${perPage}`,
-            PaginatedApiResponseSchema(z.array(WorkflowRunSchema))
+        return this.paginatedRequest<WorkflowRun[]>(
+            `/admin/api/v1/workflows/runs?page=${page}&per_page=${perPage}`
         )
     }
 
@@ -195,10 +177,6 @@ export class WorkflowsClient extends BaseTypedHttpClient {
     ): Promise<{ run_uuid: string; staged_items: number }> {
         const form = new FormData()
         form.append('file', file)
-        const schema = z.object({
-            run_uuid: UuidSchema,
-            staged_items: z.number(),
-        })
         // Bypass JSON content-type; handle raw fetch here due to multipart
         const authStore = useAuthStore()
         const res = await fetch(buildApiUrl(`/admin/api/v1/workflows/${workflowUuid}/run/upload`), {
@@ -220,44 +198,33 @@ export class WorkflowsClient extends BaseTypedHttpClient {
             }
             throw new Error(`HTTP ${res.status}: ${res.statusText}`)
         }
-        const json = await res.json()
-        const { ApiResponseSchema } = await import('@/types/schemas')
-        const parsed = ApiResponseSchema(schema).parse(json)
+        const json = (await res.json()) as {
+            status: string
+            message: string
+            data?: { run_uuid: string; staged_items: number } | null
+        }
 
-        if (!parsed.data) {
+        if (!json.data) {
             throw new Error('No data in upload response')
         }
-        return parsed.data
+        return json.data
     }
 
     // DSL endpoints
-    async getDslFromOptions(): Promise<import('@/types/schemas').DslOptionsResponse> {
-        const { DslOptionsResponseSchema } = await import('@/types/schemas/dsl')
-        return this.request(
-            '/admin/api/v1/dsl/from/options',
-            ApiResponseSchema(DslOptionsResponseSchema)
-        )
+    async getDslFromOptions(): Promise<DslOptionsResponse> {
+        return this.request<DslOptionsResponse>('/admin/api/v1/dsl/from/options')
     }
 
-    async getDslToOptions(): Promise<import('@/types/schemas').DslOptionsResponse> {
-        const { DslOptionsResponseSchema } = await import('@/types/schemas/dsl')
-        return this.request(
-            '/admin/api/v1/dsl/to/options',
-            ApiResponseSchema(DslOptionsResponseSchema)
-        )
+    async getDslToOptions(): Promise<DslOptionsResponse> {
+        return this.request<DslOptionsResponse>('/admin/api/v1/dsl/to/options')
     }
 
-    async getDslTransformOptions(): Promise<import('@/types/schemas').DslOptionsResponse> {
-        const { DslOptionsResponseSchema } = await import('@/types/schemas/dsl')
-        return this.request(
-            '/admin/api/v1/dsl/transform/options',
-            ApiResponseSchema(DslOptionsResponseSchema)
-        )
+    async getDslTransformOptions(): Promise<DslOptionsResponse> {
+        return this.request<DslOptionsResponse>('/admin/api/v1/dsl/transform/options')
     }
 
     async validateDsl(steps: import('@/types/schemas').DslStep[]): Promise<{ valid: boolean }> {
-        const ValidateRespSchema = z.object({ valid: z.boolean() })
-        return this.request('/admin/api/v1/dsl/validate', ApiResponseSchema(ValidateRespSchema), {
+        return this.request<{ valid: boolean }>('/admin/api/v1/dsl/validate', {
             method: 'POST',
             body: JSON.stringify({ steps }),
         })
@@ -271,19 +238,14 @@ export class WorkflowsClient extends BaseTypedHttpClient {
             created_by_name?: string | null
         }>
     > {
-        return this.request(
-            `/admin/api/v1/workflows/${uuid}/versions`,
-            ApiResponseSchema(
-                z.array(
-                    z.object({
-                        version_number: z.number(),
-                        created_at: z.string(),
-                        created_by: UuidSchema.nullable().optional(),
-                        created_by_name: z.string().nullable().optional(),
-                    })
-                )
-            )
-        )
+        return this.request<
+            Array<{
+                version_number: number
+                created_at: string
+                created_by?: string | null
+                created_by_name?: string | null
+            }>
+        >(`/admin/api/v1/workflows/${uuid}/versions`)
     }
 
     async getWorkflowVersion(
@@ -295,16 +257,11 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         created_by?: string | null
         data: Record<string, unknown>
     }> {
-        return this.request(
-            `/admin/api/v1/workflows/${uuid}/versions/${versionNumber}`,
-            ApiResponseSchema(
-                z.object({
-                    version_number: z.number(),
-                    created_at: z.string(),
-                    created_by: UuidSchema.nullable().optional(),
-                    data: z.any(),
-                })
-            )
-        )
+        return this.request<{
+            version_number: number
+            created_at: string
+            created_by?: string | null
+            data: Record<string, unknown>
+        }>(`/admin/api/v1/workflows/${uuid}/versions/${versionNumber}`)
     }
 }

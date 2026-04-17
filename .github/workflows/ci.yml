@@ -284,6 +284,40 @@ jobs:
           SQLX_OFFLINE: true
         run: cargo build --workspace --all-features
 
+  backend-ts-bindings:
+    name: TS bindings up to date
+    needs: [changes, backend-prepare]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust (nightly)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: clippy,rustfmt
+
+      - name: Cache cargo registry + build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: .
+
+      - name: Generate TS bindings
+        env:
+          SQLX_OFFLINE: true
+        run: |
+          TS_RS_EXPORT_DIR=${{ github.workspace }}/fe/src/types/generated cargo test --workspace export_bindings 2>&1
+          cargo run -p r_data_core_core --bin export_validation_constants > ./fe/src/types/generated/validation.ts
+
+      - name: Check for stale bindings
+        run: |
+          if ! git diff --exit-code fe/src/types/generated/; then
+            echo "::error::Generated TypeScript bindings are out of date. Run 'rdt generate-ts' locally and commit the changes."
+            exit 1
+          fi
+
   # ============================================================================
   # Frontend Jobs - Only run when frontend files change
   # ============================================================================
@@ -617,6 +651,7 @@ jobs:
       - backend-audit
       - backend-tests
       - backend-build
+      - backend-ts-bindings
       - frontend-lint
       - frontend-tests
       - frontend-audit
@@ -632,7 +667,8 @@ jobs:
              [[ "${{ needs.backend-format.result }}" != "success" ]] || \
              [[ "${{ needs.backend-audit.result }}" != "success" ]] || \
              [[ "${{ needs.backend-tests.result }}" != "success" ]] || \
-             [[ "${{ needs.backend-build.result }}" != "success" ]]; then
+             [[ "${{ needs.backend-build.result }}" != "success" ]] || \
+             [[ "${{ needs.backend-ts-bindings.result }}" != "success" ]]; then
             echo "Backend checks failed"
             exit 1
           fi

@@ -1,42 +1,22 @@
-import { z } from 'zod'
-import { UuidSchema, NullableTimestampSchema } from './base'
+// Type exports — use generated types where possible, fallback interfaces for bigint/number compat
 
-// Workflow schemas
-export const WorkflowSchema = z.object({
-    uuid: UuidSchema,
-    name: z.string(),
-    description: z.string().nullable().optional(),
-    kind: z
-        .string()
-        .transform(val => val.toLowerCase())
-        .pipe(z.enum(['consumer', 'provider'])),
-    enabled: z.boolean(),
-    schedule_cron: z.string().nullable().optional(),
-    config: z.record(z.string(), z.unknown()),
-    versioning_disabled: z.boolean().optional().default(false),
-})
+// Workflow uses generated WorkflowDetail (kind: string — clients apply lowercase)
+export type { WorkflowDetail as Workflow } from '../generated/WorkflowDetail'
 
-export const WorkflowRunSchema = z.object({
-    uuid: UuidSchema,
-    status: z.string(),
-    queued_at: NullableTimestampSchema,
-    finished_at: NullableTimestampSchema,
-    processed_items: z.number().nullable().optional(),
-    failed_items: z.number().nullable().optional(),
-})
+// WorkflowRun: generated WorkflowRunSummary uses bigint for processed_items/failed_items
+// (Rust u64 → TS bigint), but JSON transport sends numbers. Use compatible interface.
+export interface WorkflowRun {
+    uuid: string
+    status: string
+    queued_at: string | null
+    started_at?: string | null
+    finished_at: string | null
+    processed_items?: number | null
+    failed_items?: number | null
+}
 
-export const WorkflowRunLogSchema = z.object({
-    uuid: UuidSchema,
-    ts: z.string(),
-    level: z.string(),
-    message: z.string(),
-    meta: z.record(z.string(), z.unknown()).nullish(), // Allow null or undefined
-})
-
-// Type exports
-export type Workflow = z.infer<typeof WorkflowSchema>
-export type WorkflowRun = z.infer<typeof WorkflowRunSchema>
-export type WorkflowRunLog = z.infer<typeof WorkflowRunLogSchema>
+// WorkflowRunLog uses generated WorkflowRunLogDto
+export type { WorkflowRunLogDto as WorkflowRunLog } from '../generated/WorkflowRunLogDto'
 
 /**
  * Workflow configuration object

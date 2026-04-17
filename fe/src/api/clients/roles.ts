@@ -1,11 +1,5 @@
-import { z } from 'zod'
-import { ApiResponseSchema, PaginatedApiResponseSchema, RoleSchema } from '@/types/schemas'
-import type {
-    Role,
-    CreateRoleRequest,
-    UpdateRoleRequest,
-    AssignRolesRequest,
-} from '@/types/schemas'
+import type { RoleResponse } from '@/types/generated/RoleResponse'
+import type { CreateRoleRequest, UpdateRoleRequest, AssignRolesRequest } from '@/types/schemas'
 import { BaseTypedHttpClient } from './base'
 
 export class RolesClient extends BaseTypedHttpClient {
@@ -15,7 +9,7 @@ export class RolesClient extends BaseTypedHttpClient {
         sortBy?: string | null,
         sortOrder?: 'asc' | 'desc' | null
     ): Promise<{
-        data: Role[]
+        data: RoleResponse[]
         meta?: {
             pagination?: {
                 total: number
@@ -34,62 +28,49 @@ export class RolesClient extends BaseTypedHttpClient {
         if (sortBy && sortOrder) {
             url += `&sort_by=${sortBy}&sort_order=${sortOrder}`
         }
-        const response = await this.paginatedRequest(
-            url,
-            PaginatedApiResponseSchema(z.array(RoleSchema))
-        )
-        return response
+        return this.paginatedRequest<RoleResponse[]>(url)
     }
 
-    async getRole(uuid: string): Promise<Role> {
-        return this.request(`/admin/api/v1/roles/${uuid}`, ApiResponseSchema(RoleSchema))
+    async getRole(uuid: string): Promise<RoleResponse> {
+        return this.request<RoleResponse>(`/admin/api/v1/roles/${uuid}`)
     }
 
-    async createRole(data: CreateRoleRequest): Promise<Role> {
-        return this.request('/admin/api/v1/roles', ApiResponseSchema(RoleSchema), {
+    async createRole(data: CreateRoleRequest): Promise<RoleResponse> {
+        return this.request<RoleResponse>('/admin/api/v1/roles', {
             method: 'POST',
             body: JSON.stringify(data),
         })
     }
 
-    async updateRole(uuid: string, data: UpdateRoleRequest): Promise<Role> {
-        return this.request(`/admin/api/v1/roles/${uuid}`, ApiResponseSchema(RoleSchema), {
+    async updateRole(uuid: string, data: UpdateRoleRequest): Promise<RoleResponse> {
+        return this.request<RoleResponse>(`/admin/api/v1/roles/${uuid}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         })
     }
 
     async deleteRole(uuid: string): Promise<{ message: string }> {
-        return this.request(
-            `/admin/api/v1/roles/${uuid}`,
-            ApiResponseSchema(z.object({ message: z.string() })),
-            {
-                method: 'DELETE',
-            }
-        )
+        return this.request<{ message: string }>(`/admin/api/v1/roles/${uuid}`, {
+            method: 'DELETE',
+        })
     }
 
     async assignRolesToUser(
         userUuid: string,
         data: AssignRolesRequest
     ): Promise<{ message: string }> {
-        return this.request(
-            `/admin/api/v1/roles/users/${userUuid}/roles`,
-            ApiResponseSchema(z.object({ message: z.string() })),
-            {
-                method: 'PUT',
-                body: JSON.stringify(data),
-            }
-        )
+        return this.request<{ message: string }>(`/admin/api/v1/roles/users/${userUuid}/roles`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        })
     }
 
     async assignRolesToApiKey(
         apiKeyUuid: string,
         data: AssignRolesRequest
     ): Promise<{ message: string }> {
-        return this.request(
+        return this.request<{ message: string }>(
             `/admin/api/v1/roles/api-keys/${apiKeyUuid}/roles`,
-            ApiResponseSchema(z.object({ message: z.string() })),
             {
                 method: 'PUT',
                 body: JSON.stringify(data),
