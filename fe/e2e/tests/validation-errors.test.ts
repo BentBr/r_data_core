@@ -29,7 +29,10 @@ async function fillAndSubmitUserForm(
 ): Promise<void> {
     await dialog.getByLabel(/username/i).fill(opts.username)
     await dialog.getByLabel(/email/i).fill(opts.email)
-    await dialog.getByLabel(/password/i).first().fill(opts.password)
+    await dialog
+        .getByLabel(/password/i)
+        .first()
+        .fill(opts.password)
     if (opts.firstName) await dialog.getByLabel(/first.name/i).fill(opts.firstName)
     if (opts.lastName) await dialog.getByLabel(/last.name/i).fill(opts.lastName)
     await dialog.getByRole('button', { name: /create|save|submit/i }).click()
@@ -52,7 +55,10 @@ test.describe('Validation errors — user creation', () => {
         // Fill with short username and tab through other fields to trigger validation
         await dialog.getByLabel(/username/i).fill('ab')
         await dialog.getByLabel(/email/i).fill(`valid_${Date.now()}@test.local`)
-        await dialog.getByLabel(/password/i).first().fill('validpassword123')
+        await dialog
+            .getByLabel(/password/i)
+            .first()
+            .fill('validpassword123')
         await dialog.getByLabel(/first.name/i).fill('Test')
         await dialog.getByLabel(/last.name/i).fill('User')
 
@@ -74,7 +80,10 @@ test.describe('Validation errors — user creation', () => {
         // Fill with short password and tab through other fields to trigger validation
         await dialog.getByLabel(/username/i).fill(`e2e_val_${Date.now()}`)
         await dialog.getByLabel(/email/i).fill(`valid2_${Date.now()}@test.local`)
-        await dialog.getByLabel(/password/i).first().fill('abc')
+        await dialog
+            .getByLabel(/password/i)
+            .first()
+            .fill('abc')
         await dialog.getByLabel(/first.name/i).fill('Test')
         await dialog.getByLabel(/last.name/i).fill('User')
 
@@ -95,7 +104,10 @@ test.describe('Validation errors — user creation', () => {
         // Fill with invalid email and tab through other fields to trigger validation
         await dialog.getByLabel(/username/i).fill(`e2e_val_${Date.now()}`)
         await dialog.getByLabel(/email/i).fill('not-an-email')
-        await dialog.getByLabel(/password/i).first().fill('validpassword123')
+        await dialog
+            .getByLabel(/password/i)
+            .first()
+            .fill('validpassword123')
         await dialog.getByLabel(/first.name/i).fill('Test')
         await dialog.getByLabel(/last.name/i).fill('User')
 
@@ -122,7 +134,9 @@ test.describe('Validation errors — user creation', () => {
 
             // --- Create first user ---
             await permissions.createUser(username, email1, 'validpassword123', 'Dup', 'One')
-            const firstDialog = authenticatedPage.locator('.v-dialog--active, .v-overlay--active .v-card')
+            const firstDialog = authenticatedPage.locator(
+                '.v-dialog--active, .v-overlay--active .v-card'
+            )
             await expect(firstDialog).not.toBeVisible({ timeout: 10_000 })
 
             await permissions.expectUserInTable(username)
@@ -202,14 +216,18 @@ test.describe('Validation errors — role creation', () => {
 
             // --- Create the first role ---
             await permissions.createRole(roleName, 'First role in duplicate test')
-            const firstDialog = authenticatedPage.locator('.v-dialog--active, .v-overlay--active .v-card')
+            const firstDialog = authenticatedPage.locator(
+                '.v-dialog--active, .v-overlay--active .v-card'
+            )
             await expect(firstDialog).not.toBeVisible({ timeout: 10_000 })
 
             await permissions.expectRoleInTable(roleName)
 
             // --- Attempt to create second role with same name ---
             await authenticatedPage.getByTestId('roles-create-btn').click()
-            const dialog = authenticatedPage.locator('.v-dialog--active, .v-overlay--active .v-card')
+            const dialog = authenticatedPage.locator(
+                '.v-dialog--active, .v-overlay--active .v-card'
+            )
             await expect(dialog).toBeVisible({ timeout: 10_000 })
 
             await dialog.getByLabel(/name/i).fill(roleName) // duplicate

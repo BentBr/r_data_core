@@ -7,6 +7,10 @@ on:
   # Allow other workflows to call this one (for release-please PRs)
   workflow_call:
 
+env:
+  # The issue is having plenty of node 20 warnings in the actions we don't control
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # Detect which parts of the codebase changed
   # For workflow_call (release-please), run all checks since we can't detect changes

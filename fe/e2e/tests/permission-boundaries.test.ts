@@ -261,9 +261,11 @@ test.describe('Permission Boundaries (viewer user)', () => {
                 await nav.navigateTo('/permissions')
                 await page.waitForLoadState('networkidle')
                 const errorOverlay = page.locator('[data-testid*="error"], .v-alert--type-error')
-                await expect(errorOverlay).not.toBeVisible({ timeout: 3_000 }).catch(() => {
-                    // No strict requirement — page may show partial content
-                })
+                await expect(errorOverlay)
+                    .not.toBeVisible({ timeout: 3_000 })
+                    .catch(() => {
+                        // No strict requirement — page may show partial content
+                    })
             } catch {
                 // nav item hidden or redirect occurred — acceptable for viewer
             }
@@ -329,7 +331,10 @@ test.describe('Permission Boundaries (viewer user)', () => {
             )
             const hasIndicator =
                 (await accessDeniedIndicators.count()) > 0 &&
-                (await accessDeniedIndicators.first().isVisible().catch(() => false))
+                (await accessDeniedIndicators
+                    .first()
+                    .isVisible()
+                    .catch(() => false))
 
             if (!hasIndicator) {
                 const saveBtn = page.getByRole('button', { name: /save|update|apply/i })

@@ -221,9 +221,7 @@ describe('UsersClient', () => {
                 json: async () => ({ status: 'Error', message: 'User not found' }),
             })
 
-            await expect(
-                client.getUser('01234567-89ab-7def-8123-000000000000')
-            ).rejects.toThrow()
+            await expect(client.getUser('01234567-89ab-7def-8123-000000000000')).rejects.toThrow()
         })
     })
 
@@ -309,10 +307,7 @@ describe('UsersClient', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.updateUser(
-                '01234567-89ab-7def-8123-456789abcdef',
-                request
-            )
+            const result = await client.updateUser('01234567-89ab-7def-8123-456789abcdef', request)
 
             expect(result).toBeDefined()
             expect(result.email).toBe('updated@example.com')

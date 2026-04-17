@@ -156,8 +156,14 @@ describe('DslClient', () => {
         it('should return multiple transform types', async () => {
             const multiTypeResponse = {
                 types: [
-                    { type: 'arithmetic', fields: [{ name: 'target', type: 'string', required: true }] },
-                    { type: 'concat', fields: [{ name: 'target', type: 'string', required: true }] },
+                    {
+                        type: 'arithmetic',
+                        fields: [{ name: 'target', type: 'string', required: true }],
+                    },
+                    {
+                        type: 'concat',
+                        fields: [{ name: 'target', type: 'string', required: true }],
+                    },
                     { type: 'none', fields: [] },
                 ],
             }

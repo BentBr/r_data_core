@@ -128,7 +128,9 @@ describe('WorkflowsClient', () => {
             expect(result[0].name).toBe('Test Workflow')
             expect(mockFetch).toHaveBeenCalledWith(
                 expect.stringContaining('/admin/api/v1/workflows'),
-                expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+                expect.objectContaining({
+                    headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+                })
             )
         })
 
@@ -167,7 +169,8 @@ describe('WorkflowsClient', () => {
         it('should return paginated workflows with default parameters', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
-                json: async () => successResponse([mockWorkflowSummary], { pagination: mockPagination }),
+                json: async () =>
+                    successResponse([mockWorkflowSummary], { pagination: mockPagination }),
             })
 
             const result = await client.getWorkflows()
@@ -183,7 +186,8 @@ describe('WorkflowsClient', () => {
         it('should pass custom page and itemsPerPage', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
-                json: async () => successResponse([mockWorkflowSummary], { pagination: mockPagination }),
+                json: async () =>
+                    successResponse([mockWorkflowSummary], { pagination: mockPagination }),
             })
 
             await client.getWorkflows(3, 50)
@@ -197,7 +201,8 @@ describe('WorkflowsClient', () => {
         it('should append sort parameters when provided', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
-                json: async () => successResponse([mockWorkflowSummary], { pagination: mockPagination }),
+                json: async () =>
+                    successResponse([mockWorkflowSummary], { pagination: mockPagination }),
             })
 
             await client.getWorkflows(1, 20, 'name', 'asc')
@@ -323,7 +328,11 @@ describe('WorkflowsClient', () => {
                 ok: false,
                 status: 422,
                 statusText: 'Unprocessable Entity',
-                json: async () => ({ status: 'Error', message: 'Validation failed', violations: [{ field: 'name', message: 'Too short', code: 'MIN_LENGTH' }] }),
+                json: async () => ({
+                    status: 'Error',
+                    message: 'Validation failed',
+                    violations: [{ field: 'name', message: 'Too short', code: 'MIN_LENGTH' }],
+                }),
             })
 
             await expect(client.createWorkflow(newWorkflow)).rejects.toThrow()
@@ -497,7 +506,8 @@ describe('WorkflowsClient', () => {
         it('should return paginated runs for a workflow', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
-                json: async () => successResponse([mockWorkflowRun], { pagination: mockPagination }),
+                json: async () =>
+                    successResponse([mockWorkflowRun], { pagination: mockPagination }),
             })
 
             const result = await client.getWorkflowRuns('wf-uuid-1')
@@ -532,7 +542,8 @@ describe('WorkflowsClient', () => {
         it('should return paginated logs for a workflow run', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
-                json: async () => successResponse([mockWorkflowRunLog], { pagination: mockPagination }),
+                json: async () =>
+                    successResponse([mockWorkflowRunLog], { pagination: mockPagination }),
             })
 
             const result = await client.getWorkflowRunLogs('run-uuid-1')
@@ -581,7 +592,8 @@ describe('WorkflowsClient', () => {
         it('should return paginated runs across all workflows', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
-                json: async () => successResponse([mockWorkflowRun], { pagination: mockPagination }),
+                json: async () =>
+                    successResponse([mockWorkflowRun], { pagination: mockPagination }),
             })
 
             const result = await client.getAllWorkflowRuns()
@@ -665,7 +677,9 @@ describe('WorkflowsClient', () => {
                 },
             })
 
-            await expect(client.uploadRunFile('wf-uuid-1', file)).rejects.toThrow('HTTP 500: Internal Server Error')
+            await expect(client.uploadRunFile('wf-uuid-1', file)).rejects.toThrow(
+                'HTTP 500: Internal Server Error'
+            )
         })
 
         it('should throw when response data is missing', async () => {
@@ -680,7 +694,9 @@ describe('WorkflowsClient', () => {
                 }),
             })
 
-            await expect(client.uploadRunFile('wf-uuid-1', file)).rejects.toThrow('No data in upload response')
+            await expect(client.uploadRunFile('wf-uuid-1', file)).rejects.toThrow(
+                'No data in upload response'
+            )
         })
     })
 
@@ -729,8 +745,14 @@ describe('WorkflowsClient', () => {
         it('should return DSL transform options', async () => {
             const transformOptions = {
                 types: [
-                    { type: 'arithmetic', fields: [{ name: 'op', type: 'string', required: true }] },
-                    { type: 'concat', fields: [{ name: 'separator', type: 'string', required: false }] },
+                    {
+                        type: 'arithmetic',
+                        fields: [{ name: 'op', type: 'string', required: true }],
+                    },
+                    {
+                        type: 'concat',
+                        fields: [{ name: 'separator', type: 'string', required: false }],
+                    },
                 ],
             }
 
@@ -820,8 +842,18 @@ describe('WorkflowsClient', () => {
     describe('listWorkflowVersions', () => {
         it('should return a list of versions for a workflow', async () => {
             const versions = [
-                { version_number: 2, created_at: '2024-02-01T00:00:00Z', created_by: 'user-uuid-1', created_by_name: 'Alice' },
-                { version_number: 1, created_at: '2024-01-01T00:00:00Z', created_by: 'user-uuid-1', created_by_name: 'Alice' },
+                {
+                    version_number: 2,
+                    created_at: '2024-02-01T00:00:00Z',
+                    created_by: 'user-uuid-1',
+                    created_by_name: 'Alice',
+                },
+                {
+                    version_number: 1,
+                    created_at: '2024-01-01T00:00:00Z',
+                    created_by: 'user-uuid-1',
+                    created_by_name: 'Alice',
+                },
             ]
 
             mockFetch.mockResolvedValueOnce({
