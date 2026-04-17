@@ -3,22 +3,24 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use ts_rs::TS;
 use uuid::Uuid;
 
 /// Individual validation violation for Symfony-style errors
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[ts(export)]
 pub struct ValidationViolation {
     /// The field that has the validation error
     pub field: String,
     /// The error message for this field
     pub message: String,
     /// Optional error code (e.g., `"NOT_BLANK"`, `"NOT_NULL"`)
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub code: Option<String>,
 }
 
 /// Validation error response in Symfony format
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[ts(export)]
 pub struct ValidationErrorResponse {
     /// Overall error message
     pub message: String,
@@ -26,22 +28,28 @@ pub struct ValidationErrorResponse {
     pub violations: Vec<ValidationViolation>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, TS)]
+#[ts(export)]
 pub enum Status {
     Success,
     Error,
 }
 
 /// Metadata for paginated responses
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default, TS)]
+#[ts(export)]
 pub struct PaginationMeta {
     /// Total number of items available
+    #[ts(type = "number")]
     pub total: i64,
     /// Current page number
+    #[ts(type = "number")]
     pub page: i64,
     /// Items per page
+    #[ts(type = "number")]
     pub per_page: i64,
     /// Total number of pages
+    #[ts(type = "number")]
     pub total_pages: i64,
     /// If there is a previous page
     pub has_previous: bool,
@@ -50,15 +58,18 @@ pub struct PaginationMeta {
 }
 
 /// Metadata for API responses
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default, TS)]
+#[ts(export)]
 pub struct ResponseMeta {
     /// Pagination information (if applicable)
     pub pagination: Option<PaginationMeta>,
     /// Request UUID for tracking
+    #[ts(type = "string | null")]
     pub request_id: Option<Uuid>,
     /// Timestamp of the response
     pub timestamp: Option<String>,
     /// Additional custom metadata
+    #[ts(type = "unknown")]
     pub custom: Option<serde_json::Value>,
 }
 

@@ -45,7 +45,8 @@ export const FieldDefinitionSchema = z.object({
     ui_settings: z.record(z.string(), z.unknown()).nullish(),
 })
 
-// Entity Definition schema
+// Entity Definition schema — kept as Zod for form validation
+// (CreateEntityDefinitionRequest, UpdateEntityDefinitionRequest use .pick())
 export const EntityDefinitionSchema = z.object({
     uuid: UuidSchema.optional(),
     entity_type: z.string(),
@@ -93,15 +94,7 @@ export const EntityDefinitionSchema = z.object({
         .optional(),
 })
 
-// Dynamic Entity schema
-// Backend returns: { entity_type, field_data: { uuid, path, etc., ...customFields }, children_count? }
-export const DynamicEntitySchema = z.object({
-    entity_type: z.string(),
-    field_data: z.record(z.string(), z.unknown()),
-    children_count: z.number().int().nullable().optional(),
-})
-
-// Entity request/response schemas
+// Entity request schemas (form validation)
 export const CreateEntityRequestSchema = z.object({
     entity_type: z.string(),
     data: z.record(z.string(), z.unknown()),
@@ -111,11 +104,6 @@ export const CreateEntityRequestSchema = z.object({
 export const UpdateEntityRequestSchema = z.object({
     data: z.record(z.string(), z.unknown()),
     parent_uuid: UuidSchema.optional().nullable(),
-})
-
-export const EntityResponseSchema = z.object({
-    uuid: UuidSchema,
-    entity_type: z.string(),
 })
 
 export const CreateEntityDefinitionRequestSchema = EntityDefinitionSchema.pick({
@@ -144,9 +132,23 @@ export const UpdateEntityDefinitionRequestSchema = EntityDefinitionSchema.pick({
 export type FieldConstraints = z.infer<typeof FieldConstraintsSchema>
 export type FieldDefinition = z.infer<typeof FieldDefinitionSchema>
 export type EntityDefinition = z.infer<typeof EntityDefinitionSchema>
-export type DynamicEntity = z.infer<typeof DynamicEntitySchema>
 export type CreateEntityRequest = z.infer<typeof CreateEntityRequestSchema>
 export type UpdateEntityRequest = z.infer<typeof UpdateEntityRequestSchema>
-export type EntityResponse = z.infer<typeof EntityResponseSchema>
 export type CreateEntityDefinitionRequest = z.infer<typeof CreateEntityDefinitionRequestSchema>
 export type UpdateEntityDefinitionRequest = z.infer<typeof UpdateEntityDefinitionRequestSchema>
+
+// Dynamic entity schemas — kept as Zod for local schema tests and potential future form validation
+export const DynamicEntitySchema = z.object({
+    entity_type: z.string(),
+    field_data: z.record(z.string(), z.unknown()),
+    children_count: z.number().int().nullable().optional(),
+})
+
+export const EntityResponseSchema = z.object({
+    uuid: UuidSchema,
+    entity_type: z.string(),
+})
+
+// Type exports for dynamic entities
+export type DynamicEntity = z.infer<typeof DynamicEntitySchema>
+export type EntityResponse = z.infer<typeof EntityResponseSchema>

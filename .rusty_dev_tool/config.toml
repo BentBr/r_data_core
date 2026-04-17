@@ -35,5 +35,13 @@ no_docker_compose = true
         "alias" = "clean-e2e"
         "execution" = "docker compose exec -T postgres psql -U postgres -d rdata -f /dev/stdin < .scripts/clean-e2e.sql"
         "description" = "Removes all E2E test data (e2e_* users, keys, roles, workflows, entity definitions, and dynamic tables) from the local database"
+    [commands.generate-ts]
+        "alias" = "generate-ts"
+        "execution" = "TS_RS_EXPORT_DIR=$(pwd)/fe/src/types/generated cargo test --workspace export_bindings 2>&1 && cargo run -p r_data_core_core --bin export_validation_constants > ./fe/src/types/generated/validation.ts"
+        "description" = "Generates TypeScript type bindings and validation constants from Rust structs"
+    [commands.generate-ts-check]
+        "alias" = "generate-ts-check"
+        "execution" = "TS_RS_EXPORT_DIR=$(pwd)/fe/src/types/generated cargo test --workspace export_bindings 2>&1 && cargo run -p r_data_core_core --bin export_validation_constants > ./fe/src/types/generated/validation.ts && git diff --exit-code fe/src/types/generated/"
+        "description" = "Generates TS bindings and fails if any generated files differ from committed versions"
 # Mandatory node
 [environments]

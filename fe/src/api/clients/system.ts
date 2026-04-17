@@ -1,65 +1,55 @@
-import { z } from 'zod'
 import { BaseTypedHttpClient } from './base'
-import { ApiResponseSchema } from '@/types/schemas'
 
-export const EntityVersioningSettingsSchema = z.object({
-    enabled: z.boolean(),
-    max_versions: z.number().nullable().optional(),
-    max_age_days: z.number().nullable().optional(),
-})
-export type EntityVersioningSettings = z.infer<typeof EntityVersioningSettingsSchema>
+export interface EntityVersioningSettings {
+    enabled: boolean
+    max_versions?: number | null
+    max_age_days?: number | null
+}
 
-export const WorkflowRunLogSettingsSchema = z.object({
-    enabled: z.boolean(),
-    max_runs: z.number().nullable().optional(),
-    max_age_days: z.number().nullable().optional(),
-})
-export type WorkflowRunLogSettings = z.infer<typeof WorkflowRunLogSettingsSchema>
+export interface WorkflowRunLogSettings {
+    enabled: boolean
+    max_runs?: number | null
+    max_age_days?: number | null
+}
 
-export const LicenseStateSchema = z.enum(['none', 'invalid', 'error', 'valid'])
-export type LicenseState = z.infer<typeof LicenseStateSchema>
+export type LicenseState = 'none' | 'invalid' | 'error' | 'valid'
 
-export const LicenseStatusSchema = z.object({
-    state: LicenseStateSchema,
-    company: z.string().nullable().optional(),
-    license_type: z.string().nullable().optional(),
-    license_id: z.string().nullable().optional(),
-    issued_at: z.string().nullable().optional(),
-    expires_at: z.string().nullable().optional(),
-    version: z.string().nullable().optional(),
-    verified_at: z.string(),
-    error_message: z.string().nullable().optional(),
-})
-export type LicenseStatus = z.infer<typeof LicenseStatusSchema>
+export interface LicenseStatus {
+    state: LicenseState
+    company?: string | null
+    license_type?: string | null
+    license_id?: string | null
+    issued_at?: string | null
+    expires_at?: string | null
+    version?: string | null
+    verified_at: string
+    error_message?: string | null
+}
 
-export const ComponentVersionSchema = z.object({
-    name: z.string(),
-    version: z.string(),
-    last_seen_at: z.string(),
-})
-export type ComponentVersion = z.infer<typeof ComponentVersionSchema>
+export interface ComponentVersion {
+    name: string
+    version: string
+    last_seen_at: string
+}
 
-export const SystemVersionsSchema = z.object({
-    core: z.string(),
-    worker: ComponentVersionSchema.nullable().optional(),
-    maintenance: ComponentVersionSchema.nullable().optional(),
-})
-export type SystemVersions = z.infer<typeof SystemVersionsSchema>
+export interface SystemVersions {
+    core: string
+    worker?: ComponentVersion | null
+    maintenance?: ComponentVersion | null
+}
 
 export class SystemClient extends BaseTypedHttpClient {
     async getEntityVersioningSettings(): Promise<EntityVersioningSettings> {
-        return this.request(
-            '/admin/api/v1/system/settings/entity-versioning',
-            ApiResponseSchema(EntityVersioningSettingsSchema)
+        return this.request<EntityVersioningSettings>(
+            '/admin/api/v1/system/settings/entity-versioning'
         )
     }
 
     async updateEntityVersioningSettings(
         payload: EntityVersioningSettings
     ): Promise<EntityVersioningSettings> {
-        return this.request(
+        return this.request<EntityVersioningSettings>(
             '/admin/api/v1/system/settings/entity-versioning',
-            ApiResponseSchema(EntityVersioningSettingsSchema),
             {
                 method: 'PUT',
                 body: JSON.stringify(payload),
@@ -68,18 +58,16 @@ export class SystemClient extends BaseTypedHttpClient {
     }
 
     async getWorkflowRunLogSettings(): Promise<WorkflowRunLogSettings> {
-        return this.request(
-            '/admin/api/v1/system/settings/workflow-run-logs',
-            ApiResponseSchema(WorkflowRunLogSettingsSchema)
+        return this.request<WorkflowRunLogSettings>(
+            '/admin/api/v1/system/settings/workflow-run-logs'
         )
     }
 
     async updateWorkflowRunLogSettings(
         payload: WorkflowRunLogSettings
     ): Promise<WorkflowRunLogSettings> {
-        return this.request(
+        return this.request<WorkflowRunLogSettings>(
             '/admin/api/v1/system/settings/workflow-run-logs',
-            ApiResponseSchema(WorkflowRunLogSettingsSchema),
             {
                 method: 'PUT',
                 body: JSON.stringify(payload),
@@ -88,13 +76,10 @@ export class SystemClient extends BaseTypedHttpClient {
     }
 
     async getLicenseStatus(): Promise<LicenseStatus> {
-        return this.request('/admin/api/v1/system/license', ApiResponseSchema(LicenseStatusSchema))
+        return this.request<LicenseStatus>('/admin/api/v1/system/license')
     }
 
     async getSystemVersions(): Promise<SystemVersions> {
-        return this.request(
-            '/admin/api/v1/system/versions',
-            ApiResponseSchema(SystemVersionsSchema)
-        )
+        return this.request<SystemVersions>('/admin/api/v1/system/versions')
     }
 }

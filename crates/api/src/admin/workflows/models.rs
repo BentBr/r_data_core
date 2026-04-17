@@ -1,13 +1,16 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
 // Note: WorkflowKind is imported from the main crate's workflow module
 // This is a temporary dependency until workflow is migrated to a crate
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct WorkflowSummary {
+    #[ts(type = "string")]
     pub uuid: Uuid,
     pub name: String,
     #[serde(rename = "kind")]
@@ -21,8 +24,10 @@ pub struct WorkflowSummary {
     pub versioning_disabled: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct WorkflowDetail {
+    #[ts(type = "string")]
     pub uuid: Uuid,
     pub name: String,
     pub description: Option<String>,
@@ -30,6 +35,7 @@ pub struct WorkflowDetail {
     pub kind: String, // Will be WorkflowKind once migrated
     pub enabled: bool,
     pub schedule_cron: Option<String>,
+    #[ts(type = "unknown")]
     pub config: serde_json::Value,
     #[serde(default)]
     pub versioning_disabled: bool,
@@ -38,31 +44,40 @@ pub struct WorkflowDetail {
 // Re-export from workflow crate
 pub use r_data_core_workflow::data::requests::CreateWorkflowRequest;
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct CreateWorkflowResponse {
+    #[ts(type = "string")]
     pub uuid: Uuid,
 }
 
 // Re-export from workflow crate
 pub use r_data_core_workflow::data::requests::UpdateWorkflowRequest;
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct WorkflowRunSummary {
+    #[ts(type = "string")]
     pub uuid: Uuid,
     pub status: String,
     pub queued_at: Option<String>,
     pub started_at: Option<String>,
     pub finished_at: Option<String>,
+    #[ts(type = "number | null")]
     pub processed_items: Option<i64>,
+    #[ts(type = "number | null")]
     pub failed_items: Option<i64>,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct WorkflowRunLogDto {
+    #[ts(type = "string")]
     pub uuid: Uuid,
     pub ts: String,
     pub level: String,
     pub message: String,
+    #[ts(type = "unknown")]
     pub meta: Option<serde_json::Value>,
 }
 
@@ -74,20 +89,27 @@ pub struct WorkflowRunUpload {
     pub file: String,
 }
 
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct WorkflowVersionMeta {
     pub version_number: i32,
     #[serde(with = "time::serde::rfc3339")]
+    #[ts(type = "string")]
     pub created_at: time::OffsetDateTime,
+    #[ts(type = "string | null")]
     pub created_by: Option<Uuid>,
     pub created_by_name: Option<String>,
 }
 
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct WorkflowVersionPayload {
     pub version_number: i32,
     #[serde(with = "time::serde::rfc3339")]
+    #[ts(type = "string")]
     pub created_at: time::OffsetDateTime,
+    #[ts(type = "string | null")]
     pub created_by: Option<Uuid>,
+    #[ts(type = "unknown")]
     pub data: serde_json::Value,
 }

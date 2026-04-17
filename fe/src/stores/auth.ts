@@ -575,14 +575,23 @@ export const useAuthStore = defineStore('auth', () => {
         return permissions.value.includes(permissionString)
     }
 
-    // Initialize auth status on store creation
-    // Note: We can't await in the store initialization, so we'll call it without await
-    // The router guard will handle the async auth check
-    checkAuthStatus().catch(err => {
-        if (env.enableApiLogging) {
-            console.error('[Auth] Initial auth check failed:', err)
-        }
+    // Promise that resolves once the initial auth check completes.
+    // The router guard awaits this so that page reloads restore the
+    // access token from the refresh cookie before any redirect decision.
+    let resolveAuthReady: (() => void) | null = null
+    const authReady = new Promise<void>(resolve => {
+        resolveAuthReady = resolve
     })
+
+    checkAuthStatus()
+        .catch(err => {
+            if (env.enableApiLogging) {
+                console.error('[Auth] Initial auth check failed:', err)
+            }
+        })
+        .finally(() => {
+            resolveAuthReady?.()
+        })
 
     return {
         // State
@@ -612,5 +621,6 @@ export const useAuthStore = defineStore('auth', () => {
         loadUserPermissions,
         dismissDefaultPasswordBanner,
         dismissMobileWarningBanner,
+        authReady,
     }
 })

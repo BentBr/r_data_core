@@ -41,7 +41,9 @@ export const NullableTimestampSchema = z
     )
     .nullable()
 
-// Validation
+// Validation error schemas — kept as Zod because they are used for runtime parsing
+// (.parse()) in api/clients/base.ts and api/http-client.ts.
+// Generated equivalents: ValidationViolation, ValidationErrorResponse in generated/
 export const ValidationViolationSchema = z.object({
     field: z.string(),
     message: z.string(),
@@ -53,38 +55,25 @@ export const ValidationErrorResponseSchema = z.object({
     violations: z.array(ValidationViolationSchema),
 })
 
-// Meta/pagination
-export const PaginationSchema = z.object({
-    total: z.number(),
-    page: z.number(),
-    per_page: z.number(),
-    total_pages: z.number(),
-    has_previous: z.boolean(),
-    has_next: z.boolean(),
-})
+// Pagination and meta types (plain TypeScript — no Zod parsing needed)
+export interface Pagination {
+    total: number
+    page: number
+    per_page: number
+    total_pages: number
+    has_previous: boolean
+    has_next: boolean
+}
 
-export const MetaSchema = z.object({
-    pagination: PaginationSchema.optional(),
-    request_id: UuidSchema.optional(),
-    timestamp: TimestampSchema.optional(),
-    custom: z.unknown().optional(),
-})
+export interface Meta {
+    pagination?: Pagination
+    request_id?: string
+    timestamp?: string
+    custom?: unknown
+}
 
-// Generic API Response wrappers
-export const ApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
-    z.object({
-        status: z.enum(['Success', 'Error']),
-        message: z.string(),
-        // Backend sometimes returns `data: null` for "message-only" success responses.
-        // We accept it here and let `BaseTypedHttpClient.validateResponse()` handle the null case.
-        data: z.union([dataSchema, z.null()]).optional(),
-        meta: MetaSchema.nullable().optional(), // Backend may return null
-    })
-
-export const PaginatedApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
-    z.object({
-        status: z.enum(['Success', 'Error']),
-        message: z.string(),
-        data: dataSchema,
-        meta: MetaSchema,
-    })
+// Type re-exports from generated — for consumers that only need the type, not runtime parsing
+export type { ValidationViolation } from '../generated/ValidationViolation'
+export type { ValidationErrorResponse } from '../generated/ValidationErrorResponse'
+export type { PaginationMeta } from '../generated/PaginationMeta'
+export type { ResponseMeta } from '../generated/ResponseMeta'

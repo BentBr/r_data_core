@@ -1,4 +1,3 @@
-import { z } from 'zod'
 import { env, buildApiUrl } from '@/env-check'
 import { useAuthStore } from '@/stores/auth'
 import { getRefreshToken } from '@/utils/cookies'
@@ -139,11 +138,7 @@ export class BaseTypedHttpClient {
         return retryResponse.ok ? retryResponse : null
     }
 
-    protected async request<T>(
-        endpoint: string,
-        schema: z.ZodType<ApiResponse<T>>,
-        options: RequestInit = {}
-    ): Promise<T> {
+    protected async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
         const authToken = await this.ensureToken(endpoint)
         const config = this.buildConfig(authToken, options)
 
@@ -160,7 +155,7 @@ export class BaseTypedHttpClient {
                     const retryResponse = await this.handleUnauthorized(config, endpoint)
                     if (retryResponse) {
                         const retryData = await retryResponse.json()
-                        return this.validateResponse(retryData, schema)
+                        return this.validateResponse(retryData)
                     }
 
                     // All refresh attempts failed — clear auth
@@ -284,13 +279,8 @@ export class BaseTypedHttpClient {
                 }
             }
 
-            // Fast-path for DSL validate to avoid circular schema issues in test bundlers
-            if (endpoint.includes('/dsl/validate')) {
-                const raw = (await response.json()) as ApiResponse<T>
-                return raw.data as T
-            }
             const rawData = await response.json()
-            return this.validateResponse(rawData, schema)
+            return this.validateResponse(rawData)
         } catch (error) {
             // Don't log expected errors (ValidationError, HttpError) to console as they're handled behavior
             if (!(error instanceof ValidationError) && !(error instanceof HttpError)) {
@@ -306,51 +296,31 @@ export class BaseTypedHttpClient {
         }
     }
 
-    protected validateResponse<T>(rawData: unknown, schema: z.ZodType<ApiResponse<T>>): T {
+    protected validateResponse<T>(rawData: unknown): T {
         if (this.enableLogging && this.devMode) {
             console.log('[API] Response:', rawData)
         }
 
-        // Runtime validation with Zod
-        let validatedResponse
-        try {
-            validatedResponse = schema.parse(rawData)
-        } catch (validationError) {
-            if (validationError instanceof z.ZodError) {
-                if (this.enableLogging) {
-                    console.error('[API] Response validation failed:', {
-                        rawData,
-                        validationIssues: validationError.issues,
-                    })
-                }
-                // Create a more user-friendly error message
-                const firstIssue = validationError.issues[0]
-                const fieldPath = firstIssue.path.join('.') || 'unknown field'
-                const message = firstIssue.message || 'Invalid format'
-                throw new Error(`Response validation failed: ${message} (${fieldPath})`)
-            }
-            throw validationError
-        }
+        const response = rawData as ApiResponse<T>
 
-        if (validatedResponse.status === 'Error') {
-            throw new Error(validatedResponse.message)
+        if (response.status === 'Error') {
+            throw new Error(response.message)
         }
 
         // For responses with null data (like logout), return the message
-        if (validatedResponse.data === null) {
-            return { message: validatedResponse.message } as T
+        if (response.data === null) {
+            return { message: response.message } as T
         }
 
-        if (!validatedResponse.data) {
+        if (!response.data) {
             throw new Error('No data in successful response')
         }
 
-        return validatedResponse.data
+        return response.data
     }
 
     protected async paginatedRequest<T>(
         endpoint: string,
-        schema: z.ZodType<ApiResponse<T>>,
         options: RequestInit = {}
     ): Promise<{
         data: T
@@ -384,7 +354,7 @@ export class BaseTypedHttpClient {
                     const retryResponse = await this.handleUnauthorized(config, endpoint)
                     if (retryResponse) {
                         const retryData = await retryResponse.json()
-                        return this.validatePaginatedResponse(retryData, schema)
+                        return this.validatePaginatedResponse(retryData)
                     }
 
                     // All refresh attempts failed — clear auth
@@ -479,7 +449,7 @@ export class BaseTypedHttpClient {
             }
 
             const rawData = await response.json()
-            return this.validatePaginatedResponse(rawData, schema)
+            return this.validatePaginatedResponse(rawData)
         } catch (error) {
             // Don't log expected errors (ValidationError, HttpError) to console as they're handled behavior
             if (!(error instanceof ValidationError) && !(error instanceof HttpError)) {
@@ -495,10 +465,7 @@ export class BaseTypedHttpClient {
         }
     }
 
-    protected validatePaginatedResponse<T>(
-        rawData: unknown,
-        schema: z.ZodType<ApiResponse<T>>
-    ): {
+    protected validatePaginatedResponse<T>(rawData: unknown): {
         data: T
         meta?: {
             pagination?: {
@@ -518,38 +485,19 @@ export class BaseTypedHttpClient {
             console.log('[API] Response:', rawData)
         }
 
-        // Runtime validation with Zod
-        let validatedResponse
-        try {
-            validatedResponse = schema.parse(rawData)
-        } catch (validationError) {
-            if (validationError instanceof z.ZodError) {
-                if (this.enableLogging) {
-                    console.error('[API] Response validation failed:', {
-                        rawData,
-                        validationIssues: validationError.issues,
-                    })
-                }
-                // Create a more user-friendly error message
-                const firstIssue = validationError.issues[0]
-                const fieldPath = firstIssue.path.join('.') || 'unknown field'
-                const message = firstIssue.message || 'Invalid format'
-                throw new Error(`Response validation failed: ${message} (${fieldPath})`)
-            }
-            throw validationError
+        const response = rawData as ApiResponse<T>
+
+        if (response.status === 'Error') {
+            throw new Error(response.message)
         }
 
-        if (validatedResponse.status === 'Error') {
-            throw new Error(validatedResponse.message)
-        }
-
-        if (!validatedResponse.data) {
+        if (!response.data) {
             throw new Error('No data in successful response')
         }
 
         return {
-            data: validatedResponse.data,
-            meta: validatedResponse.meta ?? undefined,
+            data: response.data,
+            meta: response.meta ?? undefined,
         }
     }
 }

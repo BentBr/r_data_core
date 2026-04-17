@@ -29,3 +29,4 @@ sha2 = "0.10"
 base64 = "0.22"
 regex = "1.10"
 jsonwebtoken = "9.2"
+ts-rs = { version = "10", features = ["serde-compat"] }

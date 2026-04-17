@@ -14,6 +14,8 @@ rdt clippy          # Clippy with strict lints (nightly)
 rdt lint            # ESLint + Prettier for frontend (Docker)
 rdt test-e2e        # Playwright E2E tests (Docker)
 rdt clean-e2e       # Remove E2E test data from DB
+rdt generate-ts     # Generate TS types + validation constants from Rust structs
+rdt generate-ts-check # Same + fail if generated files differ from committed
 cargo fmt --all     # Format Rust code
 ```
 
@@ -31,6 +33,19 @@ cargo run --bin r_data_core_maintenance  # Maintenance worker
 cargo sqlx prepare --workspace -- --all-targets   # After schema changes
 cargo sqlx migrate run                             # Run migrations
 ```
+
+### TypeScript Bindings
+
+Rust API structs generate TypeScript type definitions via `ts-rs`.
+
+- Add `#[derive(TS)]` + `#[ts(export)]` to Rust structs that should be exported
+- Use `#[ts(type = "string")]` for `Uuid` and `OffsetDateTime` fields
+- Use `#[ts(type = "unknown")]` for `serde_json::Value` fields
+- Run `rdt generate-ts` after changing exported Rust structs
+- Generated files live in `fe/src/types/generated/` — committed to git, never hand-edited
+- Validation constants defined in `crates/core/src/validation/` are exported to `validation.ts`
+- Frontend form schemas use `satisfies z.ZodType<GeneratedType>` for type safety
+- CI and pre-push hook verify bindings are up to date
 
 ## Workspace Crates
 

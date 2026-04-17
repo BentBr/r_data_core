@@ -3,12 +3,14 @@
 use serde::{Deserialize, Serialize};
 #[allow(unused_imports)] // json! macro is used in attribute macro
 use serde_json::{json, Value};
+use ts_rs::TS;
 use utoipa::ToSchema;
 
 // Note: DslStep is imported from the main crate's workflow module
 // This is a temporary dependency until workflow is migrated to a crate
 // For now, we use serde_json::Value to represent the steps
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct DslValidateRequest {
     /// The DSL steps array (JSON). Example: { "steps": [ { "from": { ... }, "transform": { ... }, "to": { ... } } ] }
     #[schema(value_type = Vec<Value>, example = json!([
@@ -44,39 +46,45 @@ pub struct DslValidateRequest {
             }
         }
     ]))]
+    #[ts(type = "unknown[]")]
     pub steps: Vec<Value>, // Will be Vec<DslStep> once workflow is migrated
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct DslValidateResponse {
     /// Whether the DSL is valid
     pub valid: bool,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct DslFieldSpec {
     pub name: String,
     #[schema(example = "string")]
     pub r#type: String,
     pub required: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub options: Option<Vec<String>>,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct DslTypeSpec {
     pub r#type: String,
     pub fields: Vec<DslFieldSpec>,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct DslOptionsResponse {
     pub types: Vec<DslTypeSpec>,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct DslOptionsAndExamplesResponse {
     pub types: Vec<DslTypeSpec>,
     /// Concrete serialized examples using the real DSL structs
+    #[ts(type = "unknown[]")]
     pub examples: Vec<Value>,
 }

@@ -1,54 +1,35 @@
-import { z } from 'zod'
-import { ApiResponseSchema, LoginResponseSchema, RefreshTokenResponseSchema } from '@/types/schemas'
-import type {
-    LoginRequest,
-    LoginResponse,
-    RefreshTokenRequest,
-    RefreshTokenResponse,
-    LogoutRequest,
-} from '@/types/schemas'
+import type { AdminLoginResponse } from '@/types/generated/AdminLoginResponse'
+import type { RefreshTokenResponse } from '@/types/generated/RefreshTokenResponse'
+import type { LoginRequest, RefreshTokenRequest, LogoutRequest } from '@/types/schemas'
 import { BaseTypedHttpClient } from './base'
 
 export class AuthClient extends BaseTypedHttpClient {
-    async login(credentials: LoginRequest): Promise<LoginResponse> {
-        return this.request('/admin/api/v1/auth/login', ApiResponseSchema(LoginResponseSchema), {
+    async login(credentials: LoginRequest): Promise<AdminLoginResponse> {
+        return this.request<AdminLoginResponse>('/admin/api/v1/auth/login', {
             method: 'POST',
             body: JSON.stringify(credentials),
         })
     }
 
     async refreshToken(refreshTokenRequest: RefreshTokenRequest): Promise<RefreshTokenResponse> {
-        return this.request(
-            '/admin/api/v1/auth/refresh',
-            ApiResponseSchema(RefreshTokenResponseSchema),
-            {
-                method: 'POST',
-                body: JSON.stringify(refreshTokenRequest),
-            }
-        )
+        return this.request<RefreshTokenResponse>('/admin/api/v1/auth/refresh', {
+            method: 'POST',
+            body: JSON.stringify(refreshTokenRequest),
+        })
     }
 
     async logout(logoutRequest: LogoutRequest): Promise<{ message: string }> {
-        const result = await this.request(
-            '/admin/api/v1/auth/logout',
-            ApiResponseSchema(z.null()),
-            {
-                method: 'POST',
-                body: JSON.stringify(logoutRequest),
-            }
-        )
-        return result as unknown as { message: string }
+        return this.request<{ message: string }>('/admin/api/v1/auth/logout', {
+            method: 'POST',
+            body: JSON.stringify(logoutRequest),
+        })
     }
 
     async revokeAllTokens(): Promise<{ message: string }> {
-        return this.request(
-            '/admin/api/v1/auth/revoke-all',
-            ApiResponseSchema(z.object({ message: z.string() })),
-            {
-                method: 'POST',
-                body: JSON.stringify({}),
-            }
-        )
+        return this.request<{ message: string }>('/admin/api/v1/auth/revoke-all', {
+            method: 'POST',
+            body: JSON.stringify({}),
+        })
     }
 
     async getUserPermissions(): Promise<{
@@ -56,15 +37,10 @@ export class AuthClient extends BaseTypedHttpClient {
         permissions: string[]
         allowed_routes: string[]
     }> {
-        return this.request(
-            '/admin/api/v1/auth/permissions',
-            ApiResponseSchema(
-                z.object({
-                    is_super_admin: z.boolean(),
-                    permissions: z.array(z.string()),
-                    allowed_routes: z.array(z.string()),
-                })
-            )
-        )
+        return this.request<{
+            is_super_admin: boolean
+            permissions: string[]
+            allowed_routes: string[]
+        }>('/admin/api/v1/auth/permissions')
     }
 }

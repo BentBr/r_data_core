@@ -60,7 +60,7 @@ pub enum ToDef {
     Entity {
         entity_definition: String,
         /// Path or namespace hint for entity tree (optional - derived from `parent_uuid` if not set)
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[serde(default)]
         path: Option<String>,
         /// Create or Update mode (for update, identify existing records via optional filter)
         mode: EntityWriteMode,

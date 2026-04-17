@@ -1,19 +1,37 @@
-import { z } from 'zod'
 import type {
-    ApiResponse,
     CreateEntityRequest,
     DynamicEntity,
     EntityResponse,
     UpdateEntityRequest,
 } from '@/types/schemas'
-import {
-    ApiResponseSchema,
-    DynamicEntitySchema,
-    EntityResponseSchema,
-    PaginatedApiResponseSchema,
-    UuidSchema,
-} from '@/types/schemas'
 import { BaseTypedHttpClient } from './base'
+
+type PathEntry = {
+    kind: 'folder' | 'file'
+    name: string
+    path: string
+    entity_uuid?: string | null
+    entity_type?: string | null
+    has_children?: boolean | null
+    published: boolean
+}
+
+type PaginatedPathResult = {
+    data: PathEntry[]
+    meta?: {
+        pagination?: {
+            total: number
+            page: number
+            per_page: number
+            total_pages: number
+            has_previous: boolean
+            has_next: boolean
+        }
+        request_id?: string
+        timestamp?: string
+        custom?: unknown
+    }
+}
 
 export class EntitiesClient extends BaseTypedHttpClient {
     async getEntities(
@@ -38,9 +56,8 @@ export class EntitiesClient extends BaseTypedHttpClient {
         }
     }> {
         const includeParam = include ? `&include=${include}` : ''
-        return await this.paginatedRequest(
-            `/api/v1/${entityType}?page=${page}&per_page=${itemsPerPage}${includeParam}`,
-            PaginatedApiResponseSchema(z.array(DynamicEntitySchema))
+        return this.paginatedRequest<DynamicEntity[]>(
+            `/api/v1/${entityType}?page=${page}&per_page=${itemsPerPage}${includeParam}`
         )
     }
 
@@ -48,92 +65,17 @@ export class EntitiesClient extends BaseTypedHttpClient {
         path: string,
         limit = this.getDefaultPageSize(),
         offset = 0
-    ): Promise<{
-        data: Array<{
-            kind: 'folder' | 'file'
-            name: string
-            path: string
-            entity_uuid?: string | null
-            entity_type?: string | null
-            has_children?: boolean | null
-            published: boolean
-        }>
-        meta?: {
-            pagination?: {
-                total: number
-                page: number
-                per_page: number
-                total_pages: number
-                has_previous: boolean
-                has_next: boolean
-            }
-            request_id?: string
-            timestamp?: string
-            custom?: unknown
-        }
-    }> {
+    ): Promise<PaginatedPathResult> {
         const encoded = encodeURIComponent(path)
-        return await this.paginatedRequest(
-            `/api/v1/entities/by-path?path=${encoded}&limit=${limit}&offset=${offset}`,
-            PaginatedApiResponseSchema(
-                z.array(
-                    z.object({
-                        kind: z.enum(['folder', 'file']),
-                        name: z.string(),
-                        path: z.string(),
-                        entity_uuid: UuidSchema.nullable().optional(),
-                        entity_type: z.string().nullable().optional(),
-                        has_children: z.boolean().nullable().optional(),
-                        published: z.boolean(),
-                    })
-                )
-            )
+        return this.paginatedRequest<PathEntry[]>(
+            `/api/v1/entities/by-path?path=${encoded}&limit=${limit}&offset=${offset}`
         )
     }
 
-    async searchEntitiesByPath(
-        searchTerm: string,
-        limit = 10
-    ): Promise<{
-        data: Array<{
-            kind: 'folder' | 'file'
-            name: string
-            path: string
-            entity_uuid?: string | null
-            entity_type?: string | null
-            has_children?: boolean | null
-            published: boolean
-        }>
-        meta?: {
-            pagination?: {
-                total: number
-                page: number
-                per_page: number
-                total_pages: number
-                has_previous: boolean
-                has_next: boolean
-            }
-            request_id?: string
-            timestamp?: string
-            custom?: unknown
-        }
-    }> {
+    async searchEntitiesByPath(searchTerm: string, limit = 10): Promise<PaginatedPathResult> {
         const encoded = encodeURIComponent(searchTerm)
-        return await this.paginatedRequest(
-            `/api/v1/entities/by-path?search=${encoded}&limit=${limit}`,
-            PaginatedApiResponseSchema(
-                z.array(
-                    z.object({
-                        kind: z.enum(['folder', 'file']),
-                        name: z.string(),
-                        path: z.string(),
-                        entity_uuid: UuidSchema.nullable().optional(),
-                        entity_type: z.string().nullable().optional(),
-                        has_children: z.boolean().nullable().optional(),
-                        published: z.boolean(),
-                    })
-                )
-            )
+        return this.paginatedRequest<PathEntry[]>(
+            `/api/v1/entities/by-path?search=${encoded}&limit=${limit}`
         )
     }
 
@@ -147,20 +89,16 @@ export class EntitiesClient extends BaseTypedHttpClient {
         }
     ): Promise<DynamicEntity[]> {
         const { parentUuid, path, limit = 20, offset = 0 } = options
-        return this.request(
-            '/api/v1/entities/query',
-            ApiResponseSchema(z.array(DynamicEntitySchema)),
-            {
-                method: 'POST',
-                body: JSON.stringify({
-                    entity_type: entityType,
-                    parent_uuid: parentUuid,
-                    path: path,
-                    limit: limit,
-                    offset: offset,
-                }),
-            }
-        )
+        return this.request<DynamicEntity[]>('/api/v1/entities/query', {
+            method: 'POST',
+            body: JSON.stringify({
+                entity_type: entityType,
+                parent_uuid: parentUuid,
+                path: path,
+                limit: limit,
+                offset: offset,
+            }),
+        })
     }
 
     async getEntity(
@@ -176,7 +114,7 @@ export class EntitiesClient extends BaseTypedHttpClient {
         const url = queryString
             ? `/api/v1/${entityType}/${uuid}?${queryString}`
             : `/api/v1/${entityType}/${uuid}`
-        return this.request(url, ApiResponseSchema(DynamicEntitySchema))
+        return this.request<DynamicEntity>(url)
     }
 
     async createEntity(
@@ -187,16 +125,10 @@ export class EntitiesClient extends BaseTypedHttpClient {
         if (data.parent_uuid !== undefined && data.parent_uuid !== null) {
             body.parent_uuid = data.parent_uuid
         }
-        return this.request(
-            `/api/v1/${entityType}`,
-            ApiResponseSchema(EntityResponseSchema) as z.ZodType<
-                ApiResponse<EntityResponse | null>
-            >,
-            {
-                method: 'POST',
-                body: JSON.stringify(body),
-            }
-        )
+        return this.request<EntityResponse | null>(`/api/v1/${entityType}`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        })
     }
 
     async updateEntity(
@@ -208,26 +140,16 @@ export class EntitiesClient extends BaseTypedHttpClient {
         if (data.parent_uuid !== undefined) {
             body.parent_uuid = data.parent_uuid
         }
-        return this.request(
-            `/api/v1/${entityType}/${uuid}`,
-            ApiResponseSchema(EntityResponseSchema) as z.ZodType<
-                ApiResponse<EntityResponse | null>
-            >,
-            {
-                method: 'PUT',
-                body: JSON.stringify(body),
-            }
-        )
+        return this.request<EntityResponse | null>(`/api/v1/${entityType}/${uuid}`, {
+            method: 'PUT',
+            body: JSON.stringify(body),
+        })
     }
 
     async deleteEntity(entityType: string, uuid: string): Promise<{ message: string }> {
-        return this.request(
-            `/api/v1/${entityType}/${uuid}`,
-            ApiResponseSchema(z.object({ message: z.string() })),
-            {
-                method: 'DELETE',
-            }
-        )
+        return this.request<{ message: string }>(`/api/v1/${entityType}/${uuid}`, {
+            method: 'DELETE',
+        })
     }
 
     async listEntityVersions(
@@ -241,19 +163,14 @@ export class EntitiesClient extends BaseTypedHttpClient {
             created_by_name?: string | null
         }>
     > {
-        return this.request(
-            `/api/v1/entities/${encodeURIComponent(entityType)}/${uuid}/versions`,
-            ApiResponseSchema(
-                z.array(
-                    z.object({
-                        version_number: z.number(),
-                        created_at: z.string(),
-                        created_by: UuidSchema.nullable().optional(),
-                        created_by_name: z.string().nullable().optional(),
-                    })
-                )
-            )
-        )
+        return this.request<
+            Array<{
+                version_number: number
+                created_at: string
+                created_by?: string | null
+                created_by_name?: string | null
+            }>
+        >(`/api/v1/entities/${encodeURIComponent(entityType)}/${uuid}/versions`)
     }
 
     async getEntityVersion(
@@ -266,16 +183,11 @@ export class EntitiesClient extends BaseTypedHttpClient {
         created_by?: string | null
         data: Record<string, unknown>
     }> {
-        return this.request(
-            `/api/v1/entities/${encodeURIComponent(entityType)}/${uuid}/versions/${versionNumber}`,
-            ApiResponseSchema(
-                z.object({
-                    version_number: z.number(),
-                    created_at: z.string(),
-                    created_by: UuidSchema.nullable().optional(),
-                    data: z.any(), // Use z.any() instead of z.record(z.any()) to handle nested objects
-                })
-            )
-        )
+        return this.request<{
+            version_number: number
+            created_at: string
+            created_by?: string | null
+            data: Record<string, unknown>
+        }>(`/api/v1/entities/${encodeURIComponent(entityType)}/${uuid}/versions/${versionNumber}`)
     }
 }

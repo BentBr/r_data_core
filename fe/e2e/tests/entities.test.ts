@@ -24,13 +24,11 @@ test.describe('Entities', () => {
         const listItems = authenticatedPage.locator('.v-overlay--active .v-list-item')
         await expect(listItems.first()).toBeVisible({ timeout: 10_000 })
 
-        // Find e2e_test_product (display name: E2E Test Product)
+        // Find e2e_test_product (display name: E2E Test Product) — created by global setup
         const typeOption = listItems.filter({ hasText: /e2e.test.product/i })
-        if ((await typeOption.count()) === 0) {
-            // If the entity type is not in the dropdown, it's not published — skip test
-            test.skip()
-            return
-        }
+        await expect(typeOption.first()).toBeVisible({
+            timeout: 5_000,
+        })
         await typeOption.first().click()
 
         // Fill entity key (required field) — use unique key to avoid 409 conflicts
@@ -133,10 +131,9 @@ test.describe('Entities', () => {
         await expect(listItems.first()).toBeVisible({ timeout: 10_000 })
 
         const typeOption = listItems.filter({ hasText: /e2e.test.product/i })
-        if ((await typeOption.count()) === 0) {
-            test.skip()
-            return
-        }
+        await expect(typeOption.first()).toBeVisible({
+            timeout: 5_000,
+        })
         await typeOption.first().click()
 
         // Fill entity key — use unique key to avoid 409 conflicts

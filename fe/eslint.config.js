@@ -45,6 +45,10 @@ const prettierRules = {
 }
 
 export default [
+    // Global ignores — auto-generated files
+    {
+        ignores: ['src/types/generated/**'],
+    },
     // Source files (excluding test files)
     {
         files: ['src/**/*.{js,vue,ts}'],

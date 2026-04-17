@@ -1,6 +1,17 @@
 # RDataCore
 
 A self-hosted master data management (MDM) platform built with Rust. Connect Shops, PIM, CRM, ERP, and any system. Fast, secure, and flexible.
+See our website for more infos [RDataCore](https://rdatacore.eu) (/ˈɹeɪtəkɔːɹ/)
+
+## Pronunciation
+
+> **RAY-tuh-core**
+>
+> | Syllable | IPA    | Sounds like |
+> |----------|--------|-------------|
+> | **R**    | /ɹeɪ/  | "ray"       |
+> | **ta**   | /tə/   | "tuh"       |
+> | **core** | /kɔːɹ/ | "core"      |
 
 ## Features
 

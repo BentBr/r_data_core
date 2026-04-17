@@ -1,11 +1,11 @@
 import { z } from 'zod'
-import { ApiResponseSchema } from './base'
+import { CSV_DELIMITER_LENGTH, DSL_STEPS_MIN_COUNT } from '../generated/validation'
 
 export const CsvOptionsSchema = z.object({
     has_header: z.boolean().optional(),
-    delimiter: z.string().min(1).max(1).optional(),
-    escape: z.string().min(1).max(1).optional(),
-    quote: z.string().min(1).max(1).optional(),
+    delimiter: z.string().min(1).max(CSV_DELIMITER_LENGTH).optional(),
+    escape: z.string().min(1).max(CSV_DELIMITER_LENGTH).optional(),
+    quote: z.string().min(1).max(CSV_DELIMITER_LENGTH).optional(),
 })
 
 // Auth configuration schemas
@@ -246,7 +246,7 @@ export const DslStepSchema = z.object({
 })
 
 export const DslValidateRequestSchema = z.object({
-    steps: z.array(DslStepSchema).min(1),
+    steps: z.array(DslStepSchema).min(DSL_STEPS_MIN_COUNT),
 })
 
 export const DslValidateResponseSchema = z.object({
@@ -265,15 +265,11 @@ export const DslTypeSpecSchema = z.object({
     fields: z.array(DslFieldSpecSchema),
 })
 
-export const DslOptionsResponseSchema = z.object({
-    types: z.array(DslTypeSpecSchema),
-    examples: z.array(z.unknown()).optional(),
-})
-
 export type DslStep = z.infer<typeof DslStepSchema>
 export type DslValidateRequest = z.infer<typeof DslValidateRequestSchema>
 export type DslValidateResponse = z.infer<typeof DslValidateResponseSchema>
-export type DslOptionsResponse = z.infer<typeof DslOptionsResponseSchema>
+// DslOptionsResponse re-exported from generated
+export type { DslOptionsResponse } from '../generated/DslOptionsResponse'
 
 // Export component types for DSL editors
 export type FromDef = z.infer<typeof DslFromSchema>
@@ -287,6 +283,3 @@ export type AuthConfig = z.infer<typeof AuthConfigSchema>
 export type SourceConfig = z.infer<typeof SourceConfigSchema>
 export type FormatConfig = z.infer<typeof FormatConfigSchema>
 export type DestinationConfig = z.infer<typeof DestinationConfigSchema>
-
-// Re-export ApiResponseSchema for consumers that need it alongside DSL
-export { ApiResponseSchema }

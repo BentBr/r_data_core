@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use ts_rs::TS;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -16,7 +17,8 @@ pub struct PathUuid {
 }
 
 /// String field constraints
-#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone, TS)]
+#[ts(export)]
 pub struct StringConstraints {
     /// Minimum string length
     pub min_length: Option<usize>,
@@ -29,7 +31,8 @@ pub struct StringConstraints {
 }
 
 /// Numeric field constraints
-#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone, TS)]
+#[ts(export)]
 pub struct NumericConstraints {
     /// Minimum allowed value
     pub min: Option<f64>,
@@ -42,7 +45,8 @@ pub struct NumericConstraints {
 }
 
 /// Date/time field constraints
-#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone, TS)]
+#[ts(export)]
 pub struct DateTimeConstraints {
     /// Minimum allowed date
     pub min_date: Option<String>,
@@ -51,28 +55,33 @@ pub struct DateTimeConstraints {
 }
 
 /// Select field constraints
-#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone, TS)]
+#[ts(export)]
 pub struct SelectConstraints {
     /// Array of allowed values
     pub options: Option<Vec<String>>,
 }
 
 /// Relation field constraints
-#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone, TS)]
+#[ts(export)]
 pub struct RelationConstraints {
     /// Name of the related entity type
     pub target_class: String,
 }
 
 /// Object/Array field constraints
-#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, Clone, TS)]
+#[ts(export)]
 pub struct SchemaConstraints {
     /// JSON schema for validating the object/array structure
+    #[ts(type = "unknown")]
     pub schema: Value,
 }
 
 /// Field constraints based on field type
-#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, Clone, TS)]
+#[ts(export)]
 #[serde(tag = "type", content = "constraints")]
 pub enum FieldConstraints {
     /// String field constraints
@@ -118,7 +127,8 @@ pub enum FieldConstraints {
 
 /// Schema for options source in `OpenAPI` docs
 /// Defines how to populate options for `Select` and `MultiSelect` fields
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 #[serde(tag = "type")]
 pub enum OptionsSourceSchema {
     /// Fixed list of options defined statically
@@ -137,13 +147,15 @@ pub enum OptionsSourceSchema {
         /// Field to use as option display label
         label_field: String,
         /// Optional filter criteria for the query
+        #[ts(type = "unknown")]
         filter: Option<Value>,
     },
 }
 
 /// Schema for select options in `OpenAPI` docs
 /// Used for defining individual options in fixed option lists
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct SelectOptionSchema {
     /// Option value (stored in database)
     pub value: String,
@@ -153,7 +165,8 @@ pub struct SelectOptionSchema {
 
 /// Schema for UI settings in `OpenAPI` docs
 /// Controls how fields are rendered in forms and lists
-#[derive(Debug, Serialize, Deserialize, ToSchema, Default)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, TS)]
+#[ts(export)]
 pub struct UiSettingsSchema {
     /// Placeholder text shown in empty input fields
     pub placeholder: Option<String>,
@@ -176,7 +189,8 @@ pub struct UiSettingsSchema {
 }
 
 /// Field types available for entity definitions
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub enum FieldTypeSchema {
     /// Short text field (varchar in database)
     String,
@@ -219,7 +233,8 @@ pub enum FieldTypeSchema {
 }
 
 /// Schema for field definitions in `OpenAPI` docs
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct FieldDefinitionSchema {
     /// Field name (must be unique within class and contain only alphanumeric characters, underscores, no spaces)
     pub name: String,
@@ -238,6 +253,7 @@ pub struct FieldDefinitionSchema {
     /// Whether the field must have unique values (DB-level constraint)
     pub unique: bool,
     /// Default value for the field
+    #[ts(type = "unknown")]
     pub default_value: Option<Value>,
     /// Type-specific field constraints
     #[serde(default)]
@@ -249,10 +265,12 @@ pub struct FieldDefinitionSchema {
 
 /// Schema for entity definitions in `OpenAPI` docs
 /// Used to define entity types with their fields and metadata
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 #[schema(title = "EntityDefinitionSchema")]
 pub struct EntityDefinitionSchema {
     /// Unique identifier (automatically generated if not provided)
+    #[ts(type = "string | null")]
     pub uuid: Option<Uuid>,
     /// Entity type name (must be unique, alphanumeric with underscores, no spaces)
     pub entity_type: String,
@@ -271,47 +289,56 @@ pub struct EntityDefinitionSchema {
     /// Published &**state (whether visible to users)
     pub published: Option<bool>,
     /// Created at timestamp
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,
     /// Updated at timestamp
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
 }
 
 /// Response for listing entity definitions
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 #[schema(title = "EntityDefinitionListResponse")]
 pub struct EntityDefinitionListResponse {
     /// List of entity definitions
     pub items: Vec<EntityDefinitionSchema>,
     /// Total number of items
+    #[ts(type = "number")]
     pub total: i64,
 }
 
 /// Model for apply-schema request
 /// Used to generate and apply SQL schema for a specific entity definition or all definitions
-#[derive(Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Debug, Deserialize, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct ApplySchemaRequest {
     /// Optional UUID of specific entity definition to apply schema for
     /// If not provided, schemas for all published entity definitions will be applied
     #[serde(default)]
+    #[ts(type = "string | null")]
     pub uuid: Option<Uuid>,
 }
 
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct EntityDefinitionVersionMeta {
     pub version_number: i32,
     #[serde(with = "time::serde::rfc3339")]
+    #[ts(type = "string")]
     pub created_at: time::OffsetDateTime,
+    #[ts(type = "string | null")]
     pub created_by: Option<Uuid>,
     pub created_by_name: Option<String>,
 }
 
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct EntityDefinitionVersionPayload {
     pub version_number: i32,
     #[serde(with = "time::serde::rfc3339")]
+    #[ts(type = "string")]
     pub created_at: time::OffsetDateTime,
+    #[ts(type = "string | null")]
     pub created_by: Option<Uuid>,
+    #[ts(type = "unknown")]
     pub data: serde_json::Value,
 }

@@ -9,5 +9,10 @@ compose.override.yaml
 
 /fe/coverage
 
+# ts-rs default output (we use TS_RS_EXPORT_DIR instead)
+**/bindings/*.ts
+
 # Mac-specific
 .DS_Store
+
+docs/superpowers

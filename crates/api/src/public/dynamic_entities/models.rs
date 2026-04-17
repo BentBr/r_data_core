@@ -12,7 +12,6 @@ pub struct DynamicEntityResponse {
     pub entity_type: String,
     pub field_data: HashMap<String, Value>,
     /// Number of child entities (only included when requested via `include_children_count=true`)
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub children_count: Option<i64>,
 }
 
