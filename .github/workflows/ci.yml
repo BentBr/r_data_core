@@ -604,13 +604,14 @@ jobs:
             sleep 2
           done
 
-      - name: Start frontend dev server
+      - name: Build and start frontend
         working-directory: fe
         env:
           VITE_API_BASE_URL: http://localhost:8080
           VITE_ADMIN_BASE_URL: http://localhost:5173
         run: |
-          npx vite --port 5173 --host 0.0.0.0 &
+          npm run build
+          npx vite preview --port 5173 --host 0.0.0.0 &
           for i in {1..30}; do
             curl -sf http://localhost:5173 && break
             echo "Waiting for frontend..."

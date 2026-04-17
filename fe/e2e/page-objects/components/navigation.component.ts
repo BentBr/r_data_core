@@ -15,7 +15,10 @@ export class NavigationComponent {
     // Actions
     async navigateTo(path: string): Promise<void> {
         await this.navItem(path).click()
-        await this.page.waitForURL(`**${path}**`, { timeout: 15_000 })
+        // Use web-first assertion instead of waitForURL — SPA navigations
+        // (pushState) don't fire a new 'load' event, so waitForURL with the
+        // default waitUntil:'load' is unreliable on slow CI runners.
+        await expect(this.page).toHaveURL(new RegExp(path), { timeout: 15_000 })
     }
 
     // Assertions

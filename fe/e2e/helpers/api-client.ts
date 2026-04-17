@@ -140,13 +140,47 @@ export async function createUser(token: string, roleUuid: string): Promise<strin
     if (!res.ok) {
         const text = await res.text()
         if (res.status === 409) {
-            console.log('[E2E Setup] User e2e_viewer_user already exists, skipping')
-            return ''
+            // User exists (possibly soft-deleted). Find it and update its roles
+            // so it references the freshly created role UUID.
+            return await ensureViewerUserRoles(token, roleUuid)
         }
         throw new Error(`Create user failed (${res.status}): ${text}`)
     }
     const body = (await res.json()) as ApiResponse<{ uuid: string }>
     return body.data.uuid
+}
+
+async function ensureViewerUserRoles(token: string, roleUuid: string): Promise<string> {
+    const listRes = await apiRequest('GET', '/users?per_page=100', token)
+    if (!listRes.ok) {
+        throw new Error(`Failed to list users for viewer role update`)
+    }
+
+    const body = (await listRes.json()) as ApiResponse<
+        Array<{ uuid: string; username?: string; is_active?: boolean }>
+    >
+    const user = body.data.find(u => u.username === 'e2e_viewer_user')
+    if (!user) {
+        throw new Error('Viewer user exists (409) but not found in user list')
+    }
+
+    // Update user: ensure active and correct role assignment
+    const updateRes = await apiRequest('PUT', `/users/${user.uuid}`, token, {
+        username: 'e2e_viewer_user',
+        email: 'e2e_viewer@test.local',
+        password: 'e2e_viewer_password_123',
+        first_name: 'E2E',
+        last_name: 'Viewer',
+        is_active: true,
+        role_uuids: roleUuid ? [roleUuid] : [],
+    })
+    if (!updateRes.ok) {
+        const text = await updateRes.text()
+        throw new Error(`Failed to update viewer user roles (${updateRes.status}): ${text}`)
+    }
+
+    console.log(`[E2E Setup] Updated existing viewer user ${user.uuid} with fresh role`)
+    return user.uuid
 }
 
 export async function createWorkflow(token: string): Promise<string> {
@@ -201,6 +235,25 @@ export async function createApiKey(token: string): Promise<string> {
     }
     const body = (await res.json()) as ApiResponse<{ uuid: string }>
     return body.data.uuid
+}
+
+/**
+ * Delete a user by username. Searches all pages to find the user.
+ * Returns true if deleted, false if not found.
+ */
+export async function deleteUserByUsername(token: string, username: string): Promise<boolean> {
+    const res = await apiRequest('GET', `/users?per_page=100`, token)
+    if (!res.ok) return false
+
+    const body = (await res.json()) as ApiResponse<Array<{ uuid: string; username?: string }>>
+    const user = body.data.find(u => u.username === username)
+    if (!user) return false
+
+    const delRes = await apiRequest('DELETE', `/users/${user.uuid}`, token)
+    if (delRes.ok) {
+        console.log(`[E2E Setup] Deleted stale user ${user.uuid} (${username})`)
+    }
+    return delRes.ok
 }
 
 export async function deleteByPrefix(

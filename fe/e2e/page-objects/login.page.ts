@@ -34,8 +34,7 @@ export class LoginPage {
 
     // Assertions
     async expectRedirectToDashboard(): Promise<void> {
-        await this.page.waitForURL('**/dashboard', { timeout: 15_000 })
-        await expect(this.page).toHaveURL(/\/dashboard/)
+        await expect(this.page).toHaveURL(/\/dashboard/, { timeout: 15_000 })
     }
 
     async expectLoginError(): Promise<void> {

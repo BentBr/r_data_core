@@ -79,8 +79,13 @@ router.beforeEach(async (to, from, next) => {
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
     const authStore = useAuthStore()
 
-    // If going to login page, allow it (no auth checks needed)
+    // If going to login page, redirect authenticated users to dashboard
     if (to.name === 'Login') {
+        await authStore.authReady
+        if (authStore.isAuthenticated && !authStore.isTokenExpired) {
+            next({ name: 'Dashboard' })
+            return
+        }
         next()
         return
     }

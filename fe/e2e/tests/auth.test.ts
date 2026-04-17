@@ -31,20 +31,17 @@ test.describe('Authentication', () => {
         await logoutItem.click()
 
         // Should be redirected to login
-        await authenticatedPage.waitForURL('**/login**', { timeout: 10_000 })
-        await expect(authenticatedPage).toHaveURL(/\/login/)
+        await expect(authenticatedPage).toHaveURL(/\/login/, { timeout: 10_000 })
     })
 
     test('unauthenticated access redirects to login', async ({ page }) => {
         await page.goto('/dashboard')
-        await page.waitForURL('**/login**', { timeout: 10_000 })
-        await expect(page).toHaveURL(/\/login/)
+        await expect(page).toHaveURL(/\/login/, { timeout: 10_000 })
     })
 
     test('login page redirects authenticated user to dashboard', async ({ authenticatedPage }) => {
         await authenticatedPage.goto('/login')
         // Authenticated user should be redirected away from login
-        await authenticatedPage.waitForURL('**/dashboard', { timeout: 10_000 })
-        await expect(authenticatedPage).toHaveURL(/\/dashboard/)
+        await expect(authenticatedPage).toHaveURL(/\/dashboard/, { timeout: 10_000 })
     })
 })

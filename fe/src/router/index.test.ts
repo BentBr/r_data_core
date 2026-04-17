@@ -10,7 +10,9 @@ const createMockAuthStore = (overrides = {}) => {
             // Default: only allow dashboard
             return route === '/dashboard'
         }),
+        authReady: Promise.resolve(),
         checkAuthStatus: vi.fn().mockResolvedValue(undefined),
+        refreshTokens: vi.fn().mockResolvedValue(undefined),
         logout: vi.fn().mockResolvedValue(undefined),
         ...overrides,
     }
@@ -138,16 +140,15 @@ describe('Router Permission Guards', () => {
         mockAuthStore.allowedRoutes = ['/workflows']
         mockAuthStore.canAccessRoute = vi.fn((route: string) => {
             // Only allow workflows, not dashboard
-            return route === '/workflows'
+            return route === '/workflows' || route === '/no-access'
         })
 
         // Navigate from a different route first to ensure guard runs
-        await router.push('/login')
+        await router.push('/no-access')
         await router.isReady()
 
         // Now navigate to dashboard
-        const navigationPromise = router.push('/dashboard')
-        await navigationPromise
+        await router.push('/dashboard')
         await router.isReady()
 
         // Should be redirected to first available route
@@ -161,17 +162,16 @@ describe('Router Permission Guards', () => {
         mockAuthStore.isTokenExpired = false
         mockAuthStore.allowedRoutes = ['/dashboard']
         mockAuthStore.canAccessRoute = vi.fn((route: string) => {
-            // Allow dashboard
-            return route === '/dashboard'
+            // Allow dashboard and no-access
+            return route === '/dashboard' || route === '/no-access'
         })
 
         // Navigate from a different route first to ensure guard runs
-        await router.push('/login')
+        await router.push('/no-access')
         await router.isReady()
 
         // Now navigate to dashboard
-        const navigationPromise = router.push('/dashboard')
-        await navigationPromise
+        await router.push('/dashboard')
         await router.isReady()
 
         // Should be able to access dashboard
@@ -188,12 +188,11 @@ describe('Router Permission Guards', () => {
         mockAuthStore.canAccessRoute = vi.fn(() => false)
 
         // Navigate from a different route first to ensure guard runs
-        await router.push('/login')
+        await router.push('/no-access')
         await router.isReady()
 
         // Now navigate to dashboard
-        const navigationPromise = router.push('/dashboard')
-        await navigationPromise
+        await router.push('/dashboard')
         await router.isReady()
 
         // Should redirect to no-access (not logout)

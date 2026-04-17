@@ -8,6 +8,8 @@ import {
     createUser,
     createWorkflow,
     createApiKey,
+    deleteByPrefix,
+    deleteUserByUsername,
     type TestDataIds,
 } from './helpers/api-client'
 
@@ -22,49 +24,37 @@ export default async function globalSetup(): Promise<void> {
     const token = await login()
     console.log('[E2E Setup] Admin login successful')
 
-    try {
-        testData.entityDefinitionUuid = await createEntityDefinition(token)
-        if (testData.entityDefinitionUuid) {
-            console.log(`[E2E Setup] Created entity definition: ${testData.entityDefinitionUuid}`)
-        }
-    } catch (error) {
-        console.warn('[E2E Setup] Entity definition creation failed (non-fatal):', error)
+    // Clean stale viewer data before creating fresh data.
+    // The viewer user references a role by UUID — if the role was re-created
+    // with a new UUID the user has a dangling reference and can't log in.
+    // Delete user first (references role), then role.
+    await deleteUserByUsername(token, 'e2e_viewer_user')
+    await deleteByPrefix(token, 'roles', 'e2e_viewer')
+
+    // Create test data — failures here abort the entire suite
+    testData.entityDefinitionUuid = await createEntityDefinition(token)
+    if (testData.entityDefinitionUuid) {
+        console.log(`[E2E Setup] Created entity definition: ${testData.entityDefinitionUuid}`)
     }
 
-    try {
-        testData.roleUuid = await createRole(token)
-        if (testData.roleUuid) {
-            console.log(`[E2E Setup] Created role: ${testData.roleUuid}`)
-        }
-    } catch (error) {
-        console.warn('[E2E Setup] Role creation failed (non-fatal):', error)
+    testData.roleUuid = await createRole(token)
+    if (testData.roleUuid) {
+        console.log(`[E2E Setup] Created role: ${testData.roleUuid}`)
     }
 
-    try {
-        testData.userUuid = await createUser(token, testData.roleUuid ?? '')
-        if (testData.userUuid) {
-            console.log(`[E2E Setup] Created user: ${testData.userUuid}`)
-        }
-    } catch (error) {
-        console.warn('[E2E Setup] User creation failed (non-fatal):', error)
+    testData.userUuid = await createUser(token, testData.roleUuid ?? '')
+    if (testData.userUuid) {
+        console.log(`[E2E Setup] Created user: ${testData.userUuid}`)
     }
 
-    try {
-        testData.workflowUuid = await createWorkflow(token)
-        if (testData.workflowUuid) {
-            console.log(`[E2E Setup] Created workflow: ${testData.workflowUuid}`)
-        }
-    } catch (error) {
-        console.warn('[E2E Setup] Workflow creation failed (non-fatal):', error)
+    testData.workflowUuid = await createWorkflow(token)
+    if (testData.workflowUuid) {
+        console.log(`[E2E Setup] Created workflow: ${testData.workflowUuid}`)
     }
 
-    try {
-        testData.apiKeyUuid = await createApiKey(token)
-        if (testData.apiKeyUuid) {
-            console.log(`[E2E Setup] Created API key: ${testData.apiKeyUuid}`)
-        }
-    } catch (error) {
-        console.warn('[E2E Setup] API key creation failed (non-fatal):', error)
+    testData.apiKeyUuid = await createApiKey(token)
+    if (testData.apiKeyUuid) {
+        console.log(`[E2E Setup] Created API key: ${testData.apiKeyUuid}`)
     }
 
     fs.writeFileSync(TEST_DATA_FILE, JSON.stringify(testData, null, 2))
