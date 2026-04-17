@@ -33,35 +33,23 @@ pub struct LicenseVerificationResult {
     /// License state
     pub state: LicenseState,
     /// Company name (if license is present)
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub company: Option<String>,
     /// License type (if license is present)
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub license_type: Option<String>,
     /// License ID (if license is present)
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub license_id: Option<String>,
     /// Issue date (if license is present)
-    #[serde(
-        skip_serializing_if = "Option::is_none",
-        with = "time::serde::rfc3339::option"
-    )]
+    #[serde(with = "time::serde::rfc3339::option")]
     pub issued_at: Option<time::OffsetDateTime>,
     /// Expiration date (if license is present and has expiration)
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        with = "time::serde::rfc3339::option"
-    )]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub expires_at: Option<time::OffsetDateTime>,
     /// License version
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
     /// Verification timestamp
     #[serde(with = "time::serde::rfc3339")]
     pub verified_at: time::OffsetDateTime,
     /// Error message (only present if state is "error" or "invalid")
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub error_message: Option<String>,
 }
 

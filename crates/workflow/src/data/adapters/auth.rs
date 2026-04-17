@@ -75,7 +75,7 @@ pub enum AuthConfig {
     /// Entity JWT authentication (for headless CMS endpoints)
     EntityJwt {
         /// Optional required claims: claim path → expected value
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[serde(default)]
         required_claims: Option<HashMap<String, serde_json::Value>>,
     },
 }
@@ -369,12 +369,12 @@ mod tests {
     }
 
     #[test]
-    fn test_entity_jwt_config_without_required_claims_omits_field() {
+    fn test_entity_jwt_config_without_required_claims_is_null() {
         let config = AuthConfig::EntityJwt {
             required_claims: None,
         };
         let json = serde_json::to_value(&config).unwrap();
-        // required_claims should be omitted when None (skip_serializing_if)
-        assert!(!json.as_object().unwrap().contains_key("required_claims"));
+        // required_claims is null when None
+        assert_eq!(json["required_claims"], serde_json::Value::Null);
     }
 }

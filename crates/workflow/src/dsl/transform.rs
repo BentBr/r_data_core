@@ -38,7 +38,6 @@ pub struct ConcatTransform {
     pub target: String,
     pub left: StringOperand,
     /// Optional separator between left and right
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub separator: Option<String>,
     pub right: StringOperand,
 }
@@ -85,7 +84,6 @@ pub struct ResolveEntityPathTransform {
     /// Target field to store the resolved path
     pub target_path: String,
     /// Optional target field to store the found entity's UUID (use as `parent_uuid` for children)
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub target_uuid: Option<String>,
     /// Entity type to query
     pub entity_type: String,
@@ -93,10 +91,8 @@ pub struct ResolveEntityPathTransform {
     pub filters: std::collections::HashMap<String, StringOperand>,
     /// Optional value transformations to apply before lookup
     /// Map of field name -> transform type (e.g., "lowercase", "trim", "normalize")
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub value_transforms: Option<std::collections::HashMap<String, String>>,
     /// Fallback path if entity not found (configurable)
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub fallback_path: Option<String>,
 }
 
@@ -108,10 +104,8 @@ pub struct BuildPathTransform {
     /// Path template with placeholders (e.g., "/{field1}/{field2}")
     pub template: String,
     /// Optional separator between segments (default: "/")
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub separator: Option<String>,
     /// Optional transforms to apply to field values
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub field_transforms: Option<std::collections::HashMap<String, String>>,
 }
 
@@ -121,17 +115,14 @@ pub struct GetOrCreateEntityTransform {
     /// Target field to store the entity path
     pub target_path: String,
     /// Optional target field to store the entity's UUID (use as `parent_uuid` for children)
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub target_uuid: Option<String>,
     /// Entity type to get/create
     pub entity_type: String,
     /// Path template to build (e.g., "/{field1}/{field2}")
     pub path_template: String,
     /// Optional field data to use when creating entity
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub create_field_data: Option<std::collections::HashMap<String, StringOperand>>,
     /// Optional separator for path building (default: "/")
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub path_separator: Option<String>,
 }
 
@@ -151,10 +142,9 @@ pub struct AuthenticateTransform {
     /// Output field name for the issued JWT token
     pub target_token: String,
     /// Extra JWT claims: claim name → entity field name
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    #[serde(default)]
     pub extra_claims: HashMap<String, String>,
     /// Override the default token expiry (seconds). Falls back to `JWT_EXPIRATION` env.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub token_expiry_seconds: Option<u64>,
 }
 

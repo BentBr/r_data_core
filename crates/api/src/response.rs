@@ -15,7 +15,6 @@ pub struct ValidationViolation {
     /// The error message for this field
     pub message: String,
     /// Optional error code (e.g., `"NOT_BLANK"`, `"NOT_NULL"`)
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub code: Option<String>,
 }
 

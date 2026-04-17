@@ -108,6 +108,5 @@ pub struct LicenseClaims {
     #[serde(rename = "license_id")]
     pub license_id: String,
     /// Expiration timestamp (Unix epoch)
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub exp: Option<i64>,
 }

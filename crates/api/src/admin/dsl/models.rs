@@ -64,7 +64,6 @@ pub struct DslFieldSpec {
     #[schema(example = "string")]
     pub r#type: String,
     pub required: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub options: Option<Vec<String>>,
 }
 

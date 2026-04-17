@@ -102,27 +102,16 @@ enum CachedLicenseState {
 #[derive(serde::Serialize, serde::Deserialize)]
 struct CachedLicenseResult {
     state: CachedLicenseState,
-    #[serde(skip_serializing_if = "Option::is_none")]
     company: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     license_type: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     license_id: Option<String>,
-    #[serde(
-        skip_serializing_if = "Option::is_none",
-        with = "time::serde::rfc3339::option"
-    )]
+    #[serde(with = "time::serde::rfc3339::option")]
     issued_at: Option<time::OffsetDateTime>,
-    #[serde(
-        skip_serializing_if = "Option::is_none",
-        with = "time::serde::rfc3339::option"
-    )]
+    #[serde(with = "time::serde::rfc3339::option")]
     expires_at: Option<time::OffsetDateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     version: Option<String>,
     #[serde(with = "time::serde::rfc3339")]
     verified_at: time::OffsetDateTime,
-    #[serde(skip_serializing_if = "Option::is_none")]
     error_message: Option<String>,
 }
 
