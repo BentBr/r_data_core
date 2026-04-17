@@ -27,6 +27,7 @@ async function tryLoginAsViewer(
         await page.waitForURL('**/dashboard', { timeout: 10_000 })
         await page.waitForLoadState('networkidle')
         await page.getByTestId('nav-sidebar').waitFor({ state: 'visible', timeout: 15_000 })
+        await page.getByTestId('nav-item-/dashboard').waitFor({ state: 'visible', timeout: 10_000 })
         return { page, context }
     } catch {
         // Login failed (user missing, wrong password, or no dashboard redirect)

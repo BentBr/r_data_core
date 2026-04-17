@@ -22,7 +22,6 @@ test.describe('Dashboard', () => {
         await firstButton.click()
 
         // Should navigate away from dashboard to entity-definitions
-        await authenticatedPage.waitForLoadState('networkidle', { timeout: 15_000 })
         await authenticatedPage.waitForURL('**/entity-definitions**', { timeout: 15_000 })
         await expect(authenticatedPage).not.toHaveURL(/\/dashboard/)
     })

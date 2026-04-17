@@ -21,6 +21,8 @@ export const test = base.extend<AuthFixtures>({
         // Wait for auth state to fully settle before tests interact with the page
         await page.waitForLoadState('networkidle')
         await page.getByTestId('nav-sidebar').waitFor({ state: 'visible', timeout: 15_000 })
+        // Confirm permissions are loaded: nav items depend on canAccessRoute
+        await page.getByTestId('nav-item-/dashboard').waitFor({ state: 'visible', timeout: 10_000 })
         await use(page)
     },
 
@@ -33,6 +35,7 @@ export const test = base.extend<AuthFixtures>({
         await loginPage.expectRedirectToDashboard()
         await page.waitForLoadState('networkidle')
         await page.getByTestId('nav-sidebar').waitFor({ state: 'visible', timeout: 15_000 })
+        await page.getByTestId('nav-item-/dashboard').waitFor({ state: 'visible', timeout: 10_000 })
         await use(page)
         await context.close()
     },

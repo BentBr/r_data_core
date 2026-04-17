@@ -86,7 +86,17 @@ router.beforeEach(async (to, from, next) => {
     }
 
     if (requiresAuth) {
-        // Check if user is authenticated first
+        // Wait for the initial auth check to complete. On a full page reload
+        // the in-memory access token is lost; this ensures the store has had a
+        // chance to restore it from the refresh-token cookie before we decide.
+        await authStore.authReady
+
+        // If the token is expired but the user was authenticated, try to refresh
+        if (authStore.isAuthenticated && authStore.isTokenExpired) {
+            await authStore.refreshTokens()
+        }
+
+        // After potential restore / refresh, check authentication
         if (!authStore.isAuthenticated) {
             // If coming from login page, don't add redirect query (prevents loops after logout)
             // Otherwise, preserve the redirect query for normal auth redirects
@@ -98,26 +108,7 @@ router.beforeEach(async (to, from, next) => {
             return
         }
 
-        // If authenticated, try to check auth status (this will attempt token refresh if needed)
-        try {
-            await authStore.checkAuthStatus()
-        } catch (err) {
-            console.error('[Router] Auth check failed:', err)
-        }
-
-        // Check again after a potential refresh
-        if (!authStore.isAuthenticated as boolean) {
-            // If coming from login page, don't add redirect query (prevents loops after logout)
-            // Otherwise, preserve the redirect query for normal auth redirects
-            const redirectQuery = from.name === 'Login' ? {} : { redirect: to.fullPath }
-            next({
-                name: 'Login',
-                query: redirectQuery,
-            })
-            return
-        }
-
-        // Check if token is expired after potential refresh
+        // If token is still expired after refresh attempt, force logout
         if (authStore.isTokenExpired) {
             // Token is expired, logout and redirect to login without redirect query
             await authStore.logout()
@@ -128,13 +119,13 @@ router.beforeEach(async (to, from, next) => {
             return
         }
 
-        // Check route permissions for all routes that require auth
-        // Allow access to /no-access route for authenticated users (even without other permissions)
+        // Allow access to /no-access route for authenticated users
         if (to.path === '/no-access') {
             next()
             return
         }
 
+        // Check route permissions
         const routePath = to.path
         if (!authStore.canAccessRoute(routePath)) {
             // User doesn't have permission for this route

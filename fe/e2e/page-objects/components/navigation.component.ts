@@ -15,9 +15,6 @@ export class NavigationComponent {
     // Actions
     async navigateTo(path: string): Promise<void> {
         await this.navItem(path).click()
-        // In CI the auth check may bounce through /login before settling on the target URL.
-        // Wait for network to idle first, then verify the final URL.
-        await this.page.waitForLoadState('networkidle', { timeout: 15_000 })
         await this.page.waitForURL(`**${path}**`, { timeout: 15_000 })
     }
 
