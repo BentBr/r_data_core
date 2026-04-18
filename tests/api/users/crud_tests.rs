@@ -299,3 +299,79 @@ async fn test_email_uniqueness() {
     let resp = test::call_service(&app, create_req).await;
     assert_eq!(resp.status(), StatusCode::CONFLICT);
 }
+
+#[serial]
+#[tokio::test]
+async fn test_delete_inactive_user_returns_conflict() {
+    let (app, pool, _user_uuid) = setup_test_app().await.unwrap();
+    let token = get_auth_token(&app, &pool).await;
+
+    // Create a user, then soft-delete it
+    let repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
+    let params = r_data_core_persistence::CreateAdminUserParams {
+        username: "inactive_user",
+        email: "inactive@example.com",
+        password: "password123",
+        first_name: "Inactive",
+        last_name: "User",
+        role: None,
+        is_active: true,
+        creator_uuid: Uuid::now_v7(),
+    };
+    let user_uuid = repo.create_admin_user(&params).await.unwrap();
+
+    // First delete (soft-delete) — should succeed
+    let req = test::TestRequest::delete()
+        .uri(&format!("/admin/api/v1/users/{user_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    // Second delete — user is already inactive, should return 409
+    let req = test::TestRequest::delete()
+        .uri(&format!("/admin/api/v1/users/{user_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::CONFLICT);
+}
+
+#[serial]
+#[tokio::test]
+async fn test_revoke_already_revoked_api_key_returns_conflict() {
+    let (app, pool, _user_uuid) = setup_test_app().await.unwrap();
+    let token = get_auth_token(&app, &pool).await;
+
+    // Create an API key via API
+    let create_req = test::TestRequest::post()
+        .uri("/admin/api/v1/api-keys")
+        .insert_header(("Authorization", format!("Bearer {token}")))
+        .set_json(serde_json::json!({
+            "name": "test_revoke_key",
+            "description": "Key for revoke test"
+        }))
+        .to_request();
+    let create_resp = test::call_service(&app, create_req).await;
+    assert_eq!(create_resp.status(), StatusCode::CREATED);
+
+    // Extract the API key UUID from the response
+    let body: serde_json::Value = test::read_body_json(create_resp).await;
+    let key_uuid = body["data"]["uuid"].as_str().expect("uuid in response");
+
+    // First revoke — should succeed
+    let req = test::TestRequest::delete()
+        .uri(&format!("/admin/api/v1/api-keys/{key_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    // Second revoke — already revoked, should return 409
+    let req = test::TestRequest::delete()
+        .uri(&format!("/admin/api/v1/api-keys/{key_uuid}"))
+        .insert_header(("Authorization", format!("Bearer {token}")))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::CONFLICT);
+}

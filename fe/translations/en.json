@@ -607,7 +607,8 @@
             },
             "delete": {
                 "403": "Cannot delete user",
-                "404": "User not found"
+                "404": "User not found",
+                "409": "This user is already inactive"
             }
         },
         "entity": {
@@ -699,7 +700,8 @@
             },
             "delete": {
                 "403": "Cannot delete API key",
-                "404": "API key not found"
+                "404": "API key not found",
+                "409": "This API key has already been revoked"
             }
         },
         "workflow": {
