@@ -453,9 +453,20 @@ pub async fn delete_user(
     let pool = Arc::new(state.db_pool().clone());
     let repo = AdminUserRepository::new(pool);
 
-    // Verify user exists
-    if matches!(repo.find_by_uuid(&user_uuid).await, Ok(None)) {
-        return ApiResponse::<()>::not_found("User not found");
+    // Verify user exists and is active
+    match repo.find_by_uuid(&user_uuid).await {
+        Ok(Some(user)) => {
+            if !user.is_active {
+                return ApiResponse::<()>::conflict("User is already inactive");
+            }
+        }
+        Ok(None) => {
+            return ApiResponse::<()>::not_found("User not found");
+        }
+        Err(e) => {
+            error!("Failed to find user: {e}");
+            return ApiResponse::<()>::internal_error("Failed to find user");
+        }
     }
 
     match repo.delete_admin_user(&user_uuid).await {

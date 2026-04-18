@@ -607,7 +607,8 @@
             },
             "delete": {
                 "403": "Benutzer kann nicht gelöscht werden",
-                "404": "Benutzer nicht gefunden"
+                "404": "Benutzer nicht gefunden",
+                "409": "Dieser Benutzer ist bereits inaktiv"
             }
         },
         "entity": {
@@ -699,7 +700,8 @@
             },
             "delete": {
                 "403": "API-Schlüssel kann nicht gelöscht werden",
-                "404": "API-Schlüssel nicht gefunden"
+                "404": "API-Schlüssel nicht gefunden",
+                "409": "Dieser API-Schlüssel wurde bereits widerrufen"
             }
         },
         "workflow": {

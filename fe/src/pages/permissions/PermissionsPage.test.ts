@@ -793,4 +793,79 @@ describe('PermissionsPage', () => {
             expect((wrapper.vm as any).showUserDialog).toBe(true)
         })
     })
+
+    it('disables delete button for inactive users', async () => {
+        // Setup: one active user, one inactive user
+        const testUsers = [
+            {
+                uuid: 'user-active',
+                username: 'active_user',
+                email: 'active@test.com',
+                first_name: 'Active',
+                last_name: 'User',
+                is_active: true,
+                is_admin: false,
+                role_uuids: [],
+                created_at: '2024-01-01T00:00:00Z',
+                updated_at: '2024-01-01T00:00:00Z',
+            },
+            {
+                uuid: 'user-inactive',
+                username: 'inactive_user',
+                email: 'inactive@test.com',
+                first_name: 'Inactive',
+                last_name: 'User',
+                is_active: false,
+                is_admin: false,
+                role_uuids: [],
+                created_at: '2024-01-01T00:00:00Z',
+                updated_at: '2024-01-01T00:00:00Z',
+            },
+        ]
+
+        mockUsers.value = testUsers as any
+        mockLoadUsers.mockResolvedValue({
+            data: testUsers,
+            meta: {
+                pagination: {
+                    total: 2,
+                    page: 1,
+                    per_page: 20,
+                    total_pages: 1,
+                    has_previous: false,
+                    has_next: false,
+                },
+            },
+        })
+
+        const wrapper = mount(PermissionsPage, {
+            global: {
+                plugins: [router],
+                stubs: {
+                    UserDialog: true,
+                    RoleDialog: true,
+                },
+            },
+        })
+
+        // Switch to users tab
+        ;(wrapper.vm as any).activeTab = 'users'
+        await wrapper.vm.$nextTick()
+        await wrapper.vm.$nextTick()
+
+        // Find delete buttons (color="error" v-btn in the users table)
+        const usersTable = wrapper.find('[data-testid="users-table"]')
+        const deleteButtons = usersTable.findAll('.v-btn--variant-text').filter(btn => {
+            const classes = btn.classes()
+            return classes.some(c => c.includes('error'))
+        })
+
+        expect(deleteButtons.length).toBe(2)
+
+        // First user (active) — delete button should be enabled
+        expect(deleteButtons[0].attributes('disabled')).toBeUndefined()
+
+        // Second user (inactive) — delete button should be disabled
+        expect(deleteButtons[1].attributes('disabled')).toBeDefined()
+    })
 })

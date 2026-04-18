@@ -143,6 +143,7 @@
                                     variant="text"
                                     size="small"
                                     color="error"
+                                    :disabled="!item.is_active"
                                     @click="confirmDeleteUser(item)"
                                 >
                                     <SmartIcon

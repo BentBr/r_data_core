@@ -281,6 +281,10 @@ pub async fn revoke_api_key(
                 );
             }
 
+            if !key.is_active {
+                return ApiResponse::<()>::conflict("API key is already revoked");
+            }
+
             // Revoke the key
             match repo.revoke(api_key_uuid).await {
                 Ok(()) => ApiResponse::<()>::message("API key revoked successfully"),
