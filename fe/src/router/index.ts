@@ -85,7 +85,6 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
     const authStore = useAuthStore()
-    const capabilitiesStore = useCapabilitiesStore()
 
     // If going to login page, redirect authenticated users to dashboard
     if (to.name === 'Login') {
@@ -110,8 +109,16 @@ router.beforeEach(async (to, from, next) => {
         }
 
         // Ensure capabilities are loaded (e.g. after page reload)
-        if (authStore.isAuthenticated && !capabilitiesStore.isLoaded) {
-            void capabilitiesStore.fetchCapabilities()
+        // Wrapped in try-catch: capabilities are non-critical for navigation
+        if (authStore.isAuthenticated) {
+            try {
+                const caps = useCapabilitiesStore()
+                if (!caps.isLoaded) {
+                    void caps.fetchCapabilities()
+                }
+            } catch {
+                // Pinia may not be active in test environments
+            }
         }
 
         // After potential restore / refresh, check authentication
