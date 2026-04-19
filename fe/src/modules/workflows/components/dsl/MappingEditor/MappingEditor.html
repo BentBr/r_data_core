@@ -1,0 +1,72 @@
+<div class="mapping-table-wrapper">
+    <v-table
+        density="comfortable"
+        class="mapping-table"
+    >
+        <thead>
+            <tr>
+                <th style="width: 45%">{{ leftLabel }}</th>
+                <th style="width: 45%">{{ rightLabel }}</th>
+                <th style="width: 10%"></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr
+                v-for="(pair, idx) in localPairs"
+                :key="idx"
+            >
+                <td>
+                    <v-select
+                        v-if="useSelectForLeft"
+                        :model-value="pair.k"
+                        :items="leftItems || []"
+                        density="comfortable"
+                        variant="outlined"
+                        hide-details
+                        @update:model-value="(v: string) => updatePair(idx, { ...pair, k: v })"
+                    />
+                    <v-text-field
+                        v-else
+                        :model-value="pair.k"
+                        density="comfortable"
+                        variant="outlined"
+                        hide-details
+                        @update:model-value="(v: string) => updatePair(idx, { ...pair, k: v })"
+                    />
+                </td>
+                <td>
+                    <v-select
+                        v-if="useSelectForRight"
+                        :model-value="pair.v"
+                        :items="rightItems || []"
+                        density="comfortable"
+                        variant="outlined"
+                        hide-details
+                        @update:model-value="(v: string) => updatePair(idx, { ...pair, v })"
+                    />
+                    <v-text-field
+                        v-else
+                        :model-value="pair.v"
+                        density="comfortable"
+                        variant="outlined"
+                        hide-details
+                        @update:model-value="(v: string) => updatePair(idx, { ...pair, v })"
+                    />
+                </td>
+                <td class="delete-cell">
+                    <v-btn
+                        size="x-small"
+                        variant="text"
+                        color="error"
+                        @click="deletePair(idx)"
+                    >
+                        <SmartIcon
+                            icon="trash-2"
+                            :size="16"
+                        />
+                    </v-btn>
+                </td>
+            </tr>
+        </tbody>
+    </v-table>
+</div>

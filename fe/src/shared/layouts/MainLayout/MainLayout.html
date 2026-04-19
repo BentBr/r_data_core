@@ -1,0 +1,37 @@
+<div class="main-layout">
+    <!-- Navigation Sidebar -->
+    <NavigationSidebar />
+
+    <!-- App Bar -->
+    <v-app-bar app>
+        <!-- Removed v-app-bar-nav-icon as toggleNav logic is now in NavigationSidebar -->
+        <v-toolbar-title>{{ currentPageTitle }}</v-toolbar-title>
+        <v-spacer />
+        <!-- User Profile Menu -->
+        <UserProfileMenu
+            v-if="authStore.user"
+            class="mr-2"
+        />
+        <!-- Language Switch -->
+        <LanguageSwitch />
+    </v-app-bar>
+
+    <!-- Main Content -->
+    <v-main>
+        <DefaultPasswordBanner />
+        <LicenseBanner />
+        <MobileWarningBanner />
+        <router-view v-slot="{ Component, route }">
+            <transition
+                name="fade"
+                mode="out-in"
+                appear
+            >
+                <component
+                    :is="Component"
+                    :key="route.fullPath"
+                />
+            </transition>
+        </router-view>
+    </v-main>
+</div>

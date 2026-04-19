@@ -1,0 +1,52 @@
+<div class="icon-picker">
+    <v-text-field
+        v-model="searchQuery"
+        :label="label"
+        clearable
+        placeholder="Search icons..."
+    >
+        <template #prepend-inner>
+            <SmartIcon
+                icon="search"
+                :size="20"
+                class="mr-2"
+            />
+        </template>
+    </v-text-field>
+
+    <v-card
+        v-if="showPicker"
+        class="mt-2 icon-picker-card"
+    >
+        <v-card-text class="pa-2">
+            <div class="d-flex flex-wrap icon-grid">
+                <v-btn
+                    v-for="icon in filteredIcons"
+                    :key="icon"
+                    variant="text"
+                    size="small"
+                    class="icon-button"
+                    :color="selectedIcon === icon ? 'primary' : undefined"
+                    @click="selectIcon(icon)"
+                >
+                    <LucideIcon
+                        :name="icon"
+                        :size="20"
+                    />
+                </v-btn>
+            </div>
+        </v-card-text>
+    </v-card>
+
+    <div
+        v-if="selectedIcon"
+        class="d-flex align-center mt-2"
+    >
+        <LucideIcon
+            :name="selectedIcon"
+            :size="24"
+            class="mr-2"
+        />
+        <span class="text-body-2">{{ selectedIcon }}</span>
+    </div>
+</div>

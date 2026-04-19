@@ -1,0 +1,44 @@
+<div>
+    <v-text-field
+        :model-value="buildPathTarget"
+        :label="t('workflows.dsl.target')"
+        density="comfortable"
+        class="mb-2"
+        @update:model-value="updateBuildPathField('target', $event)"
+    />
+    <v-textarea
+        :model-value="buildPathTemplate"
+        :label="t('workflows.dsl.path_template')"
+        :hint="t('workflows.dsl.path_template_hint')"
+        density="comfortable"
+        class="mb-2"
+        rows="2"
+        @update:model-value="updateBuildPathField('template', $event)"
+    />
+    <v-text-field
+        :model-value="buildPathSeparator"
+        :label="t('workflows.dsl.separator')"
+        density="comfortable"
+        class="mb-2"
+        @update:model-value="updateBuildPathField('separator', $event)"
+    />
+    <div class="text-caption mb-1">{{ t('workflows.dsl.field_transforms') }}</div>
+    <div class="d-flex ga-2 mb-2">
+        <v-btn
+            variant="outlined"
+            size="small"
+            @click="addBuildPathFieldTransform"
+        >
+            {{ t('workflows.dsl.add_filter') }}
+        </v-btn>
+    </div>
+    <MappingTable
+        :pairs="buildPathFieldTransforms"
+        :left-label="t('workflows.dsl.field_name')"
+        :right-label="t('workflows.dsl.transform_type')"
+        :right-items="['lowercase', 'uppercase', 'trim', 'normalize', 'slug', 'hash']"
+        :use-select-for-right="true"
+        @update-pair="updateBuildPathFieldTransform"
+        @delete-pair="deleteBuildPathFieldTransform"
+    />
+</div>

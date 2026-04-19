@@ -1,0 +1,65 @@
+<div>
+    <!-- Skeleton loader for initial load -->
+    <div v-if="loading && items.length === 0">
+        <v-skeleton-loader
+            type="table"
+            class="elevation-1"
+        />
+    </div>
+
+    <!-- Error State -->
+    <v-alert
+        v-else-if="error"
+        type="error"
+        variant="tonal"
+        class="mb-4"
+        closable
+    >
+        {{ error }}
+    </v-alert>
+
+    <!-- Data Table with skeleton rows during loading -->
+    <v-data-table-server
+        v-else
+        v-model:options="tableOptions"
+        :headers="headers"
+        :items="items"
+        :loading="loading"
+        :items-per-page="itemsPerPage"
+        :page="currentPage"
+        :items-length="totalItems"
+        class="elevation-1"
+        responsive
+        :items-per-page-options="itemsPerPageOptions"
+        :items-per-page-text="t('table.items_per_page')"
+        :next-page-text="t('table.next')"
+        :prev-page-text="t('table.previous')"
+        :first-page-text="t('table.first')"
+        :last-page-text="t('table.last')"
+        :page-text="t('table.page')"
+        :of-text="t('table.of')"
+        :no-data-text="t('table.no_data')"
+        :loading-text="t('table.loading')"
+        item-value="uuid"
+        @update:options="handleOptionsUpdate"
+    >
+        <!-- Slot for custom item templates -->
+        <template
+            v-for="(_, name) in $slots"
+            #[name]="slotData"
+        >
+            <slot
+                :name="name"
+                v-bind="slotData"
+            />
+        </template>
+
+        <!-- Footer: prepend total counter while keeping default footer -->
+        <template #bottom="slotProps">
+            <div class="d-flex align-center justify-space-between px-4 py-2">
+                <div class="text-caption">{{ t('table.total') }}: {{ totalItems }}</div>
+                <v-data-table-footer v-bind="slotProps" />
+            </div>
+        </template>
+    </v-data-table-server>
+</div>

@@ -1,0 +1,15 @@
+.dismissable-banner {
+    border-left: 4px solid rgb(var(--v-theme-warning));
+}
+
+.banner-type-info {
+    border-left-color: rgb(var(--v-theme-info));
+}
+
+.banner-type-error {
+    border-left-color: rgb(var(--v-theme-error));
+}
+
+.banner-type-success {
+    border-left-color: rgb(var(--v-theme-success));
+}

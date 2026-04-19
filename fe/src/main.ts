@@ -1,14 +1,14 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 
-import App from './App.vue'
+import App from './App/index.vue'
 import router from './router'
 import { checkEnvironmentVariables, env } from './env-check'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import type { IconAliases } from 'vuetify'
-import SmartIcon from '@/components/common/SmartIcon.vue'
+import SmartIcon from '@/shared/components/SmartIcon/index.vue'
 
 // Vuetify styles
 import 'vuetify/styles'

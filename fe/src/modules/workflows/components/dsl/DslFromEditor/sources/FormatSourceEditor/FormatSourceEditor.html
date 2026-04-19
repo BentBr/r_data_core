@@ -1,0 +1,95 @@
+<div>
+    <div class="d-flex ga-2 mb-2 flex-wrap">
+        <v-select
+            :model-value="sourceType"
+            :items="sourceTypes"
+            :label="t('workflows.dsl.source_type')"
+            density="comfortable"
+            @update:model-value="updateSourceType($event)"
+        />
+        <v-select
+            :model-value="formatType"
+            :items="formatTypes"
+            :label="t('workflows.dsl.format_type')"
+            density="comfortable"
+            @update:model-value="updateFormatType($event)"
+        />
+    </div>
+    <template v-if="sourceType === 'uri'">
+        <v-text-field
+            :model-value="sourceUri"
+            :label="t('workflows.dsl.uri')"
+            density="comfortable"
+            class="mb-2"
+            @update:model-value="updateSourceConfig('uri', $event)"
+        />
+    </template>
+    <template v-if="sourceType === 'api'">
+        <div
+            class="text-caption mb-2 pa-2"
+            style="background-color: rgba(var(--v-theme-primary), 0.1); border-radius: 4px"
+        >
+            <strong>{{ t('workflows.dsl.endpoint_info') }}:</strong> POST
+            {{ getFullEndpointUri() }}
+        </div>
+    </template>
+    <div
+        v-if="formatType === 'csv'"
+        class="mb-2"
+    >
+        <CsvOptionsEditor
+            :model-value="formatOptions"
+            @update:model-value="updateFormatOptions($event)"
+        />
+    </div>
+    <div
+        v-if="formatType === 'csv'"
+        class="mb-2"
+    >
+        <div class="d-flex align-center ga-2 flex-wrap">
+            <input
+                type="file"
+                accept=".csv,text/csv"
+                @change="onTestUpload"
+            />
+            <v-btn
+                v-if="sourceType === 'uri' && sourceUri"
+                size="x-small"
+                variant="tonal"
+                @click="autoMapFromUri"
+                >{{ t('workflows.dsl.auto_map_from_uri') }}
+            </v-btn>
+        </div>
+    </div>
+    <div class="mb-2">
+        <v-expansion-panels variant="accordion">
+            <v-expansion-panel>
+                <v-expansion-panel-title
+                    >{{ t('workflows.dsl.auth_type') }}
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                    <AuthConfigEditor
+                        :model-value="sourceAuth"
+                        @update:model-value="updateSourceAuth($event)"
+                    />
+                </v-expansion-panel-text>
+            </v-expansion-panel>
+        </v-expansion-panels>
+    </div>
+    <div class="text-caption mb-1 mt-2">
+        {{ t('workflows.dsl.mapping_source_normalized') }}
+    </div>
+    <MappingEditor
+        ref="mappingEditorRef"
+        :model-value="modelValue.mapping"
+        :left-label="t('workflows.dsl.source')"
+        :right-label="t('workflows.dsl.normalized')"
+        @update:model-value="updateMapping"
+    />
+    <v-btn
+        size="x-small"
+        variant="tonal"
+        @click="addMapping"
+        >{{ t('workflows.dsl.add_mapping') }}
+    </v-btn>
+</div>

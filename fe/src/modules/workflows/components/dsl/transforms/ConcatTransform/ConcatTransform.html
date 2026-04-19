@@ -1,0 +1,82 @@
+<div>
+    <div class="d-flex ga-2">
+        <v-text-field
+            :model-value="modelValue.type === 'concat' ? modelValue.target : ''"
+            :label="t('workflows.dsl.target')"
+            density="comfortable"
+            @update:model-value="updateField('target', $event)"
+        />
+        <v-text-field
+            :model-value="concatSeparator"
+            :label="t('workflows.dsl.separator')"
+            density="comfortable"
+            @update:model-value="updateField('separator', $event)"
+        />
+    </div>
+    <div class="d-flex ga-2">
+        <v-select
+            :model-value="leftConcat.kind"
+            :items="stringOperandKinds"
+            :label="t('workflows.dsl.left_kind')"
+            density="comfortable"
+            class="flex-0"
+            style="max-width: 200px"
+            @update:model-value="updateLeftConcatKind"
+        />
+        <v-select
+            v-if="leftConcat.kind === 'field' && availableFields.length > 0"
+            :model-value="leftConcat.field"
+            :items="availableFields"
+            :label="t('workflows.dsl.left_field')"
+            density="comfortable"
+            @update:model-value="updateLeftConcatField"
+        />
+        <v-text-field
+            v-else-if="leftConcat.kind === 'field'"
+            :model-value="leftConcat.field"
+            :label="t('workflows.dsl.left_field')"
+            density="comfortable"
+            @update:model-value="updateLeftConcatField"
+        />
+        <v-text-field
+            v-else
+            :model-value="leftConcat.value"
+            :label="t('workflows.dsl.left_value')"
+            density="comfortable"
+            @update:model-value="updateLeftConcatValue"
+        />
+    </div>
+    <div class="d-flex ga-2">
+        <v-select
+            :model-value="rightConcat.kind"
+            :items="stringOperandKinds"
+            :label="t('workflows.dsl.right_kind')"
+            density="comfortable"
+            class="flex-0"
+            style="max-width: 200px"
+            @update:model-value="updateRightConcatKind"
+        />
+        <v-select
+            v-if="rightConcat.kind === 'field' && availableFields.length > 0"
+            :model-value="rightConcat.field"
+            :items="availableFields"
+            :label="t('workflows.dsl.right_field')"
+            density="comfortable"
+            @update:model-value="updateRightConcatField"
+        />
+        <v-text-field
+            v-else-if="rightConcat.kind === 'field'"
+            :model-value="rightConcat.field"
+            :label="t('workflows.dsl.right_field')"
+            density="comfortable"
+            @update:model-value="updateRightConcatField"
+        />
+        <v-text-field
+            v-else
+            :model-value="rightConcat.value"
+            :label="t('workflows.dsl.right_value')"
+            density="comfortable"
+            @update:model-value="updateRightConcatValue"
+        />
+    </div>
+</div>

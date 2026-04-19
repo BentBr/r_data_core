@@ -1,0 +1,112 @@
+<v-dialog
+    v-model="dialogVisible"
+    :max-width="getDialogMaxWidth('form')"
+    persistent
+>
+    <v-card>
+        <v-card-title class="d-flex align-center pa-6">
+            <SmartIcon
+                icon="plus"
+                size="md"
+                class="mr-3"
+            />
+            {{ t('entities.create.title') }}
+        </v-card-title>
+
+        <v-card-text class="pa-6">
+            <v-form
+                ref="form"
+                v-model="isValid"
+            >
+                <v-select
+                    v-model="formData.entity_type"
+                    :items="availableEntityTypes"
+                    item-title="display_name"
+                    item-value="entity_type"
+                    :label="t('entities.create.entity_type_label')"
+                    :rules="[v => !!v || t('entities.create.entity_type_required')]"
+                    required
+                    class="mb-4"
+                    @update:model-value="onEntityTypeChange"
+                />
+
+                <v-text-field
+                    v-model="formData.data.entity_key"
+                    :label="t('entities.create.key_label')"
+                    :rules="[v => !!v || t('entities.create.key_required')]"
+                    :error-messages="fieldErrors.entity_key ? [fieldErrors.entity_key] : []"
+                    required
+                    class="mb-4"
+                />
+
+                <EntityPathPicker
+                    ref="pathPickerRef"
+                    v-model:path="formData.data.path"
+                    v-model:parent-uuid="formData.parent_uuid"
+                    :error-messages="fieldErrors.path ? [fieldErrors.path] : []"
+                />
+
+                <v-switch
+                    v-model="formData.data.published"
+                    :label="t('entities.create.published_label')"
+                    :hint="t('entities.create.published_hint')"
+                    color="success"
+                    inset
+                    persistent-hint
+                    class="mb-4"
+                />
+
+                <div
+                    v-if="selectedEntityDefinition"
+                    class="mt-4"
+                >
+                    <h4 class="text-subtitle-1 mb-3">{{ t('entities.create.data_label') }}</h4>
+                    <v-row>
+                        <v-col
+                            v-for="field in selectedEntityDefinition.fields"
+                            :key="field.name"
+                            :cols="field.ui_settings?.width === 'full' ? 12 : 6"
+                        >
+                            <component
+                                :is="getFieldComponent(field.field_type)"
+                                v-model="formData.data[field.name]"
+                                :label="field.display_name"
+                                :hint="field.description"
+                                :rules="getFieldRules(field)"
+                                :error-messages="fieldErrors[field.name] ? [fieldErrors[field.name]] : []"
+                                :required="field.required"
+                                :placeholder="field.ui_settings?.placeholder"
+                                :options="field.ui_settings?.options"
+                                :min="field.constraints?.min"
+                                :max="field.constraints?.max"
+                                :step="field.constraints?.step"
+                                :pattern="field.constraints?.pattern"
+                            />
+                        </v-col>
+                    </v-row>
+                </div>
+            </v-form>
+        </v-card-text>
+
+        <v-card-actions class="pa-4 px-6">
+            <v-spacer />
+            <v-btn
+                :variant="buttonConfigs.text.variant"
+                color="mutedForeground"
+                :disabled="loading"
+                @click="dialogVisible = false"
+            >
+                {{ t('common.cancel') }}
+            </v-btn>
+            <v-btn
+                :color="buttonConfigs.primary.color"
+                :variant="buttonConfigs.primary.variant"
+                :loading="loading"
+                :disabled="!isValid"
+                @click="createEntity"
+            >
+                {{ t('entities.create.create_button') }}
+            </v-btn>
+        </v-card-actions>
+    </v-card>
+</v-dialog>

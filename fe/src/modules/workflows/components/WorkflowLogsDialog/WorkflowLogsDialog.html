@@ -1,0 +1,52 @@
+<v-dialog
+    v-model="showDialog"
+    :max-width="getDialogMaxWidth('wide')"
+>
+    <v-card>
+        <v-card-title>{{ t('workflows.history.logs') }}</v-card-title>
+        <v-card-text>
+            <PaginatedDataTable
+                :items="logs"
+                :headers="[
+                    { title: t('workflows.logs.time'), key: 'ts' },
+                    { title: t('workflows.logs.level'), key: 'level' },
+                    { title: t('workflows.logs.message'), key: 'message' },
+                    { title: t('workflows.logs.meta'), key: 'meta' },
+                ]"
+                :loading="loading"
+                :error="''"
+                :loading-text="t('table.loading')"
+                :current-page="page"
+                :items-per-page="perPage"
+                :total-items="total"
+                :total-pages="Math.ceil((total || 0) / perPage) || 1"
+                @update:page="handlePageChange"
+                @update:items-per-page="handlePerPageChange"
+            >
+                <template #item.meta="{ item }">
+                    <pre
+                        style="
+                            white-space: pre-wrap;
+                            word-break: break-word;
+                            font-size: 12px;
+                            margin: 0;
+                        "
+                        >{{
+                            typeof item.meta === 'string'
+                                ? item.meta
+                                : JSON.stringify(item.meta ?? {}, null, 2)
+                        }}
+                    </pre>
+                </template>
+            </PaginatedDataTable>
+        </v-card-text>
+        <v-card-actions>
+            <v-spacer />
+            <v-btn
+                variant="text"
+                @click="showDialog = false"
+                >{{ t('common.close') }}
+            </v-btn>
+        </v-card-actions>
+    </v-card>
+</v-dialog>

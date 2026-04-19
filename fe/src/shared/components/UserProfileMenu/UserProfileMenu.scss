@@ -1,0 +1,7 @@
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.v-list-item.text-error .v-list-item-title {
+    color: rgb(var(--v-theme-error));
+}

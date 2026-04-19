@@ -1,0 +1,81 @@
+<div>
+    <PageLayout>
+        <template #actions>
+            <v-btn
+                v-if="canCreateWorkflow"
+                color="primary"
+                variant="flat"
+                data-testid="workflows-create-btn"
+                @click="showCreate = true"
+            >
+                <template #prepend>
+                    <SmartIcon
+                        icon="plus"
+                        size="sm"
+                    />
+                </template>
+                {{ t('workflows.create.button') }}
+            </v-btn>
+        </template>
+        <v-tabs
+            v-model="activeTab"
+            color="primary"
+        >
+            <v-tab value="list">{{ t('table.list') ?? 'List' }}</v-tab>
+            <v-tab
+                value="history"
+                data-testid="workflows-history-tab"
+                >{{ t('workflows.history.tab') ?? 'History' }}</v-tab
+            >
+        </v-tabs>
+
+        <v-window
+            v-model="activeTab"
+            class="mt-4"
+        >
+            <v-window-item value="list">
+                <WorkflowListTab
+                    ref="listTabRef"
+                    @run="openRunNow"
+                    @history="openHistory"
+                    @edit="openEdit"
+                    @delete="openDelete"
+                />
+            </v-window-item>
+
+            <v-window-item value="history">
+                <WorkflowHistoryTab
+                    ref="historyTabRef"
+                    :initial-workflow-uuid="historyInitialUuid"
+                    :workflows="listTabRef?.items ?? []"
+                />
+            </v-window-item>
+        </v-window>
+
+        <CreateWorkflowDialog
+            v-model="showCreate"
+            @created="onCreated"
+        />
+        <EditWorkflowDialog
+            v-model="showEdit"
+            :workflow-uuid="editingUuid"
+            @updated="onUpdated"
+        />
+        <WorkflowRunDialog
+            ref="runDialogRef"
+            v-model="showRunDialog"
+            :workflow-uuid="runTargetUuid"
+        />
+        <DialogManager
+            v-model="showDeleteDialog"
+            :config="deleteDialogConfig"
+            :loading="deleting"
+            :confirm-text="t('workflows.delete.button')"
+            :cancel-text="t('common.cancel')"
+            @confirm="deleteWorkflow"
+        >
+            <p>{{ t('workflows.delete.confirm_message') }}</p>
+        </DialogManager>
+        <SnackbarManager :snackbar="currentSnackbar" />
+    </PageLayout>
+</div>

@@ -1,0 +1,30 @@
+<div class="d-flex ga-2 mb-2 flex-wrap">
+    <v-switch
+        :model-value="opts.has_header"
+        :label="t('workflows.dsl.csv_header')"
+        color="primary"
+        density="comfortable"
+        @update:model-value="updateField('has_header', $event)"
+    />
+    <v-text-field
+        :model-value="opts.delimiter"
+        :label="t('workflows.dsl.csv_delimiter')"
+        density="comfortable"
+        style="max-width: 120px"
+        @update:model-value="updateField('delimiter', $event)"
+    />
+    <v-text-field
+        :model-value="opts.escape"
+        :label="t('workflows.dsl.csv_escape')"
+        density="comfortable"
+        style="max-width: 120px"
+        @update:model-value="updateField('escape', $event)"
+    />
+    <v-text-field
+        :model-value="opts.quote"
+        :label="t('workflows.dsl.csv_quote')"
+        density="comfortable"
+        style="max-width: 120px"
+        @update:model-value="updateField('quote', $event)"
+    />
+</div>

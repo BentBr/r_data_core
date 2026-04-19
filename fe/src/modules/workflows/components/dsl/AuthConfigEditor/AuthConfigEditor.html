@@ -1,0 +1,118 @@
+<div>
+    <v-select
+        :model-value="authType"
+        :items="authTypes"
+        :label="t('workflows.dsl.auth_type')"
+        density="comfortable"
+        class="mb-2"
+        @update:model-value="onAuthTypeChange"
+    />
+    <template v-if="authType === 'api_key'">
+        <v-text-field
+            :model-value="modelValue.key"
+            :label="t('workflows.dsl.api_key')"
+            type="password"
+            density="comfortable"
+            class="mb-2"
+            @update:model-value="updateField('key', $event)"
+        />
+        <v-text-field
+            :model-value="modelValue.header_name || 'X-API-Key'"
+            :label="t('workflows.dsl.header_name')"
+            density="comfortable"
+            @update:model-value="updateField('header_name', $event)"
+        />
+    </template>
+    <template v-else-if="authType === 'basic_auth'">
+        <v-text-field
+            :model-value="modelValue.username"
+            :label="t('workflows.dsl.username')"
+            density="comfortable"
+            class="mb-2"
+            @update:model-value="updateField('username', $event)"
+        />
+        <v-text-field
+            :model-value="modelValue.password"
+            :label="t('workflows.dsl.password')"
+            type="password"
+            density="comfortable"
+            @update:model-value="updateField('password', $event)"
+        />
+    </template>
+    <template v-else-if="authType === 'pre_shared_key'">
+        <v-text-field
+            :model-value="modelValue.key"
+            :label="t('workflows.dsl.pre_shared_key')"
+            type="password"
+            density="comfortable"
+            class="mb-2"
+            @update:model-value="updateField('key', $event)"
+        />
+        <v-select
+            :model-value="modelValue.location || 'header'"
+            :items="keyLocations"
+            :label="t('workflows.dsl.key_location')"
+            density="comfortable"
+            class="mb-2"
+            @update:model-value="updateField('location', $event)"
+        />
+        <v-text-field
+            :model-value="modelValue.field_name"
+            :label="t('workflows.dsl.field_name')"
+            density="comfortable"
+            @update:model-value="updateField('field_name', $event)"
+        />
+    </template>
+    <template v-else-if="authType === 'entity_jwt'">
+        <div class="text-subtitle-2 mb-2">
+            {{ t('workflows.dsl.required_claims') }}
+        </div>
+        <div
+            v-for="(value, key) in requiredClaims"
+            :key="key"
+            class="d-flex align-center mb-2"
+        >
+            <v-text-field
+                :model-value="key"
+                :label="t('workflows.dsl.claim_path')"
+                density="comfortable"
+                class="mr-2"
+                readonly
+            />
+            <v-text-field
+                :model-value="String(value)"
+                :label="t('workflows.dsl.claim_value')"
+                density="comfortable"
+                class="mr-2"
+                @update:model-value="updateRequiredClaim(String(key), $event)"
+            />
+            <v-btn
+                icon="mdi-delete"
+                size="small"
+                variant="text"
+                @click="removeRequiredClaim(String(key))"
+            />
+        </div>
+        <div class="d-flex align-center">
+            <v-text-field
+                v-model="newClaimKey"
+                :label="t('workflows.dsl.claim_path')"
+                density="comfortable"
+                class="mr-2"
+            />
+            <v-text-field
+                v-model="newClaimValue"
+                :label="t('workflows.dsl.claim_value')"
+                density="comfortable"
+                class="mr-2"
+            />
+            <v-btn
+                icon="mdi-plus"
+                size="small"
+                variant="text"
+                :disabled="!newClaimKey"
+                @click="addRequiredClaim"
+            />
+        </div>
+    </template>
+</div>

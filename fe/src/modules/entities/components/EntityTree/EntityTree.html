@@ -1,0 +1,61 @@
+<div class="entity-tree">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <h3 class="text-h6">{{ t('entities.tree.title') }}</h3>
+        <div class="d-flex gap-1">
+            <v-btn
+                size="small"
+                variant="text"
+                :disabled="loading"
+                @click="expandAll"
+            >
+                {{ t('entities.tree.expand_all') }}
+            </v-btn>
+            <v-btn
+                size="small"
+                variant="text"
+                :disabled="loading"
+                @click="collapseAll"
+            >
+                {{ t('entities.tree.collapse_all') }}
+            </v-btn>
+        </div>
+    </div>
+
+    <div
+        v-if="loading"
+        class="d-flex justify-center align-center pa-8"
+    >
+        <v-progress-circular
+            indeterminate
+            color="primary"
+        />
+        <span class="ml-3">{{ t('entities.tree.loading') }}</span>
+    </div>
+
+    <div
+        v-else-if="!treeItems.length"
+        class="d-flex justify-center align-center pa-8"
+    >
+        <SmartIcon
+            icon="database"
+            :size="48"
+            color="mutedForeground"
+            class="mr-3"
+        />
+        <span class="text-grey">{{ t('entities.tree.no_entities') }}</span>
+    </div>
+
+    <div
+        v-else
+        class="tree-canvas"
+    >
+        <TreeView
+            :items="treeItems"
+            :loading="loading"
+            :expanded-items="expandedItems"
+            @update:expanded-items="handleExpandedItemsChange"
+            @item-click="handleItemClickProxy"
+            @selection-change="$emit('selection-change', $event)"
+        />
+    </div>
+</div>

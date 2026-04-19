@@ -1,0 +1,22 @@
+.icon-picker {
+    width: 100%;
+}
+
+.icon-picker-card {
+    width: 100%;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.icon-grid {
+    width: 100%;
+}
+
+/* Ensure icons are at 100% opacity */
+.icon-button :deep(.lucide-icon) {
+    opacity: 1 !important;
+}
+
+.icon-button :deep(.v-btn__overlay) {
+    opacity: 0;
+}

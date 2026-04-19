@@ -1,0 +1,112 @@
+<div>
+    <div class="d-flex ga-2">
+        <v-text-field
+            :model-value="arithmeticTarget"
+            :label="t('workflows.dsl.target')"
+            density="comfortable"
+            @update:model-value="updateField('target', $event)"
+        />
+        <v-select
+            :model-value="arithmeticOp"
+            :items="ops"
+            item-title="title"
+            item-value="value"
+            :label="t('workflows.dsl.op')"
+            density="comfortable"
+            class="flex-0"
+            style="max-width: 160px"
+            @update:model-value="updateField('op', $event)"
+        >
+            <template #item="{ item, props: itemProps }">
+                <v-list-item
+                    v-bind="itemProps"
+                    :title="item.raw?.title || item.title"
+                >
+                    <template #prepend>
+                        <SmartIcon
+                            :icon="item.raw?.icon || 'file-text'"
+                            size="sm"
+                            class="mr-2"
+                        />
+                    </template>
+                </v-list-item>
+            </template>
+            <template #selection="{ item }">
+                <SmartIcon
+                    :icon="item.raw?.icon || 'file-text'"
+                    size="sm"
+                    class="mr-1"
+                />
+                <span>{{ item.raw?.title || item.title }}</span>
+            </template>
+        </v-select>
+    </div>
+    <div class="d-flex ga-2">
+        <v-select
+            :model-value="left.kind"
+            :items="operandKinds"
+            :label="t('workflows.dsl.left_kind')"
+            density="comfortable"
+            class="flex-0"
+            style="max-width: 180px"
+            @update:model-value="updateLeftKind"
+        />
+        <v-select
+            v-if="left.kind === 'field' && availableFields.length > 0"
+            :model-value="left.field"
+            :items="availableFields"
+            :label="t('workflows.dsl.left_field')"
+            density="comfortable"
+            @update:model-value="updateLeftField"
+        />
+        <v-text-field
+            v-else-if="left.kind === 'field'"
+            :model-value="left.field"
+            :label="t('workflows.dsl.left_field')"
+            density="comfortable"
+            @update:model-value="updateLeftField"
+        />
+        <v-text-field
+            v-else-if="left.kind === 'const'"
+            :model-value="String(left.value)"
+            :label="t('workflows.dsl.left_value')"
+            type="number"
+            density="comfortable"
+            @update:model-value="updateLeftValue(Number($event))"
+        />
+    </div>
+    <div class="d-flex ga-2">
+        <v-select
+            :model-value="right.kind"
+            :items="operandKinds"
+            :label="t('workflows.dsl.right_kind')"
+            density="comfortable"
+            class="flex-0"
+            style="max-width: 180px"
+            @update:model-value="updateRightKind"
+        />
+        <v-select
+            v-if="right.kind === 'field' && availableFields.length > 0"
+            :model-value="right.field"
+            :items="availableFields"
+            :label="t('workflows.dsl.right_field')"
+            density="comfortable"
+            @update:model-value="updateRightField"
+        />
+        <v-text-field
+            v-else-if="right.kind === 'field'"
+            :model-value="right.field"
+            :label="t('workflows.dsl.right_field')"
+            density="comfortable"
+            @update:model-value="updateRightField"
+        />
+        <v-text-field
+            v-else-if="right.kind === 'const'"
+            :model-value="String(right.value)"
+            :label="t('workflows.dsl.right_value')"
+            type="number"
+            density="comfortable"
+            @update:model-value="updateRightValue(Number($event))"
+        />
+    </div>
+</div>

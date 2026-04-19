@@ -1,0 +1,41 @@
+<div>
+    <!-- Info banner -->
+    <v-alert
+        v-if="stepIndex === 0"
+        type="error"
+        density="compact"
+        class="mb-2"
+    >
+        {{ t('workflows.dsl.previous_step_error_first_step') }}
+    </v-alert>
+    <div
+        v-else
+        class="text-caption mb-2 pa-2"
+        style="background-color: rgba(var(--v-theme-info), 0.1); border-radius: 4px"
+    >
+        <v-icon
+            size="small"
+            class="mr-1"
+            >mdi-arrow-up-circle
+        </v-icon>
+        {{ t('workflows.dsl.previous_step_info') }}
+    </div>
+    <div class="text-caption mb-1 mt-2">
+        {{ t('workflows.dsl.mapping_previous_normalized') }}
+    </div>
+    <MappingEditor
+        ref="mappingEditorRef"
+        :model-value="modelValue.mapping"
+        :left-label="t('workflows.dsl.previous_field')"
+        :right-label="t('workflows.dsl.normalized')"
+        :left-items="previousStepFields"
+        :use-select-for-left="previousStepFields.length > 0"
+        @update:model-value="updateMapping"
+    />
+    <v-btn
+        size="x-small"
+        variant="tonal"
+        @click="addMapping"
+        >{{ t('workflows.dsl.add_mapping') }}
+    </v-btn>
+</div>

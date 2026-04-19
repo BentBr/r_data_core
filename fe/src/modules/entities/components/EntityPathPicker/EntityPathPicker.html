@@ -1,0 +1,81 @@
+<div>
+    <!-- Path Field -->
+    <v-combobox
+        v-model="pathValue"
+        :items="pathSuggestions"
+        item-title="path"
+        item-value="path"
+        :label="t('entities.create.path_label')"
+        :hint="pathHint"
+        :loading="pathLoading"
+        :error-messages="errorMessages"
+        persistent-hint
+        clearable
+        no-filter
+        class="mb-4"
+        @update:search="onPathInput"
+        @update:model-value="onPathSelected"
+    >
+        <template #item="{ item, props: itemProps }">
+            <v-list-item
+                v-bind="itemProps"
+                :subtitle="item.raw.entity_type ? `${item.raw.entity_type} - ${item.raw.name}` : item.raw.name"
+            >
+                <template #prepend>
+                    <SmartIcon
+                        :icon="item.raw.kind === 'folder' ? 'folder' : 'file'"
+                        size="sm"
+                    />
+                </template>
+            </v-list-item>
+        </template>
+        <template #no-data>
+            <v-list-item v-if="pathLoading">
+                <v-list-item-title>{{ t('table.loading') }}</v-list-item-title>
+            </v-list-item>
+            <v-list-item v-else-if="pathSearchTerm && pathSearchTerm.length > 1">
+                <v-list-item-title>{{ t('entities.tree.no_entities') }}</v-list-item-title>
+            </v-list-item>
+        </template>
+    </v-combobox>
+
+    <!-- Parent Entity Selection -->
+    <v-autocomplete
+        v-model="parentUuidValue"
+        :items="parentSuggestions"
+        item-title="path"
+        item-value="entity_uuid"
+        :label="t('entities.create.parent_label')"
+        :loading="parentLoading"
+        clearable
+        no-filter
+        class="mb-4"
+        @click:control="onParentDropdownClick"
+        @update:search="onParentSearch"
+        @update:model-value="onParentSelect"
+    >
+        <template #selection>
+            {{ selectedParentDisplay || parentUuidValue }}
+        </template>
+        <template #item="{ item, props: itemProps }">
+            <v-list-item
+                v-bind="itemProps"
+                :subtitle="item.raw.entity_type ? `${item.raw.entity_type} - ${item.raw.name}` : item.raw.name"
+            >
+                <template #prepend>
+                    <SmartIcon
+                        icon="file"
+                        size="sm"
+                    />
+                </template>
+            </v-list-item>
+        </template>
+        <template #no-data>
+            <v-list-item>
+                <v-list-item-title>{{
+                    parentLoading ? t('table.loading') : t('entities.tree.no_entities')
+                }}</v-list-item-title>
+            </v-list-item>
+        </template>
+    </v-autocomplete>
+</div>

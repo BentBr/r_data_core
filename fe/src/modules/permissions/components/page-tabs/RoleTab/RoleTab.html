@@ -1,0 +1,111 @@
+<div>
+    <div class="d-flex align-center justify-space-between pa-4">
+        <h3 class="text-h6">
+            {{ t('permissions.page.roles.title') || 'Roles' }}
+        </h3>
+        <v-btn
+            v-if="canCreateRole"
+            color="primary"
+            data-testid="roles-create-btn"
+            @click="openCreateDialog"
+        >
+            <template #prepend>
+                <SmartIcon
+                    icon="plus"
+                    size="sm"
+                />
+            </template>
+            {{ t('permissions.page.roles.new_button') || 'New Role' }}
+        </v-btn>
+    </div>
+    <PaginatedDataTable
+        data-testid="roles-table"
+        :items="roles"
+        :headers="tableHeaders"
+        :loading="loading"
+        :error="error"
+        :loading-text="t('permissions.page.roles.loading')"
+        :current-page="currentPage"
+        :items-per-page="itemsPerPage"
+        :total-items="totalItems"
+        :total-pages="totalPages"
+        :has-next="paginationMeta?.has_next"
+        :has-previous="paginationMeta?.has_previous"
+        @update:page="handlePageChange"
+        @update:items-per-page="handleItemsPerPageChange"
+        @update:sort="handleSortChange"
+    >
+        <!-- Permissions Count Column -->
+        <template #item.permissions_count="{ item }">
+            <Badge
+                size="small"
+                color="info"
+            >
+                {{ item.permissions.length }}
+                {{ t('permissions.page.roles.table.permissions_suffix') || 'Permissions' }}
+            </Badge>
+        </template>
+
+        <!-- Created At Column -->
+        <template #item.created_at="{ item }">
+            <span>{{ formatDate(item.created_at) }}</span>
+        </template>
+
+        <!-- Actions Column -->
+        <template #item.actions="{ item }">
+            <div class="d-flex gap-2">
+                <v-btn
+                    variant="text"
+                    size="small"
+                    color="info"
+                    @click="openEditDialog(item)"
+                >
+                    <SmartIcon
+                        icon="pencil"
+                        size="sm"
+                    />
+                </v-btn>
+                <v-btn
+                    variant="text"
+                    size="small"
+                    color="error"
+                    @click="confirmDelete(item)"
+                >
+                    <SmartIcon
+                        icon="trash-2"
+                        size="sm"
+                    />
+                </v-btn>
+            </div>
+        </template>
+    </PaginatedDataTable>
+
+    <!-- Role Form Dialog -->
+    <RoleDialog
+        v-model="showDialog"
+        :role="editingRole"
+        :loading="saving"
+        :resource-types="resourceTypes"
+        :permission-types="permissionTypes"
+        :access-levels="accessLevels"
+        @save="handleSaveRole"
+    />
+
+    <!-- Delete Confirmation Dialog -->
+    <ConfirmationDialog
+        v-model="showDeleteDialog"
+        :title="deleteDialogConfig.title"
+        :confirm-text="deleteDialogConfig.confirmText"
+        :cancel-text="deleteDialogConfig.cancelText"
+        :loading="deleting"
+        color="error"
+        @confirm="deleteRole"
+    >
+        <p v-if="roleToDelete">
+            {{
+                t('permissions.page.roles.delete.message', { name: roleToDelete.name }) ||
+                `Are you sure you want to delete role ${roleToDelete.name}?`
+            }}
+        </p>
+    </ConfirmationDialog>
+</div>

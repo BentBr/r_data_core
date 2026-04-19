@@ -1,0 +1,78 @@
+<v-dialog
+    v-model="model"
+    :max-width="getDialogMaxWidth('wide')"
+>
+    <v-card>
+        <v-card-title class="pa-6">{{ t('workflows.create.title') }}</v-card-title>
+        <v-card-text class="pa-6">
+            <v-form
+                ref="formRef"
+                @submit.prevent
+            >
+                <WorkflowFormFields
+                    :form="form"
+                    :steps="steps"
+                    :cron-error="cronError"
+                    :cron-help="cronHelp"
+                    :next-runs="nextRuns"
+                    @update:form="form = $event"
+                    @update:cron-error="cronError = $event"
+                    @update:next-runs="nextRuns = $event"
+                    @cron-change="onCronChange"
+                />
+
+                <div class="mt-4 mb-2">
+                    <h3>{{ t('workflows.create.config_label') }}</h3>
+                </div>
+                <v-expansion-panels
+                    v-model="expansionPanels"
+                    class="mt-2"
+                >
+                    <v-expansion-panel>
+                        <v-expansion-panel-title
+                            >{{ t('workflows.create.config_label') }}
+                        </v-expansion-panel-title>
+                        <v-expansion-panel-text>
+                            <div class="mb-4">
+                                <DslConfigurator
+                                    v-model="steps"
+                                    :workflow-uuid="null"
+                                />
+                            </div>
+
+                            <div class="mb-4 dsl-json-editor">
+                                <JsonEditorVue
+                                    v-model="configObject"
+                                    v-bind="{ /* pass any props here */ }"
+                                />
+                            </div>
+
+                            <v-textarea
+                                v-model="configJson"
+                                rows="8"
+                                auto-grow
+                                :error-messages="configError || ''"
+                            />
+                        </v-expansion-panel-text>
+                    </v-expansion-panel>
+                </v-expansion-panels>
+            </v-form>
+        </v-card-text>
+        <v-card-actions class="pa-4 px-6">
+            <v-spacer />
+            <v-btn
+                variant="text"
+                color="mutedForeground"
+                @click="cancel"
+                >{{ t('common.cancel') }}
+            </v-btn>
+            <v-btn
+                color="primary"
+                variant="flat"
+                :loading="loading"
+                @click="submit"
+                >{{ t('workflows.create.create_button') }}
+            </v-btn>
+        </v-card-actions>
+    </v-card>
+</v-dialog>

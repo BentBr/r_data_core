@@ -1,0 +1,310 @@
+<div>
+    <PageLayout>
+        <v-row>
+            <!-- Entity Definitions Tile -->
+            <v-col
+                cols="12"
+                md="3"
+            >
+                <v-card
+                    color="primary"
+                    variant="tonal"
+                    data-testid="dashboard-stat-tile"
+                >
+                    <v-card-text>
+                        <div class="text-h6">
+                            {{ t('dashboard.tiles.entity_definitions') }}
+                        </div>
+                        <div
+                            v-if="loading"
+                            class="text-h3"
+                        >
+                            <v-progress-circular
+                                indeterminate
+                                size="default"
+                            />
+                        </div>
+                        <div
+                            v-else
+                            class="text-h3"
+                        >
+                            {{ stats?.entity_definitions_count ?? 0 }}
+                        </div>
+                    </v-card-text>
+                </v-card>
+            </v-col>
+
+            <!-- Entities Tile -->
+            <v-col
+                cols="12"
+                md="3"
+            >
+                <v-card
+                    color="success"
+                    variant="tonal"
+                    data-testid="dashboard-stat-tile"
+                >
+                    <v-card-text>
+                        <div class="text-h6">
+                            {{ t('dashboard.tiles.entities') }}
+                        </div>
+                        <div
+                            v-if="loading"
+                            class="text-h3"
+                        >
+                            <v-progress-circular
+                                indeterminate
+                                size="default"
+                            />
+                        </div>
+                        <div v-else>
+                            <div class="text-h3">
+                                {{ stats?.entities?.total ?? 0 }}
+                            </div>
+                            <div
+                                v-if="topEntityType"
+                                class="text-caption mt-1"
+                            >
+                                {{
+                                    t('dashboard.tiles.top_entity_type', {
+                                        type: topEntityType.entity_type,
+                                        count: String(topEntityType.count),
+                                    })
+                                }}
+                            </div>
+                        </div>
+                    </v-card-text>
+                </v-card>
+            </v-col>
+
+            <!-- Workflows Tile -->
+            <v-col
+                cols="12"
+                md="3"
+            >
+                <v-card
+                    color="info"
+                    variant="tonal"
+                    data-testid="dashboard-stat-tile"
+                >
+                    <v-card-text>
+                        <div class="text-h6">
+                            {{ t('dashboard.tiles.workflows') }}
+                        </div>
+                        <div
+                            v-if="loading"
+                            class="text-h3"
+                        >
+                            <v-progress-circular
+                                indeterminate
+                                size="default"
+                            />
+                        </div>
+                        <div v-else>
+                            <div class="text-h3">
+                                {{ stats?.workflows?.total ?? 0 }}
+                            </div>
+                            <div
+                                v-if="latestWorkflowStates.length > 0"
+                                class="text-caption mt-1"
+                            >
+                                {{
+                                    t('dashboard.tiles.latest_workflow_states', {
+                                        states:
+                                            latestWorkflowStates.slice(0, 3).join(', ') +
+                                            (latestWorkflowStates.length > 3 ? '...' : ''),
+                                    })
+                                }}
+                            </div>
+                        </div>
+                    </v-card-text>
+                </v-card>
+            </v-col>
+
+            <!-- Online Users Tile -->
+            <v-col
+                cols="12"
+                md="3"
+            >
+                <v-card
+                    color="warning"
+                    variant="tonal"
+                    data-testid="dashboard-stat-tile"
+                >
+                    <v-card-text>
+                        <div class="text-h6">
+                            {{ t('dashboard.tiles.online_users') }}
+                        </div>
+                        <div
+                            v-if="loading"
+                            class="text-h3"
+                        >
+                            <v-progress-circular
+                                indeterminate
+                                size="default"
+                            />
+                        </div>
+                        <div
+                            v-else
+                            class="text-h3"
+                        >
+                            {{ stats?.online_users_count ?? 0 }}
+                        </div>
+                    </v-card-text>
+                </v-card>
+            </v-col>
+        </v-row>
+
+        <!-- Quick Actions -->
+        <v-row class="mt-4">
+            <v-col cols="12">
+                <v-card
+                    variant="outlined"
+                    data-testid="dashboard-quick-actions"
+                >
+                    <v-card-title>{{ t('dashboard.quick_actions.title') }}</v-card-title>
+                    <v-card-text>
+                        <v-row>
+                            <v-col
+                                v-if="canCreateEntityDefinition"
+                                cols="12"
+                                sm="6"
+                                md="auto"
+                            >
+                                <v-btn
+                                    color="primary"
+                                    variant="outlined"
+                                    block
+                                    @click="$router.push('/entity-definitions?create=true')"
+                                >
+                                    <template #prepend>
+                                        <SmartIcon
+                                            icon="plus"
+                                            size="sm"
+                                        />
+                                    </template>
+                                    {{ t('dashboard.quick_actions.new_entity_definition') }}
+                                </v-btn>
+                            </v-col>
+                            <v-col
+                                v-if="canCreateEntity"
+                                cols="12"
+                                sm="6"
+                                md="auto"
+                            >
+                                <v-btn
+                                    color="success"
+                                    variant="outlined"
+                                    block
+                                    @click="$router.push('/entities?create=true')"
+                                >
+                                    <template #prepend>
+                                        <SmartIcon
+                                            icon="database"
+                                            size="sm"
+                                        />
+                                    </template>
+                                    {{ t('dashboard.quick_actions.create_entity') }}
+                                </v-btn>
+                            </v-col>
+                            <v-col
+                                v-if="canCreateApiKey"
+                                cols="12"
+                                sm="6"
+                                md="auto"
+                            >
+                                <v-btn
+                                    color="info"
+                                    variant="outlined"
+                                    block
+                                    @click="$router.push('/api-keys?create=true')"
+                                >
+                                    <template #prepend>
+                                        <SmartIcon
+                                            icon="key"
+                                            size="sm"
+                                        />
+                                    </template>
+                                    {{ t('dashboard.quick_actions.generate_api_key') }}
+                                </v-btn>
+                            </v-col>
+                            <v-col
+                                v-if="canCreateWorkflow"
+                                cols="12"
+                                sm="6"
+                                md="auto"
+                            >
+                                <v-btn
+                                    color="purple"
+                                    variant="outlined"
+                                    block
+                                    @click="$router.push('/workflows?create=true')"
+                                >
+                                    <template #prepend>
+                                        <SmartIcon
+                                            icon="git-branch"
+                                            size="sm"
+                                        />
+                                    </template>
+                                    {{ t('dashboard.quick_actions.create_workflow') }}
+                                </v-btn>
+                            </v-col>
+                            <v-col
+                                v-if="canCreateUser"
+                                cols="12"
+                                sm="6"
+                                md="auto"
+                            >
+                                <v-btn
+                                    color="orange"
+                                    variant="outlined"
+                                    block
+                                    @click="$router.push('/permissions?tab=users&create=true')"
+                                >
+                                    <template #prepend>
+                                        <SmartIcon
+                                            icon="user-plus"
+                                            size="sm"
+                                        />
+                                    </template>
+                                    {{ t('dashboard.quick_actions.create_user') }}
+                                </v-btn>
+                            </v-col>
+                            <v-col
+                                v-if="canCreateRole"
+                                cols="12"
+                                sm="6"
+                                md="auto"
+                            >
+                                <v-btn
+                                    color="teal"
+                                    variant="outlined"
+                                    block
+                                    @click="$router.push('/permissions?tab=roles&create=true')"
+                                >
+                                    <template #prepend>
+                                        <SmartIcon
+                                            icon="shield-plus"
+                                            size="sm"
+                                        />
+                                    </template>
+                                    {{ t('dashboard.quick_actions.create_role') }}
+                                </v-btn>
+                            </v-col>
+                        </v-row>
+                        <v-alert
+                            v-if="!hasAnyCreatePermission"
+                            type="info"
+                            variant="tonal"
+                            class="mt-4"
+                        >
+                            {{
+                                t('dashboard.quick_actions.no_quick_create_permission_granted')
+                            }}
+                        </v-alert>
+                    </v-card-text>
+                </v-card>
+            </v-col>
+        </v-row>
+    </PageLayout>
+</div>

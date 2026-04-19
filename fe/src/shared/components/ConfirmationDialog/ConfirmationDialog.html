@@ -1,0 +1,31 @@
+<v-dialog
+    v-model="show"
+    :max-width="getDialogMaxWidth('default')"
+>
+    <v-card>
+        <v-card-title class="text-h5 pa-6">
+            {{ title }}
+        </v-card-title>
+        <v-card-text class="pa-6">
+            <slot />
+        </v-card-text>
+        <v-card-actions class="pa-4 px-6">
+            <v-spacer />
+            <v-btn
+                :variant="buttonConfigs.text.variant"
+                color="mutedForeground"
+                @click="handleCancel"
+            >
+                {{ cancelText || t('common.cancel') }}
+            </v-btn>
+            <v-btn
+                :color="color"
+                :variant="buttonConfigs.primary.variant"
+                :loading="loading"
+                @click="handleConfirm"
+            >
+                {{ confirmText || t('common.confirm') }}
+            </v-btn>
+        </v-card-actions>
+    </v-card>
+</v-dialog>

@@ -1,0 +1,26 @@
+<v-alert
+    v-if="show"
+    :type="type"
+    variant="tonal"
+    prominent
+    closable
+    :class="['mb-4', 'dismissable-banner', `banner-type-${type}`]"
+    @click:close="handleDismiss"
+>
+    <template #prepend>
+        <SmartIcon
+            :icon="icon"
+            size="sm"
+        />
+    </template>
+    <div class="d-flex align-center justify-space-between">
+        <span>{{ message }}</span>
+        <v-btn
+            variant="text"
+            size="small"
+            @click="handleDismiss"
+        >
+            {{ dismissLabel }}
+        </v-btn>
+    </div>
+</v-alert>

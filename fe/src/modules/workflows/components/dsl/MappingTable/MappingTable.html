@@ -1,0 +1,62 @@
+<div class="mapping-table-wrapper">
+    <v-table
+        density="comfortable"
+        class="mapping-table"
+    >
+        <thead>
+            <tr>
+                <th style="width: 45%">{{ leftLabel }}</th>
+                <th style="width: 45%">{{ rightLabel }}</th>
+                <th style="width: 10%"></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr
+                v-for="(_pair, idx) in pairs"
+                :key="idx"
+            >
+                <td>
+                    <v-text-field
+                        v-model="localPairs[idx].k"
+                        density="comfortable"
+                        variant="outlined"
+                        hide-details
+                        @update:model-value="emitUpdate(idx)"
+                    />
+                </td>
+                <td>
+                    <v-select
+                        v-if="useSelectForRight"
+                        v-model="localPairs[idx].v"
+                        :items="rightItems || []"
+                        density="comfortable"
+                        variant="outlined"
+                        hide-details
+                        @update:model-value="emitUpdate(idx)"
+                    />
+                    <v-text-field
+                        v-else
+                        v-model="localPairs[idx].v"
+                        density="comfortable"
+                        variant="outlined"
+                        hide-details
+                        @update:model-value="emitUpdate(idx)"
+                    />
+                </td>
+                <td class="delete-cell">
+                    <v-btn
+                        size="x-small"
+                        :variant="buttonConfigs.text.variant"
+                        :color="buttonConfigs.destructive.color"
+                        @click="$emit('delete-pair', idx)"
+                    >
+                        <SmartIcon
+                            icon="trash-2"
+                            size="xs"
+                        />
+                    </v-btn>
+                </td>
+            </tr>
+        </tbody>
+    </v-table>
+</div>

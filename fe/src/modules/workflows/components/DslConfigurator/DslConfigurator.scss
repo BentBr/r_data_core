@@ -1,0 +1,36 @@
+.dsl-config {
+    width: 100%;
+}
+
+.template-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.template-card {
+    cursor: pointer;
+    transition:
+        border-color 0.18s ease,
+        transform 0.18s ease,
+        box-shadow 0.18s ease;
+}
+
+.template-card:hover {
+    border-color: rgba(var(--v-theme-primary), 0.55);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.step-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.step-stats {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}

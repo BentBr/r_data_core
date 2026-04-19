@@ -1,0 +1,45 @@
+<div>
+    <PageLayout>
+        <v-tabs
+            v-model="activeTab"
+            color="primary"
+        >
+            <v-tab
+                value="users"
+                data-testid="permissions-users-tab"
+            >
+                <template #prepend>
+                    <SmartIcon
+                        icon="users"
+                        size="sm"
+                        class="mr-2"
+                    />
+                </template>
+                {{ t('permissions.page.tabs.users') || 'Users' }}
+            </v-tab>
+            <v-tab
+                value="roles"
+                data-testid="permissions-roles-tab"
+            >
+                <template #prepend>
+                    <SmartIcon
+                        icon="shield"
+                        size="sm"
+                        class="mr-2"
+                    />
+                </template>
+                {{ t('permissions.page.tabs.roles') || 'Roles' }}
+            </v-tab>
+        </v-tabs>
+
+        <v-window v-model="activeTab">
+            <v-window-item value="users">
+                <UserTab />
+            </v-window-item>
+
+            <v-window-item value="roles">
+                <RoleTab />
+            </v-window-item>
+        </v-window>
+    </PageLayout>
+</div>

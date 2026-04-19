@@ -1,0 +1,71 @@
+<div>
+    <v-select
+        :model-value="entityDefinition"
+        :items="entityDefItems"
+        item-title="title"
+        item-value="value"
+        :label="t('workflows.dsl.entity_definition')"
+        density="comfortable"
+        @update:model-value="updateField('entity_definition', $event)"
+    />
+    <div class="d-flex ga-2 flex-wrap align-center mb-2">
+        <v-switch
+            :model-value="filterEnabled"
+            density="comfortable"
+            :label="t('workflows.dsl.apply_filter')"
+            color="primary"
+            @update:model-value="toggleFilter"
+        />
+    </div>
+    <div
+        v-if="filterEnabled"
+        class="d-flex ga-2 flex-wrap"
+    >
+        <v-select
+            :model-value="filterField"
+            :items="filterFieldItems"
+            :label="t('workflows.dsl.filter_field')"
+            density="comfortable"
+            @update:model-value="updateFilterField('field', $event)"
+        />
+        <v-select
+            :model-value="filterOperator"
+            :items="[
+                { title: '=', value: '=' },
+                { title: '>', value: '>' },
+                { title: '<', value: '<' },
+                { title: '<=', value: '<=' },
+                { title: '>=', value: '>=' },
+                { title: 'IN', value: 'IN' },
+                { title: 'NOT IN', value: 'NOT IN' },
+            ]"
+            item-title="title"
+            item-value="value"
+            :label="t('workflows.dsl.filter_operator')"
+            density="comfortable"
+            @update:model-value="updateFilterField('operator', $event)"
+        />
+        <v-text-field
+            :model-value="filterValue"
+            :label="t('workflows.dsl.filter_value')"
+            density="comfortable"
+            @update:model-value="updateFilterField('value', $event)"
+        />
+    </div>
+    <div class="text-caption mb-1 mt-2">
+        {{ t('workflows.dsl.mapping_source_normalized') }}
+    </div>
+    <MappingEditor
+        ref="mappingEditorRef"
+        :model-value="modelValue.mapping"
+        :left-label="t('workflows.dsl.source')"
+        :right-label="t('workflows.dsl.normalized')"
+        @update:model-value="updateMapping"
+    />
+    <v-btn
+        size="x-small"
+        variant="tonal"
+        @click="addMapping"
+        >{{ t('workflows.dsl.add_mapping') }}
+    </v-btn>
+</div>

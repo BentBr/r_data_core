@@ -1,0 +1,66 @@
+<div>
+    <v-text-field
+        :model-value="form.name"
+        :label="t('workflows.create.name')"
+        :rules="[rules.required]"
+        @update:model-value="emit('update:form', { ...form, name: $event })"
+    />
+    <v-textarea
+        :model-value="form.description"
+        :label="t('workflows.create.description')"
+        rows="2"
+        auto-grow
+        @update:model-value="emit('update:form', { ...form, description: $event })"
+    />
+    <v-select
+        :model-value="form.kind"
+        :label="t('workflows.create.kind')"
+        :items="kinds"
+        item-title="label"
+        item-value="value"
+        @update:model-value="emit('update:form', { ...form, kind: $event })"
+    />
+    <v-switch
+        :model-value="form.enabled"
+        :label="t('workflows.create.enabled')"
+        color="success"
+        inset
+        @update:model-value="emit('update:form', { ...form, enabled: $event })"
+    ></v-switch>
+    <v-switch
+        :model-value="form.versioning_disabled"
+        :label="
+            t('workflows.create.versioning_disabled') || 'Disable versioning for this workflow'
+        "
+        color="warning"
+        inset
+        @update:model-value="emit('update:form', { ...form, versioning_disabled: $event })"
+    ></v-switch>
+    <v-text-field
+        :model-value="form.schedule_cron"
+        :label="t('workflows.create.cron')"
+        :error-messages="cronError || ''"
+        :disabled="hasApiSource || hasApiOutput"
+        :hint="
+            hasApiSource
+                ? t('workflows.create.cron_disabled_for_api_source')
+                : hasApiOutput
+                  ? t('workflows.create.cron_disabled_for_api_output')
+                  : ''
+        "
+        persistent-hint
+        @update:model-value="onCronChange"
+    />
+    <div
+        v-if="cronHelp && !hasApiSource && !hasApiOutput"
+        class="text-caption mb-2"
+    >
+        {{ cronHelp }}
+    </div>
+    <div
+        v-if="nextRuns.length && !hasApiSource && !hasApiOutput"
+        class="text-caption"
+    >
+        Next: {{ nextRuns.join(', ') }}
+    </div>
+</div>

@@ -1,0 +1,12 @@
+.v-container {
+    min-height: calc(100vh - 64px - 32px);
+    overflow-x: hidden;
+}
+
+.v-card {
+    min-height: 400px;
+}
+
+.v-col {
+    min-height: 500px;
+}

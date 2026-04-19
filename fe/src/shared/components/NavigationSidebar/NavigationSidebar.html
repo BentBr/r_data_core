@@ -1,0 +1,27 @@
+<v-navigation-drawer
+    v-model="drawer"
+    :temporary="isMobile"
+    :rail="!drawer && !isMobile"
+    permanent
+    expand-on-hover
+    theme="dark"
+    class="bg-primary"
+>
+    <template v-slot:append>
+        <div class="pa-2">
+            <v-btn icon="menu" @click="toggleNav" v-if="!isMobile"></v-btn>
+        </div>
+    </template>
+    <v-list density="compact" nav>
+        <v-list-item
+            v-for="item in navigationItems"
+            :key="item.path"
+            :to="item.path"
+            :prepend-icon="item.icon"
+            :title="item.title"
+            :active="item.path === currentRoute"
+            link
+        >
+        </v-list-item>
+    </v-list>
+</v-navigation-drawer>

@@ -1,0 +1,91 @@
+<div>
+    <v-select
+        :model-value="authEntityType"
+        :items="entityDefItems"
+        item-title="title"
+        item-value="value"
+        :label="t('workflows.dsl.entity_type')"
+        density="comfortable"
+        class="mb-2"
+        :hint="t('workflows.dsl.auth_entity_type_hint')"
+        persistent-hint
+        @update:model-value="onEntityTypeChange"
+    />
+    <v-select
+        :model-value="authIdentifierField"
+        :items="entityFields"
+        :label="t('workflows.dsl.auth_identifier_field')"
+        density="comfortable"
+        class="mb-2"
+        :hint="t('workflows.dsl.auth_identifier_field_hint')"
+        persistent-hint
+        :disabled="entityFields.length === 0"
+        @update:model-value="updateField('identifier_field', $event)"
+    />
+    <v-select
+        :model-value="authPasswordField"
+        :items="passwordFieldItems"
+        :label="t('workflows.dsl.auth_password_field')"
+        density="comfortable"
+        class="mb-2"
+        :hint="passwordFieldHint"
+        persistent-hint
+        :disabled="entityFields.length === 0"
+        @update:model-value="updateField('password_field', $event)"
+    />
+    <v-text-field
+        :model-value="authInputIdentifier"
+        :label="t('workflows.dsl.auth_input_identifier')"
+        density="comfortable"
+        class="mb-2"
+        :hint="t('workflows.dsl.auth_input_identifier_hint')"
+        persistent-hint
+        @update:model-value="updateField('input_identifier', $event)"
+    />
+    <v-text-field
+        :model-value="authInputPassword"
+        :label="t('workflows.dsl.auth_input_password')"
+        density="comfortable"
+        class="mb-2"
+        :hint="t('workflows.dsl.auth_input_password_hint')"
+        persistent-hint
+        @update:model-value="updateField('input_password', $event)"
+    />
+    <v-text-field
+        :model-value="authTargetToken"
+        :label="t('workflows.dsl.auth_target_token')"
+        density="comfortable"
+        class="mb-2"
+        :hint="t('workflows.dsl.auth_target_token_hint')"
+        persistent-hint
+        @update:model-value="updateField('target_token', $event)"
+    />
+    <v-text-field
+        :model-value="authTokenExpiry"
+        :label="t('workflows.dsl.auth_token_expiry')"
+        type="number"
+        density="comfortable"
+        class="mb-2"
+        :hint="t('workflows.dsl.auth_token_expiry_hint')"
+        persistent-hint
+        @update:model-value="onExpiryChange"
+    />
+    <div class="text-caption mb-1">{{ t('workflows.dsl.auth_extra_claims') }}</div>
+    <v-btn
+        variant="outlined"
+        size="small"
+        class="mb-2"
+        @click="addExtraClaim"
+    >
+        {{ t('workflows.dsl.add_mapping') }}
+    </v-btn>
+    <MappingTable
+        :pairs="extraClaimPairs"
+        :left-label="t('workflows.dsl.auth_claim_name')"
+        :right-label="t('workflows.dsl.auth_entity_field')"
+        :right-items="entityFields"
+        :use-select-for-right="entityFields.length > 0"
+        @update-pair="updateExtraClaim"
+        @delete-pair="deleteExtraClaim"
+    />
+</div>

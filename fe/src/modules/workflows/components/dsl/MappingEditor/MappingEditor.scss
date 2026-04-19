@@ -1,0 +1,16 @@
+.mapping-table-wrapper {
+    overflow-x: auto;
+}
+
+.mapping-table {
+    min-width: 560px;
+}
+
+.mapping-table :deep(thead th) {
+    padding-bottom: 12px;
+}
+
+.delete-cell {
+    vertical-align: middle;
+    text-align: right;
+}

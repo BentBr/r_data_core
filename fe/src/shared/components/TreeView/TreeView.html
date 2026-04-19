@@ -1,0 +1,63 @@
+<v-treeview
+    v-model:opened="expandedItems"
+    :items="items"
+    :loading="loading"
+    item-title="title"
+    item-value="id"
+    item-children="children"
+    expand-icon=""
+    collapse-icon=""
+    activatable
+    hoverable
+    :open-on-click="false"
+    :expand-on-click="false"
+    @update:active="handleSelection"
+>
+    <template #prepend="{ item }">
+        <div class="d-flex align-center tree-prepend">
+            <div
+                v-if="hasChildren(item)"
+                class="tree-toggle"
+                @click.stop="toggleItem(item)"
+            >
+                <SmartIcon
+                    :icon="expandedItems.includes(item.id) ? 'chevron-down' : 'chevron-right'"
+                    :size="16"
+                    class="toggle-icon"
+                />
+            </div>
+            <div
+                v-else
+                class="tree-toggle-spacer"
+            />
+            <div
+                class="tree-icon-wrapper mr-2"
+                :class="{ 'tree-icon-disabled': isUnpublished(item) }"
+            >
+                <SmartIcon
+                    :icon="item.icon ?? 'file-text'"
+                    :size="20"
+                    class="tree-icon"
+                />
+            </div>
+        </div>
+    </template>
+    <template #title="{ item }">
+        <div
+            class="d-flex align-center justify-space-between w-100 cursor-pointer tree-row"
+            :class="{
+                'tree-disabled': isUnpublished(item) || item.disabled,
+                'tree-strikethrough': isUnpublished(item),
+            }"
+            @click="handleItemClick(item)"
+        >
+            <span>{{ item.title }}</span>
+            <span
+                v-if="item.entity_type && item.entity_type !== 'group'"
+                class="text-caption text-grey"
+            >
+                {{ item.entity_type }}
+            </span>
+        </div>
+    </template>
+</v-treeview>

@@ -1,0 +1,68 @@
+<div>
+    <div
+        class="d-flex align-center mb-3"
+        style="gap: 12px"
+    >
+        <v-select
+            v-model="selectedWorkflowUuid"
+            :items="[
+                { title: t('workflows.history.all'), value: 'all' },
+                ...workflows.map((i) => ({
+                    title: i.name,
+                    value: i.uuid,
+                })),
+            ]"
+            :label="t('workflows.history.select')"
+            style="max-width: 320px"
+        />
+        <v-spacer />
+    </div>
+    <PaginatedDataTable
+        :items="runs"
+        :headers="[
+            { title: t('workflows.history.status'), key: 'status' },
+            { title: t('workflows.history.queued'), key: 'queued_at' },
+            {
+                title: t('workflows.history.finished'),
+                key: 'finished_at',
+            },
+            {
+                title: t('workflows.history.processed'),
+                key: 'processed_items',
+            },
+            {
+                title: t('workflows.history.failed'),
+                key: 'failed_items',
+            },
+            { title: t('workflows.table.actions'), key: 'actions' },
+        ]"
+        :loading="loading"
+        :error="''"
+        :loading-text="t('table.loading')"
+        :current-page="page"
+        :items-per-page="perPage"
+        :total-items="total"
+        :total-pages="Math.ceil((total || 0) / perPage) || 1"
+        @update:page="handlePageChange"
+        @update:items-per-page="handlePerPageChange"
+    >
+        <template #item.actions="{ item }">
+            <v-btn
+                variant="text"
+                color="info"
+                :title="t('workflows.history.logs')"
+                @click="openLogs(item.uuid)"
+            >
+                <SmartIcon
+                    icon="file-text"
+                    size="sm"
+                />
+            </v-btn>
+        </template>
+    </PaginatedDataTable>
+
+    <WorkflowLogsDialog
+        v-model="showLogs"
+        :run-uuid="currentRunUuid"
+    />
+</div>

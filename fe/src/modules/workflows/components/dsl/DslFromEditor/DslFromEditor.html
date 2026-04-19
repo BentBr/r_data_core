@@ -1,0 +1,38 @@
+<div>
+    <div class="text-subtitle-2 font-weight-bold mb-2">{{ t('workflows.dsl.from') }}</div>
+    <v-select
+        :model-value="modelValue.type"
+        :items="fromTypes"
+        :label="t('workflows.dsl.from_type')"
+        density="comfortable"
+        class="mb-2"
+        @update:model-value="onTypeChange"
+    />
+
+    <FormatSourceEditor
+        v-if="modelValue.type === 'format'"
+        :model-value="modelValue"
+        :workflow-uuid="workflowUuid"
+        @update:model-value="$emit('update:modelValue', $event)"
+    />
+
+    <EntitySourceEditor
+        v-else-if="modelValue.type === 'entity'"
+        :model-value="modelValue"
+        @update:model-value="$emit('update:modelValue', $event)"
+    />
+
+    <TriggerSourceEditor
+        v-else-if="modelValue.type === 'trigger'"
+        :model-value="modelValue"
+        :workflow-uuid="workflowUuid"
+    />
+
+    <PreviousStepSourceEditor
+        v-else-if="modelValue.type === 'previous_step'"
+        :model-value="modelValue"
+        :step-index="stepIndex"
+        :previous-step-fields="previousStepFields"
+        @update:model-value="$emit('update:modelValue', $event)"
+    />
+</div>

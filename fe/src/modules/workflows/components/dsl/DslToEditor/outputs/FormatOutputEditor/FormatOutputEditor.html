@@ -1,0 +1,88 @@
+<div>
+    <div class="d-flex ga-2 mb-2 flex-wrap">
+        <v-select
+            :model-value="formatType"
+            :items="formatTypes"
+            :label="t('workflows.dsl.format_type')"
+            density="comfortable"
+            @update:model-value="updateFormatType($event)"
+        />
+        <v-select
+            :model-value="outputMode"
+            :items="outputModes"
+            :label="t('workflows.dsl.output')"
+            density="comfortable"
+            @update:model-value="updateOutputMode($event)"
+        />
+    </div>
+    <template v-if="outputMode === 'push'">
+        <div class="d-flex ga-2 mb-2 flex-wrap">
+            <v-select
+                :model-value="outputDestinationType"
+                :items="destinationTypes"
+                :label="t('workflows.dsl.destination_type')"
+                density="comfortable"
+                @update:model-value="updateField('destination_type', $event)"
+            />
+            <v-select
+                v-if="outputDestinationType === 'uri'"
+                :model-value="outputMethod"
+                :items="httpMethods"
+                :label="t('workflows.dsl.http_method')"
+                density="comfortable"
+                @update:model-value="updateHttpMethod($event)"
+            />
+        </div>
+        <v-text-field
+            v-if="outputDestinationType === 'uri'"
+            :model-value="outputDestinationUri"
+            :label="t('workflows.dsl.uri')"
+            density="comfortable"
+            class="mb-2"
+            @update:model-value="updateDestinationConfig('uri', $event)"
+        />
+        <div class="mb-2">
+            <v-expansion-panels variant="accordion">
+                <v-expansion-panel>
+                    <v-expansion-panel-title
+                        >{{ t('workflows.dsl.auth_type') }}
+                    </v-expansion-panel-title>
+                    <v-expansion-panel-text>
+                        <AuthConfigEditor
+                            :model-value="outputDestinationAuth"
+                            @update:model-value="updateField('auth', $event)"
+                        />
+                    </v-expansion-panel-text>
+                </v-expansion-panel>
+            </v-expansion-panels>
+        </div>
+    </template>
+    <!-- to.api output mode = Provide data via our API endpoint -->
+    <template v-if="outputMode === 'api'">
+        <div
+            class="text-caption mb-2 pa-2"
+            style="background-color: rgba(var(--v-theme-primary), 0.1); border-radius: 4px"
+        >
+            <strong>{{ t('workflows.dsl.endpoint_info') }}:</strong> GET
+            {{ getFullEndpointUri() }}
+        </div>
+    </template>
+    <div
+        v-if="formatType === 'csv'"
+        class="mb-2"
+    >
+        <CsvOptionsEditor
+            :model-value="formatOptions"
+            @update:model-value="updateFormatOptions($event)"
+        />
+    </div>
+    <div class="text-caption mb-1 mt-2">
+        {{ t('workflows.dsl.mapping_normalized_destination') }}
+    </div>
+    <MappingEditor
+        :model-value="modelValue.mapping"
+        :left-label="t('workflows.dsl.normalized')"
+        :right-label="t('workflows.dsl.destination')"
+        @update:model-value="updateField('mapping', $event)"
+    />
+</div>

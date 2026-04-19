@@ -1,0 +1,88 @@
+/* Tree prepend container */
+.tree-prepend {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Toggle icon for expand/collapse */
+.tree-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.tree-toggle-spacer {
+    width: 24px;
+    flex-shrink: 0;
+}
+
+.toggle-icon {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Ensure icons are always visible, even when items are active */
+.tree-icon-wrapper {
+    display: inline-flex;
+    align-items: center;
+}
+
+:deep(.v-treeview-item) .tree-icon,
+:deep(.v-treeview-item) .tree-icon-wrapper {
+    opacity: 1 !important;
+    display: inline-flex !important;
+    visibility: visible !important;
+}
+
+.tree-row.tree-disabled {
+    opacity: 0.55;
+    color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.tree-row.tree-strikethrough {
+    text-decoration: line-through;
+}
+
+.tree-icon-disabled {
+    opacity: 0.55;
+    color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+:deep(.v-treeview-item--active) .tree-icon,
+:deep(.v-treeview-item--active) .tree-icon-wrapper {
+    opacity: 1 !important;
+    display: inline-flex !important;
+    visibility: visible !important;
+}
+
+/* Ensure prepend slot is visible and has proper layout */
+:deep(.v-treeview-item__prepend) {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-width: auto !important;
+}
+
+/* Hide Vuetify's internal expand/collapse icons - we use our own in prepend slot */
+:deep(.v-treeview-item__toggle) {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
+}
+
+/* Also hide any icon inside the toggle */
+:deep(.v-treeview-item__toggle .v-icon) {
+    display: none !important;
+}
+
+/* Hide the spacer that Vuetify adds for items without children */
+:deep(.v-treeview-item__level) {
+    width: 0 !important;
+}

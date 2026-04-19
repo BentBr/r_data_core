@@ -1,0 +1,4 @@
+/* Ensure container doesn't cause scrollbar layout shifts */
+:deep(.v-container) {
+    scrollbar-gutter: stable;
+}

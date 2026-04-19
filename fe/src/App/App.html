@@ -1,0 +1,26 @@
+<v-app>
+    <component
+        :is="layoutComponent"
+        :key="layoutKey"
+    >
+        <router-view v-slot="{ Component, route }">
+            <!-- Only apply transition for login layout since MainLayout has its own -->
+            <transition
+                v-if="route.name === 'Login'"
+                name="fade"
+                mode="out-in"
+                appear
+            >
+                <component
+                    :is="Component"
+                    :key="route.fullPath"
+                />
+            </transition>
+            <component
+                :is="Component"
+                v-else
+                :key="route.fullPath"
+            />
+        </router-view>
+    </component>
+</v-app>

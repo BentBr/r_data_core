@@ -1,0 +1,57 @@
+.version-history {
+    margin-top: 1rem;
+}
+
+.version-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+    border-radius: 4px;
+}
+
+.version-item {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.version-item:hover {
+    background-color: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.version-selected {
+    background-color: rgba(var(--v-theme-primary), 0.08);
+}
+
+.version-checkbox {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: inline-flex !important;
+}
+
+:deep(.version-checkbox .v-selection-control) {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: inline-flex !important;
+}
+
+:deep(.version-checkbox .v-icon) {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.entity-diff-table {
+    border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.entity-diff-table .changed {
+    background-color: rgba(var(--v-theme-warning), 0.1);
+}
+
+.entity-diff-table .field {
+    font-weight: 500;
+}
+
+.entity-diff-table .val {
+    font-family: monospace;
+    font-size: 0.875rem;
+}

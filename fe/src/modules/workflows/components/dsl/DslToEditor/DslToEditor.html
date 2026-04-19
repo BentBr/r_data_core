@@ -1,0 +1,31 @@
+<div>
+    <div class="text-subtitle-2 font-weight-bold mb-2">{{ t('workflows.dsl.to') }}</div>
+    <v-select
+        :model-value="modelValue.type"
+        :items="toTypes"
+        :label="t('workflows.dsl.to_type')"
+        density="comfortable"
+        class="mb-2"
+        @update:model-value="onTypeChange"
+    />
+
+    <FormatOutputEditor
+        v-if="modelValue.type === 'format'"
+        :model-value="modelValue"
+        :workflow-uuid="workflowUuid"
+        @update:model-value="$emit('update:modelValue', $event)"
+    />
+
+    <EntityOutputEditor
+        v-else-if="modelValue.type === 'entity'"
+        :model-value="modelValue"
+        @update:model-value="$emit('update:modelValue', $event)"
+    />
+
+    <NextStepOutputEditor
+        v-else-if="modelValue.type === 'next_step'"
+        :model-value="modelValue"
+        :is-last-step="isLastStep"
+        @update:model-value="$emit('update:modelValue', $event)"
+    />
+</div>

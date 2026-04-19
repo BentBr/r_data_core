@@ -1,0 +1,51 @@
+<div>
+    <div class="text-subtitle-2 font-weight-bold mb-2">{{ t('workflows.dsl.transform') }}</div>
+    <v-select
+        :model-value="transformType"
+        :items="transformTypes"
+        :label="t('workflows.dsl.transform_type')"
+        density="comfortable"
+        class="mb-2"
+        @update:model-value="onTypeChange"
+    />
+
+    <ArithmeticTransform
+        v-if="transformType === 'arithmetic'"
+        :model-value="modelValue"
+        :available-fields="availableFields"
+        @update:model-value="emit('update:modelValue', $event)"
+    />
+
+    <ConcatTransform
+        v-else-if="transformType === 'concat'"
+        :model-value="modelValue"
+        :available-fields="availableFields"
+        @update:model-value="emit('update:modelValue', $event)"
+    />
+
+    <BuildPathTransform
+        v-else-if="transformType === 'build_path'"
+        :model-value="modelValue"
+        @update:model-value="emit('update:modelValue', $event)"
+    />
+
+    <ResolveEntityPathTransform
+        v-else-if="transformType === 'resolve_entity_path'"
+        :model-value="modelValue"
+        :available-fields="availableFields"
+        @update:model-value="emit('update:modelValue', $event)"
+    />
+
+    <GetOrCreateEntityTransform
+        v-else-if="transformType === 'get_or_create_entity'"
+        :model-value="modelValue"
+        @update:model-value="emit('update:modelValue', $event)"
+    />
+
+    <AuthenticateTransform
+        v-else-if="transformType === 'authenticate'"
+        :model-value="modelValue"
+        :available-fields="availableFields"
+        @update:model-value="emit('update:modelValue', $event)"
+    />
+</div>

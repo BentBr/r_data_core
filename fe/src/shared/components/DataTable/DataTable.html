@@ -1,0 +1,92 @@
+<v-data-table
+    :headers="headers"
+    :items="items"
+    :loading="loading"
+    :items-per-page="itemsPerPage"
+    :page="page"
+    :server-items-length="totalItems"
+    @update:options="handleOptionsUpdate"
+>
+    <template #item.actions="{ item }">
+        <div class="d-flex align-center">
+            <v-btn
+                v-for="action in actions"
+                :key="action.icon"
+                :icon="action.icon"
+                :color="action.color ?? 'primary'"
+                :disabled="action.disabled ?? false"
+                :loading="action.loading ?? false"
+                size="x-small"
+                :variant="buttonConfigs.text.variant"
+                class="mr-1"
+                @click="action.onClick?.(item)"
+            />
+        </div>
+    </template>
+
+    <template #item.status="{ item }">
+        <Badge
+            :status="row(item).status as string"
+            size="small"
+        >
+            {{ row(item).status }}
+        </Badge>
+    </template>
+
+    <template #item.published="{ item }">
+        <SmartIcon
+            :icon="item.published ? 'check-circle' : 'x-circle'"
+            :color="item.published ? 'success' : 'mutedForeground'"
+            size="sm"
+        />
+    </template>
+
+    <template #item.required="{ item }">
+        <SmartIcon
+            :icon="item.required ? 'check-circle' : 'x-circle'"
+            :color="item.required ? 'success' : 'mutedForeground'"
+            size="sm"
+        />
+    </template>
+
+    <template #item.indexed="{ item }">
+        <SmartIcon
+            :icon="item.indexed ? 'check-circle' : 'x-circle'"
+            :color="item.indexed ? 'success' : 'mutedForeground'"
+            size="sm"
+        />
+    </template>
+
+    <template #item.filterable="{ item }">
+        <SmartIcon
+            :icon="item.filterable ? 'check-circle' : 'x-circle'"
+            :color="item.filterable ? 'success' : 'mutedForeground'"
+            size="sm"
+        />
+    </template>
+
+    <template #item.field_type="{ item }">
+        <Badge
+            color="primary"
+            size="small"
+        >
+            {{ item.field_type }}
+        </Badge>
+    </template>
+
+    <template #item.created_at="{ item }">
+        {{ formatDate(row(item).created_at as string | undefined) }}
+    </template>
+
+    <template #item.updated_at="{ item }">
+        {{ formatDate(row(item).updated_at as string | undefined) }}
+    </template>
+
+    <template #item.expires_at="{ item }">
+        {{ row(item).expires_at ? formatDate(row(item).expires_at as string) : 'Never' }}
+    </template>
+
+    <template #item.last_used_at="{ item }">
+        {{ row(item).last_used_at ? formatDate(row(item).last_used_at as string) : 'Never' }}
+    </template>
+</v-data-table>

@@ -1,0 +1,48 @@
+<v-dialog
+    v-model="showDialog"
+    :max-width="getDialogMaxWidth('default')"
+>
+    <v-card>
+        <v-card-title>{{ t('workflows.run.confirm_title') }}</v-card-title>
+        <v-card-text>
+            <div class="mb-3">{{ t('workflows.run.confirm_message_simple') }}</div>
+            <v-switch
+                v-model="uploadEnabled"
+                :label="t('workflows.run.upload_csv_toggle')"
+                color="success"
+                inset
+            />
+            <div
+                v-if="uploadEnabled"
+                class="mt-2"
+            >
+                <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    @change="onFileChange"
+                />
+                <div
+                    v-if="uploadFile"
+                    class="text-caption mt-1"
+                >
+                    {{ t('workflows.run.selected_file') }}: {{ uploadFile.name }}
+                </div>
+            </div>
+        </v-card-text>
+        <v-card-actions>
+            <v-spacer />
+            <v-btn
+                variant="text"
+                @click="showDialog = false"
+                >{{ t('common.cancel') }}
+            </v-btn>
+            <v-btn
+                color="primary"
+                :disabled="(uploadEnabled && !uploadFile) || loading"
+                :loading="loading"
+                @click="confirmRun"
+                >{{ t('workflows.run.run_button') }}
+            </v-btn>
+        </v-card-actions>
+    </v-card>
+</v-dialog>

@@ -1,0 +1,23 @@
+.fill-height {
+    min-height: 100vh;
+}
+
+/* Use theme primary color for background gradient */
+.v-container {
+    background: linear-gradient(
+        135deg,
+        rgb(var(--v-theme-primary)) 0%,
+        rgb(var(--v-theme-primary)) 100%
+    );
+}
+
+/* Card uses theme surface color with transparency */
+.v-card {
+    background: rgba(var(--v-theme-surface), 0.95);
+    backdrop-filter: blur(10px);
+}
+
+/* Title uses primary color */
+.v-card-title .text-h4 {
+    color: rgb(var(--v-theme-primary));
+}

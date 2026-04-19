@@ -1,0 +1,18 @@
+<v-snackbar
+    v-model="showSnackbar"
+    :color="currentSnackbar.color"
+    :timeout="currentSnackbar.timeout"
+    :persistent="currentSnackbar.persistent"
+>
+    {{ currentSnackbar.message }}
+
+    <template #actions>
+        <v-btn
+            color="white"
+            :variant="buttonConfigs.text.variant"
+            @click="closeSnackbar"
+        >
+            Close
+        </v-btn>
+    </template>
+</v-snackbar>

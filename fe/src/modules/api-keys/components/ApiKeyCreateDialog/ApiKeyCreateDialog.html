@@ -1,0 +1,57 @@
+<v-dialog
+    :model-value="modelValue"
+    :max-width="getDialogMaxWidth('default')"
+    @update:model-value="$emit('update:modelValue', $event)"
+    @after-enter="focusNameField"
+>
+    <v-card>
+        <v-card-title class="pa-6">{{ t('api_keys.create.title') }}</v-card-title>
+        <v-card-text class="pa-6">
+            <v-form
+                ref="createForm"
+                v-model="createFormValid"
+            >
+                <v-text-field
+                    ref="nameField"
+                    v-model="createForm.name"
+                    :label="t('api_keys.create.name_label')"
+                    :rules="[v => !!v ?? t('api_keys.create.name_required')]"
+                    required
+                    @input="validateForm"
+                />
+                <v-textarea
+                    v-model="createForm.description"
+                    :label="t('api_keys.create.description_label')"
+                    rows="3"
+                />
+                <v-text-field
+                    v-model.number="createForm.expires_in_days"
+                    :label="t('api_keys.create.expires_label')"
+                    type="number"
+                    min="1"
+                    max="3650"
+                    :hint="t('api_keys.create.expires_hint')"
+                />
+            </v-form>
+        </v-card-text>
+        <v-card-actions class="pa-4 px-6">
+            <v-spacer />
+            <v-btn
+                variant="text"
+                color="mutedForeground"
+                @click="closeDialog"
+            >
+                {{ t('common.cancel') }}
+            </v-btn>
+            <v-btn
+                color="primary"
+                variant="flat"
+                :loading="loading"
+                :disabled="!createFormValid"
+                @click="createApiKey"
+            >
+                {{ t('api_keys.create.button') }}
+            </v-btn>
+        </v-card-actions>
+    </v-card>
+</v-dialog>

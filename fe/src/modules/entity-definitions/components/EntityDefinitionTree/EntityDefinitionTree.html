@@ -1,0 +1,38 @@
+<v-card variant="outlined">
+    <v-card-title class="text-h6 pa-3">
+        <SmartIcon
+            icon="folder-tree"
+            :size="24"
+            class="mr-2"
+        />
+        {{ t('entity_definitions.table.display_name') }}
+    </v-card-title>
+    <v-card-text class="pa-0">
+        <!-- Skeleton loader for initial load -->
+        <div v-if="loading && entityDefinitions.length === 0">
+            <v-skeleton-loader
+                type="list-item-three-line"
+                class="pa-2"
+            />
+            <v-skeleton-loader
+                type="list-item-three-line"
+                class="pa-2"
+            />
+            <v-skeleton-loader
+                type="list-item-three-line"
+                class="pa-2"
+            />
+        </div>
+
+        <!-- Tree view -->
+        <TreeView
+            v-else
+            :items="treeItems"
+            :loading="loading"
+            :expanded-items="expandedGroups"
+            @update:expanded-items="updateExpandedGroups"
+            @item-click="handleItemClick"
+            @selection-change="handleSelection"
+        />
+    </v-card-text>
+</v-card>

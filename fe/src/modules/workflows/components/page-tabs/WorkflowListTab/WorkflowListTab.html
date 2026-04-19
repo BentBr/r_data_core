@@ -1,0 +1,91 @@
+<div>
+    <PaginatedDataTable
+        data-testid="workflows-table"
+        :items="items"
+        :headers="[
+            { title: t('workflows.table.name') || 'Name', key: 'name' },
+            { title: t('workflows.table.kind') || 'Kind', key: 'kind' },
+            { title: t('workflows.table.enabled') || 'Enabled', key: 'enabled' },
+            { title: t('workflows.table.cron') || 'Cron', key: 'schedule_cron' },
+            { title: t('workflows.table.actions') || 'Actions', key: 'actions' },
+        ]"
+        :loading="loading"
+        :error="error"
+        :loading-text="t('table.loading')"
+        :current-page="currentPage"
+        :items-per-page="itemsPerPage"
+        :total-items="totalItems"
+        :total-pages="totalPages"
+        :has-next="paginationMeta?.has_next"
+        :has-previous="paginationMeta?.has_previous"
+        @update:page="handlePageChange"
+        @update:items-per-page="handleItemsPerPageChange"
+        @update:sort="handleSortChange"
+    >
+        <template #item.enabled="{ item }">
+            <Badge
+                :status="item.enabled ? 'success' : 'error'"
+                size="small"
+            >
+                {{ item.enabled ? 'Enabled' : 'Disabled' }}
+            </Badge>
+        </template>
+        <template #item.schedule_cron="{ item }">
+            <span
+                v-if="item.has_api_endpoint"
+                class="text-caption text-disabled"
+            >
+                {{ t('workflows.table.cron_disabled_endpoint') }}
+            </span>
+            <span v-else>
+                {{ item.schedule_cron || t('common.empty') }}
+            </span>
+        </template>
+        <template #item.actions="{ item }">
+            <v-btn
+                variant="text"
+                color="primary"
+                :title="t('workflows.actions.run_now')"
+                @click="$emit('run', item.uuid)"
+            >
+                <SmartIcon
+                    icon="play-circle"
+                    size="sm"
+                />
+            </v-btn>
+            <v-btn
+                variant="text"
+                color="info"
+                :title="t('workflows.actions.history')"
+                @click="$emit('history', item.uuid)"
+            >
+                <SmartIcon
+                    icon="history"
+                    size="sm"
+                />
+            </v-btn>
+            <v-btn
+                variant="text"
+                color="secondary"
+                :title="t('common.edit')"
+                @click="$emit('edit', item.uuid)"
+            >
+                <SmartIcon
+                    icon="pencil"
+                    size="sm"
+                />
+            </v-btn>
+            <v-btn
+                variant="text"
+                color="error"
+                :title="t('workflows.actions.delete')"
+                @click="$emit('delete', item)"
+            >
+                <SmartIcon
+                    icon="trash-2"
+                    size="sm"
+                />
+            </v-btn>
+        </template>
+    </PaginatedDataTable>
+</div>

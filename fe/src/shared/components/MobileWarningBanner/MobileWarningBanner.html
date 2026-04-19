@@ -1,0 +1,8 @@
+<DismissableBanner
+    :show="shouldShowBanner"
+    :message="t('auth.mobile_warning')"
+    :dismiss-label="t('auth.mobile_warning_dismiss')"
+    type="warning"
+    icon="alert-triangle"
+    @dismiss="handleDismiss"
+/>

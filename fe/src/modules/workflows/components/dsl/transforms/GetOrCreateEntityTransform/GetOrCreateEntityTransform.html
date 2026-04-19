@@ -1,0 +1,44 @@
+<div>
+    <v-text-field
+        :model-value="getOrCreateTargetPath"
+        :label="t('workflows.dsl.target_path')"
+        density="comfortable"
+        class="mb-2"
+        @update:model-value="updateGetOrCreateField('target_path', $event)"
+    />
+    <v-text-field
+        :model-value="getOrCreateTargetUuid"
+        :label="t('workflows.dsl.target_uuid')"
+        density="comfortable"
+        class="mb-2"
+        hint="Optional: field to store entity UUID (use as parent_uuid for children)"
+        persistent-hint
+        @update:model-value="updateGetOrCreateField('target_uuid', $event)"
+    />
+    <v-text-field
+        :model-value="getOrCreateEntityType"
+        :label="t('workflows.dsl.entity_type')"
+        density="comfortable"
+        class="mb-2"
+        required
+        @update:model-value="updateGetOrCreateField('entity_type', $event)"
+    />
+    <v-textarea
+        :model-value="getOrCreatePathTemplate"
+        :label="t('workflows.dsl.path_template')"
+        :hint="t('workflows.dsl.path_template_hint')"
+        density="comfortable"
+        class="mb-2"
+        rows="2"
+        @update:model-value="updateGetOrCreateField('path_template', $event)"
+    />
+    <v-text-field
+        :model-value="getOrCreatePathSeparator"
+        :label="t('workflows.dsl.path_separator')"
+        density="comfortable"
+        class="mb-2"
+        hint="Optional: separator for path segments (default: /)"
+        persistent-hint
+        @update:model-value="updateGetOrCreateField('path_separator', $event)"
+    />
+</div>

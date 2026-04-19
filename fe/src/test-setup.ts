@@ -46,7 +46,7 @@ class ResizeObserver {
 
 // translations helper
 // -----------------------------------------------------------------------------
-vi.mock('@/composables/useTranslations', () => ({
+vi.mock('@/shared/composables/useTranslations', () => ({
     useTranslations: () => ({ t: (k: string) => k.split('.').pop() }),
 }))
 

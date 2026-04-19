@@ -1,0 +1,33 @@
+<v-menu offset-y>
+    <template v-slot:activator="{ props }">
+        <v-btn
+            icon
+            size="small"
+            v-bind="props"
+            :title="t('general.language.switch')"
+        >
+            <component
+                :is="getCurrentFlagComponent()"
+                :width="20"
+                :height="15"
+            />
+        </v-btn>
+    </template>
+    <v-list min-width="120">
+        <v-list-item
+            v-for="lang in availableLanguages"
+            :key="lang"
+            :class="{ 'v-list-item--active': currentLanguage === lang }"
+            class="px-4 py-2"
+            @click="setLanguage(lang)"
+        >
+            <template v-slot:prepend>
+                <component
+                    :is="getFlagComponent(lang)"
+                    :width="24"
+                    :height="18"
+                />
+            </template>
+        </v-list-item>
+    </v-list>
+</v-menu>

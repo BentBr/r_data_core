@@ -1,0 +1,96 @@
+<v-dialog
+    :model-value="modelValue"
+    :max-width="getDialogMaxWidth('form')"
+    persistent
+    @update:model-value="$emit('update:modelValue', $event)"
+>
+    <v-card>
+        <v-card-title class="pa-6">
+            {{ role ? t('roles.dialog.edit_title') : t('roles.dialog.create_title') }}
+        </v-card-title>
+        <v-card-text class="pa-6">
+            <v-form
+                ref="formRef"
+                v-model="formValid"
+            >
+                <v-text-field
+                    v-model="formData.name"
+                    :label="t('roles.dialog.name')"
+                    :rules="[rules.required]"
+                    required
+                />
+                <v-textarea
+                    v-model="formData.description"
+                    :label="t('roles.dialog.description')"
+                    rows="2"
+                />
+
+                <v-switch
+                    v-model="formData.super_admin"
+                    :label="t('roles.dialog.super_admin')"
+                    color="primary"
+                />
+
+                <v-divider class="my-4" />
+
+                <div class="text-h6 mb-4">{{ t('roles.dialog.permissions') }}</div>
+
+                <v-alert
+                    v-if="formData.super_admin"
+                    type="info"
+                    variant="tonal"
+                    class="mb-4"
+                >
+                    {{ t('roles.dialog.super_admin_disabled_hint') }}
+                </v-alert>
+
+                <PermissionEditor
+                    v-for="(permission, index) in formData.permissions"
+                    :key="index"
+                    :permission="permission"
+                    :resource-types="resourceTypes"
+                    :permission-types="permissionTypes"
+                    :access-levels="accessLevels"
+                    :disabled="formData.super_admin"
+                    class="mb-4"
+                    @update="updatePermission(index, $event)"
+                    @remove="removePermission(index)"
+                />
+
+                <v-btn
+                    color="primary"
+                    variant="outlined"
+                    :disabled="formData.super_admin"
+                    @click="addPermission"
+                >
+                    <template #prepend>
+                        <SmartIcon
+                            icon="plus"
+                            size="sm"
+                        />
+                    </template>
+                    {{ t('roles.dialog.add_permission') }}
+                </v-btn>
+            </v-form>
+        </v-card-text>
+        <v-card-actions class="pa-4 px-6">
+            <v-spacer />
+            <v-btn
+                variant="text"
+                color="mutedForeground"
+                @click="handleClose"
+            >
+                {{ t('roles.dialog.cancel') }}
+            </v-btn>
+            <v-btn
+                color="primary"
+                variant="flat"
+                :loading="loading"
+                :disabled="!formValid"
+                @click="handleSave"
+            >
+                {{ role ? t('roles.dialog.update') : t('roles.dialog.create') }}
+            </v-btn>
+        </v-card-actions>
+    </v-card>
+</v-dialog>

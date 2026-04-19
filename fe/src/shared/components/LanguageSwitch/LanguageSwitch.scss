@@ -1,0 +1,8 @@
+.v-list-item {
+    cursor: pointer;
+    min-height: 48px;
+}
+
+.v-list-item--active {
+    background-color: rgba(var(--v-theme-primary), 0.1);
+}

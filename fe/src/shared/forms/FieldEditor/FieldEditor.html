@@ -1,0 +1,147 @@
+<v-dialog
+    v-model="showDialog"
+    :max-width="getDialogMaxWidth('form')"
+    persistent
+    :retain-focus="false"
+>
+    <v-card>
+        <v-card-title class="text-h5 pa-6">
+            {{
+                isEditing
+                    ? t('entity_definitions.fields.edit_field')
+                    : t('entity_definitions.fields.add_field')
+            }}
+        </v-card-title>
+        <v-card-text class="pa-6">
+            <v-form
+                ref="formRef"
+                v-model="formValid"
+            >
+                <v-row>
+                    <v-col cols="6">
+                        <v-text-field
+                            v-model="form.name"
+                            data-test="name"
+                            name="name"
+                            :label="t('entity_definitions.fields.field_name')"
+                            :rules="[
+                                v => !!v || t('entity_definitions.fields.field_name_required'),
+                                v => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(v) || t('entity_definitions.fields.field_name_invalid'),
+                            ]"
+                            required
+                            :disabled="isEditing"
+                        />
+                    </v-col>
+                    <v-col cols="6">
+                        <v-text-field
+                            v-model="form.display_name"
+                            data-test="display_name"
+                            name="display_name"
+                            :label="t('entity_definitions.fields.display_name')"
+                            :rules="[v => !!v || t('entity_definitions.fields.display_name_required')]"
+                            required
+                        />
+                    </v-col>
+                </v-row>
+
+                <v-row>
+                    <v-col cols="6">
+                        <v-select
+                            v-model="form.field_type"
+                            data-test="field_type"
+                            name="field_type"
+                            :items="fieldTypes"
+                            item-title="title"
+                            item-value="value"
+                            :label="t('entity_definitions.fields.field_type')"
+                            :rules="[v => !!v || t('entity_definitions.fields.field_type_required')]"
+                            required
+                        />
+                    </v-col>
+                    <v-col cols="6">
+                        <v-text-field
+                            v-model="form.description"
+                            :label="t('entity_definitions.fields.description') + ' (Optional)'"
+                        />
+                    </v-col>
+                </v-row>
+
+                <v-row>
+                    <v-col cols="4">
+                        <v-switch v-model="form.required" :label="t('entity_definitions.fields.required')" />
+                    </v-col>
+                    <v-col cols="4">
+                        <v-switch v-model="form.indexed" :label="t('entity_definitions.fields.indexed')" />
+                    </v-col>
+                    <v-col cols="4">
+                        <v-switch v-model="form.filterable" :label="t('entity_definitions.fields.filterable')" />
+                    </v-col>
+                </v-row>
+
+                <v-row v-if="showValidationSection">
+                    <v-col cols="12">
+                        <v-divider class="my-2" />
+                        <div class="text-subtitle-2 mb-2">{{ t('entity_definitions.fields.validation_options') }}</div>
+                    </v-col>
+                </v-row>
+
+                <template v-if="isStringType">
+                    <v-row>
+                        <v-col cols="4">
+                            <v-text-field v-model.number="constraintMinLength" :label="t('entity_definitions.fields.min_length')" type="number" min="0" />
+                        </v-col>
+                        <v-col cols="4">
+                            <v-text-field v-model.number="constraintMaxLength" :label="t('entity_definitions.fields.max_length')" type="number" min="0" />
+                        </v-col>
+                        <v-col cols="4">
+                            <v-checkbox v-model="emailPreset" :label="t('entity_definitions.fields.email_format')" density="compact" />
+                        </v-col>
+                    </v-row>
+                    <v-row>
+                        <v-col cols="12">
+                            <v-text-field v-model="constraintPattern" :label="t('entity_definitions.fields.pattern')" :hint="t('entity_definitions.fields.pattern_hint')" :disabled="emailPreset" persistent-hint />
+                        </v-col>
+                    </v-row>
+                </template>
+
+                <template v-if="isNumericType">
+                    <v-row>
+                        <v-col cols="4">
+                            <v-text-field v-model.number="constraintMin" :label="t('entity_definitions.fields.min_value')" type="number" />
+                        </v-col>
+                        <v-col cols="4">
+                            <v-text-field v-model.number="constraintMax" :label="t('entity_definitions.fields.max_value')" type="number" />
+                        </v-col>
+                        <v-col cols="4">
+                            <v-checkbox v-model="constraintPositiveOnly" :label="t('entity_definitions.fields.positive_only')" density="compact" />
+                        </v-col>
+                    </v-row>
+                </template>
+
+                <v-row v-if="supportsUniqueness">
+                    <v-col cols="12">
+                        <v-checkbox v-model="constraintUnique" :label="t('entity_definitions.fields.unique')" :hint="t('entity_definitions.fields.unique_hint')" persistent-hint density="compact" />
+                    </v-col>
+                </v-row>
+
+                <v-row v-if="showDefaultValue">
+                    <v-col cols="12">
+                        <v-select v-if="form.field_type === 'Boolean'" v-model="form.default_value" :label="t('entity_definitions.fields.default_value') + ' (Optional)'" :items="[{ title: 'True', value: true }, { title: 'False', value: false }]" clearable />
+                        <v-text-field v-else-if="form.field_type === 'Integer'" v-model.number="form.default_value" :label="t('entity_definitions.fields.default_value') + ' (Optional)'" type="number" />
+                        <v-text-field v-else-if="form.field_type === 'Float'" v-model.number="form.default_value" :label="t('entity_definitions.fields.default_value') + ' (Optional)'" type="number" step="any" />
+                        <v-text-field v-else-if="form.field_type === 'Date'" v-model="form.default_value" :label="t('entity_definitions.fields.default_value') + ' (Optional)'" type="date" />
+                        <v-text-field v-else-if="form.field_type === 'DateTime'" v-model="form.default_value" :label="t('entity_definitions.fields.default_value') + ' (Optional)'" type="datetime-local" />
+                        <v-text-field v-else v-model="form.default_value" :label="t('entity_definitions.fields.default_value') + ' (Optional)'" />
+                    </v-col>
+                </v-row>
+            </v-form>
+        </v-card-text>
+        <v-card-actions class="pa-4 px-6">
+            <v-spacer />
+            <v-btn data-test="cancel" variant="text" color="mutedForeground" @click="closeDialog">{{ t('common.cancel') }}</v-btn>
+            <v-btn data-test="save" color="primary" variant="flat" :disabled="!formValid" @click="saveField">
+                {{ isEditing ? t('entity_definitions.fields.update') : t('entity_definitions.fields.add') }}
+            </v-btn>
+        </v-card-actions>
+    </v-card>
+</v-dialog>

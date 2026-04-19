@@ -1,0 +1,49 @@
+<div>
+    <v-select
+        :model-value="entityDefinition"
+        :items="entityDefItems"
+        item-title="title"
+        item-value="value"
+        :label="t('workflows.dsl.entity_definition')"
+        density="comfortable"
+        @update:model-value="updateField('entity_definition', $event)"
+    />
+    <v-text-field
+        :model-value="entityPath"
+        :label="t('workflows.dsl.path')"
+        density="comfortable"
+        @update:model-value="updateField('path', $event)"
+    />
+    <v-select
+        :model-value="entityMode"
+        :items="entityModes"
+        :label="t('workflows.dsl.mode')"
+        density="comfortable"
+        @update:model-value="updateField('mode', $event)"
+    />
+    <v-text-field
+        v-if="entityMode === 'update' || entityMode === 'create_or_update'"
+        :model-value="entityUpdateKey"
+        :label="t('workflows.dsl.update_key')"
+        density="comfortable"
+        @update:model-value="updateField('update_key', $event)"
+    />
+    <div class="text-caption mb-1 mt-2">
+        {{ t('workflows.dsl.mapping_normalized_destination') }}
+    </div>
+    <MappingEditor
+        ref="mappingEditorRef"
+        :model-value="modelValue.mapping"
+        :left-label="t('workflows.dsl.entity_field')"
+        :right-label="t('workflows.dsl.normalized_field')"
+        :left-items="entityTargetFields"
+        :use-select-for-left="true"
+        @update:model-value="updateField('mapping', $event)"
+    />
+    <v-btn
+        size="x-small"
+        variant="tonal"
+        @click="addMapping"
+        >{{ t('workflows.dsl.add_mapping') }}
+    </v-btn>
+</div>

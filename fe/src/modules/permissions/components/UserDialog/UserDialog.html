@@ -1,0 +1,95 @@
+<v-dialog
+    :model-value="modelValue"
+    :max-width="getDialogMaxWidth('default')"
+    persistent
+    @update:model-value="$emit('update:modelValue', $event)"
+>
+    <v-card>
+        <v-card-title class="pa-6">
+            {{ user ? t('users.dialog.edit_title') : t('users.dialog.create_title') }}
+        </v-card-title>
+        <v-card-text class="pa-6">
+            <v-form
+                ref="formRef"
+                v-model="formValid"
+            >
+                <v-text-field
+                    v-if="!user"
+                    v-model="formData.username"
+                    :label="t('users.dialog.username')"
+                    :rules="[rules.required, rules.minLength(3)]"
+                    required
+                />
+                <v-text-field
+                    v-model="formData.email"
+                    :label="t('users.dialog.email')"
+                    type="email"
+                    :rules="[rules.required, rules.email]"
+                    required
+                />
+                <v-text-field
+                    v-model="formData.password"
+                    :label="t('users.dialog.password')"
+                    type="password"
+                    :rules="user ? [] : [rules.required, rules.minLength(8)]"
+                    :required="!user"
+                    :hint="user ? t('users.dialog.password_hint') : ''"
+                    persistent-hint
+                />
+                <v-text-field
+                    v-model="formData.first_name"
+                    :label="t('users.dialog.first_name')"
+                    :rules="[rules.required]"
+                    required
+                />
+                <v-text-field
+                    v-model="formData.last_name"
+                    :label="t('users.dialog.last_name')"
+                    :rules="[rules.required]"
+                    required
+                />
+                <v-select
+                    v-model="formData.role_uuids"
+                    :label="t('users.dialog.roles')"
+                    :items="availableRoles"
+                    item-title="name"
+                    item-value="uuid"
+                    multiple
+                    chips
+                    :hint="t('users.dialog.roles_hint')"
+                    persistent-hint
+                    :loading="loadingRoles"
+                />
+                <v-switch
+                    v-model="formData.is_active"
+                    :label="t('users.dialog.active')"
+                    color="primary"
+                />
+                <v-switch
+                    v-model="formData.super_admin"
+                    :label="t('users.dialog.super_admin')"
+                    color="primary"
+                />
+            </v-form>
+        </v-card-text>
+        <v-card-actions class="pa-4 px-6">
+            <v-spacer />
+            <v-btn
+                variant="text"
+                color="mutedForeground"
+                @click="handleClose"
+            >
+                {{ t('users.dialog.cancel') }}
+            </v-btn>
+            <v-btn
+                color="primary"
+                variant="flat"
+                :loading="loading"
+                :disabled="!formValid"
+                @click="handleSave"
+            >
+                {{ user ? t('users.dialog.update') : t('users.dialog.create') }}
+            </v-btn>
+        </v-card-actions>
+    </v-card>
+</v-dialog>

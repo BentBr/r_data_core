@@ -1,0 +1,81 @@
+<div>
+    <PageLayout>
+        <template #actions>
+            <v-btn
+                v-if="canCreateEntityDefinition"
+                color="primary"
+                variant="flat"
+                data-testid="entity-def-create-btn"
+                @click="showCreateDialog = true"
+            >
+                <template #prepend>
+                    <SmartIcon
+                        icon="plus"
+                        size="sm"
+                    />
+                </template>
+                {{ t('entity_definitions.create.button') }}
+            </v-btn>
+        </template>
+        <v-row>
+            <!-- Tree View -->
+            <v-col cols="4">
+                <EntityDefinitionTree
+                    data-testid="entity-def-tree"
+                    :entity-definitions="entityDefinitions"
+                    :loading="loading"
+                    :expanded-groups="expandedGroups"
+                    @update:expanded-groups="updateExpandedGroups"
+                    @item-click="handleItemClick"
+                    @selection-change="handleTreeSelection"
+                />
+            </v-col>
+
+            <!-- Details Panel -->
+            <v-col cols="8">
+                <EntityDefinitionDetails
+                    data-testid="entity-def-details"
+                    :definition="selectedDefinition"
+                    :has-unsaved-changes="hasUnsavedChanges"
+                    :saving-changes="savingChanges"
+                    @edit="editDefinition"
+                    @delete="showDeleteDialog = true"
+                    @save-changes="saveChanges"
+                    @add-field="addField"
+                    @edit-field="editField"
+                    @remove-field="removeField"
+                />
+            </v-col>
+        </v-row>
+    </PageLayout>
+
+    <!-- Dialogs -->
+    <EntityDefinitionCreateDialog
+        v-model="showCreateDialog"
+        :loading="creating"
+        @create="createEntityDefinition"
+    />
+
+    <EntityDefinitionEditDialog
+        v-model="showEditDialog"
+        :definition="selectedDefinition"
+        :loading="updating"
+        @update="updateEntityDefinition"
+    />
+
+    <FieldEditor
+        v-model="showFieldEditor"
+        :field="editingField"
+        @save="handleFieldSave"
+    />
+
+    <DialogManager
+        v-model="showDeleteDialog"
+        :config="deleteDialogConfig"
+        :loading="deleting"
+        @confirm="deleteEntityDefinition"
+    />
+
+    <!-- Snackbar -->
+    <SnackbarManager :snackbar="currentSnackbar" />
+</div>

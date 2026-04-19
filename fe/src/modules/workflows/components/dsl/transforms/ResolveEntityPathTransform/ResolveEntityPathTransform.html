@@ -1,0 +1,95 @@
+<div>
+    <v-text-field
+        :model-value="resolveEntityPathTarget"
+        :label="t('workflows.dsl.target_path')"
+        density="comfortable"
+        class="mb-2"
+        @update:model-value="updateResolveEntityPathField('target_path', $event)"
+    />
+    <v-text-field
+        :model-value="resolveEntityPathTargetUuid"
+        :label="t('workflows.dsl.target_uuid')"
+        density="comfortable"
+        class="mb-2"
+        hint="Optional: field to store entity UUID (use as parent_uuid for children)"
+        persistent-hint
+        @update:model-value="updateResolveEntityPathField('target_uuid', $event)"
+    />
+    <v-text-field
+        :model-value="resolveEntityPathEntityType"
+        :label="t('workflows.dsl.entity_type')"
+        density="comfortable"
+        class="mb-2"
+        required
+        @update:model-value="updateResolveEntityPathField('entity_type', $event)"
+    />
+    <div class="text-caption mb-1">{{ t('workflows.dsl.filters') }}</div>
+    <div
+        v-for="(filter, field) in resolveEntityPathFilters"
+        :key="field"
+        class="d-flex ga-2 mb-2"
+    >
+        <v-text-field
+            :model-value="field"
+            :label="t('workflows.dsl.filter_field')"
+            density="comfortable"
+            readonly
+            class="flex-0"
+            style="max-width: 200px"
+        />
+        <v-select
+            :model-value="filter.kind"
+            :items="stringOperandKinds"
+            :label="t('workflows.dsl.value_kind')"
+            density="comfortable"
+            class="flex-0"
+            style="max-width: 180px"
+            @update:model-value="updateFilterKind(field, $event)"
+        />
+        <v-select
+            v-if="filter.kind === 'field' && availableFields.length > 0"
+            :model-value="filter.field"
+            :items="availableFields"
+            :label="t('workflows.dsl.value')"
+            density="comfortable"
+            @update:model-value="updateFilterField(field, $event)"
+        />
+        <v-text-field
+            v-else-if="filter.kind === 'field'"
+            :model-value="filter.field"
+            :label="t('workflows.dsl.value')"
+            density="comfortable"
+            @update:model-value="updateFilterField(field, $event)"
+        />
+        <v-text-field
+            v-else
+            :model-value="filter.value"
+            :label="t('workflows.dsl.value')"
+            density="comfortable"
+            @update:model-value="updateFilterValue(field, $event)"
+        />
+        <v-btn
+            icon="mdi-delete"
+            variant="text"
+            size="small"
+            @click="removeFilter(field)"
+        />
+    </div>
+    <v-btn
+        variant="outlined"
+        size="small"
+        class="mb-2"
+        @click="addFilter"
+    >
+        {{ t('workflows.dsl.add_filter') }}
+    </v-btn>
+    <v-text-field
+        :model-value="resolveEntityPathFallback"
+        :label="t('workflows.dsl.fallback_path')"
+        density="comfortable"
+        class="mb-2"
+        hint="Optional: path to use if entity not found"
+        persistent-hint
+        @update:model-value="updateResolveEntityPathField('fallback_path', $event)"
+    />
+</div>

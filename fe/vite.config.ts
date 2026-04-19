@@ -46,4 +46,7 @@ export default defineConfig({
         target: 'esnext',
         sourcemap: true,
     },
+    optimizeDeps: {
+        include: ['json-editor-vue', 'vanilla-jsoneditor'],
+    },
 })

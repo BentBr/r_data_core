@@ -1,0 +1,41 @@
+/* Global styles */
+html {
+    scrollbar-gutter: stable;
+}
+
+body {
+    scrollbar-gutter: stable;
+    margin: 0;
+    padding: 0;
+}
+
+#app {
+    scrollbar-gutter: stable;
+}
+
+.v-application {
+    scrollbar-gutter: stable;
+}
+
+/* Scoped-like styles for transitions */
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.8s ease-in-out;
+    position: relative;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+
+.fade-enter-to,
+.fade-leave-from {
+    opacity: 1;
+}
+
+.fade-enter-active > *,
+.fade-leave-active > * {
+    position: relative;
+    width: 100%;
+}

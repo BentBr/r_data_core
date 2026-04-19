@@ -1,0 +1,39 @@
+.dsl-json-editor {
+  /* Vanilla JSON Editor Theme Overrides for dark mode and primary header */
+  --jse-background-color: #1e1e1e;
+  --jse-panel-background: #1e1e1e;
+  --jse-theme-color: var(--v-theme-primary);
+  --jse-menu-background: var(--v-theme-primary);
+  --jse-menu-color: #ffffff;
+  --jse-text-color: #d4d4d4;
+  --jse-key-color: #9cdcfe;
+  --jse-value-color: #ce9178;
+  --jse-delimiter-color: #808080;
+  --jse-string-color: #ce9178;
+  --jse-number-color: #b5cea8;
+  --jse-boolean-color: #569cd6;
+  --jse-null-color: #569cd6;
+  
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+
+  :deep(.jse-main) {
+    min-height: 300px;
+  }
+  
+  /* Adjust toolbar buttons if needed */
+  :deep(.jse-menu) {
+    border-bottom: none;
+    
+    button {
+      color: #ffffff !important;
+      opacity: 0.8;
+      
+      &:hover {
+        opacity: 1;
+        background: rgba(255, 255, 255, 0.1) !important;
+      }
+    }
+  }
+}

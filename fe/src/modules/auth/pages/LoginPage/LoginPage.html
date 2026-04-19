@@ -1,0 +1,181 @@
+<v-main>
+    <v-container
+        fluid
+        class="fill-height"
+    >
+        <v-row
+            justify="center"
+            align="center"
+            class="fill-height"
+        >
+            <v-col
+                cols="12"
+                sm="8"
+                md="6"
+                lg="4"
+                xl="3"
+            >
+                <v-card
+                    class="elevation-8 pa-8"
+                    rounded="lg"
+                >
+                    <!-- Header -->
+                    <v-card-title class="text-center mb-6">
+                        <div class="d-flex justify-space-between align-center mb-2">
+                            <div></div>
+                            <!-- Spacer -->
+                            <LanguageSwitch />
+                        </div>
+                        <div class="text-h4 font-weight-bold primary--text">R Data Core</div>
+                        <div class="text-subtitle-1 grey--text">Admin Interface</div>
+                    </v-card-title>
+
+                    <!-- Login Form -->
+                    <v-card-text>
+                        <!-- Mobile Warning -->
+                        <v-alert
+                            v-if="isMobile"
+                            type="warning"
+                            variant="tonal"
+                            prominent
+                            class="mb-4"
+                        >
+                            <template #prepend>
+                                <SmartIcon
+                                    icon="alert-triangle"
+                                    size="sm"
+                                />
+                            </template>
+                            {{ t('auth.mobile_warning') }}
+                        </v-alert>
+
+                        <v-form
+                            ref="loginForm"
+                            v-model="formValid"
+                            @submit.prevent="handleLogin"
+                        >
+                            <!-- Username Field -->
+                            <v-text-field
+                                v-model="credentials.username"
+                                :label="t('auth.login.username')"
+                                variant="outlined"
+                                :rules="usernameRules"
+                                :error-messages="fieldErrors.username"
+                                :disabled="authStore.isLoading"
+                                class="mb-4"
+                                data-testid="login-username"
+                                autofocus
+                                @input="clearFieldError('username')"
+                            >
+                                <template #prepend-inner>
+                                    <SmartIcon
+                                        icon="user"
+                                        size="sm"
+                                        class="mr-2"
+                                    />
+                                </template>
+                            </v-text-field>
+
+                            <!-- Password Field -->
+                            <v-text-field
+                                v-model="credentials.password"
+                                :type="showPassword ? 'text' : 'password'"
+                                :label="t('auth.login.password')"
+                                variant="outlined"
+                                :rules="passwordRules"
+                                :error-messages="fieldErrors.password"
+                                :disabled="authStore.isLoading"
+                                class="mb-4"
+                                data-testid="login-password"
+                                @input="clearFieldError('password')"
+                                @keyup.enter="handleLogin"
+                            >
+                                <template #prepend-inner>
+                                    <SmartIcon
+                                        icon="lock"
+                                        size="sm"
+                                        class="mr-2"
+                                    />
+                                </template>
+                                <template #append-inner>
+                                    <SmartIcon
+                                        :icon="showPassword ? 'eye' : 'eye-off'"
+                                        size="sm"
+                                        class="cursor-pointer"
+                                        @click="showPassword = !showPassword"
+                                    />
+                                </template>
+                            </v-text-field>
+
+                            <!-- Error Alert -->
+                            <v-alert
+                                v-if="authStore.error"
+                                type="error"
+                                variant="tonal"
+                                class="mb-4"
+                                data-testid="login-error"
+                                :text="authStore.error"
+                                closable
+                                @click:close="authStore.clearError"
+                            />
+
+                            <!-- Login Button -->
+                            <v-btn
+                                type="submit"
+                                block
+                                size="large"
+                                color="primary"
+                                :loading="authStore.isLoading"
+                                :disabled="!formValid"
+                                class="mb-4"
+                                data-testid="login-submit"
+                            >
+                                <template #prepend>
+                                    <SmartIcon
+                                        icon="log-in"
+                                        size="sm"
+                                    />
+                                </template>
+                                {{
+                                    authStore.isLoading
+                                        ? t('auth.login.loading')
+                                        : t('auth.login.submit')
+                                }}
+                            </v-btn>
+
+                            <!-- Forgot Password Link -->
+                            <div class="text-center">
+                                <v-btn
+                                    variant="text"
+                                    color="primary"
+                                    size="small"
+                                    @click="showForgotPassword"
+                                >
+                                    {{ t('auth.login.forgot_password') }}
+                                </v-btn>
+                            </div>
+                        </v-form>
+                    </v-card-text>
+                </v-card>
+
+                <!-- Forgot Password Snackbar -->
+                <v-snackbar
+                    v-model="forgotPasswordSnackbar"
+                    timeout="4000"
+                    color="info"
+                >
+                    {{ t('auth.login.forgot_password_message') }}
+                    <template v-slot:actions>
+                        <v-btn
+                            color="white"
+                            variant="text"
+                            @click="forgotPasswordSnackbar = false"
+                        >
+                            Close
+                        </v-btn>
+                    </template>
+                </v-snackbar>
+            </v-col>
+        </v-row>
+    </v-container>
+</v-main>

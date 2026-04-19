@@ -1,0 +1,92 @@
+<div>
+    <PageLayout>
+        <template #actions>
+            <v-btn
+                color="secondary"
+                variant="outlined"
+                :loading="loading"
+                @click="loadEntities"
+            >
+                <template #prepend>
+                    <SmartIcon
+                        icon="refresh-cw"
+                        size="sm"
+                    />
+                </template>
+                {{ t('common.refresh') }}
+            </v-btn>
+            <v-btn
+                v-if="canCreateEntity"
+                color="primary"
+                variant="flat"
+                data-testid="entities-create-btn"
+                @click="showCreateDialog = true"
+            >
+                <template #prepend>
+                    <SmartIcon
+                        icon="plus"
+                        size="sm"
+                    />
+                </template>
+                {{ t('entities.create.button') }}
+            </v-btn>
+        </template>
+        <v-row>
+            <!-- Tree View -->
+            <v-col cols="4">
+                <EntityTree
+                    ref="entityTreeRef"
+                    data-testid="entities-tree"
+                    :root-path="'/'"
+                    :loading="loading"
+                    :expanded-items="expandedItems"
+                    :refresh-key="treeRefreshKey"
+                    :entity-definitions="entityDefinitions"
+                    @update:expanded-items="updateExpandedItems"
+                    @item-click="handleItemClick"
+                    @selection-change="handleTreeSelection"
+                />
+            </v-col>
+
+            <!-- Details Panel -->
+            <v-col cols="8">
+                <EntityDetails
+                    data-testid="entities-details"
+                    :entity="selectedEntity"
+                    :entity-definition="selectedEntityDefinition"
+                    @edit="editEntity"
+                    @delete="showDeleteDialog = true"
+                />
+            </v-col>
+        </v-row>
+
+        <!-- Dialogs -->
+        <EntityCreateDialog
+            ref="createDialogRef"
+            v-model="showCreateDialog"
+            :entity-definitions="entityDefinitions"
+            :loading="creating"
+            :default-parent="selectedEntity"
+            @create="createEntity"
+        />
+
+        <EntityEditDialog
+            ref="editDialogRef"
+            v-model="showEditDialog"
+            :entity="selectedEntity"
+            :entity-definition="selectedEntityDefinition"
+            :loading="updating"
+            @update="updateEntity"
+        />
+
+        <DialogManager
+            v-model="showDeleteDialog"
+            :config="deleteDialogConfig"
+            :loading="deleting"
+            @confirm="deleteEntity"
+        />
+
+        <!-- Snackbar -->
+        <SnackbarManager :snackbar="currentSnackbar" />
+    </PageLayout>
+</div>
