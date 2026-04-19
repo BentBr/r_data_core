@@ -461,8 +461,7 @@ pub async fn list_system_logs(
         date_to: date_to_parsed,
     };
 
-    match repo.list_paginated(limit, offset, &filter).await
-    {
+    match repo.list_paginated(limit, offset, &filter).await {
         Ok((logs, total)) => {
             let dtos: Vec<SystemLogDto> = logs.into_iter().map(SystemLogDto::from).collect();
             ApiResponse::ok_paginated(dtos, total, page, per_page)

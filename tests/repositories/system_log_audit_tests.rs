@@ -45,10 +45,14 @@ async fn get_latest_log_for_resource(
 ) -> Option<SystemLog> {
     let repo = SystemLogRepository::new(pool.clone());
     let (logs, _) = repo
-        .list_paginated(1, 0, &r_data_core_persistence::SystemLogFilter {
-            resource_type: Some(resource_type),
-            ..Default::default()
-        })
+        .list_paginated(
+            1,
+            0,
+            &r_data_core_persistence::SystemLogFilter {
+                resource_type: Some(resource_type),
+                ..Default::default()
+            },
+        )
         .await
         .ok()?;
     logs.into_iter().next()
