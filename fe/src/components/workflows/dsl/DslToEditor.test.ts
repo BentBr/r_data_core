@@ -5,10 +5,12 @@ import DslToEditor from './DslToEditor.vue'
 import type { ToDef } from './contracts'
 
 const mockGetEntityFields = vi.fn()
+const mockListEmailTemplates = vi.fn()
 
 vi.mock('@/api/typed-client', () => ({
     typedHttpClient: {
         getEntityFields: (entityType: string) => mockGetEntityFields(entityType),
+        listEmailTemplates: (type?: string) => mockListEmailTemplates(type),
     },
 }))
 
@@ -28,6 +30,12 @@ vi.mock('@/composables/useEntityDefinitions', () => ({
     }),
 }))
 
+vi.mock('@/stores/capabilities', () => ({
+    useCapabilitiesStore: () => ({
+        workflowMailConfigured: false,
+    }),
+}))
+
 describe('DslToEditor', () => {
     beforeEach(() => {
         vi.clearAllMocks()
@@ -36,6 +44,7 @@ describe('DslToEditor', () => {
             { name: 'field2', type: 'number' },
             { name: 'field3', type: 'boolean' },
         ])
+        mockListEmailTemplates.mockResolvedValue([])
     })
 
     it('renders Entity type editor correctly', async () => {

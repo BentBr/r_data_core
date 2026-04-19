@@ -8,9 +8,21 @@ vi.mock('@/composables/useTranslations', () => ({
     useTranslations: () => ({ t: (k: string) => k }),
 }))
 
+// Default mock: workflow mail not configured
+const mockWorkflowMailConfigured = { value: false }
+
+vi.mock('@/stores/capabilities', () => ({
+    useCapabilitiesStore: () => ({
+        get workflowMailConfigured() {
+            return mockWorkflowMailConfigured.value
+        },
+    }),
+}))
+
 describe('DslTransformEditor', () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        mockWorkflowMailConfigured.value = false
     })
 
     const defaultTransform: Transform = { type: 'none' }
@@ -236,6 +248,42 @@ describe('DslTransformEditor', () => {
             expect(transformTypes).toContain('build_path')
             expect(transformTypes).toContain('resolve_entity_path')
             expect(transformTypes).toContain('get_or_create_entity')
+        })
+
+        it('hides send_email option when workflowMailConfigured is false', async () => {
+            mockWorkflowMailConfigured.value = false
+
+            const wrapper = mount(DslTransformEditor, {
+                props: {
+                    modelValue: defaultTransform,
+                },
+            })
+
+            await nextTick()
+
+            const select = wrapper.findComponent({ name: 'VSelect' })
+            const items = select.props('items') as Array<{ title: string; value: string }>
+            const transformTypes = items.map(item => item.value)
+
+            expect(transformTypes).not.toContain('send_email')
+        })
+
+        it('shows send_email option when workflowMailConfigured is true', async () => {
+            mockWorkflowMailConfigured.value = true
+
+            const wrapper = mount(DslTransformEditor, {
+                props: {
+                    modelValue: defaultTransform,
+                },
+            })
+
+            await nextTick()
+
+            const select = wrapper.findComponent({ name: 'VSelect' })
+            const items = select.props('items') as Array<{ title: string; value: string }>
+            const transformTypes = items.map(item => item.value)
+
+            expect(transformTypes).toContain('send_email')
         })
     })
 })

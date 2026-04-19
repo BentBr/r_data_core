@@ -215,7 +215,7 @@ pub async fn create_test_queue() -> Option<(ApalisRedisQueue, String, String)> {
     let fetch_key = format!("{base_fetch}:{test_id}");
     let process_key = format!("{base_process}:{test_id}");
 
-    let queue = ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key)
+    let queue = ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key, "queue:email")
         .await
         .ok()?;
     Some((queue, fetch_key, process_key))

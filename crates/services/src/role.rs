@@ -8,6 +8,7 @@ use uuid::Uuid;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::error::Result;
 use r_data_core_core::permissions::role::{Permission, Role};
+use r_data_core_core::system_log::SystemLogResourceType;
 use r_data_core_persistence::{
     AdminUserRepository, ApiKeyRepository, RoleRepository, RoleRepositoryTrait,
 };
@@ -15,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
 use crate::query_validation::{validate_list_query, FieldValidator, ValidatedListQuery};
+use crate::SystemLogService;
 
 /// Cached user role UUIDs
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,6 +36,7 @@ pub struct RoleService {
     pool: PgPool,
     cache_manager: Arc<CacheManager>,
     cache_ttl: Option<u64>,
+    system_log: Option<Arc<SystemLogService>>,
 }
 
 impl RoleService {
@@ -53,6 +56,7 @@ impl RoleService {
             pool,
             cache_manager,
             cache_ttl,
+            system_log: None,
         }
     }
 
@@ -78,7 +82,15 @@ impl RoleService {
             pool,
             cache_manager,
             cache_ttl,
+            system_log: None,
         }
+    }
+
+    /// Set the system log service for audit logging
+    #[must_use]
+    pub fn with_system_log(mut self, log: Arc<SystemLogService>) -> Self {
+        self.system_log = Some(log);
+        self
     }
 
     /// Generate cache key for role
@@ -375,6 +387,17 @@ impl RoleService {
             }
         }
 
+        if let Some(ref log) = self.system_log {
+            log.log_entity_created(
+                Some(created_by),
+                SystemLogResourceType::Role,
+                uuid,
+                &format!("Role '{}' created", role.name),
+                Some(serde_json::json!({"name": role.name})),
+            )
+            .await;
+        }
+
         Ok(uuid)
     }
 
@@ -392,6 +415,17 @@ impl RoleService {
         // Invalidate all caches for this role and all users/API keys that reference it
         self.invalidate_all_caches_for_role(role.base.uuid).await;
 
+        if let Some(ref log) = self.system_log {
+            log.log_entity_updated(
+                Some(updated_by),
+                SystemLogResourceType::Role,
+                role.base.uuid,
+                &format!("Role '{}' updated", role.name),
+                Some(serde_json::json!({"name": role.name})),
+            )
+            .await;
+        }
+
         Ok(())
     }
 
@@ -399,14 +433,35 @@ impl RoleService {
     ///
     /// # Arguments
     /// * `uuid` - Role UUID
+    /// * `actor_uuid` - UUID of user performing the deletion
     ///
     /// # Errors
     /// Returns an error if database delete fails
-    pub async fn delete_role(&self, uuid: Uuid) -> Result<()> {
+    pub async fn delete_role(&self, uuid: Uuid, actor_uuid: Uuid) -> Result<()> {
+        // Capture the role name before deletion for audit log
+        let role_name = self
+            .repository
+            .get_by_uuid(uuid)
+            .await
+            .ok()
+            .flatten()
+            .map_or_else(|| uuid.to_string(), |r| r.name);
+
         // Invalidate all caches before deleting (so reverse lookups still work)
         self.invalidate_all_caches_for_role(uuid).await;
 
         self.repository.delete(uuid).await?;
+
+        if let Some(ref log) = self.system_log {
+            log.log_entity_deleted(
+                Some(actor_uuid),
+                SystemLogResourceType::Role,
+                uuid,
+                &format!("Role '{role_name}' deleted"),
+                Some(serde_json::json!({"name": role_name})),
+            )
+            .await;
+        }
 
         Ok(())
     }

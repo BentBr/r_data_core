@@ -43,7 +43,7 @@ fe/
 
 ## Running Commands
 
-**Never run `npm` locally.** All frontend commands must run inside the Docker `node` container.
+**Never run `npm` (or `npx`) locally.** All frontend commands must run inside the Docker `node` container.
 
 Use `rdt` (preferred) or `docker compose exec node`:
 

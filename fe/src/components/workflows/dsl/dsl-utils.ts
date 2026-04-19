@@ -70,6 +70,10 @@ export function sanitizeDslStep(step: unknown): DslStep {
         } else if (toDef.type === 'next_step') {
             // Ensure mapping exists
             toDef.mapping ??= {}
+        } else if (toDef.type === 'email') {
+            // Ensure mapping and to exist
+            toDef.mapping ??= {}
+            toDef.to ??= []
         }
     }
 

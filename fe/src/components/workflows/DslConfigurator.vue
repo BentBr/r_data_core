@@ -123,12 +123,18 @@
                 </v-expansion-panel-text>
             </v-expansion-panel>
         </v-expansion-panels>
+
+        <PostRunActionsEditor
+            v-if="capabilitiesStore.workflowMailConfigured"
+            :model-value="onCompleteLocal"
+            @update:model-value="updateOnComplete"
+        />
     </div>
 </template>
 
 <script setup lang="ts">
     import SmartIcon from '@/components/common/SmartIcon.vue'
-    import { onMounted, ref, watch, nextTick, shallowRef } from 'vue'
+    import { onMounted, ref, watch, nextTick, shallowRef, computed } from 'vue'
     import { typedHttpClient } from '@/api/typed-client'
     import { useTranslations } from '@/composables/useTranslations'
     import { useEntityDefinitions } from '@/composables/useEntityDefinitions'
@@ -142,21 +148,35 @@
     } from './dsl/dsl-utils'
     import { createWorkflowTemplates } from './dsl/templates'
     import { buildStepSummary, getStepStats } from './dsl/summary'
+    import { useCapabilitiesStore } from '@/stores/capabilities'
     import DslStepEditor from './dsl/DslStepEditor.vue'
+    import PostRunActionsEditor from './dsl/PostRunActionsEditor.vue'
+    import type { OnComplete } from '@/types/schemas/dsl'
 
     const props = defineProps<{
         modelValue: DslStep[]
         workflowUuid?: string | null
+        onComplete?: OnComplete | null
     }>()
-    const emit = defineEmits<{ (e: 'update:modelValue', value: DslStep[]): void }>()
+    const emit = defineEmits<{
+        (e: 'update:modelValue', value: DslStep[]): void
+        (e: 'update:onComplete', value: OnComplete | null): void
+    }>()
 
     const loading = ref(false)
     const loadError = ref<string | null>(null)
     // Use shallowRef to avoid deep reactivity issues
     const stepsLocal = shallowRef<DslStep[]>([])
+    const onCompleteLocal = ref<OnComplete | null>(props.onComplete ?? null)
     const openPanels = ref<number[]>([])
     const { t } = useTranslations()
-    const workflowTemplates = createWorkflowTemplates()
+    const capabilitiesStore = useCapabilitiesStore()
+    const allTemplates = createWorkflowTemplates()
+    const workflowTemplates = computed(() =>
+        allTemplates.filter(
+            tpl => tpl.id !== 'email_notification' || capabilitiesStore.workflowMailConfigured
+        )
+    )
 
     const { loadEntityDefinitions } = useEntityDefinitions()
 
@@ -207,8 +227,8 @@
         })
     }
 
-    function applyTemplate(templateId: (typeof workflowTemplates)[number]['id']) {
-        const template = workflowTemplates.find(item => item.id === templateId)
+    function applyTemplate(templateId: (typeof allTemplates)[number]['id']) {
+        const template = allTemplates.find(item => item.id === templateId)
         if (!template) {
             return
         }
@@ -250,6 +270,11 @@
         })
     }
 
+    function updateOnComplete(value: OnComplete | null) {
+        onCompleteLocal.value = value
+        emit('update:onComplete', value)
+    }
+
     onMounted(async () => {
         loading.value = true
         try {
@@ -265,6 +290,19 @@
             loading.value = false
         }
     })
+
+    // Sync onCompleteLocal when the onComplete prop changes from the parent
+    watch(
+        () => props.onComplete,
+        newValue => {
+            const incoming = newValue ?? null
+            const current = JSON.stringify(onCompleteLocal.value)
+            const next = JSON.stringify(incoming)
+            if (current !== next) {
+                onCompleteLocal.value = incoming
+            }
+        }
+    )
 
     // Watch for prop changes and update local state
     // Preserve openPanels state when props change to prevent auto-closing

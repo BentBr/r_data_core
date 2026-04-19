@@ -392,15 +392,23 @@
             :available-fields="availableFields"
             @update:model-value="emit('update:modelValue', $event)"
         />
+        <SendEmailTransformEditor
+            v-else-if="transformType === 'send_email'"
+            :model-value="props.modelValue"
+            :available-fields="availableFields"
+            @update:model-value="emit('update:modelValue', $event)"
+        />
     </div>
 </template>
 
 <script setup lang="ts">
     import { ref, watch, computed } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
+    import { useCapabilitiesStore } from '@/stores/capabilities'
     import SmartIcon from '@/components/common/SmartIcon.vue'
     import MappingTable from './MappingTable.vue'
     import AuthenticateTransformEditor from './AuthenticateTransformEditor.vue'
+    import SendEmailTransformEditor from './SendEmailTransformEditor.vue'
     import type { Transform, Operand, StringOperand } from './contracts'
 
     const props = defineProps<{
@@ -411,6 +419,7 @@
     const emit = defineEmits<{ (e: 'update:modelValue', value: Transform): void }>()
 
     const { t } = useTranslations()
+    const capabilitiesStore = useCapabilitiesStore()
 
     // Use available fields or empty array
     const availableFields = computed(() => props.availableFields ?? [])
@@ -423,15 +432,21 @@
     ])
     const operandKinds = ['field', 'const']
     const stringOperandKinds = ['field', 'const_string']
-    const transformTypes = [
-        { title: 'None', value: 'none' },
-        { title: 'Arithmetic', value: 'arithmetic' },
-        { title: 'Concat', value: 'concat' },
-        { title: 'Build Path', value: 'build_path' },
-        { title: 'Resolve Entity Path', value: 'resolve_entity_path' },
-        { title: 'Get or Create Entity', value: 'get_or_create_entity' },
-        { title: 'Authenticate', value: 'authenticate' },
-    ]
+    const transformTypes = computed(() => {
+        const types = [
+            { title: 'None', value: 'none' },
+            { title: 'Arithmetic', value: 'arithmetic' },
+            { title: 'Concat', value: 'concat' },
+            { title: 'Build Path', value: 'build_path' },
+            { title: 'Resolve Entity Path', value: 'resolve_entity_path' },
+            { title: 'Get or Create Entity', value: 'get_or_create_entity' },
+            { title: 'Authenticate', value: 'authenticate' },
+        ]
+        if (capabilitiesStore.workflowMailConfigured) {
+            types.push({ title: 'Send Email', value: 'send_email' })
+        }
+        return types
+    })
 
     const transformType = ref<
         | 'none'
@@ -441,6 +456,7 @@
         | 'resolve_entity_path'
         | 'get_or_create_entity'
         | 'authenticate'
+        | 'send_email'
     >(props.modelValue.type)
 
     // Computed properties to avoid 'as any' in templates
@@ -784,6 +800,7 @@
             | 'resolve_entity_path'
             | 'get_or_create_entity'
             | 'authenticate'
+            | 'send_email'
     ) {
         transformType.value = newType
         let newTransform: Transform
@@ -829,6 +846,13 @@
                 target_path: '',
                 entity_type: '',
                 path_template: '',
+            }
+        } else if (newType === 'send_email') {
+            newTransform = {
+                type: 'send_email',
+                template_uuid: '',
+                to: [],
+                target_status: '',
             }
         } else {
             // newType is 'authenticate' at this point

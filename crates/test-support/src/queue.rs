@@ -19,7 +19,7 @@ pub async fn test_queue_client_async() -> Arc<ApalisRedisQueue> {
     let process_key = std::env::var("QUEUE_PROCESS_KEY")
         .unwrap_or_else(|_| "queue:workflows:process".to_string());
 
-    let queue = ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key)
+    let queue = ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key, "queue:email")
         .await
         .expect("Failed to construct test ApalisRedisQueue");
 
@@ -49,7 +49,12 @@ pub fn test_queue_client() -> Arc<ApalisRedisQueue> {
                 // Create a new runtime in the blocking thread
                 tokio::runtime::Runtime::new()
                     .expect("Failed to create runtime for test_queue_client")
-                    .block_on(ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key))
+                    .block_on(ApalisRedisQueue::from_parts(
+                        &url,
+                        &fetch_key,
+                        &process_key,
+                        "queue:email",
+                    ))
             }))
             .expect("Failed to spawn blocking task")
             .expect("Failed to join blocking task")
@@ -57,7 +62,12 @@ pub fn test_queue_client() -> Arc<ApalisRedisQueue> {
         // Not in a runtime, create one
         tokio::runtime::Runtime::new()
             .expect("Failed to create runtime for test_queue_client")
-            .block_on(ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key))
+            .block_on(ApalisRedisQueue::from_parts(
+                &url,
+                &fetch_key,
+                &process_key,
+                "queue:email",
+            ))
             .expect("Failed to construct queue")
     };
 

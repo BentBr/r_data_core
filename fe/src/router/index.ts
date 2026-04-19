@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useCapabilitiesStore } from '@/stores/capabilities'
 
 const routes: RouteRecordRaw[] = [
     {
@@ -17,6 +18,12 @@ const routes: RouteRecordRaw[] = [
         path: '/login',
         name: 'Login',
         component: () => import('@/pages/auth/LoginPage.vue'),
+        meta: { requiresAuth: false },
+    },
+    {
+        path: '/reset-password',
+        name: 'ResetPassword',
+        component: () => import('@/pages/auth/ResetPasswordPage.vue'),
         meta: { requiresAuth: false },
     },
     {
@@ -99,6 +106,19 @@ router.beforeEach(async (to, from, next) => {
         // If the token is expired but the user was authenticated, try to refresh
         if (authStore.isAuthenticated && authStore.isTokenExpired) {
             await authStore.refreshTokens()
+        }
+
+        // Ensure capabilities are loaded (e.g. after page reload)
+        // Wrapped in try-catch: capabilities are non-critical for navigation
+        if (authStore.isAuthenticated) {
+            try {
+                const caps = useCapabilitiesStore()
+                if (!caps.isLoaded) {
+                    void caps.fetchCapabilities()
+                }
+            } catch {
+                // Pinia may not be active in test environments
+            }
         }
 
         // After potential restore / refresh, check authentication

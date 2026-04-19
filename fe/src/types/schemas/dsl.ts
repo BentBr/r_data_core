@@ -1,6 +1,14 @@
 import { z } from 'zod'
 import { CSV_DELIMITER_LENGTH, DSL_STEPS_MIN_COUNT } from '../generated/validation'
 
+// Post-run hook types — generated from BE
+import type { OnComplete } from '../generated/OnComplete'
+import type { PostRunAction } from '../generated/PostRunAction'
+import type { PostRunCondition } from '../generated/PostRunCondition'
+import type { PostRunSendEmail } from '../generated/PostRunSendEmail'
+
+export type { OnComplete, PostRunAction, PostRunCondition, PostRunSendEmail }
+
 export const CsvOptionsSchema = z.object({
     has_header: z.boolean().optional(),
     delimiter: z.string().min(1).max(CSV_DELIMITER_LENGTH).optional(),
@@ -136,10 +144,33 @@ export const DslToNextStepSchema = z.object({
     mapping: z.record(z.string(), z.string()),
 })
 
+// String operands (used by email, concat, resolve_entity_path, etc.)
+export const DslStringOperandFieldSchema = z.object({
+    kind: z.literal('field'),
+    field: z.string(),
+})
+export const DslStringOperandConstSchema = z.object({
+    kind: z.literal('const_string'),
+    value: z.string(),
+})
+export const DslStringOperandSchema = z.discriminatedUnion('kind', [
+    DslStringOperandFieldSchema,
+    DslStringOperandConstSchema,
+])
+
+export const DslToEmailSchema = z.object({
+    type: z.literal('email'),
+    template_uuid: z.string(),
+    to: z.array(DslStringOperandSchema),
+    cc: z.array(DslStringOperandSchema).optional(),
+    mapping: z.record(z.string(), z.string()),
+})
+
 export const DslToSchema = z.discriminatedUnion('type', [
     DslToFormatSchema,
     DslToEntitySchema,
     DslToNextStepSchema,
+    DslToEmailSchema,
 ])
 
 export const DslOperandFieldSchema = z.object({
@@ -160,20 +191,6 @@ export const DslOperandSchema = z.discriminatedUnion('kind', [
     DslOperandFieldSchema,
     DslOperandConstSchema,
     DslOperandExternalSchema,
-])
-
-// String operands for concat
-export const DslStringOperandFieldSchema = z.object({
-    kind: z.literal('field'),
-    field: z.string(),
-})
-export const DslStringOperandConstSchema = z.object({
-    kind: z.literal('const_string'),
-    value: z.string(),
-})
-export const DslStringOperandSchema = z.discriminatedUnion('kind', [
-    DslStringOperandFieldSchema,
-    DslStringOperandConstSchema,
 ])
 
 export const DslTransformArithmeticSchema = z.object({
@@ -229,6 +246,13 @@ export const DslTransformAuthenticateSchema = z.object({
     extra_claims: z.record(z.string(), z.string()).optional(),
     token_expiry_seconds: z.number().optional(),
 })
+export const DslTransformSendEmailSchema = z.object({
+    type: z.literal('send_email'),
+    template_uuid: z.string(),
+    to: z.array(DslStringOperandSchema),
+    cc: z.array(DslStringOperandSchema).optional(),
+    target_status: z.string(),
+})
 export const DslTransformSchema = z.discriminatedUnion('type', [
     DslTransformNoneSchema,
     DslTransformArithmeticSchema,
@@ -237,6 +261,7 @@ export const DslTransformSchema = z.discriminatedUnion('type', [
     DslTransformBuildPathSchema,
     DslTransformGetOrCreateEntitySchema,
     DslTransformAuthenticateSchema,
+    DslTransformSendEmailSchema,
 ])
 
 export const DslStepSchema = z.object({

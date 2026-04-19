@@ -43,4 +43,18 @@ export class AuthClient extends BaseTypedHttpClient {
             allowed_routes: string[]
         }>('/admin/api/v1/auth/permissions')
     }
+
+    async forgotPassword(email: string): Promise<void> {
+        await this.request<{ message: string }>('/admin/api/v1/auth/forgot-password', {
+            method: 'POST',
+            body: JSON.stringify({ email }),
+        })
+    }
+
+    async resetPassword(token: string, newPassword: string): Promise<void> {
+        await this.request<{ message: string }>('/admin/api/v1/auth/reset-password', {
+            method: 'POST',
+            body: JSON.stringify({ token, new_password: newPassword }),
+        })
+    }
 }

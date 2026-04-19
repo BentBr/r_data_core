@@ -14,10 +14,14 @@ pub mod dynamic_entity_repository;
 pub mod dynamic_entity_repository_trait;
 pub mod dynamic_entity_utils;
 pub mod dynamic_entity_versioning;
+pub mod email_template_repository;
+pub mod email_template_repository_trait;
 pub mod entity_definition_repository;
 pub mod entity_definition_versioning_repository;
 pub mod entity_definition_versioning_repository_trait;
 pub mod migration_service;
+pub mod password_reset_repository;
+pub mod password_reset_repository_trait;
 pub mod refresh_token_repository;
 pub mod refresh_token_repository_trait;
 pub mod repository;
@@ -27,6 +31,8 @@ pub mod settings_repository;
 pub mod settings_repository_trait;
 pub mod statistics_repository;
 pub mod statistics_repository_trait;
+pub mod system_log_repository;
+pub mod system_log_repository_trait;
 pub mod version_repository;
 pub mod version_repository_trait;
 pub mod workflow_repository;
@@ -50,6 +56,8 @@ pub use dynamic_entity_query_repository::DynamicEntityQueryRepository;
 pub use dynamic_entity_query_repository_trait::DynamicEntityQueryRepositoryTrait;
 pub use dynamic_entity_repository::DynamicEntityRepository;
 pub use dynamic_entity_repository_trait::{DynamicEntityRepositoryTrait, FilterEntitiesParams};
+pub use email_template_repository::EmailTemplateRepository;
+pub use email_template_repository_trait::EmailTemplateRepositoryTrait;
 pub use entity_definition_repository::EntityDefinitionRepository;
 pub use entity_definition_versioning_repository::{
     EntityDefinitionVersionMeta, EntityDefinitionVersionPayload,
@@ -57,6 +65,8 @@ pub use entity_definition_versioning_repository::{
 };
 pub use entity_definition_versioning_repository_trait::EntityDefinitionVersioningRepositoryTrait;
 pub use migration_service::{AppliedMigration, MigrationService, MigrationStatus};
+pub use password_reset_repository::PasswordResetRepository;
+pub use password_reset_repository_trait::PasswordResetRepositoryTrait;
 pub use refresh_token_repository::RefreshTokenRepository;
 pub use refresh_token_repository_trait::RefreshTokenRepositoryTrait;
 pub use repository::{EntityRepository, PgPoolExtension};
@@ -68,6 +78,8 @@ pub use statistics_repository::StatisticsRepository;
 pub use statistics_repository_trait::{
     EntityCount, EntityDefinitionsStats, StatisticsRepositoryTrait,
 };
+pub use system_log_repository::SystemLogRepository;
+pub use system_log_repository_trait::{SystemLogFilter, SystemLogRepositoryTrait};
 pub use version_repository::{EntityVersionMeta, EntityVersionPayload, VersionRepository};
 pub use version_repository_trait::VersionRepositoryTrait;
 pub use workflow_repository::{get_provider_config, WorkflowRepository};

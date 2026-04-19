@@ -1,0 +1,110 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                uuid,\n                created_at,\n                created_by,\n                status      AS \"status: SystemLogStatus\",\n                log_type    AS \"log_type: SystemLogType\",\n                resource_type AS \"resource_type: SystemLogResourceType\",\n                resource_uuid,\n                summary,\n                details\n            FROM system_logs\n            WHERE uuid = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "status: SystemLogStatus",
+        "type_info": {
+          "Custom": {
+            "name": "system_log_status",
+            "kind": {
+              "Enum": [
+                "success",
+                "failed",
+                "pending"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "log_type: SystemLogType",
+        "type_info": {
+          "Custom": {
+            "name": "system_log_type",
+            "kind": {
+              "Enum": [
+                "email_sent",
+                "entity_created",
+                "entity_updated",
+                "entity_deleted",
+                "auth_event"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "resource_type: SystemLogResourceType",
+        "type_info": {
+          "Custom": {
+            "name": "system_log_resource_type",
+            "kind": {
+              "Enum": [
+                "email",
+                "admin_user",
+                "role",
+                "workflow",
+                "entity_definition",
+                "email_template",
+                "api_key",
+                "system_settings"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "resource_uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "summary",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "details",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "8ab04c8bf67da4a0cef0c8337bb0b86660a820dbab2eaec8a3762496071a3994"
+}
