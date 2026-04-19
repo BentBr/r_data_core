@@ -43,7 +43,7 @@ impl RunContext {
     }
 }
 
-fn should_execute(condition: &PostRunCondition, context: &RunContext) -> bool {
+const fn should_execute(condition: &PostRunCondition, context: &RunContext) -> bool {
     match condition {
         PostRunCondition::Always => true,
         PostRunCondition::OnSuccess => context.failed_items == 0,

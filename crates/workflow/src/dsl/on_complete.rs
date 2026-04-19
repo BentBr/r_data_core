@@ -45,7 +45,7 @@ pub enum PostRunCondition {
     /// Fire after every run
     #[default]
     Always,
-    /// Fire only when all items succeeded (failed_items == 0)
+    /// Fire only when all items succeeded (`failed_items` == 0)
     OnSuccess,
     /// Fire only when at least one item failed
     OnFailure,
