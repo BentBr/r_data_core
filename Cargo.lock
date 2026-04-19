@@ -2517,7 +2517,7 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "r_data_core"
-version = "0.4.8"
+version = "0.4.9"
 dependencies = [
  "actix-cors",
  "actix-http",
@@ -2553,7 +2553,7 @@ dependencies = [
 
 [[package]]
 name = "r_data_core_api"
-version = "0.4.8"
+version = "0.4.9"
 dependencies = [
  "actix-multipart",
  "actix-web",
@@ -2581,7 +2581,7 @@ dependencies = [
 
 [[package]]
 name = "r_data_core_core"
-version = "0.4.8"
+version = "0.4.9"
 dependencies = [
  "argon2",
  "async-trait",
@@ -2612,7 +2612,7 @@ dependencies = [
 
 [[package]]
 name = "r_data_core_license"
-version = "0.4.8"
+version = "0.4.9"
 dependencies = [
  "base64",
  "clap",
@@ -2629,7 +2629,7 @@ dependencies = [
 
 [[package]]
 name = "r_data_core_persistence"
-version = "0.4.8"
+version = "0.4.9"
 dependencies = [
  "argon2",
  "async-trait",
@@ -2647,7 +2647,7 @@ dependencies = [
 
 [[package]]
 name = "r_data_core_services"
-version = "0.4.8"
+version = "0.4.9"
 dependencies = [
  "async-trait",
  "base64",
@@ -2678,7 +2678,7 @@ dependencies = [
 
 [[package]]
 name = "r_data_core_test_support"
-version = "0.4.8"
+version = "0.4.9"
 dependencies = [
  "dotenvy",
  "log",
@@ -2695,7 +2695,7 @@ dependencies = [
 
 [[package]]
 name = "r_data_core_worker"
-version = "0.4.8"
+version = "0.4.9"
 dependencies = [
  "async-trait",
  "base64",
@@ -2718,7 +2718,7 @@ dependencies = [
 
 [[package]]
 name = "r_data_core_workflow"
-version = "0.4.8"
+version = "0.4.9"
 dependencies = [
  "actix-web",
  "async-trait",

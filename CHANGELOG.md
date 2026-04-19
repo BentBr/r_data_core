@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.4.9](https://github.com/BentBr/r_data_core/compare/core-v0.4.8...core-v0.4.9) (2026-04-19)
+
+
+### Features
+
+* introducing system logs + emailing via workflows and system ([6061560](https://github.com/BentBr/r_data_core/commit/6061560176bf3a59daf3b286b7b1575299f60f06))
+* post run workflow hook - emails ([7f9380b](https://github.com/BentBr/r_data_core/commit/7f9380bfe043866e0d7552edddf4c83521e22fef))
+
+
+### Bug Fixes
+
+* making sure disabled users cannot be disabled again ([b3ec3c3](https://github.com/BentBr/r_data_core/commit/b3ec3c35c525a338bf02fd08be18f8a825bf86d7))
+* making sure disabled users cannot be disabled again ([1a73d41](https://github.com/BentBr/r_data_core/commit/1a73d415187f061b5fa3817fb339e5f956617aef))
+* making sure to not omit empty fields to FE as this is a bad behaviour. We always want empty fields and a homogeneous reacting FE ([4d53914](https://github.com/BentBr/r_data_core/commit/4d53914b00ac893654899daabc82e45254c2c4d6))
+* pinia breaking-change in prod. removed it ([068084a](https://github.com/BentBr/r_data_core/commit/068084a93b4362c09ac0588e9058e5b4c22a01ab))
+* updating DSL features in workflows and capability checks. ([5b0f2b8](https://github.com/BentBr/r_data_core/commit/5b0f2b8de9296a15ff3c20590859524960cd954c))
+* various fixes + refactors regarding system logging and emailing ([f777bf9](https://github.com/BentBr/r_data_core/commit/f777bf9be5a5f3b4b5ccb7fa4e8fd16303c998a6))
+
 ## [0.4.8](https://github.com/BentBr/r_data_core/compare/core-v0.4.7...core-v0.4.8) (2026-04-15)
 
 
