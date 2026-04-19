@@ -41,6 +41,7 @@ pub enum SystemLogResourceType {
     EntityDefinition,
     EmailTemplate,
     ApiKey,
+    SystemSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -129,6 +130,10 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&SystemLogResourceType::ApiKey).unwrap(),
             "\"api_key\""
+        );
+        assert_eq!(
+            serde_json::to_string(&SystemLogResourceType::SystemSettings).unwrap(),
+            "\"system_settings\""
         );
     }
 

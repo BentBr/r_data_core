@@ -323,12 +323,22 @@ fn get_mail_config() -> MailConfig {
     let system = std::env::var("SYSTEM_SMTP_DSN")
         .ok()
         .filter(|s| !s.is_empty())
-        .and_then(|dsn| crate::config::mail::parse_smtp_dsn(&dsn).ok());
+        .and_then(|dsn| {
+            crate::config::mail::parse_smtp_dsn(&dsn).map_err(|e| {
+                log::warn!("Failed to parse SYSTEM_SMTP_DSN: {e}");
+                e
+            }).ok()
+        });
 
     let workflow = std::env::var("WORKFLOW_SMTP_DSN")
         .ok()
         .filter(|s| !s.is_empty())
-        .and_then(|dsn| crate::config::mail::parse_smtp_dsn(&dsn).ok());
+        .and_then(|dsn| {
+            crate::config::mail::parse_smtp_dsn(&dsn).map_err(|e| {
+                log::warn!("Failed to parse WORKFLOW_SMTP_DSN: {e}");
+                e
+            }).ok()
+        });
 
     MailConfig { system, workflow }
 }

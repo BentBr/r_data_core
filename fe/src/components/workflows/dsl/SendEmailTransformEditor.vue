@@ -1,5 +1,14 @@
 <template>
     <div>
+        <v-alert
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+        >
+            {{ t('workflows.dsl.hints.send_email.info') }}
+        </v-alert>
+
         <v-select
             :model-value="templateUuid"
             :items="emailTemplateItems"
@@ -10,8 +19,28 @@
             class="mb-2"
             :hint="t('workflows.dsl.hints.send_email.template_uuid')"
             persistent-hint
-            @update:model-value="updateField('template_uuid', $event)"
+            @update:model-value="onTemplateSelected"
         />
+
+        <!-- Template variables hint -->
+        <v-alert
+            v-if="selectedTemplateVars.length > 0"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+        >
+            <div class="text-caption font-weight-bold mb-1">
+                {{ t('workflows.dsl.hints.send_email.template_variables') }}
+            </div>
+            <div
+                v-for="v in selectedTemplateVars"
+                :key="v.key"
+                class="text-caption"
+            >
+                <code v-text="wrapVar(v.key)" /> — {{ v.description || '(no description)' }}
+            </div>
+        </v-alert>
 
         <div class="text-caption mb-1 mt-2">{{ t('workflows.dsl.send_email_to') }}</div>
         <div
@@ -157,7 +186,13 @@
     const availableFields = computed(() => props.availableFields ?? [])
     const stringOperandKinds = ['field', 'const_string']
 
+    import type { EmailTemplate } from '@/api/clients/email-templates'
+
+    const emailTemplates = ref<EmailTemplate[]>([])
     const emailTemplateItems = ref<{ title: string; value: string }[]>([])
+    const selectedTemplateVars = ref<Array<{ key: string; description: string }>>([])
+
+    const wrapVar = (key: string): string => `{{${key}}}`
 
     const templateUuid = computed(() => {
         if (props.modelValue.type === 'send_email') {
@@ -194,13 +229,34 @@
     async function loadEmailTemplates() {
         try {
             const templates = await typedHttpClient.listEmailTemplates('workflow')
-            emailTemplateItems.value = templates.map(t => ({
-                title: t.name,
-                value: t.uuid,
+            emailTemplates.value = templates
+            emailTemplateItems.value = templates.map(tmpl => ({
+                title: tmpl.name,
+                value: tmpl.uuid,
             }))
+            // If a template is already selected, load its variables
+            if (templateUuid.value) {
+                updateSelectedVars(templateUuid.value)
+            }
         } catch {
+            emailTemplates.value = []
             emailTemplateItems.value = []
         }
+    }
+
+    function updateSelectedVars(uuid: string) {
+        const tmpl = emailTemplates.value.find(t => t.uuid === uuid)
+        if (tmpl) {
+            const vars = tmpl.variables as Array<{ key: string; description: string }>
+            selectedTemplateVars.value = Array.isArray(vars) ? vars : []
+        } else {
+            selectedTemplateVars.value = []
+        }
+    }
+
+    function onTemplateSelected(uuid: string) {
+        updateField('template_uuid', uuid)
+        updateSelectedVars(uuid)
     }
 
     function updateField(field: string, value: unknown) {

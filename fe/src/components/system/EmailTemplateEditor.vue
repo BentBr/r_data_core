@@ -44,10 +44,12 @@
                         <v-text-field
                             v-model="form.slug"
                             :label="t('system.email_templates.slug')"
-                            readonly
+                            disabled
                             variant="outlined"
                             density="compact"
                             class="mb-3"
+                            :hint="template ? '' : t('system.email_templates.slug_auto_hint')"
+                            persistent-hint
                         />
                     </v-col>
                 </v-row>
@@ -82,29 +84,56 @@
                     class="mb-3"
                 />
 
-                <div
-                    v-if="form.variables.length > 0"
-                    class="mt-2"
-                >
+                <!-- Auto-detected variables -->
+                <div class="mt-2">
                     <div class="text-subtitle-2 mb-2">
                         {{ t('system.email_templates.variables') }}
+                        <span class="text-caption text-medium-emphasis ml-2">
+                            {{ t('system.email_templates.variables_auto_hint') }}
+                        </span>
                     </div>
-                    <v-table density="compact">
+
+                    <v-alert
+                        v-if="detectedVariableKeys.length === 0"
+                        type="info"
+                        variant="tonal"
+                        density="compact"
+                        class="mb-2"
+                    >
+                        {{ t('system.email_templates.no_variables_detected') }}
+                    </v-alert>
+
+                    <v-table
+                        v-else
+                        density="compact"
+                    >
                         <thead>
                             <tr>
-                                <th>{{ t('system.email_templates.variable_key') }}</th>
+                                <th style="width: 200px">
+                                    {{ t('system.email_templates.variable_key') }}
+                                </th>
                                 <th>{{ t('system.email_templates.variable_description') }}</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr
-                                v-for="variable in form.variables"
-                                :key="variable.key"
+                                v-for="key in detectedVariableKeys"
+                                :key="key"
                             >
                                 <td>
-                                    <code>{{ variable.key }}</code>
+                                    <code v-text="wrapVar(key)" />
                                 </td>
-                                <td>{{ variable.description }}</td>
+                                <td>
+                                    <v-text-field
+                                        :model-value="variableDescriptions[key] ?? ''"
+                                        density="compact"
+                                        variant="plain"
+                                        hide-details
+                                        :placeholder="t('system.email_templates.variable_description_placeholder')"
+                                        class="mt-0 pt-0"
+                                        @update:model-value="(val: string) => (variableDescriptions[key] = val)"
+                                    />
+                                </td>
                             </tr>
                         </tbody>
                     </v-table>
@@ -134,7 +163,7 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, watch } from 'vue'
+    import { ref, watch, computed } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import { useSnackbar } from '@/composables/useSnackbar'
     import { useErrorHandler } from '@/composables/useErrorHandler'
@@ -166,8 +195,57 @@
         subject_template: '',
         body_html_template: '',
         body_text_template: '',
-        variables: [] as Array<{ key: string; description: string }>,
     })
+
+    /** Descriptions keyed by variable name — preserved across re-parses */
+    const variableDescriptions = ref<Record<string, string>>({})
+
+    /** Extract all unique handlebars variable names from text, ignoring block helpers */
+    const extractVariableKeys = (text: string): string[] => {
+        const pattern = /\{\{\s*([a-zA-Z_][a-zA-Z0-9_.]*)\s*\}\}/g
+        const keys = new Set<string>()
+        let m: RegExpExecArray | null = pattern.exec(text)
+        while (m !== null) {
+            const key = m[1]
+            // Skip Handlebars block helpers and keywords
+            if (key !== 'else' && key !== 'this') {
+                keys.add(key)
+            }
+            m = pattern.exec(text)
+        }
+        return [...keys].sort()
+    }
+
+    /** All unique variable keys detected from subject + html + text templates */
+    const detectedVariableKeys = computed(() => {
+        const allText = [
+            form.value.subject_template,
+            form.value.body_html_template,
+            form.value.body_text_template,
+        ].join('\n')
+        return extractVariableKeys(allText)
+    })
+
+    /** Format a variable key as a Handlebars placeholder for display */
+    const wrapVar = (key: string): string => `{{${key}}}`
+
+    /** Generate a slug from a display name */
+    const toSlug = (name: string): string =>
+        name
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, '_')
+            .replace(/[^a-z0-9_]/g, '')
+
+    // Auto-generate slug from name when creating a new template
+    watch(
+        () => form.value.name,
+        name => {
+            if (!props.template) {
+                form.value.slug = toSlug(name)
+            }
+        }
+    )
 
     watch(
         () => props.template,
@@ -179,8 +257,16 @@
                     subject_template: template.subject_template,
                     body_html_template: template.body_html_template,
                     body_text_template: template.body_text_template,
-                    variables: [...(template.variables as Array<{ key: string; description: string }>)],
                 }
+                // Restore descriptions from the template's variables JSON
+                const vars = template.variables as Array<{ key: string; description: string }>
+                const descs: Record<string, string> = {}
+                if (Array.isArray(vars)) {
+                    for (const v of vars) {
+                        descs[v.key] = v.description ?? ''
+                    }
+                }
+                variableDescriptions.value = descs
             } else {
                 form.value = {
                     name: '',
@@ -188,23 +274,31 @@
                     subject_template: '',
                     body_html_template: '',
                     body_text_template: '',
-                    variables: [],
                 }
+                variableDescriptions.value = {}
             }
         },
         { immediate: true }
     )
 
+    /** Build the variables array from detected keys + user descriptions */
+    const buildVariablesPayload = (): Array<{ key: string; description: string }> =>
+        detectedVariableKeys.value.map(key => ({
+            key,
+            description: variableDescriptions.value[key] ?? '',
+        }))
+
     const handleSave = async () => {
         saving.value = true
         try {
+            const variables = buildVariablesPayload()
             if (props.template) {
                 await typedHttpClient.updateEmailTemplate(props.template.uuid, {
                     name: form.value.name,
                     subject_template: form.value.subject_template,
                     body_html_template: form.value.body_html_template,
                     body_text_template: form.value.body_text_template,
-                    variables: form.value.variables,
+                    variables,
                 })
                 showSuccess(t('system.email_templates.updated'))
             } else {
@@ -214,7 +308,7 @@
                     subject_template: form.value.subject_template,
                     body_html_template: form.value.body_html_template,
                     body_text_template: form.value.body_text_template,
-                    variables: form.value.variables,
+                    variables,
                 })
                 showSuccess(t('system.email_templates.created'))
             }

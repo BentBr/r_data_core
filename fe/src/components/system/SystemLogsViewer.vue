@@ -102,7 +102,10 @@
 
             <template #item.resource_uuid="{ item }">
                 <router-link
-                    v-if="item.resource_uuid && getResourceRoute(item.resource_type, item.resource_uuid)"
+                    v-if="
+                        item.resource_uuid &&
+                        getResourceRoute(item.resource_type, item.resource_uuid)
+                    "
                     :to="getResourceRoute(item.resource_type, item.resource_uuid)!"
                     class="text-body-2 text-decoration-none"
                 >
@@ -150,8 +153,15 @@
                     <v-table density="compact">
                         <tbody>
                             <tr>
-                                <td class="font-weight-bold" style="width: 160px">UUID</td>
-                                <td><code>{{ detailLog.uuid }}</code></td>
+                                <td
+                                    class="font-weight-bold"
+                                    style="width: 160px"
+                                >
+                                    UUID
+                                </td>
+                                <td>
+                                    <code>{{ detailLog.uuid }}</code>
+                                </td>
                             </tr>
                             <tr>
                                 <td class="font-weight-bold">{{ t('system.logs.timestamp') }}</td>
@@ -160,7 +170,11 @@
                             <tr>
                                 <td class="font-weight-bold">{{ t('system.logs.type') }}</td>
                                 <td>
-                                    <v-chip :color="getLogTypeColor(detailLog.log_type)" size="small" variant="tonal">
+                                    <v-chip
+                                        :color="getLogTypeColor(detailLog.log_type)"
+                                        size="small"
+                                        variant="tonal"
+                                    >
                                         {{ detailLog.log_type }}
                                     </v-chip>
                                 </td>
@@ -173,20 +187,43 @@
                                 <td class="font-weight-bold">Resource UUID</td>
                                 <td>
                                     <router-link
-                                        v-if="detailLog.resource_uuid && getResourceRoute(detailLog.resource_type, detailLog.resource_uuid)"
-                                        :to="getResourceRoute(detailLog.resource_type, detailLog.resource_uuid)!"
+                                        v-if="
+                                            detailLog.resource_uuid &&
+                                            getResourceRoute(
+                                                detailLog.resource_type,
+                                                detailLog.resource_uuid
+                                            )
+                                        "
+                                        :to="
+                                            getResourceRoute(
+                                                detailLog.resource_type,
+                                                detailLog.resource_uuid
+                                            )!
+                                        "
                                     >
                                         <code>{{ detailLog.resource_uuid }}</code>
                                     </router-link>
-                                    <code v-else-if="detailLog.resource_uuid">{{ detailLog.resource_uuid }}</code>
-                                    <span v-else class="text-medium-emphasis">—</span>
+                                    <code v-else-if="detailLog.resource_uuid">{{
+                                        detailLog.resource_uuid
+                                    }}</code>
+                                    <span
+                                        v-else
+                                        class="text-medium-emphasis"
+                                        >—</span
+                                    >
                                 </td>
                             </tr>
                             <tr>
                                 <td class="font-weight-bold">{{ t('system.logs.actor') }}</td>
                                 <td>
-                                    <code v-if="detailLog.created_by">{{ detailLog.created_by }}</code>
-                                    <span v-else class="text-medium-emphasis">—</span>
+                                    <code v-if="detailLog.created_by">{{
+                                        detailLog.created_by
+                                    }}</code>
+                                    <span
+                                        v-else
+                                        class="text-medium-emphasis"
+                                        >—</span
+                                    >
                                 </td>
                             </tr>
                             <tr>
@@ -196,7 +233,11 @@
                             <tr>
                                 <td class="font-weight-bold">{{ t('system.logs.status') }}</td>
                                 <td>
-                                    <v-chip :color="getStatusColor(detailLog.status)" size="small" variant="tonal">
+                                    <v-chip
+                                        :color="getStatusColor(detailLog.status)"
+                                        size="small"
+                                        variant="tonal"
+                                    >
                                         {{ detailLog.status }}
                                     </v-chip>
                                 </td>
@@ -205,18 +246,26 @@
                     </v-table>
 
                     <!-- Details JSON -->
-                    <div v-if="detailLog.details" class="mt-4">
+                    <div
+                        v-if="detailLog.details"
+                        class="mt-4"
+                    >
                         <h4 class="text-subtitle-2 mb-2">{{ t('system.logs.details') }}</h4>
 
                         <!-- Email HTML preview -->
                         <div
-                            v-if="detailLog.log_type === 'email_sent' && getHtmlPreview(detailLog.details)"
+                            v-if="
+                                detailLog.log_type === 'email_sent' &&
+                                getHtmlPreview(detailLog.details)
+                            "
                             class="email-preview-frame mb-4"
                             v-html="getHtmlPreview(detailLog.details)"
                         />
 
                         <!-- Raw JSON -->
-                        <pre class="json-details pa-3 rounded">{{ JSON.stringify(detailLog.details, null, 2) }}</pre>
+                        <pre class="json-details pa-3 rounded">{{
+                            JSON.stringify(detailLog.details, null, 2)
+                        }}</pre>
                     </div>
                 </v-card-text>
                 <v-card-actions class="pa-4 px-6">
@@ -271,6 +320,7 @@
         entity_definition: '/entity-definitions/{uuid}',
         email_template: '/system',
         api_key: '/api-keys',
+        system_settings: '/system',
         email: '/system',
     }
 
@@ -296,6 +346,7 @@
         'entity_definition',
         'email_template',
         'api_key',
+        'system_settings',
     ]
 
     const statusOptions: SystemLogStatus[] = ['success', 'failed', 'pending']
@@ -331,7 +382,7 @@
                 date_from: toIso8601(filterDateFrom.value),
                 date_to: toIso8601(filterDateTo.value),
             })
-            logs.value = result.data ?? []
+            logs.value = result.data
             totalItems.value = result.meta?.pagination?.total ?? 0
         } catch (err) {
             handleError(err)

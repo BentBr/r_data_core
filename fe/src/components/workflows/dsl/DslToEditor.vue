@@ -192,6 +192,15 @@
             </v-btn>
         </template>
         <template v-else-if="modelValue.type === 'email'">
+            <v-alert
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mb-3"
+            >
+                {{ t('workflows.dsl.hints.email_to.info') }}
+            </v-alert>
+
             <v-select
                 :model-value="emailTemplateUuid"
                 :items="emailTemplateItems"

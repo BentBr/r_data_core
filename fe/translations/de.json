@@ -335,13 +335,16 @@
                     "template_uuid": "Wählen Sie eine Workflow-E-Mail-Vorlage aus. Vorlagen verwalten unter System > E-Mail-Vorlagen.",
                     "to": "Empfänger aus Workflow-Datenfeldern oder konstanten E-Mail-Adressen.",
                     "cc": "Optionale CC-Empfänger, gleiches Format wie An.",
-                    "target_status": "Feldname zum Speichern des Sendeergebnisses (z.B. 'queued', 'mail_not_configured')."
+                    "target_status": "Feldname zum Speichern des Sendeergebnisses (z.B. 'queued', 'mail_not_configured'). Folgende Schritte koennen dieses Feld auslesen.",
+                    "template_variables": "Vorlagenvariablen (automatisch aus den normalisierten Feldern dieses Schritts befuellt):",
+                    "info": "Sendet eine E-Mail pro verarbeitetem Datensatz. Verwenden als Pipeline-Benachrichtigung — der Workflow laeuft nach dem Einreihen der E-Mail weiter. Vorlagenvariablen werden aus dem normalisierten Kontext befuellt (alle Felder aus dem 'Von'-Mapping + vorherige Transformationen)."
                 },
                 "email_to": {
                     "template_uuid": "Wählen Sie eine Workflow-E-Mail-Vorlage aus. Vorlagen verwalten unter System > E-Mail-Vorlagen.",
                     "to": "Empfänger aus Workflow-Datenfeldern oder konstanten E-Mail-Adressen.",
                     "cc": "Optionale CC-Empfänger, gleiches Format wie An.",
-                    "mapping": "Ausgabefelder auf Vorlagenvariablen abbilden. Links = erzeugtes Feld, rechts = Vorlagenvariablenname."
+                    "mapping": "Ausgabefelder auf Vorlagenvariablen abbilden. Links = erzeugtes Feld, rechts = Vorlagenvariablenname.",
+                    "info": "Sendet eine E-Mail pro Datensatz als finale Ausgabe dieses Schritts. Verwenden wenn die E-Mail das Ergebnis ist (z.B. Bericht senden). Fuer Pipeline-Benachrichtigungen stattdessen die E-Mail-Senden-Transformation verwenden."
                 }
             }
         },
@@ -996,6 +999,10 @@
             "edit": "Vorlage bearbeiten",
             "name": "Name",
             "slug": "Slug",
+            "slug_auto_hint": "Automatisch vom Namen generiert. Workflows referenzieren Templates per UUID, nicht per Slug.",
+            "variables_auto_hint": "Automatisch aus dem Vorlagentext erkannt. Beschreibungen zur Dokumentation hinzufuegen.",
+            "no_variables_detected": "Keine {{Variablen}} im Vorlagentext erkannt. Verwenden Sie {{variable_name}} Syntax im Betreff, HTML- oder Klartext.",
+            "variable_description_placeholder": "Beschreibung eingeben...",
             "type": "Typ",
             "subject": "Betreff-Vorlage",
             "body_html": "HTML-Text-Vorlage",

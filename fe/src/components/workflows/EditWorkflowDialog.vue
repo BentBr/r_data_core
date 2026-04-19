@@ -231,7 +231,7 @@
             const data = await typedHttpClient.getWorkflow(props.workflowUuid)
             form.value.name = data.name
             form.value.description = data.description ?? ''
-            form.value.kind = data.kind as 'consumer' | 'provider'
+            form.value.kind = data.kind.toLowerCase() as 'consumer' | 'provider'
             form.value.enabled = data.enabled
             form.value.schedule_cron = data.schedule_cron ?? ''
             form.value.versioning_disabled =

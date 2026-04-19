@@ -129,7 +129,25 @@ pub async fn update_entity_versioning_settings(
         .update_entity_versioning_settings(&current, updated_by)
         .await
     {
-        Ok(()) => ApiResponse::ok(EntityVersioningSettingsDto::from(current)),
+        Ok(()) => {
+            if let Some(log_svc) = data.system_log_service() {
+                log_svc
+                    .log_entity_updated(
+                        Some(updated_by),
+                        r_data_core_core::system_log::SystemLogResourceType::SystemSettings,
+                        updated_by, // no specific resource UUID, use actor
+                        "Entity versioning settings updated",
+                        Some(serde_json::json!({
+                            "setting": "entity_versioning",
+                            "enabled": current.enabled,
+                            "max_versions": current.max_versions,
+                            "max_age_days": current.max_age_days,
+                        })),
+                    )
+                    .await;
+            }
+            ApiResponse::ok(EntityVersioningSettingsDto::from(current))
+        }
         Err(e) => {
             log::error!("Failed to update settings: {e}");
             ApiResponse::<()>::internal_error("Failed to update settings")
@@ -231,7 +249,25 @@ pub async fn update_workflow_run_log_settings(
         .update_workflow_run_log_settings(&current, updated_by)
         .await
     {
-        Ok(()) => ApiResponse::ok(WorkflowRunLogSettingsDto::from(current)),
+        Ok(()) => {
+            if let Some(log_svc) = data.system_log_service() {
+                log_svc
+                    .log_entity_updated(
+                        Some(updated_by),
+                        r_data_core_core::system_log::SystemLogResourceType::SystemSettings,
+                        updated_by,
+                        "Workflow run log settings updated",
+                        Some(serde_json::json!({
+                            "setting": "workflow_run_logs",
+                            "enabled": current.enabled,
+                            "max_runs": current.max_runs,
+                            "max_age_days": current.max_age_days,
+                        })),
+                    )
+                    .await;
+            }
+            ApiResponse::ok(WorkflowRunLogSettingsDto::from(current))
+        }
         Err(e) => {
             log::error!("Failed to update workflow run log settings: {e}");
             ApiResponse::<()>::internal_error("Failed to update settings")

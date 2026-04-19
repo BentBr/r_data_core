@@ -107,6 +107,15 @@ router.beforeEach(async (to, from, next) => {
             await authStore.refreshTokens()
         }
 
+        // Ensure capabilities are loaded (e.g. after page reload)
+        if (authStore.isAuthenticated) {
+            const { useCapabilitiesStore } = await import('@/stores/capabilities')
+            const capabilitiesStore = useCapabilitiesStore()
+            if (!capabilitiesStore.isLoaded) {
+                void capabilitiesStore.fetchCapabilities()
+            }
+        }
+
         // After potential restore / refresh, check authentication
         if (!authStore.isAuthenticated) {
             // If coming from login page, don't add redirect query (prevents loops after logout)

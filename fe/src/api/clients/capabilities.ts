@@ -1,9 +1,7 @@
 import { BaseTypedHttpClient } from './base'
+import type { CapabilitiesResponse } from '@/types/generated/CapabilitiesResponse'
 
-export interface CapabilitiesResponse {
-    system_mail_configured: boolean
-    workflow_mail_configured: boolean
-}
+export type { CapabilitiesResponse }
 
 export class CapabilitiesClient extends BaseTypedHttpClient {
     async getCapabilities(): Promise<CapabilitiesResponse> {

@@ -335,13 +335,16 @@
                     "template_uuid": "Select a workflow email template. Manage templates under System > Email Templates.",
                     "to": "Recipients from workflow data fields or constant email addresses.",
                     "cc": "Optional CC recipients, same format as To.",
-                    "target_status": "Field name to store the send result (e.g. 'queued', 'mail_not_configured')."
+                    "target_status": "Field name to store the send result (e.g. 'queued', 'mail_not_configured'). Subsequent steps can read this field.",
+                    "template_variables": "Template variables (populated automatically from the normalized fields in this step):",
+                    "info": "Sends one email per item processed. Use as a mid-pipeline notification — the workflow continues after queuing the email. Template variables are filled from the normalized context (all fields from the 'from' mapping + prior transforms)."
                 },
                 "email_to": {
                     "template_uuid": "Select a workflow email template. Manage templates under System > Email Templates.",
                     "to": "Recipients from workflow data fields or constant email addresses.",
                     "cc": "Optional CC recipients, same format as To.",
-                    "mapping": "Map output fields to template variables. Left = produced field, right = template variable name."
+                    "mapping": "Map output fields to template variables. Left = produced field, right = template variable name.",
+                    "info": "Sends one email per item as the final output of this step. Use when the email IS the result (e.g. sending a report). For mid-pipeline notifications, use the Send Email transform instead."
                 }
             }
         },
@@ -996,6 +999,10 @@
             "edit": "Edit Template",
             "name": "Name",
             "slug": "Slug",
+            "slug_auto_hint": "Auto-generated from name. Workflows reference templates by UUID, not slug.",
+            "variables_auto_hint": "Auto-detected from template text. Add descriptions for documentation.",
+            "no_variables_detected": "No {{variables}} detected in the template text. Use {{variable_name}} syntax in subject, HTML, or plain text body.",
+            "variable_description_placeholder": "Enter description...",
             "type": "Type",
             "subject": "Subject Template",
             "body_html": "HTML Body Template",
