@@ -1,6 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-mod execution;
+pub mod execution;
 pub mod from;
 pub mod on_complete;
 pub mod path_resolution;
@@ -9,6 +9,7 @@ pub mod to;
 pub mod transform;
 mod validation;
 
+pub use execution::{get_nested, set_nested};
 pub use from::{EntityFilter, FormatConfig, FromDef, SourceConfig};
 pub use on_complete::{OnComplete, PostRunAction, PostRunCondition, PostRunSendEmail};
 pub use path_resolution::{

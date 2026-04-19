@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use r_data_core_core::error::Result;
 use r_data_core_workflow::dsl::{build_path_from_fields, transform::Transform, StringOperand};
+use r_data_core_workflow::dsl::{get_nested, set_nested};
 use serde_json::Value;
 
 /// JWT configuration for authenticate transforms
@@ -20,51 +21,6 @@ pub struct MailContext<'a> {
     pub service: Option<&'a crate::mail::MailService>,
     /// Job queue for enqueuing email jobs (None if no queue is configured)
     pub queue: Option<&'a dyn r_data_core_workflow::data::job_queue::JobQueue>,
-}
-
-// Helper functions to access nested values (re-implementing execution module functions)
-fn get_nested(input: &Value, path: &str) -> Option<Value> {
-    let mut current = input;
-    for key in path.split('.') {
-        match current {
-            Value::Object(map) => {
-                if let Some(v) = map.get(key) {
-                    current = v;
-                } else {
-                    return None;
-                }
-            }
-            _ => return None,
-        }
-    }
-    Some(current.clone())
-}
-
-fn set_nested(target: &mut Value, path: &str, val: Value) {
-    let mut acc = val;
-    for key in path.split('.').rev() {
-        let mut map = serde_json::Map::new();
-        map.insert(key.to_string(), acc);
-        acc = Value::Object(map);
-    }
-    merge_objects(target, &acc);
-}
-
-fn merge_objects(target: &mut Value, addition: &Value) {
-    match (target, addition) {
-        (Value::Object(tobj), Value::Object(aobj)) => {
-            for (k, v) in aobj {
-                if let Some(existing) = tobj.get_mut(k) {
-                    merge_objects(existing, v);
-                } else {
-                    tobj.insert(k.clone(), v.clone());
-                }
-            }
-        }
-        (t, v) => {
-            *t = v.clone();
-        }
-    }
 }
 
 use crate::dynamic_entity::DynamicEntityService;
