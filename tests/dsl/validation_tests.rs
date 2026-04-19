@@ -292,6 +292,26 @@ async fn test_validate_valid_email_to() {
 
 #[tokio::test]
 #[serial]
+async fn test_validate_valid_on_complete() {
+    let cfg = load_example("valid_on_complete.json");
+    let prog = DslProgram::from_config(&cfg).expect("parse dsl");
+    prog.validate().expect("valid on_complete dsl");
+    assert!(prog.on_complete.is_some());
+    let oc = prog.on_complete.unwrap();
+    assert_eq!(oc.actions.len(), 1);
+}
+
+#[tokio::test]
+#[serial]
+async fn test_validate_without_on_complete() {
+    let cfg = load_example("valid_arithmetic.json"); // existing example without on_complete
+    let prog = DslProgram::from_config(&cfg).expect("parse dsl");
+    prog.validate().expect("valid dsl");
+    assert!(prog.on_complete.is_none());
+}
+
+#[tokio::test]
+#[serial]
 async fn test_validate_invalid_filter_operator() {
     // Test invalid operators
     let invalid_operators = [

@@ -346,6 +346,17 @@
                     "mapping": "Map output fields to template variables. Left = produced field, right = template variable name.",
                     "info": "Sends one email per item as the final output of this step. Use when the email IS the result (e.g. sending a report). For mid-pipeline notifications, use the Send Email transform instead."
                 }
+            },
+            "post_run": {
+                "title": "Post-Run Actions",
+                "info": "These actions execute once after all items are processed. Use them for summary notifications, reports, or alerts.",
+                "action": "Action",
+                "send_email": "Send Email",
+                "add_email_action": "Add Post-Run Email",
+                "condition": "Condition",
+                "condition_hint": "When this action should fire.",
+                "available_run_vars": "Available run context variables:",
+                "no_actions": "No post-run actions configured."
             }
         },
         "create": {

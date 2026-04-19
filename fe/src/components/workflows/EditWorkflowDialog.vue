@@ -46,6 +46,8 @@
                                             <DslConfigurator
                                                 v-model="steps"
                                                 :workflow-uuid="workflowUuid"
+                                                :on-complete="onComplete"
+                                                @update:on-complete="onComplete = $event"
                                             />
                                         </div>
                                         <v-textarea
@@ -102,6 +104,7 @@
     import type { DslStep } from './dsl/dsl-utils'
     import { sanitizeDslSteps, ensureCsvOptions, ensureEntityFilter } from './dsl/dsl-utils'
     import type { WorkflowConfig } from '@/types/schemas/workflow'
+    import type { OnComplete } from '@/types/schemas/dsl'
 
     const props = defineProps<{ modelValue: boolean; workflowUuid: string | null }>()
     const emit = defineEmits<{
@@ -138,6 +141,7 @@
     const configJson = ref('')
     const configError = ref<string | null>(null)
     const steps = ref<DslStep[]>([])
+    const onComplete = ref<OnComplete | null>(null)
     const cronError = ref<string | null>(null)
     const cronHelp = ref<string>(
         'Use standard 5-field cron (min hour day month dow), e.g. "*/5 * * * *"'
@@ -240,15 +244,20 @@
                     : false
             configJson.value = JSON.stringify(data.config, null, 2)
             try {
-                const cfg = data.config as { steps?: DslStep[] }
+                const cfg = data.config as {
+                    steps?: DslStep[]
+                    on_complete?: OnComplete | null
+                }
                 isSyncingSteps = true
                 steps.value = Array.isArray(cfg.steps) ? cfg.steps : []
+                onComplete.value = cfg.on_complete ?? null
                 // Reset flag after next tick
                 setTimeout(() => {
                     isSyncingSteps = false
                 }, 0)
             } catch {
                 steps.value = []
+                onComplete.value = null
                 isSyncingSteps = false
             }
         } finally {
@@ -383,15 +392,19 @@
     let isSyncingSteps = false
     let isSyncingJson = false
 
-    // Sync config JSON when steps change (fields → JSON)
+    // Sync config JSON when steps or on_complete change (fields → JSON)
     watch(
-        () => steps.value,
-        v => {
+        [() => steps.value, () => onComplete.value],
+        ([v, oc]) => {
             if (isSyncingSteps || isSyncingJson) {
                 return
             }
             try {
-                const newJson = JSON.stringify({ steps: v }, null, 2)
+                const configObj: Record<string, unknown> = { steps: v }
+                if (oc) {
+                    configObj.on_complete = oc
+                }
+                const newJson = JSON.stringify(configObj, null, 2)
                 // Only update if different to prevent loops
                 if (configJson.value !== newJson) {
                     isSyncingJson = true
@@ -418,7 +431,10 @@
             try {
                 const parsed = parseJson(jsonStr)
                 if (parsed && typeof parsed === 'object') {
-                    const config = parsed as { steps?: unknown[] }
+                    const config = parsed as {
+                        steps?: unknown[]
+                        on_complete?: OnComplete | null
+                    }
                     if (Array.isArray(config.steps)) {
                         isSyncingSteps = true
                         // Sanitize steps when loading from JSON
@@ -428,6 +444,7 @@
                             ensureEntityFilter(s)
                         })
                         steps.value = sanitized
+                        onComplete.value = config.on_complete ?? null
                         // Reset flag after next tick
                         setTimeout(() => {
                             isSyncingSteps = false
@@ -444,6 +461,7 @@
     defineExpose({
         submit,
         steps,
+        onComplete,
         configJson,
         configError,
         form,

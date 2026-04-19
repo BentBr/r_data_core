@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use super::from;
+use super::on_complete::OnComplete;
 use super::to;
 use super::transform::{ArithmeticOp, Transform};
 use super::DslStep;
@@ -14,6 +15,9 @@ use super::DslStep;
 pub struct DslProgram {
     /// Steps in the program
     pub steps: Vec<DslStep>,
+    /// Optional post-run actions executed once after all items are processed
+    #[serde(default)]
+    pub on_complete: Option<OnComplete>,
 }
 
 impl DslProgram {
@@ -43,7 +47,15 @@ impl DslProgram {
                 })
             })
             .collect::<r_data_core_core::error::Result<_>>()?;
-        Ok(Self { steps: parsed })
+
+        let on_complete: Option<OnComplete> = config
+            .get("on_complete")
+            .and_then(|v| serde_json::from_value(v.clone()).ok());
+
+        Ok(Self {
+            steps: parsed,
+            on_complete,
+        })
     }
 
     /// Validate the DSL program
@@ -75,6 +87,9 @@ impl DslProgram {
                     )));
                 }
             }
+        }
+        if let Some(ref oc) = self.on_complete {
+            super::on_complete::validate_on_complete(oc, &safe_field)?;
         }
         Ok(())
     }

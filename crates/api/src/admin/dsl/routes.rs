@@ -572,7 +572,10 @@ pub async fn validate_dsl(
     let Ok(steps) = steps else {
         return ApiResponse::<()>::unprocessable_entity("Invalid DSL steps format");
     };
-    let program = DslProgram { steps };
+    let program = DslProgram {
+        steps,
+        on_complete: None,
+    };
     match program.validate() {
         Ok(()) => ApiResponse::ok(DslValidateResponse { valid: true }),
         Err(e) => ApiResponse::<()>::unprocessable_entity_with_violations(

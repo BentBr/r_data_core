@@ -1,6 +1,14 @@
 import { z } from 'zod'
 import { CSV_DELIMITER_LENGTH, DSL_STEPS_MIN_COUNT } from '../generated/validation'
 
+// Post-run hook types — generated from BE
+import type { OnComplete } from '../generated/OnComplete'
+import type { PostRunAction } from '../generated/PostRunAction'
+import type { PostRunCondition } from '../generated/PostRunCondition'
+import type { PostRunSendEmail } from '../generated/PostRunSendEmail'
+
+export type { OnComplete, PostRunAction, PostRunCondition, PostRunSendEmail }
+
 export const CsvOptionsSchema = z.object({
     has_header: z.boolean().optional(),
     delimiter: z.string().min(1).max(CSV_DELIMITER_LENGTH).optional(),

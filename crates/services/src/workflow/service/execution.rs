@@ -41,6 +41,7 @@ impl WorkflowService {
             }
         };
 
+        let run_started_at = time::OffsetDateTime::now_utc();
         let mut processed = 0_i64;
         let mut failed = 0_i64;
         loop {
@@ -74,6 +75,32 @@ impl WorkflowService {
                 }
             }
         }
+
+        // Execute post-run hooks if configured
+        if let Some(ref on_complete) = program.on_complete {
+            let run_context = crate::workflow::post_run::RunContext {
+                run_uuid,
+                workflow_name: wf.name.clone(),
+                status: if failed == 0 {
+                    "success".to_string()
+                } else {
+                    "partial_failure".to_string()
+                },
+                processed_items: processed,
+                failed_items: failed,
+                started_at: run_started_at,
+                finished_at: time::OffsetDateTime::now_utc(),
+                error: None,
+            };
+            crate::workflow::post_run::execute_post_run_actions(
+                on_complete,
+                &run_context,
+                self.mail_service.as_deref(),
+                self.queue.as_deref(),
+            )
+            .await;
+        }
+
         Ok((processed, failed))
     }
 

@@ -2,6 +2,7 @@
 
 mod execution;
 pub mod from;
+pub mod on_complete;
 pub mod path_resolution;
 mod program;
 pub mod to;
@@ -9,6 +10,7 @@ pub mod transform;
 mod validation;
 
 pub use from::{EntityFilter, FormatConfig, FromDef, SourceConfig};
+pub use on_complete::{OnComplete, PostRunAction, PostRunCondition, PostRunSendEmail};
 pub use path_resolution::{
     apply_filters_transforms, apply_value_transform, build_path_from_fields, parse_entity_path,
 };

@@ -346,6 +346,17 @@
                     "mapping": "Ausgabefelder auf Vorlagenvariablen abbilden. Links = erzeugtes Feld, rechts = Vorlagenvariablenname.",
                     "info": "Sendet eine E-Mail pro Datensatz als finale Ausgabe dieses Schritts. Verwenden wenn die E-Mail das Ergebnis ist (z.B. Bericht senden). Fuer Pipeline-Benachrichtigungen stattdessen die E-Mail-Senden-Transformation verwenden."
                 }
+            },
+            "post_run": {
+                "title": "Aktionen nach dem Lauf",
+                "info": "Diese Aktionen werden einmalig ausgefuehrt, nachdem alle Elemente verarbeitet wurden. Nutzen Sie sie fuer zusammenfassende Benachrichtigungen, Berichte oder Warnmeldungen.",
+                "action": "Aktion",
+                "send_email": "E-Mail senden",
+                "add_email_action": "E-Mail nach dem Lauf hinzufuegen",
+                "condition": "Bedingung",
+                "condition_hint": "Wann diese Aktion ausgefuehrt werden soll.",
+                "available_run_vars": "Verfuegbare Laufkontext-Variablen:",
+                "no_actions": "Keine Aktionen nach dem Lauf konfiguriert."
             }
         },
         "create": {
