@@ -8,7 +8,10 @@ use tokio_cron_scheduler::{Job, JobScheduler};
 use uuid::Uuid;
 
 use r_data_core_core::config::load_worker_config;
-use r_data_core_persistence::{ComponentVersionRepository, WorkflowRepository};
+use r_data_core_persistence::{
+    ComponentVersionRepository, EmailTemplateRepositoryTrait, SystemLogRepositoryTrait,
+    WorkflowRepository,
+};
 
 /// Current version from Cargo.toml
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -75,6 +78,7 @@ async fn main() -> r_data_core_core::error::Result<()> {
         &queue_cfg.redis_url,
         &queue_cfg.fetch_key,
         &queue_cfg.process_key,
+        "queue:email",
     )
     .await?;
 
@@ -118,6 +122,7 @@ async fn main() -> r_data_core_core::error::Result<()> {
                             &queue_cfg.redis_url,
                             &queue_cfg.fetch_key,
                             &queue_cfg.process_key,
+                            "queue:email",
                         )
                         .await
                         {
@@ -243,6 +248,29 @@ async fn main() -> r_data_core_core::error::Result<()> {
         });
     }
 
+    // Create mail services from config (shared across consumer loops)
+    let system_mail_service: Option<Arc<r_data_core_services::MailService>> =
+        config.mail.system.as_ref().and_then(|smtp| {
+            match r_data_core_services::MailService::new(smtp) {
+                Ok(s) => Some(Arc::new(s)),
+                Err(e) => {
+                    warn!("System mail service not available: {e}");
+                    None
+                }
+            }
+        });
+
+    let workflow_mail_service: Option<Arc<r_data_core_services::MailService>> =
+        config.mail.workflow.as_ref().and_then(
+            |smtp| match r_data_core_services::MailService::new(smtp) {
+                Ok(s) => Some(Arc::new(s)),
+                Err(e) => {
+                    warn!("Workflow mail service not available: {e}");
+                    None
+                }
+            },
+        );
+
     // Redis-backed consumer loop: block on queue and process runs.
     {
         const MAX_BACKOFF_MS: u64 = 30_000; // Max 30 seconds
@@ -256,11 +284,16 @@ async fn main() -> r_data_core_core::error::Result<()> {
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(86_400);
+
+        let workflow_mail_for_consumer = workflow_mail_service.clone();
+        let pool_for_system_log = pool.clone();
+
         tokio::spawn(async move {
             let queue = match ApalisRedisQueue::from_parts(
                 &queue_cfg.redis_url,
                 &queue_cfg.fetch_key,
                 &queue_cfg.process_key,
+                &queue_cfg.email_key,
             )
             .await
             {
@@ -270,6 +303,23 @@ async fn main() -> r_data_core_core::error::Result<()> {
                         "Failed to initialize Redis queue: {e}. Worker consumer will not start."
                     );
                     return;
+                }
+            };
+            // Also create a queue Arc for passing to WorkflowService (uses JobQueue trait)
+            let queue_for_workflow = match ApalisRedisQueue::from_parts(
+                &queue_cfg.redis_url,
+                &queue_cfg.fetch_key,
+                &queue_cfg.process_key,
+                &queue_cfg.email_key,
+            )
+            .await
+            {
+                Ok(q) => {
+                    Some(Arc::new(q) as Arc<dyn r_data_core_workflow::data::job_queue::JobQueue>)
+                }
+                Err(e) => {
+                    warn!("Failed to create workflow queue client: {e}. Workflow email enqueue will be unavailable.");
+                    None
                 }
             };
             info!(
@@ -355,6 +405,11 @@ async fn main() -> r_data_core_core::error::Result<()> {
                         );
                         let de_service =
                             DynamicEntityService::new(Arc::new(de_adapter), Arc::new(ed_service));
+                        let system_log_svc = Arc::new(r_data_core_services::SystemLogService::new(
+                            Arc::new(r_data_core_persistence::SystemLogRepository::new(
+                                pool_for_system_log.clone(),
+                            )),
+                        ));
                         let service = WorkflowService::new_with_entities(
                             Arc::new(wf_adapter),
                             Arc::new(de_service),
@@ -362,7 +417,10 @@ async fn main() -> r_data_core_core::error::Result<()> {
                         .with_jwt_config(
                             jwt_secret_for_consumer.clone(),
                             jwt_expiration_for_consumer,
-                        );
+                        )
+                        .with_mail_service(workflow_mail_for_consumer.clone())
+                        .with_queue(queue_for_workflow.clone())
+                        .with_system_log(system_log_svc);
                         // Process
                         if let Ok(Some(wf_uuid)) = repo.get_workflow_uuid_for_run(run_uuid).await {
                             match service.process_staged_items(wf_uuid, run_uuid).await {
@@ -417,6 +475,182 @@ async fn main() -> r_data_core_core::error::Result<()> {
                         // Increase backoff for next retry, but cap at MAX_BACKOFF_MS
                         retry_backoff_ms =
                             (retry_backoff_ms * BACKOFF_MULTIPLIER).min(MAX_BACKOFF_MS);
+                    }
+                }
+            }
+        });
+    }
+
+    // Email consumer loop: block on email queue and send emails.
+    {
+        let pool_for_email = pool.clone();
+        let queue_cfg_email = queue_cfg.clone();
+        let system_mail = system_mail_service.clone();
+        let workflow_mail = workflow_mail_service.clone();
+        tokio::spawn(async move {
+            let queue = match ApalisRedisQueue::from_parts(
+                &queue_cfg_email.redis_url,
+                &queue_cfg_email.fetch_key,
+                &queue_cfg_email.process_key,
+                &queue_cfg_email.email_key,
+            )
+            .await
+            {
+                Ok(q) => q,
+                Err(e) => {
+                    error!("Failed to initialize email queue: {e}. Email consumer will not start.");
+                    return;
+                }
+            };
+            info!(
+                "Email consumer loop started, waiting for email jobs from queue '{}'...",
+                queue_cfg_email.email_key
+            );
+
+            let mut retry_backoff_ms: u64 = 250;
+
+            loop {
+                match queue.blocking_pop_email().await {
+                    Ok(job) => {
+                        retry_backoff_ms = 250;
+                        info!("Popped email job: to={:?}, source={}", job.to, job.source);
+
+                        // Select mail service based on source
+                        let mail_svc = match job.source.as_str() {
+                            "system" => system_mail.as_ref(),
+                            "workflow" => workflow_mail.as_ref(),
+                            _ => {
+                                error!("Unknown email job source: {}", job.source);
+                                continue;
+                            }
+                        };
+
+                        let Some(mail_svc) = mail_svc else {
+                            error!(
+                                "Mail service not configured for source '{}', dropping email job",
+                                job.source
+                            );
+                            // Log to system_logs
+                            let repo = r_data_core_persistence::SystemLogRepository::new(
+                                pool_for_email.clone(),
+                            );
+                            let _ = repo
+                                .insert(
+                                    None,
+                                    r_data_core_core::system_log::SystemLogStatus::Failed,
+                                    r_data_core_core::system_log::SystemLogType::EmailSent,
+                                    r_data_core_core::system_log::SystemLogResourceType::Email,
+                                    job.template_uuid,
+                                    &format!(
+                                        "Email to {:?} dropped: {} mail not configured",
+                                        job.to, job.source
+                                    ),
+                                    Some(serde_json::json!({
+                                        "to": job.to,
+                                        "subject": job.subject,
+                                        "source": job.source,
+                                    })),
+                                )
+                                .await;
+                            continue;
+                        };
+
+                        // Check if we need to render from template
+                        let (subject, body_text, body_html) =
+                            if let (Some(ref tmpl_uuid), Some(ref ctx_json)) =
+                                (job.template_uuid, &job.template_context)
+                            {
+                                // Load template from DB and render
+                                let tmpl_repo =
+                                    r_data_core_persistence::EmailTemplateRepository::new(
+                                        pool_for_email.clone(),
+                                    );
+                                if let Ok(Some(template)) = tmpl_repo.get_by_uuid(*tmpl_uuid).await
+                                {
+                                    let context: serde_json::Value =
+                                        serde_json::from_str(ctx_json).unwrap_or_default();
+                                    let subj = mail_svc
+                                        .render_template(&template.subject_template, &context)
+                                        .unwrap_or_else(|_| template.subject_template.clone());
+                                    let text = mail_svc
+                                        .render_template(&template.body_text_template, &context)
+                                        .unwrap_or_else(|_| template.body_text_template.clone());
+                                    let html = mail_svc
+                                        .render_template(&template.body_html_template, &context)
+                                        .ok();
+                                    (subj, text, html)
+                                } else {
+                                    error!("Failed to load email template {tmpl_uuid}");
+                                    continue;
+                                }
+                            } else {
+                                // Pre-rendered content
+                                (
+                                    job.subject.clone(),
+                                    job.body_text.clone(),
+                                    job.body_html.clone(),
+                                )
+                            };
+
+                        // Send
+                        let result = mail_svc
+                            .send_raw_email(&job.to, &subject, &body_text, body_html.as_deref())
+                            .await;
+
+                        // Log result to system_logs
+                        let repo = r_data_core_persistence::SystemLogRepository::new(
+                            pool_for_email.clone(),
+                        );
+                        match result {
+                            Ok(()) => {
+                                info!("Email sent successfully to {:?}", job.to);
+                                let _ = repo
+                                    .insert(
+                                        None,
+                                        r_data_core_core::system_log::SystemLogStatus::Success,
+                                        r_data_core_core::system_log::SystemLogType::EmailSent,
+                                        r_data_core_core::system_log::SystemLogResourceType::Email,
+                                        job.template_uuid,
+                                        &format!("Email sent to {}", job.to.join(", ")),
+                                        Some(serde_json::json!({
+                                            "to": job.to,
+                                            "cc": job.cc,
+                                            "subject": subject,
+                                            "body_html": body_html,
+                                            "source": job.source,
+                                        })),
+                                    )
+                                    .await;
+                            }
+                            Err(e) => {
+                                error!("Failed to send email to {:?}: {e}", job.to);
+                                let _ = repo
+                                    .insert(
+                                        None,
+                                        r_data_core_core::system_log::SystemLogStatus::Failed,
+                                        r_data_core_core::system_log::SystemLogType::EmailSent,
+                                        r_data_core_core::system_log::SystemLogResourceType::Email,
+                                        job.template_uuid,
+                                        &format!(
+                                            "Failed to send email to {}: {e}",
+                                            job.to.join(", ")
+                                        ),
+                                        Some(serde_json::json!({
+                                            "to": job.to,
+                                            "subject": subject,
+                                            "source": job.source,
+                                            "error": e.to_string(),
+                                        })),
+                                    )
+                                    .await;
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        error!("Email queue pop failed: {e}");
+                        tokio::time::sleep(std::time::Duration::from_millis(retry_backoff_ms))
+                            .await;
+                        retry_backoff_ms = (retry_backoff_ms * 2).min(30_000);
                     }
                 }
             }

@@ -191,6 +191,145 @@
                 >{{ t('workflows.dsl.add_mapping') }}
             </v-btn>
         </template>
+        <template v-else-if="modelValue.type === 'email'">
+            <v-alert
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mb-3"
+            >
+                {{ t('workflows.dsl.hints.email_to.info') }}
+            </v-alert>
+
+            <v-select
+                :model-value="emailTemplateUuid"
+                :items="emailTemplateItems"
+                item-title="title"
+                item-value="value"
+                :label="t('workflows.dsl.send_email_template')"
+                density="comfortable"
+                class="mb-2"
+                :hint="t('workflows.dsl.hints.email_to.template_uuid')"
+                persistent-hint
+                @update:model-value="updateEmailField('template_uuid', $event)"
+            />
+
+            <div class="text-caption mb-1 mt-2">{{ t('workflows.dsl.send_email_to') }}</div>
+            <div
+                v-for="(operand, idx) in emailToOperands"
+                :key="`email-to-${idx}`"
+                class="d-flex ga-2 mb-2 align-center"
+            >
+                <v-select
+                    :model-value="operand.kind"
+                    :items="stringOperandKinds"
+                    :label="t('workflows.dsl.value_kind')"
+                    density="comfortable"
+                    class="flex-0"
+                    style="max-width: 180px"
+                    @update:model-value="updateEmailToKind(idx, $event)"
+                />
+                <v-text-field
+                    v-if="operand.kind === 'field'"
+                    :model-value="operand.field"
+                    :label="t('workflows.dsl.value')"
+                    density="comfortable"
+                    @update:model-value="updateEmailToField(idx, $event)"
+                />
+                <v-text-field
+                    v-else
+                    :model-value="operand.value"
+                    :label="t('workflows.dsl.value')"
+                    density="comfortable"
+                    @update:model-value="updateEmailToValue(idx, $event)"
+                />
+                <v-btn
+                    icon="mdi-delete"
+                    variant="text"
+                    size="small"
+                    @click="removeEmailTo(idx)"
+                />
+            </div>
+            <v-btn
+                variant="outlined"
+                size="small"
+                class="mb-2"
+                @click="addEmailTo"
+            >
+                {{ t('workflows.dsl.add_recipient') }}
+            </v-btn>
+            <div class="text-caption text-medium-emphasis mb-4">
+                {{ t('workflows.dsl.hints.email_to.to') }}
+            </div>
+
+            <div class="text-caption mb-1 mt-2">{{ t('workflows.dsl.send_email_cc') }}</div>
+            <div
+                v-for="(operand, idx) in emailCcOperands"
+                :key="`email-cc-${idx}`"
+                class="d-flex ga-2 mb-2 align-center"
+            >
+                <v-select
+                    :model-value="operand.kind"
+                    :items="stringOperandKinds"
+                    :label="t('workflows.dsl.value_kind')"
+                    density="comfortable"
+                    class="flex-0"
+                    style="max-width: 180px"
+                    @update:model-value="updateEmailCcKind(idx, $event)"
+                />
+                <v-text-field
+                    v-if="operand.kind === 'field'"
+                    :model-value="operand.field"
+                    :label="t('workflows.dsl.value')"
+                    density="comfortable"
+                    @update:model-value="updateEmailCcField(idx, $event)"
+                />
+                <v-text-field
+                    v-else
+                    :model-value="operand.value"
+                    :label="t('workflows.dsl.value')"
+                    density="comfortable"
+                    @update:model-value="updateEmailCcValue(idx, $event)"
+                />
+                <v-btn
+                    icon="mdi-delete"
+                    variant="text"
+                    size="small"
+                    @click="removeEmailCc(idx)"
+                />
+            </div>
+            <v-btn
+                variant="outlined"
+                size="small"
+                class="mb-2"
+                @click="addEmailCc"
+            >
+                {{ t('workflows.dsl.add_cc_recipient') }}
+            </v-btn>
+            <div class="text-caption text-medium-emphasis mb-4">
+                {{ t('workflows.dsl.hints.email_to.cc') }}
+            </div>
+
+            <div class="text-caption mb-1 mt-2">
+                {{ t('workflows.dsl.mapping_normalized_destination') }}
+            </div>
+            <div class="text-caption text-medium-emphasis mb-2">
+                {{ t('workflows.dsl.hints.email_to.mapping') }}
+            </div>
+            <MappingEditor
+                ref="mappingEditorRef"
+                :model-value="emailMapping"
+                :left-label="t('workflows.dsl.normalized')"
+                :right-label="t('workflows.dsl.destination')"
+                @update:model-value="updateEmailField('mapping', $event)"
+            />
+            <v-btn
+                size="x-small"
+                variant="tonal"
+                @click="addMapping"
+                >{{ t('workflows.dsl.add_mapping') }}
+            </v-btn>
+        </template>
     </div>
 </template>
 
@@ -198,9 +337,10 @@
     import { ref, watch, onMounted, computed } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import { useEntityDefinitions } from '@/composables/useEntityDefinitions'
+    import { useCapabilitiesStore } from '@/stores/capabilities'
     import { typedHttpClient } from '@/api/typed-client'
     import { buildApiUrl } from '@/env-check'
-    import type { ToDef, AuthConfig, HttpMethod, OutputMode } from './contracts'
+    import type { ToDef, AuthConfig, HttpMethod, OutputMode, StringOperand } from './contracts'
     import { defaultCsvOptions } from './dsl-utils'
     import CsvOptionsEditor from './CsvOptionsEditor.vue'
     import MappingEditor from './MappingEditor.vue'
@@ -215,6 +355,7 @@
     const emit = defineEmits<{ (e: 'update:modelValue', value: ToDef): void }>()
 
     const { t } = useTranslations()
+    const capabilitiesStore = useCapabilitiesStore()
     const { entityDefinitions, loadEntityDefinitions } = useEntityDefinitions()
 
     function getFullEndpointUri(): string {
@@ -333,11 +474,49 @@
         return ''
     })
 
-    const toTypes = [
-        { title: 'Format (CSV/JSON)', value: 'format' },
-        { title: 'Entity', value: 'entity' },
-        { title: 'Next Step', value: 'next_step' },
-    ]
+    const stringOperandKinds = ['field', 'const_string']
+
+    const toTypes = computed(() => {
+        const types = [
+            { title: 'Format (CSV/JSON)', value: 'format' },
+            { title: 'Entity', value: 'entity' },
+            { title: 'Next Step', value: 'next_step' },
+        ]
+        if (capabilitiesStore.workflowMailConfigured) {
+            types.push({ title: 'Email', value: 'email' })
+        }
+        return types
+    })
+
+    const emailTemplateItems = ref<{ title: string; value: string }[]>([])
+
+    const emailTemplateUuid = computed(() => {
+        if (props.modelValue.type === 'email') {
+            return props.modelValue.template_uuid
+        }
+        return ''
+    })
+
+    const emailToOperands = computed((): StringOperand[] => {
+        if (props.modelValue.type === 'email') {
+            return props.modelValue.to
+        }
+        return []
+    })
+
+    const emailCcOperands = computed((): StringOperand[] => {
+        if (props.modelValue.type === 'email') {
+            return props.modelValue.cc ?? []
+        }
+        return []
+    })
+
+    const emailMapping = computed(() => {
+        if (props.modelValue.type === 'email') {
+            return props.modelValue.mapping
+        }
+        return {}
+    })
 
     // Computed property for isLastStep
     const isLastStep = computed(() => props.isLastStep)
@@ -381,7 +560,20 @@
     // Load entity definitions when component is created
     onMounted(() => {
         void loadEntityDefinitions()
+        void loadEmailTemplates()
     })
+
+    async function loadEmailTemplates() {
+        try {
+            const templates = await typedHttpClient.listEmailTemplates('workflow')
+            emailTemplateItems.value = templates.map(tmpl => ({
+                title: tmpl.name,
+                value: tmpl.uuid,
+            }))
+        } catch {
+            emailTemplateItems.value = []
+        }
+    }
 
     // Load entity fields when entity definition changes
     async function onEntityDefChange(entityType: string) {
@@ -648,7 +840,7 @@
         emit('update:modelValue', updated)
     }
 
-    function onTypeChange(newType: 'format' | 'entity' | 'next_step') {
+    function onTypeChange(newType: 'format' | 'entity' | 'next_step' | 'email') {
         let newTo: ToDef
         if (newType === 'format') {
             newTo = {
@@ -666,6 +858,13 @@
                 type: 'entity',
                 entity_definition: '',
                 mode: 'create',
+                mapping: {},
+            }
+        } else if (newType === 'email') {
+            newTo = {
+                type: 'email',
+                template_uuid: '',
+                to: [],
                 mapping: {},
             }
         } else {
@@ -692,6 +891,123 @@
                 },
             }
             emit('update:modelValue', updated)
+        }
+    }
+
+    // Email to-target field helper
+    function updateEmailField(field: string, value: unknown) {
+        if (props.modelValue.type === 'email') {
+            emit('update:modelValue', { ...props.modelValue, [field]: value })
+        }
+    }
+
+    // Email To operands
+    function addEmailTo() {
+        if (props.modelValue.type === 'email') {
+            const newOperand: StringOperand = { kind: 'const_string', value: '' }
+            emit('update:modelValue', {
+                ...props.modelValue,
+                to: [...props.modelValue.to, newOperand],
+            })
+        }
+    }
+
+    function removeEmailTo(idx: number) {
+        if (props.modelValue.type === 'email') {
+            emit('update:modelValue', {
+                ...props.modelValue,
+                to: props.modelValue.to.filter((_, i) => i !== idx),
+            })
+        }
+    }
+
+    function updateEmailToKind(idx: number, kind: 'field' | 'const_string') {
+        if (props.modelValue.type === 'email') {
+            const updated = props.modelValue.to.map((op, i) => {
+                if (i !== idx) return op
+                return kind === 'field'
+                    ? ({ kind: 'field', field: '' } as StringOperand)
+                    : ({ kind: 'const_string', value: '' } as StringOperand)
+            })
+            emit('update:modelValue', { ...props.modelValue, to: updated })
+        }
+    }
+
+    function updateEmailToField(idx: number, fieldValue: string) {
+        if (props.modelValue.type === 'email') {
+            const updated = props.modelValue.to.map((op, i) => {
+                if (i !== idx) return op
+                return { kind: 'field' as const, field: fieldValue }
+            })
+            emit('update:modelValue', { ...props.modelValue, to: updated })
+        }
+    }
+
+    function updateEmailToValue(idx: number, val: string) {
+        if (props.modelValue.type === 'email') {
+            const updated = props.modelValue.to.map((op, i) => {
+                if (i !== idx) return op
+                return { kind: 'const_string' as const, value: val }
+            })
+            emit('update:modelValue', { ...props.modelValue, to: updated })
+        }
+    }
+
+    // Email CC operands
+    function addEmailCc() {
+        if (props.modelValue.type === 'email') {
+            const newOperand: StringOperand = { kind: 'const_string', value: '' }
+            const existing = props.modelValue.cc ?? []
+            emit('update:modelValue', {
+                ...props.modelValue,
+                cc: [...existing, newOperand],
+            })
+        }
+    }
+
+    function removeEmailCc(idx: number) {
+        if (props.modelValue.type === 'email') {
+            const existing = props.modelValue.cc ?? []
+            const updated = existing.filter((_, i) => i !== idx)
+            emit('update:modelValue', {
+                ...props.modelValue,
+                cc: updated.length > 0 ? updated : undefined,
+            })
+        }
+    }
+
+    function updateEmailCcKind(idx: number, kind: 'field' | 'const_string') {
+        if (props.modelValue.type === 'email') {
+            const existing = props.modelValue.cc ?? []
+            const updated = existing.map((op, i) => {
+                if (i !== idx) return op
+                return kind === 'field'
+                    ? ({ kind: 'field', field: '' } as StringOperand)
+                    : ({ kind: 'const_string', value: '' } as StringOperand)
+            })
+            emit('update:modelValue', { ...props.modelValue, cc: updated })
+        }
+    }
+
+    function updateEmailCcField(idx: number, fieldValue: string) {
+        if (props.modelValue.type === 'email') {
+            const existing = props.modelValue.cc ?? []
+            const updated = existing.map((op, i) => {
+                if (i !== idx) return op
+                return { kind: 'field' as const, field: fieldValue }
+            })
+            emit('update:modelValue', { ...props.modelValue, cc: updated })
+        }
+    }
+
+    function updateEmailCcValue(idx: number, val: string) {
+        if (props.modelValue.type === 'email') {
+            const existing = props.modelValue.cc ?? []
+            const updated = existing.map((op, i) => {
+                if (i !== idx) return op
+                return { kind: 'const_string' as const, value: val }
+            })
+            emit('update:modelValue', { ...props.modelValue, cc: updated })
         }
     }
 </script>

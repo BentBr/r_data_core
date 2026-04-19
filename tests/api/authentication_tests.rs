@@ -88,6 +88,8 @@ mod tests {
             )),
             queue: test_queue_client_async().await,
             license_service,
+            password_reset_service: None,
+            system_log_service: None,
         };
 
         // Create test app with API key authentication middleware
@@ -193,6 +195,8 @@ mod tests {
             )),
             queue: test_queue_client_async().await,
             license_service,
+            password_reset_service: None,
+            system_log_service: None,
         };
 
         // Create test app with API key authentication middleware
@@ -292,6 +296,8 @@ mod tests {
             )),
             queue: test_queue_client_async().await,
             license_service,
+            password_reset_service: None,
+            system_log_service: None,
         };
 
         // Create test app with API key authentication middleware
@@ -397,6 +403,8 @@ mod tests {
             )),
             queue: test_queue_client_async().await,
             license_service,
+            password_reset_service: None,
+            system_log_service: None,
         };
 
         // Create test app with combined authentication middleware
@@ -524,6 +532,8 @@ mod tests {
             dashboard_stats_service,
             queue: test_queue_client_async().await,
             license_service,
+            password_reset_service: None,
+            system_log_service: None,
         };
 
         // Create test app with combined authentication middleware
@@ -652,6 +662,8 @@ mod tests {
             dashboard_stats_service,
             queue: test_queue_client_async().await,
             license_service,
+            password_reset_service: None,
+            system_log_service: None,
         };
 
         // Create test app with API key authentication middleware
@@ -760,6 +772,8 @@ mod tests {
             )),
             queue: test_queue_client_async().await,
             license_service,
+            password_reset_service: None,
+            system_log_service: None,
         };
 
         // Create test app with API key authentication middleware
@@ -866,6 +880,8 @@ mod tests {
             )),
             queue: test_queue_client_async().await,
             license_service,
+            password_reset_service: None,
+            system_log_service: None,
         };
 
         // Create test app with JWT authentication middleware

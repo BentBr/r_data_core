@@ -1,0 +1,29 @@
+{
+  "steps": [
+    {
+      "from": {
+        "type": "format",
+        "source": {
+          "source_type": "api",
+          "config": {},
+          "auth": null
+        },
+        "format": {
+          "format_type": "json",
+          "options": {}
+        },
+        "mapping": {
+          "email": "email",
+          "name": "name"
+        }
+      },
+      "transform": { "type": "none" },
+      "to": {
+        "type": "email",
+        "template_uuid": "550e8400-e29b-41d4-a716-446655440000",
+        "to": [{ "kind": "field", "field": "email" }],
+        "mapping": { "name": "user_name" }
+      }
+    }
+  ]
+}

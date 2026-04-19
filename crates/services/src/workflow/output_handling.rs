@@ -3,6 +3,7 @@
 use crate::workflow::entity_persistence::{
     create_entity, create_or_update_entity, update_entity, PersistenceContext,
 };
+use crate::workflow::transform_execution::{resolve_string_operands, MailContext};
 use r_data_core_persistence::WorkflowRepositoryTrait;
 use r_data_core_workflow::dsl::path_resolution::build_path_from_fields;
 use r_data_core_workflow::dsl::ToDef;
@@ -196,6 +197,68 @@ pub struct EntityOutputParams<'a> {
     pub versioning_disabled: bool,
     pub dynamic_entity_service: &'a crate::dynamic_entity::DynamicEntityService,
     pub repo: &'a Arc<dyn WorkflowRepositoryTrait>,
+}
+
+/// Handle Email to-target outputs
+///
+/// When a step's `ToDef` is `Email`, resolve recipients from the produced data,
+/// serialize the context, and enqueue a `SendEmailJob` for the worker.
+///
+/// # Errors
+/// Returns an error if enqueueing fails fatally (non-fatal failures return `Ok(true)`)
+pub async fn handle_email_output(
+    to_def: &ToDef,
+    produced: &JsonValue,
+    run_uuid: Uuid,
+    mail: &MailContext<'_>,
+    workflow_name: Option<&str>,
+) -> r_data_core_core::error::Result<bool> {
+    let ToDef::Email {
+        template_uuid,
+        to,
+        cc,
+        mapping: _,
+    } = to_def
+    else {
+        return Ok(true); // Not an email output
+    };
+
+    let (Some(_service), Some(queue)) = (mail.service, mail.queue) else {
+        log::warn!("[workflow] Email output skipped: mail service or queue not configured");
+        return Ok(true);
+    };
+
+    let to_addrs = resolve_string_operands(to, produced);
+    let cc_addrs = cc.as_ref().map_or_else(Vec::new, |cc_list| {
+        resolve_string_operands(cc_list, produced)
+    });
+
+    if to_addrs.is_empty() {
+        log::warn!("[workflow] Email output skipped: no recipients resolved");
+        return Ok(true);
+    }
+
+    let context_json = serde_json::to_string(produced).unwrap_or_default();
+
+    let job = r_data_core_workflow::data::jobs::SendEmailJob {
+        run_uuid: Some(run_uuid),
+        to: to_addrs,
+        cc: cc_addrs,
+        subject: String::new(),
+        body_text: String::new(),
+        body_html: None,
+        from_name_override: workflow_name.map(String::from),
+        source: "workflow".to_string(),
+        template_uuid: Some(uuid::Uuid::parse_str(template_uuid).unwrap_or_default()),
+        template_context: Some(context_json),
+    };
+
+    if let Err(e) = queue.enqueue_email(job).await {
+        log::error!("[workflow] Failed to enqueue email job for run {run_uuid}: {e}");
+        // Non-fatal: don't break the entire item processing
+    }
+
+    Ok(true)
 }
 
 /// Resolve path template from produced data

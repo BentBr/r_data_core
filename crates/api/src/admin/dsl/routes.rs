@@ -1,5 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
+use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use actix_web::{get, post, web, Responder};
 
 use crate::auth::auth_enum::RequiredAuth;
@@ -249,9 +250,39 @@ fn build_entity_to_fields() -> Vec<DslFieldSpec> {
     ]
 }
 
-/// Build TO type specifications
-fn build_to_type_specs() -> Vec<DslTypeSpec> {
+/// Build field specifications for email TO type
+fn build_email_to_fields() -> Vec<DslFieldSpec> {
     vec![
+        DslFieldSpec {
+            name: "template_uuid".into(),
+            r#type: "string".into(),
+            required: true,
+            options: None,
+        },
+        DslFieldSpec {
+            name: "to".into(),
+            r#type: "array<string>".into(),
+            required: true,
+            options: None,
+        },
+        DslFieldSpec {
+            name: "cc".into(),
+            r#type: "array<string>".into(),
+            required: false,
+            options: None,
+        },
+        DslFieldSpec {
+            name: "mapping".into(),
+            r#type: "map<string,string>".into(),
+            required: true,
+            options: None,
+        },
+    ]
+}
+
+/// Build TO type specifications
+fn build_to_type_specs(workflow_mail_configured: bool) -> Vec<DslTypeSpec> {
+    let mut specs = vec![
         DslTypeSpec {
             r#type: "format".to_string(),
             fields: build_format_to_fields(),
@@ -260,7 +291,14 @@ fn build_to_type_specs() -> Vec<DslTypeSpec> {
             r#type: "entity".to_string(),
             fields: build_entity_to_fields(),
         },
-    ]
+    ];
+    if workflow_mail_configured {
+        specs.push(DslTypeSpec {
+            r#type: "email".to_string(),
+            fields: build_email_to_fields(),
+        });
+    }
+    specs
 }
 
 /// Build field specifications for arithmetic transform type
@@ -439,9 +477,39 @@ fn build_authenticate_transform_fields() -> Vec<DslFieldSpec> {
     ]
 }
 
-/// Build transform type specifications
-fn build_transform_type_specs() -> Vec<DslTypeSpec> {
+/// Build field specifications for the `send_email` transform type
+fn build_send_email_transform_fields() -> Vec<DslFieldSpec> {
     vec![
+        DslFieldSpec {
+            name: "template_uuid".into(),
+            r#type: "string".into(),
+            required: true,
+            options: None,
+        },
+        DslFieldSpec {
+            name: "to".into(),
+            r#type: "array<string>".into(),
+            required: true,
+            options: None,
+        },
+        DslFieldSpec {
+            name: "cc".into(),
+            r#type: "array<string>".into(),
+            required: false,
+            options: None,
+        },
+        DslFieldSpec {
+            name: "target_status".into(),
+            r#type: "string".into(),
+            required: true,
+            options: None,
+        },
+    ]
+}
+
+/// Build transform type specifications
+fn build_transform_type_specs(workflow_mail_configured: bool) -> Vec<DslTypeSpec> {
+    let mut specs = vec![
         DslTypeSpec {
             r#type: "none".to_string(),
             fields: vec![],
@@ -458,7 +526,14 @@ fn build_transform_type_specs() -> Vec<DslTypeSpec> {
             r#type: "authenticate".to_string(),
             fields: build_authenticate_transform_fields(),
         },
-    ]
+    ];
+    if workflow_mail_configured {
+        specs.push(DslTypeSpec {
+            r#type: "send_email".to_string(),
+            fields: build_send_email_transform_fields(),
+        });
+    }
+    specs
 }
 
 #[utoipa::path(
@@ -497,7 +572,10 @@ pub async fn validate_dsl(
     let Ok(steps) = steps else {
         return ApiResponse::<()>::unprocessable_entity("Invalid DSL steps format");
     };
-    let program = DslProgram { steps };
+    let program = DslProgram {
+        steps,
+        on_complete: None,
+    };
     match program.validate() {
         Ok(()) => ApiResponse::ok(DslValidateResponse { valid: true }),
         Err(e) => ApiResponse::<()>::unprocessable_entity_with_violations(
@@ -597,7 +675,10 @@ pub async fn list_from_options(auth: RequiredAuth) -> impl Responder {
     security(("jwt" = []))
 )]
 #[get("/to/options")]
-pub async fn list_to_options(auth: RequiredAuth) -> impl Responder {
+pub async fn list_to_options(
+    data: web::Data<ApiStateWrapper>,
+    auth: RequiredAuth,
+) -> impl Responder {
     // Check permission
     if !permission_check::has_permission(
         &auth.0,
@@ -608,8 +689,9 @@ pub async fn list_to_options(auth: RequiredAuth) -> impl Responder {
         return ApiResponse::<()>::forbidden("Insufficient permissions to view DSL options");
     }
 
+    let workflow_mail_configured = data.workflow_service().mail_service.is_some();
     let types = DslOptionsResponse {
-        types: build_to_type_specs(),
+        types: build_to_type_specs(workflow_mail_configured),
     };
     let ex_csv = serde_json::to_value(ToDef::Format {
         output: OutputMode::Api,
@@ -659,7 +741,10 @@ pub async fn list_to_options(auth: RequiredAuth) -> impl Responder {
     security(("jwt" = []))
 )]
 #[get("/transform/options")]
-pub async fn list_transform_options(auth: RequiredAuth) -> impl Responder {
+pub async fn list_transform_options(
+    data: web::Data<ApiStateWrapper>,
+    auth: RequiredAuth,
+) -> impl Responder {
     // Check permission
     if !permission_check::has_permission(
         &auth.0,
@@ -670,8 +755,9 @@ pub async fn list_transform_options(auth: RequiredAuth) -> impl Responder {
         return ApiResponse::<()>::forbidden("Insufficient permissions to view DSL options");
     }
 
+    let workflow_mail_configured = data.workflow_service().mail_service.is_some();
     let types = DslOptionsResponse {
-        types: build_transform_type_specs(),
+        types: build_transform_type_specs(workflow_mail_configured),
     };
     let ex_arith = serde_json::to_value(Transform::Arithmetic(ArithmeticTransform {
         target: "price".to_string(),

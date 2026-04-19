@@ -12,8 +12,9 @@ use tokio_cron_scheduler::JobScheduler;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::MaintenanceConfig;
 use r_data_core_worker::registrars::{
-    LicenseVerificationRegistrar, RefreshTokenCleanupRegistrar, StatisticsCollectionRegistrar,
-    TaskRegistrar, VersionPurgerRegistrar, WorkflowRunLogsPurgerRegistrar,
+    LicenseVerificationRegistrar, PasswordResetCleanupRegistrar, RefreshTokenCleanupRegistrar,
+    StatisticsCollectionRegistrar, SystemLogsPurgerRegistrar, TaskRegistrar,
+    VersionPurgerRegistrar, WorkflowRunLogsPurgerRegistrar,
 };
 
 /// Current version from Cargo.toml
@@ -51,6 +52,12 @@ async fn init_scheduler(
         .register(&scheduler, pool.clone(), cache_manager.clone(), config)
         .await?;
     WorkflowRunLogsPurgerRegistrar
+        .register(&scheduler, pool.clone(), cache_manager.clone(), config)
+        .await?;
+    PasswordResetCleanupRegistrar
+        .register(&scheduler, pool.clone(), cache_manager.clone(), config)
+        .await?;
+    SystemLogsPurgerRegistrar
         .register(&scheduler, pool.clone(), cache_manager.clone(), config)
         .await?;
 

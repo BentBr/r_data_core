@@ -3,6 +3,26 @@ import { test, expect } from '../fixtures/auth.fixture'
 const ADMIN_USERNAME = process.env.E2E_ADMIN_USERNAME ?? 'admin'
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? 'adminadmin'
 
+test.describe('Password Reset', () => {
+    test('forgot password button is visible on login page', async ({ page }) => {
+        await page.goto('/login')
+        await expect(page.getByText(/forgot.*password/i)).toBeVisible()
+    })
+
+    test('reset password page shows error without token', async ({ page }) => {
+        await page.goto('/reset-password')
+        // Should show an error about missing/invalid link
+        await expect(page.getByText(/invalid|missing|token/i)).toBeVisible({ timeout: 5_000 })
+    })
+
+    test('reset password page shows form with token', async ({ page }) => {
+        await page.goto('/reset-password?token=test-token-123')
+        // Should show password fields
+        await expect(page.getByLabel(/new password/i)).toBeVisible({ timeout: 5_000 })
+        await expect(page.getByLabel(/confirm password/i)).toBeVisible()
+    })
+})
+
 test.describe('Authentication', () => {
     test('successful login redirects to dashboard', async ({ loginPage }) => {
         await loginPage.goto()

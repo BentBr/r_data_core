@@ -13,11 +13,14 @@ use r_data_core_core::cache::CacheManager;
 use r_data_core_core::entity_definition::repository_trait::EntityDefinitionRepositoryTrait;
 use std::sync::Arc;
 
+use crate::SystemLogService;
+
 /// Service for managing entity definitions
 #[derive(Clone)]
 pub struct EntityDefinitionService {
     repository: Arc<dyn EntityDefinitionRepositoryTrait>,
     cache_manager: Arc<CacheManager>,
+    pub(crate) system_log: Option<Arc<SystemLogService>>,
 }
 
 /// Helper structure describing an entity field (including system fields)
@@ -47,6 +50,7 @@ impl EntityDefinitionService {
         Self {
             repository,
             cache_manager,
+            system_log: None,
         }
     }
 
@@ -67,6 +71,14 @@ impl EntityDefinitionService {
         Self {
             repository,
             cache_manager: Arc::new(CacheManager::new(config)),
+            system_log: None,
         }
+    }
+
+    /// Set the system log service for audit logging
+    #[must_use]
+    pub fn with_system_log(mut self, log: Arc<SystemLogService>) -> Self {
+        self.system_log = Some(log);
+        self
     }
 }

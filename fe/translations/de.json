@@ -21,6 +21,24 @@
                 "authentication_required": "Authentifizierung erforderlich"
             }
         },
+        "forgot_password": {
+            "title": "Passwort vergessen",
+            "email_label": "E-Mail-Adresse",
+            "submit": "Reset-Link senden",
+            "success": "Falls ein Konto mit dieser E-Mail-Adresse existiert, wurde ein Passwort-Reset-Link gesendet.",
+            "not_available": "Passwort-Reset ist nicht verfügbar. Bitte kontaktieren Sie Ihren Administrator."
+        },
+        "reset_password": {
+            "title": "Passwort zurücksetzen",
+            "new_password": "Neues Passwort",
+            "confirm_password": "Passwort bestätigen",
+            "submit": "Passwort zurücksetzen",
+            "success": "Passwort erfolgreich zurückgesetzt. Weiterleitung zur Anmeldung...",
+            "invalid_token": "Dieser Reset-Link ist ungültig oder abgelaufen.",
+            "invalid_link": "Ungültiger Reset-Link. Bitte fordern Sie einen neuen an.",
+            "passwords_mismatch": "Passwörter stimmen nicht überein.",
+            "password_too_short": "Das Passwort muss mindestens 8 Zeichen lang sein."
+        },
         "default_password_warning": "Sicherheitswarnung: Das Standard-Admin-Passwort wird noch verwendet. Bitte ändern Sie es sofort aus Sicherheitsgründen.",
         "default_password_warning_dismiss": "Ausblenden",
         "mobile_warning": "Die Admin-Oberfläche von RDataCore ist nicht für die mobile Nutzung gedacht!",
@@ -141,6 +159,10 @@
                     "entity_export": {
                         "title": "Entitäten exportieren",
                         "description": "Liest bestehende Entitäten und sendet sie an einen externen API-Endpunkt."
+                    },
+                    "email_notification": {
+                        "title": "E-Mail-Benachrichtigung",
+                        "description": "Daten per API empfangen und E-Mail-Benachrichtigungen versenden"
                     }
                 }
             },
@@ -156,7 +178,8 @@
                 "build_path": "Pfad aufbauen",
                 "resolve_entity_path": "Entitätspfad auflösen",
                 "get_or_create_entity": "Entität finden oder anlegen",
-                "authenticate": "Authentifizieren"
+                "authenticate": "Authentifizieren",
+                "send_email": "E-Mail senden"
             },
             "summary": {
                 "step": "{from}. {transform}. {to}.",
@@ -182,7 +205,8 @@
                     "build_path": "Erstellt einen Pfad in {target}",
                     "resolve_entity_path": "Sucht einen bestehenden Pfad für die Entität {entityType}",
                     "get_or_create_entity": "Findet oder erstellt eine Entität vom Typ {entityType}",
-                    "authenticate": "Authentifiziert gegen {entityType}-Entitäten"
+                    "authenticate": "Authentifiziert gegen {entityType}-Entitäten",
+                    "send_email": "E-Mail über Vorlage senden"
                 },
                 "to": {
                     "entity": "Schreibt das Ergebnis in Plattform-Entitäten",
@@ -190,7 +214,8 @@
                     "next_step": "Gibt normalisierte Felder an den nächsten Workflow-Schritt weiter",
                     "api": "Stellt das Ergebnis als {format} über die Workflow-API bereit",
                     "download": "Erzeugt einen {format}-Download",
-                    "push": "Sendet {format} an {uri}"
+                    "push": "Sendet {format} an {uri}",
+                    "email": "Ergebnisse per E-Mail-Vorlage versenden"
                 }
             },
             "from": "Von",
@@ -298,7 +323,41 @@
             "auth_token_expiry_hint": "Optional: Standard-Token-Ablauf überschreiben",
             "auth_extra_claims": "Zusätzliche Claims",
             "auth_claim_name": "Claim-Name",
-            "auth_entity_field": "Entity-Feld"
+            "auth_entity_field": "Entity-Feld",
+            "send_email_template": "E-Mail-Vorlage",
+            "send_email_to": "An (Empfänger)",
+            "send_email_cc": "CC (Optional)",
+            "send_email_target_status": "Ziel-Statusfeld",
+            "add_recipient": "Empfänger hinzufügen",
+            "add_cc_recipient": "CC-Empfänger hinzufügen",
+            "hints": {
+                "send_email": {
+                    "template_uuid": "Wählen Sie eine Workflow-E-Mail-Vorlage aus. Vorlagen verwalten unter System > E-Mail-Vorlagen.",
+                    "to": "Empfänger aus Workflow-Datenfeldern oder konstanten E-Mail-Adressen.",
+                    "cc": "Optionale CC-Empfänger, gleiches Format wie An.",
+                    "target_status": "Feldname zum Speichern des Sendeergebnisses (z.B. 'queued', 'mail_not_configured'). Folgende Schritte koennen dieses Feld auslesen.",
+                    "template_variables": "Vorlagenvariablen (automatisch aus den normalisierten Feldern dieses Schritts befuellt):",
+                    "info": "Sendet eine E-Mail pro verarbeitetem Datensatz. Verwenden als Pipeline-Benachrichtigung — der Workflow laeuft nach dem Einreihen der E-Mail weiter. Vorlagenvariablen werden aus dem normalisierten Kontext befuellt (alle Felder aus dem 'Von'-Mapping + vorherige Transformationen)."
+                },
+                "email_to": {
+                    "template_uuid": "Wählen Sie eine Workflow-E-Mail-Vorlage aus. Vorlagen verwalten unter System > E-Mail-Vorlagen.",
+                    "to": "Empfänger aus Workflow-Datenfeldern oder konstanten E-Mail-Adressen.",
+                    "cc": "Optionale CC-Empfänger, gleiches Format wie An.",
+                    "mapping": "Ausgabefelder auf Vorlagenvariablen abbilden. Links = erzeugtes Feld, rechts = Vorlagenvariablenname.",
+                    "info": "Sendet eine E-Mail pro Datensatz als finale Ausgabe dieses Schritts. Verwenden wenn die E-Mail das Ergebnis ist (z.B. Bericht senden). Fuer Pipeline-Benachrichtigungen stattdessen die E-Mail-Senden-Transformation verwenden."
+                }
+            },
+            "post_run": {
+                "title": "Aktionen nach dem Lauf",
+                "info": "Diese Aktionen werden einmalig ausgefuehrt, nachdem alle Elemente verarbeitet wurden. Nutzen Sie sie fuer zusammenfassende Benachrichtigungen, Berichte oder Warnmeldungen.",
+                "action": "Aktion",
+                "send_email": "E-Mail senden",
+                "add_email_action": "E-Mail nach dem Lauf hinzufuegen",
+                "condition": "Bedingung",
+                "condition_hint": "Wann diese Aktion ausgefuehrt werden soll.",
+                "available_run_vars": "Verfuegbare Laufkontext-Variablen:",
+                "no_actions": "Keine Aktionen nach dem Lauf konfiguriert."
+            }
         },
         "create": {
             "button": "Workflow erstellen",
@@ -939,6 +998,53 @@
     "system": {
         "admin": {
             "title": "Systemverwaltung"
+        },
+        "tabs": {
+            "settings": "Einstellungen",
+            "email_templates": "E-Mail-Vorlagen",
+            "logs": "Systemprotokolle"
+        },
+        "email_templates": {
+            "title": "E-Mail-Vorlagen",
+            "create": "Vorlage erstellen",
+            "edit": "Vorlage bearbeiten",
+            "name": "Name",
+            "slug": "Slug",
+            "slug_auto_hint": "Automatisch vom Namen generiert. Workflows referenzieren Templates per UUID, nicht per Slug.",
+            "variables_auto_hint": "Automatisch aus dem Vorlagentext erkannt. Beschreibungen zur Dokumentation hinzufuegen.",
+            "no_variables_detected": "Keine {{Variablen}} im Vorlagentext erkannt. Verwenden Sie {{variable_name}} Syntax im Betreff, HTML- oder Klartext.",
+            "variable_description_placeholder": "Beschreibung eingeben...",
+            "type": "Typ",
+            "subject": "Betreff-Vorlage",
+            "body_html": "HTML-Text-Vorlage",
+            "body_text": "Klartext-Vorlage",
+            "variables": "Verfügbare Variablen",
+            "variable_key": "Variable",
+            "variable_description": "Beschreibung",
+            "save": "Speichern",
+            "delete": "Löschen",
+            "confirm_delete": "Sind Sie sicher, dass Sie diese Vorlage löschen möchten?",
+            "system_template_notice": "Systemvorlagen können bearbeitet, aber nicht gelöscht werden.",
+            "created": "Vorlage erfolgreich erstellt",
+            "updated": "Vorlage erfolgreich aktualisiert",
+            "deleted": "Vorlage erfolgreich gelöscht"
+        },
+        "logs": {
+            "title": "Systemprotokolle",
+            "timestamp": "Zeitstempel",
+            "type": "Typ",
+            "resource": "Ressource",
+            "summary": "Zusammenfassung",
+            "status": "Status",
+            "actor": "Akteur",
+            "details": "Details",
+            "filter_type": "Nach Typ filtern",
+            "filter_resource": "Nach Ressource filtern",
+            "filter_status": "Nach Status filtern",
+            "filter_date_from": "Von Datum",
+            "filter_date_to": "Bis Datum",
+            "email_preview": "E-Mail-Vorschau",
+            "no_logs": "Keine Protokolleinträge gefunden"
         },
         "versioning": {
             "section_title": "Entitätsversionierung",

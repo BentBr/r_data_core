@@ -152,7 +152,6 @@ pub async fn create_api_key(
         return ApiResponse::<()>::forbidden("Insufficient permissions to create API keys");
     }
 
-    let pool = Arc::new(state.db_pool().clone());
     let creator_uuid = match Uuid::parse_str(&auth.0.sub) {
         Ok(uuid) => uuid,
         Err(e) => {
@@ -163,16 +162,16 @@ pub async fn create_api_key(
     };
     let user_uuid = creator_uuid; // Assign to the authenticated user by default
 
-    // First, check if the user already has a key with this name
-    let repo = ApiKeyRepository::new(pool);
+    let service = state.api_key_service();
 
-    match repo.get_by_name(user_uuid, &req.name).await {
-        Ok(Some(_)) => {
+    // First, check if the user already has a key with this name
+    match service.name_exists_for_user(user_uuid, &req.name).await {
+        Ok(true) => {
             return ApiResponse::<()>::conflict(
                 "An API key with this name already exists for this user",
             );
         }
-        Ok(None) => {
+        Ok(false) => {
             // Proceed with creation
         }
         Err(e) => {
@@ -181,17 +180,17 @@ pub async fn create_api_key(
         }
     }
 
-    // Create the API key
+    // Create the API key via service (handles audit logging)
     let description = req.description.clone().unwrap_or_default();
     let expires_in_days = req
         .expires_in_days
         .map_or(365, |v| i32::try_from(v).unwrap_or(365));
 
-    match repo
-        .create_new_api_key(&req.name, &description, creator_uuid, expires_in_days)
+    match service
+        .create_api_key(&req.name, &description, creator_uuid, expires_in_days)
         .await
     {
-        Ok((uuid, api_key)) => match repo.get_by_uuid(uuid).await {
+        Ok((uuid, api_key)) => match service.get_key(uuid).await {
             Ok(Some(key)) => {
                 let response: ApiKeyCreatedResponse = ApiKeyCreatedResponse {
                     uuid: key.uuid,
@@ -267,37 +266,22 @@ pub async fn revoke_api_key(
         return ApiResponse::<()>::forbidden("Insufficient permissions to revoke API keys");
     }
 
-    let pool = Arc::new(state.db_pool().clone());
     let api_key_uuid = path.into_inner();
 
-    let repo = ApiKeyRepository::new(pool);
-
-    // First, check if the API key exists and belongs to the user
-    match repo.get_by_uuid(api_key_uuid).await {
-        Ok(Some(key)) => {
-            if key.user_uuid != user_uuid {
-                return ApiResponse::<()>::forbidden(
-                    "You don't have permission to revoke this API key",
-                );
-            }
-
-            if !key.is_active {
-                return ApiResponse::<()>::conflict("API key is already revoked");
-            }
-
-            // Revoke the key
-            match repo.revoke(api_key_uuid).await {
-                Ok(()) => ApiResponse::<()>::message("API key revoked successfully"),
-                Err(e) => {
-                    error!("Failed to revoke API key: {e}");
-                    ApiResponse::<()>::internal_error("Failed to revoke API key")
-                }
-            }
+    // Revoke via service (handles ownership check, cache invalidation, and audit logging)
+    let service = state.api_key_service();
+    match service.revoke_key(api_key_uuid, user_uuid).await {
+        Ok(()) => ApiResponse::<()>::message("API key revoked successfully"),
+        Err(r_data_core_core::error::Error::Forbidden(_)) => {
+            ApiResponse::<()>::forbidden("You don't have permission to revoke this API key")
         }
-        Ok(None) => ApiResponse::<()>::not_found("API key"),
+        Err(r_data_core_core::error::Error::NotFound(_)) => ApiResponse::<()>::not_found("API key"),
+        Err(r_data_core_core::error::Error::Validation(msg)) if msg.contains("already revoked") => {
+            ApiResponse::<()>::conflict("API key is already revoked")
+        }
         Err(e) => {
-            error!("Failed to retrieve API key: {e}");
-            ApiResponse::<()>::internal_error("Failed to retrieve API key")
+            error!("Failed to revoke API key: {e}");
+            ApiResponse::<()>::internal_error("Failed to revoke API key")
         }
     }
 }

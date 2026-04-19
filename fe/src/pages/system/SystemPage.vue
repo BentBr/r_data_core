@@ -1,201 +1,256 @@
 <template>
     <div>
         <PageLayout>
-            <v-row>
-                <v-col
-                    cols="12"
-                    md="6"
-                >
-                    <v-card
-                        variant="outlined"
-                        data-testid="system-license-card"
-                    >
-                        <v-card-title class="text-subtitle-1 pa-3">
-                            {{ t('system.license.section_title') }}
-                        </v-card-title>
-                        <v-card-text class="pa-3">
-                            <div v-if="licenseStore.licenseStatus">
-                                <v-row>
-                                    <v-col cols="6">
-                                        <strong>{{ t('system.license.state') }}:</strong>
-                                    </v-col>
-                                    <v-col cols="6">
-                                        <v-chip
-                                            :color="getStateColor(licenseStore.licenseStatus.state)"
-                                            size="small"
-                                        >
-                                            {{ getStateLabel(licenseStore.licenseStatus.state) }}
-                                        </v-chip>
-                                    </v-col>
-                                </v-row>
-                                <v-row v-if="licenseStore.licenseStatus.company">
-                                    <v-col cols="6">
-                                        <strong>{{ t('system.license.company') }}:</strong>
-                                    </v-col>
-                                    <v-col cols="6">
-                                        {{ licenseStore.licenseStatus.company }}
-                                    </v-col>
-                                </v-row>
-                                <v-row v-if="licenseStore.licenseStatus.license_type">
-                                    <v-col cols="6">
-                                        <strong>{{ t('system.license.license_type') }}:</strong>
-                                    </v-col>
-                                    <v-col cols="6">
-                                        {{ licenseStore.licenseStatus.license_type }}
-                                    </v-col>
-                                </v-row>
-                                <v-row v-if="licenseStore.licenseStatus.license_id">
-                                    <v-col cols="6">
-                                        <strong>{{ t('system.license.license_id') }}:</strong>
-                                    </v-col>
-                                    <v-col cols="6">
-                                        <code>{{ licenseStore.licenseStatus.license_id }}</code>
-                                    </v-col>
-                                </v-row>
-                                <v-row v-if="licenseStore.licenseStatus.issued_at">
-                                    <v-col cols="6">
-                                        <strong>{{ t('system.license.issued_at') }}:</strong>
-                                    </v-col>
-                                    <v-col cols="6">
-                                        {{ formatDate(licenseStore.licenseStatus.issued_at) }}
-                                    </v-col>
-                                </v-row>
-                                <v-row v-if="licenseStore.licenseStatus.version">
-                                    <v-col cols="6">
-                                        <strong>{{ t('system.license.version') }}:</strong>
-                                    </v-col>
-                                    <v-col cols="6">
-                                        {{ licenseStore.licenseStatus.version }}
-                                    </v-col>
-                                </v-row>
-                                <v-row v-if="licenseStore.licenseStatus.expires_at">
-                                    <v-col cols="6">
-                                        <strong>{{ t('system.license.expires_at') }}:</strong>
-                                    </v-col>
-                                    <v-col cols="6">
-                                        {{ formatDate(licenseStore.licenseStatus.expires_at) }}
-                                    </v-col>
-                                </v-row>
-                                <v-row v-else-if="licenseStore.licenseStatus.state === 'valid'">
-                                    <v-col cols="6">
-                                        <strong>{{ t('system.license.expires_at') }}:</strong>
-                                    </v-col>
-                                    <v-col cols="6">
-                                        {{ t('system.license.never') }}
-                                    </v-col>
-                                </v-row>
-                                <v-row v-if="licenseStore.licenseStatus.error_message">
-                                    <v-col cols="12">
-                                        <v-alert
-                                            type="error"
-                                            variant="tonal"
-                                            density="compact"
-                                        >
-                                            {{ licenseStore.licenseStatus.error_message }}
-                                        </v-alert>
-                                    </v-col>
-                                </v-row>
-                            </div>
-                            <div v-else>
-                                <v-skeleton-loader type="text" />
-                            </div>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-                <v-col
-                    cols="12"
-                    md="6"
-                >
-                    <v-card
-                        variant="outlined"
-                        data-testid="system-versioning-card"
-                    >
-                        <v-card-title class="text-subtitle-1 pa-3">
-                            {{ t('system.versioning.section_title') }}
-                        </v-card-title>
-                        <v-card-text class="pa-3">
-                            <v-switch
-                                v-model="form.enabled"
-                                :label="t('system.versioning.enabled')"
-                                color="success"
-                                inset
-                            />
-                            <v-text-field
-                                v-model="form.max_versions"
-                                :label="t('system.versioning.max_versions')"
-                                type="number"
-                                min="0"
-                            />
-                            <v-text-field
-                                v-model="form.max_age_days"
-                                :label="t('system.versioning.max_age_days')"
-                                type="number"
-                                min="0"
-                            />
-                        </v-card-text>
-                        <v-card-actions>
-                            <v-spacer />
-                            <v-btn
-                                color="primary"
-                                variant="flat"
-                                :loading="saving"
-                                data-testid="system-versioning-save"
-                                @click="save"
-                            >
-                                {{ t('system.versioning.save') }}
-                            </v-btn>
-                        </v-card-actions>
-                    </v-card>
-                </v-col>
-            </v-row>
+            <v-tabs
+                v-model="activeTab"
+                color="primary"
+            >
+                <v-tab value="settings">
+                    {{ t('system.tabs.settings') }}
+                </v-tab>
+                <v-tab value="email-templates">
+                    {{ t('system.tabs.email_templates') }}
+                </v-tab>
+                <v-tab value="logs">
+                    {{ t('system.tabs.logs') }}
+                </v-tab>
+            </v-tabs>
 
-            <v-row>
-                <v-col
-                    cols="12"
-                    md="6"
-                >
-                    <v-card
-                        variant="outlined"
-                        data-testid="system-run-logs-card"
-                    >
-                        <v-card-title class="text-subtitle-1 pa-3">
-                            {{ t('system.workflow_run_logs.section_title') }}
-                        </v-card-title>
-                        <v-card-text class="pa-3">
-                            <v-switch
-                                v-model="runLogsForm.enabled"
-                                :label="t('system.workflow_run_logs.enabled')"
-                                color="success"
-                                inset
-                            />
-                            <v-text-field
-                                v-model="runLogsForm.max_runs"
-                                :label="t('system.workflow_run_logs.max_runs')"
-                                type="number"
-                                min="0"
-                            />
-                            <v-text-field
-                                v-model="runLogsForm.max_age_days"
-                                :label="t('system.workflow_run_logs.max_age_days')"
-                                type="number"
-                                min="0"
-                            />
-                        </v-card-text>
-                        <v-card-actions>
-                            <v-spacer />
-                            <v-btn
-                                color="primary"
-                                variant="flat"
-                                :loading="savingRunLogs"
-                                data-testid="system-run-logs-save"
-                                @click="saveRunLogs"
+            <v-tabs-window v-model="activeTab">
+                <v-tabs-window-item value="settings">
+                    <v-row class="mt-2">
+                        <v-col
+                            cols="12"
+                            md="6"
+                        >
+                            <v-card
+                                variant="outlined"
+                                data-testid="system-license-card"
                             >
-                                {{ t('system.workflow_run_logs.save') }}
-                            </v-btn>
-                        </v-card-actions>
-                    </v-card>
-                </v-col>
-            </v-row>
+                                <v-card-title class="text-subtitle-1 pa-3">
+                                    {{ t('system.license.section_title') }}
+                                </v-card-title>
+                                <v-card-text class="pa-3">
+                                    <div v-if="licenseStore.licenseStatus">
+                                        <v-row>
+                                            <v-col cols="6">
+                                                <strong>{{ t('system.license.state') }}:</strong>
+                                            </v-col>
+                                            <v-col cols="6">
+                                                <v-chip
+                                                    :color="
+                                                        getStateColor(
+                                                            licenseStore.licenseStatus.state
+                                                        )
+                                                    "
+                                                    size="small"
+                                                >
+                                                    {{
+                                                        getStateLabel(
+                                                            licenseStore.licenseStatus.state
+                                                        )
+                                                    }}
+                                                </v-chip>
+                                            </v-col>
+                                        </v-row>
+                                        <v-row v-if="licenseStore.licenseStatus.company">
+                                            <v-col cols="6">
+                                                <strong>{{ t('system.license.company') }}:</strong>
+                                            </v-col>
+                                            <v-col cols="6">
+                                                {{ licenseStore.licenseStatus.company }}
+                                            </v-col>
+                                        </v-row>
+                                        <v-row v-if="licenseStore.licenseStatus.license_type">
+                                            <v-col cols="6">
+                                                <strong
+                                                    >{{ t('system.license.license_type') }}:</strong
+                                                >
+                                            </v-col>
+                                            <v-col cols="6">
+                                                {{ licenseStore.licenseStatus.license_type }}
+                                            </v-col>
+                                        </v-row>
+                                        <v-row v-if="licenseStore.licenseStatus.license_id">
+                                            <v-col cols="6">
+                                                <strong
+                                                    >{{ t('system.license.license_id') }}:</strong
+                                                >
+                                            </v-col>
+                                            <v-col cols="6">
+                                                <code>{{
+                                                    licenseStore.licenseStatus.license_id
+                                                }}</code>
+                                            </v-col>
+                                        </v-row>
+                                        <v-row v-if="licenseStore.licenseStatus.issued_at">
+                                            <v-col cols="6">
+                                                <strong
+                                                    >{{ t('system.license.issued_at') }}:</strong
+                                                >
+                                            </v-col>
+                                            <v-col cols="6">
+                                                {{
+                                                    formatDate(licenseStore.licenseStatus.issued_at)
+                                                }}
+                                            </v-col>
+                                        </v-row>
+                                        <v-row v-if="licenseStore.licenseStatus.version">
+                                            <v-col cols="6">
+                                                <strong>{{ t('system.license.version') }}:</strong>
+                                            </v-col>
+                                            <v-col cols="6">
+                                                {{ licenseStore.licenseStatus.version }}
+                                            </v-col>
+                                        </v-row>
+                                        <v-row v-if="licenseStore.licenseStatus.expires_at">
+                                            <v-col cols="6">
+                                                <strong
+                                                    >{{ t('system.license.expires_at') }}:</strong
+                                                >
+                                            </v-col>
+                                            <v-col cols="6">
+                                                {{
+                                                    formatDate(
+                                                        licenseStore.licenseStatus.expires_at
+                                                    )
+                                                }}
+                                            </v-col>
+                                        </v-row>
+                                        <v-row
+                                            v-else-if="licenseStore.licenseStatus.state === 'valid'"
+                                        >
+                                            <v-col cols="6">
+                                                <strong
+                                                    >{{ t('system.license.expires_at') }}:</strong
+                                                >
+                                            </v-col>
+                                            <v-col cols="6">
+                                                {{ t('system.license.never') }}
+                                            </v-col>
+                                        </v-row>
+                                        <v-row v-if="licenseStore.licenseStatus.error_message">
+                                            <v-col cols="12">
+                                                <v-alert
+                                                    type="error"
+                                                    variant="tonal"
+                                                    density="compact"
+                                                >
+                                                    {{ licenseStore.licenseStatus.error_message }}
+                                                </v-alert>
+                                            </v-col>
+                                        </v-row>
+                                    </div>
+                                    <div v-else>
+                                        <v-skeleton-loader type="text" />
+                                    </div>
+                                </v-card-text>
+                            </v-card>
+                        </v-col>
+                        <v-col
+                            cols="12"
+                            md="6"
+                        >
+                            <v-card
+                                variant="outlined"
+                                data-testid="system-versioning-card"
+                            >
+                                <v-card-title class="text-subtitle-1 pa-3">
+                                    {{ t('system.versioning.section_title') }}
+                                </v-card-title>
+                                <v-card-text class="pa-3">
+                                    <v-switch
+                                        v-model="form.enabled"
+                                        :label="t('system.versioning.enabled')"
+                                        color="success"
+                                        inset
+                                    />
+                                    <v-text-field
+                                        v-model="form.max_versions"
+                                        :label="t('system.versioning.max_versions')"
+                                        type="number"
+                                        min="0"
+                                    />
+                                    <v-text-field
+                                        v-model="form.max_age_days"
+                                        :label="t('system.versioning.max_age_days')"
+                                        type="number"
+                                        min="0"
+                                    />
+                                </v-card-text>
+                                <v-card-actions>
+                                    <v-spacer />
+                                    <v-btn
+                                        color="primary"
+                                        variant="flat"
+                                        :loading="saving"
+                                        data-testid="system-versioning-save"
+                                        @click="save"
+                                    >
+                                        {{ t('system.versioning.save') }}
+                                    </v-btn>
+                                </v-card-actions>
+                            </v-card>
+                        </v-col>
+                    </v-row>
+
+                    <v-row>
+                        <v-col
+                            cols="12"
+                            md="6"
+                        >
+                            <v-card
+                                variant="outlined"
+                                data-testid="system-run-logs-card"
+                            >
+                                <v-card-title class="text-subtitle-1 pa-3">
+                                    {{ t('system.workflow_run_logs.section_title') }}
+                                </v-card-title>
+                                <v-card-text class="pa-3">
+                                    <v-switch
+                                        v-model="runLogsForm.enabled"
+                                        :label="t('system.workflow_run_logs.enabled')"
+                                        color="success"
+                                        inset
+                                    />
+                                    <v-text-field
+                                        v-model="runLogsForm.max_runs"
+                                        :label="t('system.workflow_run_logs.max_runs')"
+                                        type="number"
+                                        min="0"
+                                    />
+                                    <v-text-field
+                                        v-model="runLogsForm.max_age_days"
+                                        :label="t('system.workflow_run_logs.max_age_days')"
+                                        type="number"
+                                        min="0"
+                                    />
+                                </v-card-text>
+                                <v-card-actions>
+                                    <v-spacer />
+                                    <v-btn
+                                        color="primary"
+                                        variant="flat"
+                                        :loading="savingRunLogs"
+                                        data-testid="system-run-logs-save"
+                                        @click="saveRunLogs"
+                                    >
+                                        {{ t('system.workflow_run_logs.save') }}
+                                    </v-btn>
+                                </v-card-actions>
+                            </v-card>
+                        </v-col>
+                    </v-row>
+                </v-tabs-window-item>
+
+                <v-tabs-window-item value="email-templates">
+                    <EmailTemplateList />
+                </v-tabs-window-item>
+
+                <v-tabs-window-item value="logs">
+                    <SystemLogsViewer />
+                </v-tabs-window-item>
+            </v-tabs-window>
 
             <SnackbarManager :snackbar="currentSnackbar" />
         </PageLayout>
@@ -212,11 +267,15 @@
     import type { LicenseState } from '@/api/clients/system'
     import PageLayout from '@/components/layouts/PageLayout.vue'
     import SnackbarManager from '@/components/common/SnackbarManager.vue'
+    import EmailTemplateList from '@/components/system/EmailTemplateList.vue'
+    import SystemLogsViewer from '@/components/system/SystemLogsViewer.vue'
 
     const { currentSnackbar, showSuccess } = useSnackbar()
     const { handleError } = useErrorHandler()
     const { t } = useTranslations()
     const licenseStore = useLicenseStore()
+
+    const activeTab = ref('settings')
 
     const form = ref<{
         enabled: boolean

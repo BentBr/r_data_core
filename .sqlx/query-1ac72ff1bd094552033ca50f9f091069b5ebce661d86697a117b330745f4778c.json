@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM system_logs WHERE created_at < NOW() - make_interval(days => $1::int)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1ac72ff1bd094552033ca50f9f091069b5ebce661d86697a117b330745f4778c"
+}

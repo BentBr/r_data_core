@@ -1,4 +1,4 @@
-//! Bootstrap module for initializing application components
+//! Bootstrap module for initialising application components
 //!
 //! This module provides functions to set up the application's core infrastructure
 //! including database connections, caching, and services.
@@ -15,7 +15,8 @@ use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::AppConfig;
 use r_data_core_persistence::{
     AdminUserRepository, ApiKeyRepository, DashboardStatsRepository, DynamicEntityRepository,
-    EntityDefinitionRepository, WorkflowRepository,
+    EmailTemplateRepository, EntityDefinitionRepository, PasswordResetRepository,
+    SystemLogRepository, WorkflowRepository,
 };
 use r_data_core_services::adapters::{
     AdminUserRepositoryAdapter, ApiKeyRepositoryAdapter, DynamicEntityRepositoryAdapter,
@@ -23,12 +24,12 @@ use r_data_core_services::adapters::{
 };
 use r_data_core_services::{
     AdminUserService, ApiKeyService, DashboardStatsService, DynamicEntityService,
-    EntityDefinitionService, LicenseService, RoleService, WorkflowRepositoryAdapter,
-    WorkflowService,
+    EntityDefinitionService, LicenseService, MailService, PasswordResetService, RoleService,
+    SystemLogService, WorkflowRepositoryAdapter, WorkflowService,
 };
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
-/// Initialize the environment logger with the given log level
+/// Initialise the environment logger with the given log level
 pub fn init_logger(log_level: &str) {
     let env = env_logger::Env::new().default_filter_or(log_level);
     env_logger::Builder::from_env(env)
@@ -55,7 +56,7 @@ pub async fn create_db_pool(config: &AppConfig) -> r_data_core_core::error::Resu
         })
 }
 
-/// Initialize the cache manager with Redis backend
+/// Initialise the cache manager with Redis backend
 ///
 /// # Errors
 /// Returns an error if Redis URL is empty or if Redis connection fails
@@ -81,15 +82,15 @@ pub async fn create_cache_manager(
     Ok(Arc::new(manager))
 }
 
-/// Verify license on startup
+/// Verify licence on startup
 ///
-/// This function verifies the license and logs the result without blocking startup.
+/// This function verifies the licence and logs the result without blocking startup.
 pub async fn verify_license_on_startup(config: &AppConfig, cache_manager: Arc<CacheManager>) {
     let license_service = LicenseService::new(config.license.clone(), cache_manager);
     license_service.verify_license_on_startup("core").await;
 }
 
-/// Initialize the Redis queue client for workflows
+/// Initialise the Redis queue client for workflows
 ///
 /// # Errors
 /// Returns an error if the Redis queue connection fails
@@ -101,6 +102,7 @@ pub async fn create_queue_client(
         &config.queue.redis_url,
         &config.queue.fetch_key,
         &config.queue.process_key,
+        "queue:email",
     )
     .await
     .map_err(|e| {
@@ -112,10 +114,10 @@ pub async fn create_queue_client(
     Ok(Arc::new(queue))
 }
 
-/// Build the complete API state with all services initialized
+/// Build the complete API state with all services initialised
 ///
 /// # Errors
-/// Returns an error if queue initialization fails
+/// Returns an error if queue initialisation fails
 ///
 /// # Panics
 /// Does not panic under normal conditions
@@ -133,20 +135,27 @@ pub async fn build_api_state(
         DynamicEntityRepository::with_cache(pool.clone(), cache_manager.clone());
 
     // Create services with adapters
+    // Initialise system log service (created early so it can be injected into other services)
+    let system_log_repository = SystemLogRepository::new(pool.clone());
+    let system_log_service = Arc::new(SystemLogService::new(Arc::new(system_log_repository)));
+
     let api_key_adapter = ApiKeyRepositoryAdapter::new(api_key_repository);
     let api_key_service = ApiKeyService::with_cache(
         Arc::new(api_key_adapter),
         cache_manager.clone(),
         config.cache.api_key_ttl,
-    );
+    )
+    .with_system_log(system_log_service.clone());
 
     let admin_user_adapter = AdminUserRepositoryAdapter::new(admin_user_repository);
-    let admin_user_service = AdminUserService::new(Arc::new(admin_user_adapter));
+    let admin_user_service = AdminUserService::new(Arc::new(admin_user_adapter))
+        .with_system_log(system_log_service.clone());
 
     let entity_definition_adapter =
         EntityDefinitionRepositoryAdapter::new(entity_definition_repository);
     let entity_definition_service =
-        EntityDefinitionService::new(Arc::new(entity_definition_adapter), cache_manager.clone());
+        EntityDefinitionService::new(Arc::new(entity_definition_adapter), cache_manager.clone())
+            .with_system_log(system_log_service.clone());
 
     let dynamic_entity_adapter =
         DynamicEntityRepositoryAdapter::from_repository(dynamic_entity_repository);
@@ -157,25 +166,72 @@ pub async fn build_api_state(
 
     let workflow_repo = WorkflowRepository::new(pool.clone());
     let workflow_adapter = WorkflowRepositoryAdapter::new(workflow_repo);
-    let workflow_service = WorkflowService::new(Arc::new(workflow_adapter)).with_jwt_config(
-        Some(config.api.jwt_secret.clone()),
-        config.api.jwt_expiration,
-    );
+    let workflow_mail_service =
+        config
+            .mail
+            .workflow
+            .as_ref()
+            .and_then(|smtp| match MailService::new(smtp) {
+                Ok(svc) => Some(Arc::new(svc)),
+                Err(e) => {
+                    log::warn!("Failed to initialize workflow mail service: {e}");
+                    None
+                }
+            });
+    let workflow_service = WorkflowService::new(Arc::new(workflow_adapter))
+        .with_jwt_config(
+            Some(config.api.jwt_secret.clone()),
+            config.api.jwt_expiration,
+        )
+        .with_mail_service(workflow_mail_service)
+        .with_system_log(system_log_service.clone());
 
     let role_service = RoleService::new(
         pool.clone(),
         cache_manager.clone(),
         Some(config.cache.entity_definition_ttl),
-    );
+    )
+    .with_system_log(system_log_service.clone());
 
     let dashboard_stats_repository = DashboardStatsRepository::new(pool.clone());
     let dashboard_stats_service = DashboardStatsService::new(Arc::new(dashboard_stats_repository));
 
-    // Initialize license service
+    // Initialise licence service
     let license_service = LicenseService::new(config.license.clone(), cache_manager.clone());
 
-    // Initialize queue client
+    // Initialise queue client
     let queue_client = create_queue_client(config).await?;
+
+    // Initialise password reset service if system mail is configured
+    let password_reset_service = config.mail.system.as_ref().map_or_else(
+        || {
+            log::debug!("System mail not configured; password reset disabled");
+            None
+        },
+        |smtp_config| match MailService::new(smtp_config) {
+            Ok(mail_service) => {
+                let pool_arc2 = Arc::new(pool.clone());
+                let password_reset_repo = PasswordResetRepository::new(pool.clone());
+                let user_repo_for_reset =
+                    r_data_core_persistence::AdminUserRepository::new(pool_arc2);
+                let template_repo = EmailTemplateRepository::new(pool.clone());
+                let frontend_base_url = config.frontend_base_url.clone().unwrap_or_default();
+                Some(PasswordResetService::new(
+                    Arc::new(password_reset_repo),
+                    Arc::new(user_repo_for_reset),
+                    Arc::new(template_repo),
+                    queue_client.clone(),
+                    Arc::new(mail_service),
+                    config.password_reset_throttle_seconds,
+                    frontend_base_url,
+                ))
+            }
+            Err(e) => {
+                log::warn!("Failed to initialize mail service for password reset: {e}");
+                None
+            }
+        },
+    );
 
     Ok(ApiState {
         db_pool: pool,
@@ -190,5 +246,7 @@ pub async fn build_api_state(
         dashboard_stats_service,
         license_service: Arc::new(license_service),
         queue: queue_client,
+        password_reset_service,
+        system_log_service: Some(system_log_service),
     })
 }

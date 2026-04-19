@@ -4,8 +4,8 @@ use dotenvy::dotenv;
 use std::env;
 
 use crate::config::{
-    ApiConfig, AppConfig, CacheConfig, DatabaseConfig, LicenseConfig, LogConfig, MaintenanceConfig,
-    QueueConfig, WorkerConfig, WorkflowConfig,
+    ApiConfig, AppConfig, CacheConfig, DatabaseConfig, LicenseConfig, LogConfig, MailConfig,
+    MaintenanceConfig, QueueConfig, WorkerConfig, WorkflowConfig,
 };
 use crate::error::Result;
 use crate::utils;
@@ -74,6 +74,7 @@ pub fn load_app_config() -> Result<AppConfig> {
     let cache = get_cache_config();
     let queue = get_queue_config()?;
     let license = get_license_config();
+    let mail = get_mail_config();
 
     Ok(AppConfig {
         environment,
@@ -83,6 +84,12 @@ pub fn load_app_config() -> Result<AppConfig> {
         log,
         queue,
         license,
+        mail,
+        frontend_base_url: env::var("FRONTEND_BASE_URL").ok().filter(|s| !s.is_empty()),
+        password_reset_throttle_seconds: env::var("PASSWORD_RESET_THROTTLE_SECONDS")
+            .unwrap_or_else(|_| "60".to_string())
+            .parse()
+            .unwrap_or(60),
     })
 }
 
@@ -139,6 +146,7 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
     let queue = get_queue_config()?;
     let cache = get_cache_config();
     let license = get_license_config();
+    let mail = get_mail_config();
 
     Ok(WorkerConfig {
         job_queue_update_interval_secs,
@@ -147,6 +155,7 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
         queue,
         cache,
         license,
+        mail,
     })
 }
 
@@ -184,6 +193,19 @@ pub fn load_maintenance_config() -> Result<MaintenanceConfig> {
             "Invalid WORKFLOW_RUN_LOGS_PURGER_CRON '{workflow_run_logs_purger_cron}': {e}",
         ))
     })?;
+
+    let system_logs_purger_cron = env::var("SYSTEM_LOGS_PURGER_CRON")
+        .map_err(|_| crate::error::Error::Config("SYSTEM_LOGS_PURGER_CRON not set".to_string()))?;
+    utils::validate_cron(&system_logs_purger_cron).map_err(|e| {
+        crate::error::Error::Config(format!(
+            "Invalid SYSTEM_LOGS_PURGER_CRON '{system_logs_purger_cron}': {e}",
+        ))
+    })?;
+
+    let system_logs_retention_days: u64 = env::var("SYSTEM_LOGS_RETENTION_DAYS")
+        .unwrap_or_else(|_| "90".to_string())
+        .parse()
+        .unwrap_or(90);
 
     // Prefer dedicated MAINTENANCE_*, then WORKER_*, then general DATABASE_* where sensible
     let connection_string = env::var("MAINTENANCE_DATABASE_URL")
@@ -248,6 +270,8 @@ pub fn load_maintenance_config() -> Result<MaintenanceConfig> {
         version_purger_cron,
         refresh_token_cleanup_cron,
         workflow_run_logs_purger_cron,
+        system_logs_purger_cron,
+        system_logs_retention_days,
         database,
         cache,
         redis_url,
@@ -289,9 +313,38 @@ fn get_queue_config() -> Result<QueueConfig> {
             .unwrap_or_else(|_| "queue:workflows:fetch".to_string()),
         process_key: env::var("QUEUE_PROCESS_KEY")
             .unwrap_or_else(|_| "queue:workflows:process".to_string()),
+        email_key: env::var("QUEUE_EMAIL_KEY").unwrap_or_else(|_| "queue:email".to_string()),
     };
 
     Ok(config)
+}
+
+fn get_mail_config() -> MailConfig {
+    let system = std::env::var("SYSTEM_SMTP_DSN")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .and_then(|dsn| {
+            crate::config::mail::parse_smtp_dsn(&dsn)
+                .map_err(|e| {
+                    log::warn!("Failed to parse SYSTEM_SMTP_DSN: {e}");
+                    e
+                })
+                .ok()
+        });
+
+    let workflow = std::env::var("WORKFLOW_SMTP_DSN")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .and_then(|dsn| {
+            crate::config::mail::parse_smtp_dsn(&dsn)
+                .map_err(|e| {
+                    log::warn!("Failed to parse WORKFLOW_SMTP_DSN: {e}");
+                    e
+                })
+                .ok()
+        });
+
+    MailConfig { system, workflow }
 }
 
 fn get_license_config() -> LicenseConfig {

@@ -15,6 +15,7 @@ sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uui
 uuid = { version = "1.6", features = ["v4", "v7", "serde"] }
 regex = "1.10"
 utoipa = { version = "5.4.0", features = ["time", "uuid"] }
+ts-rs = { version = "10", features = ["serde-compat"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 log = "0.4"
 bytes = "1.11.1"

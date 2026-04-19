@@ -96,6 +96,11 @@ services:
             JWT_SECRET: development_secret_key
             JWT_EXPIRATION: 86400
             VIRTUAL_HOST: .rdatacore.docker
+            SYSTEM_SMTP_DSN: "smtp://mail.rdatacore.docker:1025?tls=false&from=system@rdatacore.local&from_name=RData%20System"
+            WORKFLOW_SMTP_DSN: "smtp://mail.rdatacore.docker:1025?tls=false&from=workflow@rdatacore.local&from_name=RData%20Workflows"
+            QUEUE_EMAIL_KEY: "queue:email"
+            PASSWORD_RESET_THROTTLE_SECONDS: 60
+            FRONTEND_BASE_URL: "http://admin.rdatacore.docker"
             # RDT key
             MAIN_SERVICE: app
         ports:
@@ -137,6 +142,11 @@ services:
             RUST_LOG: info
             LOG_LEVEL: info
             VIRTUAL_HOST: .worker.rdatacore.docker
+            SYSTEM_SMTP_DSN: "smtp://mail.rdatacore.docker:1025?tls=false&from=system@rdatacore.local&from_name=RData%20System"
+            WORKFLOW_SMTP_DSN: "smtp://mail.rdatacore.docker:1025?tls=false&from=workflow@rdatacore.local&from_name=RData%20Workflows"
+            QUEUE_EMAIL_KEY: "queue:email"
+            PASSWORD_RESET_THROTTLE_SECONDS: 60
+            FRONTEND_BASE_URL: "http://admin.rdatacore.docker"
         networks:
             default:
                 aliases:
@@ -172,9 +182,16 @@ services:
             LOG_LEVEL: info
             # Cron expressions for maintenance tasks (every 5 minutes)
             VERSION_PURGER_CRON: "0 */5 * * * *"
-            REFRESH_TOKEN_CLEANUP_CRON: "0 */5 * * * *"
-            WORKFLOW_RUN_LOGS_PURGER_CRON: "0 */5 * * * *"
+            REFRESH_TOKEN_CLEANUP_CRON: "10 */5 * * * *"
+            WORKFLOW_RUN_LOGS_PURGER_CRON: "20 */5 * * * *"
             VIRTUAL_HOST: .maintenance.rdatacore.docker
+            SYSTEM_SMTP_DSN: "smtp://mail.rdatacore.docker:1025?tls=false&from=system@rdatacore.local&from_name=RData%20System"
+            WORKFLOW_SMTP_DSN: "smtp://mail.rdatacore.docker:1025?tls=false&from=workflow@rdatacore.local&from_name=RData%20Workflows"
+            QUEUE_EMAIL_KEY: "queue:email"
+            PASSWORD_RESET_THROTTLE_SECONDS: 60
+            FRONTEND_BASE_URL: "http://admin.rdatacore.docker"
+            SYSTEM_LOGS_PURGER_CRON: "30 */5 * * * *"
+            SYSTEM_LOGS_RETENTION_DAYS: 90
         networks:
             default:
                 aliases:
@@ -248,6 +265,19 @@ services:
             default:
                 aliases:
                     - nginx.rdatacore.docker
+
+    mailpit:
+        container_name: rdata_mailpit
+        image: axllent/mailpit:latest
+        ports:
+            - '8025'
+            - '1025'
+        environment:
+            VIRTUAL_HOST: .mail.rdatacore.docker
+        networks:
+            default:
+                aliases:
+                    - mail.rdatacore.docker
 
 volumes:
     postgres_data:

@@ -86,6 +86,8 @@ async fn setup_test_app() -> Result<(
         dashboard_stats_service,
         queue: test_queue_client_async().await,
         license_service,
+        password_reset_service: None,
+        system_log_service: None,
     };
 
     let app = test::init_service(

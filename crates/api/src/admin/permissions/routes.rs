@@ -382,6 +382,14 @@ pub async fn delete_role(
     }
 
     let uuid = path.into_inner();
+    let actor_uuid = match Uuid::parse_str(&auth.0.sub) {
+        Ok(u) => u,
+        Err(e) => {
+            let sub = &auth.0.sub;
+            error!("Invalid UUID in auth token: {sub} - {e}");
+            return ApiResponse::<()>::internal_error("Invalid authentication token");
+        }
+    };
     let service = state.role_service();
 
     // Check if it's a system role
@@ -391,7 +399,7 @@ pub async fn delete_role(
         }
     }
 
-    match service.delete_role(uuid).await {
+    match service.delete_role(uuid, actor_uuid).await {
         Ok(()) => ApiResponse::ok_with_message((), "Role deleted successfully"),
         Err(e) => {
             error!("Failed to delete role: {e}");

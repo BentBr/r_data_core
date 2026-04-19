@@ -13,9 +13,7 @@ use crate::auth::RequiredAuthExt;
 use crate::query::StandardQuery;
 use crate::response::ApiResponse;
 use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
-use r_data_core_persistence::{
-    AdminUserRepository, AdminUserRepositoryTrait, CreateAdminUserParams,
-};
+use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
 use r_data_core_services::query_validation::FieldValidator;
 use validator::Validate;
 
@@ -189,18 +187,6 @@ pub async fn create_user(
         return ApiResponse::unprocessable_entity(&format!("Validation error: {errors}"));
     }
 
-    let pool = Arc::new(state.db_pool().clone());
-    let repo = AdminUserRepository::new(pool);
-
-    // Check if username or email already exists
-    if let Ok(Some(_)) = repo.find_by_username_or_email(&req.username).await {
-        return ApiResponse::conflict("Username already exists");
-    }
-
-    if let Ok(Some(_)) = repo.find_by_username_or_email(&req.email).await {
-        return ApiResponse::conflict("Email already in use");
-    }
-
     // Extract creator UUID from auth claims
     let creator_uuid = match Uuid::parse_str(&auth.0.sub) {
         Ok(uuid) => uuid,
@@ -210,68 +196,75 @@ pub async fn create_user(
         }
     };
 
-    // Create user
-    let params = CreateAdminUserParams {
-        username: &req.username,
-        email: &req.email,
-        password: &req.password,
-        first_name: &req.first_name,
-        last_name: &req.last_name,
-        role: None, // No longer using role field
-        is_active: req.is_active.unwrap_or(true),
-        creator_uuid,
-    };
-
-    match repo.create_admin_user(&params).await {
-        Ok(user_uuid) => {
-            // Fetch the created user to return
-            match repo.find_by_uuid(&user_uuid).await {
-                Ok(Some(mut user)) => {
-                    // Update super_admin flag if provided
-                    if req.super_admin.unwrap_or(false) {
-                        user.super_admin = true;
-                        if let Err(e) = repo.update_admin_user(&user).await {
-                            error!("Failed to update super_admin flag: {e}");
-                            return ApiResponse::<()>::internal_error(
-                                "User created but failed to set super_admin flag",
-                            );
-                        }
-                        // Re-fetch to get updated user
-                        if let Ok(Some(updated)) = repo.find_by_uuid(&user_uuid).await {
-                            user = updated;
-                        }
-                    }
-                    // Assign roles if provided
-                    if let Some(role_uuids) = &req.role_uuids {
-                        if let Err(e) = repo.update_user_roles(user_uuid, role_uuids).await {
-                            error!("Failed to assign roles to user: {e}");
-                            return ApiResponse::<()>::internal_error(
-                                "User created but failed to assign roles",
-                            );
-                        }
-                    }
-                    // Invalidate cache for the new user
-                    state
-                        .role_service()
-                        .invalidate_user_permissions_cache(&user_uuid)
-                        .await;
-                    // Load role_uuids for response
-                    let role_uuids = repo.get_user_roles(user_uuid).await.unwrap_or_default();
-                    ApiResponse::<UserResponse>::created(UserResponse::from_with_roles(
-                        &user,
-                        &role_uuids,
-                    ))
-                }
-                Ok(None) => ApiResponse::<()>::internal_error("User created but not found"),
-                Err(e) => {
-                    error!("Failed to fetch created user: {e}");
-                    ApiResponse::<()>::internal_error("User created but failed to retrieve")
-                }
-            }
+    // Create user via service (handles duplicate checks and audit logging)
+    let service = state.admin_user_service();
+    let user_uuid = match service
+        .register_user(
+            &req.username,
+            &req.email,
+            &req.password,
+            &req.first_name,
+            &req.last_name,
+            None, // No longer using role field
+            req.is_active.unwrap_or(true),
+            creator_uuid,
+        )
+        .await
+    {
+        Ok(uuid) => uuid,
+        Err(r_data_core_core::error::Error::Validation(msg))
+            if msg.contains("already exists") || msg.contains("already in use") =>
+        {
+            return ApiResponse::conflict(&msg);
         }
         Err(e) => {
             error!("Failed to create user: {e}");
-            ApiResponse::<()>::internal_error("Failed to create user")
+            return ApiResponse::<()>::internal_error("Failed to create user");
+        }
+    };
+
+    let pool = Arc::new(state.db_pool().clone());
+    let repo = AdminUserRepository::new(pool);
+
+    // Fetch the created user to return
+    match repo.find_by_uuid(&user_uuid).await {
+        Ok(Some(mut user)) => {
+            // Update super_admin flag if provided
+            if req.super_admin.unwrap_or(false) {
+                user.super_admin = true;
+                if let Err(e) = repo.update_admin_user(&user).await {
+                    error!("Failed to update super_admin flag: {e}");
+                    return ApiResponse::<()>::internal_error(
+                        "User created but failed to set super_admin flag",
+                    );
+                }
+                // Re-fetch to get updated user
+                if let Ok(Some(updated)) = repo.find_by_uuid(&user_uuid).await {
+                    user = updated;
+                }
+            }
+            // Assign roles if provided
+            if let Some(role_uuids) = &req.role_uuids {
+                if let Err(e) = repo.update_user_roles(user_uuid, role_uuids).await {
+                    error!("Failed to assign roles to user: {e}");
+                    return ApiResponse::<()>::internal_error(
+                        "User created but failed to assign roles",
+                    );
+                }
+            }
+            // Invalidate cache for the new user
+            state
+                .role_service()
+                .invalidate_user_permissions_cache(&user_uuid)
+                .await;
+            // Load role_uuids for response
+            let role_uuids = repo.get_user_roles(user_uuid).await.unwrap_or_default();
+            ApiResponse::<UserResponse>::created(UserResponse::from_with_roles(&user, &role_uuids))
+        }
+        Ok(None) => ApiResponse::<()>::internal_error("User created but not found"),
+        Err(e) => {
+            error!("Failed to fetch created user: {e}");
+            ApiResponse::<()>::internal_error("User created but failed to retrieve")
         }
     }
 }
@@ -316,6 +309,14 @@ pub async fn update_user(
     if let Err(errors) = req.validate() {
         return ApiResponse::unprocessable_entity(&format!("Validation error: {errors}"));
     }
+
+    let actor_uuid = match Uuid::parse_str(&auth.0.sub) {
+        Ok(uuid) => uuid,
+        Err(e) => {
+            error!("Failed to parse actor UUID from claims: {e}");
+            return ApiResponse::<()>::internal_error("Invalid authentication");
+        }
+    };
 
     let user_uuid = path.into_inner();
     let pool = Arc::new(state.db_pool().clone());
@@ -398,8 +399,9 @@ pub async fn update_user(
         }
     }
 
-    // Update user
-    match repo.update_admin_user(&user).await {
+    // Update user via service (handles audit logging)
+    let service = state.admin_user_service();
+    match service.update_user(&user, actor_uuid).await {
         Ok(()) => {
             // Invalidate cache for the updated user
             state
@@ -449,12 +451,19 @@ pub async fn delete_user(
         return resp;
     }
 
-    let user_uuid = path.into_inner();
-    let pool = Arc::new(state.db_pool().clone());
-    let repo = AdminUserRepository::new(pool);
+    let actor_uuid = match Uuid::parse_str(&auth.0.sub) {
+        Ok(uuid) => uuid,
+        Err(e) => {
+            error!("Failed to parse actor UUID from claims: {e}");
+            return ApiResponse::<()>::internal_error("Invalid authentication");
+        }
+    };
 
-    // Verify user exists and is active
-    match repo.find_by_uuid(&user_uuid).await {
+    let user_uuid = path.into_inner();
+
+    // Verify user is active before deleting (service checks existence)
+    let service = state.admin_user_service();
+    match service.get_user_by_uuid(&user_uuid).await {
         Ok(Some(user)) => {
             if !user.is_active {
                 return ApiResponse::<()>::conflict("User is already inactive");
@@ -469,7 +478,8 @@ pub async fn delete_user(
         }
     }
 
-    match repo.delete_admin_user(&user_uuid).await {
+    // Delete via service (handles audit logging)
+    match service.delete_user(&user_uuid, actor_uuid).await {
         Ok(()) => {
             // Invalidate cache for the deleted user
             state

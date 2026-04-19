@@ -115,6 +115,8 @@ pub async fn create_test_app(
         dashboard_stats_service,
         queue: test_queue_client_async().await,
         license_service,
+        password_reset_service: None,
+        system_log_service: None,
     };
 
     test::init_service(

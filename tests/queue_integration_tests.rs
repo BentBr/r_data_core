@@ -17,7 +17,7 @@ async fn get_test_queue() -> Option<(ApalisRedisQueue, String, String)> {
     let fetch_key = format!("{base_fetch}:{test_id}");
     let process_key = format!("{base_process}:{test_id}");
 
-    let queue = ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key)
+    let queue = ApalisRedisQueue::from_parts(&url, &fetch_key, &process_key, "queue:email")
         .await
         .ok()?;
     Some((queue, fetch_key, process_key))
@@ -125,9 +125,13 @@ async fn enqueue_multiple_jobs_fifo_ordering_if_redis_available() {
 
 #[tokio::test]
 async fn queue_initialization_fails_with_invalid_redis_url() {
-    let result =
-        ApalisRedisQueue::from_parts("redis://invalid-host:9999", "test:fetch", "test:process")
-            .await;
+    let result = ApalisRedisQueue::from_parts(
+        "redis://invalid-host:9999",
+        "test:fetch",
+        "test:process",
+        "queue:email",
+    )
+    .await;
 
     assert!(result.is_err(), "Should fail with invalid Redis URL");
 }
@@ -231,6 +235,7 @@ async fn blocking_pop_logs_detailed_errors_on_failure_if_redis_available() {
         "redis://invalid-host:9999",
         &fetch_key,
         &format!("{fetch_key}:process"),
+        "queue:email",
     )
     .await;
 

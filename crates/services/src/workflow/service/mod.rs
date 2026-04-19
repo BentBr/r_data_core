@@ -2,7 +2,9 @@ mod execution;
 mod staging;
 
 use crate::dynamic_entity::DynamicEntityService;
+use crate::SystemLogService;
 use cron::Schedule;
+use r_data_core_core::system_log::SystemLogResourceType;
 use r_data_core_persistence::WorkflowRepositoryTrait;
 use r_data_core_workflow::data::requests::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use r_data_core_workflow::data::Workflow;
@@ -17,6 +19,12 @@ pub struct WorkflowService {
     pub jwt_secret: Option<String>,
     /// Default JWT expiration in seconds (from `JWT_EXPIRATION` env)
     pub jwt_expiration: u64,
+    /// Mail service for sending emails from workflow transforms and email outputs
+    pub mail_service: Option<Arc<crate::mail::MailService>>,
+    /// Job queue for enqueuing email (and other) jobs
+    pub queue: Option<Arc<dyn r_data_core_workflow::data::job_queue::JobQueue>>,
+    /// System log service for audit logging
+    pub system_log: Option<Arc<SystemLogService>>,
 }
 
 /// Default JWT expiration: 24 hours
@@ -29,6 +37,9 @@ impl WorkflowService {
             dynamic_entity_service: None,
             jwt_secret: None,
             jwt_expiration: DEFAULT_JWT_EXPIRATION,
+            mail_service: None,
+            queue: None,
+            system_log: None,
         }
     }
 
@@ -41,6 +52,9 @@ impl WorkflowService {
             dynamic_entity_service: Some(dynamic_entity_service),
             jwt_secret: None,
             jwt_expiration: DEFAULT_JWT_EXPIRATION,
+            mail_service: None,
+            queue: None,
+            system_log: None,
         }
     }
 
@@ -49,6 +63,30 @@ impl WorkflowService {
     pub fn with_jwt_config(mut self, secret: Option<String>, expiration: u64) -> Self {
         self.jwt_secret = secret;
         self.jwt_expiration = expiration;
+        self
+    }
+
+    /// Set the mail service for email transforms and email to-targets
+    #[must_use]
+    pub fn with_mail_service(mut self, svc: Option<Arc<crate::mail::MailService>>) -> Self {
+        self.mail_service = svc;
+        self
+    }
+
+    /// Set the job queue for enqueueing email (and other) jobs
+    #[must_use]
+    pub fn with_queue(
+        mut self,
+        queue: Option<Arc<dyn r_data_core_workflow::data::job_queue::JobQueue>>,
+    ) -> Self {
+        self.queue = queue;
+        self
+    }
+
+    /// Set the system log service for audit logging
+    #[must_use]
+    pub fn with_system_log(mut self, log: Arc<SystemLogService>) -> Self {
+        self.system_log = Some(log);
         self
     }
 
@@ -94,7 +132,20 @@ impl WorkflowService {
                 "Workflow DSL validation failed: {e}"
             ))
         })?;
-        self.repo.create(req, created_by).await
+        let uuid = self.repo.create(req, created_by).await?;
+
+        if let Some(ref log) = self.system_log {
+            log.log_entity_created(
+                Some(created_by),
+                SystemLogResourceType::Workflow,
+                uuid,
+                &format!("Workflow '{}' created", req.name),
+                Some(serde_json::json!({"name": req.name})),
+            )
+            .await;
+        }
+
+        Ok(uuid)
     }
 
     /// Update an existing workflow
@@ -124,15 +175,54 @@ impl WorkflowService {
                 "Workflow DSL validation failed: {e}"
             ))
         })?;
-        self.repo.update(uuid, req, updated_by).await
+        self.repo.update(uuid, req, updated_by).await?;
+
+        if let Some(ref log) = self.system_log {
+            log.log_entity_updated(
+                Some(updated_by),
+                SystemLogResourceType::Workflow,
+                uuid,
+                &format!("Workflow '{}' updated", req.name),
+                Some(serde_json::json!({"name": req.name})),
+            )
+            .await;
+        }
+
+        Ok(())
     }
 
     /// Delete a workflow
     ///
     /// # Errors
     /// Returns an error if the database operation fails
-    pub async fn delete(&self, uuid: Uuid) -> r_data_core_core::error::Result<()> {
-        self.repo.delete(uuid).await
+    pub async fn delete(
+        &self,
+        uuid: Uuid,
+        actor_uuid: Uuid,
+    ) -> r_data_core_core::error::Result<()> {
+        // Capture the workflow name before deletion for audit log
+        let workflow_name = self
+            .repo
+            .get_by_uuid(uuid)
+            .await
+            .ok()
+            .flatten()
+            .map_or_else(|| uuid.to_string(), |w| w.name);
+
+        self.repo.delete(uuid).await?;
+
+        if let Some(ref log) = self.system_log {
+            log.log_entity_deleted(
+                Some(actor_uuid),
+                SystemLogResourceType::Workflow,
+                uuid,
+                &format!("Workflow '{workflow_name}' deleted"),
+                Some(serde_json::json!({"name": workflow_name})),
+            )
+            .await;
+        }
+
+        Ok(())
     }
 
     /// List workflows with pagination
