@@ -677,10 +677,16 @@ pub async fn forgot_password(
     data: web::Data<ApiStateWrapper>,
     body: web::Json<ForgotPasswordRequest>,
 ) -> impl Responder {
+    let mut user_uuid: Option<Uuid> = None;
+
     if let Some(svc) = data.password_reset_service() {
-        if let Err(e) = svc.request_reset(&body.email).await {
-            log::error!("Password reset request failed: {e:?}");
-            // Do not surface error to caller — always return generic 200
+        match svc.request_reset(&body.email).await {
+            Ok(Some(uuid)) => user_uuid = Some(uuid),
+            Ok(None) => { /* user not found or throttled — silent */ }
+            Err(e) => {
+                log::error!("Password reset request failed: {e:?}");
+                // Do not surface error to caller — always return generic 200
+            }
         }
     } else {
         log::debug!("Password reset service not configured; ignoring forgot-password request");
@@ -690,9 +696,11 @@ pub async fn forgot_password(
         log_svc
             .log_auth_event(
                 None,
-                None,
+                user_uuid,
                 "Password reset requested",
-                Some(serde_json::json!({"action": "password_reset_requested"})),
+                Some(
+                    serde_json::json!({"action": "password_reset_requested", "email": body.email}),
+                ),
                 SystemLogStatus::Success,
             )
             .await;
@@ -727,12 +735,12 @@ pub async fn reset_password(
     };
 
     match svc.reset_password(&body.token, &body.new_password).await {
-        Ok(()) => {
+        Ok(user_uuid) => {
             if let Some(log_svc) = data.system_log_service() {
                 log_svc
                     .log_auth_event(
-                        None,
-                        None,
+                        Some(user_uuid),
+                        Some(user_uuid),
                         "Password reset completed",
                         Some(serde_json::json!({"action": "password_reset_completed"})),
                         SystemLogStatus::Success,

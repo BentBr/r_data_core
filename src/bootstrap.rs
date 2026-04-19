@@ -1,4 +1,4 @@
-//! Bootstrap module for initializing application components
+//! Bootstrap module for initialising application components
 //!
 //! This module provides functions to set up the application's core infrastructure
 //! including database connections, caching, and services.
@@ -29,7 +29,7 @@ use r_data_core_services::{
 };
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
-/// Initialize the environment logger with the given log level
+/// Initialise the environment logger with the given log level
 pub fn init_logger(log_level: &str) {
     let env = env_logger::Env::new().default_filter_or(log_level);
     env_logger::Builder::from_env(env)
@@ -56,7 +56,7 @@ pub async fn create_db_pool(config: &AppConfig) -> r_data_core_core::error::Resu
         })
 }
 
-/// Initialize the cache manager with Redis backend
+/// Initialise the cache manager with Redis backend
 ///
 /// # Errors
 /// Returns an error if Redis URL is empty or if Redis connection fails
@@ -82,15 +82,15 @@ pub async fn create_cache_manager(
     Ok(Arc::new(manager))
 }
 
-/// Verify license on startup
+/// Verify licence on startup
 ///
-/// This function verifies the license and logs the result without blocking startup.
+/// This function verifies the licence and logs the result without blocking startup.
 pub async fn verify_license_on_startup(config: &AppConfig, cache_manager: Arc<CacheManager>) {
     let license_service = LicenseService::new(config.license.clone(), cache_manager);
     license_service.verify_license_on_startup("core").await;
 }
 
-/// Initialize the Redis queue client for workflows
+/// Initialise the Redis queue client for workflows
 ///
 /// # Errors
 /// Returns an error if the Redis queue connection fails
@@ -114,10 +114,10 @@ pub async fn create_queue_client(
     Ok(Arc::new(queue))
 }
 
-/// Build the complete API state with all services initialized
+/// Build the complete API state with all services initialised
 ///
 /// # Errors
-/// Returns an error if queue initialization fails
+/// Returns an error if queue initialisation fails
 ///
 /// # Panics
 /// Does not panic under normal conditions
@@ -135,7 +135,7 @@ pub async fn build_api_state(
         DynamicEntityRepository::with_cache(pool.clone(), cache_manager.clone());
 
     // Create services with adapters
-    // Initialize system log service (created early so it can be injected into other services)
+    // Initialise system log service (created early so it can be injected into other services)
     let system_log_repository = SystemLogRepository::new(pool.clone());
     let system_log_service = Arc::new(SystemLogService::new(Arc::new(system_log_repository)));
 
@@ -145,16 +145,17 @@ pub async fn build_api_state(
         cache_manager.clone(),
         config.cache.api_key_ttl,
     )
-    .with_system_log(Some(system_log_service.clone()));
+    .with_system_log(system_log_service.clone());
 
     let admin_user_adapter = AdminUserRepositoryAdapter::new(admin_user_repository);
     let admin_user_service = AdminUserService::new(Arc::new(admin_user_adapter))
-        .with_system_log(Some(system_log_service.clone()));
+        .with_system_log(system_log_service.clone());
 
     let entity_definition_adapter =
         EntityDefinitionRepositoryAdapter::new(entity_definition_repository);
     let entity_definition_service =
-        EntityDefinitionService::new(Arc::new(entity_definition_adapter), cache_manager.clone());
+        EntityDefinitionService::new(Arc::new(entity_definition_adapter), cache_manager.clone())
+            .with_system_log(system_log_service.clone());
 
     let dynamic_entity_adapter =
         DynamicEntityRepositoryAdapter::from_repository(dynamic_entity_repository);
@@ -182,24 +183,26 @@ pub async fn build_api_state(
             Some(config.api.jwt_secret.clone()),
             config.api.jwt_expiration,
         )
-        .with_mail_service(workflow_mail_service);
+        .with_mail_service(workflow_mail_service)
+        .with_system_log(system_log_service.clone());
 
     let role_service = RoleService::new(
         pool.clone(),
         cache_manager.clone(),
         Some(config.cache.entity_definition_ttl),
-    );
+    )
+    .with_system_log(system_log_service.clone());
 
     let dashboard_stats_repository = DashboardStatsRepository::new(pool.clone());
     let dashboard_stats_service = DashboardStatsService::new(Arc::new(dashboard_stats_repository));
 
-    // Initialize license service
+    // Initialise licence service
     let license_service = LicenseService::new(config.license.clone(), cache_manager.clone());
 
-    // Initialize queue client
+    // Initialise queue client
     let queue_client = create_queue_client(config).await?;
 
-    // Initialize password reset service if system mail is configured
+    // Initialise password reset service if system mail is configured
     let password_reset_service = config.mail.system.as_ref().map_or_else(
         || {
             log::debug!("System mail not configured; password reset disabled");

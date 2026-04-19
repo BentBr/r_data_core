@@ -48,7 +48,8 @@
                 "role",
                 "workflow",
                 "entity_definition",
-                "email_template"
+                "email_template",
+                "api_key"
               ]
             }
           }

@@ -1,6 +1,7 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use ts_rs::TS;
 use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -73,8 +74,9 @@ pub enum Operand {
 }
 
 /// String operand variant used by Concat transform
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+#[ts(export)]
 pub enum StringOperand {
     Field { field: String },
     ConstString { value: String },
@@ -151,7 +153,8 @@ pub struct AuthenticateTransform {
 }
 
 /// Send an email via SMTP using a workflow email template
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct SendEmailTransform {
     /// UUID of a workflow email template
     pub template_uuid: String,

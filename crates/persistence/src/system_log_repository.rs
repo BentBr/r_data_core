@@ -109,24 +109,34 @@ impl SystemLogRepositoryTrait for SystemLogRepository {
         &self,
         limit: i64,
         offset: i64,
-        log_type_filter: Option<SystemLogType>,
-        resource_type_filter: Option<SystemLogResourceType>,
-        status_filter: Option<SystemLogStatus>,
+        filter: &crate::system_log_repository_trait::SystemLogFilter,
     ) -> Result<(Vec<SystemLog>, i64)> {
         // Build a dynamic WHERE clause
         let mut conditions: Vec<String> = Vec::new();
         let mut param_index: i32 = 1;
 
-        if log_type_filter.is_some() {
+        if filter.log_type.is_some() {
             conditions.push(format!("log_type = ${param_index}"));
             param_index += 1;
         }
-        if resource_type_filter.is_some() {
+        if filter.resource_type.is_some() {
             conditions.push(format!("resource_type = ${param_index}"));
             param_index += 1;
         }
-        if status_filter.is_some() {
+        if filter.status.is_some() {
             conditions.push(format!("status = ${param_index}"));
+            param_index += 1;
+        }
+        if filter.resource_uuid.is_some() {
+            conditions.push(format!("resource_uuid = ${param_index}"));
+            param_index += 1;
+        }
+        if filter.date_from.is_some() {
+            conditions.push(format!("created_at >= ${param_index}"));
+            param_index += 1;
+        }
+        if filter.date_to.is_some() {
+            conditions.push(format!("created_at <= ${param_index}"));
             param_index += 1;
         }
 
@@ -159,14 +169,23 @@ impl SystemLogRepositoryTrait for SystemLogRepository {
         macro_rules! bind_filters {
             ($q:expr) => {{
                 let mut q = $q;
-                if let Some(ref v) = log_type_filter {
+                if let Some(ref v) = filter.log_type {
                     q = q.bind(v.clone());
                 }
-                if let Some(ref v) = resource_type_filter {
+                if let Some(ref v) = filter.resource_type {
                     q = q.bind(v.clone());
                 }
-                if let Some(ref v) = status_filter {
+                if let Some(ref v) = filter.status {
                     q = q.bind(v.clone());
+                }
+                if let Some(v) = filter.resource_uuid {
+                    q = q.bind(v);
+                }
+                if let Some(v) = filter.date_from {
+                    q = q.bind(v);
+                }
+                if let Some(v) = filter.date_to {
+                    q = q.bind(v);
                 }
                 q
             }};

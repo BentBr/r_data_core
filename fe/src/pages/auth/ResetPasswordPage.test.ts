@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
+import { createVuetify } from 'vuetify'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
 import ResetPasswordPage from './ResetPasswordPage.vue'
+
+const vuetify = createVuetify({ components, directives })
 
 // Mock dependencies
 vi.mock('@/api/typed-client', () => ({
@@ -65,7 +70,8 @@ describe('ResetPasswordPage', () => {
 
         const wrapper = mount(ResetPasswordPage, {
             global: {
-                plugins: [router],
+                plugins: [router, vuetify],
+                stubs: { VMain: { template: '<div><slot /></div>' } },
             },
         })
 
@@ -83,7 +89,8 @@ describe('ResetPasswordPage', () => {
 
         const wrapper = mount(ResetPasswordPage, {
             global: {
-                plugins: [router],
+                plugins: [router, vuetify],
+                stubs: { VMain: { template: '<div><slot /></div>' } },
             },
         })
 
@@ -101,7 +108,8 @@ describe('ResetPasswordPage', () => {
 
         const wrapper = mount(ResetPasswordPage, {
             global: {
-                plugins: [router],
+                plugins: [router, vuetify],
+                stubs: { VMain: { template: '<div><slot /></div>' } },
             },
         })
 
@@ -141,7 +149,8 @@ describe('ResetPasswordPage', () => {
 
         const wrapper = mount(ResetPasswordPage, {
             global: {
-                plugins: [router],
+                plugins: [router, vuetify],
+                stubs: { VMain: { template: '<div><slot /></div>' } },
             },
         })
 
@@ -164,7 +173,8 @@ describe('ResetPasswordPage', () => {
 
         const wrapper = mount(ResetPasswordPage, {
             global: {
-                plugins: [router],
+                plugins: [router, vuetify],
+                stubs: { VMain: { template: '<div><slot /></div>' } },
             },
         })
 
@@ -198,7 +208,8 @@ describe('ResetPasswordPage', () => {
 
         const wrapper = mount(ResetPasswordPage, {
             global: {
-                plugins: [router],
+                plugins: [router, vuetify],
+                stubs: { VMain: { template: '<div><slot /></div>' } },
             },
         })
 

@@ -9,6 +9,7 @@ use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::SendEmailJob;
 use sha2::{Digest, Sha256};
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 /// Service for handling the password reset flow.
 pub struct PasswordResetService {
@@ -55,10 +56,12 @@ impl PasswordResetService {
     /// Returns an error only on unexpected infrastructure failures (database,
     /// queue, etc.).  A missing user or a throttled request are silently
     /// ignored.
-    pub async fn request_reset(&self, email: &str) -> Result<()> {
+    /// Returns `Ok(Some(user_uuid))` when the reset email was enqueued,
+    /// `Ok(None)` when silently skipped (user not found / throttled).
+    pub async fn request_reset(&self, email: &str) -> Result<Option<Uuid>> {
         // Look up user — silently return if not found to avoid leaking existence.
         let Some(user) = self.user_repo.find_by_username_or_email(email).await? else {
-            return Ok(());
+            return Ok(None);
         };
 
         // Throttle: if the most recent token was created within `throttle_seconds`, bail out.
@@ -67,7 +70,7 @@ impl PasswordResetService {
             #[allow(clippy::cast_possible_wrap)]
             let throttle_secs = self.throttle_seconds as i64;
             if age.whole_seconds() < throttle_secs {
-                return Ok(());
+                return Ok(None);
             }
         }
 
@@ -134,7 +137,7 @@ impl PasswordResetService {
 
         self.queue.enqueue_email(job).await?;
 
-        Ok(())
+        Ok(Some(user.uuid))
     }
 
     /// Validate a password-reset token and update the user's password.
@@ -143,7 +146,8 @@ impl PasswordResetService {
     ///
     /// Returns [`Error::Validation`] if the token is invalid, expired, or
     /// already used.  Returns other errors on infrastructure failures.
-    pub async fn reset_password(&self, token: &str, new_password: &str) -> Result<()> {
+    /// Returns the UUID of the user whose password was reset.
+    pub async fn reset_password(&self, token: &str, new_password: &str) -> Result<Uuid> {
         // Hash the provided token to look it up.
         let token_hash = hex::encode(Sha256::digest(token.as_bytes()));
 
@@ -187,6 +191,6 @@ impl PasswordResetService {
         // Mark token as used.
         self.repo.mark_used(record.id).await?;
 
-        Ok(())
+        Ok(user.uuid)
     }
 }

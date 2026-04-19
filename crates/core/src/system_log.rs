@@ -3,21 +3,24 @@
 use serde::{Deserialize, Serialize};
 use sqlx::Type;
 use time::OffsetDateTime;
+use ts_rs::TS;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type, ToSchema, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, ToSchema, TS, PartialEq, Eq)]
 #[sqlx(type_name = "system_log_status", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub enum SystemLogStatus {
     Success,
     Failed,
     Pending,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type, ToSchema, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, ToSchema, TS, PartialEq, Eq)]
 #[sqlx(type_name = "system_log_type", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub enum SystemLogType {
     EmailSent,
     EntityCreated,
@@ -26,9 +29,10 @@ pub enum SystemLogType {
     AuthEvent,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type, ToSchema, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, ToSchema, TS, PartialEq, Eq)]
 #[sqlx(type_name = "system_log_resource_type", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub enum SystemLogResourceType {
     Email,
     AdminUser,

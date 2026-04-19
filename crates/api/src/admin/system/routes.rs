@@ -15,6 +15,7 @@ use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 use r_data_core_persistence::ComponentVersionRepository;
 use r_data_core_persistence::{SystemLogRepository, SystemLogRepositoryTrait};
 use r_data_core_services::SettingsService;
+use time::format_description::well_known::Rfc3339;
 
 /// Core version from Cargo.toml
 const CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -345,30 +346,12 @@ pub async fn get_system_versions(
     path = "/admin/api/v1/system/capabilities",
     tag = "system",
     responses(
-        (status = 200, description = "Get system capabilities", body = CapabilitiesResponse),
-        (status = 401, description = "Unauthorized"),
-        (status = 403, description = "Forbidden"),
-        (status = 500, description = "Server error")
+        (status = 200, description = "Get system capabilities (public, no auth required)", body = CapabilitiesResponse),
     ),
-    security(("jwt" = []))
+    security() // No authentication required — only exposes feature flags, no secrets
 )]
 #[get("/capabilities")]
-pub async fn get_capabilities(
-    data: web::Data<ApiStateWrapper>,
-    auth: RequiredAuth,
-) -> impl Responder {
-    // Any authenticated admin with system read permission can view capabilities
-    if !permission_check::has_permission(
-        &auth.0,
-        &ResourceNamespace::System,
-        &PermissionType::Read,
-        None,
-    ) {
-        return ApiResponse::<()>::forbidden(
-            "Insufficient permissions to view system capabilities",
-        );
-    }
-
+pub async fn get_capabilities(data: web::Data<ApiStateWrapper>) -> impl Responder {
     let system_mail_configured = data.password_reset_service().is_some();
     let workflow_mail_configured = data.workflow_service().mail_service.is_some();
 
@@ -415,15 +398,34 @@ pub async fn list_system_logs(
     let (limit, offset, page, per_page) = query.to_pagination();
     let repo = SystemLogRepository::new(data.db_pool().clone());
 
-    match repo
-        .list_paginated(
-            limit,
-            offset,
-            query.log_type.clone(),
-            query.resource_type.clone(),
-            query.status.clone(),
-        )
-        .await
+    let resource_uuid_parsed = query
+        .resource_uuid
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .and_then(|s| uuid::Uuid::parse_str(s).ok());
+
+    let date_from_parsed = query
+        .date_from
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .and_then(|s| time::OffsetDateTime::parse(s, &Rfc3339).ok());
+
+    let date_to_parsed = query
+        .date_to
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .and_then(|s| time::OffsetDateTime::parse(s, &Rfc3339).ok());
+
+    let filter = r_data_core_persistence::SystemLogFilter {
+        log_type: query.log_type.clone(),
+        resource_type: query.resource_type.clone(),
+        status: query.status.clone(),
+        resource_uuid: resource_uuid_parsed,
+        date_from: date_from_parsed,
+        date_to: date_to_parsed,
+    };
+
+    match repo.list_paginated(limit, offset, &filter).await
     {
         Ok((logs, total)) => {
             let dtos: Vec<SystemLogDto> = logs.into_iter().map(SystemLogDto::from).collect();

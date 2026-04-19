@@ -1,21 +1,24 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
+use r_data_core_core::email_template::{EmailTemplate, EmailTemplateType};
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use r_data_core_core::email_template::{EmailTemplate, EmailTemplateType};
-
 /// Query parameters for filtering email templates
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct EmailTemplateListQuery {
     /// Filter by template type: "system" or "workflow"
     #[serde(rename = "type")]
+    #[ts(type = "string | null")]
     pub template_type: Option<EmailTemplateType>,
 }
 
 /// Request body for creating a new email template
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct CreateEmailTemplateRequest {
     /// Display name for the template
     pub name: String,
@@ -28,11 +31,13 @@ pub struct CreateEmailTemplateRequest {
     /// Plain-text body (may contain template variables)
     pub body_text_template: String,
     /// JSON object describing available template variables
+    #[ts(type = "unknown")]
     pub variables: serde_json::Value,
 }
 
 /// Request body for updating an email template
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct UpdateEmailTemplateRequest {
     /// New display name (only honoured for workflow templates)
     pub name: Option<String>,
@@ -43,19 +48,23 @@ pub struct UpdateEmailTemplateRequest {
     /// Updated plain-text body
     pub body_text_template: String,
     /// Updated variables schema
+    #[ts(type = "unknown")]
     pub variables: serde_json::Value,
 }
 
 /// Email template response DTO
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct EmailTemplateResponse {
     /// Template UUID
+    #[ts(type = "string")]
     pub uuid: Uuid,
     /// Display name
     pub name: String,
     /// Unique slug identifier
     pub slug: String,
     /// Template type (system or workflow)
+    #[ts(type = "string")]
     pub template_type: EmailTemplateType,
     /// Subject line template
     pub subject_template: String,
@@ -64,6 +73,7 @@ pub struct EmailTemplateResponse {
     /// Plain-text body template
     pub body_text_template: String,
     /// Available template variables
+    #[ts(type = "unknown")]
     pub variables: serde_json::Value,
     /// ISO 8601 creation timestamp
     pub created_at: String,

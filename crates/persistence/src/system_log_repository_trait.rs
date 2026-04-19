@@ -5,7 +5,19 @@ use r_data_core_core::error::Result;
 use r_data_core_core::system_log::{
     SystemLog, SystemLogResourceType, SystemLogStatus, SystemLogType,
 };
+use time::OffsetDateTime;
 use uuid::Uuid;
+
+/// Filter criteria for querying system logs
+#[derive(Debug, Default, Clone)]
+pub struct SystemLogFilter {
+    pub log_type: Option<SystemLogType>,
+    pub resource_type: Option<SystemLogResourceType>,
+    pub status: Option<SystemLogStatus>,
+    pub resource_uuid: Option<Uuid>,
+    pub date_from: Option<OffsetDateTime>,
+    pub date_to: Option<OffsetDateTime>,
+}
 
 /// Trait for system log repository operations
 #[async_trait]
@@ -42,9 +54,7 @@ pub trait SystemLogRepositoryTrait: Send + Sync {
         &self,
         limit: i64,
         offset: i64,
-        log_type_filter: Option<SystemLogType>,
-        resource_type_filter: Option<SystemLogResourceType>,
-        status_filter: Option<SystemLogStatus>,
+        filter: &SystemLogFilter,
     ) -> Result<(Vec<SystemLog>, i64)>;
 
     /// Delete system log entries older than the given number of days

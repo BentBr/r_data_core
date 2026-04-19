@@ -179,7 +179,7 @@
                     subject_template: template.subject_template,
                     body_html_template: template.body_html_template,
                     body_text_template: template.body_text_template,
-                    variables: [...template.variables],
+                    variables: [...(template.variables as Array<{ key: string; description: string }>)],
                 }
             } else {
                 form.value = {

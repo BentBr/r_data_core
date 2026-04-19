@@ -12,7 +12,7 @@ mod tests {
     use r_data_core_core::system_log::{SystemLogResourceType, SystemLogType};
     use r_data_core_persistence::{
         AdminUserRepository, AdminUserRepositoryTrait, ApiKeyRepository, CreateAdminUserParams,
-        DashboardStatsRepository, EntityDefinitionRepository, SystemLogRepository,
+        DashboardStatsRepository, EntityDefinitionRepository, SystemLogFilter, SystemLogRepository,
         SystemLogRepositoryTrait,
     };
     use r_data_core_services::{
@@ -395,7 +395,15 @@ mod tests {
         // Verify system log entry was created
         let log_repo = SystemLogRepository::new(pool.pool.clone());
         let (logs, _) = log_repo
-            .list_paginated(10, 0, Some(SystemLogType::AuthEvent), Some(SystemLogResourceType::AdminUser), None)
+            .list_paginated(
+                10,
+                0,
+                &SystemLogFilter {
+                    log_type: Some(SystemLogType::AuthEvent),
+                    resource_type: Some(SystemLogResourceType::AdminUser),
+                    ..Default::default()
+                },
+            )
             .await?;
 
         assert!(
@@ -404,7 +412,10 @@ mod tests {
         );
 
         // Check the details contain action: login
-        let login_log = logs.iter().find(|l| l.summary.contains("logged in")).unwrap();
+        let login_log = logs
+            .iter()
+            .find(|l| l.summary.contains("logged in"))
+            .unwrap();
         let details = login_log.details.as_ref().unwrap();
         assert_eq!(details["action"], "login");
 
@@ -439,7 +450,14 @@ mod tests {
         // Verify failed login log entry
         let log_repo = SystemLogRepository::new(pool.pool.clone());
         let (logs, _) = log_repo
-            .list_paginated(10, 0, Some(SystemLogType::AuthEvent), None, None)
+            .list_paginated(
+                10,
+                0,
+                &SystemLogFilter {
+                    log_type: Some(SystemLogType::AuthEvent),
+                    ..Default::default()
+                },
+            )
             .await?;
 
         assert!(
@@ -447,7 +465,10 @@ mod tests {
             "Should have a 'Login failed' system log entry"
         );
 
-        let fail_log = logs.iter().find(|l| l.summary.contains("Login failed")).unwrap();
+        let fail_log = logs
+            .iter()
+            .find(|l| l.summary.contains("Login failed"))
+            .unwrap();
         let details = fail_log.details.as_ref().unwrap();
         assert_eq!(details["action"], "login");
         assert_eq!(details["reason"], "invalid_credentials");
@@ -495,7 +516,14 @@ mod tests {
         // Verify refresh log entry
         let log_repo = SystemLogRepository::new(pool.pool.clone());
         let (logs, _) = log_repo
-            .list_paginated(10, 0, Some(SystemLogType::AuthEvent), None, None)
+            .list_paginated(
+                10,
+                0,
+                &SystemLogFilter {
+                    log_type: Some(SystemLogType::AuthEvent),
+                    ..Default::default()
+                },
+            )
             .await?;
 
         assert!(
@@ -503,7 +531,10 @@ mod tests {
             "Should have a 'Token refreshed' system log entry"
         );
 
-        let refresh_log = logs.iter().find(|l| l.summary.contains("Token refreshed")).unwrap();
+        let refresh_log = logs
+            .iter()
+            .find(|l| l.summary.contains("Token refreshed"))
+            .unwrap();
         let details = refresh_log.details.as_ref().unwrap();
         assert_eq!(details["action"], "refresh");
 

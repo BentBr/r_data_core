@@ -2,7 +2,7 @@
 
 use r_data_core_core::error::Result;
 use r_data_core_core::system_log::{SystemLogResourceType, SystemLogStatus, SystemLogType};
-use r_data_core_persistence::{SystemLogRepository, SystemLogRepositoryTrait};
+use r_data_core_persistence::{SystemLogFilter, SystemLogRepository, SystemLogRepositoryTrait};
 use r_data_core_test_support::{clear_test_db, setup_test_db};
 use serial_test::serial;
 use uuid::Uuid;
@@ -43,13 +43,22 @@ async fn test_system_log_insert_and_query() -> Result<()> {
     assert!(log.details.is_some());
 
     // List paginated — no filters
-    let (logs, total) = repo.list_paginated(10, 0, None, None, None).await?;
+    let (logs, total) = repo
+        .list_paginated(10, 0, &SystemLogFilter::default())
+        .await?;
     assert!(total >= 1, "total should reflect the inserted log");
     assert!(!logs.is_empty());
 
     // List with log_type filter
     let (filtered, _) = repo
-        .list_paginated(10, 0, Some(SystemLogType::AuthEvent), None, None)
+        .list_paginated(
+            10,
+            0,
+            &SystemLogFilter {
+                log_type: Some(SystemLogType::AuthEvent),
+                ..Default::default()
+            },
+        )
         .await?;
     assert!(
         !filtered.is_empty(),
@@ -61,7 +70,14 @@ async fn test_system_log_insert_and_query() -> Result<()> {
 
     // List with status filter
     let (by_status, _) = repo
-        .list_paginated(10, 0, None, None, Some(SystemLogStatus::Success))
+        .list_paginated(
+            10,
+            0,
+            &SystemLogFilter {
+                status: Some(SystemLogStatus::Success),
+                ..Default::default()
+            },
+        )
         .await?;
     assert!(!by_status.is_empty());
     assert!(by_status
@@ -70,7 +86,14 @@ async fn test_system_log_insert_and_query() -> Result<()> {
 
     // List with resource_type filter
     let (by_resource, _) = repo
-        .list_paginated(10, 0, None, Some(SystemLogResourceType::AdminUser), None)
+        .list_paginated(
+            10,
+            0,
+            &SystemLogFilter {
+                resource_type: Some(SystemLogResourceType::AdminUser),
+                ..Default::default()
+            },
+        )
         .await?;
     assert!(!by_resource.is_empty());
 
@@ -140,12 +163,16 @@ async fn test_system_log_pagination() -> Result<()> {
     }
 
     // Page 1: limit 3, offset 0
-    let (page1, total) = repo.list_paginated(3, 0, None, None, None).await?;
+    let (page1, total) = repo
+        .list_paginated(3, 0, &SystemLogFilter::default())
+        .await?;
     assert_eq!(total, 5);
     assert_eq!(page1.len(), 3);
 
     // Page 2: limit 3, offset 3
-    let (page2, _) = repo.list_paginated(3, 3, None, None, None).await?;
+    let (page2, _) = repo
+        .list_paginated(3, 3, &SystemLogFilter::default())
+        .await?;
     assert_eq!(page2.len(), 2);
 
     Ok(())

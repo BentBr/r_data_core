@@ -55,14 +55,23 @@ impl ApiKeyService {
 
     /// Set the system log service for audit logging
     #[must_use]
-    pub fn with_system_log(mut self, log: Option<Arc<SystemLogService>>) -> Self {
-        self.system_log = log;
+    pub fn with_system_log(mut self, log: Arc<SystemLogService>) -> Self {
+        self.system_log = Some(log);
         self
     }
 
     /// Generate cache key for API key by hash
     fn cache_key_by_hash(key_hash: &str) -> String {
         format!("api_key:hash:{key_hash}")
+    }
+
+    /// Check if an API key with the given name already exists for a user
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails
+    pub async fn name_exists_for_user(&self, user_uuid: Uuid, name: &str) -> Result<bool> {
+        let existing = self.repository.get_by_name(user_uuid, name).await?;
+        Ok(existing.is_some())
     }
 
     /// Create a new API key
@@ -226,6 +235,12 @@ impl ApiKeyService {
 
         match key {
             Some(key) if key.user_uuid == user_uuid => {
+                if !key.is_active {
+                    return Err(r_data_core_core::error::Error::Validation(
+                        "API key is already revoked".to_string(),
+                    ));
+                }
+
                 // Revoke the key
                 let result = self.repository.revoke(key_uuid).await;
 

@@ -420,7 +420,7 @@ async fn main() -> r_data_core_core::error::Result<()> {
                         )
                         .with_mail_service(workflow_mail_for_consumer.clone())
                         .with_queue(queue_for_workflow.clone())
-                        .with_system_log(Some(system_log_svc));
+                        .with_system_log(system_log_svc);
                         // Process
                         if let Ok(Some(wf_uuid)) = repo.get_workflow_uuid_for_run(run_uuid).await {
                             match service.process_staged_items(wf_uuid, run_uuid).await {

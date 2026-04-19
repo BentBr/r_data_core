@@ -4,6 +4,14 @@ import { nextTick } from 'vue'
 import DslConfigurator from './DslConfigurator.vue'
 import type { DslStep } from './dsl/contracts'
 
+vi.mock('@/stores/capabilities', () => ({
+    useCapabilitiesStore: () => ({
+        workflowMailConfigured: false,
+        systemMailConfigured: false,
+        isLoaded: true,
+    }),
+}))
+
 vi.mock('@/api/typed-client', () => ({
     typedHttpClient: {
         getDslFromOptions: vi.fn().mockResolvedValue({}),

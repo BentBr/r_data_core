@@ -1023,6 +1023,8 @@
             "filter_type": "Filter by Type",
             "filter_resource": "Filter by Resource",
             "filter_status": "Filter by Status",
+            "filter_date_from": "From date",
+            "filter_date_to": "To date",
             "email_preview": "Email Preview",
             "no_logs": "No log entries found"
         },

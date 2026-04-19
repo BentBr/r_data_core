@@ -79,7 +79,7 @@ pub use statistics_repository_trait::{
     EntityCount, EntityDefinitionsStats, StatisticsRepositoryTrait,
 };
 pub use system_log_repository::SystemLogRepository;
-pub use system_log_repository_trait::SystemLogRepositoryTrait;
+pub use system_log_repository_trait::{SystemLogFilter, SystemLogRepositoryTrait};
 pub use version_repository::{EntityVersionMeta, EntityVersionPayload, VersionRepository};
 pub use version_repository_trait::VersionRepositoryTrait;
 pub use workflow_repository::{get_provider_config, WorkflowRepository};

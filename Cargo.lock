@@ -2733,6 +2733,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "ts-rs",
  "utoipa",
  "uuid",
 ]

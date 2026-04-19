@@ -403,6 +403,11 @@
         updateIsMobile()
         window.addEventListener('resize', updateIsMobile)
 
+        // Fetch capabilities (public endpoint, no auth needed) to know if password reset is available
+        if (!capabilitiesStore.isLoaded) {
+            void capabilitiesStore.fetchCapabilities()
+        }
+
         // If user is already authenticated, redirect to appropriate page
         if (authStore.isAuthenticated) {
             const redirectParam = router.currentRoute.value.query.redirect

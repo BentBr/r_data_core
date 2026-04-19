@@ -3,12 +3,14 @@
 use serde::{Deserialize, Serialize};
 use sqlx::Type;
 use time::OffsetDateTime;
+use ts_rs::TS;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type, ToSchema, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, ToSchema, TS, PartialEq, Eq)]
 #[sqlx(type_name = "email_template_type", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub enum EmailTemplateType {
     System,
     Workflow,

@@ -11,6 +11,7 @@ pub mod entity_definition_repository_tests;
 pub mod filter_entities_tests;
 pub mod password_reset_tests;
 pub mod refresh_token_repository_tests;
+pub mod system_log_audit_tests;
 pub mod system_log_tests;
 pub mod version_repository_tests;
 

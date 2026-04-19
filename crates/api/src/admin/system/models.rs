@@ -1,6 +1,8 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
+use r_data_core_core::system_log::{SystemLogResourceType, SystemLogStatus, SystemLogType};
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use utoipa::ToSchema;
 
 use r_data_core_core::settings::{EntityVersioningSettings, WorkflowRunLogSettings};
@@ -174,7 +176,8 @@ pub struct LicenseVerificationResponse {
 }
 
 /// Response for system capabilities (which optional features are configured)
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct CapabilitiesResponse {
     /// Whether system mail is configured (enables password reset etc.)
     pub system_mail_configured: bool,
@@ -183,18 +186,28 @@ pub struct CapabilitiesResponse {
 }
 
 /// Query parameters for filtering system logs
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct SystemLogQuery {
     /// Page number (1-based, default: 1)
     pub page: Option<i64>,
     /// Items per page (default: 20, max: 100)
     pub page_size: Option<i64>,
     /// Filter by log type
-    pub log_type: Option<r_data_core_core::system_log::SystemLogType>,
+    #[ts(type = "string | null")]
+    pub log_type: Option<SystemLogType>,
     /// Filter by resource type
-    pub resource_type: Option<r_data_core_core::system_log::SystemLogResourceType>,
+    #[ts(type = "string | null")]
+    pub resource_type: Option<SystemLogResourceType>,
     /// Filter by status
-    pub status: Option<r_data_core_core::system_log::SystemLogStatus>,
+    #[ts(type = "string | null")]
+    pub status: Option<SystemLogStatus>,
+    /// Filter by resource UUID
+    pub resource_uuid: Option<String>,
+    /// Filter logs created after this timestamp (ISO 8601)
+    pub date_from: Option<String>,
+    /// Filter logs created before this timestamp (ISO 8601)
+    pub date_to: Option<String>,
 }
 
 impl SystemLogQuery {
@@ -209,7 +222,8 @@ impl SystemLogQuery {
 }
 
 /// Single system log entry response
-#[derive(Debug, Clone, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct SystemLogDto {
     /// Log entry UUID
     pub uuid: String,
@@ -218,16 +232,20 @@ pub struct SystemLogDto {
     /// UUID of the user that triggered the event (if known)
     pub created_by: Option<String>,
     /// Status of the logged event
-    pub status: r_data_core_core::system_log::SystemLogStatus,
+    #[ts(type = "string")]
+    pub status: SystemLogStatus,
     /// Type of log entry
-    pub log_type: r_data_core_core::system_log::SystemLogType,
+    #[ts(type = "string")]
+    pub log_type: SystemLogType,
     /// Type of resource this log entry relates to
-    pub resource_type: r_data_core_core::system_log::SystemLogResourceType,
+    #[ts(type = "string")]
+    pub resource_type: SystemLogResourceType,
     /// UUID of the affected resource (if applicable)
     pub resource_uuid: Option<String>,
     /// Short human-readable summary
     pub summary: String,
     /// Optional structured details (JSONB)
+    #[ts(type = "unknown")]
     pub details: Option<serde_json::Value>,
 }
 

@@ -77,8 +77,8 @@ impl EntityDefinitionService {
 
     /// Set the system log service for audit logging
     #[must_use]
-    pub fn with_system_log(mut self, log: Option<Arc<SystemLogService>>) -> Self {
-        self.system_log = log;
+    pub fn with_system_log(mut self, log: Arc<SystemLogService>) -> Self {
+        self.system_log = Some(log);
         self
     }
 }

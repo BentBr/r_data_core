@@ -1,37 +1,14 @@
 import { BaseTypedHttpClient } from './base'
+import type { EmailTemplateResponse } from '@/types/generated/EmailTemplateResponse'
+import type { CreateEmailTemplateRequest } from '@/types/generated/CreateEmailTemplateRequest'
+import type { UpdateEmailTemplateRequest } from '@/types/generated/UpdateEmailTemplateRequest'
+import type { EmailTemplateType } from '@/types/generated/EmailTemplateType'
 
-export interface EmailTemplate {
-    uuid: string
-    name: string
-    slug: string
-    template_type: 'system' | 'workflow'
-    subject_template: string
-    body_html_template: string
-    body_text_template: string
-    variables: Array<{ key: string; description: string }>
-    created_at: string
-    updated_at: string
-}
-
-export interface CreateEmailTemplateRequest {
-    name: string
-    slug: string
-    subject_template: string
-    body_html_template: string
-    body_text_template: string
-    variables: Array<{ key: string; description: string }>
-}
-
-export interface UpdateEmailTemplateRequest {
-    name?: string
-    subject_template: string
-    body_html_template: string
-    body_text_template: string
-    variables: Array<{ key: string; description: string }>
-}
+export type EmailTemplate = EmailTemplateResponse
+export type { CreateEmailTemplateRequest, UpdateEmailTemplateRequest }
 
 export class EmailTemplateClient extends BaseTypedHttpClient {
-    async list(type?: 'system' | 'workflow'): Promise<EmailTemplate[]> {
+    async list(type?: EmailTemplateType): Promise<EmailTemplate[]> {
         const params = type ? `?type=${type}` : ''
         return this.request<EmailTemplate[]>(`/admin/api/v1/email-templates${params}`)
     }
