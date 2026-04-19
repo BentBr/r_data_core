@@ -14,6 +14,14 @@ pub struct JwtConfig<'a> {
     pub expiration: u64,
 }
 
+/// Mail context for `SendEmail` transforms and `Email` to-targets
+pub struct MailContext<'a> {
+    /// SMTP mail service (None if SMTP is not configured)
+    pub service: Option<&'a crate::mail::MailService>,
+    /// Job queue for enqueuing email jobs (None if no queue is configured)
+    pub queue: Option<&'a dyn r_data_core_workflow::data::job_queue::JobQueue>,
+}
+
 // Helper functions to access nested values (re-implementing execution module functions)
 fn get_nested(input: &Value, path: &str) -> Option<Value> {
     let mut current = input;
@@ -71,6 +79,7 @@ use uuid::Uuid;
 /// * `de_service` - Dynamic entity service
 /// * `run_uuid` - Workflow run UUID
 /// * `jwt` - JWT configuration for authenticate transforms
+/// * `mail` - Mail context for `SendEmail` transforms
 ///
 /// # Returns
 /// Modified normalized data with transform results
@@ -83,6 +92,7 @@ pub async fn execute_async_transform(
     de_service: &DynamicEntityService,
     run_uuid: Uuid,
     jwt: &JwtConfig<'_>,
+    mail: &MailContext<'_>,
 ) -> Result<()> {
     match transform {
         Transform::ResolveEntityPath(rep) => {
@@ -94,6 +104,7 @@ pub async fn execute_async_transform(
         Transform::Authenticate(auth) => {
             handle_authenticate(auth, normalized, de_service, jwt).await
         }
+        Transform::SendEmail(se) => handle_send_email(se, normalized, mail, run_uuid).await,
         _ => {
             // Other transforms are handled synchronously in DSL execution
             Ok(())
@@ -223,6 +234,93 @@ fn prepare_create_field_data(
         }
         Ok(Some(field_data))
     })
+}
+
+async fn handle_send_email(
+    se: &r_data_core_workflow::dsl::transform::SendEmailTransform,
+    normalized: &mut Value,
+    mail: &MailContext<'_>,
+    run_uuid: Uuid,
+) -> Result<()> {
+    let (Some(_service), Some(queue)) = (mail.service, mail.queue) else {
+        set_nested(
+            normalized,
+            &se.target_status,
+            Value::String("mail_not_configured".to_string()),
+        );
+        return Ok(());
+    };
+
+    let to_addrs = resolve_string_operands(&se.to, normalized);
+    let cc_addrs = se
+        .cc
+        .as_ref()
+        .map_or_else(Vec::new, |cc| resolve_string_operands(cc, normalized));
+
+    if to_addrs.is_empty() {
+        set_nested(
+            normalized,
+            &se.target_status,
+            Value::String("no_recipients".to_string()),
+        );
+        return Ok(());
+    }
+
+    // Serialize the normalized context so the worker can render the template from DB
+    let context_json = serde_json::to_string(normalized).unwrap_or_default();
+
+    let job = r_data_core_workflow::data::jobs::SendEmailJob {
+        run_uuid: Some(run_uuid),
+        to: to_addrs,
+        cc: cc_addrs,
+        subject: String::new(),
+        body_text: String::new(),
+        body_html: None,
+        from_name_override: None,
+        source: "workflow".to_string(),
+        template_uuid: Some(uuid::Uuid::parse_str(&se.template_uuid).unwrap_or_default()),
+        template_context: Some(context_json),
+    };
+
+    match queue.enqueue_email(job).await {
+        Ok(()) => {
+            set_nested(
+                normalized,
+                &se.target_status,
+                Value::String("queued".to_string()),
+            );
+        }
+        Err(e) => {
+            set_nested(
+                normalized,
+                &se.target_status,
+                Value::String(format!("enqueue_failed: {e}")),
+            );
+        }
+    }
+
+    Ok(())
+}
+
+/// Resolve a list of `StringOperand`s to concrete string values using the normalized context
+#[must_use]
+pub fn resolve_string_operands(operands: &[StringOperand], normalized: &Value) -> Vec<String> {
+    let mut result = Vec::new();
+    for operand in operands {
+        match operand {
+            StringOperand::Field { field } => {
+                if let Some(val) = get_nested(normalized, field) {
+                    if let Some(s) = val.as_str() {
+                        result.push(s.to_string());
+                    }
+                }
+            }
+            StringOperand::ConstString { value } => {
+                result.push(value.clone());
+            }
+        }
+    }
+    result
 }
 
 async fn handle_authenticate(

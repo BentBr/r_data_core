@@ -107,7 +107,9 @@ async fn test_validate_valid_csv_to_entity() {
             // Verify arithmetic transform was applied
             assert_eq!(produced["price_with_tax"], json!(119.0));
         }
-        ToDef::Format { .. } | ToDef::NextStep { .. } => panic!("Expected Entity ToDef"),
+        ToDef::Format { .. } | ToDef::NextStep { .. } | ToDef::Email { .. } => {
+            panic!("Expected Entity ToDef")
+        }
     }
 }
 
@@ -270,6 +272,22 @@ async fn test_validate_filter_operators() {
             );
         }
     }
+}
+
+#[tokio::test]
+#[serial]
+async fn test_validate_valid_send_email() {
+    let cfg = load_example("valid_send_email.json");
+    let prog = DslProgram::from_config(&cfg).expect("parse dsl");
+    prog.validate().expect("valid send_email dsl");
+}
+
+#[tokio::test]
+#[serial]
+async fn test_validate_valid_email_to() {
+    let cfg = load_example("valid_email_to.json");
+    let prog = DslProgram::from_config(&cfg).expect("parse dsl");
+    prog.validate().expect("valid email to-target dsl");
 }
 
 #[tokio::test]

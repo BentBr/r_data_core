@@ -251,7 +251,10 @@ async fn test_consecutive_imports_produce_identical_outcomes() -> anyhow::Result
     // But the error messages should be identical across runs
 
     // Clean up
-    let _ = wf_service.delete(wf_uuid).await;
-    let _ = ed_service.delete_entity_definition(&entity_def.uuid).await;
+    let cleanup_actor = Uuid::now_v7();
+    let _ = wf_service.delete(wf_uuid, cleanup_actor).await;
+    let _ = ed_service
+        .delete_entity_definition(&entity_def.uuid, cleanup_actor)
+        .await;
     Ok(())
 }

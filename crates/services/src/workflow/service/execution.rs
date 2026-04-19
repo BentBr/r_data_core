@@ -1,7 +1,7 @@
 use crate::workflow::item_processing::{
     execute_pipeline_inline, process_single_item, WorkflowItemContext,
 };
-use crate::workflow::transform_execution::JwtConfig;
+use crate::workflow::transform_execution::{JwtConfig, MailContext};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
@@ -52,10 +52,16 @@ impl WorkflowService {
                 secret: self.jwt_secret.as_deref(),
                 expiration: self.jwt_expiration,
             };
+            let mail = MailContext {
+                service: self.mail_service.as_deref(),
+                queue: self.queue.as_deref(),
+            };
             let ctx = WorkflowItemContext {
                 dynamic_entity_service: self.dynamic_entity_service.as_deref(),
                 repo: &self.repo,
                 jwt: &jwt,
+                mail: &mail,
+                workflow_name: Some(&wf.name),
                 versioning_disabled: wf.versioning_disabled,
             };
             for (item_uuid, payload) in items {
@@ -109,10 +115,16 @@ impl WorkflowService {
             secret: self.jwt_secret.as_deref(),
             expiration: self.jwt_expiration,
         };
+        let mail = MailContext {
+            service: self.mail_service.as_deref(),
+            queue: self.queue.as_deref(),
+        };
         let ctx = WorkflowItemContext {
             dynamic_entity_service: self.dynamic_entity_service.as_deref(),
             repo: &self.repo,
             jwt: &jwt,
+            mail: &mail,
+            workflow_name: Some(&wf.name),
             versioning_disabled: wf.versioning_disabled,
         };
 

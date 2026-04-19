@@ -40,7 +40,9 @@ async fn test_mapping_fix_active_to_published() {
             assert_eq!(produced["lastName"], json!("Doe"));
             assert_eq!(produced["username"], json!("jdoe"));
         }
-        ToDef::Format { .. } | ToDef::NextStep { .. } => panic!("Expected Entity ToDef"),
+        ToDef::Format { .. } | ToDef::NextStep { .. } | ToDef::Email { .. } => {
+            panic!("Expected Entity ToDef")
+        }
     }
 }
 

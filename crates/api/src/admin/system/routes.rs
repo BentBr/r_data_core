@@ -1,9 +1,10 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use crate::admin::system::models::{
-    ComponentVersionDto, EntityVersioningSettingsDto, LicenseStatusDto, LicenseVerificationRequest,
-    LicenseVerificationResponse, SystemVersionsDto, UpdateSettingsBody,
-    UpdateWorkflowRunLogSettingsBody, WorkflowRunLogSettingsDto,
+    CapabilitiesResponse, ComponentVersionDto, EntityVersioningSettingsDto, LicenseStatusDto,
+    LicenseVerificationRequest, LicenseVerificationResponse, SystemLogDto, SystemLogQuery,
+    SystemVersionsDto, UpdateSettingsBody, UpdateWorkflowRunLogSettingsBody,
+    WorkflowRunLogSettingsDto,
 };
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
@@ -12,6 +13,7 @@ use crate::response::ApiResponse;
 use actix_web::{get, post, put, web, Responder};
 use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 use r_data_core_persistence::ComponentVersionRepository;
+use r_data_core_persistence::{SystemLogRepository, SystemLogRepositoryTrait};
 use r_data_core_services::SettingsService;
 
 /// Core version from Cargo.toml
@@ -25,6 +27,9 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(update_workflow_run_log_settings);
     cfg.service(get_license_status);
     cfg.service(get_system_versions);
+    cfg.service(get_capabilities);
+    cfg.service(list_system_logs);
+    cfg.service(get_system_log);
     // Internal endpoint (not in Swagger)
     cfg.service(verify_license_internal);
 }
@@ -333,6 +338,144 @@ pub async fn get_system_versions(
         worker,
         maintenance,
     })
+}
+
+#[utoipa::path(
+    get,
+    path = "/admin/api/v1/system/capabilities",
+    tag = "system",
+    responses(
+        (status = 200, description = "Get system capabilities", body = CapabilitiesResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden"),
+        (status = 500, description = "Server error")
+    ),
+    security(("jwt" = []))
+)]
+#[get("/capabilities")]
+pub async fn get_capabilities(
+    data: web::Data<ApiStateWrapper>,
+    auth: RequiredAuth,
+) -> impl Responder {
+    // Any authenticated admin with system read permission can view capabilities
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::System,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden(
+            "Insufficient permissions to view system capabilities",
+        );
+    }
+
+    let system_mail_configured = data.password_reset_service().is_some();
+    let workflow_mail_configured = data.workflow_service().mail_service.is_some();
+
+    ApiResponse::ok(CapabilitiesResponse {
+        system_mail_configured,
+        workflow_mail_configured,
+    })
+}
+
+#[utoipa::path(
+    get,
+    path = "/admin/api/v1/system/logs",
+    tag = "system",
+    params(
+        ("page" = Option<i64>, Query, description = "Page number (1-based, default: 1)"),
+        ("page_size" = Option<i64>, Query, description = "Items per page (default: 20, max: 100)"),
+        ("log_type" = Option<String>, Query, description = "Filter by log type"),
+        ("resource_type" = Option<String>, Query, description = "Filter by resource type"),
+        ("status" = Option<String>, Query, description = "Filter by status")
+    ),
+    responses(
+        (status = 200, description = "Paginated list of system logs", body = [SystemLogDto]),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden"),
+        (status = 500, description = "Server error")
+    ),
+    security(("jwt" = []))
+)]
+#[get("/logs")]
+pub async fn list_system_logs(
+    data: web::Data<ApiStateWrapper>,
+    query: web::Query<SystemLogQuery>,
+    auth: RequiredAuth,
+) -> impl Responder {
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::System,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to view system logs");
+    }
+
+    let (limit, offset, page, per_page) = query.to_pagination();
+    let repo = SystemLogRepository::new(data.db_pool().clone());
+
+    match repo
+        .list_paginated(
+            limit,
+            offset,
+            query.log_type.clone(),
+            query.resource_type.clone(),
+            query.status.clone(),
+        )
+        .await
+    {
+        Ok((logs, total)) => {
+            let dtos: Vec<SystemLogDto> = logs.into_iter().map(SystemLogDto::from).collect();
+            ApiResponse::ok_paginated(dtos, total, page, per_page)
+        }
+        Err(e) => {
+            log::error!("Failed to list system logs: {e}");
+            ApiResponse::<()>::internal_error("Failed to list system logs")
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/admin/api/v1/system/logs/{uuid}",
+    tag = "system",
+    params(("uuid" = uuid::Uuid, Path, description = "System log UUID")),
+    responses(
+        (status = 200, description = "System log entry", body = SystemLogDto),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden"),
+        (status = 404, description = "Not found"),
+        (status = 500, description = "Server error")
+    ),
+    security(("jwt" = []))
+)]
+#[get("/logs/{uuid}")]
+pub async fn get_system_log(
+    data: web::Data<ApiStateWrapper>,
+    path: web::Path<uuid::Uuid>,
+    auth: RequiredAuth,
+) -> impl Responder {
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::System,
+        &PermissionType::Read,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to view system logs");
+    }
+
+    let uuid = path.into_inner();
+    let repo = SystemLogRepository::new(data.db_pool().clone());
+
+    match repo.get_by_uuid(uuid).await {
+        Ok(Some(log)) => ApiResponse::ok(SystemLogDto::from(log)),
+        Ok(None) => ApiResponse::<()>::not_found("System log not found"),
+        Err(e) => {
+            log::error!("Failed to get system log {uuid}: {e}");
+            ApiResponse::<()>::internal_error("Failed to get system log")
+        }
+    }
 }
 
 /// Internal license verification endpoint (not documented in Swagger)

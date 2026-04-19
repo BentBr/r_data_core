@@ -1,21 +1,27 @@
 use r_data_core_core::admin_user::AdminUser;
 use r_data_core_core::error::Result;
+use r_data_core_core::system_log::SystemLogResourceType;
 use r_data_core_persistence::AdminUserRepositoryTrait;
 use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::query_validation::{validate_list_query, FieldValidator, ValidatedListQuery};
+use crate::SystemLogService;
 
 /// Service for admin user operations
 pub struct AdminUserService {
     repository: Arc<dyn AdminUserRepositoryTrait>,
+    system_log: Option<Arc<SystemLogService>>,
 }
 
 impl AdminUserService {
     /// Create a new admin user service with a repository
     #[must_use]
     pub fn new(repository: Arc<dyn AdminUserRepositoryTrait>) -> Self {
-        Self { repository }
+        Self {
+            repository,
+            system_log: None,
+        }
     }
 
     /// Create a new admin user service from a concrete repository
@@ -23,7 +29,15 @@ impl AdminUserService {
     pub fn from_repository<T: AdminUserRepositoryTrait + 'static>(repository: T) -> Self {
         Self {
             repository: Arc::new(repository),
+            system_log: None,
         }
+    }
+
+    /// Set the system log service for audit logging
+    #[must_use]
+    pub fn with_system_log(mut self, log: Option<Arc<SystemLogService>>) -> Self {
+        self.system_log = log;
+        self
     }
 
     /// Authenticate a user with username/email and password
@@ -123,7 +137,20 @@ impl AdminUserService {
             is_active,
             creator_uuid,
         };
-        self.repository.create_admin_user(&params).await
+        let user_uuid = self.repository.create_admin_user(&params).await?;
+
+        if let Some(ref log) = self.system_log {
+            log.log_entity_created(
+                Some(creator_uuid),
+                SystemLogResourceType::AdminUser,
+                user_uuid,
+                &format!("Admin user '{username}' created"),
+                Some(serde_json::json!({"username": username})),
+            )
+            .await;
+        }
+
+        Ok(user_uuid)
     }
 
     /// Get a user by UUID
@@ -138,7 +165,7 @@ impl AdminUserService {
     ///
     /// # Errors
     /// Returns an error if the user is not found or database operation fails
-    pub async fn update_user(&self, user: &AdminUser) -> Result<()> {
+    pub async fn update_user(&self, user: &AdminUser, actor_uuid: Uuid) -> Result<()> {
         // Check if the user exists
         let existing_user = self.repository.find_by_uuid(&user.uuid).await?;
         if existing_user.is_none() {
@@ -148,23 +175,49 @@ impl AdminUserService {
             )));
         }
 
-        self.repository.update_admin_user(user).await
+        self.repository.update_admin_user(user).await?;
+
+        if let Some(ref log) = self.system_log {
+            log.log_entity_updated(
+                Some(actor_uuid),
+                SystemLogResourceType::AdminUser,
+                user.uuid,
+                &format!("Admin user '{}' updated", user.username),
+                Some(serde_json::json!({"username": user.username})),
+            )
+            .await;
+        }
+
+        Ok(())
     }
 
     /// Delete a user
     ///
     /// # Errors
     /// Returns an error if the user is not found or database operation fails
-    pub async fn delete_user(&self, uuid: &Uuid) -> Result<()> {
+    pub async fn delete_user(&self, uuid: &Uuid, actor_uuid: Uuid) -> Result<()> {
         // Check if the user exists
         let existing_user = self.repository.find_by_uuid(uuid).await?;
-        if existing_user.is_none() {
+        let Some(existing) = existing_user else {
             return Err(r_data_core_core::error::Error::NotFound(format!(
                 "User with UUID {uuid} not found"
             )));
+        };
+
+        self.repository.delete_admin_user(uuid).await?;
+
+        if let Some(ref log) = self.system_log {
+            log.log_entity_deleted(
+                Some(actor_uuid),
+                SystemLogResourceType::AdminUser,
+                *uuid,
+                &format!("Admin user '{}' deleted", existing.username),
+                Some(serde_json::json!({"username": existing.username})),
+            )
+            .await;
         }
 
-        self.repository.delete_admin_user(uuid).await
+        Ok(())
     }
 
     /// List users with pagination

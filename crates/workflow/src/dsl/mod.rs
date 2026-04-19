@@ -150,7 +150,9 @@ mod tests {
                 assert_eq!(produced["firstName"], json!("John"));
                 assert_eq!(produced["lastName"], json!("Doe"));
             }
-            ToDef::Format { .. } | ToDef::NextStep { .. } => panic!("Expected Entity ToDef"),
+            ToDef::Format { .. } | ToDef::NextStep { .. } | ToDef::Email { .. } => {
+                panic!("Expected Entity ToDef")
+            }
         }
     }
 

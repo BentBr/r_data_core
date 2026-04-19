@@ -81,6 +81,8 @@ const transformSummaryHandlers: {
         t('workflows.dsl.summary.transform.authenticate', {
             entityType: transform.entity_type,
         }),
+    send_email: (_transform: Extract<Transform, { type: 'send_email' }>, t: TranslateFn) =>
+        t('workflows.dsl.summary.transform.send_email'),
 }
 
 const toFormatOutputHandlers = {
@@ -120,6 +122,8 @@ const toSummaryHandlers: {
             : t('workflows.dsl.summary.to.entity'),
     next_step: (_to: Extract<NonFormatTo, { type: 'next_step' }>, t: TranslateFn) =>
         t('workflows.dsl.summary.to.next_step'),
+    email: (_to: Extract<NonFormatTo, { type: 'email' }>, t: TranslateFn) =>
+        t('workflows.dsl.summary.to.email'),
 }
 
 export const resolveFromSummary = createTypeResolver<NonFormatFromSummaryMap>(fromSummaryHandlers)

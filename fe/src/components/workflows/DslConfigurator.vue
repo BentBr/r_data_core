@@ -128,7 +128,7 @@
 
 <script setup lang="ts">
     import SmartIcon from '@/components/common/SmartIcon.vue'
-    import { onMounted, ref, watch, nextTick, shallowRef } from 'vue'
+    import { onMounted, ref, watch, nextTick, shallowRef, computed } from 'vue'
     import { typedHttpClient } from '@/api/typed-client'
     import { useTranslations } from '@/composables/useTranslations'
     import { useEntityDefinitions } from '@/composables/useEntityDefinitions'
@@ -142,6 +142,7 @@
     } from './dsl/dsl-utils'
     import { createWorkflowTemplates } from './dsl/templates'
     import { buildStepSummary, getStepStats } from './dsl/summary'
+    import { useCapabilitiesStore } from '@/stores/capabilities'
     import DslStepEditor from './dsl/DslStepEditor.vue'
 
     const props = defineProps<{
@@ -156,7 +157,13 @@
     const stepsLocal = shallowRef<DslStep[]>([])
     const openPanels = ref<number[]>([])
     const { t } = useTranslations()
-    const workflowTemplates = createWorkflowTemplates()
+    const capabilitiesStore = useCapabilitiesStore()
+    const allTemplates = createWorkflowTemplates()
+    const workflowTemplates = computed(() =>
+        allTemplates.filter(
+            tpl => tpl.id !== 'email_notification' || capabilitiesStore.workflowMailConfigured
+        )
+    )
 
     const { loadEntityDefinitions } = useEntityDefinitions()
 
@@ -207,8 +214,8 @@
         })
     }
 
-    function applyTemplate(templateId: (typeof workflowTemplates)[number]['id']) {
-        const template = workflowTemplates.find(item => item.id === templateId)
+    function applyTemplate(templateId: (typeof allTemplates)[number]['id']) {
+        const template = allTemplates.find(item => item.id === templateId)
         if (!template) {
             return
         }

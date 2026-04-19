@@ -173,6 +173,84 @@ pub struct LicenseVerificationResponse {
     pub message: Option<String>,
 }
 
+/// Response for system capabilities (which optional features are configured)
+#[derive(Debug, Serialize, ToSchema)]
+pub struct CapabilitiesResponse {
+    /// Whether system mail is configured (enables password reset etc.)
+    pub system_mail_configured: bool,
+    /// Whether workflow mail is configured (enables email outputs in workflows)
+    pub workflow_mail_configured: bool,
+}
+
+/// Query parameters for filtering system logs
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct SystemLogQuery {
+    /// Page number (1-based, default: 1)
+    pub page: Option<i64>,
+    /// Items per page (default: 20, max: 100)
+    pub page_size: Option<i64>,
+    /// Filter by log type
+    pub log_type: Option<r_data_core_core::system_log::SystemLogType>,
+    /// Filter by resource type
+    pub resource_type: Option<r_data_core_core::system_log::SystemLogResourceType>,
+    /// Filter by status
+    pub status: Option<r_data_core_core::system_log::SystemLogStatus>,
+}
+
+impl SystemLogQuery {
+    /// Convert to (limit, offset, page, `per_page`) with defaults
+    #[must_use]
+    pub fn to_pagination(&self) -> (i64, i64, i64, i64) {
+        let per_page = self.page_size.unwrap_or(20).clamp(1, 100);
+        let page = self.page.unwrap_or(1).max(1);
+        let offset = (page - 1) * per_page;
+        (per_page, offset, page, per_page)
+    }
+}
+
+/// Single system log entry response
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct SystemLogDto {
+    /// Log entry UUID
+    pub uuid: String,
+    /// When this log entry was created
+    pub created_at: String,
+    /// UUID of the user that triggered the event (if known)
+    pub created_by: Option<String>,
+    /// Status of the logged event
+    pub status: r_data_core_core::system_log::SystemLogStatus,
+    /// Type of log entry
+    pub log_type: r_data_core_core::system_log::SystemLogType,
+    /// Type of resource this log entry relates to
+    pub resource_type: r_data_core_core::system_log::SystemLogResourceType,
+    /// UUID of the affected resource (if applicable)
+    pub resource_uuid: Option<String>,
+    /// Short human-readable summary
+    pub summary: String,
+    /// Optional structured details (JSONB)
+    pub details: Option<serde_json::Value>,
+}
+
+impl From<r_data_core_core::system_log::SystemLog> for SystemLogDto {
+    fn from(log: r_data_core_core::system_log::SystemLog) -> Self {
+        use time::format_description::well_known::Rfc3339;
+        Self {
+            uuid: log.uuid.to_string(),
+            created_at: log
+                .created_at
+                .format(&Rfc3339)
+                .unwrap_or_else(|_| log.created_at.to_string()),
+            created_by: log.created_by.map(|u| u.to_string()),
+            status: log.status,
+            log_type: log.log_type,
+            resource_type: log.resource_type,
+            resource_uuid: log.resource_uuid.map(|u| u.to_string()),
+            summary: log.summary,
+            details: log.details,
+        }
+    }
+}
+
 /// Component version information
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ComponentVersionDto {

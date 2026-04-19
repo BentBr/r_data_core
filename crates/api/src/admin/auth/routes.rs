@@ -11,12 +11,13 @@ use crate::response::ApiResponse;
 use crate::token_service::TokenService;
 use r_data_core_core::admin_user::AdminUser;
 use r_data_core_core::refresh_token::RefreshToken;
+use r_data_core_core::system_log::SystemLogStatus;
 use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
 use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
 
 use crate::admin::auth::models::{
-    AdminLoginRequest, AdminLoginResponse, AdminRegisterRequest, LogoutRequest,
-    RefreshTokenRequest, RefreshTokenResponse,
+    AdminLoginRequest, AdminLoginResponse, AdminRegisterRequest, ForgotPasswordRequest,
+    LogoutRequest, RefreshTokenRequest, RefreshTokenResponse, ResetPasswordRequest,
 };
 use validator::Validate;
 
@@ -166,6 +167,17 @@ pub async fn admin_login(
             "Password verification failed for user: {}",
             login_req.username
         );
+        if let Some(log_svc) = data.system_log_service() {
+            log_svc
+                .log_auth_event(
+                    None,
+                    None,
+                    "Login failed: invalid credentials",
+                    Some(serde_json::json!({"action": "login", "reason": "invalid_credentials"})),
+                    SystemLogStatus::Failed,
+                )
+                .await;
+        }
         return ApiResponse::unauthorized("Invalid credentials");
     }
 
@@ -221,6 +233,20 @@ pub async fn admin_login(
     } else {
         false
     };
+
+    // Log successful login
+    if let Some(log_svc) = data.system_log_service() {
+        let user_uuid = user.uuid;
+        log_svc
+            .log_auth_event(
+                Some(user_uuid),
+                Some(user_uuid),
+                "User logged in",
+                Some(serde_json::json!({"action": "login"})),
+                SystemLogStatus::Success,
+            )
+            .await;
+    }
 
     // Build response
     build_login_response(
@@ -436,6 +462,17 @@ pub async fn admin_refresh_token(
         Ok(Some(token)) => token,
         Ok(None) => {
             log::warn!("Refresh token not found");
+            if let Some(log_svc) = data.system_log_service() {
+                log_svc
+                    .log_auth_event(
+                        None,
+                        None,
+                        "Token refresh failed: token not found",
+                        Some(serde_json::json!({"action": "refresh", "reason": "token_not_found"})),
+                        SystemLogStatus::Failed,
+                    )
+                    .await;
+            }
             return ApiResponse::unauthorized("Invalid refresh token");
         }
         Err(e) => {
@@ -447,6 +484,17 @@ pub async fn admin_refresh_token(
     // Check if token is valid
     if !refresh_token.is_valid() {
         log::warn!("Refresh token is expired or revoked");
+        if let Some(log_svc) = data.system_log_service() {
+            log_svc
+                .log_auth_event(
+                    None,
+                    Some(refresh_token.user_id),
+                    "Token refresh failed: expired or revoked",
+                    Some(serde_json::json!({"action": "refresh", "reason": "expired_or_revoked"})),
+                    SystemLogStatus::Failed,
+                )
+                .await;
+        }
         return ApiResponse::unauthorized("Refresh token expired or revoked");
     }
 
@@ -507,6 +555,19 @@ pub async fn admin_refresh_token(
     if let Err(e) = refresh_repo.revoke_by_id(refresh_token.id).await {
         log::error!("Failed to revoke old refresh token: {e:?}");
         // Continue anyway since new token was created
+    }
+
+    // Log successful token refresh
+    if let Some(log_svc) = data.system_log_service() {
+        log_svc
+            .log_auth_event(
+                Some(user.uuid),
+                Some(user.uuid),
+                "Token refreshed",
+                Some(serde_json::json!({"action": "refresh"})),
+                SystemLogStatus::Success,
+            )
+            .await;
     }
 
     // Build response
@@ -597,6 +658,121 @@ pub async fn get_user_permissions(auth: RequiredAuth) -> impl Responder {
     ApiResponse::ok(response)
 }
 
+/// Forgot password endpoint — initiates the password reset flow
+///
+/// Always returns 200 OK regardless of whether the email exists, to prevent user enumeration.
+#[utoipa::path(
+    post,
+    path = "/admin/api/v1/auth/forgot-password",
+    tag = "admin-auth",
+    request_body = ForgotPasswordRequest,
+    responses(
+        (status = 200, description = "Request processed (same response whether email exists or not)"),
+        (status = 500, description = "Internal server error")
+    ),
+    security() // No authentication required
+)]
+#[post("/auth/forgot-password")]
+pub async fn forgot_password(
+    data: web::Data<ApiStateWrapper>,
+    body: web::Json<ForgotPasswordRequest>,
+) -> impl Responder {
+    if let Some(svc) = data.password_reset_service() {
+        if let Err(e) = svc.request_reset(&body.email).await {
+            log::error!("Password reset request failed: {e:?}");
+            // Do not surface error to caller — always return generic 200
+        }
+    } else {
+        log::debug!("Password reset service not configured; ignoring forgot-password request");
+    }
+
+    if let Some(log_svc) = data.system_log_service() {
+        log_svc
+            .log_auth_event(
+                None,
+                None,
+                "Password reset requested",
+                Some(serde_json::json!({"action": "password_reset_requested"})),
+                SystemLogStatus::Success,
+            )
+            .await;
+    }
+
+    ApiResponse::message(
+        "If an account with that email exists, a password reset link has been sent.",
+    )
+}
+
+/// Reset password endpoint — validates the token and updates the password
+#[utoipa::path(
+    post,
+    path = "/admin/api/v1/auth/reset-password",
+    tag = "admin-auth",
+    request_body = ResetPasswordRequest,
+    responses(
+        (status = 200, description = "Password reset successful"),
+        (status = 400, description = "Invalid or expired token, or validation error"),
+        (status = 500, description = "Internal server error")
+    ),
+    security() // No authentication required
+)]
+#[post("/auth/reset-password")]
+pub async fn reset_password(
+    data: web::Data<ApiStateWrapper>,
+    body: web::Json<ResetPasswordRequest>,
+) -> impl Responder {
+    let Some(svc) = data.password_reset_service() else {
+        log::warn!("Password reset service not configured");
+        return ApiResponse::bad_request("Password reset is not available");
+    };
+
+    match svc.reset_password(&body.token, &body.new_password).await {
+        Ok(()) => {
+            if let Some(log_svc) = data.system_log_service() {
+                log_svc
+                    .log_auth_event(
+                        None,
+                        None,
+                        "Password reset completed",
+                        Some(serde_json::json!({"action": "password_reset_completed"})),
+                        SystemLogStatus::Success,
+                    )
+                    .await;
+            }
+            ApiResponse::message("Password has been reset successfully.")
+        }
+        Err(r_data_core_core::error::Error::Validation(msg)) => {
+            if let Some(log_svc) = data.system_log_service() {
+                log_svc
+                    .log_auth_event(
+                        None,
+                        None,
+                        "Password reset failed",
+                        Some(serde_json::json!({"action": "password_reset_failed", "reason": "validation"})),
+                        SystemLogStatus::Failed,
+                    )
+                    .await;
+            }
+            ApiResponse::bad_request(&msg)
+        }
+        Err(e) => {
+            log::error!("Password reset failed: {e:?}");
+            if let Some(log_svc) = data.system_log_service() {
+                log_svc
+                    .log_auth_event(
+                        None,
+                        None,
+                        "Password reset failed",
+                        Some(serde_json::json!({"action": "password_reset_failed", "reason": "internal_error"})),
+                        SystemLogStatus::Failed,
+                    )
+                    .await;
+            }
+            ApiResponse::internal_error("Password reset failed")
+        }
+    }
+}
+
 /// Register auth routes
 pub fn register_routes(cfg: &mut actix_web::web::ServiceConfig) {
     cfg.service(admin_login)
@@ -604,5 +780,7 @@ pub fn register_routes(cfg: &mut actix_web::web::ServiceConfig) {
         .service(admin_logout)
         .service(admin_refresh_token)
         .service(admin_revoke_all_tokens)
-        .service(get_user_permissions);
+        .service(get_user_permissions)
+        .service(forgot_password)
+        .service(reset_password);
 }

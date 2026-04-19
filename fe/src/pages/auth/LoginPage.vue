@@ -159,20 +159,70 @@
                         </v-card-text>
                     </v-card>
 
-                    <!-- Forgot Password Snackbar -->
-                    <v-snackbar
-                        v-model="forgotPasswordSnackbar"
-                        timeout="4000"
-                        color="info"
+                    <!-- Forgot Password Dialog (mail configured) -->
+                    <v-dialog
+                        v-model="forgotPasswordDialog"
+                        max-width="440"
+                        persistent
                     >
-                        {{ t('auth.login.forgot_password_message') }}
-                        <template v-slot:actions>
+                        <v-card>
+                            <v-card-title class="text-h6 pa-4 pb-2">
+                                {{ t('auth.forgot_password.title') }}
+                            </v-card-title>
+                            <v-card-text class="pa-4 pt-2">
+                                <v-form
+                                    ref="forgotPasswordForm"
+                                    v-model="forgotPasswordFormValid"
+                                    @submit.prevent="handleForgotPassword"
+                                >
+                                    <v-text-field
+                                        v-model="forgotPasswordEmail"
+                                        :label="t('auth.forgot_password.email_label')"
+                                        variant="outlined"
+                                        type="email"
+                                        :rules="emailRules"
+                                        :disabled="forgotPasswordLoading"
+                                        class="mb-2"
+                                        autofocus
+                                    />
+                                </v-form>
+                            </v-card-text>
+                            <v-card-actions class="pa-4 pt-0">
+                                <v-spacer />
+                                <v-btn
+                                    variant="text"
+                                    :disabled="forgotPasswordLoading"
+                                    @click="closeForgotPasswordDialog"
+                                >
+                                    {{ t('common.cancel') }}
+                                </v-btn>
+                                <v-btn
+                                    color="primary"
+                                    variant="flat"
+                                    :loading="forgotPasswordLoading"
+                                    :disabled="!forgotPasswordFormValid"
+                                    @click="handleForgotPassword"
+                                >
+                                    {{ t('auth.forgot_password.submit') }}
+                                </v-btn>
+                            </v-card-actions>
+                        </v-card>
+                    </v-dialog>
+
+                    <!-- Snackbar (not-available or success/error feedback) -->
+                    <v-snackbar
+                        v-model="snackbar.visible"
+                        :timeout="4000"
+                        :color="snackbar.color"
+                    >
+                        {{ snackbar.message }}
+                        <template #actions>
                             <v-btn
                                 color="white"
                                 variant="text"
-                                @click="forgotPasswordSnackbar = false"
+                                @click="snackbar.visible = false"
                             >
-                                Close
+                                {{ t('common.close') }}
                             </v-btn>
                         </template>
                     </v-snackbar>
@@ -186,21 +236,37 @@
     import { ref, reactive, onMounted, onUnmounted } from 'vue'
     import { useRouter } from 'vue-router'
     import { useAuthStore } from '@/stores/auth'
+    import { useCapabilitiesStore } from '@/stores/capabilities'
     import { useTranslations } from '@/composables/useTranslations'
+    import { typedHttpClient } from '@/api/typed-client'
     import LanguageSwitch from '@/components/common/LanguageSwitch.vue'
     import SmartIcon from '@/components/common/SmartIcon.vue'
 
     // Router, store, and translations
     const router = useRouter()
     const authStore = useAuthStore()
+    const capabilitiesStore = useCapabilitiesStore()
     const { t, translateError } = useTranslations()
 
     // Form data
     const loginForm = ref()
     const formValid = ref(false)
     const showPassword = ref(false)
-    const forgotPasswordSnackbar = ref(false)
     const isMobile = ref(false)
+
+    // Snackbar (replaces old forgotPasswordSnackbar)
+    const snackbar = reactive({
+        visible: false,
+        message: '',
+        color: 'info' as 'info' | 'success' | 'error',
+    })
+
+    // Forgot password dialog state
+    const forgotPasswordDialog = ref(false)
+    const forgotPasswordForm = ref()
+    const forgotPasswordFormValid = ref(false)
+    const forgotPasswordEmail = ref('')
+    const forgotPasswordLoading = ref(false)
 
     const updateIsMobile = () => {
         isMobile.value = window.innerWidth < 1200
@@ -227,6 +293,11 @@
     const passwordRules = [
         (v: string) => !!v || t('auth.login.errors.password_required'),
         (v: string) => v.length >= 8 || t('auth.login.errors.password_too_short'),
+    ]
+
+    const emailRules = [
+        (v: string) => !!v || t('validation.required'),
+        (v: string) => /.+@.+\..+/.test(v) || t('users.dialog.validation.email_invalid'),
     ]
 
     // Methods
@@ -289,7 +360,42 @@
     }
 
     const showForgotPassword = () => {
-        forgotPasswordSnackbar.value = true
+        if (capabilitiesStore.systemMailConfigured) {
+            forgotPasswordEmail.value = ''
+            forgotPasswordDialog.value = true
+        } else {
+            snackbar.message = t('auth.forgot_password.not_available')
+            snackbar.color = 'info'
+            snackbar.visible = true
+        }
+    }
+
+    const closeForgotPasswordDialog = () => {
+        forgotPasswordDialog.value = false
+        forgotPasswordEmail.value = ''
+    }
+
+    const handleForgotPassword = async () => {
+        if (!forgotPasswordFormValid.value) {
+            return
+        }
+
+        forgotPasswordLoading.value = true
+        try {
+            await typedHttpClient.forgotPassword(forgotPasswordEmail.value)
+            forgotPasswordDialog.value = false
+            forgotPasswordEmail.value = ''
+            snackbar.message = t('auth.forgot_password.success')
+            snackbar.color = 'success'
+            snackbar.visible = true
+        } catch (error) {
+            const message = error instanceof Error ? error.message : t('general.errors.unknown')
+            snackbar.message = translateError(message)
+            snackbar.color = 'error'
+            snackbar.visible = true
+        } finally {
+            forgotPasswordLoading.value = false
+        }
     }
 
     // Lifecycle

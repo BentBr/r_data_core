@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::config::{
-    ApiConfig, CacheConfig, DatabaseConfig, LicenseConfig, LogConfig, QueueConfig,
+    ApiConfig, CacheConfig, DatabaseConfig, LicenseConfig, LogConfig, MailConfig, QueueConfig,
 };
 
 /// Application configuration
@@ -27,6 +27,12 @@ pub struct AppConfig {
     pub queue: QueueConfig,
     /// License configuration
     pub license: LicenseConfig,
+    /// Mail configuration
+    pub mail: MailConfig,
+    /// Base URL of the frontend application (used for e.g. password-reset links)
+    pub frontend_base_url: Option<String>,
+    /// Minimum seconds between password-reset requests for the same account
+    pub password_reset_throttle_seconds: u64,
 }
 
 /// Worker-specific configuration
@@ -46,6 +52,8 @@ pub struct WorkerConfig {
     pub cache: CacheConfig,
     /// License configuration
     pub license: LicenseConfig,
+    /// Mail configuration
+    pub mail: MailConfig,
 }
 
 /// Maintenance worker configuration
@@ -59,6 +67,12 @@ pub struct MaintenanceConfig {
 
     /// Cron expression for workflow run logs purger task (required)
     pub workflow_run_logs_purger_cron: String,
+
+    /// Cron expression for the system logs purger task (required)
+    pub system_logs_purger_cron: String,
+
+    /// Number of days to retain system logs before purging
+    pub system_logs_retention_days: u64,
 
     /// Database configuration used by the maintenance worker
     pub database: DatabaseConfig,

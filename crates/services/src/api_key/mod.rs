@@ -1,17 +1,20 @@
 use r_data_core_core::admin_user::ApiKey;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::error::Result;
+use r_data_core_core::system_log::SystemLogResourceType;
 use r_data_core_persistence::{ApiKeyRepository, ApiKeyRepositoryTrait};
 use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::query_validation::{validate_list_query, FieldValidator, ValidatedListQuery};
+use crate::SystemLogService;
 
 /// Service for handling API key operations
 pub struct ApiKeyService {
     repository: Arc<dyn ApiKeyRepositoryTrait>,
     cache_manager: Option<Arc<CacheManager>>,
     api_key_ttl: u64,
+    system_log: Option<Arc<SystemLogService>>,
 }
 
 impl ApiKeyService {
@@ -21,6 +24,7 @@ impl ApiKeyService {
             repository,
             cache_manager: None,
             api_key_ttl: 600, // Default 10 minutes
+            system_log: None,
         }
     }
 
@@ -34,6 +38,7 @@ impl ApiKeyService {
             repository,
             cache_manager: Some(cache_manager),
             api_key_ttl,
+            system_log: None,
         }
     }
 
@@ -44,7 +49,15 @@ impl ApiKeyService {
             repository: Arc::new(repository),
             cache_manager: None,
             api_key_ttl: 600, // Default 10 minutes
+            system_log: None,
         }
+    }
+
+    /// Set the system log service for audit logging
+    #[must_use]
+    pub fn with_system_log(mut self, log: Option<Arc<SystemLogService>>) -> Self {
+        self.system_log = log;
+        self
     }
 
     /// Generate cache key for API key by hash
@@ -76,9 +89,23 @@ impl ApiKeyService {
             ));
         }
 
-        self.repository
+        let result = self
+            .repository
             .create_new_api_key(name, description, created_by, expires_in_days)
-            .await
+            .await?;
+
+        if let Some(ref log) = self.system_log {
+            log.log_entity_created(
+                Some(created_by),
+                SystemLogResourceType::ApiKey,
+                result.0,
+                &format!("API key '{name}' created"),
+                Some(serde_json::json!({"name": name})),
+            )
+            .await;
+        }
+
+        Ok(result)
     }
 
     /// Validate an API key and return user information if valid
@@ -209,6 +236,17 @@ impl ApiKeyService {
                         if let Err(e) = cache.delete(&cache_key).await {
                             log::warn!("Failed to invalidate API key cache: {e}");
                         }
+                    }
+
+                    if let Some(ref log) = self.system_log {
+                        log.log_entity_deleted(
+                            Some(user_uuid),
+                            SystemLogResourceType::ApiKey,
+                            key_uuid,
+                            &format!("API key '{}' revoked", key.name),
+                            Some(serde_json::json!({"name": key.name})),
+                        )
+                        .await;
                     }
                 }
 

@@ -222,10 +222,11 @@ impl DslProgram {
                 Transform::ResolveEntityPath(_)
                 | Transform::GetOrCreateEntity(_)
                 | Transform::Authenticate(_)
+                | Transform::SendEmail(_)
                 | Transform::None => {
-                    // ResolveEntityPath, GetOrCreateEntity, and Authenticate require async database
-                    // access and are handled in the services layer during workflow execution.
-                    // They are validated here but execution happens in services.
+                    // ResolveEntityPath, GetOrCreateEntity, Authenticate, and SendEmail require
+                    // async database/service access and are handled in the services layer during
+                    // workflow execution. They are validated here but execution happens in services.
                     // Transform::None is a no-op.
                 }
             }
@@ -410,10 +411,11 @@ impl DslProgram {
                 Transform::ResolveEntityPath(_)
                 | Transform::GetOrCreateEntity(_)
                 | Transform::Authenticate(_)
+                | Transform::SendEmail(_)
                 | Transform::None => {
-                    // ResolveEntityPath, GetOrCreateEntity, and Authenticate require async database
-                    // access and are handled in the services layer during workflow execution.
-                    // They are validated here but execution happens in services.
+                    // ResolveEntityPath, GetOrCreateEntity, Authenticate, and SendEmail require
+                    // async database/service access and are handled in the services layer during
+                    // workflow execution. They are validated here but execution happens in services.
                     // Transform::None is a no-op.
                 }
             }
@@ -579,6 +581,7 @@ impl DslProgram {
             Transform::ResolveEntityPath(_)
             | Transform::GetOrCreateEntity(_)
             | Transform::Authenticate(_)
+            | Transform::SendEmail(_)
             | Transform::BuildPath(_)
             | Transform::None => {}
         }

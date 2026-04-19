@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE email_templates\n            SET\n                name               = COALESCE($2, name),\n                subject_template   = $3,\n                body_html_template = $4,\n                body_text_template = $5,\n                variables          = $6,\n                updated_by         = $7,\n                updated_at         = NOW()\n            WHERE uuid = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "24d02f80141fa15184e51ad22122158749879a0c5f324f9618773536f585fe15"
+}

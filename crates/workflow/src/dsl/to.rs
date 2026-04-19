@@ -78,6 +78,17 @@ pub enum ToDef {
         /// Empty mapping passes through all fields
         mapping: std::collections::HashMap<String, String>,
     },
+    /// Send the step's produced output via email
+    Email {
+        /// UUID of a workflow email template
+        template_uuid: String,
+        /// Recipients: field refs or constant email addresses
+        to: Vec<super::transform::StringOperand>,
+        /// Optional CC recipients
+        cc: Option<Vec<super::transform::StringOperand>>,
+        /// Maps produced output fields to template variables
+        mapping: std::collections::HashMap<String, String>,
+    },
 }
 
 pub(crate) fn validate_to(
@@ -199,7 +210,57 @@ pub(crate) fn validate_to(
             // Allow empty mappings (passes through all fields)
             validate_mapping(idx, mapping, safe_field)?;
         }
+        ToDef::Email {
+            template_uuid,
+            to,
+            cc,
+            mapping,
+        } => {
+            validate_email_to(idx, template_uuid, to, cc.as_deref(), mapping, safe_field)?;
+        }
     }
+    Ok(())
+}
+
+fn validate_email_to(
+    idx: usize,
+    template_uuid: &str,
+    to: &[super::transform::StringOperand],
+    cc: Option<&[super::transform::StringOperand]>,
+    mapping: &std::collections::HashMap<String, String>,
+    safe_field: &Regex,
+) -> r_data_core_core::error::Result<()> {
+    if template_uuid.trim().is_empty() {
+        return Err(r_data_core_core::error::Error::Validation(format!(
+            "DSL step {idx}: to.email.template_uuid must not be empty"
+        )));
+    }
+    if to.is_empty() {
+        return Err(r_data_core_core::error::Error::Validation(format!(
+            "DSL step {idx}: to.email.to must not be empty"
+        )));
+    }
+    for (i, operand) in to.iter().enumerate() {
+        if let super::transform::StringOperand::Field { field } = operand {
+            if !safe_field.is_match(field) {
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: to.email.to[{i}] field path must be safe"
+                )));
+            }
+        }
+    }
+    if let Some(cc_list) = cc {
+        for (i, operand) in cc_list.iter().enumerate() {
+            if let super::transform::StringOperand::Field { field } = operand {
+                if !safe_field.is_match(field) {
+                    return Err(r_data_core_core::error::Error::Validation(format!(
+                        "DSL step {idx}: to.email.cc[{i}] field path must be safe"
+                    )));
+                }
+            }
+        }
+    }
+    validate_mapping(idx, mapping, safe_field)?;
     Ok(())
 }
 
@@ -273,6 +334,57 @@ pub(crate) fn mapping_of(to: &ToDef) -> &std::collections::HashMap<String, Strin
     match to {
         ToDef::Format { mapping, .. }
         | ToDef::Entity { mapping, .. }
-        | ToDef::NextStep { mapping } => mapping,
+        | ToDef::NextStep { mapping }
+        | ToDef::Email { mapping, .. } => mapping,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use regex::Regex;
+
+    fn safe_field() -> Regex {
+        Regex::new(r"^[A-Za-z_][A-Za-z0-9_.]*$").unwrap()
+    }
+
+    #[test]
+    fn valid_email_to() {
+        let to_def = ToDef::Email {
+            template_uuid: "uuid-123".to_string(),
+            to: vec![super::super::transform::StringOperand::Field {
+                field: "email".to_string(),
+            }],
+            cc: None,
+            mapping: std::collections::HashMap::from([(
+                "name".to_string(),
+                "user_name".to_string(),
+            )]),
+        };
+        assert!(validate_to(0, &to_def, &safe_field()).is_ok());
+    }
+
+    #[test]
+    fn email_to_empty_recipients_fails() {
+        let to_def = ToDef::Email {
+            template_uuid: "uuid-123".to_string(),
+            to: vec![],
+            cc: None,
+            mapping: std::collections::HashMap::new(),
+        };
+        assert!(validate_to(0, &to_def, &safe_field()).is_err());
+    }
+
+    #[test]
+    fn email_to_empty_template_uuid_fails() {
+        let to_def = ToDef::Email {
+            template_uuid: String::new(),
+            to: vec![super::super::transform::StringOperand::ConstString {
+                value: "a@b.com".to_string(),
+            }],
+            cc: None,
+            mapping: std::collections::HashMap::new(),
+        };
+        assert!(validate_to(0, &to_def, &safe_field()).is_err());
     }
 }
