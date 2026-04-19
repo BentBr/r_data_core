@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useCapabilitiesStore } from '@/stores/capabilities'
 
 const routes: RouteRecordRaw[] = [
     {
@@ -84,6 +85,7 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
     const authStore = useAuthStore()
+    const capabilitiesStore = useCapabilitiesStore()
 
     // If going to login page, redirect authenticated users to dashboard
     if (to.name === 'Login') {
@@ -108,12 +110,8 @@ router.beforeEach(async (to, from, next) => {
         }
 
         // Ensure capabilities are loaded (e.g. after page reload)
-        if (authStore.isAuthenticated) {
-            const { useCapabilitiesStore } = await import('@/stores/capabilities')
-            const capabilitiesStore = useCapabilitiesStore()
-            if (!capabilitiesStore.isLoaded) {
-                void capabilitiesStore.fetchCapabilities()
-            }
+        if (authStore.isAuthenticated && !capabilitiesStore.isLoaded) {
+            void capabilitiesStore.fetchCapabilities()
         }
 
         // After potential restore / refresh, check authentication

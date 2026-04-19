@@ -129,9 +129,15 @@
                                         density="compact"
                                         variant="plain"
                                         hide-details
-                                        :placeholder="t('system.email_templates.variable_description_placeholder')"
+                                        :placeholder="
+                                            t(
+                                                'system.email_templates.variable_description_placeholder'
+                                            )
+                                        "
                                         class="mt-0 pt-0"
-                                        @update:model-value="(val: string) => (variableDescriptions[key] = val)"
+                                        @update:model-value="
+                                            (val: string) => (variableDescriptions[key] = val)
+                                        "
                                     />
                                 </td>
                             </tr>
