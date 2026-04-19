@@ -81,14 +81,15 @@
                             :key="v.key"
                             class="text-caption"
                         >
-                            <code v-text="wrapVar(v.key)" /> — {{ v.description || '(no description)' }}
+                            <code v-text="wrapVar(v.key)" /> —
+                            {{ v.description || '(no description)' }}
                         </div>
                     </v-alert>
 
                     <!-- Recipients -->
                     <div class="text-caption mb-1">{{ t('workflows.dsl.send_email_to') }}</div>
                     <div
-                        v-for="(recipient, rIdx) in action.to ?? []"
+                        v-for="(recipient, rIdx) in action.to"
                         :key="`to-${rIdx}`"
                         class="d-flex ga-2 mb-2 align-center"
                     >
@@ -245,13 +246,13 @@
     }
 
     function addRecipient(actionIdx: number) {
-        const updated = actions.value.map((a, i) => {
-            if (i !== actionIdx) {
-                return a
+        const updated = actions.value.map((action, index) => {
+            if (index !== actionIdx) {
+                return action
             }
-            const existing = a.to ?? []
+            const existing = action.to
             return {
-                ...a,
+                ...action,
                 to: [...existing, { kind: 'const_string' as const, value: '' }],
             } as PostRunAction
         })
@@ -259,32 +260,31 @@
     }
 
     function removeRecipient(actionIdx: number, recipientIdx: number) {
-        const updated = actions.value.map((a, i) => {
-            if (i !== actionIdx) {
-                return a
+        const updated = actions.value.map((action, index) => {
+            if (index !== actionIdx) {
+                return action
             }
             return {
-                ...a,
-                to: (a.to ?? []).filter((_, ri) => ri !== recipientIdx),
+                ...action,
+                to: action.to.filter((_, ri) => ri !== recipientIdx),
             } as PostRunAction
         })
         emitUpdated(updated)
     }
 
     function updateRecipient(actionIdx: number, recipientIdx: number, value: string) {
-        const updated = actions.value.map((a, i) => {
-            if (i !== actionIdx) {
-                return a
+        const updated = actions.value.map((action, index) => {
+            if (index !== actionIdx) {
+                return action
             }
-            const newTo = (a.to ?? []).map((r, ri) => {
+            const newTo = action.to.map((r, ri) => {
                 if (ri !== recipientIdx) {
                     return r
                 }
                 return { kind: 'const_string' as const, value }
             })
-            return { ...a, to: newTo } as PostRunAction
+            return { ...action, to: newTo } as PostRunAction
         })
         emitUpdated(updated)
     }
-
 </script>

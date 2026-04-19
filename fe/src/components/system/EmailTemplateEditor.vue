@@ -266,13 +266,13 @@
                 }
                 // Restore descriptions from the template's variables JSON
                 const vars = template.variables as Array<{ key: string; description: string }>
-                const descs: Record<string, string> = {}
+                const descriptions: Record<string, string> = {}
                 if (Array.isArray(vars)) {
                     for (const v of vars) {
-                        descs[v.key] = v.description ?? ''
+                        descriptions[v.key] = v.description || ''
                     }
                 }
-                variableDescriptions.value = descs
+                variableDescriptions.value = descriptions
             } else {
                 form.value = {
                     name: '',
