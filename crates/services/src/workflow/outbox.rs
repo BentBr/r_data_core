@@ -124,6 +124,13 @@ pub async fn dispatch_workflow_fetch_job(
             outbox_repo.mark_delivered(outbox_uuid, locked_by).await?;
         }
         Err(e) => {
+            if is_permanent_outbox_failure(&e) {
+                outbox_repo
+                    .mark_dead_letter(outbox_uuid, &e.to_string(), locked_by)
+                    .await?;
+                return Ok(());
+            }
+
             let default_policy = OutboxRetryPolicy::default();
             let policy = retry_policy.map_or(&default_policy, |policy| policy);
             if attempt_count >= WORKFLOW_OUTBOX_MAX_ATTEMPTS {

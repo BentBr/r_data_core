@@ -32,6 +32,7 @@ async fn maybe_setup_test_db() -> Option<r_data_core_test_support::TestDatabase>
 struct RecordingQueue {
     fetches: Arc<Mutex<Vec<FetchAndStageJob>>>,
     fail_fetch: Arc<AtomicBool>,
+    permanent_fetch_failure: Arc<AtomicBool>,
 }
 
 impl RecordingQueue {
@@ -39,6 +40,7 @@ impl RecordingQueue {
         Self {
             fetches: Arc::new(Mutex::new(Vec::new())),
             fail_fetch: Arc::new(AtomicBool::new(false)),
+            permanent_fetch_failure: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -46,6 +48,15 @@ impl RecordingQueue {
         Self {
             fetches: Arc::new(Mutex::new(Vec::new())),
             fail_fetch: Arc::new(AtomicBool::new(true)),
+            permanent_fetch_failure: Arc::new(AtomicBool::new(false)),
+        }
+    }
+
+    fn with_permanent_fetch_failure() -> Self {
+        Self {
+            fetches: Arc::new(Mutex::new(Vec::new())),
+            fail_fetch: Arc::new(AtomicBool::new(true)),
+            permanent_fetch_failure: Arc::new(AtomicBool::new(true)),
         }
     }
 
@@ -58,6 +69,11 @@ impl RecordingQueue {
 impl JobQueue for RecordingQueue {
     async fn enqueue_fetch(&self, job: FetchAndStageJob) -> r_data_core_core::error::Result<()> {
         if self.fail_fetch.load(Ordering::SeqCst) {
+            if self.permanent_fetch_failure.load(Ordering::SeqCst) {
+                return Err(r_data_core_core::error::Error::Config(
+                    "synthetic queue configuration failure".to_string(),
+                ));
+            }
             return Err(r_data_core_core::error::Error::Unknown(
                 "synthetic queue failure".to_string(),
             ));
@@ -591,6 +607,90 @@ async fn workflow_outbox_worker_retries_when_queue_enqueue_fails() -> anyhow::Re
     assert!(last_error
         .as_deref()
         .is_some_and(|msg| msg.contains("synthetic queue failure")));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn workflow_outbox_worker_dead_letters_permanent_queue_failures() -> anyhow::Result<()> {
+    let Some(pool) = maybe_setup_test_db().await else {
+        return Ok(());
+    };
+    let creator_uuid = create_test_admin_user(&pool).await?;
+    let workflow_repo = WorkflowRepository::new(pool.pool.clone());
+    let outbox_repo = OutboxRepository::new(pool.pool.clone());
+
+    let workflow_uuid = workflow_repo
+        .create(
+            &r_data_core_workflow::data::requests::CreateWorkflowRequest {
+                name: format!("outbox-permanent-failure-{}", Uuid::now_v7().simple()),
+                description: Some("outbox permanent failure test".into()),
+                kind: WorkflowKind::Consumer.to_string(),
+                enabled: true,
+                schedule_cron: None,
+                config: serde_json::json!({
+                    "steps": [
+                        {
+                            "from": {
+                                "type": "format",
+                                "source": {
+                                    "source_type": "uri",
+                                    "config": { "uri": "http://example.com/data.csv" }
+                                },
+                                "format": {
+                                    "format_type": "csv",
+                                    "options": {}
+                                },
+                                "mapping": {}
+                            },
+                            "transform": { "type": "none" },
+                            "to": {
+                                "type": "format",
+                                "output": { "mode": "api" },
+                                "format": {
+                                    "format_type": "json",
+                                    "options": {}
+                                },
+                                "mapping": {}
+                            }
+                        }
+                    ]
+                }),
+                versioning_disabled: false,
+            },
+            creator_uuid,
+        )
+        .await?;
+
+    let trigger_id = Uuid::now_v7();
+    let (_run_uuid, outbox_uuid) = workflow_repo
+        .insert_run_queued_with_fetch_outbox(workflow_uuid, trigger_id)
+        .await?;
+
+    let queue = RecordingQueue::with_permanent_fetch_failure();
+    let dispatched =
+        claim_and_dispatch_workflow_outbox(&queue, &outbox_repo, "permanent-worker", 10).await?;
+    assert_eq!(dispatched, 1);
+
+    let row = sqlx::query(
+        r"
+        SELECT status::text AS status, attempt_count, last_error
+        FROM outbox_messages
+        WHERE uuid = $1
+        ",
+    )
+    .bind(outbox_uuid)
+    .fetch_one(&pool.pool)
+    .await?;
+
+    let status: String = row.try_get("status")?;
+    let attempt_count: i32 = row.try_get("attempt_count")?;
+    let last_error: Option<String> = row.try_get("last_error")?;
+    assert_eq!(status, "dead_letter");
+    assert_eq!(attempt_count, 1);
+    assert!(last_error
+        .as_deref()
+        .is_some_and(|msg| msg.contains("synthetic queue configuration failure")));
 
     Ok(())
 }
