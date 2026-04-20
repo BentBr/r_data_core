@@ -232,6 +232,22 @@ async fn outbox_status_updates_respect_claim_owner() -> anyhow::Result<()> {
     assert_eq!(status_after_wrong_owner, "processing");
 
     outbox_repo
+        .mark_retry(
+            outbox_uuid,
+            "retry should not apply without a lock owner",
+            OffsetDateTime::now_utc(),
+            None,
+        )
+        .await?;
+
+    let status_after_unowned_retry: String =
+        sqlx::query_scalar("SELECT status::text FROM outbox_messages WHERE uuid = $1")
+            .bind(outbox_uuid)
+            .fetch_one(&pool.pool)
+            .await?;
+    assert_eq!(status_after_unowned_retry, "processing");
+
+    outbox_repo
         .mark_delivered(outbox_uuid, Some("expected-worker"))
         .await?;
 

@@ -260,7 +260,7 @@ impl OutboxRepository {
                         locked_by = NULL,
                         last_error = NULL
                     WHERE uuid = $1
-                      AND status IN ('pending', 'processing')
+                      AND status = 'pending'
                     ",
                 )
                 .bind(uuid)
@@ -311,7 +311,7 @@ impl OutboxRepository {
                         locked_by = NULL,
                         last_error = $3
                     WHERE uuid = $1
-                      AND status IN ('pending', 'processing')
+                      AND status = 'pending'
                     ",
                 )
                 .bind(uuid)
@@ -366,7 +366,7 @@ impl OutboxRepository {
                         locked_by = NULL,
                         last_error = $2
                     WHERE uuid = $1
-                      AND status IN ('pending', 'processing')
+                      AND status = 'pending'
                     ",
                 )
                 .bind(uuid)
