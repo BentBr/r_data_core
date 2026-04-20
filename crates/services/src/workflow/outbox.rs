@@ -34,6 +34,11 @@ pub struct WorkflowPushOutboxPayload {
 /// Maximum number of workflow outbox items to claim in one pass.
 pub const WORKFLOW_OUTBOX_BATCH_SIZE: i64 = 50;
 
+/// Maximum raw payload size for workflow push outbox entries.
+///
+/// The payload is stored base64-encoded in `PostgreSQL`, so the effective row size is larger.
+pub const WORKFLOW_PUSH_OUTBOX_MAX_DATA_BYTES: usize = 256 * 1024;
+
 /// Duration after which a processing lease is considered stale.
 pub const WORKFLOW_OUTBOX_STALE_LEASE_SECS: i64 = 300;
 
@@ -140,7 +145,7 @@ pub async fn dispatch_workflow_fetch_job(
 /// Enqueue a workflow push delivery in the outbox.
 ///
 /// # Errors
-/// Returns an error if the insert fails.
+/// Returns an error if the payload is too large or the insert fails.
 #[allow(clippy::too_many_arguments)]
 pub async fn enqueue_workflow_push_outbox(
     outbox_repo: &OutboxRepository,
@@ -154,6 +159,7 @@ pub async fn enqueue_workflow_push_outbox(
     format_type: &str,
     data_bytes: &[u8],
 ) -> r_data_core_core::error::Result<Uuid> {
+    validate_workflow_push_outbox_size(data_bytes)?;
     let payload = WorkflowPushOutboxPayload {
         workflow_id: workflow_uuid,
         run_uuid,
@@ -276,6 +282,7 @@ pub async fn dispatch_workflow_outbox(
 ///
 /// # Errors
 /// Returns an error if the HTTP push or database status update fails.
+#[allow(clippy::too_many_lines)]
 pub async fn dispatch_workflow_push_outbox(
     outbox_repo: &OutboxRepository,
     record: &OutboxMessageRecord,
@@ -364,7 +371,18 @@ pub async fn dispatch_workflow_push_outbox(
             return Ok(());
         }
     };
-
+    if data.len() > WORKFLOW_PUSH_OUTBOX_MAX_DATA_BYTES {
+        outbox_repo
+            .mark_dead_letter(
+                record.uuid,
+                &format!(
+                    "Workflow push payload body exceeds the maximum size of {WORKFLOW_PUSH_OUTBOX_MAX_DATA_BYTES} bytes",
+                ),
+                locked_by,
+            )
+            .await?;
+        return Ok(());
+    }
     let result = destination.push(&dest_ctx, bytes::Bytes::from(data)).await;
     match result {
         Ok(()) => {
@@ -519,6 +537,16 @@ const fn http_method_name(method: HttpMethod) -> &'static str {
     }
 }
 
+fn validate_workflow_push_outbox_size(data_bytes: &[u8]) -> r_data_core_core::error::Result<()> {
+    if data_bytes.len() > WORKFLOW_PUSH_OUTBOX_MAX_DATA_BYTES {
+        return Err(r_data_core_core::error::Error::Validation(format!(
+            "Workflow push payload body exceeds the maximum size of {WORKFLOW_PUSH_OUTBOX_MAX_DATA_BYTES} bytes",
+        )));
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -544,5 +572,19 @@ mod tests {
         let policy = OutboxRetryPolicy::new(0, 1, 0);
         assert_eq!(workflow_outbox_retry_delay_secs(1, &policy), 1);
         assert_eq!(workflow_outbox_retry_delay_secs(5, &policy), 1);
+    }
+
+    #[test]
+    fn push_payload_size_validation_accepts_small_payload() {
+        assert!(validate_workflow_push_outbox_size(&[0u8; 1024]).is_ok());
+    }
+
+    #[test]
+    fn push_payload_size_validation_rejects_large_payload() {
+        let payload = vec![0u8; WORKFLOW_PUSH_OUTBOX_MAX_DATA_BYTES + 1];
+        let result = validate_workflow_push_outbox_size(&payload);
+        assert!(
+            matches!(result, Err(r_data_core_core::error::Error::Validation(message)) if message.contains("maximum size"))
+        );
     }
 }

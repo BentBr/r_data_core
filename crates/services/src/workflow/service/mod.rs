@@ -71,7 +71,10 @@ impl WorkflowService {
 
     /// Attach a retry policy for deferred workflow deliveries.
     #[must_use]
-    pub const fn with_outbox_retry_policy(mut self, outbox_retry_policy: OutboxRetryPolicy) -> Self {
+    pub const fn with_outbox_retry_policy(
+        mut self,
+        outbox_retry_policy: OutboxRetryPolicy,
+    ) -> Self {
         self.outbox_retry_policy = Some(outbox_retry_policy);
         self
     }

@@ -68,6 +68,16 @@ async fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
+    if dry_run {
+        if clear_all {
+            return execute_clear_all_dry_run();
+        }
+
+        if let Some(prefix) = prefix {
+            return execute_clear_by_prefix_dry_run(&prefix);
+        }
+    }
+
     // Get Redis URL
     let Ok(redis_url) = env::var("REDIS_URL") else {
         eprintln!("Error: REDIS_URL environment variable is not set");
@@ -122,6 +132,12 @@ async fn execute_clear_all(cache: &RedisCache, dry_run: bool) -> ExitCode {
     }
 }
 
+/// Execute clear all cache operation in dry-run mode.
+fn execute_clear_all_dry_run() -> ExitCode {
+    println!("[DRY-RUN] Would clear entire cache (FLUSHDB)");
+    ExitCode::SUCCESS
+}
+
 /// Execute clear by prefix operation
 async fn execute_clear_by_prefix(cache: &RedisCache, prefix: &str, dry_run: bool) -> ExitCode {
     println!("Scanning for keys matching '{prefix}*'...");
@@ -154,6 +170,13 @@ async fn execute_clear_by_prefix(cache: &RedisCache, prefix: &str, dry_run: bool
             }
         }
     }
+}
+
+/// Execute clear by prefix operation in dry-run mode.
+fn execute_clear_by_prefix_dry_run(prefix: &str) -> ExitCode {
+    println!("Scanning for keys matching '{prefix}*'...");
+    println!("[DRY-RUN] Would delete keys matching '{prefix}'");
+    ExitCode::SUCCESS
 }
 
 /// Get the value of a command-line argument
