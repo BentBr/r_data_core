@@ -2,7 +2,7 @@ mod execution;
 mod staging;
 
 use crate::dynamic_entity::DynamicEntityService;
-use crate::workflow::outbox::dispatch_workflow_fetch_job;
+use crate::workflow::outbox::{dispatch_workflow_fetch_job, OutboxRetryPolicy};
 use cron::Schedule;
 use r_data_core_persistence::OutboxRepository;
 use r_data_core_persistence::WorkflowRepositoryTrait;
@@ -18,6 +18,7 @@ pub struct WorkflowService {
     pub(super) repo: Arc<dyn WorkflowRepositoryTrait>,
     pub(super) dynamic_entity_service: Option<Arc<DynamicEntityService>>,
     pub(super) outbox_repository: Option<Arc<OutboxRepository>>,
+    pub(super) outbox_retry_policy: Option<OutboxRetryPolicy>,
     /// JWT signing secret (base, before entity suffix) for authenticate transforms
     pub jwt_secret: Option<String>,
     /// Default JWT expiration in seconds (from `JWT_EXPIRATION` env)
@@ -33,6 +34,7 @@ impl WorkflowService {
             repo,
             dynamic_entity_service: None,
             outbox_repository: None,
+            outbox_retry_policy: None,
             jwt_secret: None,
             jwt_expiration: DEFAULT_JWT_EXPIRATION,
         }
@@ -46,6 +48,7 @@ impl WorkflowService {
             repo,
             dynamic_entity_service: Some(dynamic_entity_service),
             outbox_repository: None,
+            outbox_retry_policy: None,
             jwt_secret: None,
             jwt_expiration: DEFAULT_JWT_EXPIRATION,
         }
@@ -66,9 +69,16 @@ impl WorkflowService {
         self
     }
 
+    /// Attach a retry policy for deferred workflow deliveries.
+    #[must_use]
+    pub const fn with_outbox_retry_policy(mut self, outbox_retry_policy: OutboxRetryPolicy) -> Self {
+        self.outbox_retry_policy = Some(outbox_retry_policy);
+        self
+    }
+
     /// Return the configured workflow outbox repository, if enabled.
     #[must_use]
-    pub fn outbox_repository(&self) -> Option<&Arc<OutboxRepository>> {
+    pub const fn outbox_repository(&self) -> Option<&Arc<OutboxRepository>> {
         self.outbox_repository.as_ref()
     }
 
@@ -369,6 +379,8 @@ impl WorkflowService {
                 run_uuid,
                 outbox_uuid,
                 1,
+                None,
+                self.outbox_retry_policy.as_ref(),
             )
             .await?;
             let _ = self
@@ -431,6 +443,8 @@ impl WorkflowService {
                 run_uuid,
                 outbox_uuid,
                 1,
+                None,
+                self.outbox_retry_policy.as_ref(),
             )
             .await?;
             let _ = self

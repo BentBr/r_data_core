@@ -18,7 +18,9 @@ use r_data_core_services::adapters::{
 };
 use r_data_core_services::bootstrap::{init_cache_manager, init_logger_with_default, init_pg_pool};
 use r_data_core_services::compute_reconcile_actions;
-use r_data_core_services::workflow::outbox::claim_and_dispatch_workflow_outbox;
+use r_data_core_services::workflow::outbox::{
+    claim_and_dispatch_workflow_outbox_with_stale_lease, OutboxRetryPolicy,
+};
 use r_data_core_services::LicenseService;
 use r_data_core_services::{
     DynamicEntityService, EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService,
@@ -84,6 +86,15 @@ async fn main() -> r_data_core_core::error::Result<()> {
     } else {
         None
     };
+    let outbox_retry_policy = if config.outbox_enabled {
+        Some(OutboxRetryPolicy::new(
+            config.outbox_retry_base_delay_secs,
+            config.outbox_retry_multiplier,
+            config.outbox_retry_max_delay_secs,
+        ))
+    } else {
+        None
+    };
 
     // Scheduler: scan workflows with cron and schedule tasks
     let scheduler = JobScheduler::new().await.map_err(|e| {
@@ -95,13 +106,13 @@ async fn main() -> r_data_core_core::error::Result<()> {
         Arc::new(Mutex::new(HashMap::new()));
 
     // function to create a job for a workflow and return (job_id, cron)
-    let schedule_job = |scheduler: JobScheduler,
-                        workflow_id: Uuid,
-                        cron: String,
-                        pool: sqlx::Pool<sqlx::Postgres>,
-                        queue: Arc<ApalisRedisQueue>,
-                        outbox_repo: Option<Arc<OutboxRepository>>|
-     -> std::pin::Pin<
+    let schedule_job = move |scheduler: JobScheduler,
+                             workflow_id: Uuid,
+                             cron: String,
+                             pool: sqlx::Pool<sqlx::Postgres>,
+                             queue: Arc<ApalisRedisQueue>,
+                             outbox_repo: Option<Arc<OutboxRepository>>|
+          -> std::pin::Pin<
         Box<dyn std::future::Future<Output = r_data_core_core::error::Result<Uuid>> + Send>,
     > {
         Box::pin(async move {
@@ -122,7 +133,12 @@ async fn main() -> r_data_core_core::error::Result<()> {
                             WorkflowRepository::new(pool.clone()),
                         )));
                         if let Some(outbox_repo) = outbox_repo.clone() {
-                            base.with_outbox_repository(outbox_repo)
+                            let base = base.with_outbox_repository(outbox_repo);
+                            if let Some(policy) = outbox_retry_policy {
+                                base.with_outbox_retry_policy(policy)
+                            } else {
+                                base
+                            }
                         } else {
                             base
                         }
@@ -306,6 +322,9 @@ async fn main() -> r_data_core_core::error::Result<()> {
                                 let mut service = WorkflowService::new(Arc::new(adapter));
                                 if let Some(outbox_repo) = outbox_repo_for_consumer.clone() {
                                     service = service.with_outbox_repository(outbox_repo);
+                                    if let Some(policy) = outbox_retry_policy {
+                                        service = service.with_outbox_retry_policy(policy);
+                                    }
                                 }
                                 let _ =
                                     service.fetch_and_stage_from_config(wf_uuid, run_uuid).await;
@@ -340,6 +359,9 @@ async fn main() -> r_data_core_core::error::Result<()> {
                         );
                         if let Some(outbox_repo) = outbox_repo_for_consumer.clone() {
                             service = service.with_outbox_repository(outbox_repo);
+                            if let Some(policy) = outbox_retry_policy {
+                                service = service.with_outbox_retry_policy(policy);
+                            }
                         }
                         // Process
                         if let Ok(Some(wf_uuid)) = repo.get_workflow_uuid_for_run(run_uuid).await {
@@ -413,11 +435,13 @@ async fn main() -> r_data_core_core::error::Result<()> {
 
             loop {
                 interval.tick().await;
-                match claim_and_dispatch_workflow_outbox(
+                match claim_and_dispatch_workflow_outbox_with_stale_lease(
                     queue_for_outbox.as_ref(),
                     outbox_repo_for_outbox.as_ref(),
                     &worker_id,
                     OUTBOX_BATCH_SIZE,
+                    config.outbox_stale_lease_secs,
+                    outbox_retry_policy.as_ref(),
                 )
                 .await
                 {

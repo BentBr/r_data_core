@@ -23,6 +23,45 @@ pub fn load_app_config() -> Result<AppConfig> {
         .unwrap_or_else(|_| "true".to_string())
         .parse()
         .unwrap_or(true);
+    let outbox_retry_base_delay_secs = env::var("OUTBOX_RETRY_BASE_DELAY_SECS")
+        .unwrap_or_else(|_| "1".to_string())
+        .parse::<i64>()
+        .map_err(|_| {
+            crate::error::Error::Config(
+                "OUTBOX_RETRY_BASE_DELAY_SECS must be a valid positive integer".to_string(),
+            )
+        })?;
+    if outbox_retry_base_delay_secs <= 0 {
+        return Err(crate::error::Error::Config(
+            "OUTBOX_RETRY_BASE_DELAY_SECS must be > 0 seconds".to_string(),
+        ));
+    }
+    let outbox_retry_multiplier = env::var("OUTBOX_RETRY_MULTIPLIER")
+        .unwrap_or_else(|_| "2".to_string())
+        .parse::<u64>()
+        .map_err(|_| {
+            crate::error::Error::Config(
+                "OUTBOX_RETRY_MULTIPLIER must be a valid positive integer".to_string(),
+            )
+        })?;
+    if outbox_retry_multiplier < 2 {
+        return Err(crate::error::Error::Config(
+            "OUTBOX_RETRY_MULTIPLIER must be >= 2".to_string(),
+        ));
+    }
+    let outbox_retry_max_delay_secs = env::var("OUTBOX_RETRY_MAX_DELAY_SECS")
+        .unwrap_or_else(|_| "300".to_string())
+        .parse::<i64>()
+        .map_err(|_| {
+            crate::error::Error::Config(
+                "OUTBOX_RETRY_MAX_DELAY_SECS must be a valid positive integer".to_string(),
+            )
+        })?;
+    if outbox_retry_max_delay_secs < outbox_retry_base_delay_secs {
+        return Err(crate::error::Error::Config(
+            "OUTBOX_RETRY_MAX_DELAY_SECS must be >= OUTBOX_RETRY_BASE_DELAY_SECS".to_string(),
+        ));
+    }
 
     let database = DatabaseConfig {
         connection_string: env::var("DATABASE_URL")
@@ -82,6 +121,9 @@ pub fn load_app_config() -> Result<AppConfig> {
     Ok(AppConfig {
         environment,
         outbox_enabled,
+        outbox_retry_base_delay_secs,
+        outbox_retry_multiplier,
+        outbox_retry_max_delay_secs,
         database,
         api,
         cache,
@@ -116,6 +158,58 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
         .unwrap_or_else(|_| "true".to_string())
         .parse()
         .unwrap_or(true);
+    let outbox_retry_base_delay_secs = env::var("OUTBOX_RETRY_BASE_DELAY_SECS")
+        .unwrap_or_else(|_| "1".to_string())
+        .parse::<i64>()
+        .map_err(|_| {
+            crate::error::Error::Config(
+                "OUTBOX_RETRY_BASE_DELAY_SECS must be a valid positive integer".to_string(),
+            )
+        })?;
+    if outbox_retry_base_delay_secs <= 0 {
+        return Err(crate::error::Error::Config(
+            "OUTBOX_RETRY_BASE_DELAY_SECS must be > 0 seconds".to_string(),
+        ));
+    }
+    let outbox_retry_multiplier = env::var("OUTBOX_RETRY_MULTIPLIER")
+        .unwrap_or_else(|_| "2".to_string())
+        .parse::<u64>()
+        .map_err(|_| {
+            crate::error::Error::Config(
+                "OUTBOX_RETRY_MULTIPLIER must be a valid positive integer".to_string(),
+            )
+        })?;
+    if outbox_retry_multiplier < 2 {
+        return Err(crate::error::Error::Config(
+            "OUTBOX_RETRY_MULTIPLIER must be >= 2".to_string(),
+        ));
+    }
+    let outbox_retry_max_delay_secs = env::var("OUTBOX_RETRY_MAX_DELAY_SECS")
+        .unwrap_or_else(|_| "300".to_string())
+        .parse::<i64>()
+        .map_err(|_| {
+            crate::error::Error::Config(
+                "OUTBOX_RETRY_MAX_DELAY_SECS must be a valid positive integer".to_string(),
+            )
+        })?;
+    if outbox_retry_max_delay_secs < outbox_retry_base_delay_secs {
+        return Err(crate::error::Error::Config(
+            "OUTBOX_RETRY_MAX_DELAY_SECS must be >= OUTBOX_RETRY_BASE_DELAY_SECS".to_string(),
+        ));
+    }
+    let outbox_stale_lease_secs = env::var("OUTBOX_STALE_LEASE_SECS")
+        .unwrap_or_else(|_| "300".to_string())
+        .parse::<i64>()
+        .map_err(|_| {
+            crate::error::Error::Config(
+                "OUTBOX_STALE_LEASE_SECS must be a valid positive integer".to_string(),
+            )
+        })?;
+    if outbox_stale_lease_secs <= 0 {
+        return Err(crate::error::Error::Config(
+            "OUTBOX_STALE_LEASE_SECS must be > 0 seconds".to_string(),
+        ));
+    }
 
     let database = DatabaseConfig {
         connection_string: env::var("WORKER_DATABASE_URL")
@@ -152,6 +246,10 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
     Ok(WorkerConfig {
         job_queue_update_interval_secs,
         outbox_enabled,
+        outbox_stale_lease_secs,
+        outbox_retry_base_delay_secs,
+        outbox_retry_multiplier,
+        outbox_retry_max_delay_secs,
         database,
         workflow,
         queue,

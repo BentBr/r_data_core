@@ -15,6 +15,15 @@ pub struct AppConfig {
     /// Whether the workflow outbox is enabled.
     pub outbox_enabled: bool,
 
+    /// Base delay for workflow outbox retries, in seconds.
+    pub outbox_retry_base_delay_secs: i64,
+
+    /// Exponential multiplier for workflow outbox retries.
+    pub outbox_retry_multiplier: u64,
+
+    /// Maximum delay for workflow outbox retries, in seconds.
+    pub outbox_retry_max_delay_secs: i64,
+
     /// Database configuration
     pub database: DatabaseConfig,
 
@@ -40,6 +49,18 @@ pub struct WorkerConfig {
 
     /// Whether the workflow outbox is enabled.
     pub outbox_enabled: bool,
+
+    /// Stale processing lease for outbox rows, in seconds.
+    pub outbox_stale_lease_secs: i64,
+
+    /// Base delay for workflow outbox retries, in seconds.
+    pub outbox_retry_base_delay_secs: i64,
+
+    /// Exponential multiplier for workflow outbox retries.
+    pub outbox_retry_multiplier: u64,
+
+    /// Maximum delay for workflow outbox retries, in seconds.
+    pub outbox_retry_max_delay_secs: i64,
 
     /// Database configuration
     pub database: DatabaseConfig,

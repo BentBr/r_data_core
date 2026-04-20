@@ -131,11 +131,11 @@ async fn insert_run_queued_with_fetch_outbox_persists_claimable_message() -> any
 
     let outbox_repo = OutboxRepository::new(pool.pool.clone());
     let row = sqlx::query(
-        r#"
+        r"
         SELECT status::text AS status, topic, kind, aggregate_type, aggregate_id, payload, headers
         FROM outbox_messages
         WHERE uuid = $1
-        "#,
+        ",
     )
     .bind(outbox_uuid)
     .fetch_one(&pool.pool)
@@ -163,13 +163,84 @@ async fn insert_run_queued_with_fetch_outbox_persists_claimable_message() -> any
     assert_eq!(claimed[0].uuid, outbox_uuid);
     assert_eq!(claimed[0].status, "processing");
 
-    outbox_repo.mark_delivered(outbox_uuid).await?;
+    outbox_repo
+        .mark_delivered(outbox_uuid, Some("repo-test-worker"))
+        .await?;
     let delivered_status: String =
         sqlx::query_scalar("SELECT status::text FROM outbox_messages WHERE uuid = $1")
             .bind(outbox_uuid)
             .fetch_one(&pool.pool)
             .await?;
     assert_eq!(delivered_status, "delivered");
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn outbox_status_updates_respect_claim_owner() -> anyhow::Result<()> {
+    let Some(pool) = maybe_setup_test_db().await else {
+        return Ok(());
+    };
+    let outbox_repo = OutboxRepository::new(pool.pool.clone());
+
+    let workflow_uuid = Uuid::now_v7();
+    let run_uuid = Uuid::now_v7();
+    let item_uuid = Uuid::now_v7();
+    let payload = serde_json::json!({
+        "workflow_id": workflow_uuid,
+        "run_uuid": run_uuid,
+        "item_uuid": item_uuid,
+    });
+    let headers = serde_json::json!({
+        "workflow_id": workflow_uuid,
+        "run_uuid": run_uuid,
+        "item_uuid": item_uuid,
+    });
+    let outbox_uuid = outbox_repo
+        .insert_workflow_push_enqueue(
+            workflow_uuid,
+            run_uuid,
+            item_uuid,
+            payload,
+            headers,
+            "guard-test",
+        )
+        .await?;
+
+    sqlx::query(
+        r"
+        UPDATE outbox_messages
+        SET status = 'processing',
+            locked_at = NOW(),
+            locked_by = 'expected-worker'
+        WHERE uuid = $1
+        ",
+    )
+    .bind(outbox_uuid)
+    .execute(&pool.pool)
+    .await?;
+
+    outbox_repo
+        .mark_delivered(outbox_uuid, Some("different-worker"))
+        .await?;
+
+    let status_after_wrong_owner: String =
+        sqlx::query_scalar("SELECT status::text FROM outbox_messages WHERE uuid = $1")
+            .bind(outbox_uuid)
+            .fetch_one(&pool.pool)
+            .await?;
+    assert_eq!(status_after_wrong_owner, "processing");
+
+    outbox_repo
+        .mark_delivered(outbox_uuid, Some("expected-worker"))
+        .await?;
+
+    let status_after_expected_owner: String =
+        sqlx::query_scalar("SELECT status::text FROM outbox_messages WHERE uuid = $1")
+            .bind(outbox_uuid)
+            .fetch_one(&pool.pool)
+            .await?;
+    assert_eq!(status_after_expected_owner, "delivered");
 
     Ok(())
 }
@@ -212,7 +283,8 @@ async fn workflow_push_outbox_dispatches_http_request_and_marks_delivered() -> a
     assert_eq!(claimed.len(), 1);
     assert_eq!(claimed[0].uuid, outbox_uuid);
 
-    dispatch_workflow_push_outbox(&outbox_repo, &claimed[0]).await?;
+    dispatch_workflow_push_outbox(&outbox_repo, &claimed[0], Some("push-test-worker"), None)
+        .await?;
 
     push_mock.assert_async().await;
     let status: String =
@@ -250,12 +322,12 @@ async fn workflow_outbox_terminal_cleanup_removes_old_delivered_rows() -> anyhow
         .await?;
 
     sqlx::query(
-        r#"
+        r"
         UPDATE outbox_messages
         SET status = 'delivered',
             processed_at = NOW() - INTERVAL '31 days'
         WHERE uuid = $1
-        "#,
+        ",
     )
     .bind(outbox_uuid)
     .execute(&pool.pool)
@@ -310,15 +382,16 @@ async fn workflow_push_outbox_retries_on_http_error() -> anyhow::Result<()> {
 
     let claimed = outbox_repo.claim_due(10, "push-retry-worker").await?;
     assert_eq!(claimed.len(), 1);
-    dispatch_workflow_push_outbox(&outbox_repo, &claimed[0]).await?;
+    dispatch_workflow_push_outbox(&outbox_repo, &claimed[0], Some("push-retry-worker"), None)
+        .await?;
 
     push_mock.assert_async().await;
     let row = sqlx::query(
-        r#"
+        r"
         SELECT status::text AS status, attempt_count, last_error, available_at
         FROM outbox_messages
         WHERE uuid = $1
-        "#,
+        ",
     )
     .bind(outbox_uuid)
     .fetch_one(&pool.pool)
@@ -391,13 +464,13 @@ async fn workflow_outbox_worker_reclaims_stale_processing_rows() -> anyhow::Resu
         .await?;
 
     sqlx::query(
-        r#"
+        r"
         UPDATE outbox_messages
         SET status = 'processing',
             locked_at = NOW() - INTERVAL '10 minutes',
             locked_by = 'stale-worker'
         WHERE uuid = $1
-        "#,
+        ",
     )
     .bind(outbox_uuid)
     .execute(&pool.pool)
@@ -484,11 +557,11 @@ async fn workflow_outbox_worker_retries_when_queue_enqueue_fails() -> anyhow::Re
     assert_eq!(dispatched, 1);
 
     let row = sqlx::query(
-        r#"
+        r"
         SELECT status::text AS status, attempt_count, last_error
         FROM outbox_messages
         WHERE uuid = $1
-        "#,
+        ",
     )
     .bind(outbox_uuid)
     .fetch_one(&pool.pool)
@@ -502,6 +575,71 @@ async fn workflow_outbox_worker_retries_when_queue_enqueue_fails() -> anyhow::Re
     assert!(last_error
         .as_deref()
         .is_some_and(|msg| msg.contains("synthetic queue failure")));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn workflow_push_outbox_dead_letters_on_client_error() -> anyhow::Result<()> {
+    let Some(pool) = maybe_setup_test_db().await else {
+        return Ok(());
+    };
+    let outbox_repo = OutboxRepository::new(pool.pool.clone());
+
+    let server = MockServer::start_async().await;
+    let push_mock = server
+        .mock_async(|when, then| {
+            when.method(POST).path("/push");
+            then.status(404);
+        })
+        .await;
+
+    let workflow_uuid = Uuid::now_v7();
+    let run_uuid = Uuid::now_v7();
+    let item_uuid = Uuid::now_v7();
+    let data_bytes = serde_json::to_vec(&serde_json::json!({"hello": "dead-letter"}))?;
+    let outbox_uuid = enqueue_workflow_push_outbox(
+        &outbox_repo,
+        workflow_uuid,
+        run_uuid,
+        item_uuid,
+        "uri",
+        serde_json::json!({ "uri": server.url("/push") }),
+        None,
+        Some(r_data_core_workflow::data::adapters::destination::HttpMethod::Post),
+        "json",
+        &data_bytes,
+    )
+    .await?;
+
+    let claimed = outbox_repo.claim_due(10, "push-dead-letter-worker").await?;
+    assert_eq!(claimed.len(), 1);
+    dispatch_workflow_push_outbox(
+        &outbox_repo,
+        &claimed[0],
+        Some("push-dead-letter-worker"),
+        None,
+    )
+    .await?;
+
+    push_mock.assert_async().await;
+    let row = sqlx::query(
+        r"
+        SELECT status::text AS status, attempt_count, last_error
+        FROM outbox_messages
+        WHERE uuid = $1
+        ",
+    )
+    .bind(outbox_uuid)
+    .fetch_one(&pool.pool)
+    .await?;
+
+    let status: String = row.try_get("status")?;
+    let attempt_count: i32 = row.try_get("attempt_count")?;
+    let last_error: Option<String> = row.try_get("last_error")?;
+    assert_eq!(status, "dead_letter");
+    assert_eq!(attempt_count, 1);
+    assert!(last_error.as_deref().is_some_and(|msg| msg.contains("404")));
 
     Ok(())
 }

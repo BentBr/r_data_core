@@ -12,6 +12,16 @@ pub struct OutboxRepository {
     pool: PgPool,
 }
 
+struct OutboxInsertMessage<'a> {
+    topic: &'a str,
+    kind: &'a str,
+    aggregate_type: &'a str,
+    aggregate_id: String,
+    payload: serde_json::Value,
+    headers: serde_json::Value,
+    idempotency_key: String,
+}
+
 impl OutboxRepository {
     /// Create a new outbox repository.
     #[must_use]
@@ -39,15 +49,15 @@ impl OutboxRepository {
         });
         let idempotency_key = format!("workflow.fetch.enqueue:{run_uuid}");
 
-        self.insert_message(
-            r_data_core_core::outbox::WORKFLOW_FETCH_TOPIC,
-            r_data_core_core::outbox::WORKFLOW_FETCH_ENQUEUE_KIND,
-            "workflow_run",
-            run_uuid.to_string(),
+        self.insert_message(OutboxInsertMessage {
+            topic: r_data_core_core::outbox::WORKFLOW_FETCH_TOPIC,
+            kind: r_data_core_core::outbox::WORKFLOW_FETCH_ENQUEUE_KIND,
+            aggregate_type: "workflow_run",
+            aggregate_id: run_uuid.to_string(),
             payload,
             headers,
             idempotency_key,
-        )
+        })
         .await
     }
 
@@ -67,15 +77,15 @@ impl OutboxRepository {
         let idempotency_key =
             format!("workflow.push.enqueue:{workflow_uuid}:{run_uuid}:{item_uuid}:{destination_fingerprint}");
 
-        self.insert_message(
-            r_data_core_core::outbox::WORKFLOW_PUSH_TOPIC,
-            r_data_core_core::outbox::WORKFLOW_PUSH_ENQUEUE_KIND,
-            "workflow_item",
-            item_uuid.to_string(),
+        self.insert_message(OutboxInsertMessage {
+            topic: r_data_core_core::outbox::WORKFLOW_PUSH_TOPIC,
+            kind: r_data_core_core::outbox::WORKFLOW_PUSH_ENQUEUE_KIND,
+            aggregate_type: "workflow_item",
+            aggregate_id: item_uuid.to_string(),
             payload,
             headers,
             idempotency_key,
-        )
+        })
         .await
     }
 
@@ -99,7 +109,7 @@ impl OutboxRepository {
         });
         let idempotency_key = format!("workflow.fetch.enqueue:{run_uuid}");
         let row = sqlx::query(
-            r#"
+            r"
             INSERT INTO outbox_messages (
                 topic,
                 kind,
@@ -124,7 +134,7 @@ impl OutboxRepository {
                     locked_by = NULL,
                     processed_at = NULL
             RETURNING uuid
-            "#,
+            ",
         )
         .bind(r_data_core_core::outbox::WORKFLOW_FETCH_TOPIC)
         .bind(r_data_core_core::outbox::WORKFLOW_FETCH_ENQUEUE_KIND)
@@ -140,18 +150,9 @@ impl OutboxRepository {
         Ok(row.try_get("uuid")?)
     }
 
-    async fn insert_message(
-        &self,
-        topic: &str,
-        kind: &str,
-        aggregate_type: &str,
-        aggregate_id: String,
-        payload: serde_json::Value,
-        headers: serde_json::Value,
-        idempotency_key: String,
-    ) -> Result<Uuid> {
+    async fn insert_message(&self, message: OutboxInsertMessage<'_>) -> Result<Uuid> {
         let row = sqlx::query(
-            r#"
+            r"
             INSERT INTO outbox_messages (
                 topic,
                 kind,
@@ -176,15 +177,15 @@ impl OutboxRepository {
                     locked_by = NULL,
                     processed_at = NULL
             RETURNING uuid
-            "#,
+            ",
         )
-        .bind(topic)
-        .bind(kind)
-        .bind(aggregate_type)
-        .bind(aggregate_id)
-        .bind(payload)
-        .bind(headers)
-        .bind(idempotency_key)
+        .bind(message.topic)
+        .bind(message.kind)
+        .bind(message.aggregate_type)
+        .bind(message.aggregate_id)
+        .bind(message.payload)
+        .bind(message.headers)
+        .bind(message.idempotency_key)
         .fetch_one(&self.pool)
         .await
         .map_err(Error::Database)?;
@@ -199,7 +200,7 @@ impl OutboxRepository {
     pub async fn claim_due(&self, limit: i64, worker_id: &str) -> Result<Vec<OutboxMessageRecord>> {
         let mut tx = self.pool.begin().await.map_err(Error::Database)?;
         let messages = sqlx::query_as::<_, OutboxMessageRecord>(
-            r#"
+            r"
             WITH claimed AS (
                 SELECT uuid
                 FROM outbox_messages
@@ -212,8 +213,7 @@ impl OutboxRepository {
             UPDATE outbox_messages AS o
             SET status = 'processing',
                 locked_at = NOW(),
-                locked_by = $2,
-                attempt_count = o.attempt_count + 1
+                locked_by = $2
             FROM claimed
             WHERE o.uuid = claimed.uuid
             RETURNING o.uuid,
@@ -232,7 +232,7 @@ impl OutboxRepository {
                       o.idempotency_key,
                       o.created_at,
                       o.processed_at
-            "#,
+            ",
         )
         .bind(limit)
         .bind(worker_id)
@@ -248,22 +248,43 @@ impl OutboxRepository {
     ///
     /// # Errors
     /// Returns an error if the update fails.
-    pub async fn mark_delivered(&self, uuid: Uuid) -> Result<()> {
-        sqlx::query(
-            r#"
-            UPDATE outbox_messages
-            SET status = 'delivered',
-                processed_at = NOW(),
-                locked_at = NULL,
-                locked_by = NULL,
-                last_error = NULL
-            WHERE uuid = $1
-            "#,
-        )
-        .bind(uuid)
-        .execute(&self.pool)
-        .await
-        .map_err(Error::Database)?;
+    pub async fn mark_delivered(&self, uuid: Uuid, locked_by: Option<&str>) -> Result<()> {
+        let query = locked_by.map_or_else(
+            || {
+                sqlx::query(
+                    r"
+                    UPDATE outbox_messages
+                    SET status = 'delivered',
+                        processed_at = NOW(),
+                        locked_at = NULL,
+                        locked_by = NULL,
+                        last_error = NULL
+                    WHERE uuid = $1
+                      AND status IN ('pending', 'processing')
+                    ",
+                )
+                .bind(uuid)
+            },
+            |locked_by| {
+                sqlx::query(
+                    r"
+                    UPDATE outbox_messages
+                    SET status = 'delivered',
+                        processed_at = NOW(),
+                        locked_at = NULL,
+                        locked_by = NULL,
+                        last_error = NULL
+                    WHERE uuid = $1
+                      AND status = 'processing'
+                      AND locked_by = $2
+                    ",
+                )
+                .bind(uuid)
+                .bind(locked_by)
+            },
+        );
+
+        query.execute(&self.pool).await.map_err(Error::Database)?;
         Ok(())
     }
 
@@ -276,24 +297,50 @@ impl OutboxRepository {
         uuid: Uuid,
         last_error: &str,
         available_at: OffsetDateTime,
+        locked_by: Option<&str>,
     ) -> Result<()> {
-        sqlx::query(
-            r#"
-            UPDATE outbox_messages
-            SET status = 'retry',
-                available_at = $2,
-                locked_at = NULL,
-                locked_by = NULL,
-                last_error = $3
-            WHERE uuid = $1
-            "#,
-        )
-        .bind(uuid)
-        .bind(available_at)
-        .bind(last_error)
-        .execute(&self.pool)
-        .await
-        .map_err(Error::Database)?;
+        let query = locked_by.map_or_else(
+            || {
+                sqlx::query(
+                    r"
+                    UPDATE outbox_messages
+                    SET status = 'retry',
+                        attempt_count = attempt_count,
+                        available_at = $2,
+                        locked_at = NULL,
+                        locked_by = NULL,
+                        last_error = $3
+                    WHERE uuid = $1
+                      AND status IN ('pending', 'processing')
+                    ",
+                )
+                .bind(uuid)
+                .bind(available_at)
+                .bind(last_error)
+            },
+            |locked_by| {
+                sqlx::query(
+                    r"
+                    UPDATE outbox_messages
+                    SET status = 'retry',
+                        attempt_count = attempt_count + 1,
+                        available_at = $2,
+                        locked_at = NULL,
+                        locked_by = NULL,
+                        last_error = $3
+                    WHERE uuid = $1
+                      AND status = 'processing'
+                      AND locked_by = $4
+                    ",
+                )
+                .bind(uuid)
+                .bind(available_at)
+                .bind(last_error)
+                .bind(locked_by)
+            },
+        );
+
+        query.execute(&self.pool).await.map_err(Error::Database)?;
         Ok(())
     }
 
@@ -301,23 +348,52 @@ impl OutboxRepository {
     ///
     /// # Errors
     /// Returns an error if the update fails.
-    pub async fn mark_dead_letter(&self, uuid: Uuid, last_error: &str) -> Result<()> {
-        sqlx::query(
-            r#"
-            UPDATE outbox_messages
-            SET status = 'dead_letter',
-                processed_at = NOW(),
-                locked_at = NULL,
-                locked_by = NULL,
-                last_error = $2
-            WHERE uuid = $1
-            "#,
-        )
-        .bind(uuid)
-        .bind(last_error)
-        .execute(&self.pool)
-        .await
-        .map_err(Error::Database)?;
+    pub async fn mark_dead_letter(
+        &self,
+        uuid: Uuid,
+        last_error: &str,
+        locked_by: Option<&str>,
+    ) -> Result<()> {
+        let query = locked_by.map_or_else(
+            || {
+                sqlx::query(
+                    r"
+                    UPDATE outbox_messages
+                    SET status = 'dead_letter',
+                        attempt_count = attempt_count,
+                        processed_at = NOW(),
+                        locked_at = NULL,
+                        locked_by = NULL,
+                        last_error = $2
+                    WHERE uuid = $1
+                      AND status IN ('pending', 'processing')
+                    ",
+                )
+                .bind(uuid)
+                .bind(last_error)
+            },
+            |locked_by| {
+                sqlx::query(
+                    r"
+                    UPDATE outbox_messages
+                    SET status = 'dead_letter',
+                        attempt_count = attempt_count + 1,
+                        processed_at = NOW(),
+                        locked_at = NULL,
+                        locked_by = NULL,
+                        last_error = $2
+                    WHERE uuid = $1
+                      AND status = 'processing'
+                      AND locked_by = $3
+                    ",
+                )
+                .bind(uuid)
+                .bind(last_error)
+                .bind(locked_by)
+            },
+        );
+
+        query.execute(&self.pool).await.map_err(Error::Database)?;
         Ok(())
     }
 
@@ -327,7 +403,7 @@ impl OutboxRepository {
     /// Returns an error if the update fails.
     pub async fn requeue_stale_processing(&self, stale_before: OffsetDateTime) -> Result<i64> {
         let result = sqlx::query(
-            r#"
+            r"
             UPDATE outbox_messages
             SET status = 'retry',
                 available_at = NOW(),
@@ -337,7 +413,7 @@ impl OutboxRepository {
             WHERE status = 'processing'
               AND locked_at IS NOT NULL
               AND locked_at < $1
-            "#,
+            ",
         )
         .bind(stale_before)
         .execute(&self.pool)
@@ -352,12 +428,12 @@ impl OutboxRepository {
     /// Returns an error if the delete fails.
     pub async fn purge_terminal_older_than(&self, processed_before: OffsetDateTime) -> Result<i64> {
         let result = sqlx::query(
-            r#"
+            r"
             DELETE FROM outbox_messages
             WHERE processed_at IS NOT NULL
               AND processed_at < $1
               AND status IN ('delivered', 'dead_letter')
-            "#,
+            ",
         )
         .bind(processed_before)
         .execute(&self.pool)
@@ -367,7 +443,7 @@ impl OutboxRepository {
     }
 }
 
-/// Raw outbox row mapped from PostgreSQL.
+/// Raw outbox row mapped from `PostgreSQL`.
 #[derive(Debug, Clone, FromRow)]
 pub struct OutboxMessageRecord {
     pub uuid: Uuid,

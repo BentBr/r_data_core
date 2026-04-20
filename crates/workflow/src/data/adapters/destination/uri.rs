@@ -62,9 +62,17 @@ impl DataDestination for UriDestination {
         let response = request.send().await.map_err(|e| {
             r_data_core_core::error::Error::Api(format!("Failed to send request: {e}"))
         })?;
-        let response = response
-            .error_for_status()
-            .map_err(|e| r_data_core_core::error::Error::Api(format!("HTTP error: {e}")))?;
+        let status = response.status();
+        if status.is_client_error() {
+            return Err(r_data_core_core::error::Error::Validation(format!(
+                "HTTP client error: {status}"
+            )));
+        }
+        if status.is_server_error() {
+            return Err(r_data_core_core::error::Error::Api(format!(
+                "HTTP server error: {status}"
+            )));
+        }
         let _body = response.bytes().await.map_err(|e| {
             r_data_core_core::error::Error::Api(format!("Failed to read response body: {e}"))
         })?;

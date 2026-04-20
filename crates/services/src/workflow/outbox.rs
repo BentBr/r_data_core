@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use r_data_core_core::error::Error;
 use r_data_core_core::outbox::{
     OutboxStatus, WORKFLOW_FETCH_ENQUEUE_KIND, WORKFLOW_FETCH_TOPIC, WORKFLOW_PUSH_ENQUEUE_KIND,
     WORKFLOW_PUSH_TOPIC,
@@ -39,18 +40,65 @@ pub const WORKFLOW_OUTBOX_STALE_LEASE_SECS: i64 = 300;
 /// Maximum number of attempts before a workflow outbox entry is dead-lettered.
 pub const WORKFLOW_OUTBOX_MAX_ATTEMPTS: i32 = 10;
 
+/// Retry policy for workflow outbox entries.
+#[derive(Debug, Clone, Copy)]
+pub struct OutboxRetryPolicy {
+    pub base_delay_secs: i64,
+    pub multiplier: u64,
+    pub max_delay_secs: i64,
+}
+
+impl Default for OutboxRetryPolicy {
+    fn default() -> Self {
+        Self {
+            base_delay_secs: 1,
+            multiplier: 2,
+            max_delay_secs: 300,
+        }
+    }
+}
+
+impl OutboxRetryPolicy {
+    #[must_use]
+    pub const fn new(base_delay_secs: i64, multiplier: u64, max_delay_secs: i64) -> Self {
+        Self {
+            base_delay_secs,
+            multiplier,
+            max_delay_secs,
+        }
+    }
+}
+
+/// Compute the delay in seconds for the next workflow outbox retry.
+#[must_use]
+pub fn workflow_outbox_retry_delay_secs(attempt_count: i32, policy: &OutboxRetryPolicy) -> i64 {
+    let exponent = u32::try_from(attempt_count.saturating_sub(1).clamp(0, 31)).unwrap_or(0);
+    let multiplier = i128::from(policy.multiplier.max(1));
+    let cap = i128::from(policy.max_delay_secs.max(1));
+    let mut delay_secs = i128::from(policy.base_delay_secs.max(1));
+
+    for _ in 0..exponent {
+        delay_secs = delay_secs.saturating_mul(multiplier).min(cap);
+        if delay_secs >= cap {
+            return i64::try_from(cap).unwrap_or(i64::MAX);
+        }
+    }
+
+    i64::try_from(delay_secs.min(cap)).unwrap_or(i64::MAX)
+}
+
 /// Compute the next retry timestamp using a capped exponential backoff.
 #[must_use]
-pub fn workflow_outbox_retry_at(attempt_count: i32) -> OffsetDateTime {
-    let exponent = attempt_count.saturating_sub(1).clamp(0, 6) as u32;
-    let delay_secs = 2_i64.pow(exponent).min(300);
-    OffsetDateTime::now_utc() + time::Duration::seconds(delay_secs)
+pub fn workflow_outbox_retry_at(attempt_count: i32, policy: &OutboxRetryPolicy) -> OffsetDateTime {
+    OffsetDateTime::now_utc()
+        + time::Duration::seconds(workflow_outbox_retry_delay_secs(attempt_count, policy))
 }
 
 /// Dispatch a single workflow fetch outbox record to Redis.
 ///
 /// # Errors
 /// Returns an error if the Redis enqueue or database status update fails.
+#[allow(clippy::too_many_arguments)]
 pub async fn dispatch_workflow_fetch_job(
     queue: &dyn JobQueue,
     outbox_repo: &OutboxRepository,
@@ -58,6 +106,8 @@ pub async fn dispatch_workflow_fetch_job(
     run_uuid: Uuid,
     outbox_uuid: Uuid,
     attempt_count: i32,
+    locked_by: Option<&str>,
+    retry_policy: Option<&OutboxRetryPolicy>,
 ) -> r_data_core_core::error::Result<()> {
     let job = FetchAndStageJob {
         workflow_id: workflow_uuid,
@@ -66,17 +116,19 @@ pub async fn dispatch_workflow_fetch_job(
 
     match queue.enqueue_fetch(job).await {
         Ok(()) => {
-            outbox_repo.mark_delivered(outbox_uuid).await?;
+            outbox_repo.mark_delivered(outbox_uuid, locked_by).await?;
         }
         Err(e) => {
+            let default_policy = OutboxRetryPolicy::default();
+            let policy = retry_policy.map_or(&default_policy, |policy| policy);
             if attempt_count >= WORKFLOW_OUTBOX_MAX_ATTEMPTS {
                 outbox_repo
-                    .mark_dead_letter(outbox_uuid, &e.to_string())
+                    .mark_dead_letter(outbox_uuid, &e.to_string(), locked_by)
                     .await?;
             } else {
-                let next_available_at = workflow_outbox_retry_at(attempt_count);
+                let next_available_at = workflow_outbox_retry_at(attempt_count, policy);
                 outbox_repo
-                    .mark_retry(outbox_uuid, &e.to_string(), next_available_at)
+                    .mark_retry(outbox_uuid, &e.to_string(), next_available_at, locked_by)
                     .await?;
             }
         }
@@ -89,6 +141,7 @@ pub async fn dispatch_workflow_fetch_job(
 ///
 /// # Errors
 /// Returns an error if the insert fails.
+#[allow(clippy::too_many_arguments)]
 pub async fn enqueue_workflow_push_outbox(
     outbox_repo: &OutboxRepository,
     workflow_uuid: Uuid,
@@ -153,7 +206,11 @@ pub async fn dispatch_workflow_outbox(
     queue: Option<&dyn JobQueue>,
     outbox_repo: &OutboxRepository,
     record: &OutboxMessageRecord,
+    locked_by: Option<&str>,
+    retry_policy: Option<&OutboxRetryPolicy>,
 ) -> r_data_core_core::error::Result<()> {
+    let locked_by = locked_by.or(record.locked_by.as_deref());
+
     if record.topic == WORKFLOW_FETCH_TOPIC && record.kind == WORKFLOW_FETCH_ENQUEUE_KIND {
         let job: FetchAndStageJob = match serde_json::from_value(record.payload.clone()) {
             Ok(job) => job,
@@ -162,6 +219,7 @@ pub async fn dispatch_workflow_outbox(
                     .mark_dead_letter(
                         record.uuid,
                         &format!("Invalid workflow outbox payload: {e}"),
+                        locked_by,
                     )
                     .await?;
                 return Ok(());
@@ -170,14 +228,22 @@ pub async fn dispatch_workflow_outbox(
 
         let Some(run_uuid) = job.trigger_id else {
             outbox_repo
-                .mark_dead_letter(record.uuid, "Missing trigger_id in workflow outbox payload")
+                .mark_dead_letter(
+                    record.uuid,
+                    "Missing trigger_id in workflow outbox payload",
+                    locked_by,
+                )
                 .await?;
             return Ok(());
         };
 
         let Some(queue) = queue else {
             outbox_repo
-                .mark_dead_letter(record.uuid, "Workflow fetch outbox requires a queue")
+                .mark_dead_letter(
+                    record.uuid,
+                    "Workflow fetch outbox requires a queue",
+                    locked_by,
+                )
                 .await?;
             return Ok(());
         };
@@ -188,18 +254,20 @@ pub async fn dispatch_workflow_outbox(
             job.workflow_id,
             run_uuid,
             record.uuid,
-            record.attempt_count,
+            record.attempt_count.saturating_add(1),
+            locked_by,
+            retry_policy,
         )
         .await?;
         return Ok(());
     }
 
     if record.topic == WORKFLOW_PUSH_TOPIC && record.kind == WORKFLOW_PUSH_ENQUEUE_KIND {
-        return dispatch_workflow_push_outbox(outbox_repo, record).await;
+        return dispatch_workflow_push_outbox(outbox_repo, record, locked_by, retry_policy).await;
     }
 
     outbox_repo
-        .mark_dead_letter(record.uuid, "Unsupported outbox message type")
+        .mark_dead_letter(record.uuid, "Unsupported outbox message type", locked_by)
         .await?;
     Ok(())
 }
@@ -211,12 +279,20 @@ pub async fn dispatch_workflow_outbox(
 pub async fn dispatch_workflow_push_outbox(
     outbox_repo: &OutboxRepository,
     record: &OutboxMessageRecord,
+    locked_by: Option<&str>,
+    retry_policy: Option<&OutboxRetryPolicy>,
 ) -> r_data_core_core::error::Result<()> {
+    let locked_by = locked_by.or(record.locked_by.as_deref());
+
     let payload: WorkflowPushOutboxPayload = match serde_json::from_value(record.payload.clone()) {
         Ok(payload) => payload,
         Err(e) => {
             outbox_repo
-                .mark_dead_letter(record.uuid, &format!("Invalid workflow push payload: {e}"))
+                .mark_dead_letter(
+                    record.uuid,
+                    &format!("Invalid workflow push payload: {e}"),
+                    locked_by,
+                )
                 .await?;
             return Ok(());
         }
@@ -230,6 +306,7 @@ pub async fn dispatch_workflow_push_outbox(
                     "Unsupported workflow push destination type: {}",
                     payload.destination_type
                 ),
+                locked_by,
             )
             .await?;
         return Ok(());
@@ -241,7 +318,7 @@ pub async fn dispatch_workflow_push_outbox(
         .and_then(|value| value.as_str())
     else {
         outbox_repo
-            .mark_dead_letter(record.uuid, "URI destination is missing uri")
+            .mark_dead_letter(record.uuid, "URI destination is missing uri", locked_by)
             .await?;
         return Ok(());
     };
@@ -281,6 +358,7 @@ pub async fn dispatch_workflow_push_outbox(
                 .mark_dead_letter(
                     record.uuid,
                     &format!("Invalid workflow push payload body: {e}"),
+                    locked_by,
                 )
                 .await?;
             return Ok(());
@@ -290,17 +368,26 @@ pub async fn dispatch_workflow_push_outbox(
     let result = destination.push(&dest_ctx, bytes::Bytes::from(data)).await;
     match result {
         Ok(()) => {
-            outbox_repo.mark_delivered(record.uuid).await?;
+            outbox_repo.mark_delivered(record.uuid, locked_by).await?;
         }
         Err(e) => {
-            if record.attempt_count >= WORKFLOW_OUTBOX_MAX_ATTEMPTS {
+            let default_policy = OutboxRetryPolicy::default();
+            let policy = retry_policy.map_or(&default_policy, |policy| policy);
+            let next_attempt_count = record.attempt_count.saturating_add(1);
+            if next_attempt_count >= WORKFLOW_OUTBOX_MAX_ATTEMPTS {
                 outbox_repo
-                    .mark_dead_letter(record.uuid, &e.to_string())
+                    .mark_dead_letter(record.uuid, &e.to_string(), locked_by)
                     .await?;
             } else {
-                let next_available_at = workflow_outbox_retry_at(record.attempt_count);
+                if is_permanent_outbox_failure(&e) {
+                    outbox_repo
+                        .mark_dead_letter(record.uuid, &e.to_string(), locked_by)
+                        .await?;
+                    return Ok(());
+                }
+                let next_available_at = workflow_outbox_retry_at(next_attempt_count, policy);
                 outbox_repo
-                    .mark_retry(record.uuid, &e.to_string(), next_available_at)
+                    .mark_retry(record.uuid, &e.to_string(), next_available_at, locked_by)
                     .await?;
             }
         }
@@ -319,18 +406,60 @@ pub async fn claim_and_dispatch_workflow_outbox(
     worker_id: &str,
     batch_size: i64,
 ) -> r_data_core_core::error::Result<usize> {
-    let stale_before =
-        OffsetDateTime::now_utc() - time::Duration::seconds(WORKFLOW_OUTBOX_STALE_LEASE_SECS);
+    claim_and_dispatch_workflow_outbox_with_stale_lease(
+        queue,
+        outbox_repo,
+        worker_id,
+        batch_size,
+        WORKFLOW_OUTBOX_STALE_LEASE_SECS,
+        None,
+    )
+    .await
+}
+
+/// Claim and dispatch due workflow fetch outbox rows with a configurable stale lease.
+///
+/// # Errors
+/// Returns an error if claiming or dispatching fails.
+pub async fn claim_and_dispatch_workflow_outbox_with_stale_lease(
+    queue: &dyn JobQueue,
+    outbox_repo: &OutboxRepository,
+    worker_id: &str,
+    batch_size: i64,
+    stale_lease_secs: i64,
+    retry_policy: Option<&OutboxRetryPolicy>,
+) -> r_data_core_core::error::Result<usize> {
+    let stale_before = OffsetDateTime::now_utc() - time::Duration::seconds(stale_lease_secs);
     let _ = outbox_repo.requeue_stale_processing(stale_before).await?;
 
     let records = outbox_repo.claim_due(batch_size, worker_id).await?;
     let mut dispatched = 0usize;
     for record in records {
-        dispatch_workflow_outbox(Some(queue), outbox_repo, &record).await?;
+        dispatch_workflow_outbox(
+            Some(queue),
+            outbox_repo,
+            &record,
+            Some(worker_id),
+            retry_policy,
+        )
+        .await?;
         dispatched = dispatched.saturating_add(1);
     }
 
     Ok(dispatched)
+}
+
+const fn is_permanent_outbox_failure(error: &Error) -> bool {
+    matches!(
+        error,
+        Error::Config(_)
+            | Error::Validation(_)
+            | Error::Deserialization(_)
+            | Error::NotFound(_)
+            | Error::FieldNotFound(_)
+            | Error::InvalidSchema(_)
+            | Error::InvalidFieldType(_)
+    )
 }
 
 /// Convert a fetched outbox record into a simplified state view.
@@ -364,8 +493,8 @@ fn workflow_push_fingerprint(
     method: Option<&HttpMethod>,
     data_bytes: &[u8],
 ) -> String {
-    let mut hasher = sha2::Sha256::new();
     use sha2::Digest;
+    let mut hasher = sha2::Sha256::new();
     hasher.update(workflow_uuid.as_bytes());
     hasher.update(run_uuid.as_bytes());
     hasher.update(item_uuid.as_bytes());
@@ -378,7 +507,7 @@ fn workflow_push_fingerprint(
     base64::engine::general_purpose::STANDARD.encode(hasher.finalize())
 }
 
-fn http_method_name(method: HttpMethod) -> &'static str {
+const fn http_method_name(method: HttpMethod) -> &'static str {
     match method {
         HttpMethod::Get => "GET",
         HttpMethod::Post => "POST",
@@ -387,5 +516,33 @@ fn http_method_name(method: HttpMethod) -> &'static str {
         HttpMethod::Delete => "DELETE",
         HttpMethod::Head => "HEAD",
         HttpMethod::Options => "OPTIONS",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn retry_delay_uses_base_for_first_attempt() {
+        let policy = OutboxRetryPolicy::new(3, 2, 300);
+        assert_eq!(workflow_outbox_retry_delay_secs(1, &policy), 3);
+    }
+
+    #[test]
+    fn retry_delay_scales_exponentially_until_cap() {
+        let policy = OutboxRetryPolicy::new(2, 3, 20);
+        assert_eq!(workflow_outbox_retry_delay_secs(1, &policy), 2);
+        assert_eq!(workflow_outbox_retry_delay_secs(2, &policy), 6);
+        assert_eq!(workflow_outbox_retry_delay_secs(3, &policy), 18);
+        assert_eq!(workflow_outbox_retry_delay_secs(4, &policy), 20);
+        assert_eq!(workflow_outbox_retry_delay_secs(10, &policy), 20);
+    }
+
+    #[test]
+    fn retry_delay_clamps_invalid_policy_values() {
+        let policy = OutboxRetryPolicy::new(0, 1, 0);
+        assert_eq!(workflow_outbox_retry_delay_secs(1, &policy), 1);
+        assert_eq!(workflow_outbox_retry_delay_secs(5, &policy), 1);
     }
 }

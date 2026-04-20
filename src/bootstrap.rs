@@ -21,6 +21,7 @@ use r_data_core_services::adapters::{
     AdminUserRepositoryAdapter, ApiKeyRepositoryAdapter, DynamicEntityRepositoryAdapter,
     EntityDefinitionRepositoryAdapter,
 };
+use r_data_core_services::workflow::outbox::OutboxRetryPolicy;
 use r_data_core_services::{
     AdminUserService, ApiKeyService, DashboardStatsService, DynamicEntityService,
     EntityDefinitionService, LicenseService, RoleService, WorkflowRepositoryAdapter,
@@ -163,7 +164,13 @@ pub async fn build_api_state(
     );
     if config.outbox_enabled {
         let outbox_repo = OutboxRepository::new(pool.clone());
-        workflow_service = workflow_service.with_outbox_repository(Arc::new(outbox_repo));
+        workflow_service = workflow_service
+            .with_outbox_repository(Arc::new(outbox_repo))
+            .with_outbox_retry_policy(OutboxRetryPolicy::new(
+                config.outbox_retry_base_delay_secs,
+                config.outbox_retry_multiplier,
+                config.outbox_retry_max_delay_secs,
+            ));
     }
 
     let role_service = RoleService::new(

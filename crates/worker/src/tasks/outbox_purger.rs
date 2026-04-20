@@ -17,7 +17,7 @@ pub struct OutboxPurgerTask {
 impl OutboxPurgerTask {
     /// Create a new `OutboxPurgerTask`.
     #[must_use]
-    pub fn new(cron: String, retention_days: u32) -> Self {
+    pub const fn new(cron: String, retention_days: u32) -> Self {
         Self {
             cron,
             retention_days,
