@@ -304,12 +304,37 @@ jobs:
         with:
           workspaces: .
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: fe/package-lock.json
+
+      - name: Cache fe/node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: fe/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install fe dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        working-directory: fe
+        run: npm ci
+
       - name: Generate TS bindings
         env:
           SQLX_OFFLINE: true
         run: |
           TS_RS_EXPORT_DIR=${{ github.workspace }}/fe/src/types/generated cargo test --workspace export_bindings 2>&1
           cargo run -p r_data_core_core --bin export_validation_constants > ./fe/src/types/generated/validation.ts
+
+      - name: Format generated bindings (prettier)
+        working-directory: fe
+        run: npx prettier --write --log-level warn 'src/types/generated/**/*.ts'
 
       - name: Check for stale bindings
         run: |
