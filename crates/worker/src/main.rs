@@ -3,11 +3,14 @@
 use log::{debug, error, info, warn};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
+use time::OffsetDateTime;
 use tokio::sync::Mutex;
 use tokio_cron_scheduler::{Job, JobScheduler};
 use uuid::Uuid;
 
 use r_data_core_core::config::load_worker_config;
+use r_data_core_core::outbox::WORKFLOW_OUTBOX_NOTIFY_CHANNEL;
 use r_data_core_persistence::{ComponentVersionRepository, WorkflowRepository};
 
 /// Current version from Cargo.toml
@@ -26,6 +29,8 @@ use r_data_core_services::{
     DynamicEntityService, EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService,
 };
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
+use sqlx::postgres::PgListener;
+use tokio::sync::Notify;
 
 #[tokio::main]
 #[allow(clippy::too_many_lines)] // Main function orchestrates many components
@@ -86,6 +91,7 @@ async fn main() -> r_data_core_core::error::Result<()> {
     } else {
         None
     };
+    let outbox_db_url = config.database.connection_string.clone();
     let outbox_retry_policy = if config.outbox_enabled {
         Some(OutboxRetryPolicy::new(
             config.outbox_retry_base_delay_secs,
@@ -426,36 +432,108 @@ async fn main() -> r_data_core_core::error::Result<()> {
     // Workflow outbox recovery loop: claim pending messages and dispatch them to Redis.
     if let Some(outbox_repo_for_outbox) = outbox_repo.clone() {
         let queue_for_outbox = queue.clone();
-        tokio::spawn(async move {
-            const OUTBOX_BATCH_SIZE: i64 = 50;
-            let worker_id = format!("workflow-outbox-{}", Uuid::now_v7());
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(
-                std::cmp::max(5, config.job_queue_update_interval_secs),
-            ));
+        let outbox_notify = Arc::new(Notify::new());
 
-            loop {
-                interval.tick().await;
-                match claim_and_dispatch_workflow_outbox_with_stale_lease(
-                    queue_for_outbox.as_ref(),
-                    outbox_repo_for_outbox.as_ref(),
-                    &worker_id,
-                    OUTBOX_BATCH_SIZE,
-                    config.outbox_stale_lease_secs,
-                    outbox_retry_policy.as_ref(),
-                )
-                .await
-                {
-                    Ok(dispatched) => {
-                        if dispatched > 0 {
-                            info!(
-                                "Dispatched {dispatched} workflow outbox message(s) via worker outbox loop"
+        {
+            let outbox_db_url = outbox_db_url.clone();
+            let outbox_notify = outbox_notify.clone();
+            tokio::spawn(async move {
+                match PgListener::connect(&outbox_db_url).await {
+                    Ok(mut listener) => {
+                        if let Err(e) = listener.listen(WORKFLOW_OUTBOX_NOTIFY_CHANNEL).await {
+                            error!(
+                                "Failed to listen for workflow outbox notifications on '{WORKFLOW_OUTBOX_NOTIFY_CHANNEL}': {e}"
                             );
+                            return;
+                        }
+
+                        loop {
+                            match listener.recv().await {
+                                Ok(_notification) => {
+                                    outbox_notify.notify_one();
+                                }
+                                Err(e) => {
+                                    error!(
+                                        "Workflow outbox notification listener failed: {e}; retrying"
+                                    );
+                                    tokio::time::sleep(Duration::from_secs(1)).await;
+                                }
+                            }
                         }
                     }
                     Err(e) => {
-                        error!("Workflow outbox dispatcher failed: {e}");
+                        error!("Failed to initialize workflow outbox notification listener: {e}");
                     }
                 }
+            });
+        }
+
+        tokio::spawn(async move {
+            const OUTBOX_BATCH_SIZE: i64 = 50;
+            let worker_id = format!("workflow-outbox-{}", Uuid::now_v7());
+            let poll_interval =
+                Duration::from_secs(std::cmp::max(5, config.job_queue_update_interval_secs));
+            let mut sleep_until = Instant::now();
+
+            loop {
+                tokio::select! {
+                    () = tokio::time::sleep_until(tokio::time::Instant::from_std(sleep_until)) => {}
+                    () = outbox_notify.notified() => {}
+                }
+
+                let mut dispatched_total = 0usize;
+                loop {
+                    match claim_and_dispatch_workflow_outbox_with_stale_lease(
+                        queue_for_outbox.as_ref(),
+                        outbox_repo_for_outbox.as_ref(),
+                        &worker_id,
+                        OUTBOX_BATCH_SIZE,
+                        config.outbox_stale_lease_secs,
+                        outbox_retry_policy.as_ref(),
+                    )
+                    .await
+                    {
+                        Ok(dispatched) => {
+                            if dispatched == 0 {
+                                break;
+                            }
+                            dispatched_total = dispatched_total.saturating_add(dispatched);
+                        }
+                        Err(e) => {
+                            error!("Workflow outbox dispatcher failed: {e}");
+                            break;
+                        }
+                    }
+                }
+
+                if dispatched_total > 0 {
+                    info!(
+                        "Dispatched {dispatched_total} workflow outbox message(s) via worker outbox loop"
+                    );
+                }
+
+                let next_available_at = match outbox_repo_for_outbox.next_available_at().await {
+                    Ok(value) => value,
+                    Err(e) => {
+                        error!("Failed to query next workflow outbox availability: {e}");
+                        None
+                    }
+                };
+
+                let now = Instant::now();
+                let fallback = now.checked_add(poll_interval).unwrap_or(now);
+                sleep_until = next_available_at
+                    .and_then(|value| {
+                        let now_utc = OffsetDateTime::now_utc();
+                        if value <= now_utc {
+                            Some(now)
+                        } else {
+                            let delta = value - now_utc;
+                            let secs = u64::try_from(delta.whole_seconds()).unwrap_or(0);
+                            now.checked_add(Duration::from_secs(secs))
+                        }
+                    })
+                    .unwrap_or(fallback);
             }
         });
     }

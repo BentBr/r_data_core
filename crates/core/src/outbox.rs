@@ -16,6 +16,9 @@ pub const WORKFLOW_PUSH_TOPIC: &str = "workflow.push.enqueue";
 /// Outbox message kind for workflow push deliveries.
 pub const WORKFLOW_PUSH_ENQUEUE_KIND: &str = "http.uri";
 
+/// `PostgreSQL` notification channel used to wake the workflow outbox worker.
+pub const WORKFLOW_OUTBOX_NOTIFY_CHANNEL: &str = "workflow_outbox_available";
+
 /// Lifecycle state for outbox messages.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

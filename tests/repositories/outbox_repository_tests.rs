@@ -15,7 +15,9 @@ use r_data_core_test_support::create_test_admin_user;
 use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::{FetchAndStageJob, ProcessRawItemJob};
 use r_data_core_workflow::data::WorkflowKind;
+use sqlx::postgres::PgListener;
 use sqlx::Row;
+use std::time::Duration;
 use time::OffsetDateTime;
 use tokio::sync::Mutex;
 use uuid::Uuid;
@@ -325,6 +327,46 @@ async fn workflow_push_outbox_dispatches_http_request_and_marks_delivered() -> a
             .fetch_one(&pool.pool)
             .await?;
     assert_eq!(status, "delivered");
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn workflow_outbox_insert_emits_database_notification() -> anyhow::Result<()> {
+    let Some(pool) = maybe_setup_test_db().await else {
+        return Ok(());
+    };
+    let outbox_repo = OutboxRepository::new(pool.pool.clone());
+
+    let mut listener = PgListener::connect_with(&pool.pool).await?;
+    listener
+        .listen(r_data_core_core::outbox::WORKFLOW_OUTBOX_NOTIFY_CHANNEL)
+        .await?;
+
+    let workflow_uuid = Uuid::now_v7();
+    let run_uuid = Uuid::now_v7();
+    let item_uuid = Uuid::now_v7();
+    let data_bytes = serde_json::to_vec(&serde_json::json!({"hello": "notify"}))?;
+
+    let _ = enqueue_workflow_push_outbox(
+        &outbox_repo,
+        workflow_uuid,
+        run_uuid,
+        item_uuid,
+        "uri",
+        serde_json::json!({ "uri": "http://example.com/push" }),
+        None,
+        Some(r_data_core_workflow::data::adapters::destination::HttpMethod::Post),
+        "json",
+        &data_bytes,
+    )
+    .await?;
+
+    let notification = tokio::time::timeout(Duration::from_secs(5), listener.recv()).await??;
+    assert_eq!(
+        notification.channel(),
+        r_data_core_core::outbox::WORKFLOW_OUTBOX_NOTIFY_CHANNEL
+    );
 
     Ok(())
 }

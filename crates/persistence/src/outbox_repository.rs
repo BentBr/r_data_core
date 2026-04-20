@@ -1,6 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use r_data_core_core::outbox::{OutboxMessage, OutboxStatus};
+use r_data_core_core::outbox::{OutboxMessage, OutboxStatus, WORKFLOW_OUTBOX_NOTIFY_CHANNEL};
 use r_data_core_core::{error::Error, error::Result};
 use sqlx::{FromRow, PgPool, Postgres, Row, Transaction};
 use time::OffsetDateTime;
@@ -147,6 +147,12 @@ impl OutboxRepository {
         .await
         .map_err(Error::Database)?;
 
+        sqlx::query("SELECT pg_notify($1, $2)")
+            .bind(WORKFLOW_OUTBOX_NOTIFY_CHANNEL)
+            .bind("workflow outbox available")
+            .execute(&mut **tx)
+            .await
+            .map_err(Error::Database)?;
         Ok(row.try_get("uuid")?)
     }
 
@@ -190,6 +196,12 @@ impl OutboxRepository {
         .await
         .map_err(Error::Database)?;
 
+        sqlx::query("SELECT pg_notify($1, $2)")
+            .bind(WORKFLOW_OUTBOX_NOTIFY_CHANNEL)
+            .bind("workflow outbox available")
+            .execute(&self.pool)
+            .await
+            .map_err(Error::Database)?;
         Ok(row.try_get("uuid")?)
     }
 
@@ -242,6 +254,25 @@ impl OutboxRepository {
         tx.commit().await.map_err(Error::Database)?;
 
         Ok(messages)
+    }
+
+    /// Return the earliest time at which a pending or retry outbox row becomes available.
+    ///
+    /// # Errors
+    /// Returns an error if the query fails.
+    pub async fn next_available_at(&self) -> Result<Option<OffsetDateTime>> {
+        let next_available_at: Option<OffsetDateTime> = sqlx::query_scalar(
+            r"
+            SELECT MIN(available_at)
+            FROM outbox_messages
+            WHERE status IN ('pending', 'retry')
+            ",
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(Error::Database)?;
+
+        Ok(next_available_at)
     }
 
     /// Mark an outbox message as delivered.
