@@ -1,28 +1,28 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: rdatacore-config
-  namespace: rdatacore
+    name: rdatacore-config
+    namespace: rdatacore
 data:
-  APP_ENV: "production"
-  API_HOST: "0.0.0.0"
-  API_PORT: "8888"
-  API_ENABLE_DOCS: "false"
-  RUST_LOG: "info"
-  LOG_LEVEL: "info"
-  CACHE_ENABLED: "true"
-  CACHE_TTL: "300"
-  CORS_ORIGINS: "*"
-  JWT_EXPIRATION: "86400"
-  QUEUE_FETCH_KEY: "queue:workflows:fetch"
-  QUEUE_PROCESS_KEY: "queue:workflows:process"
-  QUEUE_EMAIL_KEY: "queue:email"
-  PASSWORD_RESET_THROTTLE_SECONDS: "60"
-  # Maintenance cron expressions (staggered every 5 min)
-  VERSION_PURGER_CRON: "0 */5 * * * *"
-  REFRESH_TOKEN_CLEANUP_CRON: "10 */5 * * * *"
-  WORKFLOW_RUN_LOGS_PURGER_CRON: "20 */5 * * * *"
-  SYSTEM_LOGS_PURGER_CRON: "30 */5 * * * *"
-  SYSTEM_LOGS_RETENTION_DAYS: "90"
-  # Public-facing URL — adjust to match your Ingress host
-  FRONTEND_BASE_URL: "https://api.example.com"
+    APP_ENV: "production"
+    API_HOST: "0.0.0.0"
+    API_PORT: "8888"
+    API_ENABLE_DOCS: "false"
+    RUST_LOG: "info"
+    LOG_LEVEL: "info"
+    CACHE_ENABLED: "true"
+    CACHE_TTL: "300"
+    CORS_ORIGINS: "*"
+    JWT_EXPIRATION: "86400"
+    QUEUE_FETCH_KEY: "queue:workflows:fetch"
+    QUEUE_PROCESS_KEY: "queue:workflows:process"
+    QUEUE_EMAIL_KEY: "queue:email"
+    PASSWORD_RESET_THROTTLE_SECONDS: "60"
+    # Maintenance cron expressions (staggered every 5 min)
+    VERSION_PURGER_CRON: "0 */5 * * * *"
+    REFRESH_TOKEN_CLEANUP_CRON: "10 */5 * * * *"
+    WORKFLOW_RUN_LOGS_PURGER_CRON: "20 */5 * * * *"
+    SYSTEM_LOGS_PURGER_CRON: "30 */5 * * * *"
+    SYSTEM_LOGS_RETENTION_DAYS: "90"
+    # Public-facing URL — adjust to match your Ingress host
+    FRONTEND_BASE_URL: "https://api.example.com"

@@ -1,26 +1,26 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: rdatacore
-  namespace: rdatacore
-  annotations:
-    # Uncomment and adjust for cert-manager:
-    # cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/proxy-body-size: "16m"
+    name: rdatacore
+    namespace: rdatacore
+    annotations:
+        # Uncomment and adjust for cert-manager:
+        # cert-manager.io/cluster-issuer: letsencrypt-prod
+        nginx.ingress.kubernetes.io/proxy-body-size: "16m"
 spec:
-  ingressClassName: nginx
-  tls:
-    - hosts:
-        - api.example.com
-      secretName: rdatacore-tls   # managed by cert-manager or populated manually
-  rules:
-    - host: api.example.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: rdatacore-core
-                port:
-                  number: 8888
+    ingressClassName: nginx
+    tls:
+        -   hosts:
+                - api.example.com
+            secretName: rdatacore-tls   # managed by cert-manager or populated manually
+    rules:
+        -   host: api.example.com
+            http:
+                paths:
+                    -   path: /
+                        pathType: Prefix
+                        backend:
+                            service:
+                                name: rdatacore-core
+                                port:
+                                    number: 8888

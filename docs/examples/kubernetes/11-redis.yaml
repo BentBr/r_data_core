@@ -1,68 +1,86 @@
+# Headless Service — governs the StatefulSet, provides stable per-pod DNS.
 apiVersion: v1
 kind: Service
 metadata:
-  name: redis
-  namespace: rdatacore
-  labels:
-    app: redis
+    name: redis-headless
+    namespace: rdatacore
+    labels:
+        app: redis
 spec:
-  clusterIP: None
-  ports:
-    - name: redis
-      port: 6379
-      targetPort: 6379
-  selector:
-    app: redis
+    clusterIP: None
+    ports:
+        -   name: redis
+            port: 6379
+            targetPort: 6379
+    selector:
+        app: redis
+---
+# ClusterIP Service — stable virtual IP for clients (REDIS_URL points here).
+apiVersion: v1
+kind: Service
+metadata:
+    name: redis
+    namespace: rdatacore
+    labels:
+        app: redis
+spec:
+    type: ClusterIP
+    ports:
+        -   name: redis
+            port: 6379
+            targetPort: 6379
+    selector:
+        app: redis
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: redis
-  namespace: rdatacore
+    name: redis
+    namespace: rdatacore
 spec:
-  serviceName: redis
-  replicas: 1
-  selector:
-    matchLabels:
-      app: redis
-  template:
-    metadata:
-      labels:
-        app: redis
-    spec:
-      containers:
-        - name: redis
-          image: redis:8-alpine
-          args: ["redis-server", "--appendonly", "yes", "--dir", "/data"]
-          ports:
-            - containerPort: 6379
-              name: redis
-          volumeMounts:
-            - name: data
-              mountPath: /data
-          readinessProbe:
-            exec:
-              command: ["redis-cli", "ping"]
-            initialDelaySeconds: 5
-            periodSeconds: 5
-          livenessProbe:
-            exec:
-              command: ["redis-cli", "ping"]
-            initialDelaySeconds: 15
-            periodSeconds: 15
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "256Mi"
-            limits:
-              cpu: "500m"
-              memory: "1Gi"
-  volumeClaimTemplates:
-    - metadata:
-        name: data
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        storageClassName: longhorn
-        resources:
-          requests:
-            storage: 5Gi
+    serviceName: redis-headless
+    replicas: 1
+    selector:
+        matchLabels:
+            app: redis
+    template:
+        metadata:
+            labels:
+                app: redis
+        spec:
+            containers:
+                -   name: redis
+                    image: redis:8-alpine
+                    args: [ "redis-server", "--appendonly", "yes", "--dir", "/data" ]
+                    ports:
+                        -   containerPort: 6379
+                            name: redis
+                    volumeMounts:
+                        -   name: data
+                            mountPath: /data
+                    readinessProbe:
+                        exec:
+                            command: [ "redis-cli", "ping" ]
+                        initialDelaySeconds: 5
+                        periodSeconds: 5
+                    livenessProbe:
+                        exec:
+                            command: [ "redis-cli", "ping" ]
+                        initialDelaySeconds: 15
+                        periodSeconds: 15
+                    resources:
+                        requests:
+                            cpu: "100m"
+                            memory: "256Mi"
+                        limits:
+                            cpu: "500m"
+                            memory: "1Gi"
+    volumeClaimTemplates:
+        -   metadata:
+                name: data
+            spec:
+                accessModes: [ "ReadWriteOnce" ]
+                storageClassName: longhorn
+                resources:
+                    requests:
+                        storage: 5Gi

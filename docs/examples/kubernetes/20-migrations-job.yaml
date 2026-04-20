@@ -1,31 +1,31 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rdatacore-migrate
-  namespace: rdatacore
+    name: rdatacore-migrate
+    namespace: rdatacore
 spec:
-  backoffLimit: 3
-  ttlSecondsAfterFinished: 300
-  template:
-    metadata:
-      labels:
-        app: rdatacore
-        component: migrate
-    spec:
-      restartPolicy: OnFailure
-      containers:
-        - name: migrate
-          image: ghcr.io/bentbr/r-data-core:latest
-          command: ["/usr/local/bin/run_migrations"]
-          envFrom:
-            - configMapRef:
-                name: rdatacore-config
-            - secretRef:
-                name: rdatacore-secrets
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "128Mi"
-            limits:
-              cpu: "500m"
-              memory: "512Mi"
+    backoffLimit: 3
+    ttlSecondsAfterFinished: 300
+    template:
+        metadata:
+            labels:
+                app: rdatacore
+                component: migrate
+        spec:
+            restartPolicy: OnFailure
+            containers:
+                -   name: migrate
+                    image: ghcr.io/bentbr/r-data-core:latest
+                    command: [ "/usr/local/bin/run_migrations" ]
+                    envFrom:
+                        -   configMapRef:
+                                name: rdatacore-config
+                        -   secretRef:
+                                name: rdatacore-secrets
+                    resources:
+                        requests:
+                            cpu: "100m"
+                            memory: "128Mi"
+                        limits:
+                            cpu: "500m"
+                            memory: "512Mi"

@@ -1,47 +1,47 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: rdatacore-worker
-  namespace: rdatacore
-  labels:
-    app: rdatacore
-    component: worker
-spec:
-  replicas: 1
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 0
-      maxSurge: 1
-  selector:
-    matchLabels:
-      app: rdatacore
-      component: worker
-  template:
-    metadata:
-      labels:
+    name: rdatacore-worker
+    namespace: rdatacore
+    labels:
         app: rdatacore
         component: worker
-    spec:
-      containers:
-        - name: worker
-          image: ghcr.io/bentbr/r-data-core-worker:latest
-          envFrom:
-            - configMapRef:
-                name: rdatacore-config
-            - secretRef:
-                name: rdatacore-secrets
-          env:
-            # Worker reads WORKER_DATABASE_URL; mirror DATABASE_URL from the Secret.
-            - name: WORKER_DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: rdatacore-secrets
-                  key: DATABASE_URL
-          resources:
-            requests:
-              cpu: "250m"
-              memory: "512Mi"
-            limits:
-              cpu: "1000m"
-              memory: "1Gi"
+spec:
+    replicas: 1
+    strategy:
+        type: RollingUpdate
+        rollingUpdate:
+            maxUnavailable: 0
+            maxSurge: 1
+    selector:
+        matchLabels:
+            app: rdatacore
+            component: worker
+    template:
+        metadata:
+            labels:
+                app: rdatacore
+                component: worker
+        spec:
+            containers:
+                -   name: worker
+                    image: ghcr.io/bentbr/r-data-core-worker:latest
+                    envFrom:
+                        -   configMapRef:
+                                name: rdatacore-config
+                        -   secretRef:
+                                name: rdatacore-secrets
+                    env:
+                        # Worker reads WORKER_DATABASE_URL; mirror DATABASE_URL from the Secret.
+                        -   name: WORKER_DATABASE_URL
+                            valueFrom:
+                                secretKeyRef:
+                                    name: rdatacore-secrets
+                                    key: DATABASE_URL
+                    resources:
+                        requests:
+                            cpu: "250m"
+                            memory: "512Mi"
+                        limits:
+                            cpu: "1000m"
+                            memory: "1Gi"

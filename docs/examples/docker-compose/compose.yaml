@@ -1,126 +1,126 @@
-# RDataCore — Docker Compose example (production-flavored starter)
+# RDataCore — Docker Compose example (production-flavoured starter)
 # See ./README.md for the walkthrough and caveats.
 
 services:
-  postgres:
-    image: postgres:18-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: rdatacore
-      POSTGRES_DB: rdata
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rdatacore -d rdata"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+    postgres:
+        image: postgres:18-alpine
+        restart: unless-stopped
+        environment:
+            POSTGRES_USER: rdatacore
+            POSTGRES_DB: rdata
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: [ "CMD-SHELL", "pg_isready -U rdatacore -d rdata" ]
+            interval: 5s
+            timeout: 5s
+            retries: 10
 
-  redis:
-    image: redis:8-alpine
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+    redis:
+        image: redis:8-alpine
+        restart: unless-stopped
+        command: [ "redis-server", "--appendonly", "yes" ]
+        volumes:
+            - redis_data:/data
+        healthcheck:
+            test: [ "CMD", "redis-cli", "ping" ]
+            interval: 5s
+            timeout: 5s
+            retries: 5
 
-  migrate:
-    image: ghcr.io/bentbr/r-data-core:latest
-    restart: "no"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    entrypoint: ["/usr/local/bin/run_migrations"]
-    environment:
-      DATABASE_URL: postgres://rdatacore:${POSTGRES_PASSWORD}@postgres:5432/rdata
-    profiles: ["migrate"]
+    migrate:
+        image: ghcr.io/bentbr/r-data-core:latest
+        restart: "no"
+        depends_on:
+            postgres:
+                condition: service_healthy
+        entrypoint: [ "/usr/local/bin/run_migrations" ]
+        environment:
+            DATABASE_URL: postgres://rdatacore:${POSTGRES_PASSWORD}@postgres:5432/rdata
+        profiles: [ "migrate" ]
 
-  core:
-    image: ghcr.io/bentbr/r-data-core:latest
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      APP_ENV: production
-      API_HOST: 0.0.0.0
-      API_PORT: 8888
-      API_ENABLE_DOCS: "false"
-      RUST_LOG: info
-      LOG_LEVEL: info
-      CACHE_ENABLED: "true"
-      CACHE_TTL: 300
-      CORS_ORIGINS: "*"
-      DATABASE_URL: postgres://rdatacore:${POSTGRES_PASSWORD}@postgres:5432/rdata
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
-      JWT_EXPIRATION: 86400
-      LICENSE_KEY: ${LICENSE_KEY:?LICENSE_KEY must be set in .env}
-      QUEUE_FETCH_KEY: queue:workflows:fetch
-      QUEUE_PROCESS_KEY: queue:workflows:process
-      QUEUE_EMAIL_KEY: queue:email
-      SYSTEM_SMTP_DSN: ${SYSTEM_SMTP_DSN:-}
-      WORKFLOW_SMTP_DSN: ${WORKFLOW_SMTP_DSN:-}
-      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:8080}
-      PASSWORD_RESET_THROTTLE_SECONDS: 60
-    ports:
-      - "8080:8888"
+    core:
+        image: ghcr.io/bentbr/r-data-core:latest
+        restart: unless-stopped
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        environment:
+            APP_ENV: production
+            API_HOST: 0.0.0.0
+            API_PORT: 8888
+            API_ENABLE_DOCS: "false"
+            RUST_LOG: info
+            LOG_LEVEL: info
+            CACHE_ENABLED: "true"
+            CACHE_TTL: 300
+            CORS_ORIGINS: "*"
+            DATABASE_URL: postgres://rdatacore:${POSTGRES_PASSWORD}@postgres:5432/rdata
+            REDIS_URL: redis://redis:6379
+            JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
+            JWT_EXPIRATION: 86400
+            LICENSE_KEY: ${LICENSE_KEY:?LICENSE_KEY must be set in .env}
+            QUEUE_FETCH_KEY: queue:workflows:fetch
+            QUEUE_PROCESS_KEY: queue:workflows:process
+            QUEUE_EMAIL_KEY: queue:email
+            SYSTEM_SMTP_DSN: ${SYSTEM_SMTP_DSN:-}
+            WORKFLOW_SMTP_DSN: ${WORKFLOW_SMTP_DSN:-}
+            FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:8080}
+            PASSWORD_RESET_THROTTLE_SECONDS: 60
+        ports:
+            - "8080:8888"
 
-  worker:
-    image: ghcr.io/bentbr/r-data-core-worker:latest
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      RUST_LOG: info
-      LOG_LEVEL: info
-      DATABASE_URL: postgres://rdatacore:${POSTGRES_PASSWORD}@postgres:5432/rdata
-      WORKER_DATABASE_URL: postgres://rdatacore:${POSTGRES_PASSWORD}@postgres:5432/rdata
-      REDIS_URL: redis://redis:6379
-      QUEUE_FETCH_KEY: queue:workflows:fetch
-      QUEUE_PROCESS_KEY: queue:workflows:process
-      QUEUE_EMAIL_KEY: queue:email
-      SYSTEM_SMTP_DSN: ${SYSTEM_SMTP_DSN:-}
-      WORKFLOW_SMTP_DSN: ${WORKFLOW_SMTP_DSN:-}
-      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:8080}
-      PASSWORD_RESET_THROTTLE_SECONDS: 60
+    worker:
+        image: ghcr.io/bentbr/r-data-core-worker:latest
+        restart: unless-stopped
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        environment:
+            RUST_LOG: info
+            LOG_LEVEL: info
+            DATABASE_URL: postgres://rdatacore:${POSTGRES_PASSWORD}@postgres:5432/rdata
+            WORKER_DATABASE_URL: postgres://rdatacore:${POSTGRES_PASSWORD}@postgres:5432/rdata
+            REDIS_URL: redis://redis:6379
+            QUEUE_FETCH_KEY: queue:workflows:fetch
+            QUEUE_PROCESS_KEY: queue:workflows:process
+            QUEUE_EMAIL_KEY: queue:email
+            SYSTEM_SMTP_DSN: ${SYSTEM_SMTP_DSN:-}
+            WORKFLOW_SMTP_DSN: ${WORKFLOW_SMTP_DSN:-}
+            FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:8080}
+            PASSWORD_RESET_THROTTLE_SECONDS: 60
 
-  maintenance:
-    image: ghcr.io/bentbr/r-data-core-maintenance:latest
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      RUST_LOG: info
-      LOG_LEVEL: info
-      DATABASE_URL: postgres://rdatacore:${POSTGRES_PASSWORD}@postgres:5432/rdata
-      WORKER_DATABASE_URL: postgres://rdatacore:${POSTGRES_PASSWORD}@postgres:5432/rdata
-      MAINTENANCE_DATABASE_URL: postgres://rdatacore:${POSTGRES_PASSWORD}@postgres:5432/rdata
-      REDIS_URL: redis://redis:6379
-      VERSION_PURGER_CRON: "0 */5 * * * *"
-      REFRESH_TOKEN_CLEANUP_CRON: "10 */5 * * * *"
-      WORKFLOW_RUN_LOGS_PURGER_CRON: "20 */5 * * * *"
-      SYSTEM_LOGS_PURGER_CRON: "30 */5 * * * *"
-      SYSTEM_LOGS_RETENTION_DAYS: 90
-      QUEUE_EMAIL_KEY: queue:email
-      SYSTEM_SMTP_DSN: ${SYSTEM_SMTP_DSN:-}
-      WORKFLOW_SMTP_DSN: ${WORKFLOW_SMTP_DSN:-}
-      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:8080}
-      PASSWORD_RESET_THROTTLE_SECONDS: 60
+    maintenance:
+        image: ghcr.io/bentbr/r-data-core-maintenance:latest
+        restart: unless-stopped
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        environment:
+            RUST_LOG: info
+            LOG_LEVEL: info
+            DATABASE_URL: postgres://rdatacore:${POSTGRES_PASSWORD}@postgres:5432/rdata
+            WORKER_DATABASE_URL: postgres://rdatacore:${POSTGRES_PASSWORD}@postgres:5432/rdata
+            MAINTENANCE_DATABASE_URL: postgres://rdatacore:${POSTGRES_PASSWORD}@postgres:5432/rdata
+            REDIS_URL: redis://redis:6379
+            VERSION_PURGER_CRON: "0 */5 * * * *"
+            REFRESH_TOKEN_CLEANUP_CRON: "10 */5 * * * *"
+            WORKFLOW_RUN_LOGS_PURGER_CRON: "20 */5 * * * *"
+            SYSTEM_LOGS_PURGER_CRON: "30 */5 * * * *"
+            SYSTEM_LOGS_RETENTION_DAYS: 90
+            QUEUE_EMAIL_KEY: queue:email
+            SYSTEM_SMTP_DSN: ${SYSTEM_SMTP_DSN:-}
+            WORKFLOW_SMTP_DSN: ${WORKFLOW_SMTP_DSN:-}
+            FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:8080}
+            PASSWORD_RESET_THROTTLE_SECONDS: 60
 
 volumes:
-  postgres_data:
-  redis_data:
+    postgres_data:
+    redis_data:

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: rdatacore
-  labels:
-    app.kubernetes.io/name: rdatacore
-    app.kubernetes.io/part-of: rdatacore
+    name: rdatacore
+    labels:
+        app.kubernetes.io/name: rdatacore
+        app.kubernetes.io/part-of: rdatacore
