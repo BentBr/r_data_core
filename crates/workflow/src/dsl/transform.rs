@@ -161,6 +161,8 @@ pub struct SendEmailTransform {
     /// Recipients: field refs or constant email addresses
     pub to: Vec<StringOperand>,
     /// Optional CC recipients
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub cc: Option<Vec<StringOperand>>,
     /// Normalized field to store send result (`"queued"`, `"mail_not_configured"`, or error)
     pub target_status: String,

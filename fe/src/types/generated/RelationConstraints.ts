@@ -3,8 +3,9 @@
 /**
  * Relation field constraints
  */
-export type RelationConstraints = { 
-/**
- * Name of the related entity type
- */
-target_class: string, };
+export type RelationConstraints = {
+    /**
+     * Name of the related entity type
+     */
+    target_class: string
+}

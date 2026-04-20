@@ -565,7 +565,7 @@
 
     async function loadEmailTemplates() {
         try {
-            const templates = await typedHttpClient.listEmailTemplates('workflow')
+            const templates = await typedHttpClient.listEmailTemplates({ type: 'workflow' })
             emailTemplateItems.value = templates.map(tmpl => ({
                 title: tmpl.name,
                 value: tmpl.uuid,

@@ -195,7 +195,7 @@
 
     async function loadEmailTemplates() {
         try {
-            const templates = await typedHttpClient.listEmailTemplates('workflow')
+            const templates = await typedHttpClient.listEmailTemplates({ type: 'workflow' })
             emailTemplates.value = templates
             emailTemplateItems.value = templates.map(tmpl => ({
                 title: tmpl.name,
@@ -220,7 +220,6 @@
             type: 'send_email',
             template_uuid: '',
             to: [],
-            cc: null,
             condition: 'always',
         }
         emitUpdated([...actions.value, newAction])

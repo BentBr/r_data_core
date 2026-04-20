@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rdatacore-maintenance
+  namespace: rdatacore
+  labels:
+    app: rdatacore
+    component: maintenance
+spec:
+  replicas: 1
+  # Recreate strategy: maintenance owns internal cron schedules.
+  # Rolling update would transiently run two replicas and double-fire tasks.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: rdatacore
+      component: maintenance
+  template:
+    metadata:
+      labels:
+        app: rdatacore
+        component: maintenance
+    spec:
+      containers:
+        - name: maintenance
+          image: ghcr.io/bentbr/r-data-core-maintenance:latest
+          envFrom:
+            - configMapRef:
+                name: rdatacore-config
+            - secretRef:
+                name: rdatacore-secrets
+          env:
+            # Maintenance uses its own DB URL var; mirror DATABASE_URL from the Secret.
+            - name: MAINTENANCE_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: rdatacore-secrets
+                  key: DATABASE_URL
+            - name: WORKER_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: rdatacore-secrets
+                  key: DATABASE_URL
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

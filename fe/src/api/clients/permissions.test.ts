@@ -203,7 +203,6 @@ describe('RolesClient (permissions)', () => {
         it('should handle 422 validation error on create', async () => {
             const request: CreateRoleRequest = {
                 name: '',
-                description: null,
                 permissions: [],
             }
 
@@ -258,7 +257,6 @@ describe('RolesClient (permissions)', () => {
         it('should handle 404 error when updating non-existent role', async () => {
             const request: UpdateRoleRequest = {
                 name: 'Updated',
-                description: null,
                 permissions: [],
             }
 

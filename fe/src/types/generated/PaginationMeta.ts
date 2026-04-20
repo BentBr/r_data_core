@@ -3,28 +3,29 @@
 /**
  * Metadata for paginated responses
  */
-export type PaginationMeta = { 
-/**
- * Total number of items available
- */
-total: number, 
-/**
- * Current page number
- */
-page: number, 
-/**
- * Items per page
- */
-per_page: number, 
-/**
- * Total number of pages
- */
-total_pages: number, 
-/**
- * If there is a previous page
- */
-has_previous: boolean, 
-/**
- * If there is a next page
- */
-has_next: boolean, };
+export type PaginationMeta = {
+    /**
+     * Total number of items available
+     */
+    total: number
+    /**
+     * Current page number
+     */
+    page: number
+    /**
+     * Items per page
+     */
+    per_page: number
+    /**
+     * Total number of pages
+     */
+    total_pages: number
+    /**
+     * If there is a previous page
+     */
+    has_previous: boolean
+    /**
+     * If there is a next page
+     */
+    has_next: boolean
+}

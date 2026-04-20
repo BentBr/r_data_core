@@ -3,12 +3,13 @@
 /**
  * Response for system capabilities (which optional features are configured)
  */
-export type CapabilitiesResponse = { 
-/**
- * Whether system mail is configured (enables password reset etc.)
- */
-system_mail_configured: boolean, 
-/**
- * Whether workflow mail is configured (enables email outputs in workflows)
- */
-workflow_mail_configured: boolean, };
+export type CapabilitiesResponse = {
+    /**
+     * Whether system mail is configured (enables password reset etc.)
+     */
+    system_mail_configured: boolean
+    /**
+     * Whether workflow mail is configured (enables email outputs in workflows)
+     */
+    workflow_mail_configured: boolean
+}

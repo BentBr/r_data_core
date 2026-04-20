@@ -398,6 +398,7 @@ describe('EntityCreateDialog', () => {
                         path: '/entity1',
                         entity_uuid: 'uuid-1',
                         entity_type: 'test_type',
+                        has_children: null,
                         published: true,
                     },
                 ],

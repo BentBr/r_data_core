@@ -11,7 +11,7 @@ vi.mock('@/api/typed-client', () => ({
         getDslFromOptions: vi.fn().mockResolvedValue({}),
         getDslToOptions: vi.fn().mockResolvedValue({}),
         getDslTransformOptions: vi.fn().mockResolvedValue({}),
-        listEmailTemplates: (type?: string) => mockListEmailTemplates(type),
+        listEmailTemplates: (query?: { type?: string }) => mockListEmailTemplates(query),
     },
 }))
 
@@ -78,7 +78,6 @@ describe('PostRunActionsEditor', () => {
                     type: 'send_email',
                     template_uuid: 'uuid-1',
                     to: [{ kind: 'const_string', value: 'admin@example.com' }],
-                    cc: null,
                     condition: 'always',
                 },
             ],
@@ -128,7 +127,6 @@ describe('PostRunActionsEditor', () => {
                     type: 'send_email',
                     template_uuid: 'uuid-1',
                     to: [{ kind: 'const_string', value: 'user@example.com' }],
-                    cc: null,
                     condition: 'on_success',
                 },
             ],
@@ -160,7 +158,6 @@ describe('PostRunActionsEditor', () => {
                     type: 'send_email',
                     template_uuid: 'uuid-1',
                     to: [{ kind: 'const_string', value: 'admin@example.com' }],
-                    cc: null,
                     condition: 'always',
                 },
             ],
@@ -194,7 +191,6 @@ describe('PostRunActionsEditor', () => {
                     type: 'send_email',
                     template_uuid: 'uuid-1',
                     to: [{ kind: 'const_string', value: 'admin@example.com' }],
-                    cc: null,
                     condition: 'always',
                 },
             ],
@@ -231,7 +227,7 @@ describe('PostRunActionsEditor', () => {
         await nextTick()
         await nextTick()
 
-        expect(mockListEmailTemplates).toHaveBeenCalledWith('workflow')
+        expect(mockListEmailTemplates).toHaveBeenCalledWith({ type: 'workflow' })
     })
 
     it('handles template loading failure gracefully', async () => {
@@ -260,7 +256,6 @@ describe('PostRunActionsEditor', () => {
                     type: 'send_email',
                     template_uuid: '',
                     to: [],
-                    cc: null,
                     condition: 'always',
                 },
             ],

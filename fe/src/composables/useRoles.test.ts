@@ -64,6 +64,9 @@ describe('useRoles', () => {
                         has_previous: false,
                         has_next: false,
                     },
+                    request_id: null,
+                    timestamp: null,
+                    custom: null,
                 },
             })
 

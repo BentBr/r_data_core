@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rdatacore-core
+  namespace: rdatacore
+  labels:
+    app: rdatacore
+    component: core
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8888
+      targetPort: 8888
+  selector:
+    app: rdatacore
+    component: core
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rdatacore-core
+  namespace: rdatacore
+  labels:
+    app: rdatacore
+    component: core
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: rdatacore
+      component: core
+  template:
+    metadata:
+      labels:
+        app: rdatacore
+        component: core
+    spec:
+      containers:
+        - name: core
+          image: ghcr.io/bentbr/r-data-core:latest
+          ports:
+            - containerPort: 8888
+              name: http
+          envFrom:
+            - configMapRef:
+                name: rdatacore-config
+            - secretRef:
+                name: rdatacore-secrets
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8888
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8888
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rdatacore-core
+  namespace: rdatacore
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: rdatacore
+      component: core
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rdatacore-core
+  namespace: rdatacore
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rdatacore-core
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

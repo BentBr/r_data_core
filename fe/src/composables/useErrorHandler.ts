@@ -3,12 +3,6 @@ import { useTranslations } from './useTranslations'
 import { ValidationError } from '@/api/typed-client'
 import { HttpError } from '@/api/errors'
 
-export interface FieldError {
-    field: string
-    message: string
-    code?: string
-}
-
 export interface ErrorHandlerResult {
     handled: boolean
     fieldErrors?: Record<string, string>

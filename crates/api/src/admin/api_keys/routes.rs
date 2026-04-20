@@ -184,7 +184,7 @@ pub async fn create_api_key(
     let description = req.description.clone().unwrap_or_default();
     let expires_in_days = req
         .expires_in_days
-        .map_or(365, |v| i32::try_from(v).unwrap_or(365));
+        .map_or(365, |v| i32::try_from(v).unwrap_or(i32::MAX));
 
     match service
         .create_api_key(&req.name, &description, creator_uuid, expires_in_days)

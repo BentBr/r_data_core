@@ -3,16 +3,17 @@
 /**
  * Request to create a new API key
  */
-export type CreateApiKeyRequest = { 
-/**
- * Name of the API key
- */
-name: string, 
-/**
- * Optional description for the API key
- */
-description: string | null, 
-/**
- * Number of days until expiration (default: 365)
- */
-expires_in_days: number | null, };
+export type CreateApiKeyRequest = {
+    /**
+     * Name of the API key
+     */
+    name: string
+    /**
+     * Optional description for the API key
+     */
+    description?: string
+    /**
+     * Number of days until expiration (default: 365)
+     */
+    expires_in_days?: number
+}

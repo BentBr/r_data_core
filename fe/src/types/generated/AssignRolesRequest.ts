@@ -3,8 +3,9 @@
 /**
  * Request to assign roles to a user or API key
  */
-export type AssignRolesRequest = { 
-/**
- * UUIDs of roles to assign
- */
-role_uuids: string[], };
+export type AssignRolesRequest = {
+    /**
+     * UUIDs of roles to assign
+     */
+    role_uuids: string[]
+}

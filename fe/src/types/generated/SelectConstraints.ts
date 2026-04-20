@@ -3,8 +3,9 @@
 /**
  * Select field constraints
  */
-export type SelectConstraints = { 
-/**
- * Array of allowed values
- */
-options: Array<string> | null, };
+export type SelectConstraints = {
+    /**
+     * Array of allowed values
+     */
+    options: Array<string> | null
+}

@@ -1,7 +1,10 @@
 import type { WorkflowDetail } from '@/types/generated/WorkflowDetail'
 import type { WorkflowSummary } from '@/types/generated/WorkflowSummary'
 import type { WorkflowRunLogDto } from '@/types/generated/WorkflowRunLogDto'
-import type { DslOptionsResponse, WorkflowRun, WorkflowConfig } from '@/types/schemas'
+import type { CreateWorkflowResponse } from '@/types/generated/CreateWorkflowResponse'
+import type { WorkflowVersionMeta } from '@/types/generated/WorkflowVersionMeta'
+import type { WorkflowVersionPayload } from '@/types/generated/WorkflowVersionPayload'
+import type { DslOptionsResponse, WorkflowRun, WorkflowConfig, ResponseMeta } from '@/types/schemas'
 import { BaseTypedHttpClient } from './base'
 import { useAuthStore } from '@/stores/auth'
 import { buildApiUrl } from '@/env-check'
@@ -16,19 +19,7 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         itemsPerPage = 20,
         sortBy?: string | null,
         sortOrder?: 'asc' | 'desc' | null
-    ): Promise<{
-        data: WorkflowSummary[]
-        meta?: {
-            pagination?: {
-                total: number
-                page: number
-                per_page: number
-                total_pages: number
-                has_previous: boolean
-                has_next: boolean
-            }
-        }
-    }> {
+    ): Promise<{ data: WorkflowSummary[]; meta?: ResponseMeta }> {
         let url = `/admin/api/v1/workflows?page=${page}&per_page=${itemsPerPage}`
         if (sortBy && sortOrder) {
             url += `&sort_by=${sortBy}&sort_order=${sortOrder}`
@@ -48,8 +39,8 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         schedule_cron?: string | null
         config: WorkflowConfig
         versioning_disabled?: boolean
-    }): Promise<{ uuid: string }> {
-        return this.request<{ uuid: string }>('/admin/api/v1/workflows', {
+    }): Promise<CreateWorkflowResponse> {
+        return this.request<CreateWorkflowResponse>('/admin/api/v1/workflows', {
             method: 'POST',
             body: JSON.stringify(data),
         })
@@ -95,19 +86,7 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         workflowUuid: string,
         page = 1,
         perPage = 20
-    ): Promise<{
-        data: WorkflowRun[]
-        meta?: {
-            pagination?: {
-                total: number
-                page: number
-                per_page: number
-                total_pages: number
-                has_previous: boolean
-                has_next: boolean
-            }
-        }
-    }> {
+    ): Promise<{ data: WorkflowRun[]; meta?: ResponseMeta }> {
         return this.paginatedRequest<WorkflowRun[]>(
             `/admin/api/v1/workflows/${workflowUuid}/runs?page=${page}&per_page=${perPage}`
         )
@@ -117,19 +96,7 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         runUuid: string,
         page = 1,
         perPage = 50
-    ): Promise<{
-        data: WorkflowRunLogDto[]
-        meta?: {
-            pagination?: {
-                total: number
-                page: number
-                per_page: number
-                total_pages: number
-                has_previous: boolean
-                has_next: boolean
-            }
-        }
-    }> {
+    ): Promise<{ data: WorkflowRunLogDto[]; meta?: ResponseMeta }> {
         return this.paginatedRequest<WorkflowRunLogDto[]>(
             `/admin/api/v1/workflows/runs/${runUuid}/logs?page=${page}&per_page=${perPage}`
         )
@@ -138,19 +105,7 @@ export class WorkflowsClient extends BaseTypedHttpClient {
     async getAllWorkflowRuns(
         page = 1,
         perPage = 20
-    ): Promise<{
-        data: WorkflowRun[]
-        meta?: {
-            pagination?: {
-                total: number
-                page: number
-                per_page: number
-                total_pages: number
-                has_previous: boolean
-                has_next: boolean
-            }
-        }
-    }> {
+    ): Promise<{ data: WorkflowRun[]; meta?: ResponseMeta }> {
         return this.paginatedRequest<WorkflowRun[]>(
             `/admin/api/v1/workflows/runs?page=${page}&per_page=${perPage}`
         )
@@ -215,38 +170,13 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         })
     }
 
-    async listWorkflowVersions(uuid: string): Promise<
-        Array<{
-            version_number: number
-            created_at: string
-            created_by?: string | null
-            created_by_name?: string | null
-        }>
-    > {
-        return this.request<
-            Array<{
-                version_number: number
-                created_at: string
-                created_by?: string | null
-                created_by_name?: string | null
-            }>
-        >(`/admin/api/v1/workflows/${uuid}/versions`)
+    async listWorkflowVersions(uuid: string): Promise<WorkflowVersionMeta[]> {
+        return this.request<WorkflowVersionMeta[]>(`/admin/api/v1/workflows/${uuid}/versions`)
     }
 
-    async getWorkflowVersion(
-        uuid: string,
-        versionNumber: number
-    ): Promise<{
-        version_number: number
-        created_at: string
-        created_by?: string | null
-        data: Record<string, unknown>
-    }> {
-        return this.request<{
-            version_number: number
-            created_at: string
-            created_by?: string | null
-            data: Record<string, unknown>
-        }>(`/admin/api/v1/workflows/${uuid}/versions/${versionNumber}`)
+    async getWorkflowVersion(uuid: string, versionNumber: number): Promise<WorkflowVersionPayload> {
+        return this.request<WorkflowVersionPayload>(
+            `/admin/api/v1/workflows/${uuid}/versions/${versionNumber}`
+        )
     }
 }

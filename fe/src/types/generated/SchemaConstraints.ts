@@ -3,8 +3,9 @@
 /**
  * Object/Array field constraints
  */
-export type SchemaConstraints = { 
-/**
- * JSON schema for validating the object/array structure
- */
-schema: unknown, };
+export type SchemaConstraints = {
+    /**
+     * JSON schema for validating the object/array structure
+     */
+    schema: unknown
+}

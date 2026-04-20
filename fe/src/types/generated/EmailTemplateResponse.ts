@@ -3,44 +3,45 @@
 /**
  * Email template response DTO
  */
-export type EmailTemplateResponse = { 
-/**
- * Template UUID
- */
-uuid: string, 
-/**
- * Display name
- */
-name: string, 
-/**
- * Unique slug identifier
- */
-slug: string, 
-/**
- * Template type (system or workflow)
- */
-template_type: string, 
-/**
- * Subject line template
- */
-subject_template: string, 
-/**
- * HTML body template
- */
-body_html_template: string, 
-/**
- * Plain-text body template
- */
-body_text_template: string, 
-/**
- * Available template variables
- */
-variables: unknown, 
-/**
- * ISO 8601 creation timestamp
- */
-created_at: string, 
-/**
- * ISO 8601 last-updated timestamp
- */
-updated_at: string, };
+export type EmailTemplateResponse = {
+    /**
+     * Template UUID
+     */
+    uuid: string
+    /**
+     * Display name
+     */
+    name: string
+    /**
+     * Unique slug identifier
+     */
+    slug: string
+    /**
+     * Template type (system or workflow)
+     */
+    template_type: string
+    /**
+     * Subject line template
+     */
+    subject_template: string
+    /**
+     * HTML body template
+     */
+    body_html_template: string
+    /**
+     * Plain-text body template
+     */
+    body_text_template: string
+    /**
+     * Available template variables
+     */
+    variables: unknown
+    /**
+     * ISO 8601 creation timestamp
+     */
+    created_at: string
+    /**
+     * ISO 8601 last-updated timestamp
+     */
+    updated_at: string
+}

@@ -3,24 +3,25 @@
 /**
  * Request body for updating an email template
  */
-export type UpdateEmailTemplateRequest = { 
-/**
- * New display name (only honoured for workflow templates)
- */
-name: string | null, 
-/**
- * Updated subject line
- */
-subject_template: string, 
-/**
- * Updated HTML body
- */
-body_html_template: string, 
-/**
- * Updated plain-text body
- */
-body_text_template: string, 
-/**
- * Updated variables schema
- */
-variables: unknown, };
+export type UpdateEmailTemplateRequest = {
+    /**
+     * New display name (only honoured for workflow templates)
+     */
+    name?: string
+    /**
+     * Updated subject line
+     */
+    subject_template: string
+    /**
+     * Updated HTML body
+     */
+    body_html_template: string
+    /**
+     * Updated plain-text body
+     */
+    body_text_template: string
+    /**
+     * Updated variables schema
+     */
+    variables: unknown
+}

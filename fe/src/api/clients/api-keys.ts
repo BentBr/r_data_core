@@ -1,6 +1,6 @@
 import type { ApiKeyResponse } from '@/types/generated/ApiKeyResponse'
 import type { ApiKeyCreatedResponse } from '@/types/generated/ApiKeyCreatedResponse'
-import type { CreateApiKeyRequest, ReassignApiKeyRequest } from '@/types/schemas'
+import type { CreateApiKeyRequest, ReassignApiKeyRequest, ResponseMeta } from '@/types/schemas'
 import { BaseTypedHttpClient } from './base'
 
 export class ApiKeysClient extends BaseTypedHttpClient {
@@ -9,22 +9,7 @@ export class ApiKeysClient extends BaseTypedHttpClient {
         itemsPerPage = 10,
         sortBy?: string | null,
         sortOrder?: 'asc' | 'desc' | null
-    ): Promise<{
-        data: ApiKeyResponse[]
-        meta?: {
-            pagination?: {
-                total: number
-                page: number
-                per_page: number
-                total_pages: number
-                has_previous: boolean
-                has_next: boolean
-            }
-            request_id?: string
-            timestamp?: string
-            custom?: unknown
-        }
-    }> {
+    ): Promise<{ data: ApiKeyResponse[]; meta?: ResponseMeta }> {
         let url = `/admin/api/v1/api-keys?page=${page}&per_page=${itemsPerPage}`
         if (sortBy && sortOrder) {
             url += `&sort_by=${sortBy}&sort_order=${sortOrder}`

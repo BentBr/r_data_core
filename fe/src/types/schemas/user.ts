@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import { UuidSchema } from './base'
+import type { CreateUserRequest as GeneratedCreateUserRequest } from '../generated/CreateUserRequest'
+import type { UpdateUserRequest as GeneratedUpdateUserRequest } from '../generated/UpdateUserRequest'
 import {
     EMAIL_PATTERN,
     USERNAME_MIN_LENGTH,
@@ -14,9 +16,6 @@ const emailValidation = z
     .refine(val => EMAIL_PATTERN.test(val), 'Invalid email format')
 
 // Create user request schema (form validation)
-// Note: satisfies z.ZodType<GeneratedCreateUserRequest> not applied because the generated
-// type uses `string[] | null` for optional fields whereas Zod uses `.optional()` —
-// the Rust-side serialisation sends null for absent fields; the FE omits them entirely.
 export const CreateUserRequestSchema = z.object({
     username: z.string().min(USERNAME_MIN_LENGTH).max(USERNAME_MAX_LENGTH),
     email: emailValidation,
@@ -26,7 +25,7 @@ export const CreateUserRequestSchema = z.object({
     role_uuids: z.array(UuidSchema).optional(),
     is_active: z.boolean().optional(),
     super_admin: z.boolean().optional(),
-})
+}) satisfies z.ZodType<GeneratedCreateUserRequest>
 
 // Update user request schema (form validation)
 export const UpdateUserRequestSchema = z.object({
@@ -37,26 +36,12 @@ export const UpdateUserRequestSchema = z.object({
     role_uuids: z.array(UuidSchema).optional(),
     is_active: z.boolean().optional(),
     super_admin: z.boolean().optional(),
-})
+}) satisfies z.ZodType<GeneratedUpdateUserRequest>
 
 // Type exports — re-exported from generated for consumers that only need types
 export type { UserResponse } from '../generated/UserResponse'
 export type CreateUserRequest = z.infer<typeof CreateUserRequestSchema>
 export type UpdateUserRequest = z.infer<typeof UpdateUserRequestSchema>
-
-// Legacy User type — FE-only shape used in auth store
-export interface User {
-    uuid: string
-    username: string
-    email: string
-    first_name: string
-    last_name: string
-    role_uuids: string[]
-    is_active: boolean
-    is_admin: boolean
-    created_at: string
-    updated_at: string
-}
 
 /**
  * User custom data/metadata

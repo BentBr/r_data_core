@@ -8,8 +8,7 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 /// Empty request body for endpoints that don't require any input
-#[derive(Debug, Deserialize, ToSchema, TS)]
-#[ts(export)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct EmptyRequest {}
 
 /// Refresh token request body
@@ -93,8 +92,7 @@ pub struct AdminLoginResponse {
 }
 
 /// Admin registration request body
-#[derive(Debug, Deserialize, ToSchema, Validate, TS)]
-#[ts(export)]
+#[derive(Debug, Deserialize, ToSchema, Validate)]
 pub struct AdminRegisterRequest {
     /// Username
     #[validate(length(min = 3, message = "Username must be at least 3 characters"))]
@@ -121,8 +119,7 @@ pub struct AdminRegisterRequest {
 }
 
 /// Admin registration response body
-#[derive(Debug, Serialize, ToSchema, TS)]
-#[ts(export)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct AdminRegisterResponse {
     /// User UUID
     pub uuid: String,

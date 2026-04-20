@@ -6,6 +6,11 @@ import type { OnComplete } from '../generated/OnComplete'
 import type { PostRunAction } from '../generated/PostRunAction'
 import type { PostRunCondition } from '../generated/PostRunCondition'
 import type { PostRunSendEmail } from '../generated/PostRunSendEmail'
+import type { StringOperand as GeneratedStringOperand } from '../generated/StringOperand'
+import type { SendEmailTransform as GeneratedSendEmailTransform } from '../generated/SendEmailTransform'
+import type { DslFieldSpec as GeneratedDslFieldSpec } from '../generated/DslFieldSpec'
+import type { DslTypeSpec as GeneratedDslTypeSpec } from '../generated/DslTypeSpec'
+import type { DslValidateRequest as GeneratedDslValidateRequest } from '../generated/DslValidateRequest'
 
 export type { OnComplete, PostRunAction, PostRunCondition, PostRunSendEmail }
 
@@ -156,7 +161,7 @@ export const DslStringOperandConstSchema = z.object({
 export const DslStringOperandSchema = z.discriminatedUnion('kind', [
     DslStringOperandFieldSchema,
     DslStringOperandConstSchema,
-])
+]) satisfies z.ZodType<GeneratedStringOperand>
 
 export const DslToEmailSchema = z.object({
     type: z.literal('email'),
@@ -252,7 +257,7 @@ export const DslTransformSendEmailSchema = z.object({
     to: z.array(DslStringOperandSchema),
     cc: z.array(DslStringOperandSchema).optional(),
     target_status: z.string(),
-})
+}) satisfies z.ZodType<{ type: 'send_email' } & GeneratedSendEmailTransform>
 export const DslTransformSchema = z.discriminatedUnion('type', [
     DslTransformNoneSchema,
     DslTransformArithmeticSchema,
@@ -272,7 +277,7 @@ export const DslStepSchema = z.object({
 
 export const DslValidateRequestSchema = z.object({
     steps: z.array(DslStepSchema).min(DSL_STEPS_MIN_COUNT),
-})
+}) satisfies z.ZodType<GeneratedDslValidateRequest>
 
 export const DslValidateResponseSchema = z.object({
     valid: z.boolean(),
@@ -282,13 +287,13 @@ export const DslFieldSpecSchema = z.object({
     name: z.string(),
     type: z.string(),
     required: z.boolean(),
-    options: z.array(z.string()).optional(),
-})
+    options: z.array(z.string()).nullable(),
+}) satisfies z.ZodType<GeneratedDslFieldSpec>
 
 export const DslTypeSpecSchema = z.object({
     type: z.string(),
     fields: z.array(DslFieldSpecSchema),
-})
+}) satisfies z.ZodType<GeneratedDslTypeSpec>
 
 export type DslStep = z.infer<typeof DslStepSchema>
 export type DslValidateRequest = z.infer<typeof DslValidateRequestSchema>

@@ -2,16 +2,16 @@ import { env, buildApiUrl } from '@/env-check'
 import { useAuthStore } from '@/stores/auth'
 import { getRefreshToken } from '@/utils/cookies'
 import { ValidationErrorResponseSchema } from '@/types/schemas'
-import type { Meta } from '@/types/schemas'
+import type { Status, ResponseMeta } from '@/types/schemas'
 import { ValidationError } from '../http-client'
 import { HttpError, extractNamespaceFromEndpoint, extractActionFromMethod } from '../errors'
 
-// Define ApiResponse type for backward compatibility
-export type ApiResponse<T> = {
-    status: 'Success' | 'Error'
+// Generic envelope around every BE response. Status/meta shapes come from generated bindings.
+type ApiResponse<T> = {
+    status: Status
     message: string
     data?: T | null
-    meta?: Meta | null // Backend may return null
+    meta?: ResponseMeta | null
 }
 
 /**
@@ -322,22 +322,7 @@ export class BaseTypedHttpClient {
     protected async paginatedRequest<T>(
         endpoint: string,
         options: RequestInit = {}
-    ): Promise<{
-        data: T
-        meta?: {
-            pagination?: {
-                total: number
-                page: number
-                per_page: number
-                total_pages: number
-                has_previous: boolean
-                has_next: boolean
-            }
-            request_id?: string
-            timestamp?: string
-            custom?: unknown
-        }
-    }> {
+    ): Promise<{ data: T; meta?: ResponseMeta }> {
         const authToken = await this.ensureToken(endpoint)
         const config = this.buildConfig(authToken, options)
 
@@ -465,22 +450,7 @@ export class BaseTypedHttpClient {
         }
     }
 
-    protected validatePaginatedResponse<T>(rawData: unknown): {
-        data: T
-        meta?: {
-            pagination?: {
-                total: number
-                page: number
-                per_page: number
-                total_pages: number
-                has_previous: boolean
-                has_next: boolean
-            }
-            request_id?: string
-            timestamp?: string
-            custom?: unknown
-        }
-    } {
+    protected validatePaginatedResponse<T>(rawData: unknown): { data: T; meta?: ResponseMeta } {
         if (this.enableLogging && this.devMode) {
             console.log('[API] Response:', rawData)
         }

@@ -3,35 +3,14 @@ import type {
     DynamicEntity,
     EntityResponse,
     UpdateEntityRequest,
+    ResponseMeta,
 } from '@/types/schemas'
+import type { BrowseNode } from '@/types/generated/BrowseNode'
+import type { VersionMeta } from '@/types/generated/VersionMeta'
+import type { VersionPayload } from '@/types/generated/VersionPayload'
 import { BaseTypedHttpClient } from './base'
 
-type PathEntry = {
-    kind: 'folder' | 'file'
-    name: string
-    path: string
-    entity_uuid?: string | null
-    entity_type?: string | null
-    has_children?: boolean | null
-    published: boolean
-}
-
-type PaginatedPathResult = {
-    data: PathEntry[]
-    meta?: {
-        pagination?: {
-            total: number
-            page: number
-            per_page: number
-            total_pages: number
-            has_previous: boolean
-            has_next: boolean
-        }
-        request_id?: string
-        timestamp?: string
-        custom?: unknown
-    }
-}
+type PaginatedBrowseResult = { data: BrowseNode[]; meta?: ResponseMeta }
 
 export class EntitiesClient extends BaseTypedHttpClient {
     async getEntities(
@@ -39,22 +18,7 @@ export class EntitiesClient extends BaseTypedHttpClient {
         page = 1,
         itemsPerPage = 10,
         include?: string
-    ): Promise<{
-        data: DynamicEntity[]
-        meta?: {
-            pagination?: {
-                total: number
-                page: number
-                per_page: number
-                total_pages: number
-                has_previous: boolean
-                has_next: boolean
-            }
-            request_id?: string
-            timestamp?: string
-            custom?: unknown
-        }
-    }> {
+    ): Promise<{ data: DynamicEntity[]; meta?: ResponseMeta }> {
         const includeParam = include ? `&include=${include}` : ''
         return this.paginatedRequest<DynamicEntity[]>(
             `/api/v1/${entityType}?page=${page}&per_page=${itemsPerPage}${includeParam}`
@@ -65,16 +29,16 @@ export class EntitiesClient extends BaseTypedHttpClient {
         path: string,
         limit = this.getDefaultPageSize(),
         offset = 0
-    ): Promise<PaginatedPathResult> {
+    ): Promise<PaginatedBrowseResult> {
         const encoded = encodeURIComponent(path)
-        return this.paginatedRequest<PathEntry[]>(
+        return this.paginatedRequest<BrowseNode[]>(
             `/api/v1/entities/by-path?path=${encoded}&limit=${limit}&offset=${offset}`
         )
     }
 
-    async searchEntitiesByPath(searchTerm: string, limit = 10): Promise<PaginatedPathResult> {
+    async searchEntitiesByPath(searchTerm: string, limit = 10): Promise<PaginatedBrowseResult> {
         const encoded = encodeURIComponent(searchTerm)
-        return this.paginatedRequest<PathEntry[]>(
+        return this.paginatedRequest<BrowseNode[]>(
             `/api/v1/entities/by-path?search=${encoded}&limit=${limit}`
         )
     }
@@ -152,42 +116,19 @@ export class EntitiesClient extends BaseTypedHttpClient {
         })
     }
 
-    async listEntityVersions(
-        entityType: string,
-        uuid: string
-    ): Promise<
-        Array<{
-            version_number: number
-            created_at: string
-            created_by?: string | null
-            created_by_name?: string | null
-        }>
-    > {
-        return this.request<
-            Array<{
-                version_number: number
-                created_at: string
-                created_by?: string | null
-                created_by_name?: string | null
-            }>
-        >(`/api/v1/entities/${encodeURIComponent(entityType)}/${uuid}/versions`)
+    async listEntityVersions(entityType: string, uuid: string): Promise<VersionMeta[]> {
+        return this.request<VersionMeta[]>(
+            `/api/v1/entities/${encodeURIComponent(entityType)}/${uuid}/versions`
+        )
     }
 
     async getEntityVersion(
         entityType: string,
         uuid: string,
         versionNumber: number
-    ): Promise<{
-        version_number: number
-        created_at: string
-        created_by?: string | null
-        data: Record<string, unknown>
-    }> {
-        return this.request<{
-            version_number: number
-            created_at: string
-            created_by?: string | null
-            data: Record<string, unknown>
-        }>(`/api/v1/entities/${encodeURIComponent(entityType)}/${uuid}/versions/${versionNumber}`)
+    ): Promise<VersionPayload> {
+        return this.request<VersionPayload>(
+            `/api/v1/entities/${encodeURIComponent(entityType)}/${uuid}/versions/${versionNumber}`
+        )
     }
 }

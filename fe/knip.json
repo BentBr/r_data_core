@@ -1,0 +1,38 @@
+{
+    "$schema": "https://unpkg.com/knip@6/schema.json",
+    "entry": [
+        "src/env-check.ts",
+        "src/router/index.ts",
+        "src/api/typed-client.ts",
+        "src/api/clients/index.ts",
+        "src/types/schemas/index.ts",
+        "scripts/**/*.{js,ts}",
+        "src/**/*.test.{ts,vue}"
+    ],
+    "project": ["src/**/*.{ts,vue}", "e2e/**/*.ts"],
+    "paths": {
+        "@/*": ["./src/*"]
+    },
+    "rules": {
+        "files": "error",
+        "dependencies": "error",
+        "devDependencies": "error",
+        "exports": "error",
+        "types": "error",
+        "nsExports": "error",
+        "nsTypes": "error",
+        "enumMembers": "error",
+        "duplicates": "error",
+        "unlisted": "error",
+        "binaries": "off",
+        "unresolved": "error"
+    },
+    "ignoreDependencies": ["@vueuse/core", "@vitest/coverage-v8"],
+    "ignore": [
+        "src/design-system/**",
+        "src/types/generated/HealthData.ts",
+        "src/types/generated/DslOptionsAndExamplesResponse.ts",
+        "src/types/generated/validation.ts"
+    ],
+    "ignoreExportsUsedInFile": true
+}

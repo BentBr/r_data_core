@@ -3,20 +3,21 @@
 /**
  * Health check response data
  */
-export type HealthData = { 
-/**
- * Current date and time
- */
-date: string, 
-/**
- * Generated UUID for this health check
- */
-uuid: string, 
-/**
- * Route that was accessed
- */
-route: string, 
-/**
- * User agent that made the request
- */
-agent: string, };
+export type HealthData = {
+    /**
+     * Current date and time
+     */
+    date: string
+    /**
+     * Generated UUID for this health check
+     */
+    uuid: string
+    /**
+     * Route that was accessed
+     */
+    route: string
+    /**
+     * User agent that made the request
+     */
+    agent: string
+}

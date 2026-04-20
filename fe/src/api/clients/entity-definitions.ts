@@ -2,29 +2,18 @@ import type {
     EntityDefinition,
     CreateEntityDefinitionRequest,
     UpdateEntityDefinitionRequest,
+    ResponseMeta,
 } from '@/types/schemas'
+import type { ApplySchemaRequest } from '@/types/generated/ApplySchemaRequest'
+import type { EntityDefinitionVersionMeta } from '@/types/generated/EntityDefinitionVersionMeta'
+import type { EntityDefinitionVersionPayload } from '@/types/generated/EntityDefinitionVersionPayload'
 import { BaseTypedHttpClient } from './base'
 
 export class EntityDefinitionsClient extends BaseTypedHttpClient {
     async getEntityDefinitions(
         limit?: number,
         offset = 0
-    ): Promise<{
-        data: EntityDefinition[]
-        meta?: {
-            pagination?: {
-                total: number
-                page: number
-                per_page: number
-                total_pages: number
-                has_previous: boolean
-                has_next: boolean
-            }
-            request_id?: string
-            timestamp?: string
-            custom?: unknown
-        }
-    }> {
+    ): Promise<{ data: EntityDefinition[]; meta?: ResponseMeta }> {
         const pageSize = limit ?? this.getDefaultPageSize()
         return this.paginatedRequest<EntityDefinition[]>(
             `/admin/api/v1/entity-definitions?limit=${pageSize}&offset=${offset}`
@@ -60,9 +49,10 @@ export class EntityDefinitionsClient extends BaseTypedHttpClient {
 
     async applyEntityDefinitionSchema(uuid?: string): Promise<{ message: string }> {
         const endpoint = '/admin/api/v1/entity-definitions/apply-schema'
+        const body: ApplySchemaRequest = uuid ? { uuid } : {}
         return this.request<{ message: string }>(endpoint, {
             method: 'POST',
-            body: JSON.stringify({ uuid }),
+            body: JSON.stringify(body),
         })
     }
 
@@ -74,38 +64,18 @@ export class EntityDefinitionsClient extends BaseTypedHttpClient {
         >(`/admin/api/v1/entity-definitions/${encodeURIComponent(entityType)}/fields`)
     }
 
-    async listEntityDefinitionVersions(uuid: string): Promise<
-        Array<{
-            version_number: number
-            created_at: string
-            created_by?: string | null
-            created_by_name?: string | null
-        }>
-    > {
-        return this.request<
-            Array<{
-                version_number: number
-                created_at: string
-                created_by?: string | null
-                created_by_name?: string | null
-            }>
-        >(`/admin/api/v1/entity-definitions/${uuid}/versions`)
+    async listEntityDefinitionVersions(uuid: string): Promise<EntityDefinitionVersionMeta[]> {
+        return this.request<EntityDefinitionVersionMeta[]>(
+            `/admin/api/v1/entity-definitions/${uuid}/versions`
+        )
     }
 
     async getEntityDefinitionVersion(
         uuid: string,
         versionNumber: number
-    ): Promise<{
-        version_number: number
-        created_at: string
-        created_by?: string | null
-        data: Record<string, unknown>
-    }> {
-        return this.request<{
-            version_number: number
-            created_at: string
-            created_by?: string | null
-            data: Record<string, unknown>
-        }>(`/admin/api/v1/entity-definitions/${uuid}/versions/${versionNumber}`)
+    ): Promise<EntityDefinitionVersionPayload> {
+        return this.request<EntityDefinitionVersionPayload>(
+            `/admin/api/v1/entity-definitions/${uuid}/versions/${versionNumber}`
+        )
     }
 }

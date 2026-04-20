@@ -100,11 +100,16 @@ pub struct CreateUserRequest {
     /// Last name
     pub last_name: String,
     /// Role UUIDs to assign to this user (optional)
-    #[ts(type = "string[] | null")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional, type = "string[]")]
     pub role_uuids: Option<Vec<Uuid>>,
     /// Whether user is active
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub is_active: Option<bool>,
     /// Super admin flag
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub super_admin: Option<bool>,
 }
 
@@ -114,20 +119,33 @@ pub struct CreateUserRequest {
 pub struct UpdateUserRequest {
     /// Email address (optional)
     #[validate(regex(path = *EMAIL_RE))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub email: Option<String>,
     /// Password (optional, only set if provided)
     #[validate(length(min = 8))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub password: Option<String>,
     /// First name (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub first_name: Option<String>,
     /// Last name (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub last_name: Option<String>,
     /// Role UUIDs to assign to this user (optional)
-    #[ts(type = "string[] | null")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional, type = "string[]")]
     pub role_uuids: Option<Vec<Uuid>>,
     /// Whether user is active (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub is_active: Option<bool>,
     /// Super admin flag (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub super_admin: Option<bool>,
 }
 

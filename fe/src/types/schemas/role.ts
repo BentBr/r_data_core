@@ -1,7 +1,14 @@
 import { z } from 'zod'
 import { UuidSchema } from './base'
+import type { PermissionType as GeneratedPermissionType } from '../generated/PermissionType'
+import type { AccessLevel as GeneratedAccessLevel } from '../generated/AccessLevel'
+import type { ResourceNamespace as GeneratedResourceNamespace } from '../generated/ResourceNamespace'
+import type { PermissionResponse } from '../generated/PermissionResponse'
+import type { CreateRoleRequest as GeneratedCreateRoleRequest } from '../generated/CreateRoleRequest'
+import type { UpdateRoleRequest as GeneratedUpdateRoleRequest } from '../generated/UpdateRoleRequest'
+import type { AssignRolesRequest as GeneratedAssignRolesRequest } from '../generated/AssignRolesRequest'
 
-// Enums — aligned with generated AccessLevel and PermissionType
+// Enums — guarded against drift from generated unions via `satisfies`
 export const ResourceNamespaceSchema = z.enum([
     'Workflows',
     'Entities',
@@ -11,7 +18,7 @@ export const ResourceNamespaceSchema = z.enum([
     'Users',
     'System',
     'DashboardStats',
-])
+]) satisfies z.ZodType<GeneratedResourceNamespace>
 
 export const PermissionTypeSchema = z.enum([
     'Read',
@@ -21,40 +28,42 @@ export const PermissionTypeSchema = z.enum([
     'Publish',
     'Admin',
     'Execute',
-])
+]) satisfies z.ZodType<GeneratedPermissionType>
 
-export const AccessLevelSchema = z.enum(['None', 'Own', 'Group', 'All'])
+export const AccessLevelSchema = z.enum([
+    'None',
+    'Own',
+    'Group',
+    'All',
+]) satisfies z.ZodType<GeneratedAccessLevel>
 
-// Permission schema — used by form components for creating/updating roles
+// Permission schema — binds to generated PermissionResponse (constraints: unknown)
 export const PermissionSchema = z.object({
-    resource_type: z.string(), // ResourceNamespace as string
+    resource_type: z.string(),
     permission_type: PermissionTypeSchema,
     access_level: AccessLevelSchema,
     resource_uuids: z.array(UuidSchema),
-    constraints: z.record(z.string(), z.unknown()).nullish(),
-})
+    constraints: z.unknown(),
+}) satisfies z.ZodType<PermissionResponse>
 
-// Request schemas (form validation)
-// Note: satisfies z.ZodType<GeneratedCreateRoleRequest> not applied because the generated
-// type uses `PermissionResponse` (with `constraints: unknown`) while the Zod schema uses
-// `constraints: Record<string,unknown> | null | undefined` — structurally different.
+// Request schemas (form validation) — bind to generated types
 export const CreateRoleRequestSchema = z.object({
     name: z.string(),
-    description: z.string().nullable().optional(),
+    description: z.string().optional(),
     super_admin: z.boolean().optional(),
     permissions: z.array(PermissionSchema),
-})
+}) satisfies z.ZodType<GeneratedCreateRoleRequest>
 
 export const UpdateRoleRequestSchema = z.object({
     name: z.string(),
-    description: z.string().nullable().optional(),
+    description: z.string().optional(),
     super_admin: z.boolean().optional(),
     permissions: z.array(PermissionSchema),
-})
+}) satisfies z.ZodType<GeneratedUpdateRoleRequest>
 
 export const AssignRolesRequestSchema = z.object({
     role_uuids: z.array(UuidSchema),
-})
+}) satisfies z.ZodType<GeneratedAssignRolesRequest>
 
 // Type exports
 export type ResourceNamespace = z.infer<typeof ResourceNamespaceSchema>

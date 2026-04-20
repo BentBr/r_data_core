@@ -3,40 +3,41 @@
 /**
  * Single system log entry response
  */
-export type SystemLogDto = { 
-/**
- * Log entry UUID
- */
-uuid: string, 
-/**
- * When this log entry was created
- */
-created_at: string, 
-/**
- * UUID of the user that triggered the event (if known)
- */
-created_by: string | null, 
-/**
- * Status of the logged event
- */
-status: string, 
-/**
- * Type of log entry
- */
-log_type: string, 
-/**
- * Type of resource this log entry relates to
- */
-resource_type: string, 
-/**
- * UUID of the affected resource (if applicable)
- */
-resource_uuid: string | null, 
-/**
- * Short human-readable summary
- */
-summary: string, 
-/**
- * Optional structured details (JSONB)
- */
-details: unknown, };
+export type SystemLogDto = {
+    /**
+     * Log entry UUID
+     */
+    uuid: string
+    /**
+     * When this log entry was created
+     */
+    created_at: string
+    /**
+     * UUID of the user that triggered the event (if known)
+     */
+    created_by: string | null
+    /**
+     * Status of the logged event
+     */
+    status: string
+    /**
+     * Type of log entry
+     */
+    log_type: string
+    /**
+     * Type of resource this log entry relates to
+     */
+    resource_type: string
+    /**
+     * UUID of the affected resource (if applicable)
+     */
+    resource_uuid: string | null
+    /**
+     * Short human-readable summary
+     */
+    summary: string
+    /**
+     * Optional structured details (JSONB)
+     */
+    details: unknown
+}

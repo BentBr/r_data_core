@@ -381,6 +381,10 @@ jobs:
         working-directory: fe
         run: npm run lint
 
+      - name: Knip
+        working-directory: fe
+        run: npm run knip
+
   frontend-tests:
     needs: [changes, frontend-prepare]
     if: ${{ needs.changes.outputs.frontend == 'true' }}

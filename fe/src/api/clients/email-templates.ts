@@ -2,14 +2,14 @@ import { BaseTypedHttpClient } from './base'
 import type { EmailTemplateResponse } from '@/types/generated/EmailTemplateResponse'
 import type { CreateEmailTemplateRequest } from '@/types/generated/CreateEmailTemplateRequest'
 import type { UpdateEmailTemplateRequest } from '@/types/generated/UpdateEmailTemplateRequest'
-import type { EmailTemplateType } from '@/types/generated/EmailTemplateType'
+import type { EmailTemplateListQuery } from '@/types/generated/EmailTemplateListQuery'
 
 export type EmailTemplate = EmailTemplateResponse
 export type { CreateEmailTemplateRequest, UpdateEmailTemplateRequest }
 
 export class EmailTemplateClient extends BaseTypedHttpClient {
-    async list(type?: EmailTemplateType): Promise<EmailTemplate[]> {
-        const params = type ? `?type=${type}` : ''
+    async list(query: EmailTemplateListQuery = {}): Promise<EmailTemplate[]> {
+        const params = query.type ? `?type=${query.type}` : ''
         return this.request<EmailTemplate[]>(`/admin/api/v1/email-templates${params}`)
     }
 

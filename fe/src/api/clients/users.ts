@@ -1,5 +1,5 @@
 import type { UserResponse } from '@/types/generated/UserResponse'
-import type { CreateUserRequest, UpdateUserRequest } from '@/types/schemas'
+import type { CreateUserRequest, UpdateUserRequest, ResponseMeta } from '@/types/schemas'
 import { BaseTypedHttpClient } from './base'
 
 export class UsersClient extends BaseTypedHttpClient {
@@ -8,22 +8,7 @@ export class UsersClient extends BaseTypedHttpClient {
         itemsPerPage = 20,
         sortBy?: string | null,
         sortOrder?: 'asc' | 'desc' | null
-    ): Promise<{
-        data: UserResponse[]
-        meta?: {
-            pagination?: {
-                total: number
-                page: number
-                per_page: number
-                total_pages: number
-                has_previous: boolean
-                has_next: boolean
-            }
-            request_id?: string
-            timestamp?: string
-            custom?: unknown
-        }
-    }> {
+    ): Promise<{ data: UserResponse[]; meta?: ResponseMeta }> {
         let url = `/admin/api/v1/users?page=${page}&per_page=${itemsPerPage}`
         if (sortBy && sortOrder) {
             url += `&sort_by=${sortBy}&sort_order=${sortOrder}`

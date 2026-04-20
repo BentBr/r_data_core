@@ -89,6 +89,15 @@ docker pull ghcr.io/bentbr/r-data-core-worker:latest
 docker pull ghcr.io/bentbr/r-data-core-maintenance:latest
 ```
 
+### Example deployments
+
+Runnable example setups for deploying RDataCore to common targets live in [`docs/examples/`](./docs/examples/):
+
+- **[Docker Compose](./docs/examples/docker-compose/)** — single-host deployment using pre-built images from GHCR.
+- **[Kubernetes + Longhorn](./docs/examples/kubernetes/)** — namespace-scoped manifests with Longhorn-backed persistent storage, Ingress, HPA, and a migrations Job.
+
+> These are **examples only, with no warranty**. Review before adapting to your environment.
+
 ## Configuration
 
 ### Required Environment Variables

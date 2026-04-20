@@ -11,8 +11,8 @@ use uuid::Uuid;
 #[ts(export)]
 pub struct EmailTemplateListQuery {
     /// Filter by template type: "system" or "workflow"
-    #[serde(rename = "type")]
-    #[ts(type = "string | null")]
+    #[serde(default, rename = "type", skip_serializing_if = "Option::is_none")]
+    #[ts(optional, rename = "type")]
     pub template_type: Option<EmailTemplateType>,
 }
 
@@ -40,6 +40,8 @@ pub struct CreateEmailTemplateRequest {
 #[ts(export)]
 pub struct UpdateEmailTemplateRequest {
     /// New display name (only honoured for workflow templates)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub name: Option<String>,
     /// Updated subject line
     pub subject_template: String,
