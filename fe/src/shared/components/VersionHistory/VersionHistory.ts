@@ -54,3 +54,5 @@ export default defineComponent({
         }
     },
 })
+
+export type VersionHistoryInstance = InstanceType<typeof import('./VersionHistory').default>

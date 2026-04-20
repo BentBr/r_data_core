@@ -5,7 +5,7 @@ import { ValidationError } from '@/api/typed-client'
 import { getDialogMaxWidth } from '@/design-system/components'
 import DslConfigurator from '../DslConfigurator/index.vue'
 import WorkflowFormFields from '../WorkflowFormFields/index.vue'
-import VersionHistory from '@/shared/components/VersionHistory/index.vue'
+import VersionHistory, { type VersionHistoryInstance } from '@/shared/components/VersionHistory/VersionHistory'
 import { useTranslations } from '@/shared/composables/useTranslations'
 import { computeDiffRows } from '@/utils/versionDiff'
 import type { DslStep } from '../dsl/dsl-utils'
@@ -50,7 +50,7 @@ export default defineComponent({
                 created_by_name?: string | null
             }>
         >([])
-        const versionHistoryRef = ref<InstanceType<typeof VersionHistory>>()
+        const versionHistoryRef = ref<VersionHistoryInstance>()
 
         const form = ref({
             name: '',

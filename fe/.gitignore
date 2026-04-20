@@ -30,6 +30,9 @@ dist-ssr
 .env.test.local
 .env.production.local
 
+# Auto-generated type definitions
+src/types/components.d.ts
+
 # Playwright
 e2e/test-results/
 e2e/playwright-report/

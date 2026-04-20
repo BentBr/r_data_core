@@ -81,7 +81,23 @@ if (env.isDevelopment) {
     checkEnvironmentVariables()
 }
 
+import { useTranslations } from '@/shared/composables/useTranslations'
+import { useSnackbar } from '@/shared/composables/useSnackbar'
+import { useErrorHandler } from '@/shared/composables/useErrorHandler'
+
 const app = createApp(App)
+
+// Initialize core composables for global availability
+const { t } = useTranslations()
+const { currentSnackbar, showSuccess, showError } = useSnackbar()
+const { handleError } = useErrorHandler()
+
+// Register global properties (available in templates as $t, etc.)
+app.config.globalProperties.$t = t
+app.config.globalProperties.$snackbar = currentSnackbar
+app.config.globalProperties.$showSuccess = showSuccess
+app.config.globalProperties.$showError = showError
+app.config.globalProperties.$handleError = handleError
 
 app.use(createPinia())
 app.use(router)

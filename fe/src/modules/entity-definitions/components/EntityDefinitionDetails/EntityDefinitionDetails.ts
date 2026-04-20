@@ -3,7 +3,7 @@ import { useTranslations } from '@/shared/composables/useTranslations'
 import EntityDefinitionMetaInfo from '../EntityDefinitionMetaInfo/index.vue'
 import EntityDefinitionFields from '../EntityDefinitionFields/index.vue'
 import SmartIcon from '@/shared/components/SmartIcon/index.vue'
-import VersionHistory from '@/shared/components/VersionHistory/index.vue'
+import VersionHistory, { type VersionHistoryInstance } from '@/shared/components/VersionHistory/VersionHistory'
 import type { EntityDefinition } from '@/types/schemas'
 import { typedHttpClient } from '@/api/typed-client'
 import { computeDiffRows } from '@/utils/versionDiff'
@@ -26,7 +26,7 @@ export default defineComponent({
         const { t } = useTranslations()
         const activeTab = ref('meta')
         const versions = ref<Array<{ version_number: number, created_at: string, created_by?: string | null, created_by_name?: string | null }>>([])
-        const versionHistoryRef = ref<InstanceType<typeof VersionHistory>>()
+        const versionHistoryRef = ref<VersionHistoryInstance>()
 
         const loadVersions = async () => {
             if (!props.definition?.uuid) return

@@ -2,7 +2,7 @@ import { ref, watch, defineComponent, PropType } from 'vue'
 import JsonEditorVue from 'json-editor-vue'
 import { useTranslations } from '@/shared/composables/useTranslations'
 import SmartIcon from '@/shared/components/SmartIcon/index.vue'
-import VersionHistory from '@/shared/components/VersionHistory/index.vue'
+import VersionHistory, { type VersionHistoryInstance } from '@/shared/components/VersionHistory/VersionHistory'
 import type { DynamicEntity, EntityDefinition } from '@/types/schemas'
 import { typedHttpClient } from '@/api/typed-client'
 import { computeDiffRows } from '@/utils/versionDiff'
@@ -56,7 +56,7 @@ export default defineComponent({
                 created_by_name?: string | null
             }>
         >([])
-        const versionHistoryRef = ref<InstanceType<typeof VersionHistory>>()
+        const versionHistoryRef = ref<VersionHistoryInstance>()
 
         const loadVersions = async () => {
             if (!props.entity) return

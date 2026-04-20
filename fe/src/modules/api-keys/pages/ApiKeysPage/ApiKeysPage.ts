@@ -7,29 +7,9 @@ import { useSnackbar } from '@/shared/composables/useSnackbar'
 import { useErrorHandler } from '@/shared/composables/useErrorHandler'
 import { usePagination } from '@/shared/composables/usePagination'
 import type { ApiKey, CreateApiKeyRequest } from '@/types/schemas'
-import ApiKeyCreateDialog from '@/modules/api-keys/components/ApiKeyCreateDialog/index.vue'
-import ApiKeyViewDialog from '@/modules/api-keys/components/ApiKeyViewDialog/index.vue'
-import ApiKeyCreatedDialog from '@/modules/api-keys/components/ApiKeyCreatedDialog/index.vue'
-import DialogManager from '@/shared/components/DialogManager/index.vue'
-import SnackbarManager from '@/shared/components/SnackbarManager/index.vue'
-import PaginatedDataTable from '@/shared/tables/PaginatedDataTable/index.vue'
-import PageLayout from '@/shared/components/PageLayout/index.vue'
-import SmartIcon from '@/shared/components/SmartIcon/index.vue'
-import Badge from '@/shared/components/Badge/index.vue'
 
 export default defineComponent({
     name: 'ApiKeysPage',
-    components: {
-        ApiKeyCreateDialog,
-        ApiKeyViewDialog,
-        ApiKeyCreatedDialog,
-        DialogManager,
-        SnackbarManager,
-        PaginatedDataTable,
-        PageLayout,
-        SmartIcon,
-        Badge,
-    },
     setup() {
         const authStore = useAuthStore()
         const route = useRoute()

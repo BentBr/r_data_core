@@ -51,6 +51,7 @@
         "sass-embedded": "^1.99.0",
         "sharp": "^0.33.5",
         "typescript": "~5.4.3",
+        "unplugin-vue-components": "^0.27.5",
         "vite": "^6.3.5",
         "vite-plugin-vuetify": "^2.1.2",
         "vitest": "^3.2.4",

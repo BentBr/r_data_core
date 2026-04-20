@@ -43,7 +43,7 @@ describe('MappingEditor', () => {
             },
         })
 
-        const component = wrapper.vm as { addEmptyPair: () => void }
+        const component = wrapper.vm as unknown as { addEmptyPair: () => void }
         component.addEmptyPair()
         await nextTick()
 
@@ -206,7 +206,7 @@ describe('MappingEditor', () => {
         })
 
         // Add a pair
-        const component = wrapper.vm as { addEmptyPair: () => void }
+        const component = wrapper.vm as unknown as { addEmptyPair: () => void }
         component.addEmptyPair()
         await nextTick()
 
@@ -237,7 +237,7 @@ describe('MappingEditor', () => {
         })
 
         // Add empty pair
-        const component = wrapper.vm as { addEmptyPair: () => void }
+        const component = wrapper.vm as unknown as { addEmptyPair: () => void }
         component.addEmptyPair()
         await nextTick()
 

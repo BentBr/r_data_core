@@ -309,14 +309,15 @@ describe('useFieldRendering', () => {
             const { formatFieldValue } = useFieldRendering()
             const date = '2024-01-15'
             const formatted = formatFieldValue(date, 'Date')
-            expect(formatted).toMatch(/1\/15\/2024|15\/1\/2024/) // Locale-dependent
+            // Accept both US (MM/DD/YYYY) and European/Local (DD.MM.YYYY) formats
+            expect(formatted).toMatch(/1\/15\/2024|15\/1\/2024|15\.1\.2024/) // Locale-dependent
         })
 
         it('should format DateTime values', () => {
             const { formatFieldValue } = useFieldRendering()
             const dateTime = '2024-01-15T10:30:00'
             const formatted = formatFieldValue(dateTime, 'DateTime')
-            expect(formatted).toMatch(/1\/15\/2024|15\/1\/2024/)
+            expect(formatted).toMatch(/1\/15\/2024|15\/1\/2024|15\.1\.2024/)
         })
 
         it('should format Time values', () => {

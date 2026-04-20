@@ -103,7 +103,7 @@ describe('EditWorkflowDialog', () => {
             await nextTick()
             await new Promise(resolve => setTimeout(resolve, 200)) // Wait for loadDetails
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
             }
@@ -153,7 +153,7 @@ describe('EditWorkflowDialog', () => {
             await nextTick()
             await new Promise(resolve => setTimeout(resolve, 200)) // Wait for loadDetails
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
             }
@@ -211,7 +211,7 @@ describe('EditWorkflowDialog', () => {
             await nextTick()
             await new Promise(resolve => setTimeout(resolve, 200)) // Wait for loadDetails
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
             }
@@ -243,7 +243,7 @@ describe('EditWorkflowDialog', () => {
             await nextTick()
             await new Promise(resolve => setTimeout(resolve, 200)) // Wait for loadDetails
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
             }
@@ -267,7 +267,7 @@ describe('EditWorkflowDialog', () => {
             await nextTick()
             await new Promise(resolve => setTimeout(resolve, 200)) // Wait for loadDetails
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
                 submit: () => Promise<void>
@@ -327,7 +327,7 @@ describe('EditWorkflowDialog', () => {
             await nextTick()
             await new Promise(resolve => setTimeout(resolve, 200)) // Wait for loadDetails
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
             }
@@ -388,7 +388,7 @@ describe('EditWorkflowDialog', () => {
             await nextTick()
             await new Promise(resolve => setTimeout(resolve, 200)) // Wait for loadDetails
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
             }
@@ -413,7 +413,7 @@ describe('EditWorkflowDialog', () => {
             await nextTick()
             await new Promise(resolve => setTimeout(resolve, 200)) // Wait for loadDetails
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
             }

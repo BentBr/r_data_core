@@ -97,7 +97,8 @@ describe('EntityDefinitionMetaInfo', () => {
         })
 
         // Check that dates are formatted (should show as local date)
-        expect(wrapper.text()).toContain('1/1/2024') // Local date format
+        const text = wrapper.text()
+        expect(text.includes('1/1/2024') || text.includes('1.1.2024')).toBe(true) // Local date format
     })
 
     it('shows published status correctly', () => {

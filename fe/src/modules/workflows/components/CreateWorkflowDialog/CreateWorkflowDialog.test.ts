@@ -67,7 +67,7 @@ describe('CreateWorkflowDialog', () => {
             },
         ]
         // Set steps directly via exposed API
-        const vm = wrapper.vm as {
+        const vm = wrapper.vm as unknown as {
             steps: DslStep[]
             submit: () => Promise<void>
         }
@@ -86,7 +86,7 @@ describe('CreateWorkflowDialog', () => {
             props: { modelValue: true },
         })
         // Trigger submit without providing steps/DSL
-        const vm = wrapper.vm as {
+        const vm = wrapper.vm as unknown as {
             submit: () => Promise<void>
             configError?: string
             configJson: string
@@ -132,7 +132,7 @@ describe('CreateWorkflowDialog', () => {
                 },
             },
         ]
-        const vm = wrapper.vm as {
+        const vm = wrapper.vm as unknown as {
             steps: DslStep[]
             hasApiSource?: boolean
         }
@@ -189,7 +189,7 @@ describe('CreateWorkflowDialog', () => {
                 },
             },
         ]
-        const vm = wrapper.vm as {
+        const vm = wrapper.vm as unknown as {
             steps: DslStep[]
             hasApiSource?: boolean
         }
@@ -406,7 +406,7 @@ describe('CreateWorkflowDialog', () => {
                 props: { modelValue: true },
             })
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
             }
@@ -459,7 +459,7 @@ describe('CreateWorkflowDialog', () => {
                 props: { modelValue: true },
             })
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
             }
@@ -517,7 +517,7 @@ describe('CreateWorkflowDialog', () => {
                 props: { modelValue: true },
             })
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
             }
@@ -566,7 +566,7 @@ describe('CreateWorkflowDialog', () => {
                 props: { modelValue: true },
             })
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
             }
@@ -615,7 +615,7 @@ describe('CreateWorkflowDialog', () => {
                 props: { modelValue: true },
             })
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
             }
@@ -634,7 +634,7 @@ describe('CreateWorkflowDialog', () => {
                 props: { modelValue: true },
             })
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
             }
@@ -655,7 +655,7 @@ describe('CreateWorkflowDialog', () => {
                 props: { modelValue: true },
             })
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
             }
@@ -713,7 +713,7 @@ describe('CreateWorkflowDialog', () => {
                 props: { modelValue: true },
             })
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
                 submit: () => Promise<void>
@@ -775,7 +775,7 @@ describe('CreateWorkflowDialog', () => {
                 props: { modelValue: true },
             })
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
             }
@@ -822,7 +822,7 @@ describe('CreateWorkflowDialog', () => {
                 props: { modelValue: true },
             })
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
             }
@@ -843,7 +843,7 @@ describe('CreateWorkflowDialog', () => {
                 props: { modelValue: true },
             })
 
-            const vm = wrapper.vm as {
+            const vm = wrapper.vm as unknown as {
                 steps: DslStep[]
                 configJson: string
             }
