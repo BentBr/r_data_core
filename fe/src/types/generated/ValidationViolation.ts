@@ -15,5 +15,5 @@ export type ValidationViolation = {
     /**
      * Optional error code (e.g., `"NOT_BLANK"`, `"NOT_NULL"`)
      */
-    code?: string
+    code: string | null
 }

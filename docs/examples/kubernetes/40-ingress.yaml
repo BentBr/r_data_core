@@ -6,6 +6,8 @@ metadata:
     annotations:
         # Uncomment and adjust for cert-manager:
         # cert-manager.io/cluster-issuer: letsencrypt-prod
+        # ingress-nginx-specific — other controllers (Traefik, HAProxy, AWS LB)
+        # expose body-size limits under different annotation keys. Translate as needed.
         nginx.ingress.kubernetes.io/proxy-body-size: "16m"
 spec:
     ingressClassName: nginx

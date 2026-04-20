@@ -90,6 +90,7 @@ describe('useUsers', () => {
             password: 'password123',
             first_name: 'New',
             last_name: 'User',
+            role_uuids: null,
             is_active: true,
             super_admin: false,
         }
@@ -124,8 +125,11 @@ describe('useUsers', () => {
     it('should update a user successfully', async () => {
         const updateData: UpdateUserRequest = {
             email: 'updated@example.com',
+            password: null,
             first_name: 'Updated',
             last_name: 'Name',
+            role_uuids: null,
+            is_active: null,
             super_admin: true,
         }
 
@@ -178,6 +182,7 @@ describe('useUsers', () => {
                 password: 'password123',
                 first_name: 'New',
                 last_name: 'User',
+                role_uuids: null,
                 is_active: true,
                 super_admin: false,
             }
@@ -194,8 +199,12 @@ describe('useUsers', () => {
         it('should handle 403 error when updating user', async () => {
             const updateData: UpdateUserRequest = {
                 email: 'updated@example.com',
+                password: null,
                 first_name: 'Updated',
                 last_name: 'Name',
+                role_uuids: null,
+                is_active: null,
+                super_admin: null,
             }
 
             const error = new Error('HTTP 403: Forbidden')
@@ -280,6 +289,7 @@ describe('useUsers', () => {
                 password: 'password123',
                 first_name: 'New',
                 last_name: 'User',
+                role_uuids: null,
                 is_active: true,
                 super_admin: false,
             }
@@ -314,6 +324,12 @@ describe('useUsers', () => {
         it('should show success message when updating user', async () => {
             const updateData: UpdateUserRequest = {
                 email: 'updated@example.com',
+                password: null,
+                first_name: null,
+                last_name: null,
+                role_uuids: null,
+                is_active: null,
+                super_admin: null,
             }
 
             const mockUser: UserResponse = {

@@ -233,6 +233,9 @@ describe('UsersClient', () => {
                 password: 'securepassword123',
                 first_name: 'New',
                 last_name: 'User',
+                role_uuids: null,
+                is_active: null,
+                super_admin: null,
             }
 
             const mockResponse = {
@@ -272,6 +275,9 @@ describe('UsersClient', () => {
                 password: '123',
                 first_name: 'New',
                 last_name: 'User',
+                role_uuids: null,
+                is_active: null,
+                super_admin: null,
             }
 
             mockFetch.mockResolvedValueOnce({
@@ -289,7 +295,12 @@ describe('UsersClient', () => {
         it('should update a user successfully', async () => {
             const request: UpdateUserRequest = {
                 email: 'updated@example.com',
+                password: null,
                 first_name: 'Updated',
+                last_name: null,
+                role_uuids: null,
+                is_active: null,
+                super_admin: null,
             }
 
             const mockResponse = {
@@ -323,6 +334,12 @@ describe('UsersClient', () => {
         it('should handle 404 error when updating non-existent user', async () => {
             const request: UpdateUserRequest = {
                 email: 'updated@example.com',
+                password: null,
+                first_name: null,
+                last_name: null,
+                role_uuids: null,
+                is_active: null,
+                super_admin: null,
             }
 
             mockFetch.mockResolvedValueOnce({

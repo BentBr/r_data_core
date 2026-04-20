@@ -84,8 +84,8 @@
     const createFormValid = ref(false)
     const createForm = ref<CreateApiKeyRequest>({
         name: '',
-        description: '',
-        expires_in_days: undefined,
+        description: null,
+        expires_in_days: null,
     })
 
     // Refs for form validation
@@ -106,8 +106,8 @@
     const resetForm = () => {
         createForm.value = {
             name: '',
-            description: '',
-            expires_in_days: undefined,
+            description: null,
+            expires_in_days: null,
         }
         createFormValid.value = false
     }
@@ -124,8 +124,8 @@
         // Create a clean object without circular references
         const requestData: CreateApiKeyRequest = {
             name: createForm.value.name,
-            description: createForm.value.description ?? undefined,
-            expires_in_days: createForm.value.expires_in_days ?? undefined,
+            description: createForm.value.description ?? null,
+            expires_in_days: createForm.value.expires_in_days ?? null,
         }
 
         emit('create', requestData)

@@ -44,8 +44,9 @@ If your storage class has a different name, either edit the PVCs in `10-postgres
 ```bash
 cp 02-secret.yaml.example 02-secret.yaml
 # Edit 02-secret.yaml: replace the placeholder values with real secrets.
-# Ensure DATABASE_URL embeds the same POSTGRES_PASSWORD.
 ```
+
+> **⚠️ Password coupling:** `DATABASE_URL` in the Secret embeds `POSTGRES_PASSWORD` directly. Any time you rotate the Postgres password you must update **both** `POSTGRES_PASSWORD` and the password portion of `DATABASE_URL` in the same Secret, then re-apply and roll the core/worker/maintenance Deployments. Forgetting one leaves the stack in a broken state. If you dislike this coupling, split `DATABASE_URL` into components (host, port, db, user, password) and compose it at runtime in your own wrapper.
 
 Alternatively, create the Secret imperatively — see the header of `02-secret.yaml.example` for the `kubectl create secret` command. If you use the imperative route, you do NOT apply `02-secret.yaml` in the next step.
 
@@ -94,6 +95,13 @@ kubectl -n rdatacore logs deploy/rdatacore-core
 kubectl -n rdatacore exec -it sts/postgres -- psql -U rdatacore -d rdata -c '\dt'
 ```
 
+Hit the health endpoint from inside the cluster (bypasses the Ingress):
+
+```bash
+kubectl -n rdatacore run curl --rm -it --image=curlimages/curl --restart=Never -- \
+  curl -sf http://rdatacore-core.rdatacore.svc.cluster.local:8888/api/v1/health
+```
+
 Once your DNS points at the Ingress and TLS is configured:
 
 ```bash
@@ -130,3 +138,4 @@ This deletes all Deployments/StatefulSets/Services. Longhorn PVs are governed by
 - **No backup** is configured for the Postgres PVC. Use `pgBackRest`, Velero, or another tool as appropriate.
 - **Resource limits** are starting points. Tune based on your workload and node sizing.
 - **Maintenance is a Deployment, not a CronJob**, because the maintenance binary owns its schedule. `strategy: Recreate` prevents two replicas running simultaneously during rollouts.
+- **Only the core Deployment has a PodDisruptionBudget.** Worker and maintenance run as single replicas (stateless queue consumer and cron singleton respectively), so a PDB would just block node drains. Scale worker horizontally if you need resilience there, and add a PDB at that point.

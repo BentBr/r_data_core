@@ -7,8 +7,8 @@ import { API_KEY_NAME_MIN_LENGTH } from '../generated/validation'
 // Create API key request schema (form validation)
 export const CreateApiKeyRequestSchema = z.object({
     name: z.string().min(API_KEY_NAME_MIN_LENGTH),
-    description: z.string().optional(),
-    expires_in_days: z.number().int().positive().optional(),
+    description: z.string().nullable(),
+    expires_in_days: z.number().int().positive().nullable(),
 }) satisfies z.ZodType<GeneratedCreateApiKeyRequest>
 
 export const ReassignApiKeyRequestSchema = z.object({

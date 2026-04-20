@@ -142,12 +142,12 @@
 
     const formData = ref<{
         name: string
-        description: string | undefined
+        description: string | null
         permissions: Permission[]
         super_admin: boolean
     }>({
         name: '',
-        description: undefined,
+        description: null,
         permissions: [],
         super_admin: false,
     })
@@ -164,14 +164,14 @@
                 if (props.editingRole) {
                     formData.value = {
                         name: props.editingRole.name,
-                        description: props.editingRole.description ?? undefined,
+                        description: props.editingRole.description ?? null,
                         permissions: JSON.parse(JSON.stringify(props.editingRole.permissions)),
                         super_admin: props.editingRole.super_admin,
                     }
                 } else {
                     formData.value = {
                         name: '',
-                        description: undefined,
+                        description: null,
                         permissions: [],
                         super_admin: false,
                     }

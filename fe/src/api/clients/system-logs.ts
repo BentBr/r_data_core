@@ -11,7 +11,18 @@ export interface SystemLogListResult {
 }
 
 export class SystemLogClient extends BaseTypedHttpClient {
-    async list(params: SystemLogQuery = {}): Promise<SystemLogListResult> {
+    async list(
+        params: SystemLogQuery = {
+            page: null,
+            page_size: null,
+            log_type: null,
+            resource_type: null,
+            status: null,
+            resource_uuid: null,
+            date_from: null,
+            date_to: null,
+        }
+    ): Promise<SystemLogListResult> {
         const query = new URLSearchParams()
         if (params.page) query.set('page', String(params.page))
         if (params.page_size) query.set('page_size', String(params.page_size))

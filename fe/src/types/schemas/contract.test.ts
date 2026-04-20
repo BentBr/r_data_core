@@ -113,6 +113,9 @@ describe('Generated type contract tests', () => {
                 password: 'securepassword123',
                 first_name: 'New',
                 last_name: 'User',
+                role_uuids: null,
+                is_active: null,
+                super_admin: null,
             })
             expect(fixture.username).toBeTruthy()
         })
@@ -194,6 +197,7 @@ describe('Generated type contract tests', () => {
         it('CreateApiKeyRequest matches expected request shape', () => {
             const fixture = assertType<CreateApiKeyRequest>({
                 name: 'Test Key',
+                description: null,
                 expires_in_days: 365,
             })
             expect(fixture.name).toBe('Test Key')
@@ -317,6 +321,7 @@ describe('Generated type contract tests', () => {
             const fixture = assertType<ValidationViolation>({
                 field: 'email',
                 message: 'Invalid email format',
+                code: null,
             })
             expect(fixture.field).toBe('email')
         })

@@ -7,29 +7,29 @@ export type UpdateUserRequest = {
     /**
      * Email address (optional)
      */
-    email?: string
+    email: string | null
     /**
      * Password (optional, only set if provided)
      */
-    password?: string
+    password: string | null
     /**
      * First name (optional)
      */
-    first_name?: string
+    first_name: string | null
     /**
      * Last name (optional)
      */
-    last_name?: string
+    last_name: string | null
     /**
      * Role UUIDs to assign to this user (optional)
      */
-    role_uuids?: string[]
+    role_uuids: string[] | null
     /**
      * Whether user is active (optional)
      */
-    is_active?: boolean
+    is_active: boolean | null
     /**
      * Super admin flag (optional)
      */
-    super_admin?: boolean
+    super_admin: boolean | null
 }

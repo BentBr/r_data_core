@@ -25,7 +25,7 @@ export const TimestampSchema = z.string().refine(
 export const ValidationViolationSchema = z.object({
     field: z.string(),
     message: z.string(),
-    code: z.string().optional(),
+    code: z.string().nullable(),
 }) satisfies z.ZodType<ValidationViolation>
 
 export const ValidationErrorResponseSchema = z.object({

@@ -113,6 +113,7 @@ describe('useRoles', () => {
             const updateData: UpdateRoleRequest = {
                 name: 'Updated Role',
                 description: 'Updated description',
+                super_admin: null,
                 permissions: [],
             }
 
@@ -178,6 +179,7 @@ describe('useRoles', () => {
             const updateData: UpdateRoleRequest = {
                 name: 'Updated Role',
                 description: 'Updated description',
+                super_admin: null,
                 permissions: [],
             }
 
@@ -224,9 +226,10 @@ describe('useRoles', () => {
             await expect(
                 createRole({
                     name: 'Test Role',
+                    description: null,
                     permissions: [],
                     super_admin: false,
-                } as CreateRoleRequest)
+                })
             ).rejects.toThrow('HTTP 403: Forbidden')
             expect(mockHandleError).toHaveBeenCalled()
         })

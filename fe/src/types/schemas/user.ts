@@ -22,20 +22,20 @@ export const CreateUserRequestSchema = z.object({
     password: z.string().min(PASSWORD_MIN_LENGTH),
     first_name: z.string(),
     last_name: z.string(),
-    role_uuids: z.array(UuidSchema).optional(),
-    is_active: z.boolean().optional(),
-    super_admin: z.boolean().optional(),
+    role_uuids: z.array(UuidSchema).nullable(),
+    is_active: z.boolean().nullable(),
+    super_admin: z.boolean().nullable(),
 }) satisfies z.ZodType<GeneratedCreateUserRequest>
 
 // Update user request schema (form validation)
 export const UpdateUserRequestSchema = z.object({
-    email: emailValidation.optional(),
-    password: z.string().min(PASSWORD_MIN_LENGTH).optional(),
-    first_name: z.string().optional(),
-    last_name: z.string().optional(),
-    role_uuids: z.array(UuidSchema).optional(),
-    is_active: z.boolean().optional(),
-    super_admin: z.boolean().optional(),
+    email: emailValidation.nullable(),
+    password: z.string().min(PASSWORD_MIN_LENGTH).nullable(),
+    first_name: z.string().nullable(),
+    last_name: z.string().nullable(),
+    role_uuids: z.array(UuidSchema).nullable(),
+    is_active: z.boolean().nullable(),
+    super_admin: z.boolean().nullable(),
 }) satisfies z.ZodType<GeneratedUpdateUserRequest>
 
 // Type exports — re-exported from generated for consumers that only need types

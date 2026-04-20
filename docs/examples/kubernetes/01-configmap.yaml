@@ -11,9 +11,9 @@ data:
     RUST_LOG: "info"
     LOG_LEVEL: "info"
     CACHE_ENABLED: "true"
-    CACHE_TTL: "300"
+    CACHE_TTL: "300"            # 5 minutes
     CORS_ORIGINS: "*"
-    JWT_EXPIRATION: "86400"
+    JWT_EXPIRATION: "86400"     # 24 hours
     QUEUE_FETCH_KEY: "queue:workflows:fetch"
     QUEUE_PROCESS_KEY: "queue:workflows:process"
     QUEUE_EMAIL_KEY: "queue:email"

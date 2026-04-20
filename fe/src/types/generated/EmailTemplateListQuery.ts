@@ -8,5 +8,5 @@ export type EmailTemplateListQuery = {
     /**
      * Filter by template type: "system" or "workflow"
      */
-    type?: EmailTemplateType
+    type: EmailTemplateType | null
 }

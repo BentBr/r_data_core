@@ -190,36 +190,30 @@ pub struct CapabilitiesResponse {
 #[ts(export)]
 pub struct SystemLogQuery {
     /// Page number (1-based, default: 1)
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional, type = "number")]
+    #[serde(default)]
+    #[ts(type = "number | null")]
     pub page: Option<i64>,
     /// Items per page (default: 20, max: 100)
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional, type = "number")]
+    #[serde(default)]
+    #[ts(type = "number | null")]
     pub page_size: Option<i64>,
     /// Filter by log type
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
+    #[serde(default)]
     pub log_type: Option<SystemLogType>,
     /// Filter by resource type
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
+    #[serde(default)]
     pub resource_type: Option<SystemLogResourceType>,
     /// Filter by status
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
+    #[serde(default)]
     pub status: Option<SystemLogStatus>,
     /// Filter by resource UUID
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
+    #[serde(default)]
     pub resource_uuid: Option<String>,
     /// Filter logs created after this timestamp (ISO 8601)
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
+    #[serde(default)]
     pub date_from: Option<String>,
     /// Filter logs created before this timestamp (ISO 8601)
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
+    #[serde(default)]
     pub date_to: Option<String>,
 }
 

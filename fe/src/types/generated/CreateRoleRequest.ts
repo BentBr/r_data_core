@@ -12,11 +12,11 @@ export type CreateRoleRequest = {
     /**
      * Optional description
      */
-    description?: string
+    description: string | null
     /**
      * Whether this role grants super admin privileges
      */
-    super_admin?: boolean
+    super_admin: boolean | null
     /**
      * Direct permissions for this role
      */

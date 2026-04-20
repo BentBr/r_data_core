@@ -42,6 +42,16 @@ spec:
                                 secretKeyRef:
                                     name: rdatacore-secrets
                                     key: DATABASE_URL
+                    # Maintenance is not an HTTP service — liveness check confirms
+                    # the Rust process is still running. Same rationale as the
+                    # worker Deployment.
+                    livenessProbe:
+                        exec:
+                            command: [ "pgrep", "r_data_core" ]
+                        initialDelaySeconds: 30
+                        periodSeconds: 30
+                        timeoutSeconds: 5
+                        failureThreshold: 3
                     resources:
                         requests:
                             cpu: "100m"

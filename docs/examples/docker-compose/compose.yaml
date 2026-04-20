@@ -37,7 +37,7 @@ services:
                 condition: service_healthy
         entrypoint: [ "/usr/local/bin/run_migrations" ]
         environment:
-            DATABASE_URL: postgres://rdatacore:${POSTGRES_PASSWORD}@postgres:5432/rdata
+            DATABASE_URL: postgres://rdatacore:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@postgres:5432/rdata
         profiles: [ "migrate" ]
 
     core:

@@ -38,6 +38,17 @@ spec:
                                 secretKeyRef:
                                     name: rdatacore-secrets
                                     key: DATABASE_URL
+                    # Worker is not an HTTP service — liveness check confirms the
+                    # Rust process is still PID 1. Not a deep health probe, but
+                    # enough for kubelet to restart the pod if the binary crashes
+                    # into an unresponsive state without exiting.
+                    livenessProbe:
+                        exec:
+                            command: [ "pgrep", "r_data_core" ]
+                        initialDelaySeconds: 30
+                        periodSeconds: 30
+                        timeoutSeconds: 5
+                        failureThreshold: 3
                     resources:
                         requests:
                             cpu: "250m"

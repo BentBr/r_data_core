@@ -220,6 +220,7 @@
             type: 'send_email',
             template_uuid: '',
             to: [],
+            cc: null,
             condition: 'always',
         }
         emitUpdated([...actions.value, newAction])

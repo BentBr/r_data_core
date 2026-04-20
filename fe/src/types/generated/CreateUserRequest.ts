@@ -27,13 +27,13 @@ export type CreateUserRequest = {
     /**
      * Role UUIDs to assign to this user (optional)
      */
-    role_uuids?: string[]
+    role_uuids: string[] | null
     /**
      * Whether user is active
      */
-    is_active?: boolean
+    is_active: boolean | null
     /**
      * Super admin flag
      */
-    super_admin?: boolean
+    super_admin: boolean | null
 }

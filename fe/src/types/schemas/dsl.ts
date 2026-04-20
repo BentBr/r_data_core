@@ -255,7 +255,7 @@ export const DslTransformSendEmailSchema = z.object({
     type: z.literal('send_email'),
     template_uuid: z.string(),
     to: z.array(DslStringOperandSchema),
-    cc: z.array(DslStringOperandSchema).optional(),
+    cc: z.array(DslStringOperandSchema).nullable(),
     target_status: z.string(),
 }) satisfies z.ZodType<{ type: 'send_email' } & GeneratedSendEmailTransform>
 export const DslTransformSchema = z.discriminatedUnion('type', [

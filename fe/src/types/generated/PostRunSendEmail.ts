@@ -17,7 +17,7 @@ export type PostRunSendEmail = {
     /**
      * Optional CC
      */
-    cc?: Array<StringOperand>
+    cc: Array<StringOperand> | null
     /**
      * When to fire this action
      */

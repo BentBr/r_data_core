@@ -16,7 +16,7 @@ export type SendEmailTransform = {
     /**
      * Optional CC recipients
      */
-    cc?: Array<StringOperand>
+    cc: Array<StringOperand> | null
     /**
      * Normalized field to store send result (`"queued"`, `"mail_not_configured"`, or error)
      */

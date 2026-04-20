@@ -309,8 +309,8 @@ pub struct EntityDefinitionListResponse {
 pub struct ApplySchemaRequest {
     /// Optional UUID of specific entity definition to apply schema for
     /// If not provided, schemas for all published entity definitions will be applied
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional, type = "string")]
+    #[serde(default)]
+    #[ts(type = "string | null")]
     pub uuid: Option<Uuid>,
 }
 

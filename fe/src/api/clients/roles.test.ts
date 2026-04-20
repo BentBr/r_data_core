@@ -234,6 +234,7 @@ describe('RolesClient', () => {
             const request: CreateRoleRequest = {
                 name: 'Editor',
                 description: 'Can edit content',
+                super_admin: null,
                 permissions: [mockPermission],
             }
 
@@ -270,6 +271,8 @@ describe('RolesClient', () => {
         it('should handle 422 validation error on create', async () => {
             const request: CreateRoleRequest = {
                 name: '',
+                description: null,
+                super_admin: null,
                 permissions: [],
             }
 
@@ -289,6 +292,7 @@ describe('RolesClient', () => {
             const request: UpdateRoleRequest = {
                 name: 'Senior Editor',
                 description: 'Can edit and publish content',
+                super_admin: null,
                 permissions: [mockPermission],
             }
 
@@ -323,6 +327,8 @@ describe('RolesClient', () => {
         it('should handle 404 error when updating non-existent role', async () => {
             const request: UpdateRoleRequest = {
                 name: 'Updated',
+                description: null,
+                super_admin: null,
                 permissions: [],
             }
 

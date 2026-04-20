@@ -355,7 +355,7 @@ describe('EntityDefinitionsClient', () => {
                 expect.stringContaining('/admin/api/v1/entity-definitions/apply-schema'),
                 expect.objectContaining({
                     method: 'POST',
-                    body: JSON.stringify({ uuid: undefined }),
+                    body: JSON.stringify({ uuid: null }),
                 })
             )
         })

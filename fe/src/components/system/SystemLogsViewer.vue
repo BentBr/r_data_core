@@ -375,12 +375,12 @@
             const result = await typedHttpClient.listSystemLogs({
                 page: page.value,
                 page_size: itemsPerPage.value,
-                log_type: filterLogType.value ?? undefined,
-                resource_type: filterResourceType.value ?? undefined,
-                status: filterStatus.value ?? undefined,
-                resource_uuid: filterResourceUuid.value ?? undefined,
-                date_from: toIso8601(filterDateFrom.value),
-                date_to: toIso8601(filterDateTo.value),
+                log_type: filterLogType.value ?? null,
+                resource_type: filterResourceType.value ?? null,
+                status: filterStatus.value ?? null,
+                resource_uuid: filterResourceUuid.value ?? null,
+                date_from: toIso8601(filterDateFrom.value) ?? null,
+                date_to: toIso8601(filterDateTo.value) ?? null,
             })
             logs.value = result.data
             totalItems.value = result.meta?.pagination?.total ?? 0

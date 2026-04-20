@@ -172,6 +172,8 @@ describe('ApiKeysClient', () => {
         it('should create API key', async () => {
             const request: CreateApiKeyRequest = {
                 name: 'Test Key',
+                description: null,
+                expires_in_days: null,
             }
 
             const mockResponse = {

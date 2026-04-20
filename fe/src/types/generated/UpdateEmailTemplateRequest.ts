@@ -7,7 +7,7 @@ export type UpdateEmailTemplateRequest = {
     /**
      * New display name (only honoured for workflow templates)
      */
-    name?: string
+    name: string | null
     /**
      * Updated subject line
      */

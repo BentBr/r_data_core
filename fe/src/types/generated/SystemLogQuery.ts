@@ -10,33 +10,33 @@ export type SystemLogQuery = {
     /**
      * Page number (1-based, default: 1)
      */
-    page?: number
+    page: number | null
     /**
      * Items per page (default: 20, max: 100)
      */
-    page_size?: number
+    page_size: number | null
     /**
      * Filter by log type
      */
-    log_type?: SystemLogType
+    log_type: SystemLogType | null
     /**
      * Filter by resource type
      */
-    resource_type?: SystemLogResourceType
+    resource_type: SystemLogResourceType | null
     /**
      * Filter by status
      */
-    status?: SystemLogStatus
+    status: SystemLogStatus | null
     /**
      * Filter by resource UUID
      */
-    resource_uuid?: string
+    resource_uuid: string | null
     /**
      * Filter logs created after this timestamp (ISO 8601)
      */
-    date_from?: string
+    date_from: string | null
     /**
      * Filter logs created before this timestamp (ISO 8601)
      */
-    date_to?: string
+    date_to: string | null
 }

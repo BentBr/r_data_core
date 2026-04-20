@@ -51,7 +51,8 @@ spec:
             containers:
                 -   name: redis
                     image: redis:8-alpine
-                    args: [ "redis-server", "--appendonly", "yes", "--dir", "/data" ]
+                    # Use `command` (not `args`) so this matches the Compose example exactly.
+                    command: [ "redis-server", "--appendonly", "yes", "--dir", "/data" ]
                     ports:
                         -   containerPort: 6379
                             name: redis

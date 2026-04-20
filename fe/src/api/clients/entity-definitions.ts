@@ -49,7 +49,7 @@ export class EntityDefinitionsClient extends BaseTypedHttpClient {
 
     async applyEntityDefinitionSchema(uuid?: string): Promise<{ message: string }> {
         const endpoint = '/admin/api/v1/entity-definitions/apply-schema'
-        const body: ApplySchemaRequest = uuid ? { uuid } : {}
+        const body: ApplySchemaRequest = { uuid: uuid ?? null }
         return this.request<{ message: string }>(endpoint, {
             method: 'POST',
             body: JSON.stringify(body),

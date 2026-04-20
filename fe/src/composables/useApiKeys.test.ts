@@ -132,7 +132,11 @@ describe('useApiKeys', () => {
 
     describe('createApiKey', () => {
         it('should create API key successfully', async () => {
-            const request: CreateApiKeyRequest = { name: 'New Key' }
+            const request: CreateApiKeyRequest = {
+                name: 'New Key',
+                description: null,
+                expires_in_days: null,
+            }
             const result = { api_key: 'test_key_12345' }
             mockCreateApiKey.mockResolvedValue(result)
             mockGetApiKeys.mockResolvedValue({
@@ -150,7 +154,11 @@ describe('useApiKeys', () => {
         })
 
         it('should handle creation errors', async () => {
-            const request: CreateApiKeyRequest = { name: 'New Key' }
+            const request: CreateApiKeyRequest = {
+                name: 'New Key',
+                description: null,
+                expires_in_days: null,
+            }
             const error = new Error('Creation failed')
             mockCreateApiKey.mockRejectedValue(error)
 

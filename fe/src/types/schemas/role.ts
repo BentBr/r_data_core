@@ -49,15 +49,15 @@ export const PermissionSchema = z.object({
 // Request schemas (form validation) — bind to generated types
 export const CreateRoleRequestSchema = z.object({
     name: z.string(),
-    description: z.string().optional(),
-    super_admin: z.boolean().optional(),
+    description: z.string().nullable(),
+    super_admin: z.boolean().nullable(),
     permissions: z.array(PermissionSchema),
 }) satisfies z.ZodType<GeneratedCreateRoleRequest>
 
 export const UpdateRoleRequestSchema = z.object({
     name: z.string(),
-    description: z.string().optional(),
-    super_admin: z.boolean().optional(),
+    description: z.string().nullable(),
+    super_admin: z.boolean().nullable(),
     permissions: z.array(PermissionSchema),
 }) satisfies z.ZodType<GeneratedUpdateRoleRequest>
 

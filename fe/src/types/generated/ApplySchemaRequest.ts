@@ -9,5 +9,5 @@ export type ApplySchemaRequest = {
      * Optional UUID of specific entity definition to apply schema for
      * If not provided, schemas for all published entity definitions will be applied
      */
-    uuid?: string
+    uuid: string | null
 }

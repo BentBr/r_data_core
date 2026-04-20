@@ -333,7 +333,7 @@
             const updated = existing.filter((_, i) => i !== idx)
             emit('update:modelValue', {
                 ...props.modelValue,
-                cc: updated.length > 0 ? updated : undefined,
+                cc: updated.length > 0 ? updated : null,
             })
         }
     }

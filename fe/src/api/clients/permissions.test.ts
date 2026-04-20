@@ -167,6 +167,7 @@ describe('RolesClient (permissions)', () => {
             const request: CreateRoleRequest = {
                 name: 'Auditor',
                 description: 'Read-only auditing role',
+                super_admin: null,
                 permissions: [mockPermission],
             }
 
@@ -203,6 +204,8 @@ describe('RolesClient (permissions)', () => {
         it('should handle 422 validation error on create', async () => {
             const request: CreateRoleRequest = {
                 name: '',
+                description: null,
+                super_admin: null,
                 permissions: [],
             }
 
@@ -222,6 +225,7 @@ describe('RolesClient (permissions)', () => {
             const request: UpdateRoleRequest = {
                 name: 'Senior Auditor',
                 description: 'Extended read-only auditing role',
+                super_admin: null,
                 permissions: [mockPermission],
             }
 
@@ -257,6 +261,8 @@ describe('RolesClient (permissions)', () => {
         it('should handle 404 error when updating non-existent role', async () => {
             const request: UpdateRoleRequest = {
                 name: 'Updated',
+                description: null,
+                super_admin: null,
                 permissions: [],
             }
 

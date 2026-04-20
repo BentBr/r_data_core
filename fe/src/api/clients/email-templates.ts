@@ -8,7 +8,7 @@ export type EmailTemplate = EmailTemplateResponse
 export type { CreateEmailTemplateRequest, UpdateEmailTemplateRequest }
 
 export class EmailTemplateClient extends BaseTypedHttpClient {
-    async list(query: EmailTemplateListQuery = {}): Promise<EmailTemplate[]> {
+    async list(query: EmailTemplateListQuery = { type: null }): Promise<EmailTemplate[]> {
         const params = query.type ? `?type=${query.type}` : ''
         return this.request<EmailTemplate[]>(`/admin/api/v1/email-templates${params}`)
     }
