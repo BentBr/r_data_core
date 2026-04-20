@@ -12,18 +12,18 @@ use r_data_core_persistence::{ComponentVersionRepository, WorkflowRepository};
 
 /// Current version from Cargo.toml
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+use r_data_core_persistence::OutboxRepository;
 use r_data_core_services::adapters::{
     DynamicEntityRepositoryAdapter, EntityDefinitionRepositoryAdapter,
 };
 use r_data_core_services::bootstrap::{init_cache_manager, init_logger_with_default, init_pg_pool};
 use r_data_core_services::compute_reconcile_actions;
+use r_data_core_services::workflow::outbox::claim_and_dispatch_workflow_outbox;
 use r_data_core_services::LicenseService;
 use r_data_core_services::{
     DynamicEntityService, EntityDefinitionService, WorkflowRepositoryAdapter, WorkflowService,
 };
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
-use r_data_core_workflow::data::job_queue::JobQueue;
-use r_data_core_workflow::data::jobs::FetchAndStageJob;
 
 #[tokio::main]
 #[allow(clippy::too_many_lines)] // Main function orchestrates many components
@@ -71,12 +71,19 @@ async fn main() -> r_data_core_core::error::Result<()> {
     }
 
     let queue_cfg = Arc::new(config.queue.clone());
-    let _queue = ApalisRedisQueue::from_parts(
-        &queue_cfg.redis_url,
-        &queue_cfg.fetch_key,
-        &queue_cfg.process_key,
-    )
-    .await?;
+    let queue = Arc::new(
+        ApalisRedisQueue::from_parts(
+            &queue_cfg.redis_url,
+            &queue_cfg.fetch_key,
+            &queue_cfg.process_key,
+        )
+        .await?,
+    );
+    let outbox_repo = if config.outbox_enabled {
+        Some(Arc::new(OutboxRepository::new(pool.clone())))
+    } else {
+        None
+    };
 
     // Scheduler: scan workflows with cron and schedule tasks
     let scheduler = JobScheduler::new().await.map_err(|e| {
@@ -92,71 +99,46 @@ async fn main() -> r_data_core_core::error::Result<()> {
                         workflow_id: Uuid,
                         cron: String,
                         pool: sqlx::Pool<sqlx::Postgres>,
-                        queue_cfg: Arc<r_data_core_core::config::QueueConfig>|
+                        queue: Arc<ApalisRedisQueue>,
+                        outbox_repo: Option<Arc<OutboxRepository>>|
      -> std::pin::Pin<
         Box<dyn std::future::Future<Output = r_data_core_core::error::Result<Uuid>> + Send>,
     > {
         Box::pin(async move {
             let pool_clone = pool.clone();
             let cron_clone = cron.clone();
+            let outbox_repo = outbox_repo.clone();
             let job = Job::new_async(cron_clone.as_str(), move |_uuid, _l| {
                 let pool = pool_clone.clone();
-                let queue_cfg = queue_cfg.clone();
+                let queue = queue.clone();
+                let outbox_repo = outbox_repo.clone();
                 Box::pin(async move {
                     info!(
                         "Schedule: creating run and enqueueing fetch job for workflow {workflow_id}"
                     );
-                    let repo = WorkflowRepository::new(pool.clone());
-                    // Use a separate trigger identifier to store provenance; DB returns run_uuid
                     let external_trigger_id = Uuid::now_v7();
-                    if let Ok(run_uuid) = repo
-                        .insert_run_queued(workflow_id, external_trigger_id)
-                        .await
-                    {
-                        // Enqueue fetch job with run_uuid in the trigger slot for downstream processing
-                        match ApalisRedisQueue::from_parts(
-                            &queue_cfg.redis_url,
-                            &queue_cfg.fetch_key,
-                            &queue_cfg.process_key,
-                        )
-                        .await
-                        {
-                            Ok(q) => {
-                                match q
-                                    .enqueue_fetch(FetchAndStageJob {
-                                        workflow_id,
-                                        trigger_id: Some(run_uuid),
-                                    })
-                                    .await
-                                {
-                                    Ok(()) => {
-                                        info!("Successfully enqueued fetch job for workflow {workflow_id} (run: {run_uuid})");
-                                    }
-                                    Err(e) => {
-                                        error!("Failed to enqueue fetch job for workflow {workflow_id} (run: {run_uuid}): {e}");
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                error!(
-                                    "Failed to create Redis queue client for workflow {workflow_id}: {e}"
-                                );
-                            }
+                    let workflow_service = {
+                        let base = WorkflowService::new(Arc::new(WorkflowRepositoryAdapter::new(
+                            WorkflowRepository::new(pool.clone()),
+                        )));
+                        if let Some(outbox_repo) = outbox_repo.clone() {
+                            base.with_outbox_repository(outbox_repo)
+                        } else {
+                            base
                         }
-                        let _ = repo
-                            .insert_run_log(
-                                run_uuid,
-                                "info",
-                                "Run enqueued by scheduler",
-                                Some(
-                                    serde_json::json!({"trigger": external_trigger_id.to_string()}),
-                                ),
-                            )
-                            .await;
-                    }
+                    };
+                    let _ = workflow_service
+                        .enqueue_run_for_fetch(
+                            workflow_id,
+                            queue.as_ref(),
+                            Some(external_trigger_id),
+                        )
+                        .await;
                 })
             })
-            .map_err(|e| r_data_core_core::error::Error::Config(format!("Failed to create job: {e}")))?;
+            .map_err(|e| {
+                r_data_core_core::error::Error::Config(format!("Failed to create job: {e}"))
+            })?;
             let job_id = scheduler.add(job).await.map_err(|e| {
                 r_data_core_core::error::Error::Config(format!(
                     "Failed to add job to scheduler: {e}"
@@ -175,7 +157,8 @@ async fn main() -> r_data_core_core::error::Result<()> {
                 workflow_id,
                 cron.clone(),
                 pool.clone(),
-                queue_cfg.clone(),
+                queue.clone(),
+                outbox_repo.clone(),
             )
             .await?;
             scheduled_workflows
@@ -196,7 +179,8 @@ async fn main() -> r_data_core_core::error::Result<()> {
         let repo_clone = WorkflowRepository::new(pool.clone());
         let pool_clone2 = pool.clone();
         let scheduled_map = scheduled_workflows.clone();
-        let queue_cfg_reconcile = queue_cfg.clone();
+        let queue_for_reconcile = queue.clone();
+        let outbox_repo_for_reconcile = outbox_repo.clone();
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(
                 config.job_queue_update_interval_secs,
@@ -231,7 +215,8 @@ async fn main() -> r_data_core_core::error::Result<()> {
                             wf_id,
                             cron.clone(),
                             pool_clone2.clone(),
-                            queue_cfg_reconcile.clone(),
+                            queue_for_reconcile.clone(),
+                            outbox_repo_for_reconcile.clone(),
                         )
                         .await
                         {
@@ -250,6 +235,8 @@ async fn main() -> r_data_core_core::error::Result<()> {
 
         let pool_for_consumer = pool.clone();
         let queue_cfg = queue_cfg.clone();
+        let queue_for_consumer = queue.clone();
+        let outbox_repo_for_consumer = outbox_repo.clone();
         let cache_manager_for_consumer = cache_manager.clone();
         let jwt_secret_for_consumer: Option<String> = std::env::var("JWT_SECRET").ok();
         let jwt_expiration_for_consumer: u64 = std::env::var("JWT_EXPIRATION")
@@ -257,21 +244,6 @@ async fn main() -> r_data_core_core::error::Result<()> {
             .and_then(|v| v.parse().ok())
             .unwrap_or(86_400);
         tokio::spawn(async move {
-            let queue = match ApalisRedisQueue::from_parts(
-                &queue_cfg.redis_url,
-                &queue_cfg.fetch_key,
-                &queue_cfg.process_key,
-            )
-            .await
-            {
-                Ok(q) => q,
-                Err(e) => {
-                    error!(
-                        "Failed to initialize Redis queue: {e}. Worker consumer will not start."
-                    );
-                    return;
-                }
-            };
             info!(
                 "Worker consumer loop started, waiting for jobs from queue '{}'...",
                 queue_cfg.fetch_key
@@ -290,7 +262,7 @@ async fn main() -> r_data_core_core::error::Result<()> {
                     );
                 }
 
-                match queue.blocking_pop_fetch().await {
+                match queue_for_consumer.blocking_pop_fetch().await {
                     Ok(job) => {
                         // Reset backoff on successful pop
                         retry_backoff_ms = 250;
@@ -331,7 +303,10 @@ async fn main() -> r_data_core_core::error::Result<()> {
                                 let adapter = WorkflowRepositoryAdapter::new(
                                     WorkflowRepository::new(pool_for_consumer.clone()),
                                 );
-                                let service = WorkflowService::new(Arc::new(adapter));
+                                let mut service = WorkflowService::new(Arc::new(adapter));
+                                if let Some(outbox_repo) = outbox_repo_for_consumer.clone() {
+                                    service = service.with_outbox_repository(outbox_repo);
+                                }
                                 let _ =
                                     service.fetch_and_stage_from_config(wf_uuid, run_uuid).await;
                             }
@@ -355,7 +330,7 @@ async fn main() -> r_data_core_core::error::Result<()> {
                         );
                         let de_service =
                             DynamicEntityService::new(Arc::new(de_adapter), Arc::new(ed_service));
-                        let service = WorkflowService::new_with_entities(
+                        let mut service = WorkflowService::new_with_entities(
                             Arc::new(wf_adapter),
                             Arc::new(de_service),
                         )
@@ -363,6 +338,9 @@ async fn main() -> r_data_core_core::error::Result<()> {
                             jwt_secret_for_consumer.clone(),
                             jwt_expiration_for_consumer,
                         );
+                        if let Some(outbox_repo) = outbox_repo_for_consumer.clone() {
+                            service = service.with_outbox_repository(outbox_repo);
+                        }
                         // Process
                         if let Ok(Some(wf_uuid)) = repo.get_workflow_uuid_for_run(run_uuid).await {
                             match service.process_staged_items(wf_uuid, run_uuid).await {
@@ -417,6 +395,41 @@ async fn main() -> r_data_core_core::error::Result<()> {
                         // Increase backoff for next retry, but cap at MAX_BACKOFF_MS
                         retry_backoff_ms =
                             (retry_backoff_ms * BACKOFF_MULTIPLIER).min(MAX_BACKOFF_MS);
+                    }
+                }
+            }
+        });
+    }
+
+    // Workflow outbox recovery loop: claim pending messages and dispatch them to Redis.
+    if let Some(outbox_repo_for_outbox) = outbox_repo.clone() {
+        let queue_for_outbox = queue.clone();
+        tokio::spawn(async move {
+            const OUTBOX_BATCH_SIZE: i64 = 50;
+            let worker_id = format!("workflow-outbox-{}", Uuid::now_v7());
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(
+                std::cmp::max(5, config.job_queue_update_interval_secs),
+            ));
+
+            loop {
+                interval.tick().await;
+                match claim_and_dispatch_workflow_outbox(
+                    queue_for_outbox.as_ref(),
+                    outbox_repo_for_outbox.as_ref(),
+                    &worker_id,
+                    OUTBOX_BATCH_SIZE,
+                )
+                .await
+                {
+                    Ok(dispatched) => {
+                        if dispatched > 0 {
+                            info!(
+                                "Dispatched {dispatched} workflow outbox message(s) via worker outbox loop"
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        error!("Workflow outbox dispatcher failed: {e}");
                     }
                 }
             }

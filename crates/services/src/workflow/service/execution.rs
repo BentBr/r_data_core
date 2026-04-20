@@ -54,13 +54,21 @@ impl WorkflowService {
             };
             let ctx = WorkflowItemContext {
                 dynamic_entity_service: self.dynamic_entity_service.as_deref(),
+                outbox_repository: self.outbox_repository.as_deref(),
                 repo: &self.repo,
                 jwt: &jwt,
                 versioning_disabled: wf.versioning_disabled,
             };
             for (item_uuid, payload) in items {
-                let success =
-                    process_single_item(&program, &payload, item_uuid, run_uuid, &ctx).await?;
+                let success = process_single_item(
+                    &program,
+                    workflow_uuid,
+                    &payload,
+                    item_uuid,
+                    run_uuid,
+                    &ctx,
+                )
+                .await?;
                 if success {
                     processed += 1;
                 } else {
@@ -111,12 +119,13 @@ impl WorkflowService {
         };
         let ctx = WorkflowItemContext {
             dynamic_entity_service: self.dynamic_entity_service.as_deref(),
+            outbox_repository: self.outbox_repository.as_deref(),
             repo: &self.repo,
             jwt: &jwt,
             versioning_disabled: wf.versioning_disabled,
         };
 
-        match execute_pipeline_inline(&program, payload, run_uuid, &ctx).await {
+        match execute_pipeline_inline(&program, workflow_uuid, payload, run_uuid, &ctx).await {
             Ok(outputs) => {
                 let _ = self.repo.mark_run_success(run_uuid, 1, 0).await;
                 // Return the first Format output value

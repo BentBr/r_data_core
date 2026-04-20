@@ -15,7 +15,7 @@ use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::AppConfig;
 use r_data_core_persistence::{
     AdminUserRepository, ApiKeyRepository, DashboardStatsRepository, DynamicEntityRepository,
-    EntityDefinitionRepository, WorkflowRepository,
+    EntityDefinitionRepository, OutboxRepository, WorkflowRepository,
 };
 use r_data_core_services::adapters::{
     AdminUserRepositoryAdapter, ApiKeyRepositoryAdapter, DynamicEntityRepositoryAdapter,
@@ -157,10 +157,14 @@ pub async fn build_api_state(
 
     let workflow_repo = WorkflowRepository::new(pool.clone());
     let workflow_adapter = WorkflowRepositoryAdapter::new(workflow_repo);
-    let workflow_service = WorkflowService::new(Arc::new(workflow_adapter)).with_jwt_config(
+    let mut workflow_service = WorkflowService::new(Arc::new(workflow_adapter)).with_jwt_config(
         Some(config.api.jwt_secret.clone()),
         config.api.jwt_expiration,
     );
+    if config.outbox_enabled {
+        let outbox_repo = OutboxRepository::new(pool.clone());
+        workflow_service = workflow_service.with_outbox_repository(Arc::new(outbox_repo));
+    }
 
     let role_service = RoleService::new(
         pool.clone(),

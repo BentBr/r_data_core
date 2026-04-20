@@ -86,6 +86,16 @@ impl WorkflowRepositoryTraitDef for WorkflowRepositoryAdapter {
             .await
     }
 
+    async fn insert_run_queued_with_fetch_outbox(
+        &self,
+        workflow_uuid: Uuid,
+        trigger_id: Uuid,
+    ) -> r_data_core_core::error::Result<(Uuid, Uuid)> {
+        self.inner
+            .insert_run_queued_with_fetch_outbox(workflow_uuid, trigger_id)
+            .await
+    }
+
     async fn mark_run_running(&self, run_uuid: Uuid) -> r_data_core_core::error::Result<()> {
         self.inner.mark_run_running(run_uuid).await
     }

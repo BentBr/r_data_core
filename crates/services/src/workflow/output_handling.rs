@@ -3,6 +3,8 @@
 use crate::workflow::entity_persistence::{
     create_entity, create_or_update_entity, update_entity, PersistenceContext,
 };
+use crate::workflow::item_processing::WorkflowItemContext;
+use crate::workflow::outbox::enqueue_workflow_push_outbox;
 use r_data_core_persistence::WorkflowRepositoryTrait;
 use r_data_core_workflow::dsl::path_resolution::build_path_from_fields;
 use r_data_core_workflow::dsl::ToDef;
@@ -17,9 +19,10 @@ use uuid::Uuid;
 pub async fn handle_format_push_output(
     to_def: &ToDef,
     produced: &JsonValue,
+    workflow_uuid: Uuid,
     item_uuid: Uuid,
     run_uuid: Uuid,
-    repo: &Arc<dyn WorkflowRepositoryTrait>,
+    ctx: &WorkflowItemContext<'_>,
 ) -> r_data_core_core::error::Result<bool> {
     if let ToDef::Format {
         output:
@@ -31,20 +34,45 @@ pub async fn handle_format_push_output(
         ..
     } = to_def
     {
-        let data_bytes = serialize_for_push(format, produced, item_uuid, run_uuid, repo).await?;
-        let dest_ctx = create_destination_context(destination, method.as_ref().copied())?;
-        let dest_adapter =
-            create_destination_adapter(destination, item_uuid, run_uuid, repo).await?;
-        push_data(
-            dest_adapter,
-            &dest_ctx,
-            data_bytes,
-            destination,
-            item_uuid,
-            run_uuid,
-            repo,
-        )
-        .await?;
+        let data_bytes =
+            serialize_for_push(format, produced, item_uuid, run_uuid, ctx.repo).await?;
+        if let Some(outbox_repo) = ctx.outbox_repository {
+            let destination_auth = match &destination.auth {
+                Some(auth) => Some(serde_json::to_value(auth).map_err(|e| {
+                    r_data_core_core::error::Error::Validation(format!(
+                        "Failed to serialize destination auth for outbox: {e}"
+                    ))
+                })?),
+                None => None,
+            };
+            enqueue_workflow_push_outbox(
+                outbox_repo,
+                workflow_uuid,
+                run_uuid,
+                item_uuid,
+                &destination.destination_type,
+                destination.config.clone(),
+                destination_auth,
+                method.as_ref().copied(),
+                format.format_type.as_str(),
+                &data_bytes,
+            )
+            .await?;
+        } else {
+            let dest_ctx = create_destination_context(destination, method.as_ref().copied())?;
+            let dest_adapter =
+                create_destination_adapter(destination, item_uuid, run_uuid, ctx.repo).await?;
+            push_data(
+                dest_adapter,
+                &dest_ctx,
+                data_bytes,
+                destination,
+                item_uuid,
+                run_uuid,
+                ctx.repo,
+            )
+            .await?;
+        }
     }
     Ok(true) // Not a push output, nothing to handle
 }

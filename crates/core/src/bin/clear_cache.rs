@@ -37,8 +37,11 @@ use r_data_core_core::cache::redis::RedisCache;
 /// Main entry point for the cache clearing utility
 #[tokio::main]
 async fn main() -> ExitCode {
-    // Load .env file if present
-    dotenv().ok();
+    // Load .env only when the caller did not already provide REDIS_URL and
+    // when tests did not explicitly request .env suppression.
+    if env::var_os("DOTENV_IGNORE").is_none() && env::var_os("REDIS_URL").is_none() {
+        dotenv().ok();
+    }
 
     // Parse arguments
     let args: Vec<String> = env::args().collect();

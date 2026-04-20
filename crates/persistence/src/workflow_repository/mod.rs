@@ -64,6 +64,14 @@ impl WorkflowRepositoryTrait for WorkflowRepository {
     async fn insert_run_queued(&self, workflow_uuid: Uuid, trigger_id: Uuid) -> Result<Uuid> {
         self.insert_run_queued(workflow_uuid, trigger_id).await
     }
+    async fn insert_run_queued_with_fetch_outbox(
+        &self,
+        workflow_uuid: Uuid,
+        trigger_id: Uuid,
+    ) -> Result<(Uuid, Uuid)> {
+        self.insert_run_queued_with_fetch_outbox(workflow_uuid, trigger_id)
+            .await
+    }
     async fn mark_run_running(&self, run_uuid: Uuid) -> Result<()> {
         self.mark_run_running(run_uuid).await
     }

@@ -9,8 +9,6 @@ use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::CombinedRequiredAuth;
 use r_data_core_core::error::Error;
 use r_data_core_workflow::data::adapters::auth::AuthConfig;
-use r_data_core_workflow::data::job_queue::JobQueue;
-use r_data_core_workflow::data::jobs::FetchAndStageJob;
 use r_data_core_workflow::data::WorkflowKind;
 use r_data_core_workflow::dsl::{DslProgram, FromDef, OutputMode, ToDef};
 use serde::Deserialize;
@@ -425,23 +423,12 @@ pub async fn post_workflow_ingest(
         }
     };
 
-    // Enqueue the job to Redis for worker processing
     if let Err(e) = state
-        .queue()
-        .enqueue_fetch(FetchAndStageJob {
-            workflow_id: uuid,
-            trigger_id: Some(run_uuid),
-        })
+        .workflow_service()
+        .dispatch_fetch_for_existing_run(uuid, run_uuid, state.queue().as_ref())
         .await
     {
-        log::error!("Failed to enqueue fetch job for workflow {uuid} (run: {run_uuid}): {e}");
-        // Return warning but don't fail - items are staged
-        return HttpResponse::Accepted().json(json!({
-            "run_uuid": run_uuid,
-            "staged_items": staged_count,
-            "status": "queued",
-            "warning": "Items staged but job enqueue failed - processing may be delayed"
-        }));
+        log::warn!("Failed to dispatch fetch job for workflow {uuid} (run: {run_uuid}): {e}");
     }
 
     log::info!("Successfully enqueued workflow {uuid} (run: {run_uuid}, staged: {staged_count})");

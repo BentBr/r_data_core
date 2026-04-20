@@ -3,6 +3,7 @@
 use crate::dynamic_entity::DynamicEntityService;
 use crate::workflow::output_handling::{handle_entity_output, handle_format_push_output};
 use crate::workflow::transform_execution::{execute_async_transform, JwtConfig};
+use r_data_core_persistence::OutboxRepository;
 use r_data_core_persistence::WorkflowRepositoryTrait;
 use r_data_core_workflow::dsl::{DslProgram, ToDef, Transform};
 use serde_json::Value as JsonValue;
@@ -12,6 +13,7 @@ use uuid::Uuid;
 /// Shared context for workflow item processing
 pub struct WorkflowItemContext<'a> {
     pub dynamic_entity_service: Option<&'a DynamicEntityService>,
+    pub outbox_repository: Option<&'a OutboxRepository>,
     pub repo: &'a Arc<dyn WorkflowRepositoryTrait>,
     pub jwt: &'a JwtConfig<'a>,
     pub versioning_disabled: bool,
@@ -26,15 +28,26 @@ pub struct WorkflowItemContext<'a> {
 /// Returns an error if processing fails
 pub async fn process_single_item(
     program: &DslProgram,
+    workflow_uuid: Uuid,
     payload: &JsonValue,
     item_uuid: Uuid,
     run_uuid: Uuid,
     ctx: &WorkflowItemContext<'_>,
 ) -> r_data_core_core::error::Result<bool> {
-    match execute_steps_with_async_transforms(program, payload, item_uuid, run_uuid, ctx, false)
-        .await
+    match execute_steps_with_async_transforms(
+        program,
+        workflow_uuid,
+        payload,
+        item_uuid,
+        run_uuid,
+        ctx,
+        false,
+    )
+    .await
     {
-        Ok(outputs) => process_outputs(outputs, payload, item_uuid, run_uuid, ctx).await,
+        Ok(outputs) => {
+            process_outputs(outputs, workflow_uuid, payload, item_uuid, run_uuid, ctx).await
+        }
         Err(e) => handle_execution_error(e, item_uuid, run_uuid, ctx.repo).await,
     }
 }
@@ -48,12 +61,22 @@ pub async fn process_single_item(
 /// Returns an error if any pipeline step fails
 pub async fn execute_pipeline_inline(
     program: &DslProgram,
+    workflow_uuid: Uuid,
     payload: &JsonValue,
     run_uuid: Uuid,
     ctx: &WorkflowItemContext<'_>,
 ) -> r_data_core_core::error::Result<Vec<(ToDef, JsonValue)>> {
     let item_uuid = Uuid::now_v7();
-    execute_steps_with_async_transforms(program, payload, item_uuid, run_uuid, ctx, true).await
+    execute_steps_with_async_transforms(
+        program,
+        workflow_uuid,
+        payload,
+        item_uuid,
+        run_uuid,
+        ctx,
+        true,
+    )
+    .await
 }
 
 /// Execute workflow steps one at a time, running async transforms between steps.
@@ -66,6 +89,7 @@ pub async fn execute_pipeline_inline(
 /// being swallowed by zero-impact resilience. Used for inline auth workflows.
 async fn execute_steps_with_async_transforms(
     program: &DslProgram,
+    _workflow_uuid: Uuid,
     payload: &JsonValue,
     item_uuid: Uuid,
     run_uuid: Uuid,
@@ -147,6 +171,7 @@ async fn execute_steps_with_async_transforms(
 
 async fn process_outputs(
     processed_outputs: Vec<(ToDef, JsonValue)>,
+    workflow_uuid: Uuid,
     payload: &JsonValue,
     item_uuid: Uuid,
     run_uuid: Uuid,
@@ -156,7 +181,8 @@ async fn process_outputs(
     for (to_def, produced) in processed_outputs {
         // Handle Format outputs with Push mode
         let push_ok =
-            handle_format_push_output(&to_def, &produced, item_uuid, run_uuid, ctx.repo).await?;
+            handle_format_push_output(&to_def, &produced, workflow_uuid, item_uuid, run_uuid, ctx)
+                .await?;
         if !push_ok {
             entity_ops_ok = false;
             break;

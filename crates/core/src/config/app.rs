@@ -12,6 +12,9 @@ pub struct AppConfig {
     /// Application environment (development, production, etc.)
     pub environment: String,
 
+    /// Whether the workflow outbox is enabled.
+    pub outbox_enabled: bool,
+
     /// Database configuration
     pub database: DatabaseConfig,
 
@@ -35,6 +38,9 @@ pub struct WorkerConfig {
     /// Interval in seconds to reconcile scheduled jobs with DB
     pub job_queue_update_interval_secs: u64,
 
+    /// Whether the workflow outbox is enabled.
+    pub outbox_enabled: bool,
+
     /// Database configuration
     pub database: DatabaseConfig,
 
@@ -51,6 +57,9 @@ pub struct WorkerConfig {
 /// Maintenance worker configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MaintenanceConfig {
+    /// Whether the workflow outbox is enabled.
+    pub outbox_enabled: bool,
+
     /// Cron expression for the version purger task (required)
     pub version_purger_cron: String,
 
@@ -59,6 +68,12 @@ pub struct MaintenanceConfig {
 
     /// Cron expression for workflow run logs purger task (required)
     pub workflow_run_logs_purger_cron: String,
+
+    /// Cron expression for outbox cleanup task (required when outbox is enabled)
+    pub outbox_purger_cron: Option<String>,
+
+    /// Retention window for terminal outbox rows, in days
+    pub outbox_retention_days: Option<u32>,
 
     /// Database configuration used by the maintenance worker
     pub database: DatabaseConfig,

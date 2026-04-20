@@ -331,6 +331,60 @@ pub async fn setup_test_db() -> TestDatabase {
     }
 }
 
+/// Best-effort variant of [`setup_test_db`] that returns `None` when the test
+/// database is not reachable.
+///
+/// This mirrors the skip-friendly pattern used by the Redis-backed integration
+/// tests: if the local test stack is not running, the test can exit cleanly
+/// instead of failing hard during setup.
+#[must_use]
+pub async fn try_setup_test_db() -> Option<TestDatabase> {
+    dotenvy::from_filename(".env.test").ok();
+
+    let database_url = std::env::var("DATABASE_URL").ok()?;
+
+    let schema_name = generate_test_schema_name();
+
+    let temp_pool = PgPoolOptions::new()
+        .max_connections(1)
+        .acquire_timeout(Duration::from_secs(10))
+        .connect(&database_url)
+        .await
+        .ok()?;
+
+    sqlx::query(&format!("CREATE SCHEMA IF NOT EXISTS \"{schema_name}\""))
+        .execute(&temp_pool)
+        .await
+        .ok()?;
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .acquire_timeout(Duration::from_secs(10))
+        .after_connect({
+            let schema_name = schema_name.clone();
+            move |conn, _meta| {
+                let schema_name = schema_name.clone();
+                Box::pin(async move {
+                    sqlx::query(&format!("SET search_path TO \"{schema_name}\", public"))
+                        .execute(conn)
+                        .await?;
+                    Ok(())
+                })
+            }
+        })
+        .connect(&database_url)
+        .await
+        .ok()?;
+
+    setup_test_schema(&pool, &schema_name).await.ok()?;
+
+    Some(TestDatabase {
+        pool,
+        schema_name,
+        database_url,
+    })
+}
+
 /// Clear all data from the database - optimized version for faster test runs
 ///
 /// # Errors

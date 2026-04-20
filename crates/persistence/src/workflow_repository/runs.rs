@@ -4,6 +4,7 @@ use sqlx::Row;
 use uuid::Uuid;
 
 use super::WorkflowRepository;
+use crate::outbox_repository::OutboxRepository;
 use r_data_core_core::error::Result;
 
 impl WorkflowRepository {
@@ -29,6 +30,35 @@ impl WorkflowRepository {
         .await
         ?;
         Ok(row.try_get("uuid")?)
+    }
+
+    /// Insert a queued workflow run and a matching workflow fetch outbox record.
+    ///
+    /// # Errors
+    /// Returns an error if the database transaction fails.
+    pub async fn insert_run_queued_with_fetch_outbox(
+        &self,
+        workflow_uuid: Uuid,
+        trigger_id: Uuid,
+    ) -> Result<(Uuid, Uuid)> {
+        let mut tx = self.pool.begin().await?;
+
+        let row = sqlx::query(
+            "INSERT INTO workflow_runs (workflow_uuid, status, trigger_id) VALUES ($1, 'queued', $2) RETURNING uuid",
+        )
+        .bind(workflow_uuid)
+        .bind(trigger_id)
+        .fetch_one(&mut *tx)
+        .await
+        ?;
+        let run_uuid: Uuid = row.try_get("uuid")?;
+
+        let outbox_uuid =
+            OutboxRepository::insert_workflow_fetch_enqueue_in_tx(&mut tx, workflow_uuid, run_uuid)
+                .await?;
+
+        tx.commit().await?;
+        Ok((run_uuid, outbox_uuid))
     }
 
     /// List queued workflow runs

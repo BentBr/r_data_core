@@ -108,6 +108,7 @@ docker pull ghcr.io/bentbr/r-data-core-maintenance:latest
 | `API_HOST` | 0.0.0.0     | Server host address                   |
 | `API_PORT` | 8888        | Server port                           |
 | `JWT_EXPIRATION` | 86400       | JWT token expiration (seconds)        |
+| `OUTBOX_ENABLED` | true        | Enables the workflow outbox           |
 | `API_ENABLE_DOCS` | true        | Enable Swagger API documentation      |
 | `CORS_ORIGINS` | *           | Allowed CORS origins                  |
 | `CACHE_ENABLED` | true        | Enable caching                        |
@@ -120,6 +121,9 @@ docker pull ghcr.io/bentbr/r-data-core-maintenance:latest
 |----------|-------------|
 | `VERSION_PURGER_CRON` | Cron expression for version purger task |
 | `REFRESH_TOKEN_CLEANUP_CRON` | Cron expression for refresh token cleanup task |
+| `WORKFLOW_RUN_LOGS_PURGER_CRON` | Cron expression for workflow run logs purger task |
+| `OUTBOX_PURGER_CRON` | Cron expression for outbox cleanup task (only when `OUTBOX_ENABLED=true`) |
+| `OUTBOX_RETENTION_DAYS` | Retention window for terminal outbox rows (default: 30, only when `OUTBOX_ENABLED=true`) |
 | `MAINTENANCE_DATABASE_URL` | PostgreSQL connection string for maintenance worker |
 | `MAINTENANCE_DATABASE_MAX_CONNECTIONS` | Maximum database connections (default: 10) |
 | `MAINTENANCE_DATABASE_CONNECTION_TIMEOUT` | Connection timeout in seconds (default: 30) |

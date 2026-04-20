@@ -19,6 +19,10 @@ pub fn load_app_config() -> Result<AppConfig> {
     dotenv().ok();
 
     let environment = env::var("APP_ENV").unwrap_or_else(|_| "development".to_string());
+    let outbox_enabled = env::var("OUTBOX_ENABLED")
+        .unwrap_or_else(|_| "true".to_string())
+        .parse()
+        .unwrap_or(true);
 
     let database = DatabaseConfig {
         connection_string: env::var("DATABASE_URL")
@@ -77,6 +81,7 @@ pub fn load_app_config() -> Result<AppConfig> {
 
     Ok(AppConfig {
         environment,
+        outbox_enabled,
         database,
         api,
         cache,
@@ -107,6 +112,10 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
             "JOB_QUEUE_UPDATE_INTERVAL must be > 0 seconds".to_string(),
         ));
     }
+    let outbox_enabled = env::var("OUTBOX_ENABLED")
+        .unwrap_or_else(|_| "true".to_string())
+        .parse()
+        .unwrap_or(true);
 
     let database = DatabaseConfig {
         connection_string: env::var("WORKER_DATABASE_URL")
@@ -142,6 +151,7 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
 
     Ok(WorkerConfig {
         job_queue_update_interval_secs,
+        outbox_enabled,
         database,
         workflow,
         queue,
@@ -157,6 +167,10 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
 pub fn load_maintenance_config() -> Result<MaintenanceConfig> {
     // Ensure .env is loaded for binaries that only use MaintenanceConfig
     dotenv().ok();
+    let outbox_enabled = env::var("OUTBOX_ENABLED")
+        .unwrap_or_else(|_| "true".to_string())
+        .parse()
+        .unwrap_or(true);
 
     let version_purger_cron = env::var("VERSION_PURGER_CRON")
         .map_err(|_| crate::error::Error::Config("VERSION_PURGER_CRON not set".to_string()))?;
@@ -184,6 +198,29 @@ pub fn load_maintenance_config() -> Result<MaintenanceConfig> {
             "Invalid WORKFLOW_RUN_LOGS_PURGER_CRON '{workflow_run_logs_purger_cron}': {e}",
         ))
     })?;
+
+    let (outbox_purger_cron, outbox_retention_days) = if outbox_enabled {
+        let outbox_purger_cron = env::var("OUTBOX_PURGER_CRON")
+            .map_err(|_| crate::error::Error::Config("OUTBOX_PURGER_CRON not set".to_string()))?;
+        utils::validate_cron(&outbox_purger_cron).map_err(|e| {
+            crate::error::Error::Config(format!(
+                "Invalid OUTBOX_PURGER_CRON '{outbox_purger_cron}': {e}",
+            ))
+        })?;
+
+        let outbox_retention_days: u32 = env::var("OUTBOX_RETENTION_DAYS")
+            .unwrap_or_else(|_| "30".to_string())
+            .parse()
+            .map_err(|_| {
+                crate::error::Error::Config(
+                    "OUTBOX_RETENTION_DAYS must be a valid number".to_string(),
+                )
+            })?;
+
+        (Some(outbox_purger_cron), Some(outbox_retention_days))
+    } else {
+        (None, None)
+    };
 
     // Prefer dedicated MAINTENANCE_*, then WORKER_*, then general DATABASE_* where sensible
     let connection_string = env::var("MAINTENANCE_DATABASE_URL")
@@ -245,9 +282,12 @@ pub fn load_maintenance_config() -> Result<MaintenanceConfig> {
     };
 
     Ok(MaintenanceConfig {
+        outbox_enabled,
         version_purger_cron,
         refresh_token_cleanup_cron,
         workflow_run_logs_purger_cron,
+        outbox_purger_cron,
+        outbox_retention_days,
         database,
         cache,
         redis_url,

@@ -17,8 +17,6 @@ use crate::query::PaginationQuery;
 use crate::response::ApiResponse;
 use r_data_core_core::error::Error;
 use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
-use r_data_core_workflow::data::job_queue::JobQueue;
-use r_data_core_workflow::data::jobs::FetchAndStageJob;
 
 /// Extract file from multipart payload
 /// This function processes the multipart stream and returns the file bytes.
@@ -72,35 +70,18 @@ pub async fn run_workflow_now(
 
     let uuid = path.into_inner();
     match state.workflow_service().get(uuid).await {
-        Ok(Some(_)) => match state.workflow_service().enqueue_run(uuid).await {
+        Ok(Some(_)) => match state
+            .workflow_service()
+            .enqueue_run_for_fetch(uuid, state.queue().as_ref(), None)
+            .await
+        {
             Ok(run_uuid) => {
-                match state
-                    .queue()
-                    .enqueue_fetch(FetchAndStageJob {
-                        workflow_id: uuid,
-                        trigger_id: Some(run_uuid),
-                    })
-                    .await
-                {
-                    Ok(()) => {
-                        info!(
-                            "Successfully enqueued fetch job for workflow {uuid} (run: {run_uuid})"
-                        );
-                        ApiResponse::<serde_json::Value>::ok(json!({
-                            "status": "queued",
-                            "run_uuid": run_uuid,
-                            "message": "Workflow run enqueued"
-                        }))
-                    }
-                    Err(e) => {
-                        error!(
-                            "Failed to enqueue fetch job for workflow {uuid} (run: {run_uuid}): {e}"
-                        );
-                        ApiResponse::<()>::internal_error(&format!(
-                            "Failed to enqueue job to Redis: {e}"
-                        ))
-                    }
-                }
+                info!("Successfully enqueued fetch job for workflow {uuid} (run: {run_uuid})");
+                ApiResponse::<serde_json::Value>::ok(json!({
+                    "status": "queued",
+                    "run_uuid": run_uuid,
+                    "message": "Workflow run enqueued"
+                }))
             }
             Err(e) => handle_workflow_error(e),
         },
@@ -166,34 +147,22 @@ pub async fn run_workflow_now_upload(
         .await
     {
         Ok((run_uuid, staged)) => {
-            // Enqueue job to process the staged items (worker will skip fetching since items are already staged)
-            match state
-                .queue()
-                .enqueue_fetch(FetchAndStageJob {
-                    workflow_id: workflow_uuid,
-                    trigger_id: Some(run_uuid),
-                })
+            if let Err(e) = state
+                .workflow_service()
+                .dispatch_fetch_for_existing_run(workflow_uuid, run_uuid, state.queue().as_ref())
                 .await
             {
-                Ok(()) => {
-                    info!("Successfully enqueued fetch job for uploaded workflow {workflow_uuid} (run: {run_uuid}, staged: {staged})");
-                    ApiResponse::<serde_json::Value>::ok(serde_json::json!({
-                        "run_uuid": run_uuid,
-                        "staged_items": staged
-                    }))
-                }
-                Err(e) => {
-                    error!(
-                        "Failed to enqueue fetch job for uploaded workflow {workflow_uuid} (run: {run_uuid}): {e}"
-                    );
-                    // Still return success for the upload, but log the enqueue failure
-                    ApiResponse::<serde_json::Value>::ok(serde_json::json!({
-                        "run_uuid": run_uuid,
-                        "staged_items": staged,
-                        "warning": "Upload succeeded but job enqueue failed - items may not be processed automatically"
-                    }))
-                }
+                log::warn!(
+                    "Failed to dispatch fetch job for uploaded workflow {workflow_uuid} (run: {run_uuid}): {e}"
+                );
             }
+            info!(
+                "Successfully enqueued fetch job for uploaded workflow {workflow_uuid} (run: {run_uuid}, staged: {staged})"
+            );
+            ApiResponse::<serde_json::Value>::ok(serde_json::json!({
+                "run_uuid": run_uuid,
+                "staged_items": staged
+            }))
         }
         Err(Error::Validation(msg)) => ApiResponse::<()>::unprocessable_entity(&msg),
         Err(e) => {

@@ -18,6 +18,7 @@ pub mod entity_definition_repository;
 pub mod entity_definition_versioning_repository;
 pub mod entity_definition_versioning_repository_trait;
 pub mod migration_service;
+pub mod outbox_repository;
 pub mod refresh_token_repository;
 pub mod refresh_token_repository_trait;
 pub mod repository;
@@ -57,6 +58,7 @@ pub use entity_definition_versioning_repository::{
 };
 pub use entity_definition_versioning_repository_trait::EntityDefinitionVersioningRepositoryTrait;
 pub use migration_service::{AppliedMigration, MigrationService, MigrationStatus};
+pub use outbox_repository::{OutboxMessageRecord, OutboxRepository};
 pub use refresh_token_repository::RefreshTokenRepository;
 pub use refresh_token_repository_trait::RefreshTokenRepositoryTrait;
 pub use repository::{EntityRepository, PgPoolExtension};
